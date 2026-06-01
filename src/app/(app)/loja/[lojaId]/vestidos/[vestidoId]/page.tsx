@@ -11,8 +11,13 @@ import { obterVestido } from "@/lib/vestidos/vestidos";
 import { listarFotosMeta } from "@/lib/vestidos/fotos";
 import { listarCatalogo, rotularSelecoes } from "@/lib/catalogo/catalogo";
 import { listarLeads } from "@/lib/leads/leads";
-import { listarReservasDoVestido } from "@/lib/disponibilidade/reservas";
-import { reservarPeloVestidoAction, cancelarReservaPeloVestidoAction } from "./reserva-actions";
+import { listarReservasDoVestido, listarManutencoesDoVestido } from "@/lib/disponibilidade/reservas";
+import {
+  reservarPeloVestidoAction,
+  cancelarReservaPeloVestidoAction,
+  enviarManutencaoAction,
+  removerManutencaoAction,
+} from "./reserva-actions";
 import { SelectNativo } from "@/components/ui/select-nativo";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 
@@ -26,14 +31,23 @@ const dataFmt = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
+const dataDMY = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
-// Mensagem humana para o retorno das ações de reserva (?ok / ?erro).
+// Mensagem humana para o retorno das ações de reserva/manutenção (?ok / ?erro).
 const AVISOS: Record<string, string> = {
   reserva: "Reserva confirmada.",
   cancelada: "Reserva cancelada.",
+  manutencao: "Vestido enviado para manutenção.",
+  manutencao_removida: "Manutenção removida.",
   indisponivel: "Esta peça já está reservada para uma data próxima. Escolha outra peça ou outra data.",
   sem_data: "A noiva escolhida ainda não tem data de casamento.",
   sem_noiva: "Escolha uma noiva para reservar.",
+  datas_invertidas: "A data de volta precisa ser depois da data de saída.",
 };
 
 export default async function VestidoPage({
@@ -56,12 +70,13 @@ export default async function VestidoPage({
   const v = await obterVestido(sc.loja.id, vestidoId);
   if (!v) redirect(`/loja/${lojaId}/vestidos`);
 
-  const [fotos, catalogo, podeEditar, podeVerNoivas, reservas] = await Promise.all([
+  const [fotos, catalogo, podeEditar, podeVerNoivas, reservas, manutencoes] = await Promise.all([
     listarFotosMeta(sc.loja.id, vestidoId),
     listarCatalogo(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
     listarReservasDoVestido(sc.loja.id, vestidoId),
+    listarManutencoesDoVestido(sc.loja.id, vestidoId),
   ]);
 
   // Para o seletor de reserva: só noivas que já têm data de casamento (sem data,
@@ -226,6 +241,78 @@ export default async function VestidoPage({
               Para reservar, uma noiva precisa ter a data do casamento cadastrada.
             </p>
           ))}
+
+        {/* Manutenção — peça fora do acervo por um período (conserto, higienização
+            especial). O motor já a considera nas reservas; aparece também na Agenda. */}
+        {(manutencoes.length > 0 || podeEditar) && (
+          <div className="flex flex-col gap-3 border-t border-borda-suave pt-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Manutenção</p>
+
+            {manutencoes.length > 0 && (
+              <ul className="flex flex-col gap-2">
+                {manutencoes.map((m) => (
+                  <li key={m.id} className="flex items-center justify-between gap-4">
+                    <span className="text-[13px] text-grafite">
+                      {m.inicio ? dataDMY.format(m.inicio) : "?"}
+                      {m.fim ? ` a ${dataDMY.format(m.fim)}` : " (sem data de volta)"}
+                    </span>
+                    {podeEditar && (
+                      <form action={removerManutencaoAction}>
+                        <input type="hidden" name="vestidoId" value={vestidoId} />
+                        <input type="hidden" name="bloqueioId" value={m.id} />
+                        <BotaoConfirmar
+                          mensagem="Remover esta manutenção?"
+                          ariaLabel="Remover manutenção"
+                          className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite
+                            underline decoration-borda underline-offset-4 transition-colors duration-150
+                            hover:text-tinta hover:decoration-champagne focus-visible:outline-2
+                            focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                        >
+                          Remover
+                        </BotaoConfirmar>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {podeEditar && (
+              <form action={enviarManutencaoAction} className="flex flex-wrap items-end gap-3">
+                <input type="hidden" name="vestidoId" value={vestidoId} />
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Saída</span>
+                  <input
+                    type="date"
+                    name="inicio"
+                    required
+                    className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
+                      transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
+                    Volta (opcional)
+                  </span>
+                  <input
+                    type="date"
+                    name="fim"
+                    className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
+                      transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-borda
+                    px-4 py-2.5 text-[13px] text-grafite transition-colors duration-150 hover:border-bordo
+                    hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                >
+                  Enviar para manutenção
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Características do acervo — atributos do catálogo em linguagem legível.

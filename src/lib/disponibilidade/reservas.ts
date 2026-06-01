@@ -135,11 +135,59 @@ export async function reservarVestido(
   return { ok: true, bloqueioId: criado.id };
 }
 
-/** Cancela (remove) uma reserva. Escopo de loja garantido pelo tenantPrisma. */
+/** Cancela (remove) uma reserva OU manutenção. Escopo de loja via tenantPrisma. */
 export async function cancelarReserva(lojaId: string, bloqueioId: string): Promise<void> {
   // delete por id é carimbado com lojaId (extendedWhereUnique) → P2025 se for de
   // outra loja. deleteMany evita o throw e simplesmente não apaga o que não é da loja.
   await tenantPrisma(prisma, lojaId).bloqueioVestido.deleteMany({ where: { id: bloqueioId } });
+}
+
+export type ResultadoManutencao =
+  | { ok: true; id: string }
+  | { ok: false; motivo: "sem_data" | "datas_invertidas" | "vestido_invalido" };
+
+/**
+ * Envia um vestido para manutenção (fora do acervo por um período). Início = data
+ * de retirada; fim opcional (em aberto = fora por tempo indeterminado, igual ao
+ * comportamento do motor). Bloqueia reservas no período automaticamente, porque o
+ * motor já considera bloqueios de manutenção nas projeções.
+ */
+export async function criarManutencao(
+  lojaId: string,
+  input: { vestidoId: string; inicio: string; fim?: string | null },
+): Promise<ResultadoManutencao> {
+  const { vestidoId, inicio, fim } = input;
+  if (!inicio) return { ok: false, motivo: "sem_data" };
+  if (fim && fim < inicio) return { ok: false, motivo: "datas_invertidas" };
+
+  const db = tenantPrisma(prisma, lojaId);
+  const vestido = await db.vestido.findUnique({ where: { id: vestidoId } });
+  if (!vestido) return { ok: false, motivo: "vestido_invalido" };
+
+  const criado = await db.bloqueioVestido.create({
+    // tenantPrisma carimba lojaId; cast pela mesma razão de criarVestido/reservar.
+    data: {
+      vestidoId,
+      tipo: "MANUTENCAO",
+      retiradaDataReal: meiaNoiteUTC(inicio),
+      devolucaoDataReal: fim ? meiaNoiteUTC(fim) : null,
+    } as never,
+  });
+  return { ok: true, id: criado.id };
+}
+
+export type ManutencaoVestido = { id: string; inicio: Date | null; fim: Date | null };
+
+/** Manutenções de um vestido, da mais próxima à mais distante. */
+export async function listarManutencoesDoVestido(
+  lojaId: string,
+  vestidoId: string,
+): Promise<ManutencaoVestido[]> {
+  const rows = await tenantPrisma(prisma, lojaId).bloqueioVestido.findMany({
+    where: { vestidoId, tipo: "MANUTENCAO" },
+    orderBy: { retiradaDataReal: "asc" },
+  });
+  return rows.map((r) => ({ id: r.id, inicio: r.retiradaDataReal, fim: r.devolucaoDataReal }));
 }
 
 export type ReservaDoVestido = {

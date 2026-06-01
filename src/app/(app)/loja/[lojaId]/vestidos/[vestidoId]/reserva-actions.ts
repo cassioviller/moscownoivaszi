@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterLead } from "@/lib/leads/leads";
-import { reservarVestido, cancelarReserva } from "@/lib/disponibilidade/reservas";
+import { reservarVestido, cancelarReserva, criarManutencao } from "@/lib/disponibilidade/reservas";
 
 export async function reservarPeloVestidoAction(formData: FormData) {
   const sc = await getSessaoComLoja();
@@ -45,4 +45,33 @@ export async function cancelarReservaPeloVestidoAction(formData: FormData) {
 
   await cancelarReserva(sc.loja.id, bloqueioId);
   redirect(`${base}?ok=cancelada`);
+}
+
+export async function enviarManutencaoAction(formData: FormData) {
+  const sc = await getSessaoComLoja();
+  if (!sc) redirect("/login");
+
+  const vestidoId = String(formData.get("vestidoId") ?? "");
+  const inicio = String(formData.get("inicio") ?? "");
+  const fim = String(formData.get("fim") ?? "");
+  const base = `/loja/${sc.loja.id}/vestidos/${vestidoId}`;
+
+  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) redirect(base);
+
+  const r = await criarManutencao(sc.loja.id, { vestidoId, inicio, fim: fim || null });
+  redirect(r.ok ? `${base}?ok=manutencao` : `${base}?erro=${r.motivo}`);
+}
+
+export async function removerManutencaoAction(formData: FormData) {
+  const sc = await getSessaoComLoja();
+  if (!sc) redirect("/login");
+
+  const vestidoId = String(formData.get("vestidoId") ?? "");
+  const bloqueioId = String(formData.get("bloqueioId") ?? "");
+  const base = `/loja/${sc.loja.id}/vestidos/${vestidoId}`;
+
+  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) redirect(base);
+
+  await cancelarReserva(sc.loja.id, bloqueioId); // remove o bloqueio (type-agnóstico)
+  redirect(`${base}?ok=manutencao_removida`);
 }

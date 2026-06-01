@@ -10,6 +10,8 @@ import {
   listarReservasDoVestido,
   listarReservasDaNoiva,
   vestidosLivresPara,
+  criarManutencao,
+  listarManutencoesDoVestido,
 } from "@/lib/disponibilidade/reservas";
 
 const MARK = "t-reservas-";
@@ -82,5 +84,39 @@ describe("reservas: motor ligado ao banco", () => {
 
     const daNoiva = await listarReservasDaNoiva(loja, noiva);
     expect(daNoiva.some((r) => r.vestidoId === vestidoA)).toBe(true);
+  });
+
+  it("manutenção bloqueia reserva no período e cancelar libera", async () => {
+    const m = await criarManutencao(loja, {
+      vestidoId: vestidoB,
+      inicio: "2027-03-01",
+      fim: "2027-03-31",
+    });
+    expect(m.ok).toBe(true);
+
+    expect(await listarManutencoesDoVestido(loja, vestidoB)).toHaveLength(1);
+
+    // Casamento dentro da janela de manutenção → indisponível.
+    const bloqueada = await reservarVestido(loja, {
+      vestidoId: vestidoB,
+      leadId: noiva,
+      casamentoData: "2027-03-15",
+    });
+    expect(bloqueada.ok).toBe(false);
+
+    // Cancela a manutenção → volta a ficar livre.
+    if (m.ok) await cancelarReserva(loja, m.id);
+    const livre = await reservarVestido(loja, {
+      vestidoId: vestidoB,
+      leadId: noiva,
+      casamentoData: "2027-03-15",
+    });
+    expect(livre.ok).toBe(true);
+    if (livre.ok) await cancelarReserva(loja, livre.bloqueioId); // limpa p/ não vazar
+  });
+
+  it("recusa manutenção com datas invertidas", async () => {
+    const r = await criarManutencao(loja, { vestidoId: vestidoB, inicio: "2027-05-10", fim: "2027-05-01" });
+    expect(r).toMatchObject({ ok: false, motivo: "datas_invertidas" });
   });
 });
