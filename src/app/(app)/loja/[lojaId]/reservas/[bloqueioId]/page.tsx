@@ -16,7 +16,7 @@ import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import type { ProvaTipo, ProvaComparecimento } from "@/generated/prisma/client";
 import {
   registrarProvaAction,
-  editarComparecimentoAction,
+  editarProvaAction,
   removerProvaAction,
   adicionarAjusteAction,
   alternarAjusteAction,
@@ -63,6 +63,8 @@ const AVISOS: Record<string, string> = {
   item: "Checklist atualizado.",
   sem_data: "Informe a data da prova.",
   tipo_invalido: "Escolha o tipo da prova.",
+  data_invalida: "Data inválida.",
+  comparecimento_invalido: "Comparecimento inválido.",
   reserva_invalida: "Reserva inválida.",
   sem_descricao: "Descreva o ajuste.",
   prova_invalida: "Prova inválida.",
@@ -199,31 +201,54 @@ export default async function ReservaDetalhePage({
 
                 {p.observacao && <p className="text-[13px] text-grafite">{p.observacao}</p>}
 
-                {/* Atualizar comparecimento (edição rápida) */}
                 {podeEditar && (
-                  <form action={editarComparecimentoAction} className="flex flex-wrap items-end gap-2">
+                  <form action={editarProvaAction} className="flex flex-col gap-2 border-t border-borda-suave pt-3">
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Editar prova</span>
                     <input type="hidden" name="bloqueioId" value={bloqueioId} />
                     <input type="hidden" name="provaId" value={p.id} />
-                    <label className="flex flex-col gap-1">
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
-                        Comparecimento
-                      </span>
-                      <select
-                        name="comparecimento"
-                        defaultValue={p.comparecimento}
-                        aria-label="Comparecimento"
-                        className={`${inputBase} py-2 text-[14px]`}
-                      >
-                        {COMPARECIMENTOS.map((c) => (
-                          <option key={c} value={c}>
-                            {ROTULO_COMPARECIMENTO[c]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button type="submit" className={`${botaoSuave} no-underline`}>
-                      Atualizar
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+                        <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Data</span>
+                        <input
+                          type="date"
+                          name="dataReal"
+                          defaultValue={p.dataReal.toISOString().slice(0, 10)}
+                          className={`${inputBase} py-2 text-[14px]`}
+                          aria-label="Data da prova"
+                        />
+                      </label>
+                      <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+                        <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Tipo</span>
+                        <select name="tipo" defaultValue={p.tipo} aria-label="Tipo da prova" className={`${inputBase} py-2 text-[14px]`}>
+                          {TIPOS.map((t) => (
+                            <option key={t} value={t}>{ROTULO_TIPO[t]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+                        <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Comparecimento</span>
+                        <select name="comparecimento" defaultValue={p.comparecimento} aria-label="Comparecimento" className={`${inputBase} py-2 text-[14px]`}>
+                          {COMPARECIMENTOS.map((c) => (
+                            <option key={c} value={c}>{ROTULO_COMPARECIMENTO[c]}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <input
+                      name="responsavel"
+                      defaultValue={p.responsavel ?? ""}
+                      placeholder="Responsável (opcional)"
+                      className={`${inputBase} py-2 text-[14px]`}
+                      aria-label="Responsável"
+                    />
+                    <input
+                      name="observacao"
+                      defaultValue={p.observacao ?? ""}
+                      placeholder="Observação (opcional)"
+                      className={`${inputBase} py-2 text-[14px]`}
+                      aria-label="Observação"
+                    />
+                    <button type="submit" className={`${botaoSuave} no-underline self-start`}>Salvar prova</button>
                   </form>
                 )}
 
