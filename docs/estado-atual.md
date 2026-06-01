@@ -2,6 +2,14 @@
 
 > Snapshot de onde paramos. Atualizado em **2026-06-01**. Envelhece — confira os commits e os testes antes de confiar.
 
+## Jornada derivada (2026-06-01)
+
+Spec/plano: `docs/superpowers/specs/2026-06-01-jornada-derivada-design.md`, `docs/superpowers/plans/2026-06-01-jornada-derivada.md`.
+
+A etapa da jornada deixou de ser guardada (`Lead.etapa`, que congelava em "Novo") e passou a ser **derivada dos fatos** por `estagioDaNoiva` (`src/lib/leads/jornada.ts`): cadastrada → prova marcada → interesses → orçamento aberto → contrato fechado → em provas → retirado → casamento → devolução. Sinais automáticos vêm de interesse/provas/retirada/devolução/casamento; **Orçamento (#4), Contrato (#5) e Perdida** são marcos manuais (campos novos no `Lead`: `orcamentoAbertoEm`/`contratoFechadoEm`/`perdidaEm`), com botões no perfil da noiva (gate `leads:editar`). Consumidores migrados: perfil da noiva, lista de noivas, livro de reservas e dashboard (`painel.ts` agrega por estágio derivado em memória). A coluna `Lead.etapa` e o enum `LeadEtapa` ficam **deprecados** (sem migração destrutiva).
+
+**Fast-follow:** Orçamento como entidade com histórico de negociação (valor, status Aberto→Fechado, trilha) substituirá os marcos manuais #4/#5 por derivação real. Outros sub-projetos pendentes: foto no cadastro do vestido; agenda em formato de calendário.
+
 ## Provas & Ajustes + bloco contínuo (fatia 2026-06-01)
 
 Spec/decisão: `docs/superpowers/specs/2026-06-01-provas-ajustes-design.md`. **Opção B** —

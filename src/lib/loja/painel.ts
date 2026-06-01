@@ -1,9 +1,9 @@
 // src/lib/loja/painel.ts
 //
-// Dados do dashboard ("mesa do atelier"). Tudo é dado REAL já existente — etapa
-// da jornada (Lead.etapa) e data do casamento (Lead.casamentoData). NÃO há
-// entidade de agendamento/provas no modelo, então o dashboard não inventa
-// "agenda": mostra a jornada e os casamentos próximos, que são factuais.
+// Dados do dashboard ("mesa do atelier"). Tudo é dado REAL já existente: o
+// estágio da jornada de cada noiva é DERIVADO dos fatos (interesse, reservas/
+// provas, marcos e data do casamento) por estagioDaNoiva, não lido de uma
+// coluna. O dashboard agrega esses estágios e mostra os casamentos próximos.
 //
 // SEGURANÇA: Lead e Vestido são tenant models — toda leitura passa pelo guard
 // tenantPrisma (isolamento por loja).

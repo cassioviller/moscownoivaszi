@@ -1,5 +1,5 @@
 // Painel "Jornada do atelier" — distribuição das noivas pelas etapas vivas
-// (dado real: Lead.etapa). Linha do tempo, não tabela: espinha champagne ligando
+// (estágio derivado da jornada). Linha do tempo, não tabela: espinha champagne ligando
 // os nós, na ordem do acompanhamento — percurso, não funil (§11 do DESIGN).
 // Números em tinta (bordô fica raro, §6).
 import type { EtapaJornada } from "@/lib/loja/painel";
