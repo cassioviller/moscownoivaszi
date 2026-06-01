@@ -44,3 +44,11 @@ next-env.d.ts
 /src/generated/prisma
 _backup_design_dropin_*/
 moscow_noivas_design_dropin.zip
+
+# Arquivos internos do agente Replit — não devem ir pro GitHub
+.agents/memory/
+.local/tasks/
+.local/skills/
+.claude/projects/
+attached_assets/
+zipFile.zip
