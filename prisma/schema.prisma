@@ -14,18 +14,6 @@ enum AtributoTipo {
   ESCALA
 }
 
-enum Escala {
-  POUCO
-  MEDIO
-  MUITO
-}
-
-enum Fenda {
-  SIM
-  NAO
-  TALVEZ
-}
-
 enum LeadEtapa {
   NOVO
   INTERESSES_PREENCHIDOS
@@ -209,10 +197,8 @@ model Lead {
 model LeadInteresse {
   id            String   @id @default(cuid())
   leadId        String   @unique
-  volumeSaia    Escala?
-  brilho        Escala?
-  cauda         Escala?
-  fenda         Fenda?
+  // volumeSaia/brilho/cauda/fenda saíram daqui: viraram atributos do catálogo
+  // (LeadInteresseAtributo). Migração 20260601030000_interesse_via_catalogo.
   algoAMais     String?
   naoQuerUsar   String?
   tetoOrcamento Decimal? @db.Decimal(10, 2)

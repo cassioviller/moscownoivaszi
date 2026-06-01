@@ -9,44 +9,68 @@ let lojaA = "";
 let lojaB = "";
 let leadA = "";
 let leadB = "";
+let attrId = "";
+let opPouco = "";
+let opMuito = "";
 
 beforeAll(async () => {
   lojaA = (await prisma.loja.create({ data: { nome: `${MARK}A` } })).id;
   lojaB = (await prisma.loja.create({ data: { nome: `${MARK}B` } })).id;
   leadA = (await criarLead(lojaA, { noivaNome: "Noiva A" })).id;
   leadB = (await criarLead(lojaB, { noivaNome: "Noiva B" })).id;
+  // Catálogo mínimo da loja A (interesse agora se expressa via catálogo).
+  const a = await prisma.atributo.create({
+    data: {
+      lojaId: lojaA,
+      nome: "Volume da saia",
+      tipo: "ESCALA",
+      ordem: 0,
+      opcoes: { create: [{ valor: "Pouco", ordem: 0 }, { valor: "Muito", ordem: 1 }] },
+    },
+    include: { opcoes: { orderBy: { ordem: "asc" } } },
+  });
+  attrId = a.id;
+  opPouco = a.opcoes[0].id;
+  opMuito = a.opcoes[1].id;
 });
 
 afterAll(async () => {
-  await prisma.loja.deleteMany({ where: { id: { in: [lojaA, lojaB] } } }); // cascade Lead → LeadInteresse
+  // Apaga leads primeiro (cascade LeadInteresse → LeadInteresseAtributo) antes de
+  // remover o catálogo, pra nenhum join referenciar Atributo na hora do cascade.
+  await prisma.lead.deleteMany({ where: { lojaId: { in: [lojaA, lojaB] } } });
+  await prisma.loja.deleteMany({ where: { id: { in: [lojaA, lojaB] } } });
   await prisma.$disconnect();
 });
 
-describe("data layer de interesses (escalares)", () => {
-  it("salvarInteresse cria e depois atualiza o mesmo registro (upsert por leadId) (I1)", async () => {
-    const c = await salvarInteresse(lojaA, leadA, { volumeSaia: "MUITO", fenda: "TALVEZ", tetoOrcamento: "3.500,00" });
-    expect(c.volumeSaia).toBe("MUITO");
-    expect(c.fenda).toBe("TALVEZ");
+describe("data layer de interesses (via catálogo)", () => {
+  it("salvarInteresse cria e depois atualiza o mesmo registro, substituindo os atributos (I1)", async () => {
+    const c = await salvarInteresse(lojaA, leadA, {
+      tetoOrcamento: "3.500,00",
+      atributos: [{ atributoId: attrId, opcaoId: opMuito }],
+    });
     expect(c.tetoOrcamento?.toString()).toBe("3500");
-    const u = await salvarInteresse(lojaA, leadA, { volumeSaia: "POUCO", brilho: "MEDIO" });
-    expect(u.id).toBe(c.id); // mesmo registro
-    expect(u.volumeSaia).toBe("POUCO");
-    expect(u.tetoOrcamento).toBeNull(); // campo omitido volta a null
-    const n = await prisma.leadInteresse.count({ where: { leadId: leadA } });
-    expect(n).toBe(1);
+    const lido1 = await obterNoivaComInteresse(lojaA, leadA);
+    expect(lido1?.interesse?.atributos).toEqual([{ atributoId: attrId, opcaoId: opMuito }]);
+
+    // Atualiza: mesmo registro, atributos substituídos, teto omitido volta a null.
+    const u = await salvarInteresse(lojaA, leadA, {
+      atributos: [{ atributoId: attrId, opcaoId: opPouco }],
+    });
+    expect(u.id).toBe(c.id);
+    expect(u.tetoOrcamento).toBeNull();
+    const lido2 = await obterNoivaComInteresse(lojaA, leadA);
+    expect(lido2?.interesse?.atributos).toEqual([{ atributoId: attrId, opcaoId: opPouco }]);
+    expect(await prisma.leadInteresse.count({ where: { leadId: leadA } })).toBe(1);
   });
 
   it("lead de outra loja é rejeitado — falha fechada (I2)", async () => {
-    await expect(salvarInteresse(lojaA, leadB, { volumeSaia: "POUCO" })).rejects.toThrow(
+    await expect(salvarInteresse(lojaA, leadB, { atributos: [] })).rejects.toThrow(
       "Noiva não encontrada nesta loja",
     );
-    // e nenhum registro vazou para o lead da loja B
     expect(await prisma.leadInteresse.count({ where: { leadId: leadB } })).toBe(0);
   });
 
-  it("validação de escala/fenda/teto inválidos (I3)", async () => {
-    await expect(salvarInteresse(lojaA, leadA, { volumeSaia: "ENORME" })).rejects.toThrow("escala inválido");
-    await expect(salvarInteresse(lojaA, leadA, { fenda: "QUEM SABE" })).rejects.toThrow("fenda inválido");
+  it("teto de orçamento inválido é rejeitado (I3)", async () => {
     await expect(salvarInteresse(lojaA, leadA, { tetoOrcamento: "abc" })).rejects.toThrow(
       "teto de orçamento válido",
     );
@@ -57,7 +81,6 @@ describe("data layer de interesses (escalares)", () => {
     const sem = await obterNoivaComInteresse(lojaB, leadB);
     expect(sem?.lead.id).toBe(leadB);
     expect(sem?.interesse).toBeNull();
-    // visita não criou registro:
     expect(await prisma.leadInteresse.count({ where: { leadId: leadB } })).toBe(0);
   });
 });
