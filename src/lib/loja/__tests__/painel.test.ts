@@ -19,30 +19,75 @@ const ymd = new Intl.DateTimeFormat("en-CA", {
 const hoje = new Date(`${ymd}T00:00:00.000Z`);
 const emDias = (n: number) => new Date(hoje.getTime() + n * 86_400_000);
 
+// Cria uma reserva (BloqueioVestido RESERVA_CASAMENTO) com uma prova COMPARECEU
+// para o lead — é assim que a noiva DERIVA o estágio "em_provas" (prova realizada).
+async function comProvaRealizada(db: ReturnType<typeof tenantPrisma>, leadId: string, vestidoId: string) {
+  const b = await db.bloqueioVestido.create({
+    data: { vestidoId, leadId, tipo: "RESERVA_CASAMENTO" } as never,
+  });
+  await db.prova.create({
+    data: { bloqueioId: b.id, dataReal: hoje, tipo: "PRIMEIRA", comparecimento: "COMPARECEU" } as never,
+  });
+}
+
 beforeAll(async () => {
   loja = (await prisma.loja.create({ data: { nome: `${MARK}loja` } })).id;
   outra = (await prisma.loja.create({ data: { nome: `${MARK}outra` } })).id;
   const db = tenantPrisma(prisma, loja);
 
-  // Mistura que cobre noivas ativas, jornada, casamentos e atenções:
-  //   n1 NOVO (sem casamento), n2 NOVO 10d, n3 NOVO 40d
-  //   p1 EM_PROVAS 20d (fora da janela de atenção de 14d)
-  //   x1 PERDIDO, c1 CASAMENTO_REALIZADO -5d (encerradas)
-  //   a1 ORCAMENTO_ABERTO 7d  → atenção
-  //   a2 EM_PROVAS 14d        → atenção (limite)
-  //   a3 EM_PROVAS 15d        → NÃO (fora da janela por 1 dia)
-  await db.lead.create({ data: { noivaNome: `${MARK}n1`, etapa: "NOVO" } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}n2`, etapa: "NOVO", casamentoData: emDias(10) } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}n3`, etapa: "NOVO", casamentoData: emDias(40) } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}p1`, etapa: "EM_PROVAS", casamentoData: emDias(20) } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}x1`, etapa: "PERDIDO" } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}c1`, etapa: "CASAMENTO_REALIZADO", casamentoData: emDias(-5) } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}Ana Reis`, etapa: "ORCAMENTO_ABERTO", casamentoData: emDias(7) } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}a2`, etapa: "EM_PROVAS", casamentoData: emDias(14) } as any });
-  await db.lead.create({ data: { noivaNome: `${MARK}a3`, etapa: "EM_PROVAS", casamentoData: emDias(15) } as any });
+  // Catálogo mínimo (interesse se expressa via catálogo) — usado para derivar "interesses".
+  const attr = await prisma.atributo.create({
+    data: {
+      lojaId: loja,
+      nome: "Volume da saia",
+      tipo: "ESCALA",
+      ordem: 0,
+      opcoes: { create: [{ valor: "Muito", ordem: 0 }] },
+    },
+    include: { opcoes: true },
+  });
 
-  await db.vestido.create({ data: { codigo: "P1", nome: `${MARK}v1`, precoBase: "100.00" } as any });
-  const v2 = await db.vestido.create({ data: { codigo: "P2", nome: `${MARK}v2`, precoBase: "200.00" } as any });
+  // Vestido âncora para as reservas que produzem "em_provas".
+  const vReserva = await db.vestido.create({
+    data: { codigo: "R1", nome: `${MARK}reserva`, precoBase: "100.00" } as never,
+  });
+
+  // Estágios derivados de FATOS reais (não há mais coluna Lead.etapa para setar):
+  //   cadastrada: lead "pelado" (n1 sem casamento, n2 +10d, n3 +40d)
+  //   interesses: lead com LeadInteresse + 1 atributo
+  //   orcamento_aberto: orcamentoAbertoEm preenchido (Ana Reis, +7d → atenção)
+  //   em_provas: reserva com prova COMPARECEU (prov1 +20d, prov2 +14d, prov3 +15d)
+  //   encerradas (fora de noivasAtivas): x1 perdida; c1 casamento já passou (-5d)
+  await db.lead.create({ data: { noivaNome: `${MARK}n1` } as never });
+  await db.lead.create({ data: { noivaNome: `${MARK}n2`, casamentoData: emDias(10) } as never });
+  await db.lead.create({ data: { noivaNome: `${MARK}n3`, casamentoData: emDias(40) } as never });
+
+  const int1 = await db.lead.create({ data: { noivaNome: `${MARK}int1` } as never });
+  await prisma.leadInteresse.create({
+    data: {
+      leadId: int1.id,
+      atributos: { create: [{ atributoId: attr.id, opcaoId: attr.opcoes[0].id }] },
+    },
+  });
+
+  await db.lead.create({
+    data: { noivaNome: `${MARK}Ana Reis`, orcamentoAbertoEm: hoje, casamentoData: emDias(7) } as never,
+  });
+
+  const prov1 = await db.lead.create({ data: { noivaNome: `${MARK}prov1`, casamentoData: emDias(20) } as never });
+  const prov2 = await db.lead.create({ data: { noivaNome: `${MARK}prov2`, casamentoData: emDias(14) } as never });
+  const prov3 = await db.lead.create({ data: { noivaNome: `${MARK}prov3`, casamentoData: emDias(15) } as never });
+  await comProvaRealizada(db, prov1.id, vReserva.id);
+  await comProvaRealizada(db, prov2.id, vReserva.id);
+  await comProvaRealizada(db, prov3.id, vReserva.id);
+
+  const x1 = await db.lead.create({ data: { noivaNome: `${MARK}x1` } as never });
+  await tenantPrisma(prisma, loja).lead.update({ where: { id: x1.id }, data: { perdidaEm: new Date() } });
+
+  await db.lead.create({ data: { noivaNome: `${MARK}c1`, casamentoData: emDias(-5) } as never });
+
+  await db.vestido.create({ data: { codigo: "P1", nome: `${MARK}v1`, precoBase: "100.00" } as never });
+  const v2 = await db.vestido.create({ data: { codigo: "P2", nome: `${MARK}v2`, precoBase: "200.00" } as never });
   // v2 ganha foto de capa → vira o destaque do atelier.
   await prisma.vestidoFoto.create({
     data: { vestidoId: v2.id, ordem: 0, bytes: new Uint8Array([1, 2, 3]), mime: "image/webp", largura: 100, altura: 133 },
@@ -53,24 +98,42 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma.lead.deleteMany({ where: { lojaId: { in: [loja, outra] } } });
   await prisma.vestido.deleteMany({ where: { lojaId: { in: [loja, outra] } } });
+  await prisma.atributo.deleteMany({ where: { lojaId: { in: [loja, outra] } } });
   await prisma.loja.deleteMany({ where: { id: { in: [loja, outra] } } });
   await prisma.$disconnect();
 });
 
-describe("carregarPainel — dashboard com dados reais", () => {
-  it("conta noivas ativas (exclui encerradas), acervo e em provas", async () => {
+describe("carregarPainel — dashboard com estágio derivado", () => {
+  it("conta noivas ativas (exclui perdida e casamento já realizado), acervo e em provas", async () => {
     const p = await carregarPainel(loja);
-    expect(p.noivasAtivas).toBe(7); // 3 NOVO + 3 EM_PROVAS + 1 ORCAMENTO (PERDIDO/CASAMENTO fora)
-    expect(p.vestidos).toBe(2);
+    // ativas: 3 cadastrada + 1 interesses + 1 orçamento + 3 em provas = 8.
+    // x1 (perdida) e c1 (casamento passou) ficam fora.
+    expect(p.noivasAtivas).toBe(8);
+    expect(p.vestidos).toBe(3); // R1 + P1 + P2
     expect(p.emProvas).toBe(3);
   });
 
-  it("jornada lista só etapas vivas com noivas, na ordem do acompanhamento", async () => {
+  it("noiva recém-criada cai em 'cadastrada' e aparece na jornada", async () => {
+    const p = await carregarPainel(loja);
+    const cadastrada = p.jornada.find((e) => e.chave === "cadastrada");
+    expect(cadastrada).toEqual({ chave: "cadastrada", rotulo: "Cadastrada", total: 3 });
+  });
+
+  it("noiva perdida NÃO conta em noivasAtivas nem aparece na jornada", async () => {
+    const p = await carregarPainel(loja);
+    // Nenhuma das 8 ativas é perdida; soma das jornadas == noivasAtivas.
+    const soma = p.jornada.reduce((s, e) => s + e.total, 0);
+    expect(soma).toBe(p.noivasAtivas);
+    expect(soma).toBe(8);
+  });
+
+  it("jornada lista só estágios vivos com noivas, na ordem do acompanhamento", async () => {
     const p = await carregarPainel(loja);
     expect(p.jornada).toEqual([
-      { etapa: "NOVO", rotulo: "Nova noiva", total: 3 },
-      { etapa: "ORCAMENTO_ABERTO", rotulo: "Orçamento aberto", total: 1 },
-      { etapa: "EM_PROVAS", rotulo: "Em provas", total: 3 },
+      { chave: "cadastrada", rotulo: "Cadastrada", total: 3 },
+      { chave: "interesses", rotulo: "Interesses preenchidos", total: 1 },
+      { chave: "orcamento_aberto", rotulo: "Orçamento aberto", total: 1 },
+      { chave: "em_provas", rotulo: "Em provas", total: 3 },
     ]);
   });
 
@@ -82,13 +145,12 @@ describe("carregarPainel — dashboard com dados reais", () => {
 
   it("atenções: casamento ≤14 dias E em provas/orçamento aberto, ordenadas (A1)", async () => {
     const p = await carregarPainel(loja);
-    // Ana Reis (orçamento, 7d) e a2 (em provas, 14d). a3 (15d) e p1 (20d) ficam fora;
-    // n2 (10d) é NOVO → fora.
-    expect(p.atencoes.map((a) => ({ etapa: a.etapa, dias: a.diasRestantes }))).toEqual([
-      { etapa: "ORCAMENTO_ABERTO", dias: 7 },
-      { etapa: "EM_PROVAS", dias: 14 },
+    // Ana Reis (orçamento, 7d) e prov2 (em provas, 14d). prov3 (15d) e prov1 (20d) ficam fora;
+    // n2 (10d) é cadastrada → fora.
+    expect(p.atencoes.map((a) => ({ rotulo: a.rotulo, dias: a.diasRestantes }))).toEqual([
+      { rotulo: "Orçamento aberto", dias: 7 },
+      { rotulo: "Em provas", dias: 14 },
     ]);
-    expect(p.atencoes[0].rotulo).toBe("Orçamento aberto");
   });
 
   it("destaque do atelier: vestido ativo com foto de capa (ordem 0)", async () => {
