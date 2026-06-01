@@ -9,8 +9,13 @@ export type Modulo = (typeof MODULOS)[number];
 export type Acao = (typeof ACOES)[number];
 export type AcessosModulos = Record<Modulo, Record<Acao, boolean>>;
 
-/** Módulos renderizados na grade de permissões (config não tem superfície gateada ainda). */
-export const MODULOS_VISIVEIS: Modulo[] = MODULOS.filter((m) => m !== "config");
+/**
+ * Módulos renderizados na grade de permissões. `config` gateia a gestão do
+ * catálogo (telas /catalogo) — por isso aparece na grade, deixando admins
+ * concederem esse acesso a perfis customizados por loja. O mecanismo de hidden
+ * input do MatrizPermissoes segue valendo para qualquer módulo futuro fora da grade.
+ */
+export const MODULOS_VISIVEIS: Modulo[] = [...MODULOS];
 
 /**
  * Lê o shape de acessos de um FormData de matriz (checkbox `${modulo}.${acao}` === "on").

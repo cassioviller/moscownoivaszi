@@ -50,15 +50,14 @@ describe("resolverAcessosEfetivos", () => {
 });
 
 describe("lerAcessosDoForm", () => {
-  it("lê checkboxes 'on' e preserva módulo oculto (config via hidden input)", () => {
+  it("lê os checkboxes 'on' de todos os módulos declarados (inclui config)", () => {
     const fd = new FormData();
     fd.set("vestidos.ver", "on");
     fd.set("vestidos.criar", "on");
-    // config não tem grade, mas o MatrizPermissoes emite hidden p/ não zerar:
-    fd.set("config.ver", "on");
+    fd.set("config.ver", "on"); // config agora tem grade própria (gestão do catálogo)
     const r = lerAcessosDoForm(fd);
     expect(r.vestidos).toEqual({ ver: true, criar: true, editar: false });
-    expect(r.config.ver).toBe(true); // preservado, não zerado
+    expect(r.config.ver).toBe(true);
     expect(r.leads).toEqual({ ver: false, criar: false, editar: false });
   });
 });

@@ -11,7 +11,7 @@ const ROTULO_MODULO: Record<Modulo, string> = {
   leads: "Leads",
   interesses: "Interesses",
   vestidos: "Vestidos",
-  config: "Configurações",
+  config: "Catálogo", // módulo "config" gateia a gestão do catálogo (telas /catalogo)
 };
 const ROTULO_ACAO: Record<Acao, string> = { ver: "Ver", criar: "Criar", editar: "Editar" };
 const ACOES_UI: Acao[] = ["ver", "criar", "editar"];
