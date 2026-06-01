@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Enums ─────────────────────────
+
+enum AtributoTipo {
+  OPCAO_UNICA
+  ESCALA
+}
+
+enum Escala {
+  POUCO
+  MEDIO
+  MUITO
+}
+
+enum Fenda {
+  SIM
+  NAO
+  TALVEZ
+}
+
+enum LeadEtapa {
+  NOVO
+  INTERESSES_PREENCHIDOS
+  ATENDIMENTO_AGENDADO
+  EM_ATENDIMENTO
+  ORCAMENTO_ABERTO
+  CONTRATO_FECHADO
+  EM_PROVAS
+  RETIRADO
+  CASAMENTO_REALIZADO
+  DEVOLVIDO
+  PERDIDO
+}
+
+enum LeadOrigem {
+  LOJA
+  WHATSAPP
+}
+
+enum BloqueioTipo {
+  RESERVA_CASAMENTO
+  MANUTENCAO
+}
+
+// ───────────────────── Configuração ──────────────────────
+
+model Loja {
+  id        String   @id @default(cuid())
+  nome      String
+  cnpj      String?
+  endereco  String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios             UsuarioLoja[]
+  atributos            Atributo[]
+  regraDisponibilidade RegraDisponibilidade?
+  vestidos             Vestido[]
+  leads                Lead[]
+  bloqueios            BloqueioVestido[]
+  // Relação inversa virtual (sem coluna/SQL em Loja) exigida pela FK de Sessao.lojaAtivaId.
+  sessoesAtivas        Sessao[]
+  overridesPermissao   PerfilOverrideLoja[]
+}
+
+model Perfil {
+  id             String   @id @default(cuid())
+  nome           String
+  // acesso por módulo (sim/não): { "leads": true, "vestidos": true, "config": false, ... }
+  acessosModulos Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  usuarios  UsuarioLoja[]
+  overrides PerfilOverrideLoja[]
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  ativo        Boolean  @default(true)
+  // Staff da plataforma Moscow Noivas: enxerga/seleciona TODAS as lojas no seletor
+  // (não só as via UsuarioLoja). NÃO afeta scoping de queries — isolamento segue no tenantPrisma.
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lojas    UsuarioLoja[]
+  sessoes  Sessao[]
+}
+
+model UsuarioLoja {
+  usuarioId String
+  lojaId    String
+  perfilId  String
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  loja    Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  perfil  Perfil  @relation(fields: [perfilId], references: [id])
+
+  @@id([usuarioId, lojaId])
+}
+
+model Atributo {
+  id     String       @id @default(cuid())
+  lojaId String
+  nome   String
+  tipo   AtributoTipo @default(OPCAO_UNICA)
+  ordem  Int          @default(0)
+  ativo  Boolean      @default(true)
+
+  loja               Loja                    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  opcoes             AtributoOpcao[]
+  vestidoAtributos   VestidoAtributo[]
+  interesseAtributos LeadInteresseAtributo[]
+}
+
+model AtributoOpcao {
+  id         String  @id @default(cuid())
+  atributoId String
+  valor      String
+  ordem      Int     @default(0)
+  ativo      Boolean @default(true)
+
+  atributo           Atributo                @relation(fields: [atributoId], references: [id], onDelete: Cascade)
+  vestidoAtributos   VestidoAtributo[]
+  interesseAtributos LeadInteresseAtributo[]
+}
+
+model RegraDisponibilidade {
+  id                String @id @default(cuid())
+  lojaId            String @unique
+  provaDiasAntes    Int    @default(14)
+  provaDuracao      Int    @default(2)
+  usoDiasAntes      Int    @default(3)
+  usoDiasDepois     Int    @default(2)
+  lavagemDiasDepois Int    @default(7)
+
+  loja Loja @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────── Operação ────────────────────────
+
+model Vestido {
+  id          String   @id @default(cuid())
+  lojaId      String
+  codigo      String
+  nome        String
+  precoBase   Decimal  @db.Decimal(10, 2)
+  tamanho     String?
+  cor         String?
+  categoria   String?
+  status      String   @default("ativo")
+  observacoes String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  loja      Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  atributos VestidoAtributo[]
+  bloqueios BloqueioVestido[]
+
+  @@unique([lojaId, codigo])
+}
+
+model VestidoAtributo {
+  vestidoId  String
+  atributoId String
+  opcaoId    String
+
+  vestido  Vestido       @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
+  atributo Atributo      @relation(fields: [atributoId], references: [id])
+  opcao    AtributoOpcao @relation(fields: [opcaoId], references: [id])
+
+  @@id([vestidoId, atributoId])
+}
+
+model Lead {
+  id               String     @id @default(cuid())
+  lojaId           String
+  etapa            LeadEtapa  @default(NOVO)
+  noivaNome        String
+  noivoNome        String?
+  cerimonialista   String?
+  whatsapp         String?
+  casamentoData    DateTime?
+  casamentoHorario String?
+  casamentoLocal   String?
+  origem           LeadOrigem @default(LOJA)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  loja      Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  interesse LeadInteresse?
+  bloqueios BloqueioVestido[]
+}
+
+model LeadInteresse {
+  id            String   @id @default(cuid())
+  leadId        String   @unique
+  volumeSaia    Escala?
+  brilho        Escala?
+  cauda         Escala?
+  fenda         Fenda?
+  algoAMais     String?
+  naoQuerUsar   String?
+  tetoOrcamento Decimal? @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lead      Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  atributos LeadInteresseAtributo[]
+}
+
+model LeadInteresseAtributo {
+  leadInteresseId String
+  atributoId      String
+  opcaoId         String
+
+  leadInteresse LeadInteresse @relation(fields: [leadInteresseId], references: [id], onDelete: Cascade)
+  atributo      Atributo      @relation(fields: [atributoId], references: [id])
+  opcao         AtributoOpcao @relation(fields: [opcaoId], references: [id])
+
+  @@id([leadInteresseId, atributoId])
+}
+
+model BloqueioVestido {
+  id                String       @id @default(cuid())
+  lojaId            String
+  vestidoId         String
+  leadId            String?
+  tipo              BloqueioTipo
+  casamentoData     DateTime?
+  provaDataReal     DateTime?
+  retiradaDataReal  DateTime?
+  devolucaoDataReal DateTime?
+  observacao        String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  loja    Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  vestido Vestido @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
+  lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+}
+
+model Sessao {
+  id          String   @id
+  usuarioId   String
+  lojaAtivaId String?
+  criadaEm    DateTime @default(now())
+  expiraEm    DateTime
+
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  // Loja "aberta" na sessão. Nullable: null enquanto não escolhida; SetNull se a loja for deletada.
+  lojaAtiva Loja?   @relation(fields: [lojaAtivaId], references: [id], onDelete: SetNull)
+
+  @@index([expiraEm])
+  @@index([usuarioId])
+}
+
+model PerfilOverrideLoja {
+  lojaId         String
+  perfilId       String
+  acessosModulos Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  loja   Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  @@id([lojaId, perfilId])
+}
