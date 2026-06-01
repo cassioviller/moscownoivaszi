@@ -5,6 +5,7 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterVestido } from "@/lib/vestidos/vestidos";
 import { editarVestidoAction } from "../../actions";
 import { VestidoForm } from "../../vestido-form";
+import { listarCatalogo } from "@/lib/catalogo/catalogo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export default async function EditarVestidoPage({
   const { lojaId, vestidoId } = await params;
   const v = await obterVestido(sc.loja.id, vestidoId);
   if (!v) redirect(`/loja/${lojaId}/vestidos`);
+  const catalogo = await listarCatalogo(sc.loja.id);
+  const selecoes = Object.fromEntries(v.atributos.map((a) => [a.atributoId, a.opcaoId]));
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10 flex flex-col gap-8">
@@ -33,6 +36,8 @@ export default async function EditarVestidoPage({
         action={editarVestidoAction}
         vestidoId={v.id}
         submitLabel="Salvar alterações"
+        catalogo={catalogo}
+        selecoes={selecoes}
         defaults={{
           codigo: v.codigo,
           nome: v.nome,

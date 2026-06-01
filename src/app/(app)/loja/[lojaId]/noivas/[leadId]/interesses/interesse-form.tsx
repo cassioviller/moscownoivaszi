@@ -3,12 +3,10 @@
 
 import { useActionState } from "react";
 import type { InteresseFormState } from "./actions";
+import type { CatalogoAtributo } from "@/lib/catalogo/catalogo";
+import { CatalogoCampos } from "@/components/catalogo/catalogo-campos";
 
 export type InteresseDefaults = {
-  volumeSaia: string;
-  brilho: string;
-  cauda: string;
-  fenda: string;
   algoAMais: string;
   naoQuerUsar: string;
   tetoOrcamento: string;
@@ -16,43 +14,32 @@ export type InteresseDefaults = {
 
 const INICIAL: InteresseFormState = { erro: null };
 
-const ESCALA = [
-  { v: "", l: "—" },
-  { v: "POUCO", l: "Pouco" },
-  { v: "MEDIO", l: "Médio" },
-  { v: "MUITO", l: "Muito" },
-];
-const FENDA = [
-  { v: "", l: "—" },
-  { v: "SIM", l: "Sim" },
-  { v: "NAO", l: "Não" },
-  { v: "TALVEZ", l: "Talvez" },
-];
-
 export function InteresseForm({
   action,
   leadId,
   defaults,
   readonly,
+  catalogo,
+  selecoes,
 }: {
   action: (prev: InteresseFormState, fd: FormData) => Promise<InteresseFormState>;
   leadId: string;
   defaults: InteresseDefaults;
   readonly: boolean;
+  catalogo: CatalogoAtributo[];
+  selecoes: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState(action, INICIAL);
   const d = defaults;
 
   // Read-only (vendedora com só "ver"): mostra os valores, sem form nem upsert.
   if (readonly) {
-    const rotuloEscala = (v: string) => ESCALA.find((o) => o.v === v)?.l ?? "—";
-    const rotuloFenda = (v: string) => FENDA.find((o) => o.v === v)?.l ?? "—";
     return (
       <dl className="flex max-w-md flex-col divide-y divide-borda-suave rounded-md border border-borda bg-papel-elevado">
-        <Linha rotulo="Volume da saia" valor={rotuloEscala(d.volumeSaia)} />
-        <Linha rotulo="Brilho" valor={rotuloEscala(d.brilho)} />
-        <Linha rotulo="Cauda" valor={rotuloEscala(d.cauda)} />
-        <Linha rotulo="Fenda" valor={rotuloFenda(d.fenda)} />
+        {catalogo.map((attr) => {
+          const valor = attr.opcoes.find((o) => o.id === selecoes[attr.id])?.valor ?? "—";
+          return <Linha key={attr.id} rotulo={attr.nome} valor={valor} />;
+        })}
         <Linha rotulo="Algo a mais" valor={d.algoAMais || "—"} />
         <Linha rotulo="Não quer usar" valor={d.naoQuerUsar || "—"} />
         <Linha rotulo="Teto de orçamento" valor={d.tetoOrcamento ? `R$ ${d.tetoOrcamento}` : "—"} />
@@ -63,10 +50,7 @@ export function InteresseForm({
   return (
     <form action={formAction} className="flex max-w-md flex-col gap-5">
       <input type="hidden" name="leadId" value={leadId} />
-      <Select id="i-volume" name="volumeSaia" label="Volume da saia" options={ESCALA} defaultValue={d.volumeSaia} />
-      <Select id="i-brilho" name="brilho" label="Brilho" options={ESCALA} defaultValue={d.brilho} />
-      <Select id="i-cauda" name="cauda" label="Cauda" options={ESCALA} defaultValue={d.cauda} />
-      <Select id="i-fenda" name="fenda" label="Fenda" options={FENDA} defaultValue={d.fenda} />
+      <CatalogoCampos catalogo={catalogo} selecoes={selecoes} />
       <Texto id="i-algo" name="algoAMais" label="Algo a mais" defaultValue={d.algoAMais} />
       <Texto id="i-nao" name="naoQuerUsar" label="Não quer usar" defaultValue={d.naoQuerUsar} />
       <Campo id="i-teto" name="tetoOrcamento" label="Teto de orçamento (R$)" defaultValue={d.tetoOrcamento} />
@@ -103,33 +87,6 @@ const campoCls =
   "rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[15px] text-tinta " +
   "placeholder:text-cinza-fumo transition-colors duration-150 ease-out hover:border-cinza-fumo " +
   "focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-
-function Select({
-  id,
-  name,
-  label,
-  options,
-  defaultValue,
-}: {
-  id: string;
-  name: string;
-  label: string;
-  options: { v: string; l: string }[];
-  defaultValue: string;
-}) {
-  return (
-    <label htmlFor={id} className="flex flex-col gap-1.5">
-      <span className="text-[12px] font-medium tracking-[0.01em] text-grafite">{label}</span>
-      <select id={id} name={name} defaultValue={defaultValue} className={campoCls}>
-        {options.map((o) => (
-          <option key={o.v} value={o.v}>
-            {o.l}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 function Campo({
   id,

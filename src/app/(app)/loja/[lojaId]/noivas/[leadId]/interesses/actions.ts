@@ -5,18 +5,18 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { salvarInteresse, type InteresseInput } from "@/lib/leads/interesses";
+import { escolhasDoForm, listarCatalogo, validarSelecoes } from "@/lib/catalogo/catalogo";
 
 export type InteresseFormState = { erro: string | null };
 
-function extrair(formData: FormData): InteresseInput {
+async function extrair(lojaId: string, formData: FormData): Promise<InteresseInput> {
+  // Volume/brilho/cauda/fenda agora vêm do catálogo (não mais campos fixos).
+  const catalogo = await listarCatalogo(lojaId);
   return {
-    volumeSaia: String(formData.get("volumeSaia") ?? ""),
-    brilho: String(formData.get("brilho") ?? ""),
-    cauda: String(formData.get("cauda") ?? ""),
-    fenda: String(formData.get("fenda") ?? ""),
     algoAMais: String(formData.get("algoAMais") ?? ""),
     naoQuerUsar: String(formData.get("naoQuerUsar") ?? ""),
     tetoOrcamento: String(formData.get("tetoOrcamento") ?? ""),
+    atributos: validarSelecoes(catalogo, escolhasDoForm(catalogo, formData)),
   };
 }
 
@@ -42,7 +42,7 @@ export async function salvarInteresseAction(
   }
 
   try {
-    await salvarInteresse(sc.loja.id, leadId, extrair(formData));
+    await salvarInteresse(sc.loja.id, leadId, await extrair(sc.loja.id, formData));
   } catch (e) {
     return { erro: mensagem(e) };
   }

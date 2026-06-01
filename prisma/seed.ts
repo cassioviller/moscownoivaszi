@@ -29,6 +29,29 @@ const ATRIBUTOS: { nome: string; tipo: AtributoTipo; opcoes: string[] }[] = [
     tipo: "OPCAO_UNICA",
     opcoes: ["Lisa", "Com detalhe", "Princesa", "Sereia", "Reta", "Evasê"],
   },
+  // Dimensões que antes eram campos fixos de LeadInteresse — agora moram no
+  // catálogo, pra vestido e interesse falarem o MESMO vocabulário (base da
+  // indicação). ESCALA = grau Pouco/Médio/Muito; Fenda fica OPCAO_UNICA.
+  {
+    nome: "Volume da saia",
+    tipo: "ESCALA",
+    opcoes: ["Pouco", "Médio", "Muito"],
+  },
+  {
+    nome: "Brilho",
+    tipo: "ESCALA",
+    opcoes: ["Pouco", "Médio", "Muito"],
+  },
+  {
+    nome: "Cauda",
+    tipo: "ESCALA",
+    opcoes: ["Pouco", "Médio", "Muito"],
+  },
+  {
+    nome: "Fenda",
+    tipo: "OPCAO_UNICA",
+    opcoes: ["Sim", "Não", "Talvez"],
+  },
 ];
 
 // Módulos existentes na Base, para o mapa de acesso dos perfis.

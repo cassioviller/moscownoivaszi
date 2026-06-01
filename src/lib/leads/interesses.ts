@@ -10,8 +10,11 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import type { Lead, LeadInteresse } from "@/generated/prisma/client";
 import { Escala, Fenda } from "@/generated/prisma/client";
+import type { Selecao } from "@/lib/catalogo/catalogo";
 
 export type InteresseInput = {
+  // Campos escalares fixos (legados): mantidos até a Fatia 4 (migração + drop).
+  // O form não os envia mais — as mesmas dimensões agora vêm do catálogo.
   volumeSaia?: string;
   brilho?: string;
   cauda?: string;
@@ -19,6 +22,14 @@ export type InteresseInput = {
   algoAMais?: string;
   naoQuerUsar?: string;
   tetoOrcamento?: string;
+  // Interesses estruturados via catálogo (mesmo vocabulário do vestido → indicação).
+  // Ausente nos callers legados/testes → não toca LeadInteresseAtributo.
+  atributos?: Selecao[];
+};
+
+// LeadInteresse + seleções de catálogo (pra prefill e p/ indicação).
+export type InteresseComAtributos = LeadInteresse & {
+  atributos: { atributoId: string; opcaoId: string }[];
 };
 
 export const ROTULO_ESCALA: Record<Escala, string> = {
@@ -84,18 +95,32 @@ async function exigirLeadDaLoja(lojaId: string, leadId: string): Promise<void> {
   if (!dono) throw new Error("Noiva não encontrada nesta loja");
 }
 
-/** Leitura read-only: noiva + interesse (ou null). NUNCA cria registro. */
+/** Leitura read-only: noiva + interesse (com seleções de catálogo) ou null. NUNCA cria registro. */
 export async function obterNoivaComInteresse(
   lojaId: string,
   leadId: string,
-): Promise<{ lead: Lead; interesse: LeadInteresse | null } | null> {
+): Promise<{ lead: Lead; interesse: InteresseComAtributos | null } | null> {
   const lead = await tenantPrisma(prisma, lojaId).lead.findUnique({ where: { id: leadId } });
   if (!lead) return null; // não é da loja (ou não existe)
-  const interesse = await prisma.leadInteresse.findUnique({ where: { leadId } });
+  const interesse = await prisma.leadInteresse.findUnique({
+    where: { leadId },
+    include: { atributos: { select: { atributoId: true, opcaoId: true } } },
+  });
   return { lead, interesse };
 }
 
-/** Upsert dos interesses escalares. Só aqui se cria/atualiza registro. */
+// Escrita aninhada de LeadInteresseAtributo: tabela-filha sem lojaId, tocada só
+// pelo pai (LeadInteresse) DEPOIS de exigirLeadDaLoja confirmar a loja. Ausente
+// (testes legados) → não mexe no join. Presente → substitui o conjunto inteiro.
+function nestedAtributos(input: InteresseInput, modo: "create" | "replace") {
+  if (!input.atributos) return {};
+  const create = input.atributos.map((s) => ({ atributoId: s.atributoId, opcaoId: s.opcaoId }));
+  return modo === "create"
+    ? { atributos: { create } }
+    : { atributos: { deleteMany: {}, create } };
+}
+
+/** Upsert do interesse (escalares + catálogo). Só aqui se cria/atualiza registro. */
 export async function salvarInteresse(
   lojaId: string,
   leadId: string,
@@ -105,7 +130,7 @@ export async function salvarInteresse(
   const data = dados(input);
   return prisma.leadInteresse.upsert({
     where: { leadId },
-    create: { leadId, ...data },
-    update: data,
+    create: { leadId, ...data, ...nestedAtributos(input, "create") },
+    update: { ...data, ...nestedAtributos(input, "replace") },
   });
 }

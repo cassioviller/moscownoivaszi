@@ -4,6 +4,7 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { criarVestidoAction } from "../actions";
 import { VestidoForm } from "../vestido-form";
+import { listarCatalogo } from "@/lib/catalogo/catalogo";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function NovoVestidoPage({ params }: { params: Promise<{ lo
   if (!sc) redirect("/login");
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "criar"))) redirect(`/loja/${sc.loja.id}/vestidos`);
   const { lojaId } = await params;
+  const catalogo = await listarCatalogo(sc.loja.id);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10 flex flex-col gap-8">
@@ -21,7 +23,7 @@ export default async function NovoVestidoPage({ params }: { params: Promise<{ lo
         </Link>
         <h1 className="text-[24px] font-light tracking-tight text-tinta">Novo vestido</h1>
       </header>
-      <VestidoForm action={criarVestidoAction} submitLabel="Cadastrar vestido" />
+      <VestidoForm action={criarVestidoAction} submitLabel="Cadastrar vestido" catalogo={catalogo} />
     </main>
   );
 }

@@ -3,6 +3,8 @@
 
 import { useActionState } from "react";
 import type { VestidoFormState } from "./actions";
+import type { CatalogoAtributo } from "@/lib/catalogo/catalogo";
+import { CatalogoCampos } from "@/components/catalogo/catalogo-campos";
 
 type Defaults = {
   codigo?: string;
@@ -21,11 +23,15 @@ export function VestidoForm({
   defaults,
   vestidoId,
   submitLabel,
+  catalogo,
+  selecoes,
 }: {
   action: (prev: VestidoFormState, fd: FormData) => Promise<VestidoFormState>;
   defaults?: Defaults;
   vestidoId?: string;
   submitLabel: string;
+  catalogo: CatalogoAtributo[];
+  selecoes?: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState(action, INICIAL);
   const d = defaults ?? {};
@@ -35,6 +41,15 @@ export function VestidoForm({
       <Field id="v-codigo" name="codigo" label="Código" defaultValue={d.codigo} required autoFocus />
       <Field id="v-nome" name="nome" label="Nome" defaultValue={d.nome} required />
       <Field id="v-preco" name="precoBase" label="Preço (R$)" defaultValue={d.precoBase} inputMode="decimal" required />
+
+      {catalogo.length > 0 && (
+        <>
+          <p className="mt-1 text-[12px] font-medium tracking-[0.01em] text-cinza-fumo">
+            Características — usadas para indicar este vestido às noivas
+          </p>
+          <CatalogoCampos catalogo={catalogo} selecoes={selecoes} />
+        </>
+      )}
 
       <p className="text-[12px] font-medium tracking-[0.01em] text-cinza-fumo mt-1">Opcional</p>
       <Field id="v-tamanho" name="tamanho" label="Tamanho" defaultValue={d.tamanho} />

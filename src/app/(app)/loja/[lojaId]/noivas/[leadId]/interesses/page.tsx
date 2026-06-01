@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterNoivaComInteresse } from "@/lib/leads/interesses";
+import { listarCatalogo } from "@/lib/catalogo/catalogo";
+import { indicarVestidos } from "@/lib/indicacao/indicacao";
 import { salvarInteresseAction } from "./actions";
 import { InteresseForm } from "./interesse-form";
+import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +40,15 @@ export default async function InteressesPage({
 
   const i = dados.interesse;
   const defaults = {
-    volumeSaia: i?.volumeSaia ?? "",
-    brilho: i?.brilho ?? "",
-    cauda: i?.cauda ?? "",
-    fenda: i?.fenda ?? "",
     algoAMais: i?.algoAMais ?? "",
     naoQuerUsar: i?.naoQuerUsar ?? "",
     tetoOrcamento: i?.tetoOrcamento?.toString() ?? "",
   };
+
+  // Catálogo (form) e seleções já registradas (prefill + indicação).
+  const catalogo = await listarCatalogo(sc.loja.id);
+  const selecoes = Object.fromEntries((i?.atributos ?? []).map((a) => [a.atributoId, a.opcaoId]));
+  const sugeridos = await indicarVestidos(sc.loja.id, leadId);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -66,7 +70,11 @@ export default async function InteressesPage({
         leadId={leadId}
         defaults={defaults}
         readonly={!podeSalvar}
+        catalogo={catalogo}
+        selecoes={selecoes}
       />
+
+      <VestidosSugeridos vestidos={sugeridos} />
     </main>
   );
 }

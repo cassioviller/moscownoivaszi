@@ -5,10 +5,12 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { criarVestido, editarVestido, type NovoVestido } from "@/lib/vestidos/vestidos";
+import { escolhasDoForm, listarCatalogo, validarSelecoes } from "@/lib/catalogo/catalogo";
 
 export type VestidoFormState = { erro: string | null };
 
-function extrair(formData: FormData): NovoVestido {
+async function extrair(lojaId: string, formData: FormData): Promise<NovoVestido> {
+  const catalogo = await listarCatalogo(lojaId);
   return {
     codigo: String(formData.get("codigo") ?? ""),
     nome: String(formData.get("nome") ?? ""),
@@ -17,6 +19,7 @@ function extrair(formData: FormData): NovoVestido {
     cor: String(formData.get("cor") ?? ""),
     categoria: String(formData.get("categoria") ?? ""),
     observacoes: String(formData.get("observacoes") ?? ""),
+    atributos: validarSelecoes(catalogo, escolhasDoForm(catalogo, formData)),
   };
 }
 
@@ -34,7 +37,7 @@ export async function criarVestidoAction(
     redirect(`/loja/${sc.loja.id}/vestidos`);
   }
   try {
-    await criarVestido(sc.loja.id, extrair(formData));
+    await criarVestido(sc.loja.id, await extrair(sc.loja.id, formData));
   } catch (e) {
     return { erro: mensagem(e) };
   }
@@ -52,7 +55,7 @@ export async function editarVestidoAction(
   }
   const vestidoId = String(formData.get("vestidoId") ?? "");
   try {
-    await editarVestido(sc.loja.id, vestidoId, extrair(formData));
+    await editarVestido(sc.loja.id, vestidoId, await extrair(sc.loja.id, formData));
   } catch (e) {
     return { erro: mensagem(e) };
   }
