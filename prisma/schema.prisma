@@ -224,6 +224,12 @@ model Lead {
   casamentoData    DateTime?
   casamentoHorario String?
   casamentoLocal   String?
+  // Marcos manuais da jornada derivada (etapas sem dado próprio no sistema).
+  // Provisório: a fatia de Orçamento (entidade + histórico) substituirá os 2
+  // primeiros por derivação. Decisão: docs/superpowers/specs/2026-06-01-jornada-derivada-design.md
+  orcamentoAbertoEm DateTime?
+  contratoFechadoEm DateTime?
+  perdidaEm         DateTime?
   origem           LeadOrigem @default(LOJA)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
