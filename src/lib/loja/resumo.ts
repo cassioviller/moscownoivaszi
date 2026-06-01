@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 
-export type ResumoLoja = { vestidos: number };
+export type ResumoLoja = { vestidos: number; noivas: number };
 
 /**
  * Resumo da loja para o dashboard. ÚNICO ponto de leitura de dado de tenant
@@ -11,6 +11,9 @@ export type ResumoLoja = { vestidos: number };
  */
 export async function carregarResumoLoja(lojaId: string): Promise<ResumoLoja> {
   const db = tenantPrisma(prisma, lojaId);
-  const vestidos = await db.vestido.count();
-  return { vestidos };
+  const [vestidos, noivas] = await Promise.all([
+    db.vestido.count(),
+    db.lead.count(),
+  ]);
+  return { vestidos, noivas };
 }

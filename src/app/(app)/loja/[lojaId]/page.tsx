@@ -9,18 +9,12 @@ import { PainelVazio } from "@/components/dashboard/painel-vazio";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLoja() {
-  // Garantido pelo layout (sessão ok + espelhamento); narrow p/ tipagem.
-  // Saudação, navegação e logout vivem na moldura (sidebar + topbar) do layout.
   const sc = await getSessaoComLoja();
   if (!sc) return null;
 
-  // Único dado de tenant desta tela — segue passando pelo guard (resumo.ts).
   const resumo = await carregarResumoLoja(sc.loja.id);
-  // Só liga o atalho da jornada se a pessoa puder ver noivas (não vira link morto).
   const podeVerNoivas = await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver");
 
-  // Data REAL do servidor no fuso do salão. Única "novidade" de dado e é honesta:
-  // nada de lead/agenda/prova fabricados. force-dynamic acima garante por-request.
   const agora = new Date();
   const fmt = (opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(agora);
@@ -29,10 +23,11 @@ export default async function DashboardLoja() {
   const dataFormatada = fmt({ weekday: "long", day: "numeric", month: "long" });
 
   const vestidosHref = `/loja/${sc.loja.id}/vestidos`;
+  const noivasHref = `/loja/${sc.loja.id}/noivas`;
   const primeiroNome = sc.usuario.nome.split(" ")[0];
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-10">
+    <div className="mx-auto flex w-full max-w-[900px] flex-col gap-10 px-6 py-10">
       <SaudacaoDia
         saudacao={saudacao}
         nome={primeiroNome}
@@ -40,7 +35,10 @@ export default async function DashboardLoja() {
         lojaNome={sc.loja.nome}
       />
 
-      {/* Centro de operação: agenda (coração, vazio por ora) + acervo (único número real). */}
+      {/* Divisória atmosférica — champagne como linha institucional, não decoração */}
+      <div aria-hidden className="h-px bg-champagne/40" />
+
+      {/* Centro de operação: agenda (coração, vazio por ora) + acervo */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <PainelVazio
@@ -52,29 +50,38 @@ export default async function DashboardLoja() {
           <CardMetrica
             rotulo="Acervo"
             valor={resumo.vestidos}
-            descricao={resumo.vestidos === 1 ? "vestido no acervo" : "vestidos no acervo"}
+            descricao={resumo.vestidos === 1 ? "vestido" : "vestidos"}
             acao={{ href: vestidosHref, label: "Ver acervo" }}
           />
         ) : (
           <PainelVazio
             titulo="Acervo"
             mensagem="Nenhum vestido no acervo ainda."
-            acao={{ href: vestidosHref, label: "Ver vestidos" }}
+            acao={{ href: vestidosHref, label: "Cadastrar vestido" }}
           />
         )}
       </div>
 
-      {/* Atenções e jornada — ainda sem dado; estado vazio narrado, sem "0" frio. */}
+      {/* Atenções e jornada */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <PainelVazio
           titulo="Atenções imediatas"
           mensagem="Nenhuma atenção pendente por agora. Tudo no seu lugar."
         />
-        <PainelVazio
-          titulo="Jornada da noiva"
-          mensagem="Quando uma noiva for recebida, a jornada dela aparece aqui — etapa por etapa, do primeiro encontro ao grande dia."
-          acao={podeVerNoivas ? { href: `/loja/${sc.loja.id}/noivas`, label: "Ver noivas" } : undefined}
-        />
+        {podeVerNoivas && resumo.noivas > 0 ? (
+          <CardMetrica
+            rotulo="Jornada da noiva"
+            valor={resumo.noivas}
+            descricao={resumo.noivas === 1 ? "noiva em acompanhamento" : "noivas em acompanhamento"}
+            acao={{ href: noivasHref, label: "Ver noivas" }}
+          />
+        ) : (
+          <PainelVazio
+            titulo="Jornada da noiva"
+            mensagem="Quando uma noiva for recebida, a jornada dela aparece aqui — etapa por etapa, do primeiro encontro ao grande dia."
+            acao={podeVerNoivas ? { href: noivasHref, label: "Receber primeira noiva" } : undefined}
+          />
+        )}
       </div>
     </div>
   );

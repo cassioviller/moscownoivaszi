@@ -13,10 +13,10 @@ export function PainelVazio({
   acao?: { href: string; label: string };
 }) {
   return (
-    <section className="flex min-h-[160px] flex-col rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado px-5 py-5 shadow-[var(--mn-shadow-soft)]">
-      <p className="text-[12px] uppercase tracking-[0.18em] text-cinza-fumo">{titulo}</p>
-      <div className="flex flex-1 flex-col items-start justify-center gap-3 py-3">
-        <p className="max-w-[44ch] text-[14px] leading-relaxed text-grafite">{mensagem}</p>
+    <section className="flex flex-col gap-4 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado px-6 py-6 shadow-[var(--mn-shadow-soft)]">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">{titulo}</p>
+      <div className="flex flex-1 flex-col gap-3">
+        <p className="max-w-[46ch] text-[14px] leading-[1.65] text-grafite">{mensagem}</p>
         {acao ? <LinkDiscreto {...acao} /> : null}
       </div>
     </section>

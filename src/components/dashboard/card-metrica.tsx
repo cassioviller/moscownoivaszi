@@ -15,13 +15,15 @@ export function CardMetrica({
   acao?: { href: string; label: string };
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado px-5 py-5 shadow-[var(--mn-shadow-soft)]">
-      <p className="text-[12px] uppercase tracking-[0.18em] text-cinza-fumo">{rotulo}</p>
-      <div className="flex flex-1 items-baseline gap-2">
-        <span className="font-display text-[40px] font-medium leading-none text-tinta">
-          {valor}
-        </span>
-        <span className="text-[13px] text-cinza-fumo">{descricao}</span>
+    <section className="flex flex-col gap-4 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado px-6 py-6 shadow-[var(--mn-shadow-soft)]">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">{rotulo}</p>
+      <div className="flex flex-1 flex-col gap-1">
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-[44px] font-medium leading-none tracking-[-0.02em] text-tinta">
+            {valor}
+          </span>
+          <span className="text-[13px] text-cinza-fumo">{descricao}</span>
+        </div>
       </div>
       {acao ? <LinkDiscreto {...acao} /> : null}
     </section>
