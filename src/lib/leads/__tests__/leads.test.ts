@@ -2,7 +2,9 @@
 // Espelha o teste do data layer de vestidos (Prisma real, isolamento cross-loja).
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
-import { listarLeads, criarLead, obterLead, editarLead } from "@/lib/leads/leads";
+import { listarLeads, criarLead, obterLead, editarLead, fatosDaNoiva, estagiosDasNoivas, definirMarcoJornada } from "@/lib/leads/leads";
+import { estagioDaNoiva } from "@/lib/leads/jornada";
+import { tenantPrisma } from "@/lib/tenant";
 
 const MARK = "t-noiva-";
 let lojaA = "";
@@ -93,5 +95,50 @@ describe("data layer de noivas (leads)", () => {
     await expect(editarLead(lojaA, doB.id, { noivaNome: "Invasão" })).rejects.toThrow();
     const intacto = await obterLead(lojaB, doB.id);
     expect(intacto?.noivaNome).toBe("Da loja B");
+  });
+});
+
+describe("jornada derivada (fatos + marcos)", () => {
+  const MARK = "t-jornada-";
+  let loja = "";
+  let leadId = "";
+
+  beforeAll(async () => {
+    loja = (await prisma.loja.create({ data: { nome: `${MARK}loja` } })).id;
+    leadId = (await tenantPrisma(prisma, loja).lead.create({
+      data: { noivaNome: `${MARK}Ana` } as never,
+    })).id;
+  });
+  afterAll(async () => {
+    await prisma.loja.deleteMany({ where: { nome: { startsWith: MARK } } });
+  });
+
+  it("noiva recém-cadastrada → estágio 'cadastrada'", async () => {
+    const f = await fatosDaNoiva(loja, leadId);
+    expect(f).not.toBeNull();
+    expect(estagioDaNoiva(f!).atual).toBe("cadastrada");
+  });
+
+  it("marco manual de orçamento liga e desliga (idempotente, escopado)", async () => {
+    await definirMarcoJornada(loja, leadId, "orcamentoAbertoEm", true);
+    let f = await fatosDaNoiva(loja, leadId);
+    expect(f!.orcamentoAbertoEm).not.toBeNull();
+    expect(estagioDaNoiva(f!).atual).toBe("orcamento_aberto");
+
+    await definirMarcoJornada(loja, leadId, "orcamentoAbertoEm", false);
+    f = await fatosDaNoiva(loja, leadId);
+    expect(f!.orcamentoAbertoEm).toBeNull();
+  });
+
+  it("estagiosDasNoivas mapeia a loja inteira", async () => {
+    const mapa = await estagiosDasNoivas(loja);
+    expect(mapa.get(leadId)?.atual).toBeDefined();
+  });
+
+  it("marco de outra loja é no-op (escopo)", async () => {
+    const outra = (await prisma.loja.create({ data: { nome: `${MARK}outra` } })).id;
+    await definirMarcoJornada(outra, leadId, "perdidaEm", true); // lead é da `loja`, não da `outra`
+    const f = await fatosDaNoiva(loja, leadId);
+    expect(f!.perdidaEm).toBeNull(); // não marcou nada
   });
 });

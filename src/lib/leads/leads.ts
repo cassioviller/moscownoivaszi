@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import type { Lead, Prisma } from "@/generated/prisma/client";
 import { LeadEtapa, LeadOrigem } from "@/generated/prisma/client";
+import { estagioDaNoiva, type FatosJornada, type EstagioChave } from "./jornada";
 
 // Lead + presença do interesse (id só, p/ a lista decidir "Preencher" vs "Editar").
 export type LeadListado = Prisma.LeadGetPayload<{ include: { interesse: { select: { id: true } } } }>;
@@ -166,5 +167,85 @@ export async function editarLead(lojaId: string, leadId: string, input: NovaNoiv
   return tenantPrisma(prisma, lojaId).lead.update({
     where: { id: leadId },
     data: dados(input, noivaNome, origem, casamentoData),
+  });
+}
+
+// Meia-noite UTC do dia de HOJE no fuso da loja (mesma convenção de painel/reservas).
+function inicioDeHojeUTC(): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return new Date(`${ymd}T00:00:00.000Z`);
+}
+
+// include mínimo p/ derivar a jornada: interesse (atributos), reservas (datas + provas).
+const INCLUDE_JORNADA = {
+  interesse: { select: { atributos: { select: { atributoId: true } } } },
+  bloqueios: {
+    where: { tipo: "RESERVA_CASAMENTO" as const },
+    select: {
+      retiradaDataReal: true,
+      devolucaoDataReal: true,
+      provas: { select: { comparecimento: true } },
+    },
+  },
+} as const;
+
+type LeadComJornada = Prisma.LeadGetPayload<{ include: typeof INCLUDE_JORNADA }>;
+
+function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
+  const provas = lead.bloqueios.flatMap((b) => b.provas);
+  return {
+    temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
+    temInteresse: (lead.interesse?.atributos.length ?? 0) > 0,
+    orcamentoAbertoEm: lead.orcamentoAbertoEm,
+    contratoFechadoEm: lead.contratoFechadoEm,
+    temProvaRealizada: provas.some((p) => p.comparecimento === "COMPARECEU"),
+    temRetirada: lead.bloqueios.some((b) => b.retiradaDataReal !== null),
+    casamentoPassou: lead.casamentoData !== null && lead.casamentoData < hoje,
+    temDevolucao: lead.bloqueios.some((b) => b.devolucaoDataReal !== null),
+    perdidaEm: lead.perdidaEm,
+  };
+}
+
+/** Fatos da jornada de UMA noiva (null se não for da loja). */
+export async function fatosDaNoiva(lojaId: string, leadId: string): Promise<FatosJornada | null> {
+  const lead = await tenantPrisma(prisma, lojaId).lead.findUnique({
+    where: { id: leadId },
+    include: INCLUDE_JORNADA,
+  });
+  if (!lead) return null;
+  return fatosDeLead(lead, inicioDeHojeUTC());
+}
+
+export type EstagioResumo = { atual: EstagioChave; encerrada: string | null };
+
+/** Estágio derivado de TODAS as noivas da loja (lote, em memória). */
+export async function estagiosDasNoivas(lojaId: string): Promise<Map<string, EstagioResumo>> {
+  const hoje = inicioDeHojeUTC();
+  const leads = await tenantPrisma(prisma, lojaId).lead.findMany({ include: INCLUDE_JORNADA });
+  const mapa = new Map<string, EstagioResumo>();
+  for (const l of leads) {
+    const { atual, encerrada } = estagioDaNoiva(fatosDeLead(l, hoje));
+    mapa.set(l.id, { atual, encerrada });
+  }
+  return mapa;
+}
+
+export type MarcoJornada = "orcamentoAbertoEm" | "contratoFechadoEm" | "perdidaEm";
+
+/** Liga/desliga um marco manual da jornada. Escopado por loja (updateMany). */
+export async function definirMarcoJornada(
+  lojaId: string,
+  leadId: string,
+  campo: MarcoJornada,
+  ligar: boolean,
+): Promise<void> {
+  await tenantPrisma(prisma, lojaId).lead.updateMany({
+    where: { id: leadId },
+    data: { [campo]: ligar ? new Date() : null } as never,
   });
 }
