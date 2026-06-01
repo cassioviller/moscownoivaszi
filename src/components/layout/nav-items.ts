@@ -6,6 +6,8 @@
 export type NavFlags = {
   /** podeNoModulo(leads, ver) — resolvido no servidor */
   podeVerNoivas: boolean;
+  /** podeNoModulo(config, ver) — gerência do catálogo */
+  podeVerCatalogo: boolean;
   /** ehAdminDaLoja(usuario, loja) — resolvido no servidor */
   podeGerenciarEquipe: boolean;
   /** usuario.isSuperAdmin */
@@ -30,6 +32,9 @@ export function navItems(lojaId: string, flags: NavFlags): NavItem[] {
     items.push({ href: `/loja/${lojaId}/noivas`, label: "Noivas" });
   }
   items.push({ href: `/loja/${lojaId}/vestidos`, label: "Vestidos" });
+  if (flags.podeVerCatalogo) {
+    items.push({ href: `/loja/${lojaId}/catalogo`, label: "Catálogo" });
+  }
   if (flags.podeGerenciarEquipe) {
     items.push({ href: "/equipe", label: "Equipe" });
     items.push({ href: `/loja/${lojaId}/permissoes`, label: "Permissões" });
