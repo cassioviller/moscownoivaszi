@@ -43,27 +43,29 @@ export default async function DashboardLoja() {
       {/* Divisória atmosférica — champagne como linha institucional, não decoração */}
       <div aria-hidden className="h-px bg-champagne/40" />
 
-      {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3) */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {podeVerNoivas && (
+      {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3).
+          Strip voltado à operação da noiva; sem leads.ver, o foco vai pro acervo abaixo. */}
+      {podeVerNoivas && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <IndicadorDia rotulo="Noivas" valor={painel.noivasAtivas} descricao="em acompanhamento" />
-        )}
-        <IndicadorDia
-          rotulo="Acervo"
-          valor={painel.vestidos}
-          descricao={painel.vestidos === 1 ? "vestido" : "vestidos"}
-        />
-        {podeVerNoivas && (
+          <IndicadorDia
+            rotulo="Acervo"
+            valor={painel.vestidos}
+            descricao={painel.vestidos === 1 ? "vestido" : "vestidos"}
+          />
           <IndicadorDia
             rotulo="Casamentos"
             valor={painel.casamentosProximos}
             descricao="nos próximos 30 dias"
           />
-        )}
-        {podeVerNoivas && (
-          <IndicadorDia rotulo="Em provas" valor={painel.emProvas} descricao="ajustes em andamento" />
-        )}
-      </div>
+          <IndicadorDia
+            rotulo="Em provas"
+            valor={painel.emProvas}
+            descricao="ajustes em andamento"
+            atencao
+          />
+        </div>
+      )}
 
       {/* Centro de operação: jornada (coração) + casamentos próximos */}
       {podeVerNoivas ? (
