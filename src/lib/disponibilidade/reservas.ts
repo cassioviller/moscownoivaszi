@@ -30,7 +30,8 @@ function meiaNoiteUTC(dia: string): Date {
 }
 
 // BloqueioVestido (Prisma) → Bloqueio (motor). Tipo do enum vira a união minúscula.
-function toBloqueio(b: BloqueioVestido): Bloqueio {
+// Exportado: a Agenda reusa a mesma conversão (datas.ts ↔ motor num só lugar).
+export function toBloqueio(b: BloqueioVestido): Bloqueio {
   return {
     id: b.id,
     vestidoId: b.vestidoId,
