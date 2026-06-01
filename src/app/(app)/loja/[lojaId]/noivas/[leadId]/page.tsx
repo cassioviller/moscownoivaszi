@@ -306,7 +306,20 @@ export default async function NoivaPage({
           Vazio não some em silêncio: chama para preencher (o momento mais acionável). */}
       {iVer &&
         (sugeridos.length > 0 ? (
-          <VestidosSugeridos vestidos={sugeridos} naoQuerUsar={i?.naoQuerUsar} />
+          <VestidosSugeridos
+            vestidos={sugeridos}
+            naoQuerUsar={i?.naoQuerUsar}
+            reserva={
+              podeReservar && lead.casamentoData
+                ? {
+                    action: reservarPelaNoivaAction,
+                    leadId,
+                    livresIds: livres.map((l) => l.id),
+                    reservadosIds: reservas.map((r) => r.vestidoId),
+                  }
+                : undefined
+            }
+          />
         ) : (
           <PainelVazio
             titulo="Vestidos para esta noiva"

@@ -1,6 +1,17 @@
 // src/components/indicacao/vestidos-sugeridos.tsx
 import type { VestidoIndicado } from "@/lib/indicacao/indicacao";
 
+// Quando presente, liga a sugestão à ação de reservar (perfil da noiva): fecha
+// desejo→ação no mesmo lugar. `livresIds` = peças livres para a data dela;
+// `reservadosIds` = peças que ela já reservou. Ausente → componente read-only
+// (ex.: tela de interesses), comportamento de antes.
+export type ReservaSugestao = {
+  action: (formData: FormData) => void | Promise<void>;
+  leadId: string;
+  livresIds: string[];
+  reservadosIds: string[];
+};
+
 // Vestidos do acervo que conversam com o que a noiva pediu. Apresentação calma,
 // peça de acervo (não item de estoque): nome em destaque editorial, afinidade
 // dita por texto, bordô reservado ao número que importa. Sem foto grande.
@@ -10,9 +21,11 @@ import type { VestidoIndicado } from "@/lib/indicacao/indicacao";
 export function VestidosSugeridos({
   vestidos,
   naoQuerUsar,
+  reserva,
 }: {
   vestidos: VestidoIndicado[];
   naoQuerUsar?: string | null;
+  reserva?: ReservaSugestao;
 }) {
   if (vestidos.length === 0) return null;
 
@@ -76,6 +89,32 @@ export function VestidosSugeridos({
                 <p className="text-[12px] text-cinza-fumo">Não atende: {v.faltam.join(", ")}</p>
               )}
             </div>
+
+            {/* Reservar direto da sugestão — só com a ação ligada e data definida.
+                Botão secundário (contorno), não bordô cheio: o CTA principal mora na
+                seção "Vestido reservado". */}
+            {reserva && (
+              <div className="border-t border-borda-suave pt-3">
+                {reserva.reservadosIds.includes(v.id) ? (
+                  <p className="text-[12px] text-cinza-fumo">Reservado para esta noiva.</p>
+                ) : reserva.livresIds.includes(v.id) ? (
+                  <form action={reserva.action}>
+                    <input type="hidden" name="leadId" value={reserva.leadId} />
+                    <input type="hidden" name="vestidoId" value={v.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-11 items-center rounded-md border border-borda px-3.5 py-1.5
+                        text-[13px] text-grafite transition-colors duration-150 hover:border-bordo hover:text-bordo
+                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                    >
+                      Reservar para o casamento
+                    </button>
+                  </form>
+                ) : (
+                  <p className="text-[12px] text-cinza-fumo">Indisponível para a data dela.</p>
+                )}
+              </div>
+            )}
           </li>
         ))}
       </ul>
