@@ -168,6 +168,33 @@ async function main() {
     create: { usuarioId: gerente.id, lojaId: loja.id, perfilId: perfilAdmin.id },
   });
 
+  // 4c) Usuários de SMOKE/DEV — credenciais previsíveis APENAS para
+  // desenvolvimento e testes manuais. NÃO usar em produção. Um por perfil
+  // restante (Vendedora, Recepção), vinculados à loja padrão com o perfil do
+  // seed (não altera permissões). Idempotente; nunca promove a super-admin.
+  // A conta manual vendedora@lojateste.local NÃO é tocada.
+  const smokeUsers = [
+    { email: "vendedora@moscow.local", nome: "Vendedora (dev)", senha: "vendedora123", perfilId: "perfil-vendedora" },
+    { email: "recepcao@moscow.local", nome: "Recepção (dev)", senha: "recepcao123", perfilId: "perfil-recepcao" },
+  ];
+  for (const su of smokeUsers) {
+    const usuario = await prisma.usuario.upsert({
+      where: { email: su.email },
+      update: { isSuperAdmin: false }, // defensivo: nunca promove no re-seed
+      create: {
+        nome: su.nome,
+        email: su.email,
+        senhaHash: await bcrypt.hash(su.senha, 10),
+        isSuperAdmin: false,
+      },
+    });
+    await prisma.usuarioLoja.upsert({
+      where: { usuarioId_lojaId: { usuarioId: usuario.id, lojaId: loja.id } },
+      update: { perfilId: su.perfilId },
+      create: { usuarioId: usuario.id, lojaId: loja.id, perfilId: su.perfilId },
+    });
+  }
+
   // 5) Catálogo de atributos + opções
   let ordemAttr = 0;
   for (const attr of ATRIBUTOS) {
