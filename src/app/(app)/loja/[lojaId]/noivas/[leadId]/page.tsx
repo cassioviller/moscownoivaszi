@@ -17,14 +17,16 @@ import { jornadaDaNoiva, ROTULO_ETAPA, ROTULO_ORIGEM } from "@/lib/leads/leads";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
-import { listarReservasDaNoiva, vestidosLivresPara } from "@/lib/disponibilidade/reservas";
-import { reservarPelaNoivaAction, cancelarReservaPelaNoivaAction } from "./reserva-actions";
-import { SelectNativo } from "@/components/ui/select-nativo";
+import { listarReservasDaNoiva, vestidosLivresEntre } from "@/lib/disponibilidade/reservas";
+import {
+  reservarPelaNoivaAction,
+  cancelarReservaPelaNoivaAction,
+  buscarVestidosLivresAction,
+} from "./reserva-actions";
+import { ReservaLivreInline } from "@/components/disponibilidade/reserva-livre-inline";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 
 export const dynamic = "force-dynamic";
-
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 // UTC: a data nasce em meia-noite UTC (leads.ts) — exibir em UTC evita off-by-one.
 const dataFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -117,10 +119,13 @@ export default async function NoivaPage({
   const sugeridos = iVer ? await indicarVestidos(sc.loja.id, leadId) : [];
   const temInteressePreenchido = (i?.atributos.length ?? 0) > 0;
 
-  // Vestidos livres para a data dela — só quando pode reservar e há data marcada.
-  const livres =
-    podeReservar && lead.casamentoData
-      ? await vestidosLivresPara(sc.loja.id, lead.casamentoData.toISOString().slice(0, 10))
+  // Para os botões "Reservar" nas sugestões: checagem ALVO (só os vestidos sugeridos),
+  // barata a cada carregamento. A lista completa de livres é buscada sob demanda
+  // (ReservaLivreInline), evitando varrer o acervo quando ninguém vai reservar.
+  const dia = lead.casamentoData ? lead.casamentoData.toISOString().slice(0, 10) : null;
+  const livresSugeridosIds =
+    podeReservar && dia && sugeridos.length > 0
+      ? await vestidosLivresEntre(sc.loja.id, dia, sugeridos.map((s) => s.id))
       : [];
 
   const editarHref = `/loja/${lojaId}/noivas/${leadId}/editar`;
@@ -275,29 +280,12 @@ export default async function NoivaPage({
               <p className="text-[13px] text-cinza-fumo">
                 Defina a data do casamento para reservar um vestido.
               </p>
-            ) : livres.length > 0 ? (
-              <form action={reservarPelaNoivaAction} className="flex flex-wrap items-end gap-3">
-                <input type="hidden" name="leadId" value={leadId} />
-                <SelectNativo name="vestidoId" label="Reservar vestido" placeholder="Escolha um vestido livre…">
-                  {livres.map((vl) => (
-                    <option key={vl.id} value={vl.id}>
-                      {vl.codigo} · {vl.nome} · {brl.format(Number(vl.precoBase))}
-                    </option>
-                  ))}
-                </SelectNativo>
-                <button
-                  type="submit"
-                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5
-                    text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out
-                    hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-                >
-                  Reservar
-                </button>
-              </form>
             ) : (
-              <p className="text-[13px] text-cinza-fumo">
-                Nenhum vestido do acervo está livre para esta data.
-              </p>
+              <ReservaLivreInline
+                leadId={leadId}
+                reservar={reservarPelaNoivaAction}
+                buscarLivres={buscarVestidosLivresAction}
+              />
             ))}
         </section>
       )}
@@ -314,7 +302,7 @@ export default async function NoivaPage({
                 ? {
                     action: reservarPelaNoivaAction,
                     leadId,
-                    livresIds: livres.map((l) => l.id),
+                    livresIds: livresSugeridosIds,
                     reservadosIds: reservas.map((r) => r.vestidoId),
                   }
                 : undefined

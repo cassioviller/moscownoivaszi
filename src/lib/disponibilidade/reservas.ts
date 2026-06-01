@@ -279,3 +279,38 @@ export async function vestidosLivresPara(
     )
     .map((v) => ({ id: v.id, codigo: v.codigo, nome: v.nome, precoBase: v.precoBase.toString() }));
 }
+
+/**
+ * Versão alvo: dentre `vestidoIds`, quais estão livres para a data. Consulta só os
+ * bloqueios desses vestidos (não varre o acervo inteiro) — barato para checar um
+ * punhado de sugestões a cada carregamento. Retorna o subconjunto livre.
+ */
+export async function vestidosLivresEntre(
+  lojaId: string,
+  casamentoData: string,
+  vestidoIds: string[],
+): Promise<string[]> {
+  if (vestidoIds.length === 0) return [];
+  const db = tenantPrisma(prisma, lojaId);
+  const [regras, bloqueios] = await Promise.all([
+    obterRegras(lojaId),
+    db.bloqueioVestido.findMany({ where: { vestidoId: { in: vestidoIds } } }),
+  ]);
+
+  const porVestido = new Map<string, Bloqueio[]>();
+  for (const b of bloqueios) {
+    const lista = porVestido.get(b.vestidoId) ?? [];
+    lista.push(toBloqueio(b));
+    porVestido.set(b.vestidoId, lista);
+  }
+
+  return vestidoIds.filter(
+    (id) =>
+      vestidoDisponivel({
+        vestidoId: id,
+        casamentoDataCandidata: casamentoData,
+        regras,
+        bloqueiosExistentes: porVestido.get(id) ?? [],
+      }).disponivel,
+  );
+}

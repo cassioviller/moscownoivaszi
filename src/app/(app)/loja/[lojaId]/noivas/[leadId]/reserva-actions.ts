@@ -8,7 +8,23 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterLead } from "@/lib/leads/leads";
-import { reservarVestido, cancelarReserva } from "@/lib/disponibilidade/reservas";
+import {
+  reservarVestido,
+  cancelarReserva,
+  vestidosLivresPara,
+  type VestidoLivre,
+} from "@/lib/disponibilidade/reservas";
+
+// Busca sob demanda: a lista completa de vestidos livres só é calculada quando a
+// vendedora abre o seletor (evita varrer o acervo a cada carregamento do perfil).
+export async function buscarVestidosLivresAction(leadId: string): Promise<VestidoLivre[]> {
+  const sc = await getSessaoComLoja();
+  if (!sc) return [];
+  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) return [];
+  const lead = await obterLead(sc.loja.id, leadId);
+  if (!lead?.casamentoData) return [];
+  return vestidosLivresPara(sc.loja.id, lead.casamentoData.toISOString().slice(0, 10));
+}
 
 export async function reservarPelaNoivaAction(formData: FormData) {
   const sc = await getSessaoComLoja();
