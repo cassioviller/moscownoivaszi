@@ -30,8 +30,10 @@ export function navItems(lojaId: string, flags: NavFlags): NavItem[] {
   ];
   if (flags.podeVerNoivas) {
     items.push({ href: `/loja/${lojaId}/noivas`, label: "Noivas" });
-    // Agenda deriva das reservas (noiva↔vestido); acompanha o acesso a noivas.
+    // Agenda (compromissos por janela) e Reservas (livro por casamento) derivam das
+    // reservas noiva↔vestido; acompanham o acesso a noivas.
     items.push({ href: `/loja/${lojaId}/agenda`, label: "Agenda" });
+    items.push({ href: `/loja/${lojaId}/reservas`, label: "Reservas" });
   }
   items.push({ href: `/loja/${lojaId}/vestidos`, label: "Vestidos" });
   if (flags.podeVerCatalogo) {

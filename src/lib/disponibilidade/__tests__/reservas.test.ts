@@ -12,6 +12,7 @@ import {
   vestidosLivresPara,
   criarManutencao,
   listarManutencoesDoVestido,
+  listarReservasDaLoja,
 } from "@/lib/disponibilidade/reservas";
 
 const MARK = "t-reservas-";
@@ -118,5 +119,22 @@ describe("reservas: motor ligado ao banco", () => {
   it("recusa manutenção com datas invertidas", async () => {
     const r = await criarManutencao(loja, { vestidoId: vestidoB, inicio: "2027-05-10", fim: "2027-05-01" });
     expect(r).toMatchObject({ ok: false, motivo: "datas_invertidas" });
+  });
+
+  it("livro de reservas da loja traz as futuras com noiva e vestido", async () => {
+    // Data claramente futura (independe do relógio do CI).
+    const futuro = new Date(Date.now() + 150 * 86_400_000).toISOString().slice(0, 10);
+    const r = await reservarVestido(loja, { vestidoId: vestidoB, leadId: noiva, casamentoData: futuro });
+    expect(r.ok).toBe(true);
+
+    const livro = await listarReservasDaLoja(loja);
+    const minha = livro.find((x) => x.vestidoId === vestidoB && x.codigo === `${MARK}B`);
+    expect(minha).toBeDefined();
+    expect(minha?.noivaNome).toBe(`${MARK}n`);
+    // Só futuras: nenhuma com casamento antes de hoje.
+    const hoje = new Date(new Date().toISOString().slice(0, 10));
+    expect(livro.every((x) => x.casamentoData && x.casamentoData >= hoje)).toBe(true);
+
+    if (r.ok) await cancelarReserva(loja, r.bloqueioId);
   });
 });

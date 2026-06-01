@@ -227,6 +227,51 @@ export async function listarReservasDoVestido(
   }));
 }
 
+export type ReservaDaLoja = {
+  id: string;
+  casamentoData: Date | null;
+  noivaNome: string | null;
+  leadId: string | null;
+  vestidoId: string;
+  codigo: string;
+  nome: string;
+};
+
+// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema).
+function hojeUTC(): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return new Date(`${ymd}T00:00:00.000Z`);
+}
+
+/**
+ * Livro de reservas da loja: todas as reservas de casamento ainda por vir
+ * (casamento ≥ hoje), da mais próxima à mais distante, com noiva e vestido.
+ */
+export async function listarReservasDaLoja(lojaId: string): Promise<ReservaDaLoja[]> {
+  const rows = await tenantPrisma(prisma, lojaId).bloqueioVestido.findMany({
+    where: { tipo: "RESERVA_CASAMENTO", casamentoData: { gte: hojeUTC() } },
+    orderBy: { casamentoData: "asc" },
+    include: {
+      lead: { select: { noivaNome: true } },
+      vestido: { select: { id: true, codigo: true, nome: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    casamentoData: r.casamentoData,
+    noivaNome: r.lead?.noivaNome ?? null,
+    leadId: r.leadId,
+    vestidoId: r.vestidoId,
+    codigo: r.vestido.codigo,
+    nome: r.vestido.nome,
+  }));
+}
+
 export type ReservaDaNoiva = {
   id: string;
   casamentoData: Date | null;
