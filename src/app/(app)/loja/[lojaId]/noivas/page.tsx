@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { listarLeads, ROTULO_ETAPA } from "@/lib/leads/leads";
+import { listarLeads, estagiosDasNoivas } from "@/lib/leads/leads";
+import { ROTULO_ESTAGIO } from "@/lib/leads/jornada";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,9 @@ export default async function NoivasPage({
 
   const { lojaId } = await params;
   const { ok } = await searchParams;
-  const [noivas, podeCriar, podeEditar, iVer, iCriar, iEditar] = await Promise.all([
+  const [noivas, estagios, podeCriar, podeEditar, iVer, iCriar, iEditar] = await Promise.all([
     listarLeads(sc.loja.id),
+    estagiosDasNoivas(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "ver"),
@@ -76,7 +78,9 @@ export default async function NoivasPage({
       ) : (
         <ul className="flex flex-col divide-y divide-borda-suave rounded-md border border-borda bg-papel-elevado">
           {noivas.map((n) => {
-            const meta = [ROTULO_ETAPA[n.etapa], n.noivoNome ? `& ${n.noivoNome}` : null]
+            const est = estagios.get(n.id);
+            const rotuloEtapa = est ? (est.encerrada ?? ROTULO_ESTAGIO[est.atual]) : "Cadastrada";
+            const meta = [rotuloEtapa, n.noivoNome ? `& ${n.noivoNome}` : null]
               .filter(Boolean)
               .join(" · ");
             // Link de interesses muda conforme a permissão (e se já há interesse).

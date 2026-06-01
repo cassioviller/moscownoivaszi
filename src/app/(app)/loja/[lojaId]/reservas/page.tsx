@@ -8,7 +8,8 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarReservasDaLoja, type ReservaDaLoja } from "@/lib/disponibilidade/reservas";
-import { ROTULO_ETAPA } from "@/lib/leads/leads";
+import { estagiosDasNoivas } from "@/lib/leads/leads";
+import { ROTULO_ESTAGIO } from "@/lib/leads/jornada";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export default async function ReservasPage({
   const passadas = quando === "passadas";
 
   const reservas = await listarReservasDaLoja(sc.loja.id, { passadas });
+  const estagios = await estagiosDasNoivas(sc.loja.id);
   const meses = agruparPorMes(reservas);
   const hoje = hojeUTC().getTime();
 
@@ -142,8 +144,10 @@ export default async function ReservasPage({
                         )}
                         {/* Etapa da jornada (o que a Agenda não mostra) + vestido como chip secundário */}
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                          {r.etapa && (
-                            <span className="text-[12px] text-cinza-fumo">{ROTULO_ETAPA[r.etapa]}</span>
+                          {r.leadId && estagios.get(r.leadId) && (
+                            <span className="text-[12px] text-cinza-fumo">
+                              {estagios.get(r.leadId)!.encerrada ?? ROTULO_ESTAGIO[estagios.get(r.leadId)!.atual]}
+                            </span>
                           )}
                           <Link
                             href={`/loja/${lojaId}/vestidos/${r.vestidoId}`}

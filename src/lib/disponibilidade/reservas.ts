@@ -5,7 +5,7 @@
 // banco (meia-noite UTC) e como "YYYY-MM-DD" no motor; a conversão mora aqui.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import type { BloqueioVestido, LeadEtapa } from "@/generated/prisma/client";
+import type { BloqueioVestido } from "@/generated/prisma/client";
 import type { Bloqueio, Conflito, ErroBloqueio, Regras, TipoJanela } from "./tipos";
 import { vestidoDisponivel, calcularJanelas, FUTURO_DISTANTE } from "./motor";
 
@@ -231,7 +231,6 @@ export type ReservaDaLoja = {
   id: string;
   casamentoData: Date | null;
   noivaNome: string | null;
-  etapa: LeadEtapa | null; // etapa da jornada da noiva (o "como vai" do compromisso)
   leadId: string | null;
   vestidoId: string;
   codigo: string;
@@ -266,7 +265,7 @@ export async function listarReservasDaLoja(
     },
     orderBy: { casamentoData: opts.passadas ? "desc" : "asc" },
     include: {
-      lead: { select: { noivaNome: true, etapa: true } },
+      lead: { select: { noivaNome: true } },
       vestido: { select: { id: true, codigo: true, nome: true } },
     },
   });
@@ -274,7 +273,6 @@ export async function listarReservasDaLoja(
     id: r.id,
     casamentoData: r.casamentoData,
     noivaNome: r.lead?.noivaNome ?? null,
-    etapa: r.lead?.etapa ?? null,
     leadId: r.leadId,
     vestidoId: r.vestidoId,
     codigo: r.vestido.codigo,
