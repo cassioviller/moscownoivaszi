@@ -1,6 +1,42 @@
 # Estado atual — Moscow Noivas
 
-> Snapshot de onde paramos. Atualizado em **2026-05-30**. Envelhece — confira os commits e os testes antes de confiar.
+> Snapshot de onde paramos. Atualizado em **2026-06-01**. Envelhece — confira os commits e os testes antes de confiar.
+
+## Provas & Ajustes + bloco contínuo (fatia 2026-06-01)
+
+Spec/decisão: `docs/superpowers/specs/2026-06-01-provas-ajustes-design.md`. **Opção B** —
+núcleo da noiva (provas/ajustes na reserva) + tela global de Ajustes da costureira.
+
+**Decisão de regra de negócio (registrada):** (1) indisponibilidade do vestido é um
+**bloco contínuo, sem buracos** (preparação → uso → higienização, encostadas); (2) a
+**prova real é operacional e NÃO alimenta o motor** — registrar/remarcar/faltar prova não
+move a disponibilidade nem libera a peça.
+
+| Peça | Onde | Notas |
+|---|---|---|
+| Schema | `prisma/schema.prisma` + migration `..._atelier_provas_ajustes` | Enums `ProvaTipo`/`ProvaComparecimento`/`AjusteStatus`. `Prova` (filha de `BloqueioVestido`), `Ajuste` (filha de `Prova`) — ambas com `lojaId`, em `TENANT_MODELS`. `AjusteChecklistItem` (filha pura, via pai). |
+| Motor | `src/lib/disponibilidade/{motor,tipos,agenda}.ts` | `calcularJanelas` projeta bloco **contínuo**: fase `preparacao` (renomeada de `prova`) vai de `C−provaDiasAntes` até **encostar no uso** (sem buraco). **Ignora `provaDataReal`** (coluna mantida, deprecada — sem migração destrutiva). `provaDuracao` não afeta mais a disponibilidade. |
+| Data layer | `src/lib/atelier/{provas,ajustes}.ts` (+ `__tests__/atelier.test.ts`, 9) | Tudo via `tenantPrisma`. `registrarProva` valida que o bloqueio é RESERVA da loja; `listarAjustesPendentes` é a fila global (junta prova→reserva→noiva/vestido, ordena por casamento). Checklist confirma o Ajuste pai antes de tocar a filha (padrão `fotos.ts`). |
+| Permissão | `src/lib/permissoes/modulos.ts` + `prisma/seed.ts` | Novo módulo **`ajustes`** na grade. Admin = TODAS; novo perfil **Costureira** (só `ajustes`); vendedora ganha `ajustes:ver`; usuário dev `costureira@moscow.local`. |
+| Navegação | `src/components/layout/nav-items.ts` + `loja/[lojaId]/layout.tsx` | Item "Ajustes" sob flag `podeVerAjustes` (resolvida no servidor). |
+| Detalhe da reserva | `src/app/(app)/loja/[lojaId]/reservas/[bloqueioId]/{page,actions}.tsx` | Noiva/vestido/casamento + fases do bloco + provas (registrar/comparecimento/remover) + ajustes por prova (add/marcar feito/remover) + checklist. Ver = `leads:ver`; mutações = `ajustes:criar/editar`. Linkado do perfil da noiva e do livro de reservas. |
+| Ajustes (global) | `src/app/(app)/loja/[lojaId]/ajustes/{page,actions}.tsx` | Fila da costureira: pendentes por urgência (bordô ≤14d), "marcar feito". Gate `ajustes:ver`/`ajustes:editar`. |
+
+**Fast-follow (fora desta fatia):** transformar provas reais em compromissos próprios da
+Agenda (hoje a Agenda mostra a fase de preparação como período reservado). Gates: `npm test`
+**195/195**, `tsc` limpo, rotas novas compilam e gateiam (307 sem auth). Smoke HTTP autenticado
+(click-through) não feito — o fluxo reserva→prova→ajuste→fila→feito está coberto por
+`atelier.test.ts` contra Postgres real.
+
+### Conserto (2026-06-01)
+
+Spec/plano: `docs/superpowers/specs/2026-06-01-conserto-provas-ajustes-design.md`, `docs/superpowers/plans/2026-06-01-conserto-provas-ajustes.md`.
+
+- **Acesso da costureira:** o detalhe da reserva (`reservas/[bloqueioId]`) agora abre com `leads:ver` **OU** `ajustes:ver`; links de noiva/vestido viram texto puro sem a permissão; "voltar" vai p/ `/ajustes` quando sem `leads`. A costureira passa a registrar provas, criar ajustes e usar checklist (antes só "marcar feito").
+- **Robustez (falha-fechada):** `registrarProva`/`editarProva` validam formato de data (via `parseDiaUTC`) e o enum `comparecimento`, retornando motivo (`data_invalida`/`comparecimento_invalido`) em vez de 500/silêncio; a action de edição mostra o erro.
+- **Edição completa da prova:** o form por prova vira "Editar prova" (data/tipo/comparecimento/responsável/observação) — `editarComparecimentoAction` → `editarProvaAction`.
+- **Smoke commitado:** `scripts/smoke-atelier.ts` (HTTP autenticado + camada de dados, com cleanup em `finally`). Rodar com o app no ar: `BASE_URL=http://localhost:5000 node node_modules/tsx/dist/cli.mjs scripts/smoke-atelier.ts` → 13/13 (inclui "costureira abre o detalhe").
+- **Operacional:** após mudar schema, reiniciar o app (Run) p/ recarregar o client Prisma — senão telas com models novos dão 500.
 
 ## Em uma frase
 
