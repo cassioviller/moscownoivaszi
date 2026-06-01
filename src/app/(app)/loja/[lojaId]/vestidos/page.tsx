@@ -22,10 +22,9 @@ export default async function VestidosPage({
 
   const { lojaId } = await params;
   const { ok } = await searchParams;
-  const [vestidos, podeCriar, podeEditar] = await Promise.all([
+  const [vestidos, podeCriar] = await Promise.all([
     listarVestidos(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "criar"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
   ]);
 
   return (
@@ -77,16 +76,13 @@ export default async function VestidosPage({
             );
             return (
               <li key={v.id}>
-                {podeEditar ? (
-                  <Link
-                    href={`/loja/${lojaId}/vestidos/${v.id}/editar`}
-                    className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-borda-suave transition-colors duration-150"
-                  >
-                    {conteudo}
-                  </Link>
-                ) : (
-                  <div className="flex items-center justify-between gap-4 px-4 py-3">{conteudo}</div>
-                )}
+                <Link
+                  href={`/loja/${lojaId}/vestidos/${v.id}`}
+                  className="flex items-center justify-between gap-4 px-4 py-3 transition-colors duration-150
+                    hover:bg-borda-suave focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-bordo"
+                >
+                  {conteudo}
+                </Link>
               </li>
             );
           })}

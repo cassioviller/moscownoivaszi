@@ -72,6 +72,30 @@ export function validarSelecoes(
   return out;
 }
 
+/** Par legível atributo→valor, para exibição (ex.: "Cauda: Longa"). */
+export type SelecaoRotulada = { nome: string; valor: string };
+
+/**
+ * Traduz seleções (atributoId→opcaoId) em rótulos legíveis, na ordem do catálogo.
+ * Leitura defensiva: ignora atributo/opção que não exista mais no catálogo ativo
+ * (ex.: opção desativada depois de gravada) — some em silêncio, nunca quebra a tela.
+ */
+export function rotularSelecoes(
+  catalogo: CatalogoAtributo[],
+  selecoes: Selecao[],
+): SelecaoRotulada[] {
+  const porAtributo = new Map(selecoes.map((s) => [s.atributoId, s.opcaoId]));
+  const out: SelecaoRotulada[] = [];
+  for (const attr of catalogo) {
+    const opcaoId = porAtributo.get(attr.id);
+    if (!opcaoId) continue;
+    const opcao = attr.opcoes.find((o) => o.id === opcaoId);
+    if (!opcao) continue;
+    out.push({ nome: attr.nome, valor: opcao.valor });
+  }
+  return out;
+}
+
 // ─────────────────────────── CRUD do catálogo (admin) ───────────────────────
 // Gestão por loja, gateada pelo módulo "config". Atributo é tenant model (via
 // tenantPrisma); as opções (AtributoOpcao) são tocadas SÓ por escrita aninhada

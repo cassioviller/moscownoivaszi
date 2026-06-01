@@ -1,6 +1,11 @@
 // src/lib/catalogo/__tests__/catalogo.test.ts
 import { describe, it, expect } from "vitest";
-import { validarSelecoes, escolhasDoForm, type CatalogoAtributo } from "@/lib/catalogo/catalogo";
+import {
+  validarSelecoes,
+  escolhasDoForm,
+  rotularSelecoes,
+  type CatalogoAtributo,
+} from "@/lib/catalogo/catalogo";
 
 const catalogo: CatalogoAtributo[] = [
   {
@@ -31,5 +36,28 @@ describe("catálogo: validarSelecoes / escolhasDoForm (puro)", () => {
     fd.set("attr-a1", "o2");
     fd.set("attr-a2", "o3");
     expect(escolhasDoForm(catalogo, fd)).toEqual({ a1: "o2", a2: "o3" });
+  });
+});
+
+describe("catálogo: rotularSelecoes (puro)", () => {
+  it("traduz seleções em rótulos legíveis, na ordem do catálogo", () => {
+    expect(
+      rotularSelecoes(catalogo, [
+        { atributoId: "a2", opcaoId: "o3" },
+        { atributoId: "a1", opcaoId: "o1" },
+      ]),
+    ).toEqual([
+      { nome: "Decote", valor: "V" }, // a1 vem antes de a2 (ordem do catálogo)
+      { nome: "Brilho", valor: "Pouco" },
+    ]);
+  });
+
+  it("ignora atributo/opção que não existe mais no catálogo ativo", () => {
+    expect(
+      rotularSelecoes(catalogo, [
+        { atributoId: "a1", opcaoId: "inexistente" }, // opção sumiu
+        { atributoId: "removido", opcaoId: "o9" }, // atributo sumiu
+      ]),
+    ).toEqual([]);
   });
 });
