@@ -9,37 +9,24 @@
 // tenantPrisma (isolamento por loja).
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { LeadEtapa } from "@/generated/prisma/client";
-import { ROTULO_ETAPA } from "@/lib/leads/leads";
-
-// Ordem canônica da jornada (consulta → grande dia). Só as etapas "vivas".
-const JORNADA_ORDEM: LeadEtapa[] = [
-  LeadEtapa.NOVO,
-  LeadEtapa.INTERESSES_PREENCHIDOS,
-  LeadEtapa.ATENDIMENTO_AGENDADO,
-  LeadEtapa.EM_ATENDIMENTO,
-  LeadEtapa.ORCAMENTO_ABERTO,
-  LeadEtapa.CONTRATO_FECHADO,
-  LeadEtapa.EM_PROVAS,
-  LeadEtapa.RETIRADO,
-];
-
-// Etapas que tiram a noiva do acompanhamento ativo (encerradas).
-const ENCERRADAS = new Set<LeadEtapa>([
-  LeadEtapa.CASAMENTO_REALIZADO,
-  LeadEtapa.DEVOLVIDO,
-  LeadEtapa.PERDIDO,
-]);
+import {
+  estagioDaNoiva,
+  noivaAtiva,
+  ROTULO_ESTAGIO,
+  ESTAGIOS,
+  type EstagioChave,
+  type FatosJornada,
+} from "@/lib/leads/jornada";
 
 // Atenção imediata = casamento muito próximo E ainda com trabalho em aberto
 // (em provas ou orçamento aberto). Heurística de urgência aprovada pelo produto.
-const ETAPAS_ATENCAO = new Set<LeadEtapa>([LeadEtapa.EM_PROVAS, LeadEtapa.ORCAMENTO_ABERTO]);
+const ESTAGIOS_ATENCAO = new Set<EstagioChave>(["orcamento_aberto", "em_provas"]);
 
 const DIA_MS = 86_400_000;
 const JANELA_PROXIMOS_DIAS = 30;
 const JANELA_ATENCAO_DIAS = 14;
 
-export type EtapaJornada = { etapa: LeadEtapa; rotulo: string; total: number };
+export type EtapaJornada = { chave: EstagioChave; rotulo: string; total: number };
 export type CasamentoProximo = {
   id: string;
   noivaNome: string;
@@ -49,7 +36,6 @@ export type CasamentoProximo = {
 export type Atencao = {
   id: string;
   noivaNome: string;
-  etapa: LeadEtapa;
   rotulo: string;
   data: Date;
   diasRestantes: number;
@@ -88,15 +74,27 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const db = tenantPrisma(prisma, lojaId);
   const hoje = inicioDeHojeUTC();
 
-  const [porEtapa, vestidos, futuros, destaqueRow] = await Promise.all([
-    db.lead.groupBy({ by: ["etapa"], _count: { _all: true } }),
-    db.vestido.count(),
+  const [leads, vestidos, destaqueRow] = await Promise.all([
     db.lead.findMany({
-      where: { casamentoData: { gte: hoje } },
-      orderBy: { casamentoData: "asc" },
-      select: { id: true, noivaNome: true, casamentoData: true, etapa: true },
+      select: {
+        id: true,
+        noivaNome: true,
+        casamentoData: true,
+        orcamentoAbertoEm: true,
+        contratoFechadoEm: true,
+        perdidaEm: true,
+        interesse: { select: { atributos: { select: { atributoId: true } } } },
+        bloqueios: {
+          where: { tipo: "RESERVA_CASAMENTO" },
+          select: {
+            retiradaDataReal: true,
+            devolucaoDataReal: true,
+            provas: { select: { comparecimento: true } },
+          },
+        },
+      },
     }),
-    // Vestido em destaque: o mais recente, ativo e COM foto de capa (ordem 0).
+    db.vestido.count(),
     db.vestido.findFirst({
       where: { status: "ativo", fotos: { some: { ordem: 0 } } },
       orderBy: { updatedAt: "desc" },
@@ -110,16 +108,44 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     }),
   ]);
 
-  const totalPorEtapa = new Map<LeadEtapa, number>();
-  for (const g of porEtapa) totalPorEtapa.set(g.etapa, g._count._all);
+  type Linha = {
+    id: string;
+    noivaNome: string;
+    casamentoData: Date | null;
+    atual: EstagioChave;
+    encerrada: string | null;
+  };
+  const linhas: Linha[] = leads.map((l) => {
+    const provas = l.bloqueios.flatMap((b) => b.provas);
+    const fatos: FatosJornada = {
+      temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
+      temInteresse: (l.interesse?.atributos.length ?? 0) > 0,
+      orcamentoAbertoEm: l.orcamentoAbertoEm,
+      contratoFechadoEm: l.contratoFechadoEm,
+      temProvaRealizada: provas.some((p) => p.comparecimento === "COMPARECEU"),
+      temRetirada: l.bloqueios.some((b) => b.retiradaDataReal !== null),
+      casamentoPassou: l.casamentoData !== null && l.casamentoData < hoje,
+      temDevolucao: l.bloqueios.some((b) => b.devolucaoDataReal !== null),
+      perdidaEm: l.perdidaEm,
+    };
+    const { atual, encerrada } = estagioDaNoiva(fatos);
+    return { id: l.id, noivaNome: l.noivaNome, casamentoData: l.casamentoData, atual, encerrada };
+  });
 
-  const noivasAtivas = [...totalPorEtapa.entries()]
-    .filter(([etapa]) => !ENCERRADAS.has(etapa))
-    .reduce((soma, [, n]) => soma + n, 0);
+  const ativas = linhas.filter((l) => noivaAtiva(l.atual, l.encerrada));
+  const noivasAtivas = ativas.length;
 
-  const jornada: EtapaJornada[] = JORNADA_ORDEM.filter((e) => (totalPorEtapa.get(e) ?? 0) > 0).map(
-    (etapa) => ({ etapa, rotulo: ROTULO_ETAPA[etapa], total: totalPorEtapa.get(etapa) ?? 0 }),
+  const totalPorEstagio = new Map<EstagioChave, number>();
+  for (const l of ativas) totalPorEstagio.set(l.atual, (totalPorEstagio.get(l.atual) ?? 0) + 1);
+  const jornada: EtapaJornada[] = ESTAGIOS.filter((c) => (totalPorEstagio.get(c) ?? 0) > 0).map(
+    (chave) => ({ chave, rotulo: ROTULO_ESTAGIO[chave], total: totalPorEstagio.get(chave) ?? 0 }),
   );
+
+  const emProvas = totalPorEstagio.get("em_provas") ?? 0;
+
+  const futuros = linhas
+    .filter((l) => l.casamentoData !== null && l.casamentoData.getTime() >= hoje.getTime())
+    .sort((a, b) => a.casamentoData!.getTime() - b.casamentoData!.getTime());
 
   const proximosCasamentos: CasamentoProximo[] = futuros.slice(0, 5).map((l) => ({
     id: l.id,
@@ -133,12 +159,16 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
 
   const limiteAtencao = hoje.getTime() + JANELA_ATENCAO_DIAS * DIA_MS;
   const atencoes: Atencao[] = futuros
-    .filter((l) => ETAPAS_ATENCAO.has(l.etapa) && l.casamentoData!.getTime() <= limiteAtencao)
+    .filter(
+      (l) =>
+        noivaAtiva(l.atual, l.encerrada) &&
+        ESTAGIOS_ATENCAO.has(l.atual) &&
+        l.casamentoData!.getTime() <= limiteAtencao,
+    )
     .map((l) => ({
       id: l.id,
       noivaNome: l.noivaNome,
-      etapa: l.etapa,
-      rotulo: ROTULO_ETAPA[l.etapa],
+      rotulo: ROTULO_ESTAGIO[l.atual],
       data: l.casamentoData!,
       diasRestantes: Math.round((l.casamentoData!.getTime() - hoje.getTime()) / DIA_MS),
     }));
@@ -153,14 +183,5 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
       }
     : null;
 
-  return {
-    noivasAtivas,
-    vestidos,
-    emProvas: totalPorEtapa.get(LeadEtapa.EM_PROVAS) ?? 0,
-    casamentosProximos,
-    jornada,
-    proximosCasamentos,
-    atencoes,
-    destaque,
-  };
+  return { noivasAtivas, vestidos, emProvas, casamentosProximos, jornada, proximosCasamentos, atencoes, destaque };
 }

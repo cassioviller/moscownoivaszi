@@ -13,7 +13,7 @@ export function PainelJornada({ etapas, href }: { etapas: EtapaJornada[]; href: 
         {etapas.map((e, i) => {
           const ultimo = i === etapas.length - 1;
           return (
-            <li key={e.etapa} className="flex gap-3.5">
+            <li key={e.chave} className="flex gap-3.5">
               {/* trilho: nó na espinha champagne (a linha só conecta até o próximo) */}
               <div className="relative flex w-2.5 flex-col items-center pt-[7px]">
                 <span
