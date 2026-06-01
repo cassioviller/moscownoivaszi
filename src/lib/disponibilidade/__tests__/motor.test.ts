@@ -28,13 +28,15 @@ describe("calcularJanelas — reserva de casamento (projeção)", () => {
   };
   const janelas = calcularJanelas(reserva, REGRAS);
 
-  it("projeta 3 janelas: prova, uso e lavagem, nessa ordem", () => {
-    expect(janelas.map((x) => x.tipo)).toEqual(["prova", "uso", "lavagem"]);
+  it("projeta 3 janelas: preparação, uso e lavagem, nessa ordem", () => {
+    expect(janelas.map((x) => x.tipo)).toEqual(["preparacao", "uso", "lavagem"]);
   });
-  it("ancora a PROVA em casamento − provaDiasAntes, com provaDuracao", () => {
-    const prova = janelas.find((x) => x.tipo === "prova")!;
-    expect(prova.inicio).toEqual(dia(2026, 6, 6));
-    expect(prova.fim).toEqual(dia(2026, 6, 8));
+  it("PREPARAÇÃO vai de casamento − provaDiasAntes até ENCOSTAR no uso (bloco contínuo)", () => {
+    const prep = janelas.find((x) => x.tipo === "preparacao")!;
+    const uso = janelas.find((x) => x.tipo === "uso")!;
+    expect(prep.inicio).toEqual(dia(2026, 6, 6)); // 20/6 − 14
+    expect(prep.fim).toEqual(dia(2026, 6, 17)); // = uso.inicio (20/6 − 3): sem buraco
+    expect(prep.fim).toEqual(uso.inicio);
   });
   it("ancora o USO de casamento − usoDiasAntes até casamento + usoDiasDepois", () => {
     const uso = janelas.find((x) => x.tipo === "uso")!;
@@ -49,16 +51,19 @@ describe("calcularJanelas — reserva de casamento (projeção)", () => {
 });
 
 describe("calcularJanelas — datas reais recalculam as janelas", () => {
-  it("usa provaDataReal no lugar da projeção quando informada", () => {
-    const reserva: Bloqueio = {
-      id: "b2", vestidoId: "v1", tipo: "reserva_casamento",
+  it("IGNORA provaDataReal: a prova real NÃO move a disponibilidade (decisão 2026-06-01)", () => {
+    // Mesma reserva, com uma data de prova real bem cedo. A fase de preparação
+    // deve continuar projetada do casamento (06-06 → 06-17), intocada.
+    const semProva: Bloqueio = {
+      id: "b2a", vestidoId: "v1", tipo: "reserva_casamento",
       casamentoData: ds(2026, 6, 20),
-      provaDataReal: ds(2026, 6, 1),
-      retiradaDataReal: null, devolucaoDataReal: null,
+      provaDataReal: null, retiradaDataReal: null, devolucaoDataReal: null,
     };
-    const prova = calcularJanelas(reserva, REGRAS).find((x) => x.tipo === "prova")!;
-    expect(prova.inicio).toEqual(dia(2026, 6, 1));
-    expect(prova.fim).toEqual(dia(2026, 6, 3));
+    const comProva: Bloqueio = { ...semProva, id: "b2b", provaDataReal: ds(2026, 6, 1) };
+    const prep = (b: Bloqueio) => calcularJanelas(b, REGRAS).find((x) => x.tipo === "preparacao")!;
+    expect(prep(comProva)).toEqual(prep(semProva)); // prova real não altera nada
+    expect(prep(comProva).inicio).toEqual(dia(2026, 6, 6));
+    expect(prep(comProva).fim).toEqual(dia(2026, 6, 17));
   });
   it("ancora uso.fim e lavagem em devolucaoDataReal quando informada", () => {
     const reserva: Bloqueio = {
@@ -124,15 +129,15 @@ describe("calcularJanelas — manutenção", () => {
 });
 
 describe("calcularJanelas — virada de ano nas contas de dias", () => {
-  it("projeta a prova no ano anterior quando o casamento é em janeiro", () => {
+  it("projeta a preparação no ano anterior quando o casamento é em janeiro", () => {
     const reserva: Bloqueio = {
       id: "b4", vestidoId: "v1", tipo: "reserva_casamento",
       casamentoData: ds(2027, 1, 2),
       provaDataReal: null, retiradaDataReal: null, devolucaoDataReal: null,
     };
-    const prova = calcularJanelas(reserva, REGRAS).find((x) => x.tipo === "prova")!;
-    expect(prova.inicio).toEqual(dia(2026, 12, 19));
-    expect(prova.fim).toEqual(dia(2026, 12, 21));
+    const prep = calcularJanelas(reserva, REGRAS).find((x) => x.tipo === "preparacao")!;
+    expect(prep.inicio).toEqual(dia(2026, 12, 19)); // 02/01 − 14
+    expect(prep.fim).toEqual(dia(2026, 12, 30)); // = uso.inicio (02/01 − 3)
   });
   it("lança se faltar casamentoData numa reserva", () => {
     const reserva: Bloqueio = {
@@ -154,7 +159,7 @@ describe("calcularJanelas — retirou e NÃO devolveu (bloqueio aberto, Grill 2)
   it("abre o uso de retiradaDataReal até FUTURO_DISTANTE e NÃO emite lavagem", () => {
     const reserva: Bloqueio = { ...base, retiradaDataReal: ds(2026, 6, 17) };
     const janelas = calcularJanelas(reserva, REGRAS);
-    expect(janelas.map((x) => x.tipo)).toEqual(["prova", "uso"]); // sem lavagem
+    expect(janelas.map((x) => x.tipo)).toEqual(["preparacao", "uso"]); // sem lavagem
     const uso = janelas.find((x) => x.tipo === "uso")!;
     expect(uso.inicio).toEqual(dia(2026, 6, 17));
     expect(uso.fim).toEqual(FUTURO_DISTANTE);
@@ -258,22 +263,24 @@ describe("vestidoDisponivel — cenários do spec §10", () => {
     expect(r.disponivel).toBe(true);
   });
 
-  it("LIBERA um casamento próximo quando as datas reais moveram o uso para longe", () => {
-    // mesmo casamento 06-21, mas prova/retirada/devolução reais empurram tudo para julho
-    const movido: Bloqueio = {
-      id: "e4", vestidoId: "v1", tipo: "reserva_casamento",
-      casamentoData: ds(2026, 6, 21),
-      provaDataReal: ds(2026, 7, 10),
-      retiradaDataReal: ds(2026, 7, 18),
-      devolucaoDataReal: ds(2026, 7, 24),
-    };
+  it("BLOCO CONTÍNUO: não há buraco entre preparação e uso que libere outra noiva (decisão 2026-06-01)", () => {
+    // Casamento 30/06: preparação [16/06, 27/06) encosta no uso [27/06, ...). No modelo
+    // antigo havia ~9 dias livres no meio; agora o bloco é contínuo. Uma candidata
+    // cujo uso cai nesse antigo "buraco" (24/06) deve ser BARRADA.
+    const reserva = reservaEm("e4", ds(2026, 6, 30));
+    const janelas = calcularJanelas(reserva, REGRAS);
+    const prep = janelas.find((x) => x.tipo === "preparacao")!;
+    const uso = janelas.find((x) => x.tipo === "uso")!;
+    expect(prep.fim).toEqual(uso.inicio); // contíguo: sem dia livre
+
     const r = vestidoDisponivel({
       vestidoId: "v1",
-      casamentoDataCandidata: ds(2026, 6, 20),
+      casamentoDataCandidata: ds(2026, 6, 24), // cairia no antigo buraco
       regras: REGRAS,
-      bloqueiosExistentes: [movido],
+      bloqueiosExistentes: [reserva],
     });
-    expect(r.disponivel).toBe(true);
+    expect(r.disponivel).toBe(false);
+    expect(r.conflitos[0].bloqueioId).toBe("e4");
   });
 
   it("acumula conflitos de todas as janelas que se sobrepõem", () => {

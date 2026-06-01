@@ -11,6 +11,7 @@ const ROTULO_MODULO: Record<Modulo, string> = {
   leads: "Leads",
   interesses: "Interesses",
   vestidos: "Vestidos",
+  ajustes: "Ajustes", // tela da costureira (provas/ajustes)
   config: "Catálogo", // módulo "config" gateia a gestão do catálogo (telas /catalogo)
 };
 const ROTULO_ACAO: Record<Acao, string> = { ver: "Ver", criar: "Criar", editar: "Editar" };

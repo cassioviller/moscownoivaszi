@@ -154,6 +154,15 @@ export default async function ReservasPage({
                           >
                             {r.codigo} · {r.nome}
                           </Link>
+                          <Link
+                            href={`/loja/${lojaId}/reservas/${r.id}`}
+                            className="rounded-sm text-[12px] text-grafite underline decoration-borda
+                              underline-offset-4 transition-colors duration-150 hover:text-bordo
+                              hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
+                              focus-visible:outline-bordo"
+                          >
+                            Provas &amp; ajustes
+                          </Link>
                         </span>
                       </div>
                     </li>

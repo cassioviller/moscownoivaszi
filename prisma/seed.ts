@@ -55,7 +55,7 @@ const ATRIBUTOS: { nome: string; tipo: AtributoTipo; opcoes: string[] }[] = [
 ];
 
 // Módulos existentes na Base, para o mapa de acesso dos perfis.
-const MODULOS = ["leads", "interesses", "vestidos", "config"] as const;
+const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config"] as const;
 
 type Acoes = { ver: boolean; criar: boolean; editar: boolean };
 const TODAS: ("ver" | "criar" | "editar")[] = ["ver", "criar", "editar"];
@@ -103,20 +103,31 @@ async function main() {
   // 3) Perfis
   const perfilAdmin = await prisma.perfil.upsert({
     where: { id: "perfil-admin" },
-    update: { acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, config: TODAS }) },
+    update: { acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, ajustes: TODAS, config: TODAS }) },
     create: {
       id: "perfil-admin",
       nome: "Admin",
-      acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, config: TODAS }),
+      acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, ajustes: TODAS, config: TODAS }),
     },
   });
   await prisma.perfil.upsert({
     where: { id: "perfil-vendedora" },
-    update: { acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: ["ver"] }) },
+    update: { acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: ["ver"], ajustes: ["ver"] }) },
     create: {
       id: "perfil-vendedora",
       nome: "Vendedora",
-      acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: ["ver"] }),
+      acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: ["ver"], ajustes: ["ver"] }),
+    },
+  });
+  // Costureira: vive só na tela de Ajustes (provas/ajustes pendentes). Sem acesso a
+  // noivas/vestidos/catálogo — o papel é a costura, não o atendimento nem o acervo.
+  await prisma.perfil.upsert({
+    where: { id: "perfil-costureira" },
+    update: { acessosModulos: acessos({ ajustes: TODAS }) },
+    create: {
+      id: "perfil-costureira",
+      nome: "Costureira",
+      acessosModulos: acessos({ ajustes: TODAS }),
     },
   });
   await prisma.perfil.upsert({
@@ -176,6 +187,7 @@ async function main() {
   const smokeUsers = [
     { email: "vendedora@moscow.local", nome: "Vendedora (dev)", senha: "vendedora123", perfilId: "perfil-vendedora" },
     { email: "recepcao@moscow.local", nome: "Recepção (dev)", senha: "recepcao123", perfilId: "perfil-recepcao" },
+    { email: "costureira@moscow.local", nome: "Costureira (dev)", senha: "costureira123", perfilId: "perfil-costureira" },
   ];
   for (const su of smokeUsers) {
     const usuario = await prisma.usuario.upsert({

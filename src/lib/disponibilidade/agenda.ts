@@ -11,7 +11,7 @@ import { parseDiaUTC, addDias } from "./datas";
 import { obterRegras, toBloqueio } from "./reservas";
 
 export const ROTULO_JANELA: Record<TipoJanela, string> = {
-  prova: "Prova",
+  preparacao: "Preparação / provas",
   uso: "Uso / casamento",
   lavagem: "Higienização",
   manutencao: "Manutenção",

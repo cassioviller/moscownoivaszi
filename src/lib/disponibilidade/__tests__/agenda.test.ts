@@ -36,12 +36,12 @@ afterAll(async () => {
 });
 
 describe("agendaDoAtelier", () => {
-  it("projeta prova, uso e higienização da reserva, com vestido e noiva", async () => {
+  it("projeta preparação, uso e higienização da reserva, com vestido e noiva", async () => {
     const eventos = await agendaDoAtelier(loja);
     const meus = eventos.filter((e) => e.vestidoId === vestido);
 
     const tipos = meus.map((e) => e.tipo);
-    expect(tipos).toContain("prova");
+    expect(tipos).toContain("preparacao");
     expect(tipos).toContain("uso");
     expect(tipos).toContain("lavagem");
 

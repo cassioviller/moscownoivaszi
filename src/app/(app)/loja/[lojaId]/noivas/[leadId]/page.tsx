@@ -256,6 +256,15 @@ export default async function NoivaPage({
                       {r.casamentoData ? ` · casamento ${dataCurta.format(r.casamentoData)}` : ""}
                     </span>
                   </Link>
+                  <div className="flex shrink-0 items-center gap-4">
+                  <Link
+                    href={`/loja/${lojaId}/reservas/${r.id}`}
+                    className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4
+                      transition-colors duration-150 hover:text-bordo hover:decoration-champagne
+                      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                  >
+                    Provas &amp; ajustes
+                  </Link>
                   {podeReservar && (
                     <form action={cancelarReservaPelaNoivaAction}>
                       <input type="hidden" name="leadId" value={leadId} />
@@ -272,6 +281,7 @@ export default async function NoivaPage({
                       </BotaoConfirmar>
                     </form>
                   )}
+                  </div>
                 </li>
               ))}
             </ul>

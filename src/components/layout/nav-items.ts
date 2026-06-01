@@ -8,6 +8,8 @@ export type NavFlags = {
   podeVerNoivas: boolean;
   /** podeNoModulo(config, ver) — gerência do catálogo */
   podeVerCatalogo: boolean;
+  /** podeNoModulo(ajustes, ver) — tela da costureira (provas/ajustes) */
+  podeVerAjustes: boolean;
   /** ehAdminDaLoja(usuario, loja) — resolvido no servidor */
   podeGerenciarEquipe: boolean;
   /** usuario.isSuperAdmin */
@@ -36,6 +38,11 @@ export function navItems(lojaId: string, flags: NavFlags): NavItem[] {
     items.push({ href: `/loja/${lojaId}/reservas`, label: "Reservas" });
   }
   items.push({ href: `/loja/${lojaId}/vestidos`, label: "Vestidos" });
+  // Ajustes (provas/ajustes da costureira) — independente de noivas: é o lar de
+  // quem só cuida da costura.
+  if (flags.podeVerAjustes) {
+    items.push({ href: `/loja/${lojaId}/ajustes`, label: "Ajustes" });
+  }
   if (flags.podeVerCatalogo) {
     items.push({ href: `/loja/${lojaId}/catalogo`, label: "Catálogo" });
   }

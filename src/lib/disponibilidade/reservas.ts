@@ -6,8 +6,8 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import type { BloqueioVestido, LeadEtapa } from "@/generated/prisma/client";
-import type { Bloqueio, Conflito, ErroBloqueio, Regras } from "./tipos";
-import { vestidoDisponivel } from "./motor";
+import type { Bloqueio, Conflito, ErroBloqueio, Regras, TipoJanela } from "./tipos";
+import { vestidoDisponivel, calcularJanelas, FUTURO_DISTANTE } from "./motor";
 
 // Defaults espelham os @default do model RegraDisponibilidade — usados quando a
 // loja ainda não personalizou suas regras (linha ausente).
@@ -307,6 +307,69 @@ export async function listarReservasDaNoiva(
     codigo: r.vestido.codigo,
     nome: r.vestido.nome,
   }));
+}
+
+export type FaseReserva = {
+  tipo: TipoJanela; // "preparacao" | "uso" | "lavagem"
+  inicio: Date;
+  fim: Date;
+  abertoFim: boolean; // fim indeterminado (retirou e não devolveu)
+};
+
+export type ReservaDetalhe = {
+  id: string;
+  casamentoData: Date | null;
+  leadId: string | null;
+  noivaNome: string | null;
+  vestidoId: string;
+  codigo: string;
+  nome: string;
+  // Fases do bloco contínuo de indisponibilidade (preparação → uso → higienização),
+  // derivadas do motor. [] se o bloqueio não projetar (dado malformado).
+  fases: FaseReserva[];
+};
+
+/**
+ * Uma reserva (casamento) com noiva, vestido e as fases do bloco contínuo. Só
+ * RESERVA_CASAMENTO da loja; null se não existir/for de outra loja/for manutenção.
+ * É o data-layer da página de detalhe da reserva (provas/ajustes moram lá).
+ */
+export async function obterReservaDetalhe(
+  lojaId: string,
+  bloqueioId: string,
+): Promise<ReservaDetalhe | null> {
+  const row = await tenantPrisma(prisma, lojaId).bloqueioVestido.findUnique({
+    where: { id: bloqueioId },
+    include: {
+      lead: { select: { id: true, noivaNome: true } },
+      vestido: { select: { id: true, codigo: true, nome: true } },
+    },
+  });
+  if (!row || row.tipo !== "RESERVA_CASAMENTO") return null;
+
+  let fases: FaseReserva[] = [];
+  try {
+    const regras = await obterRegras(lojaId);
+    fases = calcularJanelas(toBloqueio(row), regras).map((j) => ({
+      tipo: j.tipo,
+      inicio: j.inicio,
+      fim: j.fim,
+      abertoFim: j.fim.getTime() === FUTURO_DISTANTE.getTime(),
+    }));
+  } catch {
+    fases = []; // bloqueio malformado: a página ainda abre, só sem as fases
+  }
+
+  return {
+    id: row.id,
+    casamentoData: row.casamentoData,
+    leadId: row.leadId,
+    noivaNome: row.lead?.noivaNome ?? null,
+    vestidoId: row.vestidoId,
+    codigo: row.vestido.codigo,
+    nome: row.vestido.nome,
+    fases,
+  };
 }
 
 export type VestidoLivre = { id: string; codigo: string; nome: string; precoBase: string };

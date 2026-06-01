@@ -22,7 +22,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 //   ser sempre lido via `base` direto, com filtro por `usuarioId` na mão.
 //
 // LIMITAÇÃO conhecida: as tabelas-filha SEM coluna lojaId (`AtributoOpcao`,
-//   `VestidoAtributo`, `LeadInteresse`, `LeadInteresseAtributo`, `VestidoFoto`)
+//   `VestidoAtributo`, `LeadInteresse`, `LeadInteresseAtributo`, `VestidoFoto`,
+//   `AjusteChecklistItem`)
 //   NÃO são escopadas por este guard. Acesso direto a elas é uma rota de
 //   vazamento. Regra atual: só leia/escreva via o model-pai que tem lojaId
 //   (confirmando o pai antes, como em fotos.ts/interesses.ts).
@@ -33,6 +34,8 @@ export const TENANT_MODELS = [
   "BloqueioVestido",
   "RegraDisponibilidade",
   "PerfilOverrideLoja",
+  "Prova",
+  "Ajuste",
 ] as const;
 
 const TENANT_MODEL_SET = new Set<string>(TENANT_MODELS);

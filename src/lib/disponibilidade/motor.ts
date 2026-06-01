@@ -51,16 +51,20 @@ export function calcularJanelas(bloqueio: Bloqueio, regras: Regras): Janela[] {
   }
   const casamento = parseDiaUTC(bloqueio.casamentoData);
 
-  const provaInicio = bloqueio.provaDataReal
-    ? parseDiaUTC(bloqueio.provaDataReal)
-    : addDias(casamento, -regras.provaDiasAntes);
-  const provaFim = addDias(provaInicio, regras.provaDuracao);
-
+  // Início do uso: ancorado na retirada real quando houver (retirada/devolução
+  // seguem sendo insumos legítimos do motor); senão projetado do casamento.
   const usoInicio = bloqueio.retiradaDataReal
     ? parseDiaUTC(bloqueio.retiradaDataReal)
     : addDias(casamento, -regras.usoDiasAntes);
 
-  const janelas: Janela[] = [{ tipo: "prova", inicio: provaInicio, fim: provaFim }];
+  // Fase de PREPARAÇÃO (provas/ajustes): BLOCO CONTÍNUO, sem buraco — do início
+  // projetado (casamento − provaDiasAntes) até ENCOSTAR no uso. A data REAL da
+  // prova (provaDataReal) é IGNORADA aqui de propósito: a prova é registro
+  // operacional (entidade Prova) e não abre disponibilidade. Decisão 2026-06-01.
+  // (provaDuracao deixa de afetar a disponibilidade; segue como dado da loja.)
+  const prepInicio = addDias(casamento, -regras.provaDiasAntes);
+
+  const janelas: Janela[] = [{ tipo: "preparacao", inicio: prepInicio, fim: usoInicio }];
 
   if (bloqueio.devolucaoDataReal) {
     // Devolução registrada: uso fecha na devolução; lavagem segue a partir dela.

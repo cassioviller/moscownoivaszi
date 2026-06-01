@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { PERFIL_ADMIN_ID } from "@/lib/admin/usuarios";
 
-export const MODULOS = ["leads", "interesses", "vestidos", "config"] as const;
+export const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config"] as const;
 export const ACOES = ["ver", "criar", "editar"] as const;
 export type Modulo = (typeof MODULOS)[number];
 export type Acao = (typeof ACOES)[number];
@@ -11,9 +11,10 @@ export type AcessosModulos = Record<Modulo, Record<Acao, boolean>>;
 
 /**
  * Módulos renderizados na grade de permissões. `config` gateia a gestão do
- * catálogo (telas /catalogo) — por isso aparece na grade, deixando admins
- * concederem esse acesso a perfis customizados por loja. O mecanismo de hidden
- * input do MatrizPermissoes segue valendo para qualquer módulo futuro fora da grade.
+ * catálogo (telas /catalogo); `ajustes` gateia a tela da costureira (provas e
+ * ajustes) — por isso aparecem na grade, deixando admins concederem esses
+ * acessos a perfis customizados por loja. O mecanismo de hidden input do
+ * MatrizPermissoes segue valendo para qualquer módulo futuro fora da grade.
  */
 export const MODULOS_VISIVEIS: Modulo[] = [...MODULOS];
 

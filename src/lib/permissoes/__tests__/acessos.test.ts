@@ -6,7 +6,7 @@ describe("normalizarAcessos", () => {
     const r = normalizarAcessos({ vestidos: { ver: true, criar: true, editar: false } });
     expect(r.vestidos).toEqual({ ver: true, criar: true, editar: false });
     expect(r.leads).toEqual({ ver: false, criar: false, editar: false });
-    expect(Object.keys(r).sort()).toEqual(["config", "interesses", "leads", "vestidos"]);
+    expect(Object.keys(r).sort()).toEqual(["ajustes", "config", "interesses", "leads", "vestidos"]);
   });
 
   it("descarta chaves desconhecidas (módulo e ação)", () => {

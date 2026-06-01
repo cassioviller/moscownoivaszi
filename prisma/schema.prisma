@@ -38,6 +38,24 @@ enum BloqueioTipo {
   MANUTENCAO
 }
 
+enum ProvaTipo {
+  PRIMEIRA
+  INTERMEDIARIA
+  FINAL
+}
+
+enum ProvaComparecimento {
+  AGENDADA
+  COMPARECEU
+  FALTOU
+  REMARCADA
+}
+
+enum AjusteStatus {
+  PENDENTE
+  FEITO
+}
+
 // ───────────────────── Configuração ──────────────────────
 
 model Loja {
@@ -56,6 +74,8 @@ model Loja {
   vestidos             Vestido[]
   leads                Lead[]
   bloqueios            BloqueioVestido[]
+  provas               Prova[]
+  ajustes              Ajuste[]
   // Relação inversa virtual (sem coluna/SQL em Loja) exigida pela FK de Sessao.lojaAtivaId.
   sessoesAtivas        Sessao[]
   overridesPermissao   PerfilOverrideLoja[]
@@ -257,6 +277,57 @@ model BloqueioVestido {
   loja    Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   vestido Vestido @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
   lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  provas  Prova[]
+}
+
+// Prova — registro OPERACIONAL dentro de uma reserva (BloqueioVestido do tipo
+// RESERVA_CASAMENTO). NÃO alimenta o motor de disponibilidade: a peça já está
+// presa à reserva pelo bloco contínuo, então registrar uma prova (cedo, tarde,
+// falta, remarcação) não move a janela nem libera o vestido para outra noiva.
+// Decisão: docs/superpowers/specs/2026-06-01-provas-ajustes-design.md.
+model Prova {
+  id             String              @id @default(cuid())
+  lojaId         String
+  bloqueioId     String
+  dataReal       DateTime
+  tipo           ProvaTipo
+  comparecimento ProvaComparecimento @default(AGENDADA)
+  observacao     String?
+  responsavel    String? // texto livre (como cerimonialista no Lead)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  loja     Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  bloqueio BloqueioVestido @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
+  ajustes  Ajuste[]
+}
+
+// Ajuste de costura nascido de uma Prova. Carrega lojaId (entra no tenantPrisma)
+// para a tela global da costureira consultar os pendentes direto, com isolamento.
+model Ajuste {
+  id        String       @id @default(cuid())
+  lojaId    String
+  provaId   String
+  descricao String
+  status    AjusteStatus @default(PENDENTE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  loja      Loja                  @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  prova     Prova                 @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  checklist AjusteChecklistItem[]
+}
+
+// Checklist de costura de um Ajuste. Filha pura (sem lojaId): acessada só via o
+// pai Ajuste (padrão VestidoFoto/LeadInteresse — ver cabeçalho de tenant.ts).
+model AjusteChecklistItem {
+  id        String  @id @default(cuid())
+  ajusteId  String
+  descricao String
+  feito     Boolean @default(false)
+  ordem     Int     @default(0)
+
+  ajuste Ajuste @relation(fields: [ajusteId], references: [id], onDelete: Cascade)
 }
 
 model Sessao {

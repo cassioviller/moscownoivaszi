@@ -26,15 +26,17 @@ export default async function LojaLayout({
 
   // Flags de UX da navegação — resolvidas NO SERVIDOR (autoridade real segue nos
   // gates de cada page/action). Esconder link nunca é a autorização.
-  const [podeGerenciarEquipe, podeVerNoivas, podeVerCatalogo, lojas] = await Promise.all([
+  const [podeGerenciarEquipe, podeVerNoivas, podeVerCatalogo, podeVerAjustes, lojas] = await Promise.all([
     ehAdminDaLoja(sc.usuario.id, sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "config", "ver"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "ver"),
     listarLojasDoUsuario(sc.usuario.id),
   ]);
   const flags = {
     podeVerNoivas,
     podeVerCatalogo,
+    podeVerAjustes,
     podeGerenciarEquipe,
     isSuperAdmin: sc.usuario.isSuperAdmin,
     mostrarTroca: mostrarTrocaLoja(lojas.length),
