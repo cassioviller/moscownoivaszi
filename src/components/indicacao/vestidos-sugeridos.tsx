@@ -4,7 +4,16 @@ import type { VestidoIndicado } from "@/lib/indicacao/indicacao";
 // Vestidos do acervo que conversam com o que a noiva pediu. Apresentação calma,
 // peça de acervo (não item de estoque): nome em destaque editorial, afinidade
 // dita por texto, bordô reservado ao número que importa. Sem foto grande.
-export function VestidosSugeridos({ vestidos }: { vestidos: VestidoIndicado[] }) {
+//
+// `naoQuerUsar` (texto livre) aparece como LEMBRETE: a indicação não consegue
+// filtrar por ele automaticamente, então a vendedora aplica o julgamento.
+export function VestidosSugeridos({
+  vestidos,
+  naoQuerUsar,
+}: {
+  vestidos: VestidoIndicado[];
+  naoQuerUsar?: string | null;
+}) {
   if (vestidos.length === 0) return null;
 
   return (
@@ -17,6 +26,12 @@ export function VestidosSugeridos({ vestidos }: { vestidos: VestidoIndicado[] })
           Sugeridos pela afinidade com os interesses registrados.
         </p>
       </div>
+
+      {naoQuerUsar && (
+        <p className="rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-suave px-4 py-2.5 text-[13px] text-grafite">
+          <span className="text-cinza-fumo">A noiva não quer usar:</span> {naoQuerUsar}
+        </p>
+      )}
 
       <ul className="flex flex-col gap-3">
         {vestidos.map((v) => (
@@ -43,19 +58,23 @@ export function VestidosSugeridos({ vestidos }: { vestidos: VestidoIndicado[] })
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-cinza-fumo">
-              <span className="text-grafite">
-                Combina em <span className="font-medium text-bordo">{v.pontos}</span> de {v.total}
-              </span>
-              {v.combinam.length > 0 && <span aria-hidden>·</span>}
-              {v.combinam.map((nome) => (
-                <span
-                  key={nome}
-                  className="rounded-full border border-borda-suave bg-papel px-2.5 py-0.5 text-[12px] text-grafite"
-                >
-                  {nome}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+                <span className="text-grafite">
+                  Combina em <span className="font-medium text-bordo">{v.pontos}</span> de {v.total}
                 </span>
-              ))}
+                {v.combinam.map((c) => (
+                  <span
+                    key={c.nome}
+                    className="rounded-full border border-borda-suave bg-papel px-2.5 py-0.5 text-[12px] text-grafite"
+                  >
+                    {c.nome}: <span className="text-tinta">{c.valor}</span>
+                  </span>
+                ))}
+              </div>
+              {v.faltam.length > 0 && (
+                <p className="text-[12px] text-cinza-fumo">Não atende: {v.faltam.join(", ")}</p>
+              )}
             </div>
           </li>
         ))}

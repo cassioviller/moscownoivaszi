@@ -74,7 +74,7 @@ export default async function InteressesPage({
         selecoes={selecoes}
       />
 
-      <VestidosSugeridos vestidos={sugeridos} />
+      <VestidosSugeridos vestidos={sugeridos} naoQuerUsar={i?.naoQuerUsar} />
     </main>
   );
 }

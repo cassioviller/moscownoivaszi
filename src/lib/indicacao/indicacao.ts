@@ -3,13 +3,20 @@
 // Indicação de vestido por interesse. Vestido e noiva escolhem do MESMO catálogo
 // (Atributo/AtributoOpcao), então a afinidade é só contar os pares (atributo,
 // opção) que coincidem. Orçamento entra como filtro suave: dentro do teto vem
-// primeiro, mas fora do teto ainda aparece (a vendedora decide).
+// primeiro, mas fora do teto ainda aparece (a vendedora decide). Empate de
+// afinidade dentro do mesmo orçamento → mais barato primeiro.
+//
+// LIMITE consciente: `naoQuerUsar`/`algoAMais` são texto livre — não dá pra
+// casar com segurança contra o catálogo, então NÃO entram no score. O caller
+// mostra o "não quer usar" como lembrete manual ao lado das sugestões.
 //
 // SEGURANÇA: Lead e Vestido são tenant models (via tenantPrisma). LeadInteresse
 // (sem lojaId) só é lido DEPOIS de confirmar que o Lead é da loja.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { listarCatalogo } from "@/lib/catalogo/catalogo";
+
+export type AtributoCombinado = { nome: string; valor: string };
 
 export type VestidoIndicado = {
   id: string;
@@ -18,7 +25,8 @@ export type VestidoIndicado = {
   precoBase: string;
   pontos: number; // nº de atributos que coincidem com o interesse
   total: number; // nº de atributos que a noiva preencheu
-  combinam: string[]; // nomes dos atributos que casaram (pra UI)
+  combinam: AtributoCombinado[]; // o que casou (atributo + valor) — o "porquê"
+  faltam: string[]; // atributos desejados que este vestido NÃO atende (lacunas)
   dentroDoOrcamento: boolean;
 };
 
@@ -50,20 +58,33 @@ export async function indicarVestidos(
   const desejado = new Map(interesse.atributos.map((a) => [a.atributoId, a.opcaoId]));
   const teto = interesse.tetoOrcamento ? Number(interesse.tetoOrcamento) : null;
 
+  // Catálogo → valor de cada opção (pra explicar o match) e a ORDEM dos
+  // atributos. Iterar pelo catálogo dá ordem determinística no combinam/faltam e
+  // descarta atributo desejado que tenha sido desativado depois (não conta no total).
   const catalogo = await listarCatalogo(lojaId);
-  const nomePorAttr = new Map(catalogo.map((a) => [a.id, a.nome]));
+  const valorPorOpcao = new Map<string, string>();
+  for (const a of catalogo) for (const o of a.opcoes) valorPorOpcao.set(o.id, o.valor);
+  const desejadoOrdenado = catalogo
+    .filter((a) => desejado.has(a.id))
+    .map((a) => ({ atributoId: a.id, nome: a.nome, opcaoId: desejado.get(a.id)! }));
+
+  const total = desejadoOrdenado.length;
+  if (total === 0) return []; // todos os atributos desejados foram desativados
 
   const vestidos = await tp.vestido.findMany({
     where: { status: "ativo" },
     include: { atributos: { select: { atributoId: true, opcaoId: true } } },
   });
 
-  const total = desejado.size;
   const indicados: VestidoIndicado[] = vestidos.map((v) => {
-    const combinam: string[] = [];
-    for (const a of v.atributos) {
-      if (desejado.get(a.atributoId) === a.opcaoId) {
-        combinam.push(nomePorAttr.get(a.atributoId) ?? "—");
+    const opcaoDoVestido = new Map(v.atributos.map((a) => [a.atributoId, a.opcaoId]));
+    const combinam: AtributoCombinado[] = [];
+    const faltam: string[] = [];
+    for (const d of desejadoOrdenado) {
+      if (opcaoDoVestido.get(d.atributoId) === d.opcaoId) {
+        combinam.push({ nome: d.nome, valor: valorPorOpcao.get(d.opcaoId) ?? "—" });
+      } else {
+        faltam.push(d.nome);
       }
     }
     const preco = Number(v.precoBase);
@@ -75,16 +96,19 @@ export async function indicarVestidos(
       pontos: combinam.length,
       total,
       combinam,
+      faltam,
       dentroDoOrcamento: teto === null ? true : preco <= teto,
     };
   });
 
   return indicados
     .filter((i) => i.pontos > 0)
-    .sort((a, b) =>
-      a.dentroDoOrcamento !== b.dentroDoOrcamento
-        ? Number(b.dentroDoOrcamento) - Number(a.dentroDoOrcamento)
-        : b.pontos - a.pontos,
-    )
+    .sort((a, b) => {
+      if (a.dentroDoOrcamento !== b.dentroDoOrcamento) {
+        return Number(b.dentroDoOrcamento) - Number(a.dentroDoOrcamento);
+      }
+      if (b.pontos !== a.pontos) return b.pontos - a.pontos;
+      return Number(a.precoBase) - Number(b.precoBase); // empate → mais barato primeiro
+    })
     .slice(0, limite);
 }
