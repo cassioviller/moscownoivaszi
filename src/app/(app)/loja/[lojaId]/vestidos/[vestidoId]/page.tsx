@@ -1,11 +1,8 @@
 // src/app/(app)/loja/[lojaId]/vestidos/[vestidoId]/page.tsx
 // Detalhe do vestido — peça de acervo, não item de estoque. Leitura concierge:
 // foto de apoio (modesta, não domina — §9), nome editorial, características em
-// linguagem legível. Edição vive em /editar. Auth + tenant espelham as páginas
-// irmãs; sem regra de negócio nova nesta fatia.
-//
-// Disponibilidade fica fora desta fatia: o motor (src/lib/disponibilidade) é puro
-// e ainda não há camada que o ligue ao banco (bloqueios/regras). É feature própria.
+// linguagem legível, e a disponibilidade da peça (reservas). Edição vive em
+// /editar. Auth + tenant espelham as páginas irmãs.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
@@ -13,15 +10,36 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterVestido } from "@/lib/vestidos/vestidos";
 import { listarFotosMeta } from "@/lib/vestidos/fotos";
 import { listarCatalogo, rotularSelecoes } from "@/lib/catalogo/catalogo";
+import { listarLeads } from "@/lib/leads/leads";
+import { listarReservasDoVestido } from "@/lib/disponibilidade/reservas";
+import { reservarPeloVestidoAction, cancelarReservaPeloVestidoAction } from "./reserva-actions";
 
 export const dynamic = "force-dynamic";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+// UTC: a data nasce em meia-noite UTC — exibir em UTC evita off-by-one.
+const dataFmt = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+// Mensagem humana para o retorno das ações de reserva (?ok / ?erro).
+const AVISOS: Record<string, string> = {
+  reserva: "Reserva confirmada.",
+  cancelada: "Reserva cancelada.",
+  indisponivel: "Esta peça já está reservada para uma data próxima. Escolha outra peça ou outra data.",
+  sem_data: "A noiva escolhida ainda não tem data de casamento.",
+  sem_noiva: "Escolha uma noiva para reservar.",
+};
 
 export default async function VestidoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lojaId: string; vestidoId: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -30,21 +48,32 @@ export default async function VestidoPage({
   }
 
   const { lojaId, vestidoId } = await params;
+  const { ok, erro } = await searchParams;
 
   // obterVestido já é escopado por loja (tenantPrisma) → null se for de outra loja.
   const v = await obterVestido(sc.loja.id, vestidoId);
   if (!v) redirect(`/loja/${lojaId}/vestidos`);
 
-  const [fotos, catalogo, podeEditar] = await Promise.all([
+  const [fotos, catalogo, podeEditar, podeVerNoivas, reservas] = await Promise.all([
     listarFotosMeta(sc.loja.id, vestidoId),
     listarCatalogo(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
+    listarReservasDoVestido(sc.loja.id, vestidoId),
   ]);
+
+  // Para o seletor de reserva: só noivas que já têm data de casamento (sem data,
+  // o motor não tem o que projetar). Carregado apenas quando a equipe pode reservar.
+  const noivasComData =
+    podeEditar && podeVerNoivas
+      ? (await listarLeads(sc.loja.id)).filter((n) => n.casamentoData)
+      : [];
 
   const caracteristicas = rotularSelecoes(catalogo, v.atributos);
   const editarHref = `/loja/${lojaId}/vestidos/${vestidoId}/editar`;
   const ativo = v.status === "ativo";
   const meta = [v.tamanho, v.cor, v.categoria].filter(Boolean).join(" · ");
+  const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -67,6 +96,8 @@ export default async function VestidoPage({
         </h1>
         {meta && <p className="text-[14px] text-cinza-fumo">{meta}</p>}
       </header>
+
+      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
       {/* A peça é a âncora visual: capa maior, 2ª menor ao lado (§8). Foto de apoio,
           não hero gigante (§9). Capa carrega eager (é o LCP); as demais, lazy. */}
@@ -111,6 +142,84 @@ export default async function VestidoPage({
         <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Preço</span>
         <span className="text-[16px] text-tinta tabular-nums">{brl.format(Number(v.precoBase))}</span>
       </div>
+
+      {/* Disponibilidade — a pergunta nº1 do acervo de aluguel: livre ou reservada?
+          O motor barra conflito de janelas; a reserva se ancora na data da noiva. */}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Disponibilidade</h2>
+
+        {reservas.length === 0 ? (
+          <p className="text-[14px] text-grafite">Sem reservas. Esta peça está livre.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+            {reservas.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-[14px] text-tinta">{r.noivaNome ?? "Noiva"}</span>
+                  <span className="text-[12px] text-cinza-fumo">
+                    Casamento {r.casamentoData ? dataFmt.format(r.casamentoData) : "sem data"}
+                  </span>
+                </span>
+                {podeEditar && (
+                  <form action={cancelarReservaPeloVestidoAction}>
+                    <input type="hidden" name="vestidoId" value={vestidoId} />
+                    <input type="hidden" name="bloqueioId" value={r.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite
+                        underline decoration-borda underline-offset-4 transition-colors duration-150
+                        hover:text-tinta hover:decoration-champagne focus-visible:outline-2
+                        focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                    >
+                      Cancelar
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {podeEditar &&
+          podeVerNoivas &&
+          (noivasComData.length > 0 ? (
+            <form action={reservarPeloVestidoAction} className="flex flex-wrap items-end gap-3">
+              <input type="hidden" name="vestidoId" value={vestidoId} />
+              <label className="flex min-w-[14rem] flex-1 flex-col gap-1">
+                <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
+                  Reservar para
+                </span>
+                <select
+                  name="leadId"
+                  defaultValue=""
+                  className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
+                    transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
+                >
+                  <option value="" disabled>
+                    Escolha uma noiva…
+                  </option>
+                  {noivasComData.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.noivaNome} · {n.casamentoData ? dataFmt.format(n.casamentoData) : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5
+                  text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out
+                  hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              >
+                Reservar
+              </button>
+            </form>
+          ) : (
+            <p className="text-[13px] text-cinza-fumo">
+              Para reservar, uma noiva precisa ter a data do casamento cadastrada.
+            </p>
+          ))}
+      </section>
 
       {/* Características do acervo — atributos do catálogo em linguagem legível.
           Vazio não some em silêncio: convida a preencher (alimenta a indicação). */}

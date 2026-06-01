@@ -17,8 +17,12 @@ import { jornadaDaNoiva, ROTULO_ETAPA, ROTULO_ORIGEM } from "@/lib/leads/leads";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
+import { listarReservasDaNoiva, vestidosLivresPara } from "@/lib/disponibilidade/reservas";
+import { reservarPelaNoivaAction, cancelarReservaPelaNoivaAction } from "./reserva-actions";
 
 export const dynamic = "force-dynamic";
+
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 // UTC: a data nasce em meia-noite UTC (leads.ts) — exibir em UTC evita off-by-one.
 const dataFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -28,6 +32,21 @@ const dataFmt = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
+const dataCurta = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+// Mensagem humana para o retorno das ações de reserva (?ok / ?erro).
+const AVISOS: Record<string, string> = {
+  reserva: "Vestido reservado.",
+  cancelada: "Reserva cancelada.",
+  indisponivel: "Este vestido já está reservado para uma data próxima. Escolha outra peça.",
+  sem_data: "Defina a data do casamento para reservar um vestido.",
+  sem_vestido: "Escolha um vestido para reservar.",
+};
 
 const DIA_MS = 86_400_000;
 // Mesmo limiar de urgência das "Atenções" do dashboard: casamento ≤14d pesa mais.
@@ -59,8 +78,10 @@ function Dado({ rotulo, valor }: { rotulo: string; valor: string | null | undefi
 
 export default async function NoivaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lojaId: string; leadId: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -69,6 +90,7 @@ export default async function NoivaPage({
   }
 
   const { lojaId, leadId } = await params;
+  const { ok, erro } = await searchParams;
 
   // Leitura read-only: confirma que a noiva é da loja e traz o interesse de uma vez.
   const dados = await obterNoivaComInteresse(sc.loja.id, leadId);
@@ -77,11 +99,13 @@ export default async function NoivaPage({
   const lead = dados.lead;
   const i = dados.interesse;
 
-  const [podeEditar, iVer, iCriar, iEditar] = await Promise.all([
+  const [podeEditar, iVer, iCriar, iEditar, podeReservar, reservas] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "ver"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
+    listarReservasDaNoiva(sc.loja.id, leadId),
   ]);
   const iMexer = iCriar || iEditar;
 
@@ -91,8 +115,15 @@ export default async function NoivaPage({
   const sugeridos = iVer ? await indicarVestidos(sc.loja.id, leadId) : [];
   const temInteressePreenchido = (i?.atributos.length ?? 0) > 0;
 
+  // Vestidos livres para a data dela — só quando pode reservar e há data marcada.
+  const livres =
+    podeReservar && lead.casamentoData
+      ? await vestidosLivresPara(sc.loja.id, lead.casamentoData.toISOString().slice(0, 10))
+      : [];
+
   const editarHref = `/loja/${lojaId}/noivas/${leadId}/editar`;
   const interessesHref = `/loja/${lojaId}/noivas/${leadId}/interesses`;
+  const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
 
   const whatsappDigits = lead.whatsapp?.replace(/\D/g, "");
   const dias = lead.casamentoData ? diasAte(lead.casamentoData) : null;
@@ -123,6 +154,8 @@ export default async function NoivaPage({
         {/* Subtítulo carrega só a jornada (informação quente). Origem é metadado, vai pro rodapé. */}
         <p className="text-[14px] text-cinza-fumo">{ROTULO_ETAPA[lead.etapa]}</p>
       </header>
+
+      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
       <PainelJornadaNoiva passos={passos} encerrada={encerrada} />
 
@@ -180,6 +213,97 @@ export default async function NoivaPage({
             <Dado rotulo="Horário" valor={lead.casamentoHorario} />
             <Dado rotulo="Local" valor={lead.casamentoLocal} />
           </div>
+        </section>
+      )}
+
+      {/* Vestido reservado — fecha o ciclo jornada↔acervo pelo lado da noiva.
+          A reserva se ancora na data do casamento dela; o motor barra conflito. */}
+      {(reservas.length > 0 || podeReservar) && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Vestido reservado</h2>
+
+          {reservas.length === 0 ? (
+            <p className="text-[14px] text-grafite">Nenhum vestido reservado ainda.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+              {reservas.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                  <Link
+                    href={`/loja/${lojaId}/vestidos/${r.vestidoId}`}
+                    className="flex min-w-0 flex-col gap-0.5 rounded-sm transition-colors duration-150
+                      hover:[&>span:first-child]:text-bordo focus-visible:outline-2
+                      focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                  >
+                    <span className="truncate text-[14px] text-tinta transition-colors duration-150">
+                      {r.nome}
+                    </span>
+                    <span className="text-[12px] text-cinza-fumo">
+                      {r.codigo}
+                      {r.casamentoData ? ` · casamento ${dataCurta.format(r.casamentoData)}` : ""}
+                    </span>
+                  </Link>
+                  {podeReservar && (
+                    <form action={cancelarReservaPelaNoivaAction}>
+                      <input type="hidden" name="leadId" value={leadId} />
+                      <input type="hidden" name="bloqueioId" value={r.id} />
+                      <button
+                        type="submit"
+                        className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite
+                          underline decoration-borda underline-offset-4 transition-colors duration-150
+                          hover:text-tinta hover:decoration-champagne focus-visible:outline-2
+                          focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                      >
+                        Cancelar
+                      </button>
+                    </form>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {podeReservar &&
+            (!lead.casamentoData ? (
+              <p className="text-[13px] text-cinza-fumo">
+                Defina a data do casamento para reservar um vestido.
+              </p>
+            ) : livres.length > 0 ? (
+              <form action={reservarPelaNoivaAction} className="flex flex-wrap items-end gap-3">
+                <input type="hidden" name="leadId" value={leadId} />
+                <label className="flex min-w-[14rem] flex-1 flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
+                    Reservar vestido
+                  </span>
+                  <select
+                    name="vestidoId"
+                    defaultValue=""
+                    className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
+                      transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
+                  >
+                    <option value="" disabled>
+                      Escolha um vestido livre…
+                    </option>
+                    {livres.map((vl) => (
+                      <option key={vl.id} value={vl.id}>
+                        {vl.codigo} · {vl.nome} · {brl.format(Number(vl.precoBase))}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5
+                    text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out
+                    hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                >
+                  Reservar
+                </button>
+              </form>
+            ) : (
+              <p className="text-[13px] text-cinza-fumo">
+                Nenhum vestido do acervo está livre para esta data.
+              </p>
+            ))}
         </section>
       )}
 
