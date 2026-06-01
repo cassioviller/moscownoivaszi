@@ -10,6 +10,8 @@ export type ReservaSugestao = {
   leadId: string;
   livresIds: string[];
   reservadosIds: string[];
+  /** Data do casamento formatada (ex.: "12/09") — ecoa a promessa no botão. */
+  dataLabel?: string;
 };
 
 // Vestidos do acervo que conversam com o que a noiva pediu. Apresentação calma,
@@ -107,7 +109,7 @@ export function VestidosSugeridos({
                         text-[13px] text-grafite transition-colors duration-150 hover:border-bordo hover:text-bordo
                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
                     >
-                      Reservar para o casamento
+                      {reserva.dataLabel ? `Reservar para ${reserva.dataLabel}` : "Reservar para o casamento"}
                     </button>
                   </form>
                 ) : (

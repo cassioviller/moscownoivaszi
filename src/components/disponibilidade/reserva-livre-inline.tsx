@@ -21,56 +21,67 @@ export function ReservaLivreInline({
 }) {
   const [livres, setLivres] = useState<VestidoLivre[] | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState(false);
 
   async function abrir() {
     setCarregando(true);
+    setErro(false);
     try {
       setLivres(await buscarLivres(leadId));
+    } catch {
+      setErro(true);
     } finally {
       setCarregando(false);
     }
   }
 
-  if (livres === null) {
-    return (
-      <button
-        type="button"
-        onClick={abrir}
-        disabled={carregando}
-        className="inline-flex min-h-11 w-fit items-center rounded-md border border-borda px-3.5 py-1.5
-          text-[13px] text-grafite transition-colors duration-150 hover:border-bordo hover:text-bordo
-          focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo
-          disabled:opacity-50"
-      >
-        {carregando ? "Buscando vestidos livres…" : "Reservar um vestido"}
-      </button>
-    );
-  }
-
-  if (livres.length === 0) {
-    return (
-      <p className="text-[13px] text-cinza-fumo">Nenhum vestido do acervo está livre para esta data.</p>
-    );
-  }
-
+  // aria-live anuncia a troca (botão → seletor / mensagem) p/ leitores de tela;
+  // aria-busy sinaliza a busca em curso (WCAG 4.1.3).
   return (
-    <form action={reservar} className="flex flex-wrap items-end gap-3">
-      <input type="hidden" name="leadId" value={leadId} />
-      <SelectNativo name="vestidoId" label="Reservar vestido" placeholder="Escolha um vestido livre…">
-        {livres.map((vl) => (
-          <option key={vl.id} value={vl.id}>
-            {vl.codigo} · {vl.nome} · {brl.format(Number(vl.precoBase))}
-          </option>
-        ))}
-      </SelectNativo>
-      <button
-        type="submit"
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5
-          text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out
-          hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-      >
-        Reservar
-      </button>
-    </form>
+    <div aria-live="polite" aria-busy={carregando}>
+      {livres === null ? (
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={abrir}
+            disabled={carregando}
+            className="inline-flex min-h-11 w-fit items-center rounded-md border border-borda px-3.5 py-1.5
+              text-[13px] text-grafite transition-colors duration-150 hover:border-bordo hover:text-bordo
+              focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo
+              disabled:opacity-50"
+          >
+            {carregando
+              ? "Buscando vestidos livres…"
+              : erro
+                ? "Não foi possível buscar. Tentar de novo"
+                : "Reservar um vestido"}
+          </button>
+          {erro && (
+            <span className="text-[12px] text-cinza-fumo">Algo deu errado ao buscar os vestidos livres.</span>
+          )}
+        </div>
+      ) : livres.length === 0 ? (
+        <p className="text-[13px] text-cinza-fumo">Nenhum vestido do acervo está livre para esta data.</p>
+      ) : (
+        <form action={reservar} className="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="leadId" value={leadId} />
+          <SelectNativo name="vestidoId" label="Reservar vestido" placeholder="Escolha um vestido livre…">
+            {livres.map((vl) => (
+              <option key={vl.id} value={vl.id}>
+                {vl.codigo} · {vl.nome} · {brl.format(Number(vl.precoBase))}
+              </option>
+            ))}
+          </SelectNativo>
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5
+              text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out
+              hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+          >
+            Reservar
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

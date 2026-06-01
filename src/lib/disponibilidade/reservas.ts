@@ -154,9 +154,9 @@ export type ResultadoManutencao =
  */
 export async function criarManutencao(
   lojaId: string,
-  input: { vestidoId: string; inicio: string; fim?: string | null },
+  input: { vestidoId: string; inicio: string; fim?: string | null; motivo?: string | null },
 ): Promise<ResultadoManutencao> {
-  const { vestidoId, inicio, fim } = input;
+  const { vestidoId, inicio, fim, motivo } = input;
   if (!inicio) return { ok: false, motivo: "sem_data" };
   if (fim && fim < inicio) return { ok: false, motivo: "datas_invertidas" };
 
@@ -164,6 +164,7 @@ export async function criarManutencao(
   const vestido = await db.vestido.findUnique({ where: { id: vestidoId } });
   if (!vestido) return { ok: false, motivo: "vestido_invalido" };
 
+  const obs = motivo?.trim();
   const criado = await db.bloqueioVestido.create({
     // tenantPrisma carimba lojaId; cast pela mesma razão de criarVestido/reservar.
     data: {
@@ -171,12 +172,18 @@ export async function criarManutencao(
       tipo: "MANUTENCAO",
       retiradaDataReal: meiaNoiteUTC(inicio),
       devolucaoDataReal: fim ? meiaNoiteUTC(fim) : null,
+      observacao: obs ? obs : null, // motivo do cuidado (bainha, mancha, ajuste…)
     } as never,
   });
   return { ok: true, id: criado.id };
 }
 
-export type ManutencaoVestido = { id: string; inicio: Date | null; fim: Date | null };
+export type ManutencaoVestido = {
+  id: string;
+  inicio: Date | null;
+  fim: Date | null;
+  motivo: string | null;
+};
 
 /** Manutenções de um vestido, da mais próxima à mais distante. */
 export async function listarManutencoesDoVestido(
@@ -187,7 +194,12 @@ export async function listarManutencoesDoVestido(
     where: { vestidoId, tipo: "MANUTENCAO" },
     orderBy: { retiradaDataReal: "asc" },
   });
-  return rows.map((r) => ({ id: r.id, inicio: r.retiradaDataReal, fim: r.devolucaoDataReal }));
+  return rows.map((r) => ({
+    id: r.id,
+    inicio: r.retiradaDataReal,
+    fim: r.devolucaoDataReal,
+    motivo: r.observacao,
+  }));
 }
 
 export type ReservaDoVestido = {

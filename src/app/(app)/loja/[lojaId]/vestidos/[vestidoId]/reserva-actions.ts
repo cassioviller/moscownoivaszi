@@ -54,11 +54,12 @@ export async function enviarManutencaoAction(formData: FormData) {
   const vestidoId = String(formData.get("vestidoId") ?? "");
   const inicio = String(formData.get("inicio") ?? "");
   const fim = String(formData.get("fim") ?? "");
+  const motivo = String(formData.get("motivo") ?? "");
   const base = `/loja/${sc.loja.id}/vestidos/${vestidoId}`;
 
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) redirect(base);
 
-  const r = await criarManutencao(sc.loja.id, { vestidoId, inicio, fim: fim || null });
+  const r = await criarManutencao(sc.loja.id, { vestidoId, inicio, fim: fim || null, motivo });
   redirect(r.ok ? `${base}?ok=manutencao` : `${base}?erro=${r.motivo}`);
 }
 

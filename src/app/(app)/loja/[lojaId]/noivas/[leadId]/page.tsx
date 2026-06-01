@@ -42,6 +42,8 @@ const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
+// Compacto p/ caber no botão "Reservar para 12/09".
+const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
 
 // Mensagem humana para o retorno das ações de reserva (?ok / ?erro).
 const AVISOS: Record<string, string> = {
@@ -304,6 +306,7 @@ export default async function NoivaPage({
                     leadId,
                     livresIds: livresSugeridosIds,
                     reservadosIds: reservas.map((r) => r.vestidoId),
+                    dataLabel: lead.casamentoData ? diaMes.format(lead.casamentoData) : undefined,
                   }
                 : undefined
             }

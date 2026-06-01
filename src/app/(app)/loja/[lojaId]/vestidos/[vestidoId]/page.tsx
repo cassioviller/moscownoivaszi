@@ -20,6 +20,7 @@ import {
 } from "./reserva-actions";
 import { SelectNativo } from "@/components/ui/select-nativo";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
+import { RegistrarManutencao } from "@/components/disponibilidade/registrar-manutencao";
 
 export const dynamic = "force-dynamic";
 
@@ -252,9 +253,12 @@ export default async function VestidoPage({
               <ul className="flex flex-col gap-2">
                 {manutencoes.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-4">
-                    <span className="text-[13px] text-grafite">
-                      {m.inicio ? dataDMY.format(m.inicio) : "?"}
-                      {m.fim ? ` a ${dataDMY.format(m.fim)}` : " (sem data de volta)"}
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[13px] text-grafite">
+                        Em manutenção · {m.inicio ? dataDMY.format(m.inicio) : "?"}
+                        {m.fim ? ` a ${dataDMY.format(m.fim)}` : " (sem data de volta)"}
+                      </span>
+                      {m.motivo && <span className="text-[12px] text-cinza-fumo">{m.motivo}</span>}
                     </span>
                     {podeEditar && (
                       <form action={removerManutencaoAction}>
@@ -278,38 +282,7 @@ export default async function VestidoPage({
             )}
 
             {podeEditar && (
-              <form action={enviarManutencaoAction} className="flex flex-wrap items-end gap-3">
-                <input type="hidden" name="vestidoId" value={vestidoId} />
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Saída</span>
-                  <input
-                    type="date"
-                    name="inicio"
-                    required
-                    className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
-                      transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
-                    Volta (opcional)
-                  </span>
-                  <input
-                    type="date"
-                    name="fim"
-                    className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
-                      transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-borda
-                    px-4 py-2.5 text-[13px] text-grafite transition-colors duration-150 hover:border-bordo
-                    hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-                >
-                  Enviar para manutenção
-                </button>
-              </form>
+              <RegistrarManutencao vestidoId={vestidoId} action={enviarManutencaoAction} />
             )}
           </div>
         )}
