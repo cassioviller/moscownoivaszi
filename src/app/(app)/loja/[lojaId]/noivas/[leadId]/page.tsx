@@ -19,6 +19,8 @@ import { PainelVazio } from "@/components/dashboard/painel-vazio";
 import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
 import { listarReservasDaNoiva, vestidosLivresPara } from "@/lib/disponibilidade/reservas";
 import { reservarPelaNoivaAction, cancelarReservaPelaNoivaAction } from "./reserva-actions";
+import { SelectNativo } from "@/components/ui/select-nativo";
+import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +83,7 @@ export default async function NoivaPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string; leadId: string }>;
-  searchParams: Promise<{ ok?: string; erro?: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string; em?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -90,7 +92,7 @@ export default async function NoivaPage({
   }
 
   const { lojaId, leadId } = await params;
-  const { ok, erro } = await searchParams;
+  const { ok, erro, em } = await searchParams;
 
   // Leitura read-only: confirma que a noiva é da loja e traz o interesse de uma vez.
   const dados = await obterNoivaComInteresse(sc.loja.id, leadId);
@@ -123,7 +125,12 @@ export default async function NoivaPage({
 
   const editarHref = `/loja/${lojaId}/noivas/${leadId}/editar`;
   const interessesHref = `/loja/${lojaId}/noivas/${leadId}/interesses`;
-  const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
+  // Conflito com data conhecida diz para quando o vestido já está reservado.
+  const avisoConflito =
+    erro === "indisponivel" && em
+      ? `Este vestido já está reservado para ${dataCurta.format(new Date(`${em}T00:00:00.000Z`))}. Escolha outra peça.`
+      : null;
+  const aviso = (ok && AVISOS[ok]) || avisoConflito || (erro && AVISOS[erro]) || null;
 
   const whatsappDigits = lead.whatsapp?.replace(/\D/g, "");
   const dias = lead.casamentoData ? diasAte(lead.casamentoData) : null;
@@ -246,15 +253,16 @@ export default async function NoivaPage({
                     <form action={cancelarReservaPelaNoivaAction}>
                       <input type="hidden" name="leadId" value={leadId} />
                       <input type="hidden" name="bloqueioId" value={r.id} />
-                      <button
-                        type="submit"
+                      <BotaoConfirmar
+                        mensagem={`Cancelar a reserva de ${r.nome}?`}
+                        ariaLabel={`Cancelar reserva de ${r.nome}`}
                         className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite
                           underline decoration-borda underline-offset-4 transition-colors duration-150
                           hover:text-tinta hover:decoration-champagne focus-visible:outline-2
                           focus-visible:outline-offset-2 focus-visible:outline-bordo"
                       >
                         Cancelar
-                      </button>
+                      </BotaoConfirmar>
                     </form>
                   )}
                 </li>
@@ -270,26 +278,13 @@ export default async function NoivaPage({
             ) : livres.length > 0 ? (
               <form action={reservarPelaNoivaAction} className="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="leadId" value={leadId} />
-                <label className="flex min-w-[14rem] flex-1 flex-col gap-1">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
-                    Reservar vestido
-                  </span>
-                  <select
-                    name="vestidoId"
-                    defaultValue=""
-                    className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
-                      transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
-                  >
-                    <option value="" disabled>
-                      Escolha um vestido livre…
+                <SelectNativo name="vestidoId" label="Reservar vestido" placeholder="Escolha um vestido livre…">
+                  {livres.map((vl) => (
+                    <option key={vl.id} value={vl.id}>
+                      {vl.codigo} · {vl.nome} · {brl.format(Number(vl.precoBase))}
                     </option>
-                    {livres.map((vl) => (
-                      <option key={vl.id} value={vl.id}>
-                        {vl.codigo} · {vl.nome} · {brl.format(Number(vl.precoBase))}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  ))}
+                </SelectNativo>
                 <button
                   type="submit"
                   className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5

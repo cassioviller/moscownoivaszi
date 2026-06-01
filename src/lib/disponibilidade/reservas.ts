@@ -65,6 +65,9 @@ export type ResultadoReserva =
       motivo: "sem_data" | "lead_invalido" | "vestido_invalido" | "indisponivel";
       conflitos?: Conflito[];
       erros?: ErroBloqueio[];
+      // Datas ("YYYY-MM-DD") dos casamentos que já ocupam a peça — para a UI dizer
+      // "já reservada para 12/09" em vez de um erro genérico.
+      conflitaComDatas?: string[];
     };
 
 /**
@@ -100,11 +103,22 @@ export async function reservarVestido(
     bloqueiosExistentes: existentes.map(toBloqueio),
   });
   if (!veredito.disponivel) {
+    // Datas dos casamentos conflitantes (a partir dos bloqueios que colidiram).
+    const idsConflitantes = new Set(veredito.conflitos.map((c) => c.bloqueioId));
+    const conflitaComDatas = [
+      ...new Set(
+        existentes
+          .filter((b) => idsConflitantes.has(b.id) && b.casamentoData)
+          .map((b) => ymd(b.casamentoData)!)
+          .sort(),
+      ),
+    ];
     return {
       ok: false,
       motivo: "indisponivel",
       conflitos: veredito.conflitos,
       erros: veredito.errosBloqueio,
+      conflitaComDatas,
     };
   }
 

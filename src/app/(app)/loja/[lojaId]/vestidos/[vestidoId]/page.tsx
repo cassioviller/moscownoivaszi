@@ -13,6 +13,8 @@ import { listarCatalogo, rotularSelecoes } from "@/lib/catalogo/catalogo";
 import { listarLeads } from "@/lib/leads/leads";
 import { listarReservasDoVestido } from "@/lib/disponibilidade/reservas";
 import { reservarPeloVestidoAction, cancelarReservaPeloVestidoAction } from "./reserva-actions";
+import { SelectNativo } from "@/components/ui/select-nativo";
+import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +41,7 @@ export default async function VestidoPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string; vestidoId: string }>;
-  searchParams: Promise<{ ok?: string; erro?: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string; em?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -48,7 +50,7 @@ export default async function VestidoPage({
   }
 
   const { lojaId, vestidoId } = await params;
-  const { ok, erro } = await searchParams;
+  const { ok, erro, em } = await searchParams;
 
   // obterVestido já é escopado por loja (tenantPrisma) → null se for de outra loja.
   const v = await obterVestido(sc.loja.id, vestidoId);
@@ -73,7 +75,12 @@ export default async function VestidoPage({
   const editarHref = `/loja/${lojaId}/vestidos/${vestidoId}/editar`;
   const ativo = v.status === "ativo";
   const meta = [v.tamanho, v.cor, v.categoria].filter(Boolean).join(" · ");
-  const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
+  // Conflito com data conhecida diz para quando a peça já está reservada (erro que ensina).
+  const avisoConflito =
+    erro === "indisponivel" && em
+      ? `Esta peça já está reservada para ${dataFmt.format(new Date(`${em}T00:00:00.000Z`))}. Escolha outra peça ou outra data.`
+      : null;
+  const aviso = (ok && AVISOS[ok]) || avisoConflito || (erro && AVISOS[erro]) || null;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -146,7 +153,19 @@ export default async function VestidoPage({
       {/* Disponibilidade — a pergunta nº1 do acervo de aluguel: livre ou reservada?
           O motor barra conflito de janelas; a reserva se ancora na data da noiva. */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Disponibilidade</h2>
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Disponibilidade</h2>
+          {/* Selo de leitura instantânea: livre (champagne, atmosfera) vs reservada (neutro) */}
+          <span
+            className={`rounded-full border px-2.5 py-0.5 text-[11px] tracking-[0.02em] ${
+              reservas.length === 0
+                ? "border-champagne/50 text-grafite"
+                : "border-borda-suave text-cinza-fumo"
+            }`}
+          >
+            {reservas.length === 0 ? "Livre" : "Reservada"}
+          </span>
+        </div>
 
         {reservas.length === 0 ? (
           <p className="text-[14px] text-grafite">Sem reservas. Esta peça está livre.</p>
@@ -164,15 +183,16 @@ export default async function VestidoPage({
                   <form action={cancelarReservaPeloVestidoAction}>
                     <input type="hidden" name="vestidoId" value={vestidoId} />
                     <input type="hidden" name="bloqueioId" value={r.id} />
-                    <button
-                      type="submit"
+                    <BotaoConfirmar
+                      mensagem={`Cancelar a reserva de ${r.noivaNome ?? "esta noiva"}?`}
+                      ariaLabel={`Cancelar reserva de ${r.noivaNome ?? "noiva"}`}
                       className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite
                         underline decoration-borda underline-offset-4 transition-colors duration-150
                         hover:text-tinta hover:decoration-champagne focus-visible:outline-2
                         focus-visible:outline-offset-2 focus-visible:outline-bordo"
                     >
                       Cancelar
-                    </button>
+                    </BotaoConfirmar>
                   </form>
                 )}
               </li>
@@ -185,26 +205,13 @@ export default async function VestidoPage({
           (noivasComData.length > 0 ? (
             <form action={reservarPeloVestidoAction} className="flex flex-wrap items-end gap-3">
               <input type="hidden" name="vestidoId" value={vestidoId} />
-              <label className="flex min-w-[14rem] flex-1 flex-col gap-1">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
-                  Reservar para
-                </span>
-                <select
-                  name="leadId"
-                  defaultValue=""
-                  className="rounded-md border border-borda bg-papel-elevado px-3 py-2.5 text-[14px] text-tinta
-                    transition-colors duration-150 focus-visible:border-bordo focus-visible:outline-none"
-                >
-                  <option value="" disabled>
-                    Escolha uma noiva…
+              <SelectNativo name="leadId" label="Reservar para" placeholder="Escolha uma noiva…">
+                {noivasComData.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.noivaNome} · {n.casamentoData ? dataFmt.format(n.casamentoData) : ""}
                   </option>
-                  {noivasComData.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.noivaNome} · {n.casamentoData ? dataFmt.format(n.casamentoData) : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                ))}
+              </SelectNativo>
               <button
                 type="submit"
                 className="inline-flex min-h-11 items-center justify-center rounded-md bg-bordo px-4 py-2.5

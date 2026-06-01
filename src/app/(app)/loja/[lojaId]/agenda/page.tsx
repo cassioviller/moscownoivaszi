@@ -11,6 +11,18 @@ import { agendaDoAtelier, type EventoAgenda } from "@/lib/disponibilidade/agenda
 export const dynamic = "force-dynamic";
 
 const HORIZONTE_DIAS = 60;
+const DIA_MS = 86_400_000;
+
+// Hoje como meia-noite UTC do dia-calendário em São Paulo (mesma convenção do dado).
+function hojeUTC(): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return new Date(`${ymd}T00:00:00.000Z`);
+}
 
 // UTC: as datas das janelas nascem em meia-noite UTC — formatar em UTC evita off-by-one.
 const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -26,9 +38,11 @@ function periodo(e: EventoAgenda): string {
   return `de ${diaMes.format(e.inicio)} a ${diaMes.format(e.fim)}`;
 }
 
+type GrupoAgenda = { chave: string; rotulo: string; eventos: EventoAgenda[] };
+
 // Agrupa eventos (já ordenados por início) em meses, preservando a ordem.
-function agruparPorMes(eventos: EventoAgenda[]): { chave: string; rotulo: string; eventos: EventoAgenda[] }[] {
-  const grupos: { chave: string; rotulo: string; eventos: EventoAgenda[] }[] = [];
+function agruparPorMes(eventos: EventoAgenda[]): GrupoAgenda[] {
+  const grupos: GrupoAgenda[] = [];
   for (const e of eventos) {
     const chave = chaveMes(e.inicio);
     let grupo = grupos.find((g) => g.chave === chave);
@@ -41,6 +55,18 @@ function agruparPorMes(eventos: EventoAgenda[]): { chave: string; rotulo: string
   return grupos;
 }
 
+// "Esta semana" (do que está em curso até hoje+7) ganha um grupo próprio no topo —
+// o coração do dia (§8.4). O resto segue agrupado por mês.
+function agruparAgenda(eventos: EventoAgenda[]): GrupoAgenda[] {
+  const fimSemana = new Date(hojeUTC().getTime() + 7 * DIA_MS);
+  const semana = eventos.filter((e) => e.inicio.getTime() <= fimSemana.getTime());
+  const resto = eventos.filter((e) => e.inicio.getTime() > fimSemana.getTime());
+  const grupos: GrupoAgenda[] = [];
+  if (semana.length) grupos.push({ chave: "semana", rotulo: "Esta semana", eventos: semana });
+  grupos.push(...agruparPorMes(resto));
+  return grupos;
+}
+
 export default async function AgendaPage({ params }: { params: Promise<{ lojaId: string }> }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -48,7 +74,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ lojaId:
 
   const { lojaId } = await params;
   const eventos = await agendaDoAtelier(sc.loja.id, HORIZONTE_DIAS);
-  const meses = agruparPorMes(eventos);
+  const grupos = agruparAgenda(eventos);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -75,41 +101,51 @@ export default async function AgendaPage({ params }: { params: Promise<{ lojaId:
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {meses.map((mes) => (
-            <section key={mes.chave} className="flex flex-col gap-3">
+          {grupos.map((grupo) => (
+            <section key={grupo.chave} className="flex flex-col gap-3">
               <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo first-letter:uppercase">
-                {mes.rotulo}
+                {grupo.rotulo}
               </h2>
               <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
-                {mes.eventos.map((e, idx) => (
-                  <li key={`${e.vestidoId}-${e.tipo}-${idx}`} className="flex items-center gap-4 px-4 py-3">
-                    {/* Âncora de data: dia grande + mês curto */}
+                {grupo.eventos.map((e, idx) => (
+                  <li key={`${e.vestidoId}-${e.tipo}-${idx}`} className="flex gap-4 px-4 py-3">
+                    {/* Âncora de data: dia grande + mês curto. O "uso/casamento" — o
+                        grande dia — ganha o bordô (a joia com significado, §6). */}
                     <div className="flex w-11 shrink-0 flex-col items-center">
-                      <span className="font-display text-[20px] font-light leading-none text-tinta tabular-nums">
+                      <span
+                        className={`font-display text-[20px] font-light leading-none tabular-nums ${
+                          e.tipo === "uso" ? "text-bordo" : "text-tinta"
+                        }`}
+                      >
                         {e.inicio.getUTCDate()}
                       </span>
                       <span className="mt-0.5 text-[10px] uppercase tracking-[0.1em] text-cinza-fumo">
                         {mesAbrev.format(e.inicio).replace(".", "")}
                       </span>
                     </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-[14px] text-tinta">{e.rotulo}</span>
-                        {e.noivaNome && <span className="text-[13px] text-cinza-fumo">{e.noivaNome}</span>}
+                    {/* Empilha no mobile (conteúdo / período); vira linha a partir de sm */}
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="flex flex-wrap items-baseline gap-x-2">
+                          <span className="text-[14px] text-tinta">{e.rotulo}</span>
+                          {e.noivaNome && (
+                            <span className="text-[13px] text-cinza-fumo">{e.noivaNome}</span>
+                          )}
+                        </span>
+                        <Link
+                          href={`/loja/${lojaId}/vestidos/${e.vestidoId}`}
+                          className="w-fit rounded-sm text-[12px] text-grafite underline decoration-borda
+                            underline-offset-4 transition-colors duration-150 hover:text-tinta
+                            hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
+                            focus-visible:outline-bordo"
+                        >
+                          {e.vestidoCodigo} · {e.vestidoNome}
+                        </Link>
+                      </div>
+                      <span className="shrink-0 text-[12px] tabular-nums text-cinza-fumo sm:text-right">
+                        {periodo(e)}
                       </span>
-                      <Link
-                        href={`/loja/${lojaId}/vestidos/${e.vestidoId}`}
-                        className="w-fit rounded-sm text-[12px] text-grafite underline decoration-borda
-                          underline-offset-4 transition-colors duration-150 hover:text-tinta
-                          hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
-                          focus-visible:outline-bordo"
-                      >
-                        {e.vestidoCodigo} · {e.vestidoNome}
-                      </Link>
                     </div>
-                    <span className="shrink-0 text-right text-[12px] tabular-nums text-cinza-fumo">
-                      {periodo(e)}
-                    </span>
                   </li>
                 ))}
               </ul>

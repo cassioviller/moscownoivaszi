@@ -28,7 +28,9 @@ export async function reservarPelaNoivaAction(formData: FormData) {
 
   const dia = lead.casamentoData.toISOString().slice(0, 10);
   const r = await reservarVestido(sc.loja.id, { vestidoId, leadId, casamentoData: dia });
-  redirect(r.ok ? `${base}?ok=reserva` : `${base}?erro=${r.motivo}`);
+  if (r.ok) redirect(`${base}?ok=reserva`);
+  const em = r.conflitaComDatas?.[0];
+  redirect(`${base}?erro=${r.motivo}${em ? `&em=${em}` : ""}`);
 }
 
 export async function cancelarReservaPelaNoivaAction(formData: FormData) {
