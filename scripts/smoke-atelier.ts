@@ -39,6 +39,9 @@ async function forjarSessao(email: string): Promise<string> {
 }
 
 async function main() {
+  let sGerente = "";
+  let sCostureira = "";
+  try {
   // fixture limpa
   await prisma.lead.deleteMany({ where: { lojaId: LOJA, noivaNome: { startsWith: MARK } } });
   await prisma.vestido.deleteMany({ where: { lojaId: LOJA, codigo: { startsWith: MARK } } });
@@ -51,8 +54,8 @@ async function main() {
   if (!r.ok) throw new Error("reserva: " + JSON.stringify(r));
   const BID = r.bloqueioId;
 
-  const sGerente = await forjarSessao("gerente@moscow.local");
-  const sCostureira = await forjarSessao("costureira@moscow.local");
+  sGerente = await forjarSessao("gerente@moscow.local");
+  sCostureira = await forjarSessao("costureira@moscow.local");
   const ckGerente = `moscow_sessao=${sGerente}`;
   const ckCostureira = `moscow_sessao=${sCostureira}`;
   const reservaPath = `/loja/${LOJA}/reservas/${BID}`;
@@ -93,11 +96,12 @@ async function main() {
   await registrarProva(LOJA, { bloqueioId: BID, dataReal: "2026-06-10", tipo: "INTERMEDIARIA", comparecimento: "COMPARECEU" });
   const depois = (await vestidosLivresEntre(LOJA, "2026-06-30", [vestido.id])).length;
   ck(antes === 0 && depois === 0, `prova nao muda disponibilidade (${antes}/${depois})`);
-
-  // cleanup
-  await prisma.sessao.deleteMany({ where: { id: { in: [sGerente, sCostureira] } } });
-  await prisma.lead.deleteMany({ where: { lojaId: LOJA, noivaNome: { startsWith: MARK } } });
-  await prisma.vestido.deleteMany({ where: { lojaId: LOJA, codigo: { startsWith: MARK } } });
+  } finally {
+    const ids = [sGerente, sCostureira].filter(Boolean);
+    if (ids.length) await prisma.sessao.deleteMany({ where: { id: { in: ids } } });
+    await prisma.lead.deleteMany({ where: { lojaId: LOJA, noivaNome: { startsWith: MARK } } });
+    await prisma.vestido.deleteMany({ where: { lojaId: LOJA, codigo: { startsWith: MARK } } });
+  }
 
   console.log(`\n=== ${pass.length} ok / ${fail.length} falhas ===`);
   if (fail.length) console.log("FALHAS:\n" + fail.map((f) => " - " + f).join("\n"));
