@@ -1,8 +1,11 @@
 // src/app/(app)/loja/[lojaId]/page.tsx
 import { getSessaoComLoja } from "@/lib/auth";
-import { carregarResumoLoja } from "@/lib/loja/resumo";
+import { carregarPainel } from "@/lib/loja/painel";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { SaudacaoDia } from "@/components/dashboard/saudacao-dia";
+import { IndicadorDia } from "@/components/dashboard/indicador-dia";
+import { PainelJornada } from "@/components/dashboard/painel-jornada";
+import { PainelCasamentos } from "@/components/dashboard/lista-casamentos";
 import { CardMetrica } from "@/components/dashboard/card-metrica";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 
@@ -12,8 +15,10 @@ export default async function DashboardLoja() {
   const sc = await getSessaoComLoja();
   if (!sc) return null;
 
-  const resumo = await carregarResumoLoja(sc.loja.id);
-  const podeVerNoivas = await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver");
+  const [painel, podeVerNoivas] = await Promise.all([
+    carregarPainel(sc.loja.id),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
+  ]);
 
   const agora = new Date();
   const fmt = (opts: Intl.DateTimeFormatOptions) =>
@@ -38,51 +43,69 @@ export default async function DashboardLoja() {
       {/* Divisória atmosférica — champagne como linha institucional, não decoração */}
       <div aria-hidden className="h-px bg-champagne/40" />
 
-      {/* Centro de operação: agenda (coração, vazio por ora) + acervo */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <PainelVazio
-            titulo="Agenda de hoje"
-            mensagem="A agenda do atelier aparece aqui quando os atendimentos do dia começarem a ser marcados."
+      {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3) */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {podeVerNoivas && (
+          <IndicadorDia rotulo="Noivas" valor={painel.noivasAtivas} descricao="em acompanhamento" />
+        )}
+        <IndicadorDia
+          rotulo="Acervo"
+          valor={painel.vestidos}
+          descricao={painel.vestidos === 1 ? "vestido" : "vestidos"}
+        />
+        {podeVerNoivas && (
+          <IndicadorDia
+            rotulo="Casamentos"
+            valor={painel.casamentosProximos}
+            descricao="nos próximos 30 dias"
           />
-        </div>
-        {resumo.vestidos > 0 ? (
-          <CardMetrica
-            rotulo="Acervo"
-            valor={resumo.vestidos}
-            descricao={resumo.vestidos === 1 ? "vestido" : "vestidos"}
-            acao={{ href: vestidosHref, label: "Ver acervo" }}
-          />
-        ) : (
-          <PainelVazio
-            titulo="Acervo"
-            mensagem="Nenhum vestido no acervo ainda."
-            acao={{ href: vestidosHref, label: "Cadastrar vestido" }}
-          />
+        )}
+        {podeVerNoivas && (
+          <IndicadorDia rotulo="Em provas" valor={painel.emProvas} descricao="ajustes em andamento" />
         )}
       </div>
 
-      {/* Atenções e jornada */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <PainelVazio
-          titulo="Atenções imediatas"
-          mensagem="Nenhuma atenção pendente por agora. Tudo no seu lugar."
-        />
-        {podeVerNoivas && resumo.noivas > 0 ? (
-          <CardMetrica
-            rotulo="Jornada da noiva"
-            valor={resumo.noivas}
-            descricao={resumo.noivas === 1 ? "noiva em acompanhamento" : "noivas em acompanhamento"}
-            acao={{ href: noivasHref, label: "Ver noivas" }}
-          />
-        ) : (
-          <PainelVazio
-            titulo="Jornada da noiva"
-            mensagem="Quando uma noiva for recebida, a jornada dela aparece aqui — etapa por etapa, do primeiro encontro ao grande dia."
-            acao={podeVerNoivas ? { href: noivasHref, label: "Receber primeira noiva" } : undefined}
-          />
-        )}
-      </div>
+      {/* Centro de operação: jornada (coração) + casamentos próximos */}
+      {podeVerNoivas ? (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {painel.jornada.length > 0 ? (
+            <PainelJornada etapas={painel.jornada} href={noivasHref} />
+          ) : (
+            <PainelVazio
+              titulo="Jornada do atelier"
+              mensagem="Quando uma noiva for recebida, a jornada dela aparece aqui — etapa por etapa, do primeiro encontro ao grande dia."
+              acao={{ href: noivasHref, label: "Receber primeira noiva" }}
+            />
+          )}
+
+          {painel.proximosCasamentos.length > 0 ? (
+            <PainelCasamentos casamentos={painel.proximosCasamentos} />
+          ) : (
+            <PainelVazio
+              titulo="Casamentos próximos"
+              mensagem="Nenhum casamento marcado nos próximos dias. As datas confirmadas aparecem aqui, da mais próxima à mais distante."
+            />
+          )}
+        </div>
+      ) : (
+        // Sem acesso a noivas: foco no acervo, sem expor dado de jornada.
+        <div className="grid grid-cols-1 gap-5">
+          {painel.vestidos > 0 ? (
+            <CardMetrica
+              rotulo="Acervo"
+              valor={painel.vestidos}
+              descricao={painel.vestidos === 1 ? "vestido no acervo" : "vestidos no acervo"}
+              acao={{ href: vestidosHref, label: "Ver acervo" }}
+            />
+          ) : (
+            <PainelVazio
+              titulo="Acervo"
+              mensagem="Nenhum vestido no acervo ainda."
+              acao={{ href: vestidosHref, label: "Cadastrar vestido" }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
