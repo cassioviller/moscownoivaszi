@@ -31,13 +31,26 @@ const ENCERRADAS = new Set<LeadEtapa>([
   LeadEtapa.PERDIDO,
 ]);
 
+// Atenção imediata = casamento muito próximo E ainda com trabalho em aberto
+// (em provas ou orçamento aberto). Heurística de urgência aprovada pelo produto.
+const ETAPAS_ATENCAO = new Set<LeadEtapa>([LeadEtapa.EM_PROVAS, LeadEtapa.ORCAMENTO_ABERTO]);
+
 const DIA_MS = 86_400_000;
 const JANELA_PROXIMOS_DIAS = 30;
+const JANELA_ATENCAO_DIAS = 14;
 
 export type EtapaJornada = { etapa: LeadEtapa; rotulo: string; total: number };
 export type CasamentoProximo = {
   id: string;
   noivaNome: string;
+  data: Date;
+  diasRestantes: number;
+};
+export type Atencao = {
+  id: string;
+  noivaNome: string;
+  etapa: LeadEtapa;
+  rotulo: string;
   data: Date;
   diasRestantes: number;
 };
@@ -48,6 +61,7 @@ export type PainelLoja = {
   casamentosProximos: number; // dentro da janela (30 dias)
   jornada: EtapaJornada[]; // etapas vivas com ao menos 1 noiva, em ordem
   proximosCasamentos: CasamentoProximo[]; // os 5 mais próximos
+  atencoes: Atencao[]; // casamento ≤14 dias e ainda em provas/orçamento aberto
 };
 
 // Meia-noite UTC do dia de HOJE no fuso da loja — casa com a convenção de
@@ -72,7 +86,7 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     db.lead.findMany({
       where: { casamentoData: { gte: hoje } },
       orderBy: { casamentoData: "asc" },
-      select: { id: true, noivaNome: true, casamentoData: true },
+      select: { id: true, noivaNome: true, casamentoData: true, etapa: true },
     }),
   ]);
 
@@ -97,6 +111,18 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const limite = hoje.getTime() + JANELA_PROXIMOS_DIAS * DIA_MS;
   const casamentosProximos = futuros.filter((l) => l.casamentoData!.getTime() <= limite).length;
 
+  const limiteAtencao = hoje.getTime() + JANELA_ATENCAO_DIAS * DIA_MS;
+  const atencoes: Atencao[] = futuros
+    .filter((l) => ETAPAS_ATENCAO.has(l.etapa) && l.casamentoData!.getTime() <= limiteAtencao)
+    .map((l) => ({
+      id: l.id,
+      noivaNome: l.noivaNome,
+      etapa: l.etapa,
+      rotulo: ROTULO_ETAPA[l.etapa],
+      data: l.casamentoData!,
+      diasRestantes: Math.round((l.casamentoData!.getTime() - hoje.getTime()) / DIA_MS),
+    }));
+
   return {
     noivasAtivas,
     vestidos,
@@ -104,5 +130,6 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     casamentosProximos,
     jornada,
     proximosCasamentos,
+    atencoes,
   };
 }

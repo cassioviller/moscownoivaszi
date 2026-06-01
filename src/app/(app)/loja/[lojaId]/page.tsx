@@ -6,6 +6,7 @@ import { SaudacaoDia } from "@/components/dashboard/saudacao-dia";
 import { IndicadorDia } from "@/components/dashboard/indicador-dia";
 import { PainelJornada } from "@/components/dashboard/painel-jornada";
 import { PainelCasamentos } from "@/components/dashboard/lista-casamentos";
+import { PainelAtencoes } from "@/components/dashboard/painel-atencoes";
 import { CardMetrica } from "@/components/dashboard/card-metrica";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 
@@ -65,6 +66,11 @@ export default async function DashboardLoja() {
             atencao
           />
         </div>
+      )}
+
+      {/* Atenções imediatas — só aparece quando há cuidado pendente; a ausência é a calma */}
+      {podeVerNoivas && painel.atencoes.length > 0 && (
+        <PainelAtencoes atencoes={painel.atencoes} />
       )}
 
       {/* Centro de operação: jornada (coração) + casamentos próximos */}
