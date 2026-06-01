@@ -2,7 +2,7 @@
 // Mesma espinha champagne do painel agregado, mas aqui cada nó tem estado:
 // feito (cumprido), atual (a etapa de agora, em bordô — a "joia", §6) e futuro
 // (ainda por vir, suave). Sem números: é o percurso de uma pessoa, não contagem.
-import type { PassoJornada } from "@/lib/leads/leads";
+import type { PassoJornada } from "@/lib/leads/jornada";
 
 export function PainelJornadaNoiva({
   passos,
@@ -26,7 +26,7 @@ export function PainelJornadaNoiva({
           const feito = p.estado === "feito";
           return (
             <li
-              key={p.etapa}
+              key={p.chave}
               aria-current={atual ? "step" : undefined}
               className="flex gap-3.5"
             >
