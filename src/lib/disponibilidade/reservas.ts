@@ -249,7 +249,7 @@ function hojeUTC(): Date {
 }
 
 /**
- * Livro de reservas da loja, com noiva (nome + etapa) e vestido. Por padrão traz as
+ * Livro de reservas da loja, com noiva e vestido. Por padrão traz as
  * futuras (casamento ≥ hoje, ascendente); `passadas` inverte para o histórico
  * (casamento < hoje, descendente).
  */

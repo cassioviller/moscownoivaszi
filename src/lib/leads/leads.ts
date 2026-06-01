@@ -6,7 +6,7 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import type { Lead, Prisma } from "@/generated/prisma/client";
-import { LeadEtapa, LeadOrigem } from "@/generated/prisma/client";
+import { LeadOrigem } from "@/generated/prisma/client";
 import { estagioDaNoiva, type FatosJornada, type EstagioChave } from "./jornada";
 
 // Lead + presença do interesse (id só, p/ a lista decidir "Preencher" vs "Editar").
@@ -23,73 +23,10 @@ export type NovaNoiva = {
   origem?: string; // "LOJA" | "WHATSAPP"
 };
 
-// Rótulos humanos da jornada (DESIGN §11) — a UI nunca mostra o enum cru.
-// NOVO aparece como "Nova noiva" (decisão de produto desta fatia).
-export const ROTULO_ETAPA: Record<LeadEtapa, string> = {
-  NOVO: "Nova noiva",
-  INTERESSES_PREENCHIDOS: "Interesses preenchidos",
-  ATENDIMENTO_AGENDADO: "Atendimento agendado",
-  EM_ATENDIMENTO: "Em atendimento",
-  ORCAMENTO_ABERTO: "Orçamento aberto",
-  CONTRATO_FECHADO: "Contrato fechado",
-  EM_PROVAS: "Em provas",
-  RETIRADO: "Vestido retirado",
-  CASAMENTO_REALIZADO: "Casamento realizado",
-  DEVOLVIDO: "Devolvido",
-  PERDIDO: "Não seguiu",
-};
-
 export const ROTULO_ORIGEM: Record<LeadOrigem, string> = {
   LOJA: "Loja",
   WHATSAPP: "WhatsApp",
 };
-
-// Jornada vista por UMA noiva (não agregada como o painel do dashboard): a mesma
-// ordem canônica do acompanhamento, fechando no casamento como nó de celebração.
-// Espelha JORNADA_ORDEM de src/lib/loja/painel.ts — manter as duas em sincronia.
-const JORNADA_NOIVA: LeadEtapa[] = [
-  LeadEtapa.NOVO,
-  LeadEtapa.INTERESSES_PREENCHIDOS,
-  LeadEtapa.ATENDIMENTO_AGENDADO,
-  LeadEtapa.EM_ATENDIMENTO,
-  LeadEtapa.ORCAMENTO_ABERTO,
-  LeadEtapa.CONTRATO_FECHADO,
-  LeadEtapa.EM_PROVAS,
-  LeadEtapa.RETIRADO,
-  LeadEtapa.CASAMENTO_REALIZADO,
-];
-
-export type PassoJornada = {
-  etapa: LeadEtapa;
-  rotulo: string;
-  estado: "feito" | "atual" | "futuro";
-};
-
-// Deriva a linha do tempo pessoal a partir da etapa atual da noiva.
-// `encerrada` sinaliza saídas fora do trilho (devolvido após casar, ou não seguiu),
-// que não têm um "atual" na linha — a UI mostra a jornada com um selo de desfecho.
-export function jornadaDaNoiva(atual: LeadEtapa): {
-  passos: PassoJornada[];
-  encerrada: string | null;
-} {
-  // Devolvido entra depois do casamento: toda a jornada cumprida.
-  // Perdido interrompe o percurso: nenhum passo fica "atual".
-  const indiceAtual =
-    atual === LeadEtapa.DEVOLVIDO
-      ? JORNADA_NOIVA.length // tudo feito
-      : JORNADA_NOIVA.indexOf(atual); // -1 quando PERDIDO
-
-  const passos: PassoJornada[] = JORNADA_NOIVA.map((etapa, i) => ({
-    etapa,
-    rotulo: ROTULO_ETAPA[etapa],
-    estado: i < indiceAtual ? "feito" : i === indiceAtual ? "atual" : "futuro",
-  }));
-
-  const encerrada =
-    atual === LeadEtapa.DEVOLVIDO || atual === LeadEtapa.PERDIDO ? ROTULO_ETAPA[atual] : null;
-
-  return { passos, encerrada };
-}
 
 function vazioNull(v: string | undefined): string | null {
   const t = (v ?? "").trim();
