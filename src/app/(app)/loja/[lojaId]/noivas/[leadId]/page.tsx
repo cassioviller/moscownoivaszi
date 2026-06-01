@@ -13,7 +13,9 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterNoivaComInteresse } from "@/lib/leads/interesses";
 import { indicarVestidos } from "@/lib/indicacao/indicacao";
-import { jornadaDaNoiva, ROTULO_ETAPA, ROTULO_ORIGEM } from "@/lib/leads/leads";
+import { ROTULO_ORIGEM, fatosDaNoiva } from "@/lib/leads/leads";
+import { estagioDaNoiva, ROTULO_ESTAGIO } from "@/lib/leads/jornada";
+import { marcarOrcamentoAbertoAction, marcarContratoFechadoAction, marcarPerdidaAction } from "./jornada-actions";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
@@ -52,6 +54,7 @@ const AVISOS: Record<string, string> = {
   indisponivel: "Este vestido já está reservado para uma data próxima. Escolha outra peça.",
   sem_data: "Defina a data do casamento para reservar um vestido.",
   sem_vestido: "Escolha um vestido para reservar.",
+  jornada: "Jornada atualizada.",
 };
 
 const DIA_MS = 86_400_000;
@@ -115,7 +118,8 @@ export default async function NoivaPage({
   ]);
   const iMexer = iCriar || iEditar;
 
-  const { passos, encerrada } = jornadaDaNoiva(lead.etapa);
+  const fatos = await fatosDaNoiva(sc.loja.id, leadId);
+  const { passos, atual, encerrada } = estagioDaNoiva(fatos!); // lead existe → fatos != null
 
   // Indicação só faz sentido (e só roda a query) se a equipe pode ver interesses.
   const sugeridos = iVer ? await indicarVestidos(sc.loja.id, leadId) : [];
@@ -166,12 +170,38 @@ export default async function NoivaPage({
           {lead.noivoNome && <span className="text-cinza-fumo"> &amp; {lead.noivoNome}</span>}
         </h1>
         {/* Subtítulo carrega só a jornada (informação quente). Origem é metadado, vai pro rodapé. */}
-        <p className="text-[14px] text-cinza-fumo">{ROTULO_ETAPA[lead.etapa]}</p>
+        <p className="text-[14px] text-cinza-fumo">{encerrada ?? ROTULO_ESTAGIO[atual]}</p>
       </header>
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
       <PainelJornadaNoiva passos={passos} encerrada={encerrada} />
+
+      {podeEditar && (
+        <section className="flex flex-wrap gap-3">
+          <MarcoForm
+            action={marcarOrcamentoAbertoAction}
+            leadId={leadId}
+            ligado={fatos!.orcamentoAbertoEm !== null}
+            rotuloLigar="Marcar orçamento aberto"
+            rotuloDesfazer="Desfazer orçamento aberto"
+          />
+          <MarcoForm
+            action={marcarContratoFechadoAction}
+            leadId={leadId}
+            ligado={fatos!.contratoFechadoEm !== null}
+            rotuloLigar="Marcar contrato fechado"
+            rotuloDesfazer="Desfazer contrato fechado"
+          />
+          <MarcoForm
+            action={marcarPerdidaAction}
+            leadId={leadId}
+            ligado={fatos!.perdidaEm !== null}
+            rotuloLigar="Marcar como perdida"
+            rotuloDesfazer="Reativar noiva"
+          />
+        </section>
+      )}
 
       {/* A noiva — bloco leve; só aparece se houver algum contato registrado */}
       {(lead.whatsapp || lead.cerimonialista) && (
@@ -350,5 +380,35 @@ export default async function NoivaPage({
         <p className="text-[11px] text-cinza-fumo">Adicionada via {ROTULO_ORIGEM[lead.origem]}</p>
       </footer>
     </main>
+  );
+}
+
+function MarcoForm({
+  action,
+  leadId,
+  ligado,
+  rotuloLigar,
+  rotuloDesfazer,
+}: {
+  action: (fd: FormData) => Promise<void>;
+  leadId: string;
+  ligado: boolean;
+  rotuloLigar: string;
+  rotuloDesfazer: string;
+}) {
+  return (
+    <form action={action}>
+      <input type="hidden" name="leadId" value={leadId} />
+      <input type="hidden" name="ligar" value={ligado ? "0" : "1"} />
+      <button
+        type="submit"
+        className="inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline
+          decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta
+          hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
+          focus-visible:outline-bordo"
+      >
+        {ligado ? rotuloDesfazer : rotuloLigar}
+      </button>
+    </form>
   );
 }
