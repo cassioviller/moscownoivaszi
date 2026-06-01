@@ -43,6 +43,53 @@ export const ROTULO_ORIGEM: Record<LeadOrigem, string> = {
   WHATSAPP: "WhatsApp",
 };
 
+// Jornada vista por UMA noiva (não agregada como o painel do dashboard): a mesma
+// ordem canônica do acompanhamento, fechando no casamento como nó de celebração.
+// Espelha JORNADA_ORDEM de src/lib/loja/painel.ts — manter as duas em sincronia.
+const JORNADA_NOIVA: LeadEtapa[] = [
+  LeadEtapa.NOVO,
+  LeadEtapa.INTERESSES_PREENCHIDOS,
+  LeadEtapa.ATENDIMENTO_AGENDADO,
+  LeadEtapa.EM_ATENDIMENTO,
+  LeadEtapa.ORCAMENTO_ABERTO,
+  LeadEtapa.CONTRATO_FECHADO,
+  LeadEtapa.EM_PROVAS,
+  LeadEtapa.RETIRADO,
+  LeadEtapa.CASAMENTO_REALIZADO,
+];
+
+export type PassoJornada = {
+  etapa: LeadEtapa;
+  rotulo: string;
+  estado: "feito" | "atual" | "futuro";
+};
+
+// Deriva a linha do tempo pessoal a partir da etapa atual da noiva.
+// `encerrada` sinaliza saídas fora do trilho (devolvido após casar, ou não seguiu),
+// que não têm um "atual" na linha — a UI mostra a jornada com um selo de desfecho.
+export function jornadaDaNoiva(atual: LeadEtapa): {
+  passos: PassoJornada[];
+  encerrada: string | null;
+} {
+  // Devolvido entra depois do casamento: toda a jornada cumprida.
+  // Perdido interrompe o percurso: nenhum passo fica "atual".
+  const indiceAtual =
+    atual === LeadEtapa.DEVOLVIDO
+      ? JORNADA_NOIVA.length // tudo feito
+      : JORNADA_NOIVA.indexOf(atual); // -1 quando PERDIDO
+
+  const passos: PassoJornada[] = JORNADA_NOIVA.map((etapa, i) => ({
+    etapa,
+    rotulo: ROTULO_ETAPA[etapa],
+    estado: i < indiceAtual ? "feito" : i === indiceAtual ? "atual" : "futuro",
+  }));
+
+  const encerrada =
+    atual === LeadEtapa.DEVOLVIDO || atual === LeadEtapa.PERDIDO ? ROTULO_ETAPA[atual] : null;
+
+  return { passos, encerrada };
+}
+
 function vazioNull(v: string | undefined): string | null {
   const t = (v ?? "").trim();
   return t === "" ? null : t;

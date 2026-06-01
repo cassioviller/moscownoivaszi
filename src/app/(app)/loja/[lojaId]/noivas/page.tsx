@@ -89,10 +89,17 @@ export default async function NoivasPage({
                 : null;
             return (
               <li key={n.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-[14px] text-tinta">{n.noivaNome}</span>
+                <Link
+                  href={`/loja/${lojaId}/noivas/${n.id}`}
+                  className="flex min-w-0 flex-col gap-0.5 rounded-sm transition-colors duration-150
+                    hover:[&>span:first-child]:text-bordo
+                    focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                >
+                  <span className="truncate text-[14px] text-tinta transition-colors duration-150">
+                    {n.noivaNome}
+                  </span>
                   <span className="text-[12px] text-cinza-fumo">{meta}</span>
-                </span>
+                </Link>
                 <span className="flex shrink-0 flex-col items-end gap-1">
                   {n.casamentoData && (
                     <span className="text-[13px] tabular-nums text-grafite">
