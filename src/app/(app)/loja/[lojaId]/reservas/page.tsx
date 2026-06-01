@@ -1,19 +1,33 @@
 // src/app/(app)/loja/[lojaId]/reservas/page.tsx
-// Livro de reservas — todas as noivas com vestido reservado, da mais próxima à
-// mais distante, agrupadas por mês. Lente "compromisso" (uma linha por reserva),
-// complementar à Agenda (uma linha por janela). Leitura calma; cada reserva linka
-// para a noiva e para o vestido. Gate em leads:ver.
+// Livro de reservas — quem casa com qual vestido. Lente "compromisso" (uma linha
+// por noiva), distinta da Agenda (uma linha por janela de trabalho): aqui a noiva
+// é a protagonista e a etapa da jornada diz como vai cada compromisso. O bordô fica
+// reservado à urgência (casamento próximo), não a toda data. Gate em leads:ver.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarReservasDaLoja, type ReservaDaLoja } from "@/lib/disponibilidade/reservas";
+import { ROTULO_ETAPA } from "@/lib/leads/leads";
 
 export const dynamic = "force-dynamic";
 
-// UTC: a data nasce em meia-noite UTC — formatar em UTC evita off-by-one.
+const DIA_MS = 86_400_000;
+const JANELA_URGENCIA_DIAS = 14; // mesmo limiar do dashboard/perfil
+
 const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
 const mesAbrev = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
+
+// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema).
+function hojeUTC(): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return new Date(`${ymd}T00:00:00.000Z`);
+}
 
 function chaveMes(d: Date): string {
   return `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
@@ -36,14 +50,24 @@ function agruparPorMes(reservas: ReservaDaLoja[]): Grupo[] {
   return grupos;
 }
 
-export default async function ReservasPage({ params }: { params: Promise<{ lojaId: string }> }) {
+export default async function ReservasPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lojaId: string }>;
+  searchParams: Promise<{ quando?: string }>;
+}) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const reservas = await listarReservasDaLoja(sc.loja.id);
+  const { quando } = await searchParams;
+  const passadas = quando === "passadas";
+
+  const reservas = await listarReservasDaLoja(sc.loja.id, { passadas });
   const meses = agruparPorMes(reservas);
+  const hoje = hojeUTC().getTime();
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -54,21 +78,25 @@ export default async function ReservasPage({ params }: { params: Promise<{ lojaI
         >
           ← {sc.loja.nome}
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Reservas</h1>
+        <h1 className="text-[24px] font-light tracking-tight text-tinta">
+          {passadas ? "Reservas passadas" : "Reservas"}
+        </h1>
         <p className="text-[14px] text-cinza-fumo">
-          {reservas.length > 0
-            ? `${reservas.length} ${reservas.length === 1 ? "vestido reservado" : "vestidos reservados"} para os próximos casamentos.`
-            : "As reservas confirmadas aparecem aqui."}
+          {passadas ? "Casamentos já realizados." : "Quem casa com qual vestido, nos próximos casamentos."}
         </p>
       </header>
 
       {reservas.length === 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-[15px] text-tinta">Nenhuma reserva por aqui ainda.</p>
-          <p className="max-w-[46ch] text-[13px] text-cinza-fumo">
-            Quando um vestido for reservado para o casamento de uma noiva, ele aparece aqui, da data
-            mais próxima à mais distante.
+          <p className="text-[15px] text-tinta">
+            {passadas ? "Nenhuma reserva passada." : "Nenhuma reserva por aqui ainda."}
           </p>
+          {!passadas && (
+            <p className="max-w-[46ch] text-[13px] text-cinza-fumo">
+              Quando um vestido for reservado para o casamento de uma noiva, ele aparece aqui, da data
+              mais próxima à mais distante.
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-8">
@@ -78,47 +106,77 @@ export default async function ReservasPage({ params }: { params: Promise<{ lojaI
                 {mes.rotulo}
               </h2>
               <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
-                {mes.reservas.map((r) => (
-                  <li key={r.id} className="flex items-center gap-4 px-4 py-3">
-                    {/* Âncora de data: dia do casamento em bordô — o grande dia (§6) */}
-                    <div className="flex w-11 shrink-0 flex-col items-center">
-                      <span className="font-display text-[20px] font-light leading-none text-bordo tabular-nums">
-                        {r.casamentoData ? r.casamentoData.getUTCDate() : "?"}
-                      </span>
-                      <span className="mt-0.5 text-[10px] uppercase tracking-[0.1em] text-cinza-fumo">
-                        {r.casamentoData ? mesAbrev.format(r.casamentoData).replace(".", "") : ""}
-                      </span>
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      {r.leadId ? (
-                        <Link
-                          href={`/loja/${lojaId}/noivas/${r.leadId}`}
-                          className="w-fit rounded-sm text-[14px] text-tinta transition-colors duration-150
-                            hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2
-                            focus-visible:outline-bordo"
+                {mes.reservas.map((r) => {
+                  const dias = r.casamentoData
+                    ? Math.round((r.casamentoData.getTime() - hoje) / DIA_MS)
+                    : null;
+                  // Bordô só na urgência: casamento próximo (≤14d). Distante = tinta (§6).
+                  const urgente = !passadas && dias !== null && dias >= 0 && dias <= JANELA_URGENCIA_DIAS;
+                  return (
+                    <li key={r.id} className="flex items-center gap-4 px-4 py-3">
+                      <div className="flex w-11 shrink-0 flex-col items-center">
+                        <span
+                          className={`font-display text-[20px] font-light leading-none tabular-nums ${
+                            urgente ? "text-bordo" : "text-tinta"
+                          }`}
                         >
-                          {r.noivaNome ?? "Noiva"}
-                        </Link>
-                      ) : (
-                        <span className="text-[14px] text-tinta">{r.noivaNome ?? "Noiva"}</span>
-                      )}
-                      <Link
-                        href={`/loja/${lojaId}/vestidos/${r.vestidoId}`}
-                        className="w-fit rounded-sm text-[12px] text-grafite underline decoration-borda
-                          underline-offset-4 transition-colors duration-150 hover:text-tinta
-                          hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
-                          focus-visible:outline-bordo"
-                      >
-                        {r.codigo} · {r.nome}
-                      </Link>
-                    </div>
-                  </li>
-                ))}
+                          {r.casamentoData ? r.casamentoData.getUTCDate() : "?"}
+                        </span>
+                        <span className="mt-0.5 text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">
+                          {r.casamentoData ? mesAbrev.format(r.casamentoData).replace(".", "") : ""}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        {/* Noiva = destino primário (a reserva é dela; o perfil mostra a jornada) */}
+                        {r.leadId ? (
+                          <Link
+                            href={`/loja/${lojaId}/noivas/${r.leadId}`}
+                            className="w-fit rounded-sm text-[15px] text-tinta transition-colors duration-150
+                              hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2
+                              focus-visible:outline-bordo"
+                          >
+                            {r.noivaNome ?? "Noiva"}
+                          </Link>
+                        ) : (
+                          <span className="text-[15px] text-tinta">{r.noivaNome ?? "Noiva"}</span>
+                        )}
+                        {/* Etapa da jornada (o que a Agenda não mostra) + vestido como chip secundário */}
+                        <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                          {r.etapa && (
+                            <span className="text-[12px] text-cinza-fumo">{ROTULO_ETAPA[r.etapa]}</span>
+                          )}
+                          <Link
+                            href={`/loja/${lojaId}/vestidos/${r.vestidoId}`}
+                            className="inline-flex min-h-8 items-center rounded-full border border-borda-suave
+                              bg-papel px-2.5 py-0.5 text-[12px] text-grafite transition-colors duration-150
+                              hover:border-bordo hover:text-bordo focus-visible:outline-2
+                              focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                          >
+                            {r.codigo} · {r.nome}
+                          </Link>
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ))}
         </div>
       )}
+
+      {/* Porta para o histórico (ou volta), discreta no rodapé */}
+      <div className="border-t border-borda-suave pt-5">
+        <Link
+          href={passadas ? `/loja/${lojaId}/reservas` : `/loja/${lojaId}/reservas?quando=passadas`}
+          className="inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline
+            decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta
+            hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
+            focus-visible:outline-bordo"
+        >
+          {passadas ? "← Voltar às próximas reservas" : "Ver reservas passadas"}
+        </Link>
+      </div>
     </main>
   );
 }

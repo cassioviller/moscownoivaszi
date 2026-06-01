@@ -5,7 +5,7 @@
 // banco (meia-noite UTC) e como "YYYY-MM-DD" no motor; a conversão mora aqui.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import type { BloqueioVestido } from "@/generated/prisma/client";
+import type { BloqueioVestido, LeadEtapa } from "@/generated/prisma/client";
 import type { Bloqueio, Conflito, ErroBloqueio, Regras } from "./tipos";
 import { vestidoDisponivel } from "./motor";
 
@@ -231,6 +231,7 @@ export type ReservaDaLoja = {
   id: string;
   casamentoData: Date | null;
   noivaNome: string | null;
+  etapa: LeadEtapa | null; // etapa da jornada da noiva (o "como vai" do compromisso)
   leadId: string | null;
   vestidoId: string;
   codigo: string;
@@ -249,15 +250,23 @@ function hojeUTC(): Date {
 }
 
 /**
- * Livro de reservas da loja: todas as reservas de casamento ainda por vir
- * (casamento ≥ hoje), da mais próxima à mais distante, com noiva e vestido.
+ * Livro de reservas da loja, com noiva (nome + etapa) e vestido. Por padrão traz as
+ * futuras (casamento ≥ hoje, ascendente); `passadas` inverte para o histórico
+ * (casamento < hoje, descendente).
  */
-export async function listarReservasDaLoja(lojaId: string): Promise<ReservaDaLoja[]> {
+export async function listarReservasDaLoja(
+  lojaId: string,
+  opts: { passadas?: boolean } = {},
+): Promise<ReservaDaLoja[]> {
+  const hoje = hojeUTC();
   const rows = await tenantPrisma(prisma, lojaId).bloqueioVestido.findMany({
-    where: { tipo: "RESERVA_CASAMENTO", casamentoData: { gte: hojeUTC() } },
-    orderBy: { casamentoData: "asc" },
+    where: {
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: opts.passadas ? { lt: hoje } : { gte: hoje },
+    },
+    orderBy: { casamentoData: opts.passadas ? "desc" : "asc" },
     include: {
-      lead: { select: { noivaNome: true } },
+      lead: { select: { noivaNome: true, etapa: true } },
       vestido: { select: { id: true, codigo: true, nome: true } },
     },
   });
@@ -265,6 +274,7 @@ export async function listarReservasDaLoja(lojaId: string): Promise<ReservaDaLoj
     id: r.id,
     casamentoData: r.casamentoData,
     noivaNome: r.lead?.noivaNome ?? null,
+    etapa: r.lead?.etapa ?? null,
     leadId: r.leadId,
     vestidoId: r.vestidoId,
     codigo: r.vestido.codigo,
