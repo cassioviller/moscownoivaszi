@@ -158,8 +158,27 @@ model Vestido {
   loja      Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   atributos VestidoAtributo[]
   bloqueios BloqueioVestido[]
+  fotos     VestidoFoto[]
 
   @@unique([lojaId, codigo])
+}
+
+// Até 2 fotos por vestido (ordem 0/1), guardadas JÁ otimizadas (WebP) como bytes.
+// Filha de Vestido (sem lojaId) — tocada só via o pai escopado (regra do tenant.ts).
+model VestidoFoto {
+  id        String   @id @default(cuid())
+  vestidoId String
+  ordem     Int // 0 ou 1
+  bytes     Bytes
+  mime      String
+  largura   Int
+  altura    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vestido Vestido @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
+
+  @@unique([vestidoId, ordem])
 }
 
 model VestidoAtributo {

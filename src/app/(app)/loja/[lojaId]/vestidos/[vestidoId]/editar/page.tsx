@@ -3,25 +3,33 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterVestido } from "@/lib/vestidos/vestidos";
+import { listarFotosMeta } from "@/lib/vestidos/fotos";
 import { editarVestidoAction } from "../../actions";
 import { VestidoForm } from "../../vestido-form";
+import { FotosVestido } from "../../fotos-vestido";
 import { listarCatalogo } from "@/lib/catalogo/catalogo";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditarVestidoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lojaId: string; vestidoId: string }>;
+  searchParams: Promise<{ fotoErro?: string; fotoOk?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) redirect(`/loja/${sc.loja.id}/vestidos`);
 
   const { lojaId, vestidoId } = await params;
+  const { fotoErro, fotoOk } = await searchParams;
   const v = await obterVestido(sc.loja.id, vestidoId);
   if (!v) redirect(`/loja/${lojaId}/vestidos`);
-  const catalogo = await listarCatalogo(sc.loja.id);
+  const [catalogo, fotos] = await Promise.all([
+    listarCatalogo(sc.loja.id),
+    listarFotosMeta(sc.loja.id, vestidoId),
+  ]);
   const selecoes = Object.fromEntries(v.atributos.map((a) => [a.atributoId, a.opcaoId]));
 
   return (
@@ -47,6 +55,16 @@ export default async function EditarVestidoPage({
           categoria: v.categoria ?? undefined,
           observacoes: v.observacoes ?? undefined,
         }}
+      />
+
+      <div aria-hidden className="h-px bg-champagne/40" />
+
+      <FotosVestido
+        lojaId={lojaId}
+        vestidoId={v.id}
+        fotos={fotos}
+        erro={fotoErro}
+        ok={Boolean(fotoOk)}
       />
     </main>
   );

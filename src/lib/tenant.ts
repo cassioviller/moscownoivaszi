@@ -21,10 +21,11 @@ import { PrismaClient } from "@/generated/prisma/client";
 //   where de findUnique colide com o input `usuarioId_lojaId`. UsuarioLoja deve
 //   ser sempre lido via `base` direto, com filtro por `usuarioId` na mão.
 //
-// LIMITAÇÃO conhecida: as 4 tabelas-filha SEM coluna lojaId (`AtributoOpcao`,
-//   `VestidoAtributo`, `LeadInteresse`, `LeadInteresseAtributo`) NÃO são escopadas
-//   por este guard. Acesso direto a elas é uma rota de vazamento. Regra atual:
-//   só leia/escreva via `include` do model-pai que tem lojaId.
+// LIMITAÇÃO conhecida: as tabelas-filha SEM coluna lojaId (`AtributoOpcao`,
+//   `VestidoAtributo`, `LeadInteresse`, `LeadInteresseAtributo`, `VestidoFoto`)
+//   NÃO são escopadas por este guard. Acesso direto a elas é uma rota de
+//   vazamento. Regra atual: só leia/escreva via o model-pai que tem lojaId
+//   (confirmando o pai antes, como em fotos.ts/interesses.ts).
 export const TENANT_MODELS = [
   "Vestido",
   "Lead",
