@@ -147,6 +147,27 @@ async function main() {
     create: { usuarioId: admin.id, lojaId: loja.id, perfilId: perfilAdmin.id },
   });
 
+  // 4b) Admin DE LOJA (perfil Admin, NÃO super-admin). Gerencia a loja — equipe,
+  // permissões, catálogo — mas SEM poder sobre o CRUD de admins/lojas, que é
+  // exclusivo do super-admin acima. É a conta para o dia a dia da gerência;
+  // o /admin (criar admins/lojas) nem aparece pra ela. Senha: gerente123.
+  const senhaGerente = await bcrypt.hash("gerente123", 10);
+  const gerente = await prisma.usuario.upsert({
+    where: { email: "gerente@moscow.local" },
+    update: { isSuperAdmin: false }, // defensivo: nunca promove no re-seed
+    create: {
+      nome: "Gerente da Loja",
+      email: "gerente@moscow.local",
+      senhaHash: senhaGerente,
+      isSuperAdmin: false,
+    },
+  });
+  await prisma.usuarioLoja.upsert({
+    where: { usuarioId_lojaId: { usuarioId: gerente.id, lojaId: loja.id } },
+    update: { perfilId: perfilAdmin.id },
+    create: { usuarioId: gerente.id, lojaId: loja.id, perfilId: perfilAdmin.id },
+  });
+
   // 5) Catálogo de atributos + opções
   let ordemAttr = 0;
   for (const attr of ATRIBUTOS) {
