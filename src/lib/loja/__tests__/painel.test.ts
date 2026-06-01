@@ -7,6 +7,7 @@ import { carregarPainel } from "@/lib/loja/painel";
 const MARK = "t-painel-";
 let loja = "";
 let outra = "";
+let destaqueId = "";
 
 // Mesma convenção do painel: meia-noite UTC do dia de hoje em SP.
 const ymd = new Intl.DateTimeFormat("en-CA", {
@@ -41,7 +42,12 @@ beforeAll(async () => {
   await db.lead.create({ data: { noivaNome: `${MARK}a3`, etapa: "EM_PROVAS", casamentoData: emDias(15) } as any });
 
   await db.vestido.create({ data: { codigo: "P1", nome: `${MARK}v1`, precoBase: "100.00" } as any });
-  await db.vestido.create({ data: { codigo: "P2", nome: `${MARK}v2`, precoBase: "200.00" } as any });
+  const v2 = await db.vestido.create({ data: { codigo: "P2", nome: `${MARK}v2`, precoBase: "200.00" } as any });
+  // v2 ganha foto de capa → vira o destaque do atelier.
+  await prisma.vestidoFoto.create({
+    data: { vestidoId: v2.id, ordem: 0, bytes: new Uint8Array([1, 2, 3]), mime: "image/webp", largura: 100, altura: 133 },
+  });
+  destaqueId = v2.id;
 });
 
 afterAll(async () => {
@@ -85,6 +91,13 @@ describe("carregarPainel — dashboard com dados reais", () => {
     expect(p.atencoes[0].rotulo).toBe("Orçamento aberto");
   });
 
+  it("destaque do atelier: vestido ativo com foto de capa (ordem 0)", async () => {
+    const p = await carregarPainel(loja);
+    expect(p.destaque?.id).toBe(destaqueId);
+    expect(p.destaque?.codigo).toBe("P2");
+    expect(p.destaque?.versaoFoto).toBeGreaterThan(0);
+  });
+
   it("é escopado por loja: loja sem dados zera tudo", async () => {
     const p = await carregarPainel(outra);
     expect(p).toMatchObject({
@@ -95,6 +108,7 @@ describe("carregarPainel — dashboard com dados reais", () => {
       jornada: [],
       proximosCasamentos: [],
       atencoes: [],
+      destaque: null,
     });
   });
 });

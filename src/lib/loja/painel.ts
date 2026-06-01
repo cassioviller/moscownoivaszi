@@ -54,6 +54,13 @@ export type Atencao = {
   data: Date;
   diasRestantes: number;
 };
+export type Destaque = {
+  id: string;
+  codigo: string;
+  nome: string;
+  categoria: string | null;
+  versaoFoto: number; // updatedAt da foto 0 — cache-busting na URL
+};
 export type PainelLoja = {
   noivasAtivas: number;
   vestidos: number;
@@ -62,6 +69,7 @@ export type PainelLoja = {
   jornada: EtapaJornada[]; // etapas vivas com ao menos 1 noiva, em ordem
   proximosCasamentos: CasamentoProximo[]; // os 5 mais próximos
   atencoes: Atencao[]; // casamento ≤14 dias e ainda em provas/orçamento aberto
+  destaque: Destaque | null; // vestido do acervo em destaque (com foto)
 };
 
 // Meia-noite UTC do dia de HOJE no fuso da loja — casa com a convenção de
@@ -80,13 +88,25 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const db = tenantPrisma(prisma, lojaId);
   const hoje = inicioDeHojeUTC();
 
-  const [porEtapa, vestidos, futuros] = await Promise.all([
+  const [porEtapa, vestidos, futuros, destaqueRow] = await Promise.all([
     db.lead.groupBy({ by: ["etapa"], _count: { _all: true } }),
     db.vestido.count(),
     db.lead.findMany({
       where: { casamentoData: { gte: hoje } },
       orderBy: { casamentoData: "asc" },
       select: { id: true, noivaNome: true, casamentoData: true, etapa: true },
+    }),
+    // Vestido em destaque: o mais recente, ativo e COM foto de capa (ordem 0).
+    db.vestido.findFirst({
+      where: { status: "ativo", fotos: { some: { ordem: 0 } } },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        codigo: true,
+        nome: true,
+        categoria: true,
+        fotos: { where: { ordem: 0 }, select: { updatedAt: true } },
+      },
     }),
   ]);
 
@@ -123,6 +143,16 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
       diasRestantes: Math.round((l.casamentoData!.getTime() - hoje.getTime()) / DIA_MS),
     }));
 
+  const destaque: Destaque | null = destaqueRow
+    ? {
+        id: destaqueRow.id,
+        codigo: destaqueRow.codigo,
+        nome: destaqueRow.nome,
+        categoria: destaqueRow.categoria,
+        versaoFoto: destaqueRow.fotos[0]?.updatedAt.getTime() ?? 0,
+      }
+    : null;
+
   return {
     noivasAtivas,
     vestidos,
@@ -131,5 +161,6 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     jornada,
     proximosCasamentos,
     atencoes,
+    destaque,
   };
 }

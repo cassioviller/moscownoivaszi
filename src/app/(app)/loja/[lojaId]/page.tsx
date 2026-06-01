@@ -7,6 +7,7 @@ import { IndicadorDia } from "@/components/dashboard/indicador-dia";
 import { PainelJornada } from "@/components/dashboard/painel-jornada";
 import { PainelCasamentos } from "@/components/dashboard/lista-casamentos";
 import { PainelAtencoes } from "@/components/dashboard/painel-atencoes";
+import { DestaqueAtelier } from "@/components/dashboard/destaque-atelier";
 import { CardMetrica } from "@/components/dashboard/card-metrica";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 
@@ -114,6 +115,9 @@ export default async function DashboardLoja() {
           )}
         </div>
       )}
+
+      {/* Destaque do atelier — vestido do acervo com foto; só quando há (§8.6) */}
+      {painel.destaque && <DestaqueAtelier lojaId={sc.loja.id} destaque={painel.destaque} />}
     </div>
   );
 }
