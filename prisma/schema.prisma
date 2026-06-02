@@ -79,6 +79,8 @@ model Loja {
   // Relação inversa virtual (sem coluna/SQL em Loja) exigida pela FK de Sessao.lojaAtivaId.
   sessoesAtivas        Sessao[]
   overridesPermissao   PerfilOverrideLoja[]
+  cabines              Cabine[]
+  atendimentos         Atendimento[]
 }
 
 model Perfil {
@@ -105,8 +107,9 @@ model Usuario {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  lojas    UsuarioLoja[]
-  sessoes  Sessao[]
+  lojas        UsuarioLoja[]
+  sessoes      Sessao[]
+  atendimentos Atendimento[]
 }
 
 model UsuarioLoja {
@@ -155,6 +158,8 @@ model RegraDisponibilidade {
   usoDiasAntes      Int    @default(3)
   usoDiasDepois     Int    @default(2)
   lavagemDiasDepois Int    @default(7)
+  atendimentoAberturaHora   Int @default(9)
+  atendimentoFechamentoHora Int @default(19)
 
   loja Loja @relation(fields: [lojaId], references: [id], onDelete: Cascade)
 }
@@ -234,9 +239,10 @@ model Lead {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  loja      Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  interesse LeadInteresse?
-  bloqueios BloqueioVestido[]
+  loja         Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  interesse    LeadInteresse?
+  bloqueios    BloqueioVestido[]
+  atendimentos Atendimento[]
 }
 
 model LeadInteresse {
@@ -362,4 +368,36 @@ model PerfilOverrideLoja {
   perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
 
   @@id([lojaId, perfilId])
+}
+
+// Cabine de atendimento (sala/box) da loja. Lista cadastrável; entra no tenantPrisma.
+model Cabine {
+  id        String   @id @default(cuid())
+  lojaId    String
+  nome      String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  loja         Loja          @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  atendimentos Atendimento[]
+}
+
+// Atendimento (consulta) agendado para uma noiva, numa cabine, com uma vendedora.
+// Duração fixa de 60 min (constante na app). `inicio` é wall-clock em UTC, hora cheia.
+model Atendimento {
+  id          String   @id @default(cuid())
+  lojaId      String
+  leadId      String
+  cabineId    String
+  vendedoraId String
+  inicio      DateTime
+  observacao  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  loja      Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  cabine    Cabine  @relation(fields: [cabineId], references: [id], onDelete: Cascade)
+  vendedora Usuario @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
 }

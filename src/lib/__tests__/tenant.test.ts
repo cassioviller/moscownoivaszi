@@ -188,6 +188,24 @@ proveZeroVazamento({
   delegate: (c) => c.ajuste,
 });
 
+proveZeroVazamento({
+  label: "Cabine",
+  seed: (lojaId) => base.cabine.create({ data: { lojaId, nome: `${MARK}cab` } }),
+  delegate: (c) => c.cabine,
+});
+
+proveZeroVazamento({
+  label: "Atendimento",
+  seed: async (lojaId) => {
+    const lead = await base.lead.create({ data: { lojaId, noivaNome: `${MARK}n` } });
+    const cab = await base.cabine.create({ data: { lojaId, nome: `${MARK}c` } });
+    const u = await base.usuario.create({ data: { nome: `${MARK}v`, email: `${codigoUnico()}@x.local`, senhaHash: "x" } });
+    await base.usuarioLoja.create({ data: { usuarioId: u.id, lojaId, perfilId: "perfil-vendedora" } });
+    return base.atendimento.create({ data: { lojaId, leadId: lead.id, cabineId: cab.id, vendedoraId: u.id, inicio: new Date("2026-09-12T14:00:00.000Z") } });
+  },
+  delegate: (c) => c.atendimento,
+});
+
 // ── Canário anti-raw: falha o CI se houver raw em tabela de tenant ────────────
 //
 // Regex exige `(` ou backtick depois — pega chamadas reais (`$queryRaw(...)`,
