@@ -2,6 +2,20 @@
 
 > Snapshot de onde paramos. Atualizado em **2026-06-01**. Envelhece — confira os commits e os testes antes de confiar.
 
+## Agendar atendimento (2026-06-01)
+
+Spec/plano: `docs/superpowers/specs/2026-06-01-agendar-atendimento-design.md`, `docs/superpowers/plans/2026-06-01-agendar-atendimento.md`.
+
+Nova feature: agendar o atendimento (consulta) de uma noiva. Entidades `Cabine` e `Atendimento`
+(em `TENANT_MODELS`) + horário de funcionamento por loja em `RegraDisponibilidade`. Disponibilidade
+via grade visual: o client busca `gradeDoDia` (server action) e mostra os slots de 1h livres/ocupados
+(ocupado quando a cabine OU a vendedora já têm atendimento na hora); o servidor revalida ao salvar.
+Telas: `/loja/[id]/atendimentos/novo` (Agendar) e `/atendimentos/config` (cabines + horário). Sidebar:
+item "Agendar"; o antigo "Agenda" virou rótulo "Calendário" (rota `/agenda` mantida). Cadastrar uma
+noiva agora leva direto para Agendar com ela pré-selecionada. Gating: `leads` (agendar) / `config` (cabines).
+
+**Fast-follow:** atendimento na Agenda/Calendário e no perfil da noiva; status compareceu/faltou; horário por dia da semana.
+
 ## Jornada derivada (2026-06-01)
 
 Spec/plano: `docs/superpowers/specs/2026-06-01-jornada-derivada-design.md`, `docs/superpowers/plans/2026-06-01-jornada-derivada.md`.

@@ -35,12 +35,13 @@ export async function criarNoivaAction(
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"))) {
     redirect(`/loja/${sc.loja.id}/noivas`);
   }
+  let lead;
   try {
-    await criarLead(sc.loja.id, extrair(formData));
+    lead = await criarLead(sc.loja.id, extrair(formData));
   } catch (e) {
     return { erro: mensagem(e) };
   }
-  redirect(`/loja/${sc.loja.id}/noivas?ok=1`);
+  redirect(`/loja/${sc.loja.id}/atendimentos/novo?noiva=${lead.id}`);
 }
 
 export async function editarNoivaAction(
