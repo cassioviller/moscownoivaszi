@@ -37,6 +37,7 @@ export function navItems(lojaId: string, flags: NavFlags): NavItem[] {
     // reservas noiva↔vestido; acompanham o acesso a noivas.
     items.push({ href: `/loja/${lojaId}/agenda`, label: "Calendário" });
     items.push({ href: `/loja/${lojaId}/reservas`, label: "Reservas" });
+    items.push({ href: `/loja/${lojaId}/contratos/novo`, label: "Contrato" });
   }
   items.push({ href: `/loja/${lojaId}/vestidos`, label: "Vestidos" });
   // Ajustes (provas/ajustes da costureira) — independente de noivas: é o lar de
