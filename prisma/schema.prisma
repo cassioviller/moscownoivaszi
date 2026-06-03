@@ -89,6 +89,9 @@ model Loja {
   pagamentos           Pagamento[]
   pagamentoItens       PagamentoItem[]
   salariosRecorrentes  SalarioRecorrente[]
+  comissaoRegras       ComissaoRegra[]
+  comissaoFaixas       ComissaoFaixa[]
+  comissaoFechamentos  ComissaoFechamento[]
 }
 
 model Perfil {
@@ -123,6 +126,8 @@ model Usuario {
   contasPagar  ContaPagar[]
   pagamentos   Pagamento[]
   salariosRecorrentes SalarioRecorrente[]
+  comissaoRegras      ComissaoRegra[]
+  comissaoFechamentos ComissaoFechamento[]
 }
 
 model UsuarioLoja {
@@ -525,6 +530,7 @@ model Contrato {
   dataDevolucao     DateTime?
   observacoes       String?
   fechadoEm         DateTime       @default(now()) // data da venda → competência da comissão
+  comissaoEstornadaEm DateTime?    // S6 §6.4: cancelado já reconciliado no fechamento seguinte
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -592,9 +598,10 @@ model ContaPagar {
   origemComissaoFechamentoId String? // rastro da comissão (S6)
   createdAt                  DateTime         @default(now())
 
-  loja        Loja           @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  colaborador Usuario?       @relation(fields: [colaboradorId], references: [id], onDelete: SetNull)
-  itemPagto   PagamentoItem?
+  loja               Loja                @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  colaborador        Usuario?            @relation(fields: [colaboradorId], references: [id], onDelete: SetNull)
+  itemPagto          PagamentoItem?
+  comissaoFechamento ComissaoFechamento? // S6: o fechamento que gerou esta conta COMISSAO
 }
 
 model Pagamento {
@@ -639,4 +646,54 @@ model SalarioRecorrente {
   colaborador Usuario @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
 
   @@unique([lojaId, colaboradorId])
+}
+
+// — Comissão (S6) —
+
+model ComissaoRegra {
+  id                 String   @id @default(cuid())
+  lojaId             String
+  vendedoraId        String
+  vigenciaInicio     DateTime // regra vigente numa competência (versionada)
+  bonusAcumulaFaixas Boolean  @default(false)
+  ativo              Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  loja      Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  vendedora Usuario         @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  faixas    ComissaoFaixa[]
+}
+
+model ComissaoFaixa {
+  id           String   @id @default(cuid())
+  lojaId       String // carimbo p/ tenantPrisma
+  regraId      String
+  minAcumulado Decimal  @db.Decimal(10, 2) // borda inferior INCLUSIVA
+  maxAcumulado Decimal? @db.Decimal(10, 2) // null = aberta no topo; superior EXCLUSIVA
+  percentual   Decimal? @db.Decimal(5, 2) // % opcional (ex.: 5.00)
+  bonusFixo    Decimal? @db.Decimal(10, 2) // bônus opcional
+
+  loja  Loja          @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  regra ComissaoRegra @relation(fields: [regraId], references: [id], onDelete: Cascade)
+}
+
+model ComissaoFechamento {
+  id                 String   @id @default(cuid())
+  lojaId             String
+  vendedoraId        String
+  competencia        String // "YYYY-MM"
+  totalVendas        Decimal  @db.Decimal(10, 2) // base líquida acumulada (já com estorno §6.4)
+  percentualAplicado Decimal? @db.Decimal(5, 2)
+  valorComissao      Decimal  @db.Decimal(10, 2)
+  valorBonus         Decimal  @db.Decimal(10, 2)
+  valorTotal         Decimal  @db.Decimal(10, 2) // = comissão + bônus (≥ 0)
+  contaPagarId       String?  @unique // a ContaPagar COMISSAO gerada
+  fechadoEm          DateTime @default(now())
+
+  loja       Loja        @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  vendedora  Usuario     @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  contaPagar ContaPagar? @relation(fields: [contaPagarId], references: [id], onDelete: SetNull)
+
+  @@unique([lojaId, vendedoraId, competencia]) // idempotência do fechamento
 }

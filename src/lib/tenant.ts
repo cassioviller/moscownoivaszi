@@ -46,6 +46,9 @@ export const TENANT_MODELS = [
   "Pagamento",
   "PagamentoItem",
   "SalarioRecorrente",
+  "ComissaoRegra",
+  "ComissaoFaixa",
+  "ComissaoFechamento",
 ] as const;
 
 const TENANT_MODEL_SET = new Set<string>(TENANT_MODELS);
