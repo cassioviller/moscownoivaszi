@@ -222,6 +222,45 @@ describe("movimentação da reserva (retirada/devolução)", () => {
     expect(r).toMatchObject({ ok: false, motivo: "data_invalida" });
   });
 
+  it("string vazia é inválida e NÃO apaga a retirada (não confunde com limpar)", async () => {
+    const id = await novaReservaIsolada("2027-09-20");
+    await definirMovimentacaoReserva(loja, id, { retiradaDataReal: "2027-09-18" });
+    const r = await definirMovimentacaoReserva(loja, id, { retiradaDataReal: "" });
+    expect(r).toMatchObject({ ok: false, motivo: "data_invalida" });
+    const det = await obterReservaDetalhe(loja, id);
+    expect(det!.retiradaDataReal).not.toBeNull(); // continua retirado
+  });
+
+  it("aceita retirada e devolução no MESMO patch (ordenadas)", async () => {
+    const id = await novaReservaIsolada("2027-10-20");
+    const r = await definirMovimentacaoReserva(loja, id, {
+      retiradaDataReal: "2027-10-18",
+      devolucaoDataReal: "2027-10-22",
+    });
+    expect(r).toEqual({ ok: true });
+    const det = await obterReservaDetalhe(loja, id);
+    expect(det!.fases.some((f) => f.tipo === "lavagem")).toBe(true);
+  });
+
+  it("recusa retirada e devolução invertidas no MESMO patch (data_invertida)", async () => {
+    const id = await novaReservaIsolada("2027-11-20");
+    const r = await definirMovimentacaoReserva(loja, id, {
+      retiradaDataReal: "2027-11-18",
+      devolucaoDataReal: "2027-11-15",
+    });
+    expect(r).toMatchObject({ ok: false, motivo: "data_invertida" });
+  });
+
+  it("limpar retirada e devolução juntas volta ao estado inicial", async () => {
+    const id = await novaReservaIsolada("2027-12-20");
+    await definirMovimentacaoReserva(loja, id, { retiradaDataReal: "2027-12-18", devolucaoDataReal: "2027-12-22" });
+    const r = await definirMovimentacaoReserva(loja, id, { retiradaDataReal: null, devolucaoDataReal: null });
+    expect(r).toEqual({ ok: true });
+    const det = await obterReservaDetalhe(loja, id);
+    expect(det!.retiradaDataReal).toBeNull();
+    expect(det!.devolucaoDataReal).toBeNull();
+  });
+
   it("recusa retirada cedo demais que inverteria a preparação (datas_invalidas)", async () => {
     // Preparação começa 14 dias antes (2026-08-29); retirar em 2026-08-01 inverte a janela.
     const r = await definirMovimentacaoReserva(loja, reservaM, { retiradaDataReal: "2026-08-01" });

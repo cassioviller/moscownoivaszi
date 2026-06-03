@@ -187,10 +187,11 @@ export async function definirMovimentacaoReserva(
   const row = await db.bloqueioVestido.findUnique({ where: { id: bloqueioId } });
   if (!row || row.tipo !== "RESERVA_CASAMENTO") return { ok: false, motivo: "reserva_invalida" };
 
-  // Forma das datas que o patch realmente grava (null = limpar, não valida formato).
-  if (patch.retiradaDataReal && !diaValido(patch.retiradaDataReal))
+  // Forma das datas que o patch realmente grava. `null` = limpar (ok); `""` = entrada
+  // vazia do form = INVÁLIDA (nunca confundir com limpar); string = precisa ser dia válido.
+  if (patch.retiradaDataReal === "" || (patch.retiradaDataReal && !diaValido(patch.retiradaDataReal)))
     return { ok: false, motivo: "data_invalida" };
-  if (patch.devolucaoDataReal && !diaValido(patch.devolucaoDataReal))
+  if (patch.devolucaoDataReal === "" || (patch.devolucaoDataReal && !diaValido(patch.devolucaoDataReal)))
     return { ok: false, motivo: "data_invalida" };
 
   // Estado final = atual + patch (undefined = mantém; null = limpa; string = grava).

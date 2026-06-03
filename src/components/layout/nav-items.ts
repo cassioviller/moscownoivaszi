@@ -53,11 +53,13 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
       { href: loja("/orcamentos"), label: "Orçamentos" },
       { href: loja("/contratos/novo"), label: "Contratos" },
       { href: loja("/reservas"), label: "Reservas" },
-      { href: loja("/provas"), label: "Provas" },
     );
   }
-  // Ajustes tem gate próprio: é o lar de quem só cuida da costura. Entra no Ateliê
-  // mesmo sem acesso a noivas.
+  // Provas e Ajustes são operação de atelier: visíveis a quem vê noivas OU à costureira
+  // (gate próprio). Espelha o guard da página /provas (leads:ver OU ajustes:ver).
+  if (flags.podeVerNoivas || flags.podeVerAjustes) {
+    atelie.push({ href: loja("/provas"), label: "Provas" });
+  }
   if (flags.podeVerAjustes) {
     atelie.push({ href: loja("/ajustes"), label: "Ajustes" });
   }
