@@ -63,8 +63,9 @@ ACERVO
   Catálogo
 
 FINANCEIRO
-  Contas a pagar
   Contas a receber
+  Contas a pagar
+  Comissões
   Fluxo de caixa
 
 GESTÃO            (só admin)
@@ -329,7 +330,8 @@ GESTÃO            (só admin)
 # FINANCEIRO
 
 > Todas 🔴 novas — hoje não existe nenhuma estrutura financeira no sistema.
-> As três telas compartilham o mesmo modelo de lançamentos; mudam a lente.
+> Receber, pagar e fluxo compartilham o mesmo modelo de lançamentos (mudam a lente);
+> Comissões alimenta o "contas a pagar" no fechamento mensal.
 
 ## 13. Contas a receber 🔴 nova
 
@@ -363,7 +365,29 @@ GESTÃO            (só admin)
 
 ---
 
-## 15. Fluxo de caixa 🔴 nova
+## 15. Comissões 🔴 nova
+
+**Rota:** `/loja/[id]/financeiro/comissoes` · **Status:** 🔴 nova
+
+**Objetivo:** acompanhar a comissão das vendedoras — o quanto cada uma já fez no mês e o quanto o gerente vai pagar no próximo fechamento.
+
+**O que mostra:**
+- **Ranking do mês:** vendedoras ordenadas pelo acumulado de vendas + comissão prevista (em tempo real).
+- **Acumulado por vendedora:** total vendido no mês, faixa atingida, % aplicado, bônus, comissão prevista.
+- **Histórico de fechamentos:** competências já fechadas (vira conta a pagar).
+- **Regras por vendedora** (sub-tela): faixas configuráveis com **% e/ou bônus fixo**, acumulado mensal, retroativo (ver spec-roadmap).
+
+**Ações:** configurar faixas por vendedora, acompanhar o acumulado ao vivo, **fechar a competência** (dia 01 gera uma conta a pagar de comissão por vendedora), enviar resumo à contabilidade.
+
+**Dados:** *(novo modelo)* `ComissaoRegra`, `ComissaoFaixa`, `ComissaoFechamento`; origem nas vendas (`Contrato.vendedoraId` + `competenciaVenda`); o fechamento gera `ContaPagar` tipo=COMISSAO.
+
+**Na jornada:** fora da jornada da noiva — é o reconhecimento da vendedora. O acumulado também aparece no perfil dela (Equipe).
+
+> Regras completas em `docs/superpowers/specs/2026-06-03-roadmap-comercial-financeiro-comissao-design.md`.
+
+---
+
+## 16. Fluxo de caixa 🔴 nova
 
 **Rota:** `/loja/[id]/financeiro` · **Status:** 🔴 nova
 
@@ -384,7 +408,7 @@ GESTÃO            (só admin)
 
 # GESTÃO *(só admin)*
 
-## 16. Equipe
+## 17. Equipe
 
 **Rota:** `/equipe` · **Status:** 🟡 parcial
 
@@ -394,7 +418,7 @@ GESTÃO            (só admin)
 
 **Dados:** `Usuario`, `UsuarioLoja`.
 
-## 17. Permissões
+## 18. Permissões
 
 **Rota:** `/loja/[id]/permissoes` · **Status:** 🟢 existe
 
@@ -402,7 +426,7 @@ GESTÃO            (só admin)
 
 **Dados:** `Perfil`, `PerfilOverrideLoja`.
 
-## 18. Administração
+## 19. Administração
 
 **Rota:** `/admin` · **Status:** 🟡 parcial (super admin)
 
@@ -410,7 +434,7 @@ GESTÃO            (só admin)
 
 **Dados:** `Loja`, `Usuario`.
 
-## 19. Trocar loja
+## 20. Trocar loja
 
 **Rota:** `/selecionar-loja` · **Status:** 🟢 existe
 
@@ -424,7 +448,7 @@ GESTÃO            (só admin)
 |---|---|
 | 🟢 existe | Noivas, Perfil, Add/Editar, Interesses, Agendar, Calendário, Reservas, Vestidos, Catálogo, Ajustes, Permissões, Trocar loja |
 | 🟡 parcial | Início, Detalhe da reserva (sem retirada/devolução), Contratos (stateless), Equipe, Administração |
-| 🔴 nova | Atendimentos, Orçamentos, Provas (visão dedicada), Contas a receber, Contas a pagar, Fluxo de caixa |
+| 🔴 nova | Atendimentos, Orçamentos, Provas (visão dedicada), Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
 
 ## Pontas abertas que estas telas fecham
 
