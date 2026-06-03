@@ -2,6 +2,9 @@
 // PURA: só monta href/label a partir do lojaId + flags já resolvidas NO SERVIDOR.
 // Não decide autorização — apenas esconde links por UX. Os gates reais vivem em
 // cada page/layout/Server Action e permanecem intactos.
+//
+// Ordem = jornada da noiva (ver docs/MAPA_DE_TELAS.md). Itens agrupados em seções:
+// Início · Ateliê (a jornada) · Acervo · Financeiro · Gestão.
 
 export type NavFlags = {
   /** podeNoModulo(leads, ver) — resolvido no servidor */
@@ -25,40 +28,83 @@ export type NavItem = {
   exact?: boolean;
 };
 
-/** Mesma cobertura da navegação antiga do dashboard (paridade verificada na Fatia 2). */
-export function navItems(lojaId: string, flags: NavFlags): NavItem[] {
-  const items: NavItem[] = [
-    { href: `/loja/${lojaId}`, label: "Início", exact: true },
-  ];
+export type NavSection = {
+  /** rótulo da seção; null = grupo sem cabeçalho (Início) */
+  titulo: string | null;
+  itens: NavItem[];
+};
+
+/**
+ * Navegação agrupada na ordem da jornada. Seções vazias (sem permissão) são
+ * removidas no fim, então a barra nunca mostra um cabeçalho órfão.
+ */
+export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
+  const loja = (sufixo: string) => `/loja/${lojaId}${sufixo}`;
+
+  // ATELIÊ — a jornada, em ordem. Telas ainda não construídas (Atendimentos,
+  // Orçamentos, Provas) já entram como link; vão dar 404 até serem feitas.
+  const atelie: NavItem[] = [];
   if (flags.podeVerNoivas) {
-    items.push({ href: `/loja/${lojaId}/noivas`, label: "Noivas" });
-    items.push({ href: `/loja/${lojaId}/atendimentos/novo`, label: "Agendar" });
-    // Agenda (compromissos por janela) e Reservas (livro por casamento) derivam das
-    // reservas noiva↔vestido; acompanham o acesso a noivas.
-    items.push({ href: `/loja/${lojaId}/agenda`, label: "Calendário" });
-    items.push({ href: `/loja/${lojaId}/reservas`, label: "Reservas" });
-    items.push({ href: `/loja/${lojaId}/contratos/novo`, label: "Contrato" });
+    atelie.push(
+      { href: loja("/noivas"), label: "Noivas" },
+      { href: loja("/atendimentos/novo"), label: "Agendar" },
+      { href: loja("/agenda"), label: "Calendário" },
+      { href: loja("/atendimentos"), label: "Atendimentos" },
+      { href: loja("/orcamentos"), label: "Orçamentos" },
+      { href: loja("/contratos/novo"), label: "Contratos" },
+      { href: loja("/reservas"), label: "Reservas" },
+      { href: loja("/provas"), label: "Provas" },
+    );
   }
-  items.push({ href: `/loja/${lojaId}/vestidos`, label: "Vestidos" });
-  // Ajustes (provas/ajustes da costureira) — independente de noivas: é o lar de
-  // quem só cuida da costura.
+  // Ajustes tem gate próprio: é o lar de quem só cuida da costura. Entra no Ateliê
+  // mesmo sem acesso a noivas.
   if (flags.podeVerAjustes) {
-    items.push({ href: `/loja/${lojaId}/ajustes`, label: "Ajustes" });
+    atelie.push({ href: loja("/ajustes"), label: "Ajustes" });
   }
+
+  // ACERVO — Vestidos sempre; Catálogo só com gestão do catálogo.
+  const acervo: NavItem[] = [{ href: loja("/vestidos"), label: "Vestidos" }];
   if (flags.podeVerCatalogo) {
-    items.push({ href: `/loja/${lojaId}/catalogo`, label: "Catálogo" });
+    acervo.push({ href: loja("/catalogo"), label: "Catálogo" });
   }
+
+  // FINANCEIRO — telas ainda não construídas. Gate PROVISÓRIO = podeVerNoivas (papel
+  // comercial). TODO: trocar por permissão própria de financeiro quando as telas
+  // existirem (contas a receber/pagar são dados sensíveis).
+  const financeiro: NavItem[] = [];
+  if (flags.podeVerNoivas) {
+    financeiro.push(
+      { href: loja("/financeiro/receber"), label: "Contas a receber" },
+      { href: loja("/financeiro/pagar"), label: "Contas a pagar" },
+      // Fluxo de caixa é a raiz /financeiro; exact p/ não acender em /receber e /pagar.
+      { href: loja("/financeiro"), label: "Fluxo de caixa", exact: true },
+    );
+  }
+
+  // GESTÃO — só admin. Equipe e Trocar loja não são escopadas por loja.
+  const gestao: NavItem[] = [];
   if (flags.podeGerenciarEquipe) {
-    items.push({ href: "/equipe", label: "Equipe" });
-    items.push({ href: `/loja/${lojaId}/permissoes`, label: "Permissões" });
+    gestao.push(
+      { href: "/equipe", label: "Equipe" },
+      { href: loja("/permissoes"), label: "Permissões" },
+    );
   }
   if (flags.isSuperAdmin) {
-    items.push({ href: "/admin", label: "Administração" });
+    gestao.push({ href: "/admin", label: "Administração" });
   }
   if (flags.mostrarTroca) {
-    items.push({ href: "/selecionar-loja", label: "Trocar loja" });
+    gestao.push({ href: "/selecionar-loja", label: "Trocar loja" });
   }
-  return items;
+
+  const sections: NavSection[] = [
+    { titulo: null, itens: [{ href: `/loja/${lojaId}`, label: "Início", exact: true }] },
+    { titulo: "Ateliê", itens: atelie },
+    { titulo: "Acervo", itens: acervo },
+    { titulo: "Financeiro", itens: financeiro },
+    { titulo: "Gestão", itens: gestao },
+  ];
+
+  return sections.filter((s) => s.itens.length > 0);
 }
 
 export function isActive(pathname: string, item: NavItem): boolean {

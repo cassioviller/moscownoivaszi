@@ -8,12 +8,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navItems, isActive, type NavFlags } from "./nav-items";
+import { navSections, isActive, type NavFlags } from "./nav-items";
 
 export function MobileNav({ lojaId, flags }: { lojaId: string; flags: NavFlags }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const items = navItems(lojaId, flags);
+  const sections = navSections(lojaId, flags);
 
   const drawerRef = useRef<HTMLElement>(null);
   // Quem tinha o foco antes de abrir — p/ devolver ao fechar.
@@ -104,25 +104,34 @@ export function MobileNav({ lojaId, flags }: { lojaId: string; flags: NavFlags }
               ✕
             </button>
 
-            <nav className="flex flex-col gap-0.5">
-              {items.map((item) => {
-                const active = isActive(pathname, item);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    className={[
-                      "flex min-h-[44px] items-center rounded-[var(--mn-radius-md)] px-3 text-[15px] transition-colors duration-150 ease-out",
-                      active
-                        ? "font-medium text-bordo"
-                        : "text-grafite hover:bg-rose-dust/20 hover:text-tinta",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+            <nav className="flex flex-col gap-5 overflow-y-auto">
+              {sections.map((section) => (
+                <div key={section.titulo ?? "inicio"} className="flex flex-col gap-0.5">
+                  {section.titulo && (
+                    <span className="px-3 pb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">
+                      {section.titulo}
+                    </span>
+                  )}
+                  {section.itens.map((item) => {
+                    const active = isActive(pathname, item);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={[
+                          "flex min-h-[44px] items-center rounded-[var(--mn-radius-md)] px-3 text-[15px] transition-colors duration-150 ease-out",
+                          active
+                            ? "font-medium text-bordo"
+                            : "text-grafite hover:bg-rose-dust/20 hover:text-tinta",
+                        ].join(" ")}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </nav>
           </aside>
         </div>
