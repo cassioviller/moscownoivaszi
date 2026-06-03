@@ -85,6 +85,10 @@ model Loja {
   orcamentoItens       OrcamentoItem[]
   contratos            Contrato[]
   parcelas             Parcela[]
+  contasPagar          ContaPagar[]
+  pagamentos           Pagamento[]
+  pagamentoItens       PagamentoItem[]
+  salariosRecorrentes  SalarioRecorrente[]
 }
 
 model Perfil {
@@ -116,6 +120,9 @@ model Usuario {
   atendimentos Atendimento[]
   orcamentos   Orcamento[]
   contratos    Contrato[]
+  contasPagar  ContaPagar[]
+  pagamentos   Pagamento[]
+  salariosRecorrentes SalarioRecorrente[]
 }
 
 model UsuarioLoja {
@@ -552,4 +559,84 @@ model Parcela {
 
   loja     Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+}
+
+// Contas a pagar — obrigação × quitação (S5). ContaPagar = obrigação prevista;
+// Pagamento = saída de caixa que quita N contas (cruzamento salário+comissão).
+// ATRASADA é derivado. Decisão: docs/.../2026-06-03-s5-contas-a-pagar-design.md.
+enum ContaPagarTipo {
+  DESPESA
+  FORNECEDOR
+  SALARIO
+  COMISSAO
+}
+
+enum ContaPagarStatus {
+  PREVISTA
+  PAGA
+}
+
+model ContaPagar {
+  id                         String           @id @default(cuid())
+  lojaId                     String
+  tipo                       ContaPagarTipo
+  colaboradorId              String? // Usuario — p/ SALARIO/COMISSAO
+  competencia                String? // "YYYY-MM"
+  descricao                  String
+  categoria                  String?
+  fornecedor                 String?
+  valorPrevisto              Decimal          @db.Decimal(10, 2)
+  vencimento                 DateTime
+  status                     ContaPagarStatus @default(PREVISTA)
+  salarioRecorrenteId        String? // rastro da geração de folha
+  origemComissaoFechamentoId String? // rastro da comissão (S6)
+  createdAt                  DateTime         @default(now())
+
+  loja        Loja           @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  colaborador Usuario?       @relation(fields: [colaboradorId], references: [id], onDelete: SetNull)
+  itemPagto   PagamentoItem?
+}
+
+model Pagamento {
+  id                     String    @id @default(cuid())
+  lojaId                 String
+  colaboradorId          String?
+  data                   DateTime
+  valorPago              Decimal   @db.Decimal(10, 2)
+  forma                  String?
+  observacoes            String?
+  enviadoContabilidadeEm DateTime?
+  createdAt              DateTime  @default(now())
+
+  loja        Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  colaborador Usuario?        @relation(fields: [colaboradorId], references: [id], onDelete: SetNull)
+  itens       PagamentoItem[]
+}
+
+model PagamentoItem {
+  id           String  @id @default(cuid())
+  lojaId       String
+  pagamentoId  String
+  contaPagarId String  @unique // cada conta é quitada por no máximo 1 pagamento
+  valor        Decimal @db.Decimal(10, 2)
+
+  loja       Loja       @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  pagamento  Pagamento  @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
+  contaPagar ContaPagar @relation(fields: [contaPagarId], references: [id], onDelete: Cascade)
+}
+
+model SalarioRecorrente {
+  id            String   @id @default(cuid())
+  lojaId        String
+  colaboradorId String
+  valorBase     Decimal  @db.Decimal(10, 2)
+  diaVencimento Int // 1..28
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  loja        Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  colaborador Usuario @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  @@unique([lojaId, colaboradorId])
 }

@@ -6,28 +6,10 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
+import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
 import type { ParcelaStatus } from "@/generated/prisma/client";
 
 const DIA_MS = 86_400_000;
-
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
-
-// "YYYY-MM-DD" → meia-noite UTC; lança se inválida.
-function diaParaData(s: string): Date {
-  const t = (s ?? "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) throw new Error("data inválida");
-  const d = new Date(`${t}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) throw new Error("data inválida");
-  return d;
-}
 
 const atrasadaDe = (status: ParcelaStatus, vencimento: Date, hoje: number) =>
   status === "PREVISTA" && vencimento.getTime() < hoje;
