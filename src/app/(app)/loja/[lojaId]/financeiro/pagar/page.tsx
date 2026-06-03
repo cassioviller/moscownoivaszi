@@ -7,14 +7,12 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarContasAPagar, resumoPagar, type FiltroPagar } from "@/lib/financeiro/pagar";
+import { hojeYMD } from "@/lib/financeiro/datas";
 import type { ContaPagarTipo } from "@/generated/prisma/client";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card } from "../ui";
 import { lancarDespesaAction, removerContaAction, pagarContasAction, estornarPagamentoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
-const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const hojeYMD = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
 const TIPO_ROTULO: Record<ContaPagarTipo, string> = { DESPESA: "Despesa", FORNECEDOR: "Fornecedor", SALARIO: "Salário", COMISSAO: "Comissão" };
 
@@ -39,25 +37,6 @@ const AVISOS: Record<string, string> = {
   vazio: "Selecione ao menos uma conta.",
   pagamento_invalido: "Pagamento não encontrado.",
 };
-
-const inputBase =
-  "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-const botaoSuave =
-  "inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 " +
-  "transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-const botaoPrincipal =
-  "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel transition-colors duration-150 " +
-  "ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-
-function Card({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
-  return (
-    <div className="flex flex-1 flex-col gap-1 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">{rotulo}</span>
-      <span className={`font-display text-[20px] font-light tabular-nums ${destaque ? "text-bordo" : "text-tinta"}`}>{brl(valor)}</span>
-    </div>
-  );
-}
 
 export default async function PagarPage({
   params,

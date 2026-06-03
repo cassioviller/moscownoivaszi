@@ -2,14 +2,18 @@
 // Datas do financeiro na convenção do sistema: meia-noite UTC do dia-calendário em SP.
 // Compartilhado por receber (S4) e pagar (S5).
 
-export function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
+// "YYYY-MM-DD" do dia-calendário em SP (fonte única da convenção de fuso).
+export function hojeYMD(): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
+}
+
+export function hojeUTC(): Date {
+  return new Date(`${hojeYMD()}T00:00:00.000Z`);
 }
 
 // "YYYY-MM-DD" → meia-noite UTC; lança se inválida.

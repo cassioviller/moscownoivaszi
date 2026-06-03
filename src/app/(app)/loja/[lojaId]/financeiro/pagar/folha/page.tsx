@@ -14,6 +14,8 @@ import {
   listarContasAPagar,
   listarPagamentos,
 } from "@/lib/financeiro/pagar";
+import { hojeYMD } from "@/lib/financeiro/datas";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt } from "../../ui";
 import {
   definirSalarioAction,
   removerSalarioAction,
@@ -24,9 +26,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
-const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const hojeYMD = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const competenciaAtual = () => hojeYMD().slice(0, 7);
 const TIPO_ROTULO: Record<string, string> = { SALARIO: "Salário", COMISSAO: "Comissão" };
 
@@ -46,16 +45,6 @@ const AVISOS: Record<string, string> = {
   data_invalida: "Data inválida.",
   pagamento_invalido: "Pagamento não encontrado.",
 };
-
-const inputBase =
-  "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-const botaoSuave =
-  "inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 " +
-  "transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-const botaoPrincipal =
-  "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel transition-colors duration-150 " +
-  "ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
 function SecaoTitulo({ children }: { children: React.ReactNode }) {
   return <h2 className="text-[12px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">{children}</h2>;
