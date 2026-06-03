@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/financeiro/pagar/actions.ts
-// Contas a pagar — Server Actions. Ver = leads:ver; mutar = leads:editar (gate provisório
-// do Financeiro). Volta por ?ok/?erro. O pagamento quita N contas (cruzamento) lendo
-// arrays de contaPagarId/valor do form.
+// Contas a pagar — Server Actions. Ver = financeiro:ver; mutar = financeiro:editar.
+// Volta por ?ok/?erro. O pagamento quita N contas (cruzamento) lendo arrays de
+// contaPagarId/valor do form.
 "use server";
 
 import { redirect } from "next/navigation";
@@ -36,7 +36,7 @@ export async function lancarDespesaAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar`;
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const r = await lancarConta(lojaId, {
     tipo: (str(formData, "tipo") || "DESPESA") as ContaPagarTipo,
     descricao: str(formData, "descricao"),
@@ -52,7 +52,7 @@ export async function removerContaAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar`;
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const r = await removerConta(lojaId, str(formData, "contaId"));
   redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? "conta_removida" : r.motivo));
 }
@@ -61,7 +61,7 @@ export async function pagarContasAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = caminhoInternoSeguro(str(formData, "voltar"), lojaId, `/loja/${lojaId}/financeiro/pagar`);
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const contaIds = formData.getAll("contaPagarId").map(String);
   const valores = formData.getAll("valor").map(String);
   const itens = contaIds.map((id, i) => ({ contaPagarId: id, valor: valores[i] ?? "" }));
@@ -78,7 +78,7 @@ export async function estornarPagamentoAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = caminhoInternoSeguro(str(formData, "voltar"), lojaId, `/loja/${lojaId}/financeiro/pagar`);
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const r = await estornarPagamento(lojaId, str(formData, "pagamentoId"));
   redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? "estornado" : r.motivo));
 }
@@ -88,7 +88,7 @@ export async function enviarContabilidadeAction(formData: FormData) {
   const lojaId = sc.loja.id;
   // `voltar` preserva competência+colaborador da folha (e evita concatenar querystring crua).
   const base = caminhoInternoSeguro(str(formData, "voltar"), lojaId, `/loja/${lojaId}/financeiro/pagar/folha`);
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const enviado = str(formData, "enviado") === "1";
   const r = await marcarEnviadoContabilidade(lojaId, str(formData, "pagamentoId"), enviado);
   redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? (enviado ? "enviado_contabilidade" : "desfeito_contabilidade") : r.motivo));
@@ -100,7 +100,7 @@ export async function gerarFolhaAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar/folha`;
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const r = await gerarFolhaDoMes(lojaId, str(formData, "competencia"));
   redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? `folha_${r.geradas}` : r.motivo));
 }
@@ -109,7 +109,7 @@ export async function definirSalarioAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar/folha`;
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const r = await definirSalarioRecorrente(lojaId, str(formData, "colaboradorId"), {
     valorBase: str(formData, "valorBase"),
     diaVencimento: Number(str(formData, "diaVencimento") || "5"),
@@ -121,7 +121,7 @@ export async function removerSalarioAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar/folha`;
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
+  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(base);
   const r = await removerSalarioRecorrente(lojaId, str(formData, "id"));
   redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? "salario_removido" : r.motivo));
 }

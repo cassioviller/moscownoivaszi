@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { PERFIL_ADMIN_ID } from "@/lib/admin/usuarios";
 
-export const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config"] as const;
+export const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config", "financeiro"] as const;
 export const ACOES = ["ver", "criar", "editar"] as const;
 export type Modulo = (typeof MODULOS)[number];
 export type Acao = (typeof ACOES)[number];

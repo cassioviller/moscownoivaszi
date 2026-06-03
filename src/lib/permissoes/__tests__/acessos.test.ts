@@ -6,15 +6,15 @@ describe("normalizarAcessos", () => {
     const r = normalizarAcessos({ vestidos: { ver: true, criar: true, editar: false } });
     expect(r.vestidos).toEqual({ ver: true, criar: true, editar: false });
     expect(r.leads).toEqual({ ver: false, criar: false, editar: false });
-    expect(Object.keys(r).sort()).toEqual(["ajustes", "config", "interesses", "leads", "vestidos"]);
+    expect(Object.keys(r).sort()).toEqual(["ajustes", "config", "financeiro", "interesses", "leads", "vestidos"]);
   });
 
   it("descarta chaves desconhecidas (módulo e ação)", () => {
     const r = normalizarAcessos({
       vestidos: { ver: true, excluir: true },
-      financeiro: { ver: true },
+      relatorios: { ver: true },
     }) as Record<string, unknown>;
-    expect(r.financeiro).toBeUndefined();
+    expect(r.relatorios).toBeUndefined();
     expect(r.vestidos).toEqual({ ver: true, criar: false, editar: false });
   });
 

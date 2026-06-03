@@ -13,6 +13,7 @@ const ROTULO_MODULO: Record<Modulo, string> = {
   vestidos: "Vestidos",
   ajustes: "Ajustes", // tela da costureira (provas/ajustes)
   config: "Catálogo", // módulo "config" gateia a gestão do catálogo (telas /catalogo)
+  financeiro: "Financeiro", // receber, pagar e comissões (dado sensível)
 };
 const ROTULO_ACAO: Record<Acao, string> = { ver: "Ver", criar: "Criar", editar: "Editar" };
 const ACOES_UI: Acao[] = ["ver", "criar", "editar"];

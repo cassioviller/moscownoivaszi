@@ -13,6 +13,8 @@ export type NavFlags = {
   podeVerCatalogo: boolean;
   /** podeNoModulo(ajustes, ver) — tela da costureira (provas/ajustes) */
   podeVerAjustes: boolean;
+  /** podeNoModulo(financeiro, ver) — receber/pagar/comissões (dado sensível) */
+  podeVerFinanceiro: boolean;
   /** ehAdminDaLoja(usuario, loja) — resolvido no servidor */
   podeGerenciarEquipe: boolean;
   /** usuario.isSuperAdmin */
@@ -70,11 +72,9 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
     acervo.push({ href: loja("/catalogo"), label: "Catálogo" });
   }
 
-  // FINANCEIRO — telas ainda não construídas. Gate PROVISÓRIO = podeVerNoivas (papel
-  // comercial). TODO: trocar por permissão própria de financeiro quando as telas
-  // existirem (contas a receber/pagar são dados sensíveis).
+  // FINANCEIRO — módulo próprio (dado sensível): receber, pagar e fluxo de caixa.
   const financeiro: NavItem[] = [];
-  if (flags.podeVerNoivas) {
+  if (flags.podeVerFinanceiro) {
     financeiro.push(
       { href: loja("/financeiro/receber"), label: "Contas a receber" },
       { href: loja("/financeiro/pagar"), label: "Contas a pagar" },

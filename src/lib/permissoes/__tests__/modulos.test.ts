@@ -129,4 +129,12 @@ describe("podeNoModulo", () => {
     expect(await podeNoModulo(uAdminCanonico, loja, "vestidos", "editar")).toBe(true);
     expect(await podeNoModulo(uAdminCanonico, loja, "config", "criar")).toBe(true);
   });
+  it("financeiro (dado sensível): fail-closed p/ perfil sem o módulo; Admin canônico libera (P7)", async () => {
+    // vendedora não tem `financeiro` no template → negado (não vê receber/pagar/comissões)
+    expect(await podeNoModulo(uVend, loja, "financeiro", "ver")).toBe(false);
+    expect(await podeNoModulo(uVend, loja, "financeiro", "editar")).toBe(false);
+    // perfil Admin canônico (gerente) → acesso total ao financeiro
+    expect(await podeNoModulo(uAdminCanonico, loja, "financeiro", "ver")).toBe(true);
+    expect(await podeNoModulo(uAdminCanonico, loja, "financeiro", "editar")).toBe(true);
+  });
 });

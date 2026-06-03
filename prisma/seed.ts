@@ -55,7 +55,7 @@ const ATRIBUTOS: { nome: string; tipo: AtributoTipo; opcoes: string[] }[] = [
 ];
 
 // Módulos existentes na Base, para o mapa de acesso dos perfis.
-const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config"] as const;
+const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config", "financeiro"] as const;
 
 type Acoes = { ver: boolean; criar: boolean; editar: boolean };
 const TODAS: ("ver" | "criar" | "editar")[] = ["ver", "criar", "editar"];
@@ -103,11 +103,11 @@ async function main() {
   // 3) Perfis
   const perfilAdmin = await prisma.perfil.upsert({
     where: { id: "perfil-admin" },
-    update: { acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, ajustes: TODAS, config: TODAS }) },
+    update: { acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, ajustes: TODAS, config: TODAS, financeiro: TODAS }) },
     create: {
       id: "perfil-admin",
       nome: "Admin",
-      acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, ajustes: TODAS, config: TODAS }),
+      acessosModulos: acessos({ leads: TODAS, interesses: TODAS, vestidos: TODAS, ajustes: TODAS, config: TODAS, financeiro: TODAS }),
     },
   });
   await prisma.perfil.upsert({

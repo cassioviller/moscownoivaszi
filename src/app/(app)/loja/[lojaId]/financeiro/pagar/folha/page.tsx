@@ -2,7 +2,7 @@
 // Folha do mês — o cruzamento salário + comissão. Salários recorrentes (base por
 // colaborador), gerar a folha (idempotente), pagar um colaborador (1 saída quita N
 // contas) e enviar à contabilidade. Comissão entra na S6; até lá, só salário aparece.
-// Gate ver=leads:ver, mutar=leads:editar.
+// Gate ver=financeiro:ver, mutar=financeiro:editar.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
@@ -60,8 +60,8 @@ export default async function FolhaPage({
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
   const [podeVer, podeEditar] = await Promise.all([
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "editar"),
   ]);
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 

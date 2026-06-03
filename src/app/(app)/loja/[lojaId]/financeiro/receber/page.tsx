@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/financeiro/receber/page.tsx
 // Contas a receber — a carteira da loja: o que entra das noivas. Resumo (a receber ·
 // recebido · em atraso), filtro e baixa inline. Atraso em bordô (atenção). O plano de
-// parcelas nasce no detalhe do contrato. Gate ver=leads:ver, mutar=leads:editar.
+// parcelas nasce no detalhe do contrato. Gate ver=financeiro:ver, mutar=financeiro:editar.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
@@ -38,8 +38,8 @@ export default async function ReceberPage({
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
   const [podeVer, podeEditar] = await Promise.all([
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "editar"),
   ]);
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 

@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/financeiro/pagar/page.tsx
 // Contas a pagar — a carteira de saída: despesas, fornecedores e salários. Resumo (a
 // pagar · pago · em atraso), filtro e baixa inline (1 conta = 1 pagamento). Atraso em
-// bordô (atenção). Salários nascem na folha do mês. Gate ver=leads:ver, mutar=leads:editar.
+// bordô (atenção). Salários nascem na folha do mês. Gate ver=financeiro:ver, mutar=financeiro:editar.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
@@ -48,8 +48,8 @@ export default async function PagarPage({
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
   const [podeVer, podeEditar] = await Promise.all([
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "editar"),
   ]);
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 
