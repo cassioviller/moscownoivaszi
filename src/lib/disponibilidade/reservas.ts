@@ -8,6 +8,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import type { BloqueioVestido } from "@/generated/prisma/client";
 import type { Bloqueio, Conflito, ErroBloqueio, Regras, TipoJanela } from "./tipos";
 import { vestidoDisponivel, calcularJanelas, FUTURO_DISTANTE } from "./motor";
+import { parseDiaUTC } from "./datas";
 
 // Defaults espelham os @default do model RegraDisponibilidade — usados quando a
 // loja ainda não personalizou suas regras (linha ausente).
@@ -27,6 +28,17 @@ function ymd(d: Date | null): string | null {
 // "YYYY-MM-DD" → DateTime em meia-noite UTC (mesma convenção do resto do sistema).
 function meiaNoiteUTC(dia: string): Date {
   return new Date(`${dia}T00:00:00.000Z`);
+}
+
+// Valida "YYYY-MM-DD" reusando o parser do motor (rejeita formato e datas
+// impossíveis, ex.: 2026-13-40). True = data utilizável.
+function diaValido(s: string): boolean {
+  try {
+    parseDiaUTC(s);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // BloqueioVestido (Prisma) → Bloqueio (motor). Tipo do enum vira a união minúscula.
@@ -140,6 +152,73 @@ export async function cancelarReserva(lojaId: string, bloqueioId: string): Promi
   // delete por id é carimbado com lojaId (extendedWhereUnique) → P2025 se for de
   // outra loja. deleteMany evita o throw e simplesmente não apaga o que não é da loja.
   await tenantPrisma(prisma, lojaId).bloqueioVestido.deleteMany({ where: { id: bloqueioId } });
+}
+
+export type ResultadoMovimentacao =
+  | { ok: true }
+  | {
+      ok: false;
+      motivo:
+        | "reserva_invalida" // não existe / outra loja / é manutenção
+        | "sem_retirada" // devolução sem retirada
+        | "data_invalida" // dia mal formado
+        | "data_invertida" // devolução < retirada
+        | "devolucao_orfa" // limpar retirada com devolução setada
+        | "datas_invalidas"; // motor recusou (janela inverteria)
+    };
+
+/**
+ * Define a movimentação física de UMA reserva (retirada/devolução do vestido).
+ * Patch: campo ausente = não mexe; `null` = limpa; "YYYY-MM-DD" = grava. Valida o
+ * ESTADO FINAL inteiro (devolução exige retirada, devolução ≥ retirada, não se limpa
+ * a retirada deixando a devolução órfã) e PROJETA pelo motor antes de gravar (falha
+ * fechada, igual a reservarVestido). Só RESERVA_CASAMENTO da loja.
+ *
+ * Estes campos já são insumos do motor (uso ancorado na retirada; uso aberto até a
+ * devolução) e da jornada (temRetirada/temDevolucao) — por isso registrar a saída/volta
+ * fecha as etapas "Vestido retirado" e "Devolução" sem nenhum estado extra.
+ */
+export async function definirMovimentacaoReserva(
+  lojaId: string,
+  bloqueioId: string,
+  patch: { retiradaDataReal?: string | null; devolucaoDataReal?: string | null },
+): Promise<ResultadoMovimentacao> {
+  const db = tenantPrisma(prisma, lojaId);
+  const row = await db.bloqueioVestido.findUnique({ where: { id: bloqueioId } });
+  if (!row || row.tipo !== "RESERVA_CASAMENTO") return { ok: false, motivo: "reserva_invalida" };
+
+  // Forma das datas que o patch realmente grava (null = limpar, não valida formato).
+  if (patch.retiradaDataReal && !diaValido(patch.retiradaDataReal))
+    return { ok: false, motivo: "data_invalida" };
+  if (patch.devolucaoDataReal && !diaValido(patch.devolucaoDataReal))
+    return { ok: false, motivo: "data_invalida" };
+
+  // Estado final = atual + patch (undefined = mantém; null = limpa; string = grava).
+  const retirada = patch.retiradaDataReal === undefined ? ymd(row.retiradaDataReal) : patch.retiradaDataReal;
+  const devolucao =
+    patch.devolucaoDataReal === undefined ? ymd(row.devolucaoDataReal) : patch.devolucaoDataReal;
+
+  // Coerência do estado final.
+  if (patch.retiradaDataReal === null && devolucao) return { ok: false, motivo: "devolucao_orfa" };
+  if (devolucao && !retirada) return { ok: false, motivo: "sem_retirada" };
+  if (devolucao && retirada && devolucao < retirada) return { ok: false, motivo: "data_invertida" };
+
+  // Falha fechada: projeta o bloqueio com o estado final; se inverter janela, recusa.
+  const candidato: Bloqueio = { ...toBloqueio(row), retiradaDataReal: retirada, devolucaoDataReal: devolucao };
+  try {
+    calcularJanelas(candidato, await obterRegras(lojaId));
+  } catch {
+    return { ok: false, motivo: "datas_invalidas" };
+  }
+
+  // Grava só os campos tocados pelo patch.
+  const data: { retiradaDataReal?: Date | null; devolucaoDataReal?: Date | null } = {};
+  if (patch.retiradaDataReal !== undefined)
+    data.retiradaDataReal = patch.retiradaDataReal ? meiaNoiteUTC(patch.retiradaDataReal) : null;
+  if (patch.devolucaoDataReal !== undefined)
+    data.devolucaoDataReal = patch.devolucaoDataReal ? meiaNoiteUTC(patch.devolucaoDataReal) : null;
+  await db.bloqueioVestido.update({ where: { id: bloqueioId }, data });
+  return { ok: true };
 }
 
 export type ResultadoManutencao =
@@ -322,6 +401,10 @@ export type ReservaDetalhe = {
   vestidoId: string;
   codigo: string;
   nome: string;
+  // Movimentação física da peça (null = ainda não aconteceu). Alimenta o card de
+  // retirada/devolução e fecha as etapas da jornada.
+  retiradaDataReal: Date | null;
+  devolucaoDataReal: Date | null;
   // Fases do bloco contínuo de indisponibilidade (preparação → uso → higienização),
   // derivadas do motor. [] se o bloqueio não projetar (dado malformado).
   fases: FaseReserva[];
@@ -366,6 +449,8 @@ export async function obterReservaDetalhe(
     vestidoId: row.vestidoId,
     codigo: row.vestido.codigo,
     nome: row.vestido.nome,
+    retiradaDataReal: row.retiradaDataReal,
+    devolucaoDataReal: row.devolucaoDataReal,
     fases,
   };
 }

@@ -24,6 +24,10 @@ import {
   adicionarItemAction,
   alternarItemAction,
   removerItemAction,
+  registrarRetiradaAction,
+  registrarDevolucaoAction,
+  desfazerRetiradaAction,
+  desfazerDevolucaoAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +65,8 @@ const AVISOS: Record<string, string> = {
   ajuste: "Ajuste atualizado.",
   ajuste_removido: "Ajuste removido.",
   item: "Checklist atualizado.",
+  movimentacao: "Movimentação registrada.",
+  movimentacao_desfeita: "Registro desfeito.",
   sem_data: "Informe a data da prova.",
   tipo_invalido: "Escolha o tipo da prova.",
   data_invalida: "Data inválida.",
@@ -68,6 +74,10 @@ const AVISOS: Record<string, string> = {
   reserva_invalida: "Reserva inválida.",
   sem_descricao: "Descreva o ajuste.",
   prova_invalida: "Prova inválida.",
+  sem_retirada: "Registre a retirada antes da devolução.",
+  data_invertida: "A devolução não pode ser antes da retirada.",
+  devolucao_orfa: "Desfaça a devolução antes de desfazer a retirada.",
+  datas_invalidas: "A retirada não pode ser antes do início da preparação.",
 };
 
 // Classes compartilhadas (alvo de toque ≥44px nos links/botões de ação).
@@ -79,6 +89,10 @@ const botaoSuave =
   "inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda " +
   "underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
+const botaoPrincipal =
+  "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel " +
+  "transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2 " +
+  "focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
 export default async function ReservaDetalhePage({
   params,
@@ -94,14 +108,18 @@ export default async function ReservaDetalhePage({
   const { ok, erro } = await searchParams;
 
   // Visão: atelier (leads:ver) OU costureira (ajustes:ver). Sem nenhum → fora.
-  const [podeVerNoivas, podeVerVestidos, podeCriar, podeEditar, podeVerAjustesGate] = await Promise.all([
-    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "ver"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "criar"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "editar"),
-    podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "ver"),
-  ]);
+  const [podeVerNoivas, podeVerVestidos, podeCriar, podeEditar, podeVerAjustesGate, podeEditarNoivas] =
+    await Promise.all([
+      podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
+      podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "ver"),
+      podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "criar"),
+      podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "editar"),
+      podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "ver"),
+      podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    ]);
   if (!podeVerNoivas && !podeVerAjustesGate) redirect(`/loja/${sc.loja.id}`);
+  // Movimentação (retirada/devolução): leads:editar OU ajustes:editar (espelha a action).
+  const podeMovimentar = podeEditarNoivas || podeEditar;
 
   const reserva = await obterReservaDetalhe(sc.loja.id, bloqueioId);
   if (!reserva) redirect(podeVerNoivas ? `/loja/${lojaId}/reservas` : `/loja/${lojaId}/ajustes`);
@@ -172,6 +190,91 @@ export default async function ReservaDetalhePage({
           </ul>
         </section>
       )}
+
+      {/* Movimentação do vestido — saída/volta da peça (fecha a jornada) */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Movimentação</h2>
+
+        {reserva.devolucaoDataReal ? (
+          <div className="flex flex-col gap-2 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
+            <p className="text-[15px] text-tinta">
+              Devolvido em {dataLonga.format(reserva.devolucaoDataReal)}.
+            </p>
+            <p className="text-[13px] text-cinza-fumo">A jornada desta noiva está encerrada.</p>
+            {podeMovimentar && (
+              <form action={desfazerDevolucaoAction} className="self-start">
+                <input type="hidden" name="bloqueioId" value={bloqueioId} />
+                <button type="submit" className={botaoSuave}>
+                  Desfazer devolução
+                </button>
+              </form>
+            )}
+          </div>
+        ) : reserva.retiradaDataReal ? (
+          <div className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
+            <p className="text-[15px] text-tinta">
+              Retirado em {dataLonga.format(reserva.retiradaDataReal)} — com a noiva.
+            </p>
+            <p className="text-[13px] text-grafite">
+              Enquanto a devolução não for registrada, o vestido fica indisponível para outras noivas.
+            </p>
+            {podeMovimentar && (
+              <>
+                <form action={registrarDevolucaoAction} className="flex flex-wrap items-end gap-2">
+                  <input type="hidden" name="bloqueioId" value={bloqueioId} />
+                  <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
+                      Data da devolução
+                    </span>
+                    <input
+                      type="date"
+                      name="data"
+                      required
+                      defaultValue={casamentoYmd}
+                      className={`${inputBase} py-2 text-[14px]`}
+                      aria-label="Data da devolução"
+                    />
+                  </label>
+                  <button type="submit" className={botaoPrincipal}>
+                    Registrar devolução
+                  </button>
+                </form>
+                <form action={desfazerRetiradaAction} className="self-start">
+                  <input type="hidden" name="bloqueioId" value={bloqueioId} />
+                  <button type="submit" className={botaoSuave}>
+                    Desfazer retirada
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel p-4">
+            <p className="text-[15px] text-tinta">Vestido ainda no atelier.</p>
+            {podeMovimentar && (
+              <form action={registrarRetiradaAction} className="flex flex-wrap items-end gap-2">
+                <input type="hidden" name="bloqueioId" value={bloqueioId} />
+                <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
+                    Data da retirada
+                  </span>
+                  <input
+                    type="date"
+                    name="data"
+                    required
+                    defaultValue={casamentoYmd}
+                    className={`${inputBase} py-2 text-[14px]`}
+                    aria-label="Data da retirada"
+                  />
+                </label>
+                <button type="submit" className={botaoPrincipal}>
+                  Registrar retirada
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Provas */}
       <section className="flex flex-col gap-4">

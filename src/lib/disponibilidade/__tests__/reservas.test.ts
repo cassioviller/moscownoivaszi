@@ -13,6 +13,8 @@ import {
   criarManutencao,
   listarManutencoesDoVestido,
   listarReservasDaLoja,
+  definirMovimentacaoReserva,
+  obterReservaDetalhe,
 } from "@/lib/disponibilidade/reservas";
 
 const MARK = "t-reservas-";
@@ -136,5 +138,108 @@ describe("reservas: motor ligado ao banco", () => {
     expect(livro.every((x) => x.casamentoData && x.casamentoData >= hoje)).toBe(true);
 
     if (r.ok) await cancelarReserva(loja, r.bloqueioId);
+  });
+});
+
+describe("movimentação da reserva (retirada/devolução)", () => {
+  // Vestido + reserva dedicados (casamento 2026-09-12 → preparação começa 2026-08-29).
+  let vestidoM = "";
+  let reservaM = "";
+  let seq = 0;
+
+  // Cada teste que cria reserva ganha seu PRÓPRIO vestido: registrar retirada sem
+  // devolução deixa o uso em aberto e bloquearia o vestido para qualquer outra data.
+  async function novaReservaIsolada(casamento: string): Promise<string> {
+    const db = tenantPrisma(prisma, loja);
+    seq += 1;
+    const vid = (
+      await db.vestido.create({ data: { codigo: `${MARK}M${seq}`, nome: `${MARK}M${seq}`, precoBase: 1500 } as never })
+    ).id;
+    const r = await reservarVestido(loja, { vestidoId: vid, leadId: noiva, casamentoData: casamento });
+    if (!r.ok) throw new Error("setup: nova reserva isolada falhou");
+    return r.bloqueioId;
+  }
+
+  beforeAll(async () => {
+    const db = tenantPrisma(prisma, loja);
+    vestidoM = (await db.vestido.create({ data: { codigo: `${MARK}M`, nome: `${MARK}M`, precoBase: 1500 } as never })).id;
+    const r = await reservarVestido(loja, { vestidoId: vestidoM, leadId: noiva, casamentoData: "2026-09-12" });
+    if (!r.ok) throw new Error("setup: reserva falhou");
+    reservaM = r.bloqueioId;
+  });
+
+  it("registra retirada e deixa o uso em aberto (peça fora)", async () => {
+    const r = await definirMovimentacaoReserva(loja, reservaM, { retiradaDataReal: "2026-09-10" });
+    expect(r).toEqual({ ok: true });
+
+    const det = await obterReservaDetalhe(loja, reservaM);
+    const ultima = det!.fases[det!.fases.length - 1];
+    expect(ultima.tipo).toBe("uso");
+    expect(ultima.abertoFim).toBe(true); // retirou e não devolveu → indeterminado
+  });
+
+  it("registra devolução: uso fecha e a lavagem aparece", async () => {
+    const r = await definirMovimentacaoReserva(loja, reservaM, { devolucaoDataReal: "2026-09-14" });
+    expect(r).toEqual({ ok: true });
+
+    const det = await obterReservaDetalhe(loja, reservaM);
+    expect(det!.fases.some((f) => f.tipo === "lavagem")).toBe(true);
+    expect(det!.fases.every((f) => !f.abertoFim)).toBe(true);
+  });
+
+  it("limpar a devolução sozinha é permitido (reabre o uso)", async () => {
+    const r = await definirMovimentacaoReserva(loja, reservaM, { devolucaoDataReal: null });
+    expect(r).toEqual({ ok: true });
+    const det = await obterReservaDetalhe(loja, reservaM);
+    expect(det!.fases[det!.fases.length - 1].abertoFim).toBe(true);
+  });
+
+  it("limpar a retirada com devolução setada é recusado (devolucao_orfa)", async () => {
+    // Reserva nova (vestido próprio), retirada + devolução cheias.
+    const id = await novaReservaIsolada("2027-06-20");
+    await definirMovimentacaoReserva(loja, id, { retiradaDataReal: "2027-06-18" });
+    await definirMovimentacaoReserva(loja, id, { devolucaoDataReal: "2027-06-22" });
+
+    const r = await definirMovimentacaoReserva(loja, id, { retiradaDataReal: null });
+    expect(r).toMatchObject({ ok: false, motivo: "devolucao_orfa" });
+  });
+
+  it("recusa devolução sem retirada (sem_retirada)", async () => {
+    const id = await novaReservaIsolada("2027-07-20");
+    const r = await definirMovimentacaoReserva(loja, id, { devolucaoDataReal: "2027-07-18" });
+    expect(r).toMatchObject({ ok: false, motivo: "sem_retirada" });
+  });
+
+  it("recusa devolução anterior à retirada (data_invertida)", async () => {
+    const id = await novaReservaIsolada("2027-08-20");
+    await definirMovimentacaoReserva(loja, id, { retiradaDataReal: "2027-08-18" });
+    const r = await definirMovimentacaoReserva(loja, id, { devolucaoDataReal: "2027-08-15" });
+    expect(r).toMatchObject({ ok: false, motivo: "data_invertida" });
+  });
+
+  it("recusa dia mal formado (data_invalida)", async () => {
+    const r = await definirMovimentacaoReserva(loja, reservaM, { retiradaDataReal: "2026-13-40" });
+    expect(r).toMatchObject({ ok: false, motivo: "data_invalida" });
+  });
+
+  it("recusa retirada cedo demais que inverteria a preparação (datas_invalidas)", async () => {
+    // Preparação começa 14 dias antes (2026-08-29); retirar em 2026-08-01 inverte a janela.
+    const r = await definirMovimentacaoReserva(loja, reservaM, { retiradaDataReal: "2026-08-01" });
+    expect(r).toMatchObject({ ok: false, motivo: "datas_invalidas" });
+  });
+
+  it("recusa bloqueio de manutenção (reserva_invalida)", async () => {
+    const m = await criarManutencao(loja, { vestidoId: vestidoM, inicio: "2028-01-10", fim: "2028-01-20" });
+    expect(m.ok).toBe(true);
+    if (!m.ok) return;
+    const r = await definirMovimentacaoReserva(loja, m.id, { retiradaDataReal: "2028-01-12" });
+    expect(r).toMatchObject({ ok: false, motivo: "reserva_invalida" });
+    await cancelarReserva(loja, m.id);
+  });
+
+  it("isolamento: outra loja não move a reserva", async () => {
+    const outra = (await prisma.loja.create({ data: { nome: `${MARK}loja2` } })).id;
+    const r = await definirMovimentacaoReserva(outra, reservaM, { retiradaDataReal: "2026-09-09" });
+    expect(r).toMatchObject({ ok: false, motivo: "reserva_invalida" });
   });
 });

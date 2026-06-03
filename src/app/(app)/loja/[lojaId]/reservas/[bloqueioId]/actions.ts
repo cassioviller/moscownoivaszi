@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo, type Acao } from "@/lib/permissoes/modulos";
 import { registrarProva, editarProva, removerProva } from "@/lib/atelier/provas";
+import { definirMovimentacaoReserva } from "@/lib/disponibilidade/reservas";
 import {
   adicionarAjuste,
   alternarStatusAjuste,
@@ -26,6 +27,21 @@ async function guard(formData: FormData, acao: Acao) {
   const bloqueioId = String(formData.get("bloqueioId") ?? "");
   const base = `/loja/${sc.loja.id}/reservas/${bloqueioId}`;
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", acao))) redirect(base);
+  return { lojaId: sc.loja.id, bloqueioId, base };
+}
+
+// Movimentação (retirada/devolução) avança a JORNADA, mas a costureira que entrega/
+// recebe a peça também precisa registrar → passa com leads:editar OU ajustes:editar.
+async function guardMovimentacao(formData: FormData) {
+  const sc = await getSessaoComLoja();
+  if (!sc) redirect("/login");
+  const bloqueioId = String(formData.get("bloqueioId") ?? "");
+  const base = `/loja/${sc.loja.id}/reservas/${bloqueioId}`;
+  const [podeLeads, podeAjustes] = await Promise.all([
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "editar"),
+  ]);
+  if (!podeLeads && !podeAjustes) redirect(base);
   return { lojaId: sc.loja.id, bloqueioId, base };
 }
 
@@ -101,4 +117,30 @@ export async function removerItemAction(formData: FormData) {
   const { lojaId, base } = await guard(formData, "editar");
   await removerItemChecklist(lojaId, str(formData, "itemId"));
   redirect(`${base}?ok=item`);
+}
+
+// — Movimentação do vestido (retirada/devolução) —
+
+export async function registrarRetiradaAction(formData: FormData) {
+  const { lojaId, bloqueioId, base } = await guardMovimentacao(formData);
+  const r = await definirMovimentacaoReserva(lojaId, bloqueioId, { retiradaDataReal: str(formData, "data") });
+  redirect(r.ok ? `${base}?ok=movimentacao` : `${base}?erro=${r.motivo}`);
+}
+
+export async function registrarDevolucaoAction(formData: FormData) {
+  const { lojaId, bloqueioId, base } = await guardMovimentacao(formData);
+  const r = await definirMovimentacaoReserva(lojaId, bloqueioId, { devolucaoDataReal: str(formData, "data") });
+  redirect(r.ok ? `${base}?ok=movimentacao` : `${base}?erro=${r.motivo}`);
+}
+
+export async function desfazerRetiradaAction(formData: FormData) {
+  const { lojaId, bloqueioId, base } = await guardMovimentacao(formData);
+  const r = await definirMovimentacaoReserva(lojaId, bloqueioId, { retiradaDataReal: null });
+  redirect(r.ok ? `${base}?ok=movimentacao_desfeita` : `${base}?erro=${r.motivo}`);
+}
+
+export async function desfazerDevolucaoAction(formData: FormData) {
+  const { lojaId, bloqueioId, base } = await guardMovimentacao(formData);
+  const r = await definirMovimentacaoReserva(lojaId, bloqueioId, { devolucaoDataReal: null });
+  redirect(r.ok ? `${base}?ok=movimentacao_desfeita` : `${base}?erro=${r.motivo}`);
 }
