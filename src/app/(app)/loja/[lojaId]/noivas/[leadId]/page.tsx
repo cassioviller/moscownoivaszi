@@ -15,7 +15,9 @@ import { obterNoivaComInteresse } from "@/lib/leads/interesses";
 import { indicarVestidos } from "@/lib/indicacao/indicacao";
 import { ROTULO_ORIGEM, fatosDaNoiva } from "@/lib/leads/leads";
 import { estagioDaNoiva, ROTULO_ESTAGIO } from "@/lib/leads/jornada";
-import { marcarOrcamentoAbertoAction, marcarContratoFechadoAction, marcarPerdidaAction } from "./jornada-actions";
+import { marcarContratoFechadoAction, marcarPerdidaAction } from "./jornada-actions";
+import { criarOrcamentoAction } from "../../orcamentos/actions";
+import { listarOrcamentosDaNoiva } from "@/lib/orcamentos/orcamentos";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
 import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
@@ -29,6 +31,13 @@ import { ReservaLivreInline } from "@/components/disponibilidade/reserva-livre-i
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 
 export const dynamic = "force-dynamic";
+
+const ROTULO_STATUS_ORC: Record<string, string> = {
+  RASCUNHO: "Rascunho",
+  ENVIADO: "Enviado",
+  APROVADO: "Aprovado",
+  RECUSADO: "Recusado",
+};
 
 // UTC: a data nasce em meia-noite UTC (leads.ts) — exibir em UTC evita off-by-one.
 const dataFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -108,13 +117,14 @@ export default async function NoivaPage({
   const lead = dados.lead;
   const i = dados.interesse;
 
-  const [podeEditar, iVer, iCriar, iEditar, podeReservar, reservas] = await Promise.all([
+  const [podeEditar, iVer, iCriar, iEditar, podeReservar, reservas, orcamentos] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "ver"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
     listarReservasDaNoiva(sc.loja.id, leadId),
+    listarOrcamentosDaNoiva(sc.loja.id, leadId),
   ]);
   const iMexer = iCriar || iEditar;
 
@@ -180,13 +190,6 @@ export default async function NoivaPage({
       {podeEditar && (
         <section className="flex flex-wrap gap-3">
           <MarcoForm
-            action={marcarOrcamentoAbertoAction}
-            leadId={leadId}
-            ligado={fatos!.orcamentoAbertoEm !== null}
-            rotuloLigar="Marcar orçamento aberto"
-            rotuloDesfazer="Desfazer orçamento aberto"
-          />
-          <MarcoForm
             action={marcarContratoFechadoAction}
             leadId={leadId}
             ligado={fatos!.contratoFechadoEm !== null}
@@ -200,6 +203,45 @@ export default async function NoivaPage({
             rotuloLigar="Marcar como perdida"
             rotuloDesfazer="Reativar noiva"
           />
+        </section>
+      )}
+
+      {/* Orçamentos — a negociação registrada (substitui o marco manual de orçamento) */}
+      {(orcamentos.length > 0 || podeEditar) && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Orçamentos</h2>
+          {orcamentos.length > 0 && (
+            <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+              {orcamentos.map((o) => (
+                <li key={o.id}>
+                  <Link
+                    href={`/loja/${lojaId}/orcamentos/${o.id}`}
+                    className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-rose-dust/10"
+                  >
+                    <span className="text-[13px] text-grafite">
+                      {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "item" : "itens"}
+                    </span>
+                    <span className="font-display text-[14px] font-light tabular-nums text-tinta">
+                      {Number(o.total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {podeEditar && (
+            <form action={criarOrcamentoAction}>
+              <input type="hidden" name="leadId" value={leadId} />
+              <button
+                type="submit"
+                className="inline-flex min-h-11 w-fit items-center rounded-sm text-[13px] text-grafite underline
+                  decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo
+                  hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              >
+                Abrir orçamento
+              </button>
+            </form>
+          )}
         </section>
       )}
 

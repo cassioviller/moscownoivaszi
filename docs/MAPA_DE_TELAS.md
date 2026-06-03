@@ -203,9 +203,9 @@ GESTÃO            (só admin)
 
 ---
 
-## 6. Orçamentos 🔴 nova
+## 6. Orçamentos 🟢 existe
 
-**Rota:** `/loja/[id]/orcamentos` · **Status:** 🔴 nova (hoje só existe um marco + teto solto)
+**Rota:** `/loja/[id]/orcamentos` · **Status:** 🟢 existe *(S2 — itens, desconto, status; aprovado alimenta o contrato na S3)*
 
 **Objetivo:** registrar a **negociação feita durante o atendimento** — a vendedora negocia com a noiva e tudo fica gravado, não na cabeça.
 
@@ -448,7 +448,7 @@ GESTÃO            (só admin)
 |---|---|
 | 🟢 existe | Noivas, Perfil, Add/Editar, Interesses, Agendar, Calendário, **Atendimentos**, Reservas, Detalhe da reserva (retirada/devolução ✓), **Provas (visão dedicada)**, Vestidos, Catálogo, Ajustes, Permissões, Trocar loja |
 | 🟡 parcial | Início, Contratos (stateless), Equipe, Administração |
-| 🔴 nova | Orçamentos, Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
+| 🔴 nova | Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
 
 ## Pontas abertas que estas telas fecham
 

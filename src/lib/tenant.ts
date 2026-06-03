@@ -38,6 +38,8 @@ export const TENANT_MODELS = [
   "Ajuste",
   "Cabine",
   "Atendimento",
+  "Orcamento",
+  "OrcamentoItem",
 ] as const;
 
 const TENANT_MODEL_SET = new Set<string>(TENANT_MODELS);

@@ -11,6 +11,7 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarAtendimentos, type AtendimentoFila } from "@/lib/atendimentos/atendimentos";
 import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
 import { iniciarAtendimentoAction, concluirAtendimentoAction, marcarFaltaAction } from "./actions";
+import { criarOrcamentoAction } from "../orcamentos/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -121,25 +122,33 @@ function Linha({
           )}
 
           {podeEditar && a.situacao === "EM_ATENDIMENTO" && (
-            <form action={concluirAtendimentoAction} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="id" value={a.id} />
-              <label className="flex items-center gap-2">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Desfecho</span>
-                <select name="desfecho" required defaultValue="" aria-label="Desfecho do atendimento" className={inputBase}>
-                  <option value="" disabled>
-                    Como terminou?
-                  </option>
-                  {DESFECHOS.map((d) => (
-                    <option key={d} value={d}>
-                      {ROTULO_DESFECHO[d]}
+            <>
+              <form action={criarOrcamentoAction}>
+                <input type="hidden" name="atendimentoId" value={a.id} />
+                <button type="submit" className={botaoSuave}>
+                  Abrir orçamento
+                </button>
+              </form>
+              <form action={concluirAtendimentoAction} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="id" value={a.id} />
+                <label className="flex items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Desfecho</span>
+                  <select name="desfecho" required defaultValue="" aria-label="Desfecho do atendimento" className={inputBase}>
+                    <option value="" disabled>
+                      Como terminou?
                     </option>
-                  ))}
-                </select>
-              </label>
-              <button type="submit" className={botaoPrincipal}>
-                Concluir
-              </button>
-            </form>
+                    {DESFECHOS.map((d) => (
+                      <option key={d} value={d}>
+                        {ROTULO_DESFECHO[d]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="submit" className={botaoPrincipal}>
+                  Concluir
+                </button>
+              </form>
+            </>
           )}
         </span>
       </div>

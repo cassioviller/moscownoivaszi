@@ -3,7 +3,7 @@ import { estagioDaNoiva, noivaAtiva, type FatosJornada } from "@/lib/leads/jorna
 
 const ZERO: FatosJornada = {
   houveAtendimento: false, foiAtendida: false,
-  temProvaAgendada: false, temInteresse: false, orcamentoAbertoEm: null,
+  temProvaAgendada: false, temInteresse: false, temOrcamento: false, orcamentoAbertoEm: null,
   contratoFechadoEm: null, temProvaRealizada: false, temRetirada: false,
   casamentoPassou: false, temDevolucao: false, perdidaEm: null,
 };
@@ -31,8 +31,9 @@ describe("estagioDaNoiva — maior índice satisfeito", () => {
   it("interesse → interesses", () => {
     expect(estagioDaNoiva({ ...ZERO, temInteresse: true }).atual).toBe("interesses");
   });
-  it("orçamento aberto → orcamento_aberto", () => {
+  it("orçamento aberto → orcamento_aberto (marco legado OU orçamento real)", () => {
     expect(estagioDaNoiva({ ...ZERO, orcamentoAbertoEm: d }).atual).toBe("orcamento_aberto");
+    expect(estagioDaNoiva({ ...ZERO, temOrcamento: true }).atual).toBe("orcamento_aberto");
   });
   it("contrato fechado → contrato_fechado", () => {
     expect(estagioDaNoiva({ ...ZERO, contratoFechadoEm: d }).atual).toBe("contrato_fechado");

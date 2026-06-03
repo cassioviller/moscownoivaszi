@@ -123,6 +123,7 @@ function inicioDeHojeUTC(): Date {
 export const INCLUDE_JORNADA = {
   interesse: { select: { atributos: { select: { atributoId: true } } } },
   atendimentos: { select: { situacao: true } },
+  orcamentos: { select: { status: true } },
   bloqueios: {
     where: { tipo: "RESERVA_CASAMENTO" as const },
     select: {
@@ -146,6 +147,7 @@ export function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
     ),
     temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
     temInteresse: (lead.interesse?.atributos.length ?? 0) > 0,
+    temOrcamento: lead.orcamentos.some((o) => o.status !== "RECUSADO"),
     orcamentoAbertoEm: lead.orcamentoAbertoEm,
     contratoFechadoEm: lead.contratoFechadoEm,
     temProvaRealizada: provas.some((p) => p.comparecimento === "COMPARECEU"),

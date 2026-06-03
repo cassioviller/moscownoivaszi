@@ -81,6 +81,8 @@ model Loja {
   overridesPermissao   PerfilOverrideLoja[]
   cabines              Cabine[]
   atendimentos         Atendimento[]
+  orcamentos           Orcamento[]
+  orcamentoItens       OrcamentoItem[]
 }
 
 model Perfil {
@@ -110,6 +112,7 @@ model Usuario {
   lojas        UsuarioLoja[]
   sessoes      Sessao[]
   atendimentos Atendimento[]
+  orcamentos   Orcamento[]
 }
 
 model UsuarioLoja {
@@ -184,6 +187,7 @@ model Vestido {
   atributos VestidoAtributo[]
   bloqueios BloqueioVestido[]
   fotos     VestidoFoto[]
+  orcamentoItens OrcamentoItem[]
 
   @@unique([lojaId, codigo])
 }
@@ -243,6 +247,7 @@ model Lead {
   interesse    LeadInteresse?
   bloqueios    BloqueioVestido[]
   atendimentos Atendimento[]
+  orcamentos   Orcamento[]
 }
 
 model LeadInteresse {
@@ -419,4 +424,64 @@ model Atendimento {
   lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
   cabine    Cabine  @relation(fields: [cabineId], references: [id], onDelete: Cascade)
   vendedora Usuario @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  orcamentos Orcamento[]
+}
+
+// Orçamento — a negociação com a noiva registrada (itens, desconto, status). O
+// aprovado é a base de valores do contrato (S3). Decisão:
+// docs/superpowers/specs/2026-06-03-s2-orcamentos-design.md.
+enum OrcamentoStatus {
+  RASCUNHO // em edição
+  ENVIADO // apresentado à noiva
+  APROVADO // aceito — base do contrato (trava edição)
+  RECUSADO // recusado (terminal)
+}
+
+enum OrcamentoItemTipo {
+  VESTIDO // referencia um Vestido (preço-base como sugestão)
+  SERVICO // véu, acessório, taxa…
+  AJUSTE // customização/costura cobrada
+}
+
+enum DescontoTipo {
+  PERCENTUAL
+  VALOR
+}
+
+model Orcamento {
+  id            String          @id @default(cuid())
+  lojaId        String
+  leadId        String
+  atendimentoId String? // de qual atendimento nasceu (S1), se houver
+  vendedoraId   String // quem negociou — semente da atribuição de comissão
+  status        OrcamentoStatus @default(RASCUNHO)
+  descontoTipo  DescontoTipo?
+  descontoValor Decimal?        @db.Decimal(10, 2)
+  validade      DateTime?
+  observacoes   String? // a conversa: contraproposta, condições combinadas
+  aprovadoEm    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  loja        Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  lead        Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  atendimento Atendimento?    @relation(fields: [atendimentoId], references: [id], onDelete: SetNull)
+  vendedora   Usuario         @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  itens       OrcamentoItem[]
+}
+
+model OrcamentoItem {
+  id            String            @id @default(cuid())
+  lojaId        String // carimbo p/ tenantPrisma (como Prova/Ajuste)
+  orcamentoId   String
+  tipo          OrcamentoItemTipo
+  vestidoId     String?
+  descricao     String
+  valorUnitario Decimal           @db.Decimal(10, 2)
+  quantidade    Int               @default(1)
+  createdAt     DateTime          @default(now())
+
+  loja      Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  vestido   Vestido?  @relation(fields: [vestidoId], references: [id], onDelete: SetNull)
 }
