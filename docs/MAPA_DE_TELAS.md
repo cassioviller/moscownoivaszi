@@ -265,9 +265,9 @@ GESTÃO            (só admin)
 
 ---
 
-## 9. Provas 🔴 nova (visão dedicada)
+## 9. Provas 🟢 existe (visão dedicada)
 
-**Rota:** `/loja/[id]/provas` · **Status:** 🔴 nova (a operação existe, falta a tela própria)
+**Rota:** `/loja/[id]/provas` · **Status:** 🟢 existe *(S0.2 — agenda de provas da loja)*
 
 **Objetivo:** a agenda de provas do atelier em um só lugar — hoje cada prova só vive dentro da reserva.
 
@@ -333,9 +333,9 @@ GESTÃO            (só admin)
 > Receber, pagar e fluxo compartilham o mesmo modelo de lançamentos (mudam a lente);
 > Comissões alimenta o "contas a pagar" no fechamento mensal.
 
-## 13. Contas a receber 🔴 nova
+## 13. Contas a receber 🟢 existe
 
-**Rota:** `/loja/[id]/financeiro/receber` · **Status:** 🔴 nova
+**Rota:** `/loja/[id]/financeiro/receber` · **Status:** 🟢 existe *(S4 — plano de parcelas do contrato, baixa, carteira)*
 
 **Objetivo:** o que o atelier tem a receber das noivas — o dinheiro que entra.
 
@@ -448,7 +448,7 @@ GESTÃO            (só admin)
 |---|---|
 | 🟢 existe | Noivas, Perfil, Add/Editar, Interesses, Agendar, Calendário, **Atendimentos**, Reservas, Detalhe da reserva (retirada/devolução ✓), **Provas (visão dedicada)**, Vestidos, Catálogo, Ajustes, Permissões, Trocar loja |
 | 🟡 parcial | Início, Equipe, Administração |
-| 🔴 nova | Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
+| 🔴 nova | Contas a pagar, Comissões, Fluxo de caixa |
 
 ## Pontas abertas que estas telas fecham
 

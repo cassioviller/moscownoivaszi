@@ -7,8 +7,15 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterContrato } from "@/lib/contratos/contratos";
+import { listarParcelasDoContrato } from "@/lib/financeiro/receber";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { editarContratoAction, cancelarContratoAction } from "../actions";
+import {
+  gerarPlanoAction,
+  registrarRecebimentoAction,
+  estornarRecebimentoAction,
+  removerParcelaAction,
+} from "../../financeiro/receber/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +26,15 @@ const AVISOS: Record<string, string> = {
   valor_invalido: "Valor inválido.",
   data_invalida: "Data inválida.",
   contrato_invalido: "Contrato inválido.",
+  plano: "Plano de pagamento gerado.",
+  parcela: "Parcela adicionada.",
+  parcela_removida: "Parcela removida.",
+  recebido: "Recebimento registrado.",
+  estornado: "Recebimento estornado.",
+  ja_tem_plano: "Já existe um plano. Remova as parcelas em aberto para refazer.",
+  entrada_maior: "A entrada não pode ser maior que o total.",
+  num_invalido: "Número de parcelas inválido.",
+  nao_previsto: "Esta parcela não está em aberto.",
 };
 
 const ymd = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
@@ -66,9 +82,13 @@ export default async function ContratoDetalhePage({
   const c = await obterContrato(sc.loja.id, contratoId);
   if (!c) redirect(`/loja/${lojaId}/contratos`);
 
+  const parcelas = await listarParcelasDoContrato(sc.loja.id, contratoId);
+  const voltar = `/loja/${lojaId}/contratos/${contratoId}`;
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
   const podeMexer = podeEditar && c.editavel;
   const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const ymdFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
+  const totalPlano = parcelas.reduce((s, p) => s + Math.round(Number(p.valorPrevisto) * 100), 0);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -148,6 +168,92 @@ export default async function ContratoDetalhePage({
           {c.observacoes && <Linha rotulo="Observações" valor={c.observacoes} />}
         </dl>
       )}
+
+      {/* Plano de pagamento (contas a receber) */}
+      <section className="flex flex-col gap-3 border-t border-borda-suave pt-5">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className={rotulo}>Plano de pagamento</h2>
+          <Link href={`/loja/${lojaId}/financeiro/receber`} className={botaoSuave}>Contas a receber</Link>
+        </div>
+
+        {parcelas.length === 0 ? (
+          podeMexer ? (
+            <form action={gerarPlanoAction} className="flex flex-col gap-2 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel p-4">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Gerar plano</span>
+              <input type="hidden" name="contratoId" value={c.id} />
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className={rotulo}>Entrada</span>
+                  <input name="entrada" placeholder="0,00" aria-label="Entrada" className={`${campo} w-28`} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={rotulo}>Parcelas</span>
+                  <input name="numParcelas" type="number" min={1} defaultValue={1} aria-label="Número de parcelas" className={`${campo} w-20`} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={rotulo}>1º vencimento</span>
+                  <input name="primeiroVencimento" type="date" required aria-label="Primeiro vencimento" className={campo} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className={rotulo}>A cada (dias)</span>
+                  <input name="periodicidadeDias" type="number" min={1} defaultValue={30} aria-label="Periodicidade em dias" className={`${campo} w-20`} />
+                </label>
+                <button type="submit" className={botaoPrincipal}>Gerar</button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-[14px] text-grafite">Nenhum plano de pagamento ainda.</p>
+          )
+        ) : (
+          <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+            {parcelas.map((p) => (
+              <li key={p.id} className="flex flex-col gap-2 px-4 py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-[14px] text-tinta">
+                    {p.descricao ?? "Parcela"}{" "}
+                    <span className="text-[12px] text-cinza-fumo">
+                      · vence {ymdFmt.format(p.vencimento)}
+                      {p.status === "PAGA" ? " · paga" : p.atrasada ? " · atrasada" : ""}
+                    </span>
+                  </span>
+                  <span className={`shrink-0 font-display text-[14px] font-light tabular-nums ${p.atrasada ? "text-bordo" : "text-tinta"}`}>
+                    {brl(p.valorPrevisto)}
+                  </span>
+                </div>
+                {podeEditar && p.status === "PREVISTA" && (
+                  <div className="flex flex-wrap items-end gap-2 border-t border-borda-suave pt-2">
+                    <form action={registrarRecebimentoAction} className="flex flex-wrap items-end gap-2">
+                      <input type="hidden" name="parcelaId" value={p.id} />
+                      <input type="hidden" name="voltar" value={voltar} />
+                      <input name="valor" defaultValue={p.valorPrevisto} aria-label="Valor recebido" className={`${campo} w-24`} />
+                      <input name="forma" placeholder="Forma" aria-label="Forma" className={`${campo} w-28`} />
+                      <button type="submit" className={botaoSuave}>Receber</button>
+                    </form>
+                    <form action={removerParcelaAction}>
+                      <input type="hidden" name="parcelaId" value={p.id} />
+                      <input type="hidden" name="contratoId" value={c.id} />
+                      <button type="submit" className={botaoSuave}>Remover</button>
+                    </form>
+                  </div>
+                )}
+                {podeEditar && p.status === "PAGA" && (
+                  <form action={estornarRecebimentoAction} className="border-t border-borda-suave pt-2">
+                    <input type="hidden" name="parcelaId" value={p.id} />
+                    <input type="hidden" name="voltar" value={voltar} />
+                    <button type="submit" className={botaoSuave}>Estornar</button>
+                  </form>
+                )}
+              </li>
+            ))}
+            <li className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+              <span className="text-[12px] uppercase tracking-[0.18em] text-cinza-fumo">Total do plano</span>
+              <span className={`font-display text-[15px] font-light tabular-nums ${totalPlano === Math.round(Number(c.valorTotal) * 100) ? "text-tinta" : "text-bordo"}`}>
+                {brl((totalPlano / 100).toFixed(2))}
+              </span>
+            </li>
+          </ul>
+        )}
+      </section>
 
       {podeEditar && c.status === "ATIVO" && (
         <form action={cancelarContratoAction} className="border-t border-borda-suave pt-5">

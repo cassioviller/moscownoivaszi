@@ -84,6 +84,7 @@ model Loja {
   orcamentos           Orcamento[]
   orcamentoItens       OrcamentoItem[]
   contratos            Contrato[]
+  parcelas             Parcela[]
 }
 
 model Perfil {
@@ -525,4 +526,30 @@ model Contrato {
   orcamento Orcamento?       @relation(fields: [orcamentoId], references: [id], onDelete: SetNull)
   bloqueio  BloqueioVestido? @relation(fields: [bloqueioVestidoId], references: [id], onDelete: SetNull)
   vendedora Usuario          @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  parcelas  Parcela[]
+}
+
+// Parcela — uma conta a RECEBER do contrato (S4). ATRASADA é derivado (vencido +
+// PREVISTA), nunca gravado. Decisão: docs/.../2026-06-03-s4-contas-a-receber-design.md.
+enum ParcelaStatus {
+  PREVISTA
+  PAGA
+}
+
+model Parcela {
+  id               String        @id @default(cuid())
+  lojaId           String
+  contratoId       String
+  numero           Int // 0 = entrada/sinal; 1..N parcelas
+  descricao        String?
+  valorPrevisto    Decimal       @db.Decimal(10, 2)
+  vencimento       DateTime
+  status           ParcelaStatus @default(PREVISTA)
+  valorRecebido    Decimal?      @db.Decimal(10, 2)
+  recebidoEm       DateTime?
+  formaRecebimento String?
+  createdAt        DateTime      @default(now())
+
+  loja     Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 }
