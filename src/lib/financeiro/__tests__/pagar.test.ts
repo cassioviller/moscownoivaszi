@@ -21,6 +21,7 @@ import {
 const MARK = "t-pagar-";
 let loja = "";
 let colaborador = "";
+let colaborador2 = "";
 let foraDaLoja = "";
 
 async function novoUsuario(nome: string): Promise<string> {
@@ -32,6 +33,8 @@ beforeAll(async () => {
   loja = (await prisma.loja.create({ data: { nome: `${MARK}loja` } })).id;
   colaborador = await novoUsuario("Vera");
   await prisma.usuarioLoja.create({ data: { usuarioId: colaborador, lojaId: loja, perfilId: "perfil-vendedora" } });
+  colaborador2 = await novoUsuario("Ana");
+  await prisma.usuarioLoja.create({ data: { usuarioId: colaborador2, lojaId: loja, perfilId: "perfil-vendedora" } });
   foraDaLoja = await novoUsuario("Fora"); // sem UsuarioLoja
 });
 
@@ -44,6 +47,8 @@ describe("pagar: lançar conta", () => {
   it("lança despesa; salário valida membro; valor/data inválidos", async () => {
     expect((await lancarConta(loja, { tipo: "DESPESA", descricao: "Lavanderia", valorPrevisto: "150,00", vencimento: "2027-05-10" })).ok).toBe(true);
     expect(await lancarConta(loja, { tipo: "SALARIO", colaboradorId: foraDaLoja, descricao: "x", valorPrevisto: "100", vencimento: "2027-05-10" })).toMatchObject({ ok: false, motivo: "colaborador_invalido" });
+    // SALARIO/COMISSAO exigem colaborador (não pode ser órfão — sumiria da folha)
+    expect(await lancarConta(loja, { tipo: "SALARIO", descricao: "x", valorPrevisto: "100", vencimento: "2027-05-10" })).toMatchObject({ ok: false, motivo: "colaborador_invalido" });
     expect(await lancarConta(loja, { tipo: "DESPESA", descricao: "x", valorPrevisto: "abc", vencimento: "2027-05-10" })).toMatchObject({ ok: false, motivo: "valor_invalido" });
     expect(await lancarConta(loja, { tipo: "DESPESA", descricao: "x", valorPrevisto: "10", vencimento: "xx" })).toMatchObject({ ok: false, motivo: "data_invalida" });
   });
@@ -78,9 +83,10 @@ describe("pagar: salário recorrente (motor)", () => {
 });
 
 describe("pagar: pagamento (quita N contas, transacional)", () => {
-  it("um pagamento quita salário + despesa; valorPago = soma; baixa em cada conta", async () => {
+  it("um pagamento quita salário + comissão do colaborador; valorPago = soma; baixa em cada conta", async () => {
+    // O cruzamento da spec §3: salário + comissão da MESMA pessoa numa saída só.
     const c1 = await lancarConta(loja, { tipo: "SALARIO", colaboradorId: colaborador, competencia: "2027-09", descricao: "Salário", valorPrevisto: "2.000,00", vencimento: "2027-09-05" });
-    const c2 = await lancarConta(loja, { tipo: "DESPESA", descricao: "Tecido", valorPrevisto: "300,00", vencimento: "2027-09-05" });
+    const c2 = await lancarConta(loja, { tipo: "COMISSAO", colaboradorId: colaborador, competencia: "2027-09", descricao: "Comissão", valorPrevisto: "300,00", vencimento: "2027-09-05" });
     if (!c1.ok || !c2.ok) throw new Error("falhou");
     const pg = await registrarPagamento(loja, {
       colaboradorId: colaborador,
@@ -113,6 +119,15 @@ describe("pagar: pagamento (quita N contas, transacional)", () => {
     expect(await registrarPagamento(loja, { data: "2027-09-06", itens: [{ contaPagarId: c.contaId, valor: "0" }] })).toMatchObject({ ok: false, motivo: "valor_invalido" });
     expect(await registrarPagamento(loja, { data: "2027-09-06", itens: [{ contaPagarId: "nao-existe", valor: "10" }] })).toMatchObject({ ok: false, motivo: "conta_invalida" });
   });
+
+  it("pagamento de um colaborador recusa conta de OUTRO colaborador (spec §6)", async () => {
+    const cAna = await lancarConta(loja, { tipo: "SALARIO", colaboradorId: colaborador2, competencia: "2027-11", descricao: "Salário Ana", valorPrevisto: "1.000,00", vencimento: "2027-11-05" });
+    if (!cAna.ok) throw new Error("falhou");
+    // tenta quitar a conta da Ana dentro de um pagamento da Vera → recusado, e a conta da Ana segue PREVISTA
+    expect(await registrarPagamento(loja, { colaboradorId: colaborador, data: "2027-11-06", itens: [{ contaPagarId: cAna.contaId, valor: "1.000,00" }] })).toMatchObject({ ok: false, motivo: "conta_invalida" });
+    const abertas = await listarContasAPagar(loja, { filtro: "abertas", colaboradorId: colaborador2 });
+    expect(abertas.some((c) => c.id === cAna.contaId)).toBe(true);
+  });
 });
 
 describe("pagar: resumo, atraso e contabilidade", () => {
@@ -144,6 +159,11 @@ describe("pagar: resumo, atraso e contabilidade", () => {
     expect(pgLuz?.contas).toEqual([{ descricao: "Luz", valor: "100.00" }]);
     expect((await marcarEnviadoContabilidade(l2, pg.pagamentoId, true)).ok).toBe(true);
     expect((await listarPagamentos(l2)).find((p) => p.id === pg.pagamentoId)?.enviadoContabilidade).toBe(true);
+    // re-marcar NÃO sobrescreve o carimbo original (preserva a data do envio)
+    const carimbo1 = (await tenantPrisma(prisma, l2).pagamento.findUnique({ where: { id: pg.pagamentoId } }))!.enviadoContabilidadeEm;
+    await marcarEnviadoContabilidade(l2, pg.pagamentoId, true);
+    const carimbo2 = (await tenantPrisma(prisma, l2).pagamento.findUnique({ where: { id: pg.pagamentoId } }))!.enviadoContabilidadeEm;
+    expect(carimbo2?.getTime()).toBe(carimbo1?.getTime());
     expect((await listarPagamentos(loja)).some((p) => p.id === pg.pagamentoId)).toBe(false); // isolamento
 
     // isolamento

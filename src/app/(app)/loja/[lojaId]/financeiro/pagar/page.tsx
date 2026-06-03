@@ -37,6 +37,7 @@ const AVISOS: Record<string, string> = {
   conta_invalida: "Conta inválida.",
   nao_previsto: "Esta conta não está em aberto.",
   vazio: "Selecione ao menos uma conta.",
+  pagamento_invalido: "Pagamento não encontrado.",
 };
 
 const inputBase =

@@ -42,7 +42,9 @@ const AVISOS: Record<string, string> = {
   competencia_invalida: "Competência inválida (use AAAA-MM).",
   vazio: "Nenhuma conta em aberto para pagar.",
   nao_previsto: "Conta já paga.",
+  conta_invalida: "Conta inválida ou não é deste colaborador.",
   data_invalida: "Data inválida.",
+  pagamento_invalido: "Pagamento não encontrado.",
 };
 
 const inputBase =
@@ -79,12 +81,12 @@ export default async function FolhaPage({
   const competencia = /^\d{4}-\d{2}$/.test(sp.competencia ?? "") ? sp.competencia! : competenciaAtual();
   const colaboradorSel = sp.colaborador ?? "";
 
-  const [equipe, salarios, folha] = await Promise.all([
+  // Tudo num único batch: contasColab/pagamentos só dependem de colaboradorSel (searchParams),
+  // não dos demais reads — não há razão para serializar dois Promise.all.
+  const [equipe, salarios, folha, contasColab, pagamentos] = await Promise.all([
     listarEquipe(sc.loja.id),
     listarSalariosRecorrentes(sc.loja.id),
     resumoPorCompetencia(sc.loja.id, competencia),
-  ]);
-  const [contasColab, pagamentos] = await Promise.all([
     colaboradorSel ? listarContasAPagar(sc.loja.id, { filtro: "abertas", colaboradorId: colaboradorSel }) : Promise.resolve([]),
     colaboradorSel ? listarPagamentos(sc.loja.id, { colaboradorId: colaboradorSel }) : Promise.resolve([]),
   ]);
@@ -243,7 +245,7 @@ export default async function FolhaPage({
                   {podeEditar && (
                     <form action={enviarContabilidadeAction} className="shrink-0">
                       <input type="hidden" name="pagamentoId" value={p.id} />
-                      <input type="hidden" name="competencia" value={competencia} />
+                      <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?competencia=${competencia}&colaborador=${colaboradorSel}`} />
                       <input type="hidden" name="enviado" value={p.enviadoContabilidade ? "0" : "1"} />
                       <button type="submit" className={botaoSuave}>
                         {p.enviadoContabilidade ? "✓ na contabilidade" : "Enviar à contabilidade"}

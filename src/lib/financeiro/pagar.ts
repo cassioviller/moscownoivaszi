@@ -49,8 +49,11 @@ export async function lancarConta(
   if (!TIPOS.has(input.tipo)) return { ok: false, motivo: "tipo_invalido" };
   const descricao = input.descricao.trim();
   if (!descricao) return { ok: false, motivo: "sem_descricao" };
-  if ((input.tipo === "SALARIO" || input.tipo === "COMISSAO") && input.colaboradorId) {
-    if (!(await ehMembro(lojaId, input.colaboradorId))) return { ok: false, motivo: "colaborador_invalido" };
+  if (input.tipo === "SALARIO" || input.tipo === "COMISSAO") {
+    // Conta de folha exige um colaborador válido (membro): senão vira obrigação órfã,
+    // contada no "a pagar" mas ausente da folha por competência (filtra colaboradorId).
+    if (!input.colaboradorId || !(await ehMembro(lojaId, input.colaboradorId)))
+      return { ok: false, motivo: "colaborador_invalido" };
   }
   let valor: number, venc: Date;
   try {
@@ -246,7 +249,12 @@ export async function registrarPagamento(
   try {
     // Transação no client BASE com lojaId explícito (tudo-ou-nada).
     const pagamentoId = await prisma.$transaction(async (tx) => {
-      const contas = await tx.contaPagar.findMany({ where: { id: { in: ids }, lojaId }, select: { id: true, status: true } });
+      // Quando o pagamento é de um colaborador, as contas TÊM de ser dele — senão um
+      // item forjado quitaria a conta de outra pessoa dentro deste pagamento (spec §6).
+      const contas = await tx.contaPagar.findMany({
+        where: { id: { in: ids }, lojaId, ...(input.colaboradorId ? { colaboradorId: input.colaboradorId } : {}) },
+        select: { id: true, status: true },
+      });
       if (contas.length !== new Set(ids).size) throw new PagamentoErro("conta_invalida");
       if (contas.some((c) => c.status !== "PREVISTA")) throw new PagamentoErro("nao_previsto");
 
@@ -284,8 +292,10 @@ export async function estornarPagamento(lojaId: string, pagamentoId: string): Pr
 
 export async function marcarEnviadoContabilidade(lojaId: string, pagamentoId: string, enviado: boolean): Promise<{ ok: true } | { ok: false; motivo: "pagamento_invalido" }> {
   const db = tenantPrisma(prisma, lojaId);
-  const pag = await db.pagamento.findUnique({ where: { id: pagamentoId }, select: { id: true } });
+  const pag = await db.pagamento.findUnique({ where: { id: pagamentoId }, select: { id: true, enviadoContabilidadeEm: true } });
   if (!pag) return { ok: false, motivo: "pagamento_invalido" };
+  // Re-marcar como enviado NÃO sobrescreve o carimbo original (preserva a data do envio).
+  if (enviado && pag.enviadoContabilidadeEm !== null) return { ok: true };
   await db.pagamento.updateMany({ where: { id: pagamentoId }, data: { enviadoContabilidadeEm: enviado ? new Date() : null } });
   return { ok: true };
 }

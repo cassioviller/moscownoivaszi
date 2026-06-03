@@ -53,8 +53,8 @@ export async function removerContaAction(formData: FormData) {
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar`;
   if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
-  await removerConta(lojaId, str(formData, "contaId"));
-  redirect(aviso(base, "ok", "conta_removida"));
+  const r = await removerConta(lojaId, str(formData, "contaId"));
+  redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? "conta_removida" : r.motivo));
 }
 
 export async function pagarContasAction(formData: FormData) {
@@ -77,21 +77,21 @@ export async function pagarContasAction(formData: FormData) {
 export async function estornarPagamentoAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
-  const base = `/loja/${lojaId}/financeiro/pagar`;
+  const base = caminhoInternoSeguro(str(formData, "voltar"), lojaId, `/loja/${lojaId}/financeiro/pagar`);
   if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
-  await estornarPagamento(lojaId, str(formData, "pagamentoId"));
-  redirect(aviso(base, "ok", "estornado"));
+  const r = await estornarPagamento(lojaId, str(formData, "pagamentoId"));
+  redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? "estornado" : r.motivo));
 }
 
 export async function enviarContabilidadeAction(formData: FormData) {
   const sc = await guard();
   const lojaId = sc.loja.id;
-  const competencia = str(formData, "competencia");
-  const base = `/loja/${lojaId}/financeiro/pagar/folha${competencia ? `?competencia=${competencia}` : ""}`;
+  // `voltar` preserva competência+colaborador da folha (e evita concatenar querystring crua).
+  const base = caminhoInternoSeguro(str(formData, "voltar"), lojaId, `/loja/${lojaId}/financeiro/pagar/folha`);
   if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
   const enviado = str(formData, "enviado") === "1";
-  await marcarEnviadoContabilidade(lojaId, str(formData, "pagamentoId"), enviado);
-  redirect(aviso(base, "ok", enviado ? "enviado_contabilidade" : "desfeito_contabilidade"));
+  const r = await marcarEnviadoContabilidade(lojaId, str(formData, "pagamentoId"), enviado);
+  redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? (enviado ? "enviado_contabilidade" : "desfeito_contabilidade") : r.motivo));
 }
 
 // — Folha / recorrência —
@@ -122,6 +122,6 @@ export async function removerSalarioAction(formData: FormData) {
   const lojaId = sc.loja.id;
   const base = `/loja/${lojaId}/financeiro/pagar/folha`;
   if (!(await podeNoModulo(sc.usuario.id, lojaId, "leads", "editar"))) redirect(base);
-  await removerSalarioRecorrente(lojaId, str(formData, "id"));
-  redirect(aviso(base, "ok", "salario_removido"));
+  const r = await removerSalarioRecorrente(lojaId, str(formData, "id"));
+  redirect(aviso(base, r.ok ? "ok" : "erro", r.ok ? "salario_removido" : r.motivo));
 }

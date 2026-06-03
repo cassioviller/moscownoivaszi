@@ -18,5 +18,7 @@ export function diaParaData(s: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) throw new Error("data inválida");
   const d = new Date(`${t}T00:00:00.000Z`);
   if (Number.isNaN(d.getTime())) throw new Error("data inválida");
+  // Rejeita data de calendário inexistente (ex.: 2027-02-30, que o Date rola pra março).
+  if (d.toISOString().slice(0, 10) !== t) throw new Error("data inválida");
   return d;
 }
