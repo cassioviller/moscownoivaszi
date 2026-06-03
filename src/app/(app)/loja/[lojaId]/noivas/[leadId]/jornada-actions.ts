@@ -19,9 +19,9 @@ async function marco(formData: FormData, campo: MarcoJornada) {
   redirect(`${base}?ok=jornada`);
 }
 
-export async function marcarOrcamentoAbertoAction(formData: FormData) {
-  return marco(formData, "orcamentoAbertoEm");
-}
+// marcarOrcamentoAbertoAction foi aposentada na S2: o estágio "orçamento aberto" agora
+// deriva de um Orcamento real (ver orcamentos). O marco `orcamentoAbertoEm` permanece no
+// schema/jornada como compatibilidade (noivas antigas), só não há mais botão manual.
 export async function marcarContratoFechadoAction(formData: FormData) {
   return marco(formData, "contratoFechadoEm");
 }

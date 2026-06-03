@@ -64,6 +64,10 @@ const AVISOS: Record<string, string> = {
   sem_data: "Defina a data do casamento para reservar um vestido.",
   sem_vestido: "Escolha um vestido para reservar.",
   jornada: "Jornada atualizada.",
+  // Abrir orçamento (gancho desta tela) pode falhar se o usuário não for vendedora da loja.
+  vendedora_invalida: "Você não está vinculada a esta loja como vendedora — não foi possível abrir o orçamento.",
+  lead_invalido: "Noiva inválida.",
+  atendimento_invalido: "Atendimento inválido.",
 };
 
 const DIA_MS = 86_400_000;

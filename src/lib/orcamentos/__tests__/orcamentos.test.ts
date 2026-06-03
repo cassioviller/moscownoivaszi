@@ -13,6 +13,8 @@ import {
   listarOrcamentosDaNoiva,
   obterOrcamento,
 } from "@/lib/orcamentos/orcamentos";
+import { fatosDaNoiva } from "@/lib/leads/leads";
+import { estagioDaNoiva } from "@/lib/leads/jornada";
 
 const MARK = "t-orc-";
 let loja = "";
@@ -79,6 +81,22 @@ describe("orçamentos: itens e totais", () => {
     expect(await definirDesconto(loja, id, { tipo: "PERCENTUAL", valor: "150" })).toMatchObject({ ok: false, motivo: "desconto_invalido" });
   });
 
+  it("parsing de dinheiro: ponto sem vírgula é MILHAR; vazio/negativo recusados", async () => {
+    const r = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
+    if (!r.ok) throw new Error("falhou");
+    const id = r.orcamentoId;
+    // "1.234" deve ser R$ 1.234,00 (e não R$ 1,23) — o BUG do review.
+    expect((await adicionarItem(loja, id, { tipo: "SERVICO", descricao: "milhar", valorUnitario: "1.234" })).ok).toBe(true);
+    // "1.000,50" pt-BR completo.
+    expect((await adicionarItem(loja, id, { tipo: "SERVICO", descricao: "ptbr", valorUnitario: "1.000,50" })).ok).toBe(true);
+    const det = (await obterOrcamento(loja, id))!;
+    expect(det.itens.find((i) => i.descricao === "milhar")!.valorUnitario).toBe("1234.00");
+    expect(det.itens.find((i) => i.descricao === "ptbr")!.valorUnitario).toBe("1000.50");
+    // entradas inválidas
+    expect(await adicionarItem(loja, id, { tipo: "SERVICO", descricao: "x", valorUnitario: "" })).toMatchObject({ ok: false, motivo: "valor_invalido" });
+    expect(await adicionarItem(loja, id, { tipo: "SERVICO", descricao: "x", valorUnitario: "-5" })).toMatchObject({ ok: false, motivo: "valor_invalido" });
+  });
+
   it("editar e remover item; valor inválido recusado", async () => {
     const id = await novoOrcamentoComItens();
     const det = (await obterOrcamento(loja, id))!;
@@ -112,6 +130,22 @@ describe("orçamentos: status", () => {
     const r = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
     if (!r.ok) throw new Error("falhou");
     expect(await mudarStatus(loja, r.orcamentoId, "APROVADO")).toMatchObject({ ok: false, motivo: "orcamento_vazio" });
+  });
+});
+
+describe("orçamentos: jornada", () => {
+  it("orçamento não-recusado promove a 'orcamento_aberto'; recusado regride", async () => {
+    // lead próprio (sem outros fatos) p/ isolar o efeito.
+    const noiva = (await tenantPrisma(prisma, loja).lead.create({ data: { noivaNome: `${MARK}Cida` } as never })).id;
+    const r = await criarOrcamento(loja, { leadId: noiva, vendedoraId: vend });
+    if (!r.ok) throw new Error("falhou");
+
+    // rascunho (mesmo vazio) já abre a negociação.
+    expect(estagioDaNoiva((await fatosDaNoiva(loja, noiva))!).atual).toBe("orcamento_aberto");
+
+    // recusado não sustenta a etapa → regride (sem outros fatos → cadastrada).
+    await mudarStatus(loja, r.orcamentoId, "RECUSADO");
+    expect(estagioDaNoiva((await fatosDaNoiva(loja, noiva))!).atual).toBe("cadastrada");
   });
 });
 

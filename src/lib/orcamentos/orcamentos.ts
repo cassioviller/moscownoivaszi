@@ -9,10 +9,23 @@ import type { OrcamentoStatus, OrcamentoItemTipo, DescontoTipo, Prisma } from "@
 
 // — Dinheiro em centavos —
 
-// "1.234,56" | "1234.56" | "100" → centavos inteiros (≥ 0). Lança se inválido/negativo.
+// pt-BR/US → centavos inteiros (≥ 0). Lança se vazio/negativo/inválido.
+// Regra do ponto (sem vírgula): é DECIMAL só quando há um único ponto seguido de 1–2
+// dígitos ("1234.56", "50.5"); caso contrário é separador de MILHAR ("1.234" = 1234,
+// "1.000" = 1000). Com vírgula, vírgula=decimal e pontos=milhar ("1.234,56").
 function paraCentavos(raw: string): number {
   const limpo = raw.trim().replace(/\s/g, "");
-  const norm = limpo.includes(",") ? limpo.replace(/\./g, "").replace(",", ".") : limpo;
+  if (limpo === "") throw new Error("valor vazio");
+  let norm: string;
+  if (limpo.includes(",")) {
+    norm = limpo.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d+\.\d{1,2}$/.test(limpo)) {
+    norm = limpo; // decimal explícito (até 2 casas)
+  } else {
+    norm = limpo.replace(/\./g, ""); // pontos = milhar
+  }
+  // Bloqueia "", "-5", "1e3", letras — só dígitos com opcional parte decimal.
+  if (!/^\d+(\.\d+)?$/.test(norm)) throw new Error("valor inválido");
   const n = Number(norm);
   if (!Number.isFinite(n) || n < 0) throw new Error("valor inválido");
   return Math.round(n * 100);
