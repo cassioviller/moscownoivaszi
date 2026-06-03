@@ -5,46 +5,15 @@
 // em CENTAVOS inteiros (sem float). Decisão: docs/.../2026-06-03-s2-orcamentos-design.md.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
+import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import type { OrcamentoStatus, OrcamentoItemTipo, DescontoTipo, Prisma } from "@/generated/prisma/client";
-
-// — Dinheiro em centavos —
-
-// pt-BR/US → centavos inteiros (≥ 0). Lança se vazio/negativo/inválido.
-// Regra do ponto (sem vírgula): é DECIMAL só quando há um único ponto seguido de 1–2
-// dígitos ("1234.56", "50.5"); caso contrário é separador de MILHAR ("1.234" = 1234,
-// "1.000" = 1000). Com vírgula, vírgula=decimal e pontos=milhar ("1.234,56").
-function paraCentavos(raw: string): number {
-  const limpo = raw.trim().replace(/\s/g, "");
-  if (limpo === "") throw new Error("valor vazio");
-  let norm: string;
-  if (limpo.includes(",")) {
-    norm = limpo.replace(/\./g, "").replace(",", ".");
-  } else if (/^\d+\.\d{1,2}$/.test(limpo)) {
-    norm = limpo; // decimal explícito (até 2 casas)
-  } else {
-    norm = limpo.replace(/\./g, ""); // pontos = milhar
-  }
-  // Bloqueia "", "-5", "1e3", letras — só dígitos com opcional parte decimal.
-  if (!/^\d+(\.\d+)?$/.test(norm)) throw new Error("valor inválido");
-  const n = Number(norm);
-  if (!Number.isFinite(n) || n < 0) throw new Error("valor inválido");
-  return Math.round(n * 100);
-}
-function deCentavos(c: number): string {
-  return (c / 100).toFixed(2);
-}
-// Decimal/cluster do Prisma → centavos.
-function decParaCentavos(d: Prisma.Decimal | string | null): number {
-  if (d == null) return 0;
-  return Math.round(Number(d) * 100);
-}
 
 const EDITAVEIS: OrcamentoStatus[] = ["RASCUNHO", "ENVIADO"];
 const TIPOS_ITEM = new Set<OrcamentoItemTipo>(["VESTIDO", "SERVICO", "AJUSTE"]);
 
 export type Totais = { subtotal: string; desconto: string; total: string };
 
-function calcularTotais(
+export function calcularTotais(
   itens: { valorUnitario: Prisma.Decimal | string; quantidade: number }[],
   descontoTipo: DescontoTipo | null,
   descontoValor: Prisma.Decimal | string | null,
@@ -345,6 +314,7 @@ export type OrcamentoDetalhe = {
   itens: OrcamentoItemView[];
   totais: Totais;
   editavel: boolean;
+  contratoId: string | null; // se o orçamento já virou contrato (S3)
 };
 
 export async function obterOrcamento(lojaId: string, orcamentoId: string): Promise<OrcamentoDetalhe | null> {
@@ -354,6 +324,7 @@ export async function obterOrcamento(lojaId: string, orcamentoId: string): Promi
       lead: { select: { noivaNome: true } },
       vendedora: { select: { nome: true } },
       itens: { orderBy: { createdAt: "asc" } },
+      contrato: { select: { id: true } },
     },
   });
   if (!o) return null;
@@ -380,5 +351,6 @@ export async function obterOrcamento(lojaId: string, orcamentoId: string): Promi
     })),
     totais: calcularTotais(o.itens, o.descontoTipo, o.descontoValor),
     editavel: EDITAVEIS.includes(o.status),
+    contratoId: o.contrato?.id ?? null,
   };
 }

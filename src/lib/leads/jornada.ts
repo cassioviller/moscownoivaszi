@@ -39,7 +39,8 @@ export type FatosJornada = {
   temInteresse: boolean;
   temOrcamento: boolean; // existe orçamento não-recusado (S2)
   orcamentoAbertoEm: Date | null; // marco manual legado (compatibilidade)
-  contratoFechadoEm: Date | null;
+  temContrato: boolean; // existe contrato ativo (S3)
+  contratoFechadoEm: Date | null; // marco manual legado (compatibilidade)
   temProvaRealizada: boolean;
   temRetirada: boolean;
   casamentoPassou: boolean;
@@ -62,7 +63,7 @@ function satisfeitos(f: FatosJornada): boolean[] {
     f.temProvaAgendada, // prova_marcada
     f.temInteresse, // interesses
     f.temOrcamento || f.orcamentoAbertoEm !== null, // orcamento_aberto (orçamento real OU marco legado)
-    f.contratoFechadoEm !== null, // contrato_fechado
+    f.temContrato || f.contratoFechadoEm !== null, // contrato_fechado (contrato ativo OU marco legado)
     f.temProvaRealizada, // em_provas
     f.temRetirada, // retirado
     f.casamentoPassou, // casamento

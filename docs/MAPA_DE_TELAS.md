@@ -221,7 +221,7 @@ GESTÃO            (só admin)
 
 ## 7. Contratos
 
-**Rota:** `/loja/[id]/contratos` · **Status:** 🟡 parcial
+**Rota:** `/loja/[id]/contratos` · **Status:** 🟢 existe *(S3 — persistido + pré-preenchido do orçamento aprovado; template do PDF segue provisório)*
 
 **Objetivo:** formalizar o acordo — gerar o contrato e guardar o registro, com **quase tudo pré-preenchido ao selecionar a noiva**.
 
@@ -447,7 +447,7 @@ GESTÃO            (só admin)
 | Status | Telas |
 |---|---|
 | 🟢 existe | Noivas, Perfil, Add/Editar, Interesses, Agendar, Calendário, **Atendimentos**, Reservas, Detalhe da reserva (retirada/devolução ✓), **Provas (visão dedicada)**, Vestidos, Catálogo, Ajustes, Permissões, Trocar loja |
-| 🟡 parcial | Início, Contratos (stateless), Equipe, Administração |
+| 🟡 parcial | Início, Equipe, Administração |
 | 🔴 nova | Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
 
 ## Pontas abertas que estas telas fecham

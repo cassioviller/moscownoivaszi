@@ -4,7 +4,7 @@ import { estagioDaNoiva, noivaAtiva, type FatosJornada } from "@/lib/leads/jorna
 const ZERO: FatosJornada = {
   houveAtendimento: false, foiAtendida: false,
   temProvaAgendada: false, temInteresse: false, temOrcamento: false, orcamentoAbertoEm: null,
-  contratoFechadoEm: null, temProvaRealizada: false, temRetirada: false,
+  temContrato: false, contratoFechadoEm: null, temProvaRealizada: false, temRetirada: false,
   casamentoPassou: false, temDevolucao: false, perdidaEm: null,
 };
 const d = new Date("2026-06-01T00:00:00.000Z");
@@ -35,8 +35,9 @@ describe("estagioDaNoiva — maior índice satisfeito", () => {
     expect(estagioDaNoiva({ ...ZERO, orcamentoAbertoEm: d }).atual).toBe("orcamento_aberto");
     expect(estagioDaNoiva({ ...ZERO, temOrcamento: true }).atual).toBe("orcamento_aberto");
   });
-  it("contrato fechado → contrato_fechado", () => {
+  it("contrato fechado → contrato_fechado (contrato ativo OU marco legado)", () => {
     expect(estagioDaNoiva({ ...ZERO, contratoFechadoEm: d }).atual).toBe("contrato_fechado");
+    expect(estagioDaNoiva({ ...ZERO, temContrato: true }).atual).toBe("contrato_fechado");
   });
   it("prova realizada (sem marcos) → em_provas, anteriores = feito", () => {
     const r = estagioDaNoiva({ ...ZERO, temProvaRealizada: true });

@@ -124,6 +124,7 @@ export const INCLUDE_JORNADA = {
   interesse: { select: { atributos: { select: { atributoId: true } } } },
   atendimentos: { select: { situacao: true } },
   orcamentos: { select: { status: true } },
+  contratos: { select: { status: true } },
   bloqueios: {
     where: { tipo: "RESERVA_CASAMENTO" as const },
     select: {
@@ -149,6 +150,7 @@ export function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
     temInteresse: (lead.interesse?.atributos.length ?? 0) > 0,
     temOrcamento: lead.orcamentos.some((o) => o.status !== "RECUSADO"),
     orcamentoAbertoEm: lead.orcamentoAbertoEm,
+    temContrato: lead.contratos.some((c) => c.status === "ATIVO"),
     contratoFechadoEm: lead.contratoFechadoEm,
     temProvaRealizada: provas.some((p) => p.comparecimento === "COMPARECEU"),
     temRetirada: lead.bloqueios.some((b) => b.retiradaDataReal !== null),

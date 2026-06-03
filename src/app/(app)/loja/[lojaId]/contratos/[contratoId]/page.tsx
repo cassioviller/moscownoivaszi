@@ -1,0 +1,171 @@
+// src/app/(app)/loja/[lojaId]/contratos/[contratoId]/page.tsx
+// Detalhe do contrato — dados pré-preenchidos (do orçamento aprovado), editáveis em
+// ATIVO; baixar o PDF do contrato salvo; cancelar (distrato). Ver = leads:ver; editar/
+// cancelar = leads:editar.
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSessaoComLoja } from "@/lib/auth";
+import { podeNoModulo } from "@/lib/permissoes/modulos";
+import { obterContrato } from "@/lib/contratos/contratos";
+import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
+import { editarContratoAction, cancelarContratoAction } from "../actions";
+
+export const dynamic = "force-dynamic";
+
+const AVISOS: Record<string, string> = {
+  salvo: "Contrato salvo.",
+  cancelado: "Contrato cancelado.",
+  nao_ativo: "Contrato cancelado — não pode mais ser editado.",
+  valor_invalido: "Valor inválido.",
+  data_invalida: "Data inválida.",
+  contrato_invalido: "Contrato inválido.",
+};
+
+const ymd = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+
+const campo =
+  "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[15px] text-tinta " +
+  "focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
+const rotulo = "text-[11px] uppercase tracking-[0.18em] text-cinza-fumo";
+const botaoSuave =
+  "inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda " +
+  "underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
+const botaoPrincipal =
+  "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel " +
+  "transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2 " +
+  "focus-visible:outline-offset-2 focus-visible:outline-bordo";
+
+function Campo({ name, label, defaultValue, type = "text", placeholder }: { name: string; label: string; defaultValue?: string; type?: string; placeholder?: string }) {
+  return (
+    <label className="flex flex-1 flex-col gap-1.5">
+      <span className={rotulo}>{label}</span>
+      <input name={name} type={type} defaultValue={defaultValue} placeholder={placeholder} className={campo} aria-label={label} />
+    </label>
+  );
+}
+
+export default async function ContratoDetalhePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lojaId: string; contratoId: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string }>;
+}) {
+  const sc = await getSessaoComLoja();
+  if (!sc) redirect("/login");
+
+  const [podeVer, podeEditar] = await Promise.all([
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+  ]);
+  if (!podeVer) redirect(`/loja/${sc.loja.id}`);
+
+  const { lojaId, contratoId } = await params;
+  const { ok, erro } = await searchParams;
+  const c = await obterContrato(sc.loja.id, contratoId);
+  if (!c) redirect(`/loja/${lojaId}/contratos`);
+
+  const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
+  const podeMexer = podeEditar && c.editavel;
+  const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  return (
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
+      <header className="flex flex-col gap-1.5">
+        <Link href={`/loja/${lojaId}/contratos`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
+          ← Contratos
+        </Link>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="font-display text-[26px] font-light leading-tight tracking-tight text-tinta">
+            Contrato de{" "}
+            <Link href={`/loja/${lojaId}/noivas/${c.leadId}`} className="hover:text-bordo">
+              {c.noivaNome ?? "Noiva"}
+            </Link>
+          </h1>
+          <span className="inline-flex min-h-7 items-center rounded-full border border-borda-suave bg-papel px-3 py-0.5 text-[12px] text-grafite">
+            {c.status === "ATIVO" ? "Ativo" : "Cancelado"}
+          </span>
+        </div>
+        <p className="text-[13px] text-cinza-fumo">
+          Vendedora: {c.vendedoraNome} · Total {brl(c.valorTotal)}
+        </p>
+      </header>
+
+      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+
+      <div className="flex flex-wrap gap-3">
+        <Link href={`/loja/${lojaId}/contratos/${c.id}/pdf`} className={botaoPrincipal} prefetch={false}>
+          Baixar contrato em PDF
+        </Link>
+        {c.orcamentoId && (
+          <Link href={`/loja/${lojaId}/orcamentos/${c.orcamentoId}`} className={botaoSuave}>
+            Ver orçamento de origem
+          </Link>
+        )}
+      </div>
+
+      {podeMexer ? (
+        <form action={editarContratoAction} className="flex flex-col gap-6">
+          <input type="hidden" name="contratoId" value={c.id} />
+          <section className="flex flex-col gap-3">
+            <h2 className={rotulo}>Noiva &amp; vestido</h2>
+            <Campo name="cpf" label="CPF" defaultValue={c.cpf ?? ""} placeholder="000.000.000-00" />
+            <Campo name="vestidoDescricao" label="Vestido" defaultValue={c.vestidoDescricao ?? ""} placeholder="Coleção — código" />
+          </section>
+          <section className="flex flex-col gap-3">
+            <h2 className={rotulo}>Valores e pagamento</h2>
+            <div className="flex flex-wrap gap-3">
+              <Campo name="valorTotal" label="Valor total" defaultValue={c.valorTotal} placeholder="0,00" />
+              <Campo name="entrada" label="Entrada / Sinal" defaultValue={c.entrada ?? ""} placeholder="0,00" />
+            </div>
+            <Campo name="formaPagamento" label="Forma de pagamento" defaultValue={c.formaPagamento ?? ""} placeholder="Ex.: 50% sinal + 2x" />
+          </section>
+          <section className="flex flex-col gap-3">
+            <h2 className={rotulo}>Datas</h2>
+            <div className="flex flex-wrap gap-3">
+              <Campo name="dataCasamento" label="Casamento" type="date" defaultValue={ymd(c.dataCasamento)} />
+              <Campo name="dataRetirada" label="Retirada" type="date" defaultValue={ymd(c.dataRetirada)} />
+              <Campo name="dataDevolucao" label="Devolução" type="date" defaultValue={ymd(c.dataDevolucao)} />
+            </div>
+          </section>
+          <section className="flex flex-col gap-1.5">
+            <span className={rotulo}>Observações</span>
+            <textarea name="observacoes" rows={3} defaultValue={c.observacoes ?? ""} className={campo} aria-label="Observações" />
+          </section>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="submit" className={botaoPrincipal}>Salvar contrato</button>
+          </div>
+        </form>
+      ) : (
+        // Read-only (cancelado ou sem permissão de editar)
+        <dl className="flex flex-col gap-2 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4 text-[14px]">
+          {c.cpf && <Linha rotulo="CPF" valor={c.cpf} />}
+          {c.vestidoDescricao && <Linha rotulo="Vestido" valor={c.vestidoDescricao} />}
+          <Linha rotulo="Valor total" valor={brl(c.valorTotal)} />
+          {c.entrada && <Linha rotulo="Entrada" valor={brl(c.entrada)} />}
+          {c.formaPagamento && <Linha rotulo="Pagamento" valor={c.formaPagamento} />}
+          {c.observacoes && <Linha rotulo="Observações" valor={c.observacoes} />}
+        </dl>
+      )}
+
+      {podeEditar && c.status === "ATIVO" && (
+        <form action={cancelarContratoAction} className="border-t border-borda-suave pt-5">
+          <input type="hidden" name="contratoId" value={c.id} />
+          <BotaoConfirmar mensagem="Cancelar este contrato (distrato)?" ariaLabel="Cancelar contrato" className={botaoSuave}>
+            Cancelar contrato
+          </BotaoConfirmar>
+        </form>
+      )}
+    </main>
+  );
+}
+
+function Linha({ rotulo: r, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-cinza-fumo">{r}</dt>
+      <dd className="text-tinta">{valor}</dd>
+    </div>
+  );
+}

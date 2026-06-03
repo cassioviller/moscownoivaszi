@@ -1,0 +1,288 @@
+// src/lib/contratos/contratos.ts
+// Contratos — a VENDA persistida. Nasce pré-preenchido de um orçamento aprovado (S2) ou
+// da noiva, é conferido/ajustado pela vendedora, e gera o PDF do contrato salvo. Base do
+// financeiro (S4+) e da comissão (S6). Tudo escopado por loja via tenantPrisma; dinheiro
+// pelo util compartilhado. Decisão: docs/.../2026-06-03-s3-contratos-design.md.
+import { prisma } from "@/lib/db";
+import { tenantPrisma } from "@/lib/tenant";
+import { paraCentavos, deCentavos } from "@/lib/dinheiro";
+import { calcularTotais } from "@/lib/orcamentos/orcamentos";
+import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
+import type { DadosContrato } from "@/lib/contratos/pdf";
+import type { ContratoStatus } from "@/generated/prisma/client";
+
+// "YYYY-MM-DD" → DateTime meia-noite UTC; "" / null → null. Lança em data inválida.
+function diaParaData(s: string | null | undefined): Date | null {
+  const t = (s ?? "").trim();
+  if (t === "") return null;
+  const d = new Date(`${t}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) throw new Error("data inválida");
+  return d;
+}
+
+function ehErroP2002(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
+}
+
+export type ResultadoCriar =
+  | { ok: true; contratoId: string }
+  | { ok: false; motivo: "orcamento_invalido" | "nao_aprovado" | "ja_tem_contrato" | "lead_invalido" | "vendedora_invalida" };
+
+/**
+ * Cria um contrato pré-preenchido a partir de um orçamento APROVADO: valor (= total do
+ * orçamento), vestido e datas vêm do orçamento + reserva da noiva. A vendedora confere o
+ * resto (CPF, forma de pagamento) no detalhe. `orcamentoId @unique` barra duplicar.
+ */
+export async function criarContratoDeOrcamento(lojaId: string, orcamentoId: string): Promise<ResultadoCriar> {
+  const db = tenantPrisma(prisma, lojaId);
+  const orc = await db.orcamento.findUnique({
+    where: { id: orcamentoId },
+    include: { itens: true, lead: { select: { casamentoData: true } } },
+  });
+  if (!orc) return { ok: false, motivo: "orcamento_invalido" };
+  if (orc.status !== "APROVADO") return { ok: false, motivo: "nao_aprovado" };
+
+  const total = calcularTotais(orc.itens, orc.descontoTipo, orc.descontoValor).total;
+  const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO")?.descricao ?? null;
+  const reservas = await listarReservasDaNoiva(lojaId, orc.leadId);
+  const reserva = reservas[0] ?? null;
+
+  try {
+    const c = await db.contrato.create({
+      data: {
+        leadId: orc.leadId,
+        orcamentoId: orc.id,
+        vendedoraId: orc.vendedoraId,
+        bloqueioVestidoId: reserva?.id ?? null,
+        valorTotal: total,
+        vestidoDescricao: reserva ? `${reserva.codigo} · ${reserva.nome}` : itemVestido,
+        dataCasamento: orc.lead.casamentoData ?? reserva?.casamentoData ?? null,
+        observacoes: orc.observacoes ?? null,
+      } as never,
+    });
+    return { ok: true, contratoId: c.id };
+  } catch (e) {
+    if (ehErroP2002(e)) return { ok: false, motivo: "ja_tem_contrato" };
+    throw e;
+  }
+}
+
+/** Contrato "em branco" a partir da noiva (sem orçamento) — fallback. Valor inicial 0. */
+export async function criarContratoDaNoiva(lojaId: string, leadId: string, vendedoraId: string): Promise<ResultadoCriar> {
+  const db = tenantPrisma(prisma, lojaId);
+  const [lead, vinc] = await Promise.all([
+    db.lead.findUnique({ where: { id: leadId }, select: { casamentoData: true } }),
+    prisma.usuarioLoja.findUnique({ where: { usuarioId_lojaId: { usuarioId: vendedoraId, lojaId } }, select: { usuarioId: true } }),
+  ]);
+  if (!lead) return { ok: false, motivo: "lead_invalido" };
+  if (!vinc) return { ok: false, motivo: "vendedora_invalida" };
+
+  const reservas = await listarReservasDaNoiva(lojaId, leadId);
+  const reserva = reservas[0] ?? null;
+
+  const c = await db.contrato.create({
+    data: {
+      leadId,
+      vendedoraId,
+      bloqueioVestidoId: reserva?.id ?? null,
+      valorTotal: "0.00",
+      vestidoDescricao: reserva ? `${reserva.codigo} · ${reserva.nome}` : null,
+      dataCasamento: lead.casamentoData ?? reserva?.casamentoData ?? null,
+    } as never,
+  });
+  return { ok: true, contratoId: c.id };
+}
+
+export type ResultadoOp =
+  | { ok: true }
+  | { ok: false; motivo: "contrato_invalido" | "nao_ativo" | "valor_invalido" | "data_invalida" };
+
+export type PatchContrato = {
+  cpf?: string;
+  vestidoDescricao?: string;
+  valorTotal?: string;
+  entrada?: string; // "" limpa
+  formaPagamento?: string;
+  dataCasamento?: string;
+  dataRetirada?: string;
+  dataDevolucao?: string;
+  observacoes?: string;
+};
+
+export async function editarContrato(lojaId: string, contratoId: string, patch: PatchContrato): Promise<ResultadoOp> {
+  const db = tenantPrisma(prisma, lojaId);
+  const c = await db.contrato.findUnique({ where: { id: contratoId }, select: { status: true } });
+  if (!c) return { ok: false, motivo: "contrato_invalido" };
+  if (c.status !== "ATIVO") return { ok: false, motivo: "nao_ativo" };
+
+  const data: Record<string, unknown> = {};
+  const vazioNull = (v: string) => (v.trim() === "" ? null : v.trim());
+  if (patch.cpf !== undefined) data.cpf = vazioNull(patch.cpf);
+  if (patch.vestidoDescricao !== undefined) data.vestidoDescricao = vazioNull(patch.vestidoDescricao);
+  if (patch.formaPagamento !== undefined) data.formaPagamento = vazioNull(patch.formaPagamento);
+  if (patch.observacoes !== undefined) data.observacoes = vazioNull(patch.observacoes);
+
+  if (patch.valorTotal !== undefined) {
+    try {
+      data.valorTotal = deCentavos(paraCentavos(patch.valorTotal));
+    } catch {
+      return { ok: false, motivo: "valor_invalido" };
+    }
+  }
+  if (patch.entrada !== undefined) {
+    if (patch.entrada.trim() === "") data.entrada = null;
+    else {
+      try {
+        data.entrada = deCentavos(paraCentavos(patch.entrada));
+      } catch {
+        return { ok: false, motivo: "valor_invalido" };
+      }
+    }
+  }
+  try {
+    for (const [campo, val] of [
+      ["dataCasamento", patch.dataCasamento],
+      ["dataRetirada", patch.dataRetirada],
+      ["dataDevolucao", patch.dataDevolucao],
+    ] as const) {
+      if (val !== undefined) data[campo] = diaParaData(val);
+    }
+  } catch {
+    return { ok: false, motivo: "data_invalida" };
+  }
+
+  await db.contrato.updateMany({ where: { id: contratoId }, data });
+  return { ok: true };
+}
+
+export async function cancelarContrato(lojaId: string, contratoId: string): Promise<ResultadoOp> {
+  const db = tenantPrisma(prisma, lojaId);
+  const c = await db.contrato.findUnique({ where: { id: contratoId }, select: { status: true } });
+  if (!c) return { ok: false, motivo: "contrato_invalido" };
+  if (c.status !== "ATIVO") return { ok: false, motivo: "nao_ativo" };
+  await db.contrato.updateMany({ where: { id: contratoId }, data: { status: "CANCELADO" } });
+  return { ok: true };
+}
+
+// — Leitura —
+
+export type ContratoResumo = {
+  id: string;
+  status: ContratoStatus;
+  leadId: string;
+  noivaNome: string | null;
+  valorTotal: string;
+  fechadoEm: Date;
+};
+
+const INCLUDE_RESUMO = { lead: { select: { noivaNome: true } } } as const;
+
+function resumo(c: {
+  id: string;
+  status: ContratoStatus;
+  leadId: string;
+  valorTotal: { toString(): string };
+  fechadoEm: Date;
+  lead: { noivaNome: string | null } | null;
+}): ContratoResumo {
+  return {
+    id: c.id,
+    status: c.status,
+    leadId: c.leadId,
+    noivaNome: c.lead?.noivaNome ?? null,
+    valorTotal: Number(c.valorTotal).toFixed(2),
+    fechadoEm: c.fechadoEm,
+  };
+}
+
+export async function listarContratosDaLoja(lojaId: string, opts: { status?: ContratoStatus } = {}): Promise<ContratoResumo[]> {
+  const rows = await tenantPrisma(prisma, lojaId).contrato.findMany({
+    where: opts.status ? { status: opts.status } : {},
+    orderBy: { fechadoEm: "desc" },
+    include: INCLUDE_RESUMO,
+  });
+  return rows.map(resumo);
+}
+
+export async function listarContratosDaNoiva(lojaId: string, leadId: string): Promise<ContratoResumo[]> {
+  const rows = await tenantPrisma(prisma, lojaId).contrato.findMany({
+    where: { leadId },
+    orderBy: { fechadoEm: "desc" },
+    include: INCLUDE_RESUMO,
+  });
+  return rows.map(resumo);
+}
+
+export type ContratoDetalhe = {
+  id: string;
+  status: ContratoStatus;
+  leadId: string;
+  noivaNome: string | null;
+  vendedoraNome: string;
+  orcamentoId: string | null;
+  cpf: string | null;
+  vestidoDescricao: string | null;
+  valorTotal: string;
+  entrada: string | null;
+  formaPagamento: string | null;
+  dataCasamento: Date | null;
+  dataRetirada: Date | null;
+  dataDevolucao: Date | null;
+  observacoes: string | null;
+  fechadoEm: Date;
+  editavel: boolean;
+};
+
+export async function obterContrato(lojaId: string, contratoId: string): Promise<ContratoDetalhe | null> {
+  const c = await tenantPrisma(prisma, lojaId).contrato.findUnique({
+    where: { id: contratoId },
+    include: { lead: { select: { noivaNome: true } }, vendedora: { select: { nome: true } } },
+  });
+  if (!c) return null;
+  return {
+    id: c.id,
+    status: c.status,
+    leadId: c.leadId,
+    noivaNome: c.lead?.noivaNome ?? null,
+    vendedoraNome: c.vendedora.nome,
+    orcamentoId: c.orcamentoId,
+    cpf: c.cpf,
+    vestidoDescricao: c.vestidoDescricao,
+    valorTotal: Number(c.valorTotal).toFixed(2),
+    entrada: c.entrada != null ? Number(c.entrada).toFixed(2) : null,
+    formaPagamento: c.formaPagamento,
+    dataCasamento: c.dataCasamento,
+    dataRetirada: c.dataRetirada,
+    dataDevolucao: c.dataDevolucao,
+    observacoes: c.observacoes,
+    fechadoEm: c.fechadoEm,
+    editavel: c.status === "ATIVO",
+  };
+}
+
+const dataBR = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+const brl = (v: { toString(): string }) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+/** Monta o DadosContrato (pdf.ts) a partir do contrato persistido. null se não for da loja. */
+export async function dadosParaPdf(lojaId: string, contratoId: string): Promise<DadosContrato | null> {
+  const c = await tenantPrisma(prisma, lojaId).contrato.findUnique({
+    where: { id: contratoId },
+    include: { lead: { select: { noivaNome: true, whatsapp: true } }, loja: { select: { nome: true } } },
+  });
+  if (!c) return null;
+  return {
+    lojaNome: c.loja.nome,
+    noivaNome: c.lead?.noivaNome ?? "",
+    cpf: c.cpf ?? undefined,
+    whatsapp: c.lead?.whatsapp ?? undefined,
+    vestido: c.vestidoDescricao ?? undefined,
+    valorTotal: brl(c.valorTotal),
+    entrada: c.entrada != null ? brl(c.entrada) : undefined,
+    formaPagamento: c.formaPagamento ?? undefined,
+    dataCasamento: c.dataCasamento ? dataBR.format(c.dataCasamento) : undefined,
+    dataRetirada: c.dataRetirada ? dataBR.format(c.dataRetirada) : undefined,
+    dataDevolucao: c.dataDevolucao ? dataBR.format(c.dataDevolucao) : undefined,
+    dataContrato: dataBR.format(c.fechadoEm),
+    observacao: c.observacoes ?? undefined,
+  };
+}

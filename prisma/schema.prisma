@@ -83,6 +83,7 @@ model Loja {
   atendimentos         Atendimento[]
   orcamentos           Orcamento[]
   orcamentoItens       OrcamentoItem[]
+  contratos            Contrato[]
 }
 
 model Perfil {
@@ -113,6 +114,7 @@ model Usuario {
   sessoes      Sessao[]
   atendimentos Atendimento[]
   orcamentos   Orcamento[]
+  contratos    Contrato[]
 }
 
 model UsuarioLoja {
@@ -248,6 +250,7 @@ model Lead {
   bloqueios    BloqueioVestido[]
   atendimentos Atendimento[]
   orcamentos   Orcamento[]
+  contratos    Contrato[]
 }
 
 model LeadInteresse {
@@ -295,6 +298,7 @@ model BloqueioVestido {
   vestido Vestido @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
   lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
   provas  Prova[]
+  contratos Contrato[]
 }
 
 // Prova — registro OPERACIONAL dentro de uma reserva (BloqueioVestido do tipo
@@ -468,6 +472,7 @@ model Orcamento {
   atendimento Atendimento?    @relation(fields: [atendimentoId], references: [id], onDelete: SetNull)
   vendedora   Usuario         @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
   itens       OrcamentoItem[]
+  contrato    Contrato?
 }
 
 model OrcamentoItem {
@@ -484,4 +489,40 @@ model OrcamentoItem {
   loja      Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
   vestido   Vestido?  @relation(fields: [vestidoId], references: [id], onDelete: SetNull)
+}
+
+// Contrato — a VENDA persistida. Nasce pré-preenchido de um orçamento aprovado (S2);
+// é a base do financeiro (S4+) e da comissão (S6). Decisão:
+// docs/superpowers/specs/2026-06-03-s3-contratos-design.md.
+enum ContratoStatus {
+  ATIVO
+  CANCELADO
+}
+
+model Contrato {
+  id                String         @id @default(cuid())
+  lojaId            String
+  leadId            String
+  orcamentoId       String?        @unique // de qual orçamento aprovado nasceu (1:1)
+  bloqueioVestidoId String? // a reserva (vestido + datas), se houver
+  vendedoraId       String // quem vendeu — base da comissão (S6)
+  status            ContratoStatus @default(ATIVO)
+  cpf               String?
+  vestidoDescricao  String?
+  valorTotal        Decimal        @db.Decimal(10, 2)
+  entrada           Decimal?       @db.Decimal(10, 2)
+  formaPagamento    String?
+  dataCasamento     DateTime?
+  dataRetirada      DateTime?
+  dataDevolucao     DateTime?
+  observacoes       String?
+  fechadoEm         DateTime       @default(now()) // data da venda → competência da comissão
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  loja      Loja             @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  lead      Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  orcamento Orcamento?       @relation(fields: [orcamentoId], references: [id], onDelete: SetNull)
+  bloqueio  BloqueioVestido? @relation(fields: [bloqueioVestidoId], references: [id], onDelete: SetNull)
+  vendedora Usuario          @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
 }

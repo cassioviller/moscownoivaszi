@@ -16,6 +16,7 @@ import {
   definirDescontoAction,
   mudarStatusAction,
 } from "../actions";
+import { gerarContratoDeOrcamentoAction } from "../../contratos/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,8 @@ const AVISOS: Record<string, string> = {
   transicao_invalida: "Essa mudança de status não é possível.",
   orcamento_vazio: "Adicione ao menos um item antes de aprovar.",
   orcamento_invalido: "Orçamento inválido.",
+  ja_tem_contrato: "Este orçamento já gerou um contrato.",
+  nao_aprovado: "Aprove o orçamento antes de gerar o contrato.",
 };
 
 function brl(v: string): string {
@@ -209,6 +212,27 @@ export default async function OrcamentoDetalhePage({
           </form>
         )}
       </section>
+
+      {/* Aprovado → contrato */}
+      {orc.status === "APROVADO" && (
+        <section className="flex flex-wrap items-center gap-3 border-t border-borda-suave pt-5">
+          {orc.contratoId ? (
+            <Link href={`/loja/${lojaId}/contratos/${orc.contratoId}`} className={botaoPrincipal}>
+              Ver contrato
+            </Link>
+          ) : (
+            podeEditar && (
+              <form action={gerarContratoDeOrcamentoAction}>
+                <input type="hidden" name="orcamentoId" value={orc.id} />
+                <button type="submit" className={botaoPrincipal}>
+                  Gerar contrato
+                </button>
+              </form>
+            )
+          )}
+          <span className="text-[12px] text-cinza-fumo">Orçamento aprovado — pronto para virar contrato.</span>
+        </section>
+      )}
 
       {/* Status */}
       {podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO") && (
