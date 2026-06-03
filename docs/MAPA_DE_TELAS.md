@@ -184,9 +184,9 @@ GESTÃO            (só admin)
 
 ---
 
-## 5. Atendimentos 🔴 nova
+## 5. Atendimentos 🟢 existe
 
-**Rota:** `/loja/[id]/atendimentos` · **Status:** 🔴 nova
+**Rota:** `/loja/[id]/atendimentos` · **Status:** 🟢 existe *(S1 — fila de trabalho; orçamento embutido vem na S2)*
 
 **Objetivo:** o ato de **atender** — fechar o vão entre "agendou" e "reservou".
 
@@ -446,9 +446,9 @@ GESTÃO            (só admin)
 
 | Status | Telas |
 |---|---|
-| 🟢 existe | Noivas, Perfil, Add/Editar, Interesses, Agendar, Calendário, Reservas, Vestidos, Catálogo, Ajustes, Permissões, Trocar loja |
-| 🟡 parcial | Início, Detalhe da reserva (sem retirada/devolução), Contratos (stateless), Equipe, Administração |
-| 🔴 nova | Atendimentos, Orçamentos, Provas (visão dedicada), Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
+| 🟢 existe | Noivas, Perfil, Add/Editar, Interesses, Agendar, Calendário, **Atendimentos**, Reservas, Detalhe da reserva (retirada/devolução ✓), **Provas (visão dedicada)**, Vestidos, Catálogo, Ajustes, Permissões, Trocar loja |
+| 🟡 parcial | Início, Contratos (stateless), Equipe, Administração |
+| 🔴 nova | Orçamentos, Contas a receber, Contas a pagar, Comissões, Fluxo de caixa |
 
 ## Pontas abertas que estas telas fecham
 
