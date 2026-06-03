@@ -5,6 +5,8 @@
 
 export const ESTAGIOS = [
   "cadastrada",
+  "atendimento_agendado",
+  "atendida",
   "prova_marcada",
   "interesses",
   "orcamento_aberto",
@@ -18,6 +20,8 @@ export type EstagioChave = (typeof ESTAGIOS)[number];
 
 export const ROTULO_ESTAGIO: Record<EstagioChave, string> = {
   cadastrada: "Cadastrada",
+  atendimento_agendado: "Atendimento agendado",
+  atendida: "Atendida",
   prova_marcada: "Prova marcada",
   interesses: "Interesses preenchidos",
   orcamento_aberto: "Orçamento aberto",
@@ -29,6 +33,8 @@ export const ROTULO_ESTAGIO: Record<EstagioChave, string> = {
 };
 
 export type FatosJornada = {
+  temAtendimentoAgendado: boolean;
+  foiAtendida: boolean;
   temProvaAgendada: boolean;
   temInteresse: boolean;
   orcamentoAbertoEm: Date | null;
@@ -50,6 +56,8 @@ export type PassoJornada = {
 function satisfeitos(f: FatosJornada): boolean[] {
   return [
     true, // cadastrada (base)
+    f.temAtendimentoAgendado, // atendimento_agendado
+    f.foiAtendida, // atendida
     f.temProvaAgendada, // prova_marcada
     f.temInteresse, // interesses
     f.orcamentoAbertoEm !== null, // orcamento_aberto

@@ -118,9 +118,11 @@ function inicioDeHojeUTC(): Date {
   return new Date(`${ymd}T00:00:00.000Z`);
 }
 
-// include mínimo p/ derivar a jornada: interesse (atributos), reservas (datas + provas).
+// include mínimo p/ derivar a jornada: interesse (atributos), atendimentos (situação),
+// reservas (datas + provas).
 const INCLUDE_JORNADA = {
   interesse: { select: { atributos: { select: { atributoId: true } } } },
+  atendimentos: { select: { situacao: true } },
   bloqueios: {
     where: { tipo: "RESERVA_CASAMENTO" as const },
     select: {
@@ -136,6 +138,10 @@ type LeadComJornada = Prisma.LeadGetPayload<{ include: typeof INCLUDE_JORNADA }>
 function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
   const provas = lead.bloqueios.flatMap((b) => b.provas);
   return {
+    temAtendimentoAgendado: lead.atendimentos.some((a) => a.situacao === "AGENDADO"),
+    foiAtendida: lead.atendimentos.some(
+      (a) => a.situacao === "EM_ATENDIMENTO" || a.situacao === "CONCLUIDO",
+    ),
     temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
     temInteresse: (lead.interesse?.atributos.length ?? 0) > 0,
     orcamentoAbertoEm: lead.orcamentoAbertoEm,

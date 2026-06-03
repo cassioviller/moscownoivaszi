@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { estagioDaNoiva, noivaAtiva, type FatosJornada } from "@/lib/leads/jornada";
 
 const ZERO: FatosJornada = {
+  temAtendimentoAgendado: false, foiAtendida: false,
   temProvaAgendada: false, temInteresse: false, orcamentoAbertoEm: null,
   contratoFechadoEm: null, temProvaRealizada: false, temRetirada: false,
   casamentoPassou: false, temDevolucao: false, perdidaEm: null,
@@ -15,6 +16,14 @@ describe("estagioDaNoiva — maior índice satisfeito", () => {
     expect(r.encerrada).toBeNull();
     expect(r.passos[0].estado).toBe("atual");
     expect(r.passos[1].estado).toBe("futuro");
+  });
+  it("atendimento agendado → atendimento_agendado", () => {
+    expect(estagioDaNoiva({ ...ZERO, temAtendimentoAgendado: true }).atual).toBe("atendimento_agendado");
+  });
+  it("foi atendida → atendida (anteriores = feito)", () => {
+    const r = estagioDaNoiva({ ...ZERO, foiAtendida: true });
+    expect(r.atual).toBe("atendida");
+    expect(r.passos.find((p) => p.chave === "atendimento_agendado")!.estado).toBe("feito");
   });
   it("prova agendada → prova_marcada", () => {
     expect(estagioDaNoiva({ ...ZERO, temProvaAgendada: true }).atual).toBe("prova_marcada");

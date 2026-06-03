@@ -84,6 +84,7 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
         contratoFechadoEm: true,
         perdidaEm: true,
         interesse: { select: { atributos: { select: { atributoId: true } } } },
+        atendimentos: { select: { situacao: true } },
         bloqueios: {
           where: { tipo: "RESERVA_CASAMENTO" },
           select: {
@@ -118,6 +119,10 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const linhas: Linha[] = leads.map((l) => {
     const provas = l.bloqueios.flatMap((b) => b.provas);
     const fatos: FatosJornada = {
+      temAtendimentoAgendado: l.atendimentos.some((a) => a.situacao === "AGENDADO"),
+      foiAtendida: l.atendimentos.some(
+        (a) => a.situacao === "EM_ATENDIMENTO" || a.situacao === "CONCLUIDO",
+      ),
       temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
       temInteresse: (l.interesse?.atributos.length ?? 0) > 0,
       orcamentoAbertoEm: l.orcamentoAbertoEm,

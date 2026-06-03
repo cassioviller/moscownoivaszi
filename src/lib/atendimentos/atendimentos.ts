@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { gradeDeSlots, type Slot } from "./slots";
 import { obterHorarioLoja } from "./cabines";
+import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
 
 // "YYYY-MM-DD" + hora → Date (wall-clock em UTC).
 function instante(dataYMD: string, hora: number): Date {
@@ -115,4 +116,102 @@ export async function listarProximosAtendimentos(lojaId: string): Promise<Atendi
 
 export async function cancelarAtendimento(lojaId: string, id: string): Promise<void> {
   await tenantPrisma(prisma, lojaId).atendimento.deleteMany({ where: { id } });
+}
+
+// — O ato de "atender": ciclo de vida do atendimento (S1) —
+
+export type AtendimentoFila = {
+  id: string;
+  inicio: Date;
+  situacao: AtendimentoSituacao;
+  desfecho: AtendimentoDesfecho | null;
+  atendidoEm: Date | null;
+  noivaNome: string | null;
+  leadId: string;
+  cabineNome: string;
+  vendedoraNome: string;
+};
+
+/**
+ * Atendimentos da loja com situação/desfecho, para a fila de trabalho. Padrão: de hoje
+ * em diante (asc) — a tela separa "hoje" de "próximos"; `passados` traz o histórico
+ * (inicio < hoje, desc). Escopo de loja.
+ */
+export async function listarAtendimentos(
+  lojaId: string,
+  opts: { passados?: boolean } = {},
+): Promise<AtendimentoFila[]> {
+  const hoje = inicioDeHojeUTC();
+  const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
+    where: { inicio: opts.passados ? { lt: hoje } : { gte: hoje } },
+    orderBy: { inicio: opts.passados ? "desc" : "asc" },
+    include: {
+      lead: { select: { noivaNome: true } },
+      cabine: { select: { nome: true } },
+      vendedora: { select: { nome: true } },
+    },
+  });
+  return rows.map((a) => ({
+    id: a.id,
+    inicio: a.inicio,
+    situacao: a.situacao,
+    desfecho: a.desfecho,
+    atendidoEm: a.atendidoEm,
+    noivaNome: a.lead?.noivaNome ?? null,
+    leadId: a.leadId,
+    cabineNome: a.cabine.nome,
+    vendedoraNome: a.vendedora.nome,
+  }));
+}
+
+export type ResultadoSituacao =
+  | { ok: true }
+  | { ok: false; motivo: "atendimento_invalido" | "transicao_invalida" | "desfecho_invalido" };
+
+const DESFECHOS_VALIDOS = new Set<AtendimentoDesfecho>(["RESERVOU", "VAI_PENSAR", "NAO_SERVIU"]);
+
+/** AGENDADO → EM_ATENDIMENTO (carimba atendidoEm). Só da loja. */
+export async function iniciarAtendimento(lojaId: string, id: string): Promise<ResultadoSituacao> {
+  const db = tenantPrisma(prisma, lojaId);
+  const at = await db.atendimento.findUnique({ where: { id }, select: { situacao: true } });
+  if (!at) return { ok: false, motivo: "atendimento_invalido" };
+  if (at.situacao !== "AGENDADO") return { ok: false, motivo: "transicao_invalida" };
+  await db.atendimento.update({
+    where: { id },
+    data: { situacao: "EM_ATENDIMENTO", atendidoEm: new Date() },
+  });
+  return { ok: true };
+}
+
+/**
+ * AGENDADO | EM_ATENDIMENTO → CONCLUIDO, com desfecho. Concluir direto de AGENDADO é
+ * permitido (vendedora esqueceu de "iniciar") — carimba atendidoEm se ainda nulo.
+ */
+export async function concluirAtendimento(
+  lojaId: string,
+  id: string,
+  desfecho: AtendimentoDesfecho,
+): Promise<ResultadoSituacao> {
+  if (!DESFECHOS_VALIDOS.has(desfecho)) return { ok: false, motivo: "desfecho_invalido" };
+  const db = tenantPrisma(prisma, lojaId);
+  const at = await db.atendimento.findUnique({ where: { id }, select: { situacao: true, atendidoEm: true } });
+  if (!at) return { ok: false, motivo: "atendimento_invalido" };
+  if (at.situacao !== "AGENDADO" && at.situacao !== "EM_ATENDIMENTO") {
+    return { ok: false, motivo: "transicao_invalida" };
+  }
+  await db.atendimento.update({
+    where: { id },
+    data: { situacao: "CONCLUIDO", desfecho, atendidoEm: at.atendidoEm ?? new Date() },
+  });
+  return { ok: true };
+}
+
+/** AGENDADO → FALTOU (não compareceu). Só da loja. */
+export async function marcarFalta(lojaId: string, id: string): Promise<ResultadoSituacao> {
+  const db = tenantPrisma(prisma, lojaId);
+  const at = await db.atendimento.findUnique({ where: { id }, select: { situacao: true } });
+  if (!at) return { ok: false, motivo: "atendimento_invalido" };
+  if (at.situacao !== "AGENDADO") return { ok: false, motivo: "transicao_invalida" };
+  await db.atendimento.update({ where: { id }, data: { situacao: "FALTOU" } });
+  return { ok: true };
 }

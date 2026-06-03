@@ -383,18 +383,37 @@ model Cabine {
   atendimentos Atendimento[]
 }
 
+// Ciclo de vida do atendimento (o ato de "atender"). Cancelar continua sendo delete,
+// não vira status. Decisão: docs/superpowers/specs/2026-06-03-s1-atendimentos-design.md.
+enum AtendimentoSituacao {
+  AGENDADO // criado, ainda não aconteceu
+  EM_ATENDIMENTO // noiva chegou, vendedora atendendo
+  CONCLUIDO // atendimento encerrado
+  FALTOU // não compareceu
+}
+
+// Como o atendimento terminou (só faz sentido em CONCLUIDO).
+enum AtendimentoDesfecho {
+  RESERVOU // saiu com vestido reservado
+  VAI_PENSAR // ficou de decidir
+  NAO_SERVIU // nada serviu
+}
+
 // Atendimento (consulta) agendado para uma noiva, numa cabine, com uma vendedora.
 // Duração fixa de 60 min (constante na app). `inicio` é wall-clock em UTC, hora cheia.
 model Atendimento {
-  id          String   @id @default(cuid())
+  id          String              @id @default(cuid())
   lojaId      String
   leadId      String
   cabineId    String
   vendedoraId String
   inicio      DateTime
+  situacao    AtendimentoSituacao  @default(AGENDADO)
+  atendidoEm  DateTime? // quando entrou em atendimento
+  desfecho    AtendimentoDesfecho?
   observacao  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   loja      Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)

@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { gradeDoDia, agendarAtendimento, listarProximosAtendimentos, cancelarAtendimento } from "@/lib/atendimentos/atendimentos";
+import {
+  gradeDoDia,
+  agendarAtendimento,
+  listarProximosAtendimentos,
+  cancelarAtendimento,
+  listarAtendimentos,
+  iniciarAtendimento,
+  concluirAtendimento,
+  marcarFalta,
+} from "@/lib/atendimentos/atendimentos";
 
 const MARK = "t-atend-";
 let loja = "", lead = "", cabine = "", vend = "";
@@ -50,5 +59,71 @@ describe("atendimentos", () => {
     await cancelarAtendimento(loja, r.atendimentoId);
     const prox2 = await listarProximosAtendimentos(loja);
     expect(prox2.some((a) => a.id === r.atendimentoId)).toBe(false);
+  });
+});
+
+describe("atendimentos: ciclo de vida (atender)", () => {
+  async function novoAtend(dataYMD: string, hora: number): Promise<string> {
+    const r = await agendarAtendimento(loja, { leadId: lead, cabineId: cabine, vendedoraId: vend, dataYMD, hora });
+    if (!r.ok) throw new Error(`setup atend falhou: ${r.motivo}`);
+    return r.atendimentoId;
+  }
+  const situacaoDe = async (id: string) =>
+    (await tenantPrisma(prisma, loja).atendimento.findUnique({ where: { id }, select: { situacao: true, desfecho: true, atendidoEm: true } }))!;
+
+  it("AGENDADO → EM_ATENDIMENTO carimba atendidoEm; iniciar de novo é inválido", async () => {
+    const id = await novoAtend("2099-02-01", 10);
+    expect(await iniciarAtendimento(loja, id)).toEqual({ ok: true });
+    const at = await situacaoDe(id);
+    expect(at.situacao).toBe("EM_ATENDIMENTO");
+    expect(at.atendidoEm).not.toBeNull();
+    expect(await iniciarAtendimento(loja, id)).toMatchObject({ ok: false, motivo: "transicao_invalida" });
+  });
+
+  it("concluir com desfecho; concluir de novo é inválido; desfecho inválido recusado", async () => {
+    const id = await novoAtend("2099-02-02", 10);
+    await iniciarAtendimento(loja, id);
+    expect(await concluirAtendimento(loja, id, "RESERVOU")).toEqual({ ok: true });
+    expect((await situacaoDe(id)).desfecho).toBe("RESERVOU");
+    expect(await concluirAtendimento(loja, id, "VAI_PENSAR")).toMatchObject({ ok: false, motivo: "transicao_invalida" });
+
+    const id2 = await novoAtend("2099-02-03", 10);
+    expect(await concluirAtendimento(loja, id2, "XXX" as never)).toMatchObject({ ok: false, motivo: "desfecho_invalido" });
+  });
+
+  it("concluir direto de AGENDADO carimba atendidoEm", async () => {
+    const id = await novoAtend("2099-02-04", 10);
+    expect(await concluirAtendimento(loja, id, "NAO_SERVIU")).toEqual({ ok: true });
+    const at = await situacaoDe(id);
+    expect(at.situacao).toBe("CONCLUIDO");
+    expect(at.atendidoEm).not.toBeNull();
+  });
+
+  it("marcar falta só de AGENDADO; depois não dá pra iniciar", async () => {
+    const id = await novoAtend("2099-02-05", 10);
+    expect(await marcarFalta(loja, id)).toEqual({ ok: true });
+    expect((await situacaoDe(id)).situacao).toBe("FALTOU");
+    expect(await iniciarAtendimento(loja, id)).toMatchObject({ ok: false, motivo: "transicao_invalida" });
+  });
+
+  it("id inexistente e outra loja → atendimento_invalido", async () => {
+    const outra = (await prisma.loja.create({ data: { nome: `${MARK}outra` } })).id;
+    const id = await novoAtend("2099-02-06", 10);
+    expect(await iniciarAtendimento(loja, "nao-existe")).toMatchObject({ ok: false, motivo: "atendimento_invalido" });
+    expect(await iniciarAtendimento(outra, id)).toMatchObject({ ok: false, motivo: "atendimento_invalido" });
+  });
+
+  it("listarAtendimentos: futuro nas próximas, passado no histórico", async () => {
+    const fut = await novoAtend("2099-03-01", 10);
+    const pas = await novoAtend("2020-03-01", 10);
+    const prox = await listarAtendimentos(loja);
+    const hist = await listarAtendimentos(loja, { passados: true });
+    expect(prox.some((a) => a.id === fut)).toBe(true);
+    expect(prox.some((a) => a.id === pas)).toBe(false);
+    expect(hist.some((a) => a.id === pas)).toBe(true);
+    expect(hist.some((a) => a.id === fut)).toBe(false);
+    // traz situação + noiva
+    expect(prox.find((a) => a.id === fut)!.situacao).toBe("AGENDADO");
+    expect(prox.find((a) => a.id === fut)!.noivaNome).toBe(`${MARK}Ana`);
   });
 });
