@@ -35,11 +35,14 @@ saída no caixa), mas com **baixa por conta** e **previsto vs pago** rastreávei
 ## 4. Escopo
 
 **Dentro:**
-- **Migração:** `ContaPagar`, `Pagamento`, `PagamentoItem` (+ enums).
-- **Data layer:** lançar despesa/fornecedor; lançar salário (previsão); listar contas a
-  pagar; **registrar pagamento** (1 pagamento → N contas, valor real por conta); estornar
-  pagamento; marcar **enviado à contabilidade**; resumo a pagar; resumo por competência
-  (colaborador · salário · comissão · total).
+- **Migração:** `ContaPagar`, `Pagamento`, `PagamentoItem`, **`SalarioRecorrente`** (+ enums).
+- **Motor de recorrência de salário:** salário-base por colaborador → **gerar a folha do
+  mês** cria as contas a pagar (idempotente). Ver §5.1.
+- **Data layer:** lançar conta (despesa/fornecedor/salário ad-hoc); gerir salário
+  recorrente; gerar folha do mês; listar contas a pagar; **registrar pagamento** (1
+  pagamento → N contas, valor real por conta); estornar pagamento; marcar **enviado à
+  contabilidade**; resumo a pagar; resumo por competência (colaborador · salário ·
+  comissão · total).
 - **Telas:** `/financeiro/pagar` (carteira: a pagar / pagas + resumo + lançar despesa/
   salário) e **Pagar colaborador** (agrupa as contas em aberto de uma pessoa → 1 pagamento).
 - Dinheiro pelo util compartilhado.
@@ -50,7 +53,6 @@ saída no caixa), mas com **baixa por conta** e **previsto vs pago** rastreávei
 - **Fluxo de caixa consolidado** → S7 (lê Recebimento + Pagamento).
 - **Ponto / folha de verdade** (faltas, horas extras, encargos, holerite): **não** se
   modela. A diferença previsto×pago entra como **edição manual** do valor no pagamento.
-- **Recorrência automática de salário** (gerar todo mês sozinho): ver §10.1.
 - **Pagamento parcial** de uma conta: aqui a quitação é integral por conta.
 - Permissão dedicada `financeiro` → fatia de permissões.
 
@@ -109,16 +111,49 @@ model PagamentoItem {
 }
 ```
 
+```prisma
+model SalarioRecorrente {
+  id            String   @id @default(cuid())
+  lojaId        String
+  colaboradorId String   // Usuario (membro da loja)
+  valorBase     Decimal  @db.Decimal(10, 2)
+  diaVencimento Int      // 1..28 (dia do mês do vencimento)
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  loja        Loja    @relation(...)
+  colaborador Usuario @relation(...)
+  @@unique([lojaId, colaboradorId])  // um salário recorrente por colaborador na loja
+}
+```
+
 > `PagamentoItem.contaPagarId @unique` garante que uma conta não seja quitada duas vezes.
-> Aditiva (cria tabelas/enums). `ContaPagar`, `Pagamento`, `PagamentoItem` em
-> `TENANT_MODELS`. `Usuario`/`Loja` ganham relações inversas. Operação de banco =
-> **requer confirmação** antes de `prisma migrate` (e **reiniciar o dev server** depois).
+> Aditiva (cria tabelas/enums). `ContaPagar`, `Pagamento`, `PagamentoItem`,
+> `SalarioRecorrente` em `TENANT_MODELS`. `Usuario`/`Loja` ganham relações inversas.
+> Operação de banco = **requer confirmação** antes de `prisma migrate` (e **reiniciar o
+> dev server** depois).
+
+### 5.1 Motor de recorrência de salário
+
+- `definirSalarioRecorrente(lojaId, colaboradorId, { valorBase, diaVencimento })` — upsert
+  por colaborador (valida membro da loja; `diaVencimento` 1..28).
+- `gerarFolhaDoMes(lojaId, competencia)` — para cada salário recorrente **ativo**, cria uma
+  `ContaPagar` tipo SALARIO com `valorPrevisto = valorBase`, `competencia`, `vencimento =
+  competência + diaVencimento`, ligada via `salarioRecorrenteId`. **Idempotente**: pula
+  colaboradores que já têm conta SALARIO naquela competência (não duplica). Retorna quantas
+  geradas. O valor de cada conta segue **editável** (ajuste do mês) antes do pagamento.
+- `ContaPagar` ganha `salarioRecorrenteId String?` (rastro da geração).
 
 ## 6. Data layer (`src/lib/financeiro/pagar.ts` — novo)
 
 ```ts
-lancarDespesa(lojaId, { tipo: "DESPESA"|"FORNECEDOR", descricao, categoria?, fornecedor?, valorPrevisto, vencimento }): { ok; contaId } | { ok:false; motivo }
-lancarSalario(lojaId, { colaboradorId, competencia, valorPrevisto, vencimento, descricao? }): { ok; contaId } | { ok:false; motivo }   // valida membro da loja
+lancarConta(lojaId, { tipo, colaboradorId?, competencia?, descricao, categoria?, fornecedor?, valorPrevisto, vencimento }): { ok; contaId } | { ok:false; motivo }  // SALARIO/COMISSAO validam membro da loja
+// — salário recorrente —
+definirSalarioRecorrente(lojaId, colaboradorId, { valorBase, diaVencimento }): Resultado   // upsert
+listarSalariosRecorrentes(lojaId): SalarioRecorrenteView[]
+removerSalarioRecorrente(lojaId, id): Resultado
+gerarFolhaDoMes(lojaId, competencia): { ok; geradas: number } | { ok:false; motivo }       // idempotente
 editarConta(lojaId, contaId, patch): Resultado            // só PREVISTA
 removerConta(lojaId, contaId): Resultado                  // só PREVISTA (não quitada)
 listarContasAPagar(lojaId, { filtro, tipo?, colaboradorId? }): ContaPagarView[]   // filtro: abertas|atrasadas|pagas|todas
@@ -141,8 +176,10 @@ resumoPorCompetencia(lojaId, competencia): { colaboradorId; nome; salario; comis
 
 - **`/financeiro/pagar`** (carteira): cards de resumo (a pagar · pago · em atraso),
   filtro (Abertas / Atrasadas / Pagas / Todas), lista por vencimento com tipo/descrição/
-  colaborador/valor/status; atraso em bordô. **Lançar despesa** e **lançar salário**
-  (forms). Gate ver=`leads:ver`, mutar=`leads:editar`.
+  colaborador/valor/status; atraso em bordô. **Lançar despesa** (form) e **Gerar folha do
+  mês** (competência → cria os salários). Gate ver=`leads:ver`, mutar=`leads:editar`.
+- **Salários recorrentes** (config): por colaborador, salário-base + dia de vencimento +
+  ativo. É a fonte que a "folha do mês" usa.
 - **Pagar colaborador** (o cruzamento): escolhe um colaborador → vê suas contas em aberto
   (salário + comissão), **edita o valor real de cada uma**, confirma → **1 pagamento**
   (uma saída), baixa em cada conta. Botão **Enviar à contabilidade** + resumo da
@@ -164,9 +201,9 @@ entrega o **número** e o **rastro** (previsto×pago por conta), não processa a
 
 ## 10. Decisões a confirmar (pontos seus)
 
-1. **Salário**: lançado **manualmente por competência** (sem motor de recorrência, sem
-   salário-base guardado por colaborador) — *recomendo* para esta fatia; recorrência/
-   salário-base ficam para depois.
+1. **Salário com motor de recorrência** (decisão do dono): salário-base por colaborador
+   (`SalarioRecorrente`) + **gerar folha do mês** (idempotente). Lançamento avulso de
+   salário/despesa segue disponível para ajustes pontuais. Ver §5.1.
 2. **Quitação**: 1 pagamento quita N contas, `valorPago` = soma dos itens, `item.valor` =
    o real (ajuste manual de faltas/extras), **sem pagamento parcial** de uma conta —
    *recomendo*.
@@ -177,11 +214,13 @@ entrega o **número** e o **rastro** (previsto×pago por conta), não processa a
 
 ## 11. Testes
 
-- **Data layer** (`pagar.test.ts`): lançar despesa/salário (salário valida membro da
-  loja); editar/remover só PREVISTA; **registrarPagamento** quita N contas numa transação
-  (valorPago = soma; contas → PAGA; `contaPagarId @unique` barra quitar 2×); **estorno**
-  devolve contas a PREVISTA; conta de outra loja/já paga recusada; `atrasada` derivado;
-  `resumoPagar` e `resumoPorCompetencia`; item ≤ 0 recusado; isolamento de loja.
+- **Data layer** (`pagar.test.ts`): lançar conta (SALARIO valida membro da loja);
+  **salário recorrente** (definir/upsert + `gerarFolhaDoMes` cria as contas com vencimento
+  certo e é **idempotente** — rodar 2× não duplica); editar/remover só PREVISTA;
+  **registrarPagamento** quita N contas numa transação (valorPago = soma; contas → PAGA;
+  `contaPagarId @unique` barra quitar 2×); **estorno** devolve contas a PREVISTA; conta de
+  outra loja/já paga recusada; `atrasada` derivado; `resumoPagar` e `resumoPorCompetencia`;
+  item ≤ 0 recusado; isolamento de loja.
 - **Sem mudança na jornada.**
 
 ## 12. Plano (fatias finas, commit na `main`)
