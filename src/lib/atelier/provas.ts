@@ -93,6 +93,67 @@ export async function listarProvasDaReserva(
   }));
 }
 
+// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema,
+// igual a reservas.listarReservasDaLoja).
+function hojeUTC(): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return new Date(`${ymd}T00:00:00.000Z`);
+}
+
+export type ProvaDaLoja = {
+  id: string;
+  dataReal: Date;
+  tipo: ProvaTipo;
+  comparecimento: ProvaComparecimento;
+  bloqueioId: string; // reserva (deep-link)
+  leadId: string | null;
+  noivaNome: string | null;
+  vestidoCodigo: string;
+  vestidoNome: string;
+  casamentoData: Date | null;
+};
+
+/**
+ * Agenda de provas da loja, com noiva e vestido. Padrão: próximas (dataReal ≥ hoje,
+ * ascendente); `passadas` traz o histórico (dataReal < hoje, descendente). É o
+ * data-layer da tela dedicada de Provas — o registro/edição segue no detalhe da reserva.
+ */
+export async function listarProvasDaLoja(
+  lojaId: string,
+  opts: { passadas?: boolean } = {},
+): Promise<ProvaDaLoja[]> {
+  const hoje = hojeUTC();
+  const rows = await tenantPrisma(prisma, lojaId).prova.findMany({
+    where: { dataReal: opts.passadas ? { lt: hoje } : { gte: hoje } },
+    orderBy: { dataReal: opts.passadas ? "desc" : "asc" },
+    include: {
+      bloqueio: {
+        include: {
+          lead: { select: { id: true, noivaNome: true } },
+          vestido: { select: { codigo: true, nome: true } },
+        },
+      },
+    },
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    dataReal: p.dataReal,
+    tipo: p.tipo,
+    comparecimento: p.comparecimento,
+    bloqueioId: p.bloqueioId,
+    leadId: p.bloqueio.leadId,
+    noivaNome: p.bloqueio.lead?.noivaNome ?? null,
+    vestidoCodigo: p.bloqueio.vestido.codigo,
+    vestidoNome: p.bloqueio.vestido.nome,
+    casamentoData: p.bloqueio.casamentoData,
+  }));
+}
+
 const TIPOS_VALIDOS = new Set<ProvaTipo>(["PRIMEIRA", "INTERMEDIARIA", "FINAL"]);
 
 export type ResultadoProva =

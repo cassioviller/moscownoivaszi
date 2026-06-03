@@ -7,6 +7,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import { reservarVestido, criarManutencao } from "@/lib/disponibilidade/reservas";
 import {
   listarProvasDaReserva,
+  listarProvasDaLoja,
   registrarProva,
   editarProva,
   removerProva,
@@ -217,5 +218,47 @@ describe("fila global de pendentes", () => {
     expect(fila.every((f) => f.vestidoCodigo.startsWith(`${MARK}`) === false || f.noivaNome === null)).toBe(true);
     // de forma direta: nenhum ajuste desta loja vaza
     expect(fila.length).toBe(0);
+  });
+});
+
+describe("agenda de provas da loja (listarProvasDaLoja)", () => {
+  // Datas relativas ao relógio (robustas no CI): duas futuras (asc) e uma passada.
+  const dia = (delta: number) => new Date(Date.now() + delta * 86_400_000).toISOString().slice(0, 10);
+  let provaProx = "";
+  let provaDistante = "";
+  let provaPassada = "";
+
+  beforeAll(async () => {
+    provaProx = (await registrarProva(loja, { bloqueioId: reservaId, dataReal: dia(20), tipo: "INTERMEDIARIA" }) as { provaId: string }).provaId;
+    provaDistante = (await registrarProva(loja, { bloqueioId: reservaId, dataReal: dia(40), tipo: "FINAL" }) as { provaId: string }).provaId;
+    provaPassada = (await registrarProva(loja, { bloqueioId: reservaId, dataReal: dia(-40), tipo: "PRIMEIRA" }) as { provaId: string }).provaId;
+  });
+
+  it("próximas: traz as futuras em ordem ascendente, com noiva e vestido", async () => {
+    const lista = await listarProvasDaLoja(loja);
+    const ids = lista.map((p) => p.id);
+    expect(ids).toContain(provaProx);
+    expect(ids).toContain(provaDistante);
+    expect(ids).not.toContain(provaPassada);
+    // ascendente: a mais próxima antes da mais distante.
+    expect(ids.indexOf(provaProx)).toBeLessThan(ids.indexOf(provaDistante));
+
+    const minha = lista.find((p) => p.id === provaProx)!;
+    expect(minha.noivaNome).toBe(`${MARK}Ana`);
+    expect(minha.vestidoCodigo).toBe(`${MARK}v`);
+    expect(minha.bloqueioId).toBe(reservaId);
+  });
+
+  it("passadas: traz só o histórico (descendente) e exclui as futuras", async () => {
+    const lista = await listarProvasDaLoja(loja, { passadas: true });
+    const ids = lista.map((p) => p.id);
+    expect(ids).toContain(provaPassada);
+    expect(ids).not.toContain(provaProx);
+    expect(ids).not.toContain(provaDistante);
+  });
+
+  it("isolamento: a outra loja não vê as provas desta", async () => {
+    const lista = await listarProvasDaLoja(lojaOutra);
+    expect(lista.length).toBe(0);
   });
 });
