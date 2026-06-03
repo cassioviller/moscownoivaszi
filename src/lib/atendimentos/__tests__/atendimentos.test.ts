@@ -11,6 +11,8 @@ import {
   concluirAtendimento,
   marcarFalta,
 } from "@/lib/atendimentos/atendimentos";
+import { fatosDaNoiva } from "@/lib/leads/leads";
+import { estagioDaNoiva } from "@/lib/leads/jornada";
 
 const MARK = "t-atend-";
 let loja = "", lead = "", cabine = "", vend = "";
@@ -113,17 +115,41 @@ describe("atendimentos: ciclo de vida (atender)", () => {
     expect(await iniciarAtendimento(outra, id)).toMatchObject({ ok: false, motivo: "atendimento_invalido" });
   });
 
-  it("listarAtendimentos: futuro nas próximas, passado no histórico", async () => {
-    const fut = await novoAtend("2099-03-01", 10);
-    const pas = await novoAtend("2020-03-01", 10);
-    const prox = await listarAtendimentos(loja);
-    const hist = await listarAtendimentos(loja, { passados: true });
-    expect(prox.some((a) => a.id === fut)).toBe(true);
-    expect(prox.some((a) => a.id === pas)).toBe(false);
-    expect(hist.some((a) => a.id === pas)).toBe(true);
-    expect(hist.some((a) => a.id === fut)).toBe(false);
-    // traz situação + noiva
-    expect(prox.find((a) => a.id === fut)!.situacao).toBe("AGENDADO");
-    expect(prox.find((a) => a.id === fut)!.noivaNome).toBe(`${MARK}Ana`);
+  it("concluir preserva o atendidoEm carimbado no iniciar", async () => {
+    const id = await novoAtend("2099-05-01", 10);
+    await iniciarAtendimento(loja, id);
+    const carimbo = (await situacaoDe(id)).atendidoEm!;
+    expect(carimbo).not.toBeNull();
+    await concluirAtendimento(loja, id, "VAI_PENSAR");
+    expect((await situacaoDe(id)).atendidoEm!.getTime()).toBe(carimbo.getTime());
+  });
+
+  it("listarAtendimentos: abertos na fila, finalizados no histórico (por situação)", async () => {
+    const aberto = await novoAtend("2099-03-01", 10); // segue AGENDADO
+    const fechado = await novoAtend("2099-03-02", 10);
+    await concluirAtendimento(loja, fechado, "RESERVOU"); // CONCLUIDO
+    const fila = await listarAtendimentos(loja);
+    const hist = await listarAtendimentos(loja, { finalizados: true });
+    expect(fila.some((a) => a.id === aberto)).toBe(true);
+    expect(fila.some((a) => a.id === fechado)).toBe(false);
+    expect(hist.some((a) => a.id === fechado)).toBe(true);
+    expect(hist.some((a) => a.id === aberto)).toBe(false);
+    expect(fila.find((a) => a.id === aberto)!.noivaNome).toBe(`${MARK}Ana`);
+  });
+
+  it("agendado VENCIDO continua na fila (não some pela data) — fix do gap", async () => {
+    const vencido = await novoAtend("2020-03-01", 10); // AGENDADO no passado
+    const fila = await listarAtendimentos(loja);
+    expect(fila.some((a) => a.id === vencido)).toBe(true); // acionável, não preso no histórico
+  });
+
+  it("jornada: noiva que FALTOU não regride — fica em 'atendimento_agendado'", async () => {
+    // lead próprio (o `lead` Ana já tem atendimentos de testes anteriores).
+    const bia = (await tenantPrisma(prisma, loja).lead.create({ data: { noivaNome: `${MARK}Bia` } as never })).id;
+    const r = await agendarAtendimento(loja, { leadId: bia, cabineId: cabine, vendedoraId: vend, dataYMD: "2099-06-01", hora: 10 });
+    if (!r.ok) throw new Error("setup falhou");
+    await marcarFalta(loja, r.atendimentoId);
+    const fatos = (await fatosDaNoiva(loja, bia))!;
+    expect(estagioDaNoiva(fatos).atual).toBe("atendimento_agendado");
   });
 });

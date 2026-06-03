@@ -33,7 +33,7 @@ export const ROTULO_ESTAGIO: Record<EstagioChave, string> = {
 };
 
 export type FatosJornada = {
-  temAtendimentoAgendado: boolean;
+  houveAtendimento: boolean;
   foiAtendida: boolean;
   temProvaAgendada: boolean;
   temInteresse: boolean;
@@ -56,7 +56,7 @@ export type PassoJornada = {
 function satisfeitos(f: FatosJornada): boolean[] {
   return [
     true, // cadastrada (base)
-    f.temAtendimentoAgendado, // atendimento_agendado
+    f.houveAtendimento, // atendimento_agendado
     f.foiAtendida, // atendida
     f.temProvaAgendada, // prova_marcada
     f.temInteresse, // interesses

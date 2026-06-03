@@ -133,18 +133,20 @@ export type AtendimentoFila = {
 };
 
 /**
- * Atendimentos da loja com situação/desfecho, para a fila de trabalho. Padrão: de hoje
- * em diante (asc) — a tela separa "hoje" de "próximos"; `passados` traz o histórico
- * (inicio < hoje, desc). Escopo de loja.
+ * Atendimentos da loja com situação/desfecho. Padrão: os ABERTOS (AGENDADO ou
+ * EM_ATENDIMENTO), por data asc — a fila de trabalho, que NÃO some quando a data passa
+ * (um agendado vencido continua acionável). `finalizados` traz o histórico (CONCLUIDO
+ * ou FALTOU), por data desc. Particiona por SITUAÇÃO, não por data. Escopo de loja.
  */
 export async function listarAtendimentos(
   lojaId: string,
-  opts: { passados?: boolean } = {},
+  opts: { finalizados?: boolean } = {},
 ): Promise<AtendimentoFila[]> {
-  const hoje = inicioDeHojeUTC();
+  const abertos: AtendimentoSituacao[] = ["AGENDADO", "EM_ATENDIMENTO"];
+  const fechados: AtendimentoSituacao[] = ["CONCLUIDO", "FALTOU"];
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { inicio: opts.passados ? { lt: hoje } : { gte: hoje } },
-    orderBy: { inicio: opts.passados ? "desc" : "asc" },
+    where: { situacao: { in: opts.finalizados ? fechados : abertos } },
+    orderBy: { inicio: opts.finalizados ? "desc" : "asc" },
     include: {
       lead: { select: { noivaNome: true } },
       cabine: { select: { nome: true } },

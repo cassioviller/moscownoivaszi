@@ -165,16 +165,17 @@ export default async function AtendimentosPage({
 
   const { lojaId } = await params;
   const { ok, erro, quando } = await searchParams;
-  const passados = quando === "passados";
+  const historico = quando === "historico";
 
-  const lista = await listarAtendimentos(sc.loja.id, { passados });
+  const lista = await listarAtendimentos(sc.loja.id, { finalizados: historico });
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
 
-  // Próximas: separa "hoje" (entre hoje e amanhã) de "próximos".
+  // Fila (abertos): atrasados (data vencida, ainda em aberto), hoje e próximos.
   const hoje = hojeUTC().getTime();
   const amanha = hoje + 86_400_000;
-  const deHoje = !passados ? lista.filter((a) => a.inicio.getTime() >= hoje && a.inicio.getTime() < amanha) : [];
-  const proximos = !passados ? lista.filter((a) => a.inicio.getTime() >= amanha) : [];
+  const atrasados = !historico ? lista.filter((a) => a.inicio.getTime() < hoje) : [];
+  const deHoje = !historico ? lista.filter((a) => a.inicio.getTime() >= hoje && a.inicio.getTime() < amanha) : [];
+  const proximos = !historico ? lista.filter((a) => a.inicio.getTime() >= amanha) : [];
 
   const listaClasses =
     "flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado";
@@ -187,22 +188,22 @@ export default async function AtendimentosPage({
         </Link>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h1 className="text-[24px] font-light tracking-tight text-tinta">
-            {passados ? "Atendimentos anteriores" : "Atendimentos"}
+            {historico ? "Atendimentos anteriores" : "Atendimentos"}
           </h1>
           <Link href={`/loja/${lojaId}/atendimentos/novo`} className={botaoSuave}>
             Agendar
           </Link>
         </div>
         <p className="text-[14px] text-cinza-fumo">
-          {passados ? "Os atendimentos já realizados." : "Receba a noiva, registre o atendimento e o desfecho."}
+          {historico ? "Os atendimentos já finalizados." : "Receba a noiva, registre o atendimento e o desfecho."}
         </p>
       </header>
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
-      {passados ? (
+      {historico ? (
         lista.length === 0 ? (
-          <p className="text-[15px] text-tinta">Nenhum atendimento anterior.</p>
+          <p className="text-[15px] text-tinta">Nenhum atendimento finalizado ainda.</p>
         ) : (
           <ul className={listaClasses}>
             {lista.map((a) => (
@@ -212,6 +213,17 @@ export default async function AtendimentosPage({
         )
       ) : (
         <div className="flex flex-col gap-8">
+          {atrasados.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-[11px] uppercase tracking-[0.2em] text-bordo">Atrasados</h2>
+              <ul className={listaClasses}>
+                {atrasados.map((a) => (
+                  <Linha key={a.id} a={a} lojaId={lojaId} podeEditar={podeEditar} comData />
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="flex flex-col gap-3">
             <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Hoje</h2>
             {deHoje.length === 0 ? (
@@ -245,12 +257,12 @@ export default async function AtendimentosPage({
 
       <div className="border-t border-borda-suave pt-5">
         <Link
-          href={passados ? `/loja/${lojaId}/atendimentos` : `/loja/${lojaId}/atendimentos?quando=passados`}
+          href={historico ? `/loja/${lojaId}/atendimentos` : `/loja/${lojaId}/atendimentos?quando=historico`}
           className="inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline
             decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta
             hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
         >
-          {passados ? "← Voltar aos atendimentos de hoje" : "Ver atendimentos anteriores"}
+          {historico ? "← Voltar à fila de atendimentos" : "Ver atendimentos anteriores"}
         </Link>
       </div>
     </main>

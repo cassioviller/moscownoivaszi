@@ -15,8 +15,8 @@ import {
   ROTULO_ESTAGIO,
   ESTAGIOS,
   type EstagioChave,
-  type FatosJornada,
 } from "@/lib/leads/jornada";
+import { fatosDeLead, INCLUDE_JORNADA } from "@/lib/leads/leads";
 
 // Atenção imediata = casamento muito próximo E ainda com trabalho em aberto
 // (em provas ou orçamento aberto). Heurística de urgência aprovada pelo produto.
@@ -75,26 +75,7 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const hoje = inicioDeHojeUTC();
 
   const [leads, vestidos, destaqueRow] = await Promise.all([
-    db.lead.findMany({
-      select: {
-        id: true,
-        noivaNome: true,
-        casamentoData: true,
-        orcamentoAbertoEm: true,
-        contratoFechadoEm: true,
-        perdidaEm: true,
-        interesse: { select: { atributos: { select: { atributoId: true } } } },
-        atendimentos: { select: { situacao: true } },
-        bloqueios: {
-          where: { tipo: "RESERVA_CASAMENTO" },
-          select: {
-            retiradaDataReal: true,
-            devolucaoDataReal: true,
-            provas: { select: { comparecimento: true } },
-          },
-        },
-      },
-    }),
+    db.lead.findMany({ include: INCLUDE_JORNADA }),
     db.vestido.count(),
     db.vestido.findFirst({
       where: { status: "ativo", fotos: { some: { ordem: 0 } } },
@@ -117,23 +98,8 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     encerrada: string | null;
   };
   const linhas: Linha[] = leads.map((l) => {
-    const provas = l.bloqueios.flatMap((b) => b.provas);
-    const fatos: FatosJornada = {
-      temAtendimentoAgendado: l.atendimentos.some((a) => a.situacao === "AGENDADO"),
-      foiAtendida: l.atendimentos.some(
-        (a) => a.situacao === "EM_ATENDIMENTO" || a.situacao === "CONCLUIDO",
-      ),
-      temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
-      temInteresse: (l.interesse?.atributos.length ?? 0) > 0,
-      orcamentoAbertoEm: l.orcamentoAbertoEm,
-      contratoFechadoEm: l.contratoFechadoEm,
-      temProvaRealizada: provas.some((p) => p.comparecimento === "COMPARECEU"),
-      temRetirada: l.bloqueios.some((b) => b.retiradaDataReal !== null),
-      casamentoPassou: l.casamentoData !== null && l.casamentoData < hoje,
-      temDevolucao: l.bloqueios.some((b) => b.devolucaoDataReal !== null),
-      perdidaEm: l.perdidaEm,
-    };
-    const { atual, encerrada } = estagioDaNoiva(fatos);
+    // Mesma derivação da jornada da noiva (fonte única em leads.ts) — sem cópia.
+    const { atual, encerrada } = estagioDaNoiva(fatosDeLead(l, hoje));
     return { id: l.id, noivaNome: l.noivaNome, casamentoData: l.casamentoData, atual, encerrada };
   });
 

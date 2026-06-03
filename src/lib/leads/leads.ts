@@ -119,8 +119,8 @@ function inicioDeHojeUTC(): Date {
 }
 
 // include mínimo p/ derivar a jornada: interesse (atributos), atendimentos (situação),
-// reservas (datas + provas).
-const INCLUDE_JORNADA = {
+// reservas (datas + provas). Exportado p/ o painel reusar a MESMA derivação (sem cópia).
+export const INCLUDE_JORNADA = {
   interesse: { select: { atributos: { select: { atributoId: true } } } },
   atendimentos: { select: { situacao: true } },
   bloqueios: {
@@ -133,12 +133,14 @@ const INCLUDE_JORNADA = {
   },
 } as const;
 
-type LeadComJornada = Prisma.LeadGetPayload<{ include: typeof INCLUDE_JORNADA }>;
+export type LeadComJornada = Prisma.LeadGetPayload<{ include: typeof INCLUDE_JORNADA }>;
 
-function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
+export function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
   const provas = lead.bloqueios.flatMap((b) => b.provas);
   return {
-    temAtendimentoAgendado: lead.atendimentos.some((a) => a.situacao === "AGENDADO"),
+    // "houve atendimento" é STICKY: qualquer atendimento já marca a etapa. Assim uma
+    // noiva que FALTOU não regride para "cadastrada" (ela foi agendada um dia).
+    houveAtendimento: lead.atendimentos.length > 0,
     foiAtendida: lead.atendimentos.some(
       (a) => a.situacao === "EM_ATENDIMENTO" || a.situacao === "CONCLUIDO",
     ),
