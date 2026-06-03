@@ -43,9 +43,15 @@ export async function criarContratoDeOrcamento(lojaId: string, orcamentoId: stri
   if (orc.status !== "APROVADO") return { ok: false, motivo: "nao_aprovado" };
 
   const total = calcularTotais(orc.itens, orc.descontoTipo, orc.descontoValor).total;
-  const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO")?.descricao ?? null;
+  const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO");
   const reservas = await listarReservasDaNoiva(lojaId, orc.leadId);
-  const reserva = reservas[0] ?? null;
+  // Casa a reserva pelo VESTIDO do item do orçamento (a noiva pode ter várias reservas).
+  // Sem item-vestido identificável, só anexa se houver UMA reserva (senão fica ambíguo).
+  const reserva = itemVestido?.vestidoId
+    ? (reservas.find((r) => r.vestidoId === itemVestido.vestidoId) ?? null)
+    : reservas.length === 1
+      ? reservas[0]
+      : null;
 
   try {
     const c = await db.contrato.create({
@@ -55,7 +61,7 @@ export async function criarContratoDeOrcamento(lojaId: string, orcamentoId: stri
         vendedoraId: orc.vendedoraId,
         bloqueioVestidoId: reserva?.id ?? null,
         valorTotal: total,
-        vestidoDescricao: reserva ? `${reserva.codigo} · ${reserva.nome}` : itemVestido,
+        vestidoDescricao: reserva ? `${reserva.codigo} · ${reserva.nome}` : (itemVestido?.descricao ?? null),
         dataCasamento: orc.lead.casamentoData ?? reserva?.casamentoData ?? null,
         observacoes: orc.observacoes ?? null,
       } as never,
@@ -78,7 +84,8 @@ export async function criarContratoDaNoiva(lojaId: string, leadId: string, vende
   if (!vinc) return { ok: false, motivo: "vendedora_invalida" };
 
   const reservas = await listarReservasDaNoiva(lojaId, leadId);
-  const reserva = reservas[0] ?? null;
+  // Sem orçamento p/ desambiguar: só anexa se houver UMA reserva.
+  const reserva = reservas.length === 1 ? reservas[0] : null;
 
   const c = await db.contrato.create({
     data: {

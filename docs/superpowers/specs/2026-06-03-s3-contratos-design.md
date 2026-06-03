@@ -95,8 +95,12 @@ model Contrato {
   - `leadId`, `vendedoraId` (herda do orçamento), `orcamentoId`.
   - `valorTotal` = total do orçamento; `vestidoDescricao` = item VESTIDO do orçamento (ou
     vestido da reserva).
-  - `bloqueioVestidoId`, `dataCasamento`, `dataRetirada`, `dataDevolucao` = da reserva da
-    noiva, se existir; `dataCasamento` cai para `Lead.casamentoData`.
+  - `bloqueioVestidoId` e `dataCasamento` = da reserva da noiva (casada pelo VESTIDO do
+    item do orçamento — a noiva pode ter várias reservas); `dataCasamento` cai para
+    `Lead.casamentoData`.
+  - `dataRetirada`/`dataDevolucao` **não** são pré-preenchidas: o `BloqueioVestido` só
+    guarda as datas REAIS de movimentação (nulas na assinatura). A vendedora preenche as
+    datas previstas à mão no detalhe.
 - A vendedora **confere e ajusta** o que faltar (CPF, forma de pagamento, entrada) no
   detalhe.
 

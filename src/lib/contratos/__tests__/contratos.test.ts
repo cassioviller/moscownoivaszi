@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { criarOrcamento, adicionarItem, mudarStatus } from "@/lib/orcamentos/orcamentos";
+import { reservarVestido } from "@/lib/disponibilidade/reservas";
 import {
   criarContratoDeOrcamento,
   criarContratoDaNoiva,
@@ -70,6 +71,28 @@ describe("contratos: criação pré-preenchida", () => {
     const orcId = await orcamentoAprovado();
     expect((await criarContratoDeOrcamento(loja, orcId)).ok).toBe(true);
     expect(await criarContratoDeOrcamento(loja, orcId)).toMatchObject({ ok: false, motivo: "ja_tem_contrato" });
+  });
+
+  it("com MÚLTIPLAS reservas, casa a reserva pelo vestido do item (não a primeira)", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const noiva = (await db.lead.create({ data: { noivaNome: `${MARK}Duda` } as never })).id;
+    const vA = (await db.vestido.create({ data: { codigo: `${MARK}vA`, nome: `${MARK}Aurora`, precoBase: 1000 } as never })).id;
+    const vB = (await db.vestido.create({ data: { codigo: `${MARK}vB`, nome: `${MARK}Bella`, precoBase: 1000 } as never })).id;
+    // reserva A casa mais CEDO (seria a [0]); reserva B é a do orçamento.
+    const rA = await reservarVestido(loja, { vestidoId: vA, leadId: noiva, casamentoData: "2027-01-10" });
+    const rB = await reservarVestido(loja, { vestidoId: vB, leadId: noiva, casamentoData: "2027-09-10" });
+    if (!rA.ok || !rB.ok) throw new Error("reservas falharam");
+
+    const o = await criarOrcamento(loja, { leadId: noiva, vendedoraId: vend });
+    if (!o.ok) throw new Error("orçamento falhou");
+    await adicionarItem(loja, o.orcamentoId, { tipo: "VESTIDO", vestidoId: vB, descricao: "Bella", valorUnitario: "1.500,00" });
+    await mudarStatus(loja, o.orcamentoId, "APROVADO");
+
+    const r = await criarContratoDeOrcamento(loja, o.orcamentoId);
+    if (!r.ok) throw new Error("contrato falhou");
+    const det = (await obterContrato(loja, r.contratoId))!;
+    // Deve ter casado com a reserva B (do vestido do item), não a A (mais cedo).
+    expect(det.vestidoDescricao).toBe(`${MARK}vB · ${MARK}Bella`);
   });
 
   it("da noiva (sem orçamento): valor inicial 0; recusa lead/vendedora inválidos", async () => {
