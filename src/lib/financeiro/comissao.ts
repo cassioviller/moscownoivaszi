@@ -7,7 +7,7 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
-import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
+import { hojeUTC, hojeYMD, diaParaData } from "@/lib/financeiro/datas";
 
 export type FaixaCalc = {
   minAcumulado: number; // centavos — borda inferior INCLUSIVA
@@ -243,9 +243,10 @@ export async function totalVendasCentavos(lojaId: string, vendedoraId: string, c
 
 // — Preview / ranking ao vivo —
 
-export type PreviewLinha = { vendedoraId: string; nome: string; totalVendas: string; percentual: string | null; comissao: string; bonus: string; total: string };
+export type PreviewLinha = { vendedoraId: string; nome: string; totalVendas: string; estornoPendente: string; percentual: string | null; comissao: string; bonus: string; total: string };
 
-/** Ranking ao vivo da competência: por vendedora com vendas, aplica a regra vigente. */
+/** Ranking ao vivo da competência: por vendedora com vendas, aplica a regra vigente já
+ *  descontando o estorno §6.4 pendente (cancelados de meses fechados). */
 export async function previewComissao(lojaId: string, competencia: string): Promise<PreviewLinha[]> {
   if (!competenciaValida(competencia)) return [];
   const { gte, lt } = competenciaRange(competencia);
@@ -261,13 +262,16 @@ export async function previewComissao(lojaId: string, competencia: string): Prom
   );
   const linhas = await Promise.all(
     grupos.map(async (g) => {
-      const total = decParaCentavos(g._sum.valorTotal);
+      const bruto = decParaCentavos(g._sum.valorTotal);
+      const est = await estornoPendenteDe(db as unknown as ClienteLeitura, lojaId, g.vendedoraId, competencia);
+      const total = bruto - est.totalC;
       const regra = await regraVigente(lojaId, g.vendedoraId, competencia);
-      const r = regra ? calcularComissao(total, regra.faixas, regra.bonusAcumulaFaixas) : { percentualAplicado: null, valorComissao: 0, valorBonus: 0, valorTotal: 0 };
+      const r = regra ? calcularComissao(total, regra.faixas, regra.bonusAcumulaFaixas) : ZERO;
       return {
         vendedoraId: g.vendedoraId,
         nome: nomes.get(g.vendedoraId) ?? "—",
-        totalVendas: deCentavos(total),
+        totalVendas: deCentavos(Math.max(0, total)),
+        estornoPendente: deCentavos(est.totalC),
         percentual: r.percentualAplicado === null ? null : r.percentualAplicado.toFixed(2),
         comissao: deCentavos(r.valorComissao),
         bonus: deCentavos(r.valorBonus),
@@ -344,4 +348,117 @@ export async function listarFechamentos(lojaId: string, opts: { competencia?: st
     contaPagarId: f.contaPagarId,
     fechadoEm: f.fechadoEm,
   }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fechamento (grava ContaPagar) + estorno §6.4
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Vencimento da comissão: dia 05 do mês seguinte à competência. */
+function vencimentoComissao(competencia: string): Date {
+  const y = Number(competencia.slice(0, 4));
+  const m = Number(competencia.slice(5, 7)); // 1..12
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return diaParaData(`${ny}-${String(nm).padStart(2, "0")}-05`);
+}
+
+// Cliente mínimo que serve tanto p/ tenantPrisma quanto p/ o tx do $transaction.
+type ClienteLeitura = {
+  comissaoFechamento: { findMany: (args: unknown) => Promise<{ competencia: string }[]> };
+  contrato: { findMany: (args: unknown) => Promise<{ id: string; valorTotal: unknown; fechadoEm: Date }[]> };
+};
+
+/** Estorno §6.4 pendente de uma vendedora: contratos CANCELADO, ainda não reconciliados,
+ *  de competências ANTERIORES já fechadas. Retorna o total (centavos) e os contratoIds. */
+async function estornoPendenteDe(
+  client: ClienteLeitura,
+  lojaId: string,
+  vendedoraId: string,
+  competenciaLimite: string,
+): Promise<{ totalC: number; contratoIds: string[] }> {
+  const [fechs, cancelados] = await Promise.all([
+    client.comissaoFechamento.findMany({ where: { lojaId, vendedoraId }, select: { competencia: true } }),
+    client.contrato.findMany({ where: { lojaId, vendedoraId, status: "CANCELADO", comissaoEstornadaEm: null }, select: { id: true, valorTotal: true, fechadoEm: true } }),
+  ]);
+  const fechadas = new Set(fechs.map((f) => f.competencia));
+  let totalC = 0;
+  const contratoIds: string[] = [];
+  for (const c of cancelados) {
+    const comp = c.fechadoEm.toISOString().slice(0, 7); // competência UTC do contrato
+    if (comp < competenciaLimite && fechadas.has(comp)) {
+      totalC += decParaCentavos(c.valorTotal as never);
+      contratoIds.push(c.id);
+    }
+  }
+  return { totalC, contratoIds };
+}
+
+export type ResultadoFechamento =
+  | { ok: true; fechadas: number; valorTotal: string }
+  | { ok: false; motivo: "competencia_invalida" | "competencia_corrente" };
+
+/** Fecha a competência (≤ mês anterior): por vendedora com vendas, grava ComissaoFechamento
+ *  + gera a ContaPagar COMISSAO. Idempotente (@@unique vendedora×competência → pula já
+ *  fechadas). Aplica o estorno §6.4 (abate cancelados de meses fechados; carrega se exceder). */
+export async function fecharCompetencia(lojaId: string, competencia: string): Promise<ResultadoFechamento> {
+  if (!competenciaValida(competencia)) return { ok: false, motivo: "competencia_invalida" };
+  if (competencia >= hojeYMD().slice(0, 7)) return { ok: false, motivo: "competencia_corrente" };
+  const { gte, lt } = competenciaRange(competencia);
+  const venc = vencimentoComissao(competencia);
+
+  const out = await prisma.$transaction(async (tx) => {
+    const grupos = await tx.contrato.groupBy({ by: ["vendedoraId"], where: { lojaId, status: "ATIVO", fechadoEm: { gte, lt } }, _sum: { valorTotal: true } });
+    const jaFechadas = new Set(
+      (await tx.comissaoFechamento.findMany({ where: { lojaId, competencia }, select: { vendedoraId: true } })).map((f) => f.vendedoraId),
+    );
+    let fechadas = 0;
+    let somaC = 0;
+    for (const g of grupos) {
+      if (jaFechadas.has(g.vendedoraId)) continue;
+      const bruto = decParaCentavos(g._sum.valorTotal);
+      const est = await estornoPendenteDe(tx as unknown as ClienteLeitura, lojaId, g.vendedoraId, competencia);
+      const net = bruto - est.totalC;
+      const regra = await regraVigente(lojaId, g.vendedoraId, competencia);
+      const res = regra ? calcularComissao(net, regra.faixas, regra.bonusAcumulaFaixas) : ZERO;
+      const baseSalva = Math.max(0, net);
+
+      const fech = await tx.comissaoFechamento.create({
+        data: {
+          lojaId,
+          vendedoraId: g.vendedoraId,
+          competencia,
+          totalVendas: deCentavos(baseSalva),
+          percentualAplicado: res.percentualAplicado === null ? null : res.percentualAplicado.toFixed(2),
+          valorComissao: deCentavos(res.valorComissao),
+          valorBonus: deCentavos(res.valorBonus),
+          valorTotal: deCentavos(res.valorTotal),
+        },
+      });
+      if (res.valorTotal > 0) {
+        const conta = await tx.contaPagar.create({
+          data: {
+            lojaId,
+            tipo: "COMISSAO",
+            colaboradorId: g.vendedoraId,
+            competencia,
+            descricao: `Comissão ${competencia}`,
+            valorPrevisto: deCentavos(res.valorTotal),
+            vencimento: venc,
+            origemComissaoFechamentoId: fech.id,
+          },
+        });
+        await tx.comissaoFechamento.updateMany({ where: { id: fech.id, lojaId }, data: { contaPagarId: conta.id } });
+      }
+      // §6.4: só marca os cancelados como reconciliados se o mês absorveu TODO o estorno
+      // (net ≥ 0). Senão, segue pendente (carrega p/ a competência seguinte).
+      if (net >= 0 && est.contratoIds.length > 0) {
+        await tx.contrato.updateMany({ where: { id: { in: est.contratoIds }, lojaId }, data: { comissaoEstornadaEm: new Date() } });
+      }
+      fechadas++;
+      somaC += res.valorTotal;
+    }
+    return { fechadas, somaC };
+  });
+  return { ok: true, fechadas: out.fechadas, valorTotal: deCentavos(out.somaC) };
 }
