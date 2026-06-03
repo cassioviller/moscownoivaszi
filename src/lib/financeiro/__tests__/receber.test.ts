@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { criarContratoDaNoiva, editarContrato } from "@/lib/contratos/contratos";
+import { criarContratoDaNoiva, editarContrato, cancelarContrato } from "@/lib/contratos/contratos";
 import {
   gerarPlanoDePagamento,
   adicionarParcela,
@@ -68,6 +68,12 @@ describe("receber: geração do plano", () => {
     expect((await gerarPlanoDePagamento(loja, c, { numParcelas: 1, primeiroVencimento: "2027-03-01" })).ok).toBe(true);
     expect(await gerarPlanoDePagamento(loja, c, { numParcelas: 2, primeiroVencimento: "2027-03-01" })).toMatchObject({ ok: false, motivo: "ja_tem_plano" });
   });
+
+  it("recusa número de parcelas fora do teto (1..360)", async () => {
+    const c = await contrato("1.000,00");
+    expect(await gerarPlanoDePagamento(loja, c, { numParcelas: 100000, primeiroVencimento: "2027-03-01" })).toMatchObject({ ok: false, motivo: "num_invalido" });
+    expect(await gerarPlanoDePagamento(loja, c, { numParcelas: 0, primeiroVencimento: "2027-03-01" })).toMatchObject({ ok: false, motivo: "num_invalido" });
+  });
 });
 
 describe("receber: baixa, ajuste e atraso", () => {
@@ -95,6 +101,26 @@ describe("receber: baixa, ajuste e atraso", () => {
     expect(p.atrasada).toBe(true);
     const atrasadas = await listarContasAReceber(loja, { filtro: "atrasadas" });
     expect(atrasadas.some((x) => x.id === p.id)).toBe(true);
+  });
+
+  it("recusa recebimento de R$0 (baixa fantasma)", async () => {
+    const c = await contrato("300,00");
+    await gerarPlanoDePagamento(loja, c, { numParcelas: 1, primeiroVencimento: "2027-06-01" });
+    const [p] = await listarParcelasDoContrato(loja, c);
+    expect(await registrarRecebimento(loja, p.id, { valor: "0" })).toMatchObject({ ok: false, motivo: "valor_invalido" });
+  });
+
+  it("contrato CANCELADO: bloqueia receber/remover, mas permite estornar", async () => {
+    const c = await contrato("300,00");
+    await gerarPlanoDePagamento(loja, c, { numParcelas: 1, primeiroVencimento: "2027-07-01" });
+    const [p] = await listarParcelasDoContrato(loja, c);
+    // recebe antes de cancelar
+    await registrarRecebimento(loja, p.id, {});
+    await cancelarContrato(loja, c);
+    // estornar AINDA funciona (corrigir erro), mas receber/remover não
+    expect((await estornarRecebimento(loja, p.id)).ok).toBe(true);
+    expect(await registrarRecebimento(loja, p.id, {})).toMatchObject({ ok: false, motivo: "contrato_nao_ativo" });
+    expect(await removerParcela(loja, p.id)).toMatchObject({ ok: false, motivo: "contrato_nao_ativo" });
   });
 
   it("adicionar parcela manual e editar valor", async () => {

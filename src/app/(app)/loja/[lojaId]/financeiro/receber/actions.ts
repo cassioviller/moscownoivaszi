@@ -14,6 +14,7 @@ import {
   registrarRecebimento,
   estornarRecebimento,
 } from "@/lib/financeiro/receber";
+import { caminhoInternoSeguro } from "@/lib/url-interna";
 
 async function guard() {
   const sc = await getSessaoComLoja();
@@ -23,10 +24,8 @@ async function guard() {
 function str(fd: FormData, k: string): string {
   return String(fd.get(k) ?? "").trim();
 }
-// Caminho interno seguro: só aceita /loja/...; senão cai no fallback.
 function destino(fd: FormData, lojaId: string, fallback: string): string {
-  const v = str(fd, "voltar");
-  return v.startsWith(`/loja/${lojaId}`) ? v : fallback;
+  return caminhoInternoSeguro(str(fd, "voltar"), lojaId, fallback);
 }
 function comAviso(base: string, chave: "ok" | "erro", valor: string): string {
   return `${base}${base.includes("?") ? "&" : "?"}${chave}=${valor}`;

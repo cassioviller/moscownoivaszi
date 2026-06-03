@@ -31,10 +31,11 @@ const AVISOS: Record<string, string> = {
   parcela_removida: "Parcela removida.",
   recebido: "Recebimento registrado.",
   estornado: "Recebimento estornado.",
-  ja_tem_plano: "Já existe um plano. Remova as parcelas em aberto para refazer.",
+  ja_tem_plano: "Este contrato já tem um plano de pagamento.",
   entrada_maior: "A entrada não pode ser maior que o total.",
-  num_invalido: "Número de parcelas inválido.",
+  num_invalido: "Número de parcelas inválido (1 a 360).",
   nao_previsto: "Esta parcela não está em aberto.",
+  contrato_nao_ativo: "Contrato cancelado — sem movimentação de parcelas.",
 };
 
 const ymd = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
@@ -89,6 +90,7 @@ export default async function ContratoDetalhePage({
   const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const ymdFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
   const totalPlano = parcelas.reduce((s, p) => s + Math.round(Number(p.valorPrevisto) * 100), 0);
+  const planoDivergente = parcelas.length > 0 && totalPlano !== Math.round(Number(c.valorTotal) * 100);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -220,7 +222,7 @@ export default async function ContratoDetalhePage({
                     {brl(p.valorPrevisto)}
                   </span>
                 </div>
-                {podeEditar && p.status === "PREVISTA" && (
+                {podeMexer && p.status === "PREVISTA" && (
                   <div className="flex flex-wrap items-end gap-2 border-t border-borda-suave pt-2">
                     <form action={registrarRecebimentoAction} className="flex flex-wrap items-end gap-2">
                       <input type="hidden" name="parcelaId" value={p.id} />
@@ -246,8 +248,11 @@ export default async function ContratoDetalhePage({
               </li>
             ))}
             <li className="flex items-baseline justify-between gap-3 px-4 py-2.5">
-              <span className="text-[12px] uppercase tracking-[0.18em] text-cinza-fumo">Total do plano</span>
-              <span className={`font-display text-[15px] font-light tabular-nums ${totalPlano === Math.round(Number(c.valorTotal) * 100) ? "text-tinta" : "text-bordo"}`}>
+              <span className="text-[12px] uppercase tracking-[0.18em] text-cinza-fumo">
+                Total do plano
+                {planoDivergente && <span className="ml-2 normal-case tracking-normal text-bordo">difere do total do contrato</span>}
+              </span>
+              <span className={`font-display text-[15px] font-light tabular-nums ${planoDivergente ? "text-bordo" : "text-tinta"}`}>
                 {brl((totalPlano / 100).toFixed(2))}
               </span>
             </li>

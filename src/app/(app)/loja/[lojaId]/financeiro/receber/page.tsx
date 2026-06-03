@@ -27,6 +27,7 @@ const AVISOS: Record<string, string> = {
   nao_previsto: "Esta parcela não está em aberto.",
   valor_invalido: "Valor inválido.",
   data_invalida: "Data inválida.",
+  contrato_nao_ativo: "Contrato cancelado — sem movimentação de parcelas.",
 };
 
 const inputBase =

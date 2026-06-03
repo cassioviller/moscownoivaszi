@@ -53,7 +53,7 @@ export async function gerarPlanoDePagamento(
   if (contrato._count.parcelas > 0) return { ok: false, motivo: "ja_tem_plano" };
 
   const n = Math.trunc(input.numParcelas);
-  if (!Number.isInteger(n) || n < 1) return { ok: false, motivo: "num_invalido" };
+  if (!Number.isInteger(n) || n < 1 || n > 360) return { ok: false, motivo: "num_invalido" };
 
   let venc0: Date;
   try {
@@ -62,7 +62,7 @@ export async function gerarPlanoDePagamento(
     return { ok: false, motivo: "data_invalida" };
   }
   const periodicidade = Math.trunc(input.periodicidadeDias ?? 30);
-  if (periodicidade < 1) return { ok: false, motivo: "num_invalido" };
+  if (periodicidade < 1 || periodicidade > 3650) return { ok: false, motivo: "num_invalido" };
 
   const totalC = decParaCentavos(contrato.valorTotal);
   let entradaC = 0;
@@ -88,14 +88,17 @@ export async function gerarPlanoDePagamento(
     linhas.push({ numero: i, descricao: `Parcela ${i}/${n}`, valor, vencimento });
   }
 
-  await Promise.all(
-    linhas.map((l) =>
-      db.parcela.create({
-        // tenantPrisma carimba lojaId; cast pela mesma razão de reservarVestido/criarVestido.
-        data: { contratoId, numero: l.numero, descricao: l.descricao, valorPrevisto: deCentavos(l.valor), vencimento: l.vencimento } as never,
-      }),
-    ),
-  );
+  // createMany = inserção ATÔMICA (sem plano parcial se algo falhar no meio). O tenant
+  // guard carimba lojaId em cada linha.
+  await db.parcela.createMany({
+    data: linhas.map((l) => ({
+      contratoId,
+      numero: l.numero,
+      descricao: l.descricao,
+      valorPrevisto: deCentavos(l.valor),
+      vencimento: l.vencimento,
+    })) as never,
+  });
   return { ok: true };
 }
 
@@ -143,7 +146,7 @@ export async function adicionarParcela(
 
 export type ResultadoOp =
   | { ok: true }
-  | { ok: false; motivo: "parcela_invalida" | "nao_previsto" | "nao_pago" | "valor_invalido" | "data_invalida" };
+  | { ok: false; motivo: "parcela_invalida" | "nao_previsto" | "nao_pago" | "valor_invalido" | "data_invalida" | "contrato_nao_ativo" };
 
 export async function editarParcela(
   lojaId: string,
@@ -177,8 +180,12 @@ export async function editarParcela(
 
 export async function removerParcela(lojaId: string, parcelaId: string): Promise<ResultadoOp> {
   const db = tenantPrisma(prisma, lojaId);
-  const p = await db.parcela.findUnique({ where: { id: parcelaId }, select: { status: true } });
+  const p = await db.parcela.findUnique({
+    where: { id: parcelaId },
+    select: { status: true, contrato: { select: { status: true } } },
+  });
   if (!p) return { ok: false, motivo: "parcela_invalida" };
+  if (p.contrato.status !== "ATIVO") return { ok: false, motivo: "contrato_nao_ativo" };
   if (p.status !== "PREVISTA") return { ok: false, motivo: "nao_previsto" };
   await db.parcela.deleteMany({ where: { id: parcelaId } });
   return { ok: true };
@@ -192,8 +199,12 @@ export async function registrarRecebimento(
   input: { valor?: string; data?: string; forma?: string },
 ): Promise<ResultadoOp> {
   const db = tenantPrisma(prisma, lojaId);
-  const p = await db.parcela.findUnique({ where: { id: parcelaId }, select: { status: true, valorPrevisto: true } });
+  const p = await db.parcela.findUnique({
+    where: { id: parcelaId },
+    select: { status: true, valorPrevisto: true, contrato: { select: { status: true } } },
+  });
   if (!p) return { ok: false, motivo: "parcela_invalida" };
+  if (p.contrato.status !== "ATIVO") return { ok: false, motivo: "contrato_nao_ativo" };
   if (p.status !== "PREVISTA") return { ok: false, motivo: "nao_previsto" };
 
   let valorC = decParaCentavos(p.valorPrevisto);
@@ -204,6 +215,7 @@ export async function registrarRecebimento(
       return { ok: false, motivo: "valor_invalido" };
     }
   }
+  if (valorC <= 0) return { ok: false, motivo: "valor_invalido" }; // baixa fantasma de R$0
   let recebidoEm: Date;
   try {
     recebidoEm = input.data && input.data.trim() !== "" ? diaParaData(input.data) : hojeUTC();
