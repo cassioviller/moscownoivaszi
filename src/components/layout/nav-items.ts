@@ -43,16 +43,14 @@ export type NavSection = {
 export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
   const loja = (sufixo: string) => `/loja/${lojaId}${sufixo}`;
 
-  // ATELIÊ — a jornada, em ordem. Telas ainda não construídas (Atendimentos,
-  // Orçamentos, Provas) já entram como link; vão dar 404 até serem feitas.
+  // ATELIÊ — a jornada, em ordem. Atendimentos e Orçamentos não têm link próprio
+  // na barra: vivem dentro do fluxo da noiva (Agendar → perfil → atendimento).
   const atelie: NavItem[] = [];
   if (flags.podeVerNoivas) {
     atelie.push(
       { href: loja("/noivas"), label: "Noivas" },
       { href: loja("/atendimentos/novo"), label: "Agendar" },
       { href: loja("/agenda"), label: "Calendário" },
-      { href: loja("/atendimentos"), label: "Atendimentos" },
-      { href: loja("/orcamentos"), label: "Orçamentos" },
       { href: loja("/contratos"), label: "Contratos" },
       { href: loja("/reservas"), label: "Reservas" },
     );
