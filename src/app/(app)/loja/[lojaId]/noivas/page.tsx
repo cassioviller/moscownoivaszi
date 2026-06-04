@@ -29,7 +29,7 @@ export default async function NoivasPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ ok?: string; filtro?: string; etapa?: string }>;
+  searchParams: Promise<{ ok?: string; filtro?: string; etapa?: string; busca?: string }>;
 }) {
   const sc = await exigirAcesso("leads");
 
@@ -53,8 +53,17 @@ export default async function NoivasPage({
   const filtro: Filtro = (FILTROS as readonly string[]).includes(sp.filtro ?? "") ? (sp.filtro as Filtro) : "ativas";
   // Filtro fino por ETAPA da jornada (compõe com o estado). "" = todas as etapas.
   const etapa: EstagioChave | "" = (ESTAGIOS as readonly string[]).includes(sp.etapa ?? "") ? (sp.etapa as EstagioChave) : "";
+  // Busca por nome (noiva ou noivo), sem acentuação-sensível-demais: simples includes.
+  const busca = (sp.busca ?? "").trim();
+  const buscaLower = busca.toLowerCase();
   let visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.id) === filtro);
   if (etapa) visiveis = visiveis.filter((n) => estagios.get(n.id)?.atual === etapa);
+  if (buscaLower) {
+    visiveis = visiveis.filter(
+      (n) => n.noivaNome.toLowerCase().includes(buscaLower) || (n.noivoNome?.toLowerCase().includes(buscaLower) ?? false),
+    );
+  }
+  const extra = `${etapa ? `&etapa=${etapa}` : ""}${busca ? `&busca=${encodeURIComponent(busca)}` : ""}`;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
@@ -94,7 +103,7 @@ export default async function NoivasPage({
               {FILTROS.map((f) => {
                 const ativo = f === filtro;
                 const qtd = f === "todas" ? noivas.length : contagem[f];
-                const href = `/loja/${lojaId}/noivas?filtro=${f}${etapa ? `&etapa=${etapa}` : ""}`;
+                const href = `/loja/${lojaId}/noivas?filtro=${f}${extra}`;
                 return (
                   <Link
                     key={f}
@@ -113,9 +122,17 @@ export default async function NoivasPage({
               })}
             </nav>
 
-            {/* Filtro fino por etapa da jornada (GET, sem JS) — preserva o estado escolhido. */}
-            <form method="get" className="flex items-center gap-2">
+            {/* Busca por nome + filtro fino por etapa (GET, sem JS) — preservam o estado. */}
+            <form method="get" className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="filtro" value={filtro} />
+              <input
+                type="search"
+                name="busca"
+                defaultValue={busca}
+                placeholder="Buscar noiva…"
+                aria-label="Buscar noiva pelo nome"
+                className="min-h-9 w-40 rounded-md border border-borda bg-papel-elevado px-3 text-[13px] text-tinta placeholder:text-cinza-fumo focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              />
               <label htmlFor="etapa" className="text-[12px] uppercase tracking-[0.14em] text-cinza-fumo">Etapa</label>
               <select
                 id="etapa"
