@@ -141,6 +141,7 @@ export default async function NoivaPage({
 
   const fatos = await fatosDaNoiva(sc.loja.id, leadId);
   const { passos, atual, encerrada } = estagioDaNoiva(fatos!); // lead existe → fatos != null
+  const concluida = encerrada === "Devolvido"; // fim positivo (devolução): nada a desativar
 
   // Indicação só faz sentido (e só roda a query) se a equipe pode ver interesses.
   const sugeridos = iVer ? await indicarVestidos(sc.loja.id, leadId) : [];
@@ -198,7 +199,9 @@ export default async function NoivaPage({
 
       <PainelJornadaNoiva passos={passos} encerrada={encerrada} />
 
-      {podeEditar && (
+      {concluida ? (
+        <p className="text-[13px] text-cinza-fumo">Jornada concluída — vestido devolvido.</p>
+      ) : podeEditar ? (
         <section className="flex flex-wrap gap-3">
           <MarcoForm
             action={marcarPerdidaAction}
@@ -208,7 +211,7 @@ export default async function NoivaPage({
             rotuloDesfazer="Reativar noiva"
           />
         </section>
-      )}
+      ) : null}
 
       {/* Orçamentos — a negociação registrada (substitui o marco manual de orçamento) */}
       {(orcamentos.length > 0 || podeEditar) && (

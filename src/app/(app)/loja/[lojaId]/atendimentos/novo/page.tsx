@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { listarLeads } from "@/lib/leads/leads";
+import { listarNoivasAtivas } from "@/lib/leads/leads";
 import { listarEquipe } from "@/lib/admin/usuarios";
 import { listarCabines } from "@/lib/atendimentos/cabines";
 import { listarProximosAtendimentos } from "@/lib/atendimentos/atendimentos";
@@ -26,7 +26,7 @@ export default async function NovoAtendimentoPage({
   const [podeCriar, podeVerConfig, noivas, equipe, cabines, proximos] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "config", "ver"),
-    listarLeads(sc.loja.id),
+    listarNoivasAtivas(sc.loja.id),
     listarEquipe(sc.loja.id),
     listarCabines(sc.loja.id, { ativasApenas: true }),
     listarProximosAtendimentos(sc.loja.id),

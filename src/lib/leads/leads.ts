@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import type { Lead, Prisma } from "@/generated/prisma/client";
 import { LeadOrigem } from "@/generated/prisma/client";
-import { estagioDaNoiva, type FatosJornada, type EstagioChave } from "./jornada";
+import { estagioDaNoiva, noivaAtiva, type FatosJornada, type EstagioChave } from "./jornada";
 import { hojeUTC } from "@/lib/tempo";
 
 // Lead + presença do interesse (id só, p/ a lista decidir "Preencher" vs "Editar").
@@ -173,6 +173,17 @@ export async function estagiosDasNoivas(lojaId: string): Promise<Map<string, Est
     mapa.set(l.id, { atual, encerrada });
   }
   return mapa;
+}
+
+/** Noivas em acompanhamento ATIVO (fora: perdida, devolvida, casada). Para os selects de
+ *  formulário — só faz sentido agendar/orçar/reservar para quem está na jornada viva. */
+export async function listarNoivasAtivas(lojaId: string): Promise<LeadComJornada[]> {
+  const hoje = hojeUTC();
+  const leads = await tenantPrisma(prisma, lojaId).lead.findMany({ orderBy: { noivaNome: "asc" }, include: INCLUDE_JORNADA });
+  return leads.filter((l) => {
+    const { atual, encerrada } = estagioDaNoiva(fatosDeLead(l, hoje));
+    return noivaAtiva(atual, encerrada);
+  });
 }
 
 export type MarcoJornada = "orcamentoAbertoEm" | "contratoFechadoEm" | "perdidaEm";

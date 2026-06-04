@@ -10,7 +10,7 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterVestido } from "@/lib/vestidos/vestidos";
 import { listarFotosMeta } from "@/lib/vestidos/fotos";
 import { listarCatalogo, rotularSelecoes } from "@/lib/catalogo/catalogo";
-import { listarLeads } from "@/lib/leads/leads";
+import { listarNoivasAtivas } from "@/lib/leads/leads";
 import { listarReservasDoVestido, listarManutencoesDoVestido } from "@/lib/disponibilidade/reservas";
 import {
   reservarPeloVestidoAction,
@@ -84,7 +84,7 @@ export default async function VestidoPage({
   // o motor não tem o que projetar). Carregado apenas quando a equipe pode reservar.
   const noivasComData =
     podeEditar && podeVerNoivas
-      ? (await listarLeads(sc.loja.id)).filter((n) => n.casamentoData)
+      ? (await listarNoivasAtivas(sc.loja.id)).filter((n) => n.casamentoData)
       : [];
 
   const caracteristicas = rotularSelecoes(catalogo, v.atributos);
