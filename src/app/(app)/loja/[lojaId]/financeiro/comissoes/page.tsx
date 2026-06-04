@@ -116,35 +116,29 @@ export default async function ComissoesPage({
       {ranking.length === 0 ? (
         <p className="text-[15px] text-tinta">Nenhuma venda fechada em {rotuloCompetencia(competencia)}.</p>
       ) : (
-        <table className="w-full text-[14px]">
-          <thead>
-            <tr className="border-b border-borda-suave text-left text-[11px] uppercase tracking-[0.14em] text-cinza-fumo">
-              <th className="py-2 font-medium">Vendedora</th>
-              <th className="py-2 text-right font-medium">Vendas</th>
-              <th className="py-2 text-right font-medium">%</th>
-              <th className="py-2 text-right font-medium">Comissão</th>
-              <th className="py-2 text-right font-medium">Bônus</th>
-              <th className="py-2 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranking.map((l) => (
-              <tr key={l.vendedoraId} className="border-b border-borda-suave">
-                <td className="py-2 text-tinta">
-                  {l.nome}
+        // Ranking como lista curada (não planilha): posição · vendedora em destaque ·
+        // linha discreta (vendas/%/bônus) · comissão como número-herói à direita.
+        <ol className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+          {ranking.map((l, i) => (
+            <li key={l.vendedoraId} className="flex items-center justify-between gap-4 px-4 py-3">
+              <div className="flex min-w-0 items-baseline gap-3">
+                <span className="w-4 shrink-0 text-center font-display text-[13px] tabular-nums text-champagne">{i + 1}</span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-[15px] text-tinta">{l.nome}</span>
+                  <span className="text-[12px] text-cinza-fumo">
+                    {brl(l.totalVendas)} em vendas
+                    {l.percentual !== null && ` · ${Number(l.percentual)}%`}
+                    {Number(l.bonus) > 0 && ` · bônus ${brl(l.bonus)}`}
+                  </span>
                   {Number(l.estornoPendente) > 0 && (
-                    <span className="block text-[11px] text-cinza-fumo">estorno pendente: {brl(l.estornoPendente)}</span>
+                    <span className="text-[11px] text-cinza-fumo">estorno pendente: {brl(l.estornoPendente)}</span>
                   )}
-                </td>
-                <td className="py-2 text-right tabular-nums text-grafite">{brl(l.totalVendas)}</td>
-                <td className="py-2 text-right tabular-nums text-grafite">{l.percentual === null ? "—" : `${Number(l.percentual)}%`}</td>
-                <td className="py-2 text-right tabular-nums text-grafite">{brl(l.comissao)}</td>
-                <td className="py-2 text-right tabular-nums text-grafite">{brl(l.bonus)}</td>
-                <td className="py-2 text-right tabular-nums text-tinta">{brl(l.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+              <span className="shrink-0 font-display text-[18px] font-light tabular-nums text-tinta">{brl(l.total)}</span>
+            </li>
+          ))}
+        </ol>
       )}
 
       {temEstorno && (
