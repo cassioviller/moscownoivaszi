@@ -178,248 +178,185 @@ export default async function NoivaPage({
     "focus-visible:outline-bordo";
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-1.5">
-        <Link
-          href={`/loja/${lojaId}/noivas`}
-          className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta"
-        >
-          ← Noivas
-        </Link>
-        {/* Nome em destaque editorial: é a história dela, não um item de lista */}
-        <h1 className="font-display text-[30px] font-light leading-tight tracking-tight text-tinta">
-          {lead.noivaNome}
-          {lead.noivoNome && <span className="text-cinza-fumo"> &amp; {lead.noivoNome}</span>}
-        </h1>
-        {/* Subtítulo carrega só a jornada (informação quente). Origem é metadado, vai pro rodapé. */}
-        <p className="text-[14px] text-cinza-fumo">{encerrada ?? ROTULO_ESTAGIO[atual]}</p>
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
+      <Link href={`/loja/${lojaId}/noivas`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
+        ← Noivas
+      </Link>
+
+      {/* Cabeçalho do dashboard: identidade + jornada + ações principais */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h1 className="font-display text-[30px] font-light leading-tight tracking-tight text-tinta">
+            {lead.noivaNome}
+            {lead.noivoNome && <span className="text-cinza-fumo"> &amp; {lead.noivoNome}</span>}
+          </h1>
+          <p className="text-[14px] text-cinza-fumo">{encerrada ?? ROTULO_ESTAGIO[atual]}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {podeEditar && (
+            <Link href={editarHref} className={acaoLink}>Editar dados</Link>
+          )}
+          {(iMexer || iVer) && (
+            <Link href={interessesHref} className={acaoLink}>
+              {iMexer ? (i ? "Editar interesses" : "Preencher interesses") : "Ver interesses"}
+            </Link>
+          )}
+          {concluida ? (
+            <span className="text-[12px] text-cinza-fumo">Jornada concluída</span>
+          ) : podeEditar ? (
+            <MarcoForm action={marcarPerdidaAction} leadId={leadId} ligado={fatos!.perdidaEm !== null} rotuloLigar="Desativar" rotuloDesfazer="Reativar" />
+          ) : null}
+        </div>
       </header>
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
+      {/* Jornada — o coração, largura total */}
       <PainelJornadaNoiva passos={passos} encerrada={encerrada} />
 
-      {concluida ? (
-        <p className="text-[13px] text-cinza-fumo">Jornada concluída — vestido devolvido.</p>
-      ) : podeEditar ? (
-        <section className="flex flex-wrap gap-3">
-          <MarcoForm
-            action={marcarPerdidaAction}
-            leadId={leadId}
-            ligado={fatos!.perdidaEm !== null}
-            rotuloLigar="Marcar como perdida"
-            rotuloDesfazer="Reativar noiva"
-          />
-        </section>
-      ) : null}
-
-      {/* Orçamentos — a negociação registrada (substitui o marco manual de orçamento) */}
-      {(orcamentos.length > 0 || podeEditar) && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Orçamentos</h2>
-          {orcamentos.length > 0 && (
-            <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
-              {orcamentos.map((o) => (
-                <li key={o.id}>
-                  <Link
-                    href={`/loja/${lojaId}/orcamentos/${o.id}`}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-rose-dust/10"
-                  >
-                    <span className="text-[13px] text-grafite">
-                      {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "item" : "itens"}
-                    </span>
-                    <span className="font-display text-[14px] font-light tabular-nums text-tinta">
-                      {brl(o.total)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          {podeEditar && (
-            <form action={criarOrcamentoAction}>
-              <input type="hidden" name="leadId" value={leadId} />
-              <button
-                type="submit"
-                className="inline-flex min-h-11 w-fit items-center rounded-sm text-[13px] text-grafite underline
-                  decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo
-                  hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-              >
-                Abrir orçamento
-              </button>
-            </form>
-          )}
-        </section>
-      )}
-
-      {/* Contratos — a venda firmada (substitui o marco manual de contrato) */}
-      {(contratos.length > 0 || podeEditar) && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Contratos</h2>
-          {contratos.length > 0 && (
-            <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
-              {contratos.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/loja/${lojaId}/contratos/${c.id}`}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-rose-dust/10"
-                  >
-                    <span className={`text-[13px] ${c.status === "CANCELADO" ? "text-cinza-fumo line-through" : "text-grafite"}`}>
-                      {ROTULO_STATUS_CONTR[c.status]}
-                    </span>
-                    <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brl(c.valorTotal)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          {podeEditar && contratos.length === 0 && (
-            <form action={gerarContratoDaNoivaAction}>
-              <input type="hidden" name="leadId" value={leadId} />
-              <button
-                type="submit"
-                className="inline-flex min-h-11 w-fit items-center rounded-sm text-[13px] text-grafite underline
-                  decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo
-                  hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-              >
-                Gerar contrato em branco
-              </button>
-            </form>
-          )}
-        </section>
-      )}
-
-      {/* A noiva — bloco leve; só aparece se houver algum contato registrado */}
-      {(lead.whatsapp || lead.cerimonialista) && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">A noiva</h2>
-          <div className="flex flex-wrap gap-x-10 gap-y-4">
-            {lead.whatsapp && (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
-                  WhatsApp
-                </span>
-                {whatsappDigits ? (
-                  <a
-                    href={`https://wa.me/${whatsappDigits}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-fit rounded-sm text-[14px] text-grafite underline decoration-borda
-                      underline-offset-4 transition-colors duration-150 hover:text-tinta
-                      hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
-                      focus-visible:outline-bordo"
-                  >
-                    {lead.whatsapp}
-                  </a>
-                ) : (
-                  <span className="text-[14px] text-tinta">{lead.whatsapp}</span>
-                )}
-              </div>
+      {/* Grade de blocos de detalhe (2 colunas no desktop) */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        {/* O casamento */}
+        {lead.casamentoData && (
+          <Bloco
+            titulo="O casamento"
+            aside={mostrarContagem && !urgente && dias !== null ? <span className="text-[12px] text-cinza-fumo">{rotuloContagem(dias)}</span> : undefined}
+          >
+            {urgente && dias !== null && (
+              <p className="font-display text-[26px] font-light leading-none tracking-tight text-bordo">{rotuloContagem(dias)}</p>
             )}
-            <Dado rotulo="Cerimonialista" valor={lead.cerimonialista} />
-          </div>
-        </section>
-      )}
+            <p className="font-display text-[18px] font-light leading-snug text-tinta first-letter:uppercase">{dataFmt.format(lead.casamentoData)}</p>
+            <div className="flex flex-wrap gap-x-10 gap-y-3">
+              <Dado rotulo="Horário" valor={lead.casamentoHorario} />
+              <Dado rotulo="Local" valor={lead.casamentoLocal} />
+            </div>
+          </Bloco>
+        )}
 
-      {/* O casamento — bloco leve; só aparece se houver data marcada */}
-      {lead.casamentoData && (
-        <section className="flex flex-col gap-4">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">O casamento</h2>
-            {/* Contagem distante: discreta. Próxima (≤14d): vira o foco, em bordô (§6). */}
-            {mostrarContagem && !urgente && dias !== null && (
-              <span className="text-[12px] text-cinza-fumo">{rotuloContagem(dias)}</span>
+        {/* Contato */}
+        {(lead.whatsapp || lead.cerimonialista) && (
+          <Bloco titulo="Contato">
+            <div className="flex flex-wrap gap-x-10 gap-y-3">
+              {lead.whatsapp && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">WhatsApp</span>
+                  {whatsappDigits ? (
+                    <a href={`https://wa.me/${whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="w-fit rounded-sm text-[14px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                      {lead.whatsapp}
+                    </a>
+                  ) : (
+                    <span className="text-[14px] text-tinta">{lead.whatsapp}</span>
+                  )}
+                </div>
+              )}
+              <Dado rotulo="Cerimonialista" valor={lead.cerimonialista} />
+            </div>
+          </Bloco>
+        )}
+
+        {/* Orçamentos */}
+        {(orcamentos.length > 0 || podeEditar) && (
+          <Bloco titulo="Orçamentos">
+            {orcamentos.length === 0 ? (
+              <p className="text-[13px] text-cinza-fumo">Nenhum orçamento ainda.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-borda-suave">
+                {orcamentos.map((o) => (
+                  <li key={o.id}>
+                    <Link href={`/loja/${lojaId}/orcamentos/${o.id}`} className="flex items-center justify-between gap-3 py-2.5 transition-colors duration-150 hover:text-bordo">
+                      <span className="text-[13px] text-grafite">
+                        {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "item" : "itens"}
+                      </span>
+                      <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brl(o.total)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-          {urgente && dias !== null && (
-            <p className="font-display text-[28px] font-light leading-none tracking-tight text-bordo">
-              {rotuloContagem(dias)}
-            </p>
-          )}
-          <p className="font-display text-[20px] font-light leading-snug text-tinta first-letter:uppercase">
-            {dataFmt.format(lead.casamentoData)}
-          </p>
-          <div className="flex flex-wrap gap-x-10 gap-y-4">
-            <Dado rotulo="Horário" valor={lead.casamentoHorario} />
-            <Dado rotulo="Local" valor={lead.casamentoLocal} />
-          </div>
-        </section>
-      )}
+            {podeEditar && (
+              <form action={criarOrcamentoAction}>
+                <input type="hidden" name="leadId" value={leadId} />
+                <button type="submit" className="inline-flex min-h-9 w-fit items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                  Abrir orçamento
+                </button>
+              </form>
+            )}
+          </Bloco>
+        )}
 
-      {/* Vestido reservado — fecha o ciclo jornada↔acervo pelo lado da noiva.
-          A reserva se ancora na data do casamento dela; o motor barra conflito. */}
+        {/* Contratos */}
+        {(contratos.length > 0 || podeEditar) && (
+          <Bloco titulo="Contratos">
+            {contratos.length === 0 ? (
+              <p className="text-[13px] text-cinza-fumo">Nenhum contrato ainda.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-borda-suave">
+                {contratos.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/loja/${lojaId}/contratos/${c.id}`} className="flex items-center justify-between gap-3 py-2.5 transition-colors duration-150 hover:text-bordo">
+                      <span className={`text-[13px] ${c.status === "CANCELADO" ? "text-cinza-fumo line-through" : "text-grafite"}`}>{ROTULO_STATUS_CONTR[c.status]}</span>
+                      <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brl(c.valorTotal)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {podeEditar && contratos.length === 0 && (
+              <form action={gerarContratoDaNoivaAction}>
+                <input type="hidden" name="leadId" value={leadId} />
+                <button type="submit" className="inline-flex min-h-9 w-fit items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                  Gerar contrato em branco
+                </button>
+              </form>
+            )}
+          </Bloco>
+        )}
+      </div>
+
+      {/* Vestido reservado — largura total (tem o reservar inline) */}
       {(reservas.length > 0 || podeReservar) && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Vestido reservado</h2>
-
+        <Bloco titulo="Vestido reservado">
           {reservas.length === 0 ? (
             <p className="text-[14px] text-grafite">Nenhum vestido reservado ainda.</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+            <ul className="flex flex-col divide-y divide-borda-suave">
               {reservas.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <Link
-                    href={`/loja/${lojaId}/vestidos/${r.vestidoId}`}
-                    className="flex min-w-0 flex-col gap-0.5 rounded-sm transition-colors duration-150
-                      hover:[&>span:first-child]:text-bordo focus-visible:outline-2
-                      focus-visible:outline-offset-2 focus-visible:outline-bordo"
-                  >
-                    <span className="truncate text-[14px] text-tinta transition-colors duration-150">
-                      {r.nome}
-                    </span>
+                <li key={r.id} className="flex items-center justify-between gap-4 py-3">
+                  <Link href={`/loja/${lojaId}/vestidos/${r.vestidoId}`} className="flex min-w-0 flex-col gap-0.5 rounded-sm transition-colors duration-150 hover:[&>span:first-child]:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                    <span className="truncate text-[14px] text-tinta transition-colors duration-150">{r.nome}</span>
                     <span className="text-[12px] text-cinza-fumo">
                       {r.codigo}
                       {r.casamentoData ? ` · casamento ${dataCurta.format(r.casamentoData)}` : ""}
                     </span>
                   </Link>
                   <div className="flex shrink-0 items-center gap-4">
-                  <Link
-                    href={`/loja/${lojaId}/reservas/${r.id}`}
-                    className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4
-                      transition-colors duration-150 hover:text-bordo hover:decoration-champagne
-                      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-                  >
-                    Provas &amp; ajustes
-                  </Link>
-                  {podeReservar && (
-                    <form action={cancelarReservaPelaNoivaAction}>
-                      <input type="hidden" name="leadId" value={leadId} />
-                      <input type="hidden" name="bloqueioId" value={r.id} />
-                      <BotaoConfirmar
-                        mensagem={`Cancelar a reserva de ${r.nome}?`}
-                        ariaLabel={`Cancelar reserva de ${r.nome}`}
-                        className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite
-                          underline decoration-borda underline-offset-4 transition-colors duration-150
-                          hover:text-tinta hover:decoration-champagne focus-visible:outline-2
-                          focus-visible:outline-offset-2 focus-visible:outline-bordo"
-                      >
-                        Cancelar
-                      </BotaoConfirmar>
-                    </form>
-                  )}
+                    <Link href={`/loja/${lojaId}/reservas/${r.id}`} className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                      Provas &amp; ajustes
+                    </Link>
+                    {podeReservar && (
+                      <form action={cancelarReservaPelaNoivaAction}>
+                        <input type="hidden" name="leadId" value={leadId} />
+                        <input type="hidden" name="bloqueioId" value={r.id} />
+                        <BotaoConfirmar mensagem={`Cancelar a reserva de ${r.nome}?`} ariaLabel={`Cancelar reserva de ${r.nome}`} className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                          Cancelar
+                        </BotaoConfirmar>
+                      </form>
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
           )}
-
           {podeReservar &&
             (!lead.casamentoData ? (
-              <p className="text-[13px] text-cinza-fumo">
-                Defina a data do casamento para reservar um vestido.
-              </p>
+              <p className="text-[13px] text-cinza-fumo">Defina a data do casamento para reservar um vestido.</p>
             ) : (
-              <ReservaLivreInline
-                leadId={leadId}
-                reservar={reservarPelaNoivaAction}
-                buscarLivres={buscarVestidosLivresAction}
-              />
+              <ReservaLivreInline leadId={leadId} reservar={reservarPelaNoivaAction} buscarLivres={buscarVestidosLivresAction} />
             ))}
-        </section>
+        </Bloco>
       )}
 
-      {/* Vestidos do acervo que combinam — só com permissão de ver interesses.
-          Vazio não some em silêncio: chama para preencher (o momento mais acionável). */}
+      {/* Vestidos do acervo que combinam — largura total */}
       {iVer &&
         (sugeridos.length > 0 ? (
           <VestidosSugeridos
@@ -449,23 +386,23 @@ export default async function NoivaPage({
           />
         ))}
 
-      {/* Rodapé: ações (alvos de toque ≥44px) + origem como metadado discreto */}
-      <footer className="flex flex-col gap-3 border-t border-borda-suave pt-5">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-          {podeEditar && (
-            <Link href={editarHref} className={acaoLink}>
-              Editar dados
-            </Link>
-          )}
-          {(iMexer || iVer) && (
-            <Link href={interessesHref} className={acaoLink}>
-              {iMexer ? (i ? "Editar interesses" : "Preencher interesses") : "Ver interesses"}
-            </Link>
-          )}
-        </div>
+      <footer className="border-t border-borda-suave pt-4">
         <p className="text-[11px] text-cinza-fumo">Adicionada via {ROTULO_ORIGEM[lead.origem]}</p>
       </footer>
     </main>
+  );
+}
+
+// Bloco-card do dashboard de detalhes: título discreto + acessório opcional (ex.: contagem).
+function Bloco({ titulo, aside, children }: { titulo: string; aside?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">{titulo}</h2>
+        {aside}
+      </div>
+      {children}
+    </section>
   );
 }
 
