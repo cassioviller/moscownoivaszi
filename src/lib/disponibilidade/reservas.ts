@@ -8,7 +8,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import type { BloqueioVestido } from "@/generated/prisma/client";
 import type { Bloqueio, Conflito, ErroBloqueio, Regras, TipoJanela } from "./tipos";
 import { vestidoDisponivel, calcularJanelas, FUTURO_DISTANTE } from "./motor";
-import { diaValido } from "./datas";
+import { resolverMovimentacao } from "./movimentacao";
 import { meiaNoiteUTC, hojeUTC, ymd } from "@/lib/tempo";
 
 // Defaults espelham os @default do model RegraDisponibilidade — usados quando a
@@ -167,22 +167,10 @@ export async function definirMovimentacaoReserva(
   const row = await db.bloqueioVestido.findUnique({ where: { id: bloqueioId } });
   if (!row || row.tipo !== "RESERVA_CASAMENTO") return { ok: false, motivo: "reserva_invalida" };
 
-  // Forma das datas que o patch realmente grava. `null` = limpar (ok); `""` = entrada
-  // vazia do form = INVÁLIDA (nunca confundir com limpar); string = precisa ser dia válido.
-  if (patch.retiradaDataReal === "" || (patch.retiradaDataReal && !diaValido(patch.retiradaDataReal)))
-    return { ok: false, motivo: "data_invalida" };
-  if (patch.devolucaoDataReal === "" || (patch.devolucaoDataReal && !diaValido(patch.devolucaoDataReal)))
-    return { ok: false, motivo: "data_invalida" };
-
-  // Estado final = atual + patch (undefined = mantém; null = limpa; string = grava).
-  const retirada = patch.retiradaDataReal === undefined ? ymd(row.retiradaDataReal) : patch.retiradaDataReal;
-  const devolucao =
-    patch.devolucaoDataReal === undefined ? ymd(row.devolucaoDataReal) : patch.devolucaoDataReal;
-
-  // Coerência do estado final.
-  if (patch.retiradaDataReal === null && devolucao) return { ok: false, motivo: "devolucao_orfa" };
-  if (devolucao && !retirada) return { ok: false, motivo: "sem_retirada" };
-  if (devolucao && retirada && devolucao < retirada) return { ok: false, motivo: "data_invertida" };
+  // Máquina de estados PURA: valida o patch contra o estado atual e devolve o estado final.
+  const res = resolverMovimentacao({ retirada: ymd(row.retiradaDataReal), devolucao: ymd(row.devolucaoDataReal) }, patch);
+  if (!res.ok) return res;
+  const { retirada, devolucao } = res.estado;
 
   // Falha fechada: projeta o bloqueio com o estado final; se inverter janela, recusa.
   const candidato: Bloqueio = { ...toBloqueio(row), retiradaDataReal: retirada, devolucaoDataReal: devolucao };
