@@ -9,7 +9,7 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { previewComissao, listarFechamentos } from "@/lib/financeiro/comissao";
 import { competenciaValida, competenciaAtual } from "@/lib/financeiro/datas";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, Card } from "../ui";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card } from "../ui";
 import { fecharCompetenciaAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -113,7 +113,9 @@ export default async function ComissoesPage({
         ) : null
       )}
 
-      {ranking.length === 0 ? (
+      <section className="flex flex-col gap-3">
+        <SecaoTitulo>Ranking do mês</SecaoTitulo>
+        {ranking.length === 0 ? (
         <p className="text-[15px] text-tinta">Nenhuma venda fechada em {rotuloCompetencia(competencia)}.</p>
       ) : (
         // Ranking como lista curada (não planilha): posição · vendedora em destaque ·
@@ -139,7 +141,8 @@ export default async function ComissoesPage({
             </li>
           ))}
         </ol>
-      )}
+        )}
+      </section>
 
       {temEstorno && (
         <p className="text-[12px] text-cinza-fumo">

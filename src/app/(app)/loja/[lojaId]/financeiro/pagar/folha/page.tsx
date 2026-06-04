@@ -147,28 +147,21 @@ export default async function FolhaPage({
         {folha.length === 0 ? (
           <p className="text-[14px] text-cinza-fumo">Sem salários ou comissões lançados em {competencia}.</p>
         ) : (
-          <table className="w-full text-[14px]">
-            <thead>
-              <tr className="border-b border-borda-suave text-left text-[11px] uppercase tracking-[0.14em] text-cinza-fumo">
-                <th className="py-2 font-medium">Colaborador</th>
-                <th className="py-2 text-right font-medium">Salário</th>
-                <th className="py-2 text-right font-medium">Comissão</th>
-                <th className="py-2 text-right font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {folha.map((r) => (
-                <tr key={r.colaboradorId} className="border-b border-borda-suave">
-                  <td className="py-2 text-tinta">{r.nome}</td>
-                  <td className="py-2 text-right tabular-nums text-grafite">{brl(r.salario)}</td>
-                  <td className="py-2 text-right tabular-nums text-grafite">{brl(r.comissao)}</td>
-                  <td className="py-2 text-right tabular-nums text-tinta">{brl(r.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          // Folha como lista por colaborador (não planilha): salário + comissão na
+          // sub-linha, total da pessoa como número-herói à direita.
+          <ol className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+            {folha.map((r) => (
+              <li key={r.colaboradorId} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-[15px] text-tinta">{r.nome}</span>
+                  <span className="text-[12px] tabular-nums text-cinza-fumo">salário {brl(r.salario)} · comissão {brl(r.comissao)}</span>
+                </div>
+                <span className="shrink-0 font-display text-[16px] font-light tabular-nums text-tinta">{brl(r.total)}</span>
+              </li>
+            ))}
+          </ol>
         )}
-        <p className="text-[12px] text-cinza-fumo">A comissão chega na próxima etapa do financeiro; por ora a folha mostra os salários.</p>
+        <p className="text-[12px] text-cinza-fumo">Salário e comissão de cada colaborador — o resumo que vai à contabilidade.</p>
       </section>
 
       {/* — Pagar colaborador (o cruzamento) — */}
