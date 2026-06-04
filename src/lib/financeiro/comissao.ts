@@ -7,7 +7,7 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
-import { hojeUTC, hojeYMD, diaParaData } from "@/lib/financeiro/datas";
+import { hojeUTC, hojeYMD, diaParaData, competenciaValida, competenciaRange } from "@/lib/financeiro/datas";
 
 export type FaixaCalc = {
   minAcumulado: number; // centavos — borda inferior INCLUSIVA
@@ -81,19 +81,6 @@ export function validarFaixas(faixas: FaixaCalc[]): ResultadoValidacao {
 // ─────────────────────────────────────────────────────────────────────────────
 // Camada com banco (tenant-scoped)
 // ─────────────────────────────────────────────────────────────────────────────
-
-function competenciaValida(s: string): boolean {
-  return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
-}
-
-/** Intervalo [gte, lt) de uma competência "YYYY-MM" em meia-noite UTC (convenção do sistema). */
-function competenciaRange(competencia: string): { gte: Date; lt: Date } {
-  const y = Number(competencia.slice(0, 4));
-  const m = Number(competencia.slice(5, 7)); // 1..12
-  const gte = new Date(Date.UTC(y, m - 1, 1));
-  const lt = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1));
-  return { gte, lt };
-}
 
 async function ehMembro(lojaId: string, usuarioId: string): Promise<boolean> {
   const v = await prisma.usuarioLoja.findUnique({

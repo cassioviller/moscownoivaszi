@@ -26,3 +26,18 @@ export function diaParaData(s: string): Date {
   if (d.toISOString().slice(0, 10) !== t) throw new Error("data inválida");
   return d;
 }
+
+// — Competência "YYYY-MM" (mês de obrigação na comissão/folha; mês do movimento no caixa) —
+
+export function competenciaValida(s: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+}
+
+/** Intervalo [gte, lt) de uma competência "YYYY-MM" em meia-noite UTC (convenção do sistema). */
+export function competenciaRange(competencia: string): { gte: Date; lt: Date } {
+  const y = Number(competencia.slice(0, 4));
+  const m = Number(competencia.slice(5, 7)); // 1..12
+  const gte = new Date(Date.UTC(y, m - 1, 1));
+  const lt = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1));
+  return { gte, lt };
+}
