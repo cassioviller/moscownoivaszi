@@ -129,22 +129,20 @@ export default async function OrcamentoDetalhePage({
         {orc.itens.length === 0 ? (
           <p className="text-[14px] text-cinza-fumo">Nenhum vestido escolhido ainda. Adicione a partir dos indicados, abaixo.</p>
         ) : (
-          <>
-            <ul className="flex flex-col divide-y divide-borda-suave">
+          <ul className="flex flex-col divide-y divide-borda-suave">
               {orc.itens.map((it) => {
-                const mudou = it.valorPadrao != null && Number(it.valorPadrao) !== Number(it.valorUnitario);
                 const Linha = (
                   <>
-                    <div className="flex min-w-0 flex-col">
-                      <span className="truncate text-[15px] text-tinta">{it.descricao}</span>
+                    <span className="min-w-0 truncate text-[15px] text-tinta">{it.descricao}</span>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5 leading-tight">
                       {it.valorPadrao != null && (
-                        <span className="text-[12px] text-cinza-fumo">
-                          padrão {brl(it.valorPadrao)}
-                          {mudou ? <span className="text-rose-dust"> · combinado</span> : null}
-                        </span>
+                        <span className="text-[11px] text-cinza-fumo">padrão {brl(it.valorPadrao)}</span>
                       )}
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] uppercase tracking-[0.14em] text-cinza-fumo">orçado</span>
+                        <span className="font-display text-[16px] font-light tabular-nums text-bordo">{brl(it.valorUnitario)}</span>
+                      </span>
                     </div>
-                    <span className="shrink-0 font-display text-[16px] font-light tabular-nums text-bordo">{brl(it.valorUnitario)}</span>
                   </>
                 );
                 return (
@@ -160,8 +158,8 @@ export default async function OrcamentoDetalhePage({
                             <input type="hidden" name="orcamentoId" value={orc.id} />
                             <input type="hidden" name="itemId" value={it.id} />
                             <label className="flex flex-col gap-1">
-                              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor combinado</span>
-                              <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor combinado" className={`${inputBase} w-32`} />
+                              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor orçado</span>
+                              <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor orçado" className={`${inputBase} w-32`} />
                             </label>
                             <button type="submit" className={botaoSuave}>Salvar</button>
                           </form>
@@ -178,12 +176,7 @@ export default async function OrcamentoDetalhePage({
                   </li>
                 );
               })}
-            </ul>
-            <div className="mt-1 flex items-baseline justify-between border-t border-borda-suave pt-2.5">
-              <span className="text-[15px] text-tinta">Total combinado</span>
-              <span className="font-display text-[22px] font-light tabular-nums text-bordo">{brl(orc.totais.total)}</span>
-            </div>
-          </>
+          </ul>
         )}
       </section>
 
@@ -220,8 +213,8 @@ export default async function OrcamentoDetalhePage({
                         <input type="hidden" name="vestidoId" value={v.id} />
                         <input type="hidden" name="descricao" value={v.nome} />
                         <label className="flex flex-col gap-1">
-                          <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor combinado</span>
-                          <input name="valorUnitario" defaultValue={v.precoBase} aria-label={`Valor combinado de ${v.nome}`} className={`${inputBase} w-32`} required />
+                          <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor orçado</span>
+                          <input name="valorUnitario" defaultValue={v.precoBase} aria-label={`Valor orçado de ${v.nome}`} className={`${inputBase} w-32`} required />
                         </label>
                         <button type="submit" className={botaoPrincipal}>Adicionar</button>
                       </form>
