@@ -17,7 +17,7 @@ import { estagioDaNoiva, ROTULO_ESTAGIO } from "@/lib/leads/jornada";
 import { marcarPerdidaAction } from "./jornada-actions";
 import { criarOrcamentoAction } from "../../orcamentos/actions";
 import { gerarContratoDaNoivaAction } from "../../contratos/actions";
-import { listarOrcamentosDaNoiva } from "@/lib/orcamentos/orcamentos";
+import { listarVestidosPreEscolhidosDaNoiva } from "@/lib/orcamentos/orcamentos";
 import { listarContratosDaNoiva } from "@/lib/contratos/contratos";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
@@ -32,12 +32,6 @@ import { brl } from "@/lib/dinheiro";
 
 export const dynamic = "force-dynamic";
 
-const ROTULO_STATUS_ORC: Record<string, string> = {
-  RASCUNHO: "Rascunho",
-  ENVIADO: "Enviado",
-  APROVADO: "Aprovado",
-  RECUSADO: "Recusado",
-};
 const ROTULO_STATUS_CONTR: Record<string, string> = { ATIVO: "Ativo", CANCELADO: "Cancelado" };
 
 // UTC: a data nasce em meia-noite UTC (leads.ts) — exibir em UTC evita off-by-one.
@@ -122,7 +116,7 @@ export default async function NoivaPage({
   const lead = dados.lead;
   const i = dados.interesse;
 
-  const [podeEditar, podeCriar, iVer, iCriar, iEditar, podeReservar, reservas, orcamentos, contratos] = await Promise.all([
+  const [podeEditar, podeCriar, iVer, iCriar, iEditar, podeReservar, reservas, vestidosPreEscolhidos, contratos] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "ver"),
@@ -130,7 +124,7 @@ export default async function NoivaPage({
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
     listarReservasDaNoiva(sc.loja.id, leadId),
-    listarOrcamentosDaNoiva(sc.loja.id, leadId),
+    listarVestidosPreEscolhidosDaNoiva(sc.loja.id, leadId),
     listarContratosDaNoiva(sc.loja.id, leadId),
   ]);
   const iMexer = iCriar || iEditar;
@@ -261,26 +255,12 @@ export default async function NoivaPage({
           </Bloco>
         )}
 
-        {/* Atendimentos — escolher vestido(s) + valor combinado (era "orçamento") */}
-        {(orcamentos.length > 0 || podeEditar) && (
+        {/* Atendimentos — só a ação de iniciar (escolher vestido + valor combinado).
+            Os vestidos escolhidos aparecem no bloco "Vestidos pré-escolhidos" abaixo. */}
+        {podeEditar && (
           <Bloco titulo="Atendimentos">
-            {orcamentos.length === 0 ? (
-              <p className="text-[13px] text-cinza-fumo">Nenhum atendimento ainda. Inicie para escolher o vestido e o valor.</p>
-            ) : (
-              <ul className="flex flex-col divide-y divide-borda-suave">
-                {orcamentos.map((o) => (
-                  <li key={o.id}>
-                    <Link href={`/loja/${lojaId}/orcamentos/${o.id}`} className="flex items-center justify-between gap-3 py-2.5 transition-colors duration-150 hover:text-bordo">
-                      <span className="text-[13px] text-grafite">
-                        {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "vestido" : "vestidos"}
-                      </span>
-                      <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brl(o.total)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {podeEditar && ativa && (
+            <p className="text-[13px] text-cinza-fumo">Inicie um atendimento para escolher o vestido e combinar o valor.</p>
+            {ativa && (
               <form action={criarOrcamentoAction}>
                 <input type="hidden" name="leadId" value={leadId} />
                 <button type="submit" className="inline-flex min-h-9 w-fit items-center rounded-md border border-borda px-3 text-[13px] text-tinta transition-colors duration-150 hover:border-bordo hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
@@ -320,6 +300,47 @@ export default async function NoivaPage({
         )}
         </div>
       </div>
+
+      {/* Vestidos pré-escolhidos — peças escolhidas nos atendimentos, como acervo
+          (foto de capa + identidade), sem valor. Largura total: respira em grade. */}
+      {vestidosPreEscolhidos.length > 0 && (
+        <Bloco titulo="Vestidos pré-escolhidos">
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {vestidosPreEscolhidos.map((v) => (
+              <li key={v.id}>
+                <Link
+                  href={`/loja/${lojaId}/vestidos/${v.id}`}
+                  className="group flex flex-col gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                >
+                  <div className="aspect-[3/4] w-full overflow-hidden rounded-md border border-borda-suave bg-papel-suave">
+                    {v.temFoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/loja/${lojaId}/vestidos/${v.id}/foto/0?v=${v.versaoFoto}`}
+                        alt={`Capa do vestido ${v.nome}`}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02]"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <span className="font-display text-[16px] font-light tabular-nums text-cinza-fumo">{v.codigo}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="truncate text-[14px] text-tinta transition-colors duration-150 group-hover:text-bordo">{v.nome}</span>
+                    <span className="text-[12px] text-cinza-fumo">
+                      {v.codigo}
+                      {v.categoria ? ` · ${v.categoria}` : ""}
+                      {v.status !== "ativo" ? " · inativo" : ""}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Bloco>
+      )}
 
       {/* Vestido reservado — largura total (tem o reservar inline) */}
       {(reservas.length > 0 || podeReservar) && (
@@ -363,8 +384,6 @@ export default async function NoivaPage({
             ))}
         </Bloco>
       )}
-
-      {/* Os vestidos indicados moveram-se para dentro do Atendimento (escolher peça + valor). */}
 
       <footer className="border-t border-borda-suave pt-4">
         <p className="text-[11px] text-cinza-fumo">Adicionada via {ROTULO_ORIGEM[lead.origem]}</p>

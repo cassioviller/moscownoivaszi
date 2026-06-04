@@ -290,6 +290,58 @@ export async function listarOrcamentosDaNoiva(lojaId: string, leadId: string): P
   return rows.map(resumo);
 }
 
+// Vestido escolhido em algum atendimento da noiva (item tipo VESTIDO). Peça de
+// acervo para mostrar no perfil — sem valor, só identidade + capa. Deduplicado:
+// o mesmo vestido pode aparecer em mais de um atendimento, mas é um card só.
+export type VestidoPreEscolhido = {
+  id: string;
+  codigo: string;
+  nome: string;
+  categoria: string | null;
+  status: string;
+  temFoto: boolean;
+  versaoFoto: number; // updatedAt da foto 0 — cache-busting na URL (igual ao destaque)
+};
+
+export async function listarVestidosPreEscolhidosDaNoiva(
+  lojaId: string,
+  leadId: string,
+): Promise<VestidoPreEscolhido[]> {
+  const itens = await tenantPrisma(prisma, lojaId).orcamentoItem.findMany({
+    where: { tipo: "VESTIDO", vestidoId: { not: null }, orcamento: { leadId } },
+    orderBy: { createdAt: "asc" },
+    select: {
+      vestido: {
+        select: {
+          id: true,
+          codigo: true,
+          nome: true,
+          categoria: true,
+          status: true,
+          fotos: { where: { ordem: 0 }, select: { updatedAt: true } },
+        },
+      },
+    },
+  });
+
+  const vistos = new Set<string>();
+  const out: VestidoPreEscolhido[] = [];
+  for (const { vestido: v } of itens) {
+    if (!v || vistos.has(v.id)) continue;
+    vistos.add(v.id);
+    out.push({
+      id: v.id,
+      codigo: v.codigo,
+      nome: v.nome,
+      categoria: v.categoria,
+      status: v.status,
+      temFoto: v.fotos.length > 0,
+      versaoFoto: v.fotos[0]?.updatedAt.getTime() ?? 0,
+    });
+  }
+  return out;
+}
+
 export type OrcamentoItemView = {
   id: string;
   tipo: OrcamentoItemTipo;
