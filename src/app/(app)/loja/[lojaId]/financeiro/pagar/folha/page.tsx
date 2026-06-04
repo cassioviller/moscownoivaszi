@@ -14,8 +14,8 @@ import {
   listarContasAPagar,
   listarPagamentos,
 } from "@/lib/financeiro/pagar";
-import { hojeYMD } from "@/lib/financeiro/datas";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt } from "../../ui";
+import { hojeYMD, competenciaAtual } from "@/lib/financeiro/datas";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo } from "../../ui";
 import {
   definirSalarioAction,
   removerSalarioAction,
@@ -26,7 +26,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const competenciaAtual = () => hojeYMD().slice(0, 7);
 const TIPO_ROTULO: Record<string, string> = { SALARIO: "Salário", COMISSAO: "Comissão" };
 
 const AVISOS: Record<string, string> = {
@@ -45,10 +44,6 @@ const AVISOS: Record<string, string> = {
   data_invalida: "Data inválida.",
   pagamento_invalido: "Pagamento não encontrado.",
 };
-
-function SecaoTitulo({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-[12px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">{children}</h2>;
-}
 
 export default async function FolhaPage({
   params,

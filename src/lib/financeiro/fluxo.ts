@@ -7,7 +7,7 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { deCentavos, decParaCentavos } from "@/lib/dinheiro";
-import { competenciaValida, competenciaRange, hojeYMD } from "@/lib/financeiro/datas";
+import { competenciaValida, competenciaRange, competenciaAtual } from "@/lib/financeiro/datas";
 import { resumoReceber } from "@/lib/financeiro/receber";
 import { resumoPagar } from "@/lib/financeiro/pagar";
 
@@ -101,17 +101,30 @@ function ultimasCompetencias(ate: string, meses: number): string[] {
   return out;
 }
 
-/** Saldo por mês dos últimos N meses (default 6), em ordem ascendente. Mês sem movimento = zeros. */
+/** Saldo por mês dos últimos N meses (default 6), em ordem ascendente. Mês sem movimento = zeros.
+ *  Duas queries no intervalo todo (não 2 por mês), com o bucket por competência feito em memória. */
 export async function tendenciaCaixa(lojaId: string, opts: { meses?: number; ate?: string } = {}): Promise<PontoTendencia[]> {
   const meses = Math.max(1, Math.min(24, opts.meses ?? 6));
-  const ate = competenciaValida(opts.ate ?? "") ? opts.ate! : hojeYMD().slice(0, 7);
+  const ate = competenciaValida(opts.ate ?? "") ? opts.ate! : competenciaAtual();
   const comps = ultimasCompetencias(ate, meses);
-  return Promise.all(
-    comps.map(async (competencia) => {
-      const r = await resumoCaixa(lojaId, competencia);
-      return { competencia, entradas: r.entradas, saidas: r.saidas, saldo: r.saldo };
-    }),
-  );
+  const { gte } = competenciaRange(comps[0]);
+  const { lt } = competenciaRange(comps[comps.length - 1]);
+  const db = tenantPrisma(prisma, lojaId);
+
+  const [parcelas, pagamentos] = await Promise.all([
+    db.parcela.findMany({ where: { status: "PAGA", recebidoEm: { gte, lt } }, select: { recebidoEm: true, valorRecebido: true } }),
+    db.pagamento.findMany({ where: { data: { gte, lt } }, select: { data: true, valorPago: true } }),
+  ]);
+
+  const porMes = new Map<string, { ent: number; sai: number }>();
+  const bucket = (k: string) => porMes.get(k) ?? porMes.set(k, { ent: 0, sai: 0 }).get(k)!;
+  for (const p of parcelas) bucket(p.recebidoEm!.toISOString().slice(0, 7)).ent += decParaCentavos(p.valorRecebido);
+  for (const pg of pagamentos) bucket(pg.data.toISOString().slice(0, 7)).sai += decParaCentavos(pg.valorPago);
+
+  return comps.map((competencia) => {
+    const { ent, sai } = porMes.get(competencia) ?? { ent: 0, sai: 0 };
+    return { competencia, entradas: deCentavos(ent), saidas: deCentavos(sai), saldo: deCentavos(ent - sai) };
+  });
 }
 
 /** O que ainda está em aberto (previsão), reusando os resumos da S4/S5. Não é caixa realizado. */

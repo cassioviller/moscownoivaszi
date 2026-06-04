@@ -33,6 +33,11 @@ export function competenciaValida(s: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 }
 
+/** Competência "YYYY-MM" do mês corrente (no fuso do sistema). */
+export function competenciaAtual(): string {
+  return hojeYMD().slice(0, 7);
+}
+
 /** Intervalo [gte, lt) de uma competência "YYYY-MM" em meia-noite UTC (convenção do sistema). */
 export function competenciaRange(competencia: string): { gte: Date; lt: Date } {
   const y = Number(competencia.slice(0, 4));

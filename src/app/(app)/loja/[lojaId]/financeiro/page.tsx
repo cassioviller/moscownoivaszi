@@ -8,20 +8,13 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { resumoCaixa, movimentosDoMes, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
-import { competenciaValida, hojeYMD } from "@/lib/financeiro/datas";
-import { brl, dataFmt, Card } from "./ui";
+import { competenciaValida, competenciaAtual } from "@/lib/financeiro/datas";
+import { inputBase, botaoSuave, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card } from "./ui";
 
 export const dynamic = "force-dynamic";
 
-const competenciaAtual = () => hojeYMD().slice(0, 7);
-const rotuloMes = (c: string) =>
-  new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${c}-01T00:00:00Z`));
-const rotuloMesCurto = (c: string) =>
-  new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${c}-01T00:00:00Z`));
-
-function SecaoTitulo({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-[12px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">{children}</h2>;
-}
+const rotuloMes = (c: string) => rotuloCompetencia(c);
+const rotuloMesCurto = (c: string) => rotuloCompetencia(c, { curto: true });
 
 export default async function FluxoDeCaixaPage({
   params,
@@ -57,16 +50,8 @@ export default async function FluxoDeCaixaPage({
       </header>
 
       <form method="get" className="flex items-end gap-2">
-        <input
-          name="competencia"
-          type="month"
-          defaultValue={competencia}
-          aria-label="Competência"
-          className="w-44 rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
-        />
-        <button type="submit" className="inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
-          Ver
-        </button>
+        <input name="competencia" type="month" defaultValue={competencia} aria-label="Competência" className={`${inputBase} w-44`} />
+        <button type="submit" className={botaoSuave}>Ver</button>
       </form>
 
       {/* — Caixa do mês — */}

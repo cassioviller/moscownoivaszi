@@ -1,6 +1,10 @@
 // Tokens visuais e helpers compartilhados pelas telas do Financeiro (receber · pagar ·
-// folha). Centraliza foco bordô, min-height de a11y, formatação de dinheiro/data e o
-// card de métrica — para que a consistência Concierge viva num lugar só, sem drift.
+// folha · comissões · fluxo de caixa). Centraliza foco bordô, min-height de a11y,
+// formatação de dinheiro/data, rótulo de competência, título de seção e o card de
+// métrica — para que a consistência Concierge viva num lugar só, sem drift.
+import { brl } from "@/lib/dinheiro";
+
+export { brl }; // re-export: telas do financeiro importam tudo de "../ui"
 
 // — Classes de campo/ação (estados de foco/hover do design) —
 export const inputBase =
@@ -13,9 +17,21 @@ export const botaoPrincipal =
   "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel transition-colors duration-150 " +
   "ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
-// — Formatação (dinheiro em BRL; data em UTC, na convenção do sistema) —
-export const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+// — Formatação (data em UTC, na convenção do sistema; brl vem de @/lib/dinheiro) —
 export const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+
+// Rótulo de uma competência "YYYY-MM": "março de 2025" (padrão) ou "mar. de 25" (curto).
+export function rotuloCompetencia(competencia: string, opts: { curto?: boolean } = {}): string {
+  const fmt = opts.curto
+    ? { month: "short" as const, year: "2-digit" as const }
+    : { month: "long" as const, year: "numeric" as const };
+  return new Intl.DateTimeFormat("pt-BR", { ...fmt, timeZone: "UTC" }).format(new Date(`${competencia}-01T00:00:00Z`));
+}
+
+// Título de seção do financeiro (caixa-alta espaçado, grafite suave).
+export function SecaoTitulo({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-[12px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">{children}</h2>;
+}
 
 // — Card de métrica do financeiro (resumo de carteira) —
 export function Card({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {

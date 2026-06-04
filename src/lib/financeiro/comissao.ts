@@ -100,6 +100,10 @@ function parsePercentual(s: string | null): number | null {
   return Math.round(n * 100) / 100;
 }
 
+// Decimal/string do banco → "0.00" p/ as Views (dec2n preserva o null).
+const dec2 = (v: unknown): string => Number(v).toFixed(2);
+const dec2n = (v: unknown): string | null => (v === null ? null : Number(v).toFixed(2));
+
 // — Regras —
 
 export type FaixaInput = { minAcumulado: string; maxAcumulado: string | null; percentual: string | null; bonusFixo: string | null };
@@ -179,10 +183,10 @@ export async function listarRegras(lojaId: string): Promise<RegraView[]> {
     faixas: [...r.faixas]
       .sort((a, b) => Number(a.minAcumulado) - Number(b.minAcumulado))
       .map((f) => ({
-        minAcumulado: Number(f.minAcumulado).toFixed(2),
-        maxAcumulado: f.maxAcumulado === null ? null : Number(f.maxAcumulado).toFixed(2),
-        percentual: f.percentual === null ? null : Number(f.percentual).toFixed(2),
-        bonusFixo: f.bonusFixo === null ? null : Number(f.bonusFixo).toFixed(2),
+        minAcumulado: dec2(f.minAcumulado),
+        maxAcumulado: dec2n(f.maxAcumulado),
+        percentual: dec2n(f.percentual),
+        bonusFixo: dec2n(f.bonusFixo),
       })),
   }));
 }
@@ -282,7 +286,7 @@ export type ResumoVendedora = {
 export async function comissaoDaVendedora(lojaId: string, vendedoraId: string, competencia: string): Promise<ResumoVendedora> {
   const total = competenciaValida(competencia) ? await totalVendasCentavos(lojaId, vendedoraId, competencia) : 0;
   const regra = await regraVigente(lojaId, vendedoraId, competencia);
-  const r = regra ? calcularComissao(total, regra.faixas, regra.bonusAcumulaFaixas) : { percentualAplicado: null, valorComissao: 0, valorBonus: 0, valorTotal: 0 };
+  const r = regra ? calcularComissao(total, regra.faixas, regra.bonusAcumulaFaixas) : ZERO;
   let proximoDegrau: ResumoVendedora["proximoDegrau"] = null;
   if (regra) {
     const acima = ordenarFaixas(regra.faixas).find((f) => f.minAcumulado > total);
@@ -315,8 +319,7 @@ export type FechamentoView = {
 };
 
 export async function listarFechamentos(lojaId: string, opts: { competencia?: string } = {}): Promise<FechamentoView[]> {
-  const where: Record<string, unknown> = {};
-  if (opts.competencia) where.competencia = opts.competencia;
+  const where = opts.competencia ? { competencia: opts.competencia } : {};
   const rows = await tenantPrisma(prisma, lojaId).comissaoFechamento.findMany({
     where,
     orderBy: [{ competencia: "desc" }, { valorTotal: "desc" }],
@@ -327,11 +330,11 @@ export async function listarFechamentos(lojaId: string, opts: { competencia?: st
     vendedoraId: f.vendedoraId,
     vendedoraNome: f.vendedora.nome,
     competencia: f.competencia,
-    totalVendas: Number(f.totalVendas).toFixed(2),
-    percentualAplicado: f.percentualAplicado === null ? null : Number(f.percentualAplicado).toFixed(2),
-    valorComissao: Number(f.valorComissao).toFixed(2),
-    valorBonus: Number(f.valorBonus).toFixed(2),
-    valorTotal: Number(f.valorTotal).toFixed(2),
+    totalVendas: dec2(f.totalVendas),
+    percentualAplicado: dec2n(f.percentualAplicado),
+    valorComissao: dec2(f.valorComissao),
+    valorBonus: dec2(f.valorBonus),
+    valorTotal: dec2(f.valorTotal),
     contaPagarId: f.contaPagarId,
     fechadoEm: f.fechadoEm,
   }));

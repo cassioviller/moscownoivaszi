@@ -4,10 +4,9 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { ehAdminDaLoja, listarEquipe } from "@/lib/admin/usuarios";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { previewComissao } from "@/lib/financeiro/comissao";
-import { hojeYMD } from "@/lib/financeiro/datas";
+import { competenciaAtual } from "@/lib/financeiro/datas";
+import { brl } from "@/lib/dinheiro";
 import { VendedoraForm } from "./vendedora-form";
-
-const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default async function EquipePage({
   searchParams,
@@ -22,7 +21,7 @@ export default async function EquipePage({
   const { ok, erro } = await searchParams;
   // Comissão do mês ao vivo por membro (preview, não grava). Só quem pode ver o Financeiro
   // enxerga o número — dado sensível; sem permissão, a lista some sem ruído.
-  const competencia = hojeYMD().slice(0, 7);
+  const competencia = competenciaAtual();
   const [equipe, podeVerFinanceiro] = await Promise.all([
     listarEquipe(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"),

@@ -8,15 +8,11 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { previewComissao, listarFechamentos } from "@/lib/financeiro/comissao";
-import { hojeYMD } from "@/lib/financeiro/datas";
-import { botaoSuave, botaoPrincipal, brl, dataFmt, Card } from "../ui";
+import { competenciaValida, competenciaAtual } from "@/lib/financeiro/datas";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, Card } from "../ui";
 import { fecharCompetenciaAction } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const competenciaAtual = () => hojeYMD().slice(0, 7);
-const rotuloCompetencia = (c: string) =>
-  new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${c}-01T00:00:00Z`));
 
 const AVISOS: Record<string, string> = {
   regra: "Regra de comissão salva.",
@@ -42,7 +38,7 @@ export default async function ComissoesPage({
 
   const { lojaId } = await params;
   const sp = await searchParams;
-  const competencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.competencia ?? "") ? sp.competencia! : competenciaAtual();
+  const competencia = competenciaValida(sp.competencia ?? "") ? sp.competencia! : competenciaAtual();
 
   const [ranking, fechamentos] = await Promise.all([
     previewComissao(sc.loja.id, competencia),
@@ -72,7 +68,7 @@ export default async function ComissoesPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <form method="get" className="flex items-end gap-2">
-          <input name="competencia" type="month" defaultValue={competencia} aria-label="Competência" className="rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo w-44" />
+          <input name="competencia" type="month" defaultValue={competencia} aria-label="Competência" className={`${inputBase} w-44`} />
           <button type="submit" className={botaoSuave}>Ver</button>
         </form>
         <Link href={`/loja/${lojaId}/financeiro/comissoes/regras`} className={botaoSuave}>

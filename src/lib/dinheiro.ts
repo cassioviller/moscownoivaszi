@@ -35,3 +35,6 @@ export function decParaCentavos(d: Prisma.Decimal | string | null): number {
   if (d == null) return 0;
   return Math.round(Number(d) * 100);
 }
+
+// "1234.56" (string Decimal-friendly) → "R$ 1.234,56" p/ exibição. Negativo vira "-R$ …".
+export const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
