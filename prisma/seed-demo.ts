@@ -20,7 +20,18 @@
 // O bloco contínuo (preparação → uso → higienização) é derivado pelo motor a
 // partir das regras da loja. Este script não recalcula nada — só fornece os fatos.
 // ─────────────────────────────────────────────────────────────────────────────
-import { PrismaClient, type LeadEtapa } from "../src/generated/prisma/client";
+import {
+  PrismaClient,
+  type LeadEtapa,
+  AtendimentoSituacao,
+  OrcamentoStatus,
+  OrcamentoItemTipo,
+  DescontoTipo,
+  ContratoStatus,
+  ParcelaStatus,
+  ContaPagarTipo,
+  ContaPagarStatus,
+} from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -354,7 +365,216 @@ async function main() {
     }
   }
 
-  // 6) VERIFICAÇÃO — confere os dois cenários-roteiro de disponibilidade usando o
+  // ─────────────────────── 6) COMERCIAL & FINANCEIRO ──────────────────────────
+  // Atendimentos, orçamentos, contratos, parcelas (receber), contas a pagar + folha
+  // e comissão. Ancorado ao MÊS REAL do sistema (o financeiro usa "hoje", não a
+  // DATA-BASE da agenda) → as telas já aparecem populadas no mês corrente. Casamentos
+  // seguem no futuro (DATA-BASE): vender em maio e casar em setembro é realista.
+  const vendA = await prisma.usuario.findUnique({ where: { email: "vendedora@moscow.local" }, select: { id: true } });
+  const vendB = await prisma.usuario.findUnique({ where: { email: "gerente@moscow.local" }, select: { id: true } });
+  const costureira = await prisma.usuario.findUnique({ where: { email: "costureira@moscow.local" }, select: { id: true } });
+
+  if (vendA && vendB) {
+    const dec = (n: number) => n.toFixed(2);
+    const precoVestido = (n: number) => Number(VESTIDOS.find((v) => v.n === n)!.preco);
+    const vendId = (v: "A" | "B") => (v === "A" ? vendA.id : vendB.id);
+
+    // Competências relativas ao mês REAL (idempotência por dia-fixo dentro do mês).
+    const hojeR = new Date();
+    const compOffset = (n: number) => {
+      const d = new Date(Date.UTC(hojeR.getUTCFullYear(), hojeR.getUTCMonth() + n, 1));
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    };
+    const COMP_ATUAL = compOffset(0); // mês corrente → ranking de comissão ao vivo
+    const COMP_FECH = compOffset(-1); // mês passado → tem fechamento gravado
+    const diaDe = (comp: string, dd: number) => meiaNoiteUTC(`${comp}-${String(dd).padStart(2, "0")}`);
+    const venc05ProxMes = (comp: string) => diaDe(compOffsetDe(comp, 1), 5);
+    function compOffsetDe(comp: string, n: number) {
+      const y = Number(comp.slice(0, 4)), m = Number(comp.slice(5, 7));
+      const d = new Date(Date.UTC(y, m - 1 + n, 1));
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    }
+
+    // — Cabine (o seed base não cria) —
+    await prisma.cabine.upsert({ where: { id: "demo-cab-01" }, create: { id: "demo-cab-01", lojaId: LOJA_ID, nome: "Cabine Marfim" }, update: { nome: "Cabine Marfim", ativo: true } });
+
+    // — Atendimentos (a fila do dia, situações variadas) —
+    const ATEND = [
+      { id: "demo-at-13", noivaN: 13, vend: "A" as const, off: 0, hora: 14, sit: AtendimentoSituacao.EM_ATENDIMENTO },
+      { id: "demo-at-14", noivaN: 14, vend: "B" as const, off: 1, hora: 10, sit: AtendimentoSituacao.AGENDADO },
+      { id: "demo-at-08", noivaN: 8, vend: "A" as const, off: -1, hora: 16, sit: AtendimentoSituacao.CONCLUIDO },
+      { id: "demo-at-15", noivaN: 15, vend: "B" as const, off: -2, hora: 11, sit: AtendimentoSituacao.FALTOU },
+    ];
+    for (const a of ATEND) {
+      const inicio = new Date(`${D(a.off)}T${String(a.hora).padStart(2, "0")}:00:00.000Z`);
+      const ativo = a.sit === AtendimentoSituacao.EM_ATENDIMENTO || a.sit === AtendimentoSituacao.CONCLUIDO;
+      const dados = { lojaId: LOJA_ID, leadId: idNoiva(a.noivaN), cabineId: "demo-cab-01", vendedoraId: vendId(a.vend), inicio, situacao: a.sit, atendidoEm: ativo ? inicio : null };
+      await prisma.atendimento.upsert({ where: { id: a.id }, create: { id: a.id, ...dados }, update: dados });
+    }
+
+    // — Orçamentos (variedade de status) + itens —
+    const ORC = [
+      { id: "demo-orc-08", noivaN: 8, vend: "A" as const, status: OrcamentoStatus.ENVIADO, descTipo: null as DescontoTipo | null, desc: null as number | null,
+        itens: [{ tipo: OrcamentoItemTipo.VESTIDO, vestidoN: 8, descricao: "Vestido Rafaela (VD-08)", valor: precoVestido(8), qtd: 1 }, { tipo: OrcamentoItemTipo.SERVICO, descricao: "Véu longo + acessórios", valor: 450, qtd: 1 }] },
+      { id: "demo-orc-06", noivaN: 6, vend: "A" as const, status: OrcamentoStatus.APROVADO, descTipo: DescontoTipo.PERCENTUAL, desc: 10,
+        itens: [{ tipo: OrcamentoItemTipo.VESTIDO, vestidoN: 6, descricao: "Vestido Manuela (VD-06)", valor: precoVestido(6), qtd: 1 }, { tipo: OrcamentoItemTipo.AJUSTE, descricao: "Ajuste de corpete e barra", valor: 380, qtd: 1 }] },
+    ];
+    for (const o of ORC) {
+      const dados = {
+        lojaId: LOJA_ID, leadId: idNoiva(o.noivaN), vendedoraId: vendId(o.vend), status: o.status,
+        descontoTipo: o.descTipo, descontoValor: o.desc === null ? null : dec(o.desc),
+        aprovadoEm: o.status === OrcamentoStatus.APROVADO ? diaDe(COMP_FECH, 20) : null,
+      };
+      await prisma.orcamento.upsert({ where: { id: o.id }, create: { id: o.id, ...dados }, update: dados });
+      await prisma.orcamentoItem.deleteMany({ where: { orcamentoId: o.id } });
+      await prisma.orcamentoItem.createMany({
+        data: o.itens.map((it) => ({ lojaId: LOJA_ID, orcamentoId: o.id, tipo: it.tipo, vestidoId: "vestidoN" in it && it.vestidoN ? idVestido(it.vestidoN) : null, descricao: it.descricao, valorUnitario: dec(it.valor), quantidade: it.qtd })),
+      });
+    }
+
+    // — Contratos (a venda) — fechadoEm define a competência da comissão.
+    const CT = [
+      { noivaN: 1, vend: "A" as const, comp: COMP_FECH }, { noivaN: 2, vend: "A" as const, comp: COMP_FECH },
+      { noivaN: 12, vend: "A" as const, comp: COMP_FECH }, { noivaN: 3, vend: "B" as const, comp: COMP_FECH },
+      { noivaN: 4, vend: "A" as const, comp: COMP_ATUAL }, { noivaN: 6, vend: "A" as const, comp: COMP_ATUAL },
+      { noivaN: 10, vend: "A" as const, comp: COMP_ATUAL }, { noivaN: 5, vend: "B" as const, comp: COMP_ATUAL },
+      { noivaN: 7, vend: "B" as const, comp: COMP_ATUAL }, { noivaN: 9, vend: "B" as const, comp: COMP_ATUAL },
+      { noivaN: 11, vend: "B" as const, comp: COMP_ATUAL },
+    ];
+    for (const c of CT) {
+      const noiva = NOIVAS.find((x) => x.n === c.noivaN)!;
+      const vN = noiva.reservaVestidoN!;
+      const total = precoVestido(vN);
+      const id = `demo-ct-${String(c.noivaN).padStart(2, "0")}`;
+      const entrada = Math.round(total * 0.3);
+      const dados = {
+        lojaId: LOJA_ID, leadId: idNoiva(c.noivaN), bloqueioVestidoId: `demo-blq-${String(c.noivaN).padStart(2, "0")}`,
+        vendedoraId: vendId(c.vend), valorTotal: dec(total), entrada: dec(entrada), formaPagamento: "Pix + 2x",
+        vestidoDescricao: `${VESTIDOS.find((v) => v.n === vN)!.nome} (${codigoVestido(vN)})`,
+        dataCasamento: meiaNoiteUTC(D(noiva.offset)), status: ContratoStatus.ATIVO, fechadoEm: diaDe(c.comp, 15),
+      };
+      await prisma.contrato.upsert({ where: { id }, create: { id, ...dados }, update: dados });
+
+      // Parcelas: entrada (paga no mês do contrato) + 2 parcelas previstas.
+      const restante = total - entrada;
+      const p1 = Math.floor(restante / 2), p2 = restante - p1;
+      const plano = [
+        { numero: 0, descricao: "Entrada", valor: entrada, venc: diaDe(c.comp, 18), pago: true },
+        { numero: 1, descricao: "Parcela 1/2", valor: p1, venc: diaDe(compOffsetDe(c.comp, 1), 18), pago: false },
+        { numero: 2, descricao: "Parcela 2/2", valor: p2, venc: diaDe(compOffsetDe(c.comp, 2), 18), pago: false },
+      ];
+      for (const pa of plano) {
+        const pid = `demo-pc-${String(c.noivaN).padStart(2, "0")}-${pa.numero}`;
+        const dadosP = {
+          lojaId: LOJA_ID, contratoId: id, numero: pa.numero, descricao: pa.descricao, valorPrevisto: dec(pa.valor),
+          vencimento: pa.venc, status: pa.pago ? ParcelaStatus.PAGA : ParcelaStatus.PREVISTA,
+          valorRecebido: pa.pago ? dec(pa.valor) : null, recebidoEm: pa.pago ? pa.venc : null, formaRecebimento: pa.pago ? "Pix" : null,
+        };
+        await prisma.parcela.upsert({ where: { id: pid }, create: { id: pid, ...dadosP }, update: dadosP });
+      }
+    }
+
+    // — Comissão: regra + faixas (3% até 30k; 5% + bônus 500 acima) p/ as 2 vendedoras —
+    function comissaoDe(total: number) {
+      return total >= 30000
+        ? { pct: 5, comissao: Math.round(total * 5) / 100, bonus: 500 }
+        : { pct: 3, comissao: Math.round(total * 3) / 100, bonus: 0 };
+    }
+    for (const v of ["A", "B"] as const) {
+      const rid = `demo-cr-${v}`;
+      await prisma.comissaoRegra.upsert({
+        where: { id: rid },
+        create: { id: rid, lojaId: LOJA_ID, vendedoraId: vendId(v), vigenciaInicio: meiaNoiteUTC("2026-01-01"), bonusAcumulaFaixas: false },
+        update: { vendedoraId: vendId(v), vigenciaInicio: meiaNoiteUTC("2026-01-01"), bonusAcumulaFaixas: false, ativo: true },
+      });
+      await prisma.comissaoFaixa.deleteMany({ where: { regraId: rid } });
+      await prisma.comissaoFaixa.createMany({
+        data: [
+          { lojaId: LOJA_ID, regraId: rid, minAcumulado: dec(0), maxAcumulado: dec(30000), percentual: dec(3), bonusFixo: null },
+          { lojaId: LOJA_ID, regraId: rid, minAcumulado: dec(30000), maxAcumulado: null, percentual: dec(5), bonusFixo: dec(500) },
+        ],
+      });
+    }
+
+    // — Fechamento do mês passado (COMP_FECH) por vendedora + ContaPagar COMISSAO —
+    for (const v of ["A", "B"] as const) {
+      const totalV = CT.filter((c) => c.vend === v && c.comp === COMP_FECH).reduce((s, c) => s + precoVestido(NOIVAS.find((x) => x.n === c.noivaN)!.reservaVestidoN!), 0);
+      if (totalV <= 0) continue;
+      const r = comissaoDe(totalV);
+      const fid = `demo-cf-${v}-${COMP_FECH}`;
+      const cpId = `demo-cp-com-${v}`;
+      // a ContaPagar de comissão primeiro (o fechamento referencia ela)
+      const contaDados = {
+        lojaId: LOJA_ID, tipo: ContaPagarTipo.COMISSAO, colaboradorId: vendId(v), competencia: COMP_FECH,
+        descricao: `Comissão ${COMP_FECH}`, valorPrevisto: dec(r.comissao + r.bonus), vencimento: venc05ProxMes(COMP_FECH),
+        status: ContaPagarStatus.PREVISTA, origemComissaoFechamentoId: fid,
+      };
+      await prisma.contaPagar.upsert({ where: { id: cpId }, create: { id: cpId, ...contaDados }, update: contaDados });
+      const fechDados = {
+        lojaId: LOJA_ID, vendedoraId: vendId(v), competencia: COMP_FECH, totalVendas: dec(totalV), percentualAplicado: dec(r.pct),
+        valorComissao: dec(r.comissao), valorBonus: dec(r.bonus), valorTotal: dec(r.comissao + r.bonus), contaPagarId: cpId,
+      };
+      await prisma.comissaoFechamento.upsert({ where: { id: fid }, create: { id: fid, ...fechDados }, update: fechDados });
+    }
+
+    // — Folha: salário recorrente + ContaPagar SALARIO (mês passado e corrente) —
+    const salarios: { who: string; id: string; base: number }[] = [
+      { who: vendA.id, id: "demo-sal-A", base: 3000 },
+      { who: vendB.id, id: "demo-sal-B", base: 4000 },
+      ...(costureira ? [{ who: costureira.id, id: "demo-sal-C", base: 2500 }] : []),
+    ];
+    for (const s of salarios) {
+      await prisma.salarioRecorrente.upsert({
+        where: { id: s.id },
+        create: { id: s.id, lojaId: LOJA_ID, colaboradorId: s.who, valorBase: dec(s.base), diaVencimento: 5 },
+        update: { colaboradorId: s.who, valorBase: dec(s.base), diaVencimento: 5, ativo: true },
+      });
+      for (const comp of [COMP_FECH, COMP_ATUAL]) {
+        const cid = `demo-cpsal-${comp}-${s.id}`;
+        const dados = { lojaId: LOJA_ID, tipo: ContaPagarTipo.SALARIO, colaboradorId: s.who, competencia: comp, descricao: `Salário ${comp}`, valorPrevisto: dec(s.base), vencimento: venc05ProxMes(comp), status: ContaPagarStatus.PREVISTA, salarioRecorrenteId: s.id };
+        await prisma.contaPagar.upsert({ where: { id: cid }, create: { id: cid, ...dados }, update: dados });
+      }
+    }
+
+    // — Despesas / fornecedores (uma atrasada, uma a pagar, uma quitada) —
+    const DESP = [
+      { id: "demo-cp-aluguel", tipo: ContaPagarTipo.DESPESA, descricao: "Aluguel do atelier", categoria: "Aluguel", fornecedor: null, valor: 4500, venc: diaDe(COMP_ATUAL, 10), status: ContaPagarStatus.PREVISTA },
+      { id: "demo-cp-forn", tipo: ContaPagarTipo.FORNECEDOR, descricao: "Tecidos e aviamentos", categoria: null, fornecedor: "Casa do Tecido", valor: 2200, venc: diaDe(COMP_ATUAL, 8), status: ContaPagarStatus.PREVISTA },
+      { id: "demo-cp-atraso", tipo: ContaPagarTipo.DESPESA, descricao: "Conta de energia", categoria: "Utilidades", fornecedor: null, valor: 680, venc: diaDe(COMP_FECH, 20), status: ContaPagarStatus.PAGA },
+    ];
+    for (const d of DESP) {
+      const dados = { lojaId: LOJA_ID, tipo: d.tipo, descricao: d.descricao, categoria: d.categoria, fornecedor: d.fornecedor, valorPrevisto: dec(d.valor), vencimento: d.venc, status: d.status };
+      await prisma.contaPagar.upsert({ where: { id: d.id }, create: { id: d.id, ...dados }, update: dados });
+    }
+
+    // — Pagamentos (saídas de caixa reais → fluxo) —
+    // (a) quita a energia (despesa do mês passado) com 1 saída.
+    await prisma.pagamento.upsert({
+      where: { id: "demo-pg-energia" },
+      create: { id: "demo-pg-energia", lojaId: LOJA_ID, data: diaDe(COMP_ATUAL, 6), valorPago: dec(680), forma: "Boleto" },
+      update: { data: diaDe(COMP_ATUAL, 6), valorPago: dec(680), forma: "Boleto" },
+    });
+    await prisma.pagamentoItem.upsert({
+      where: { contaPagarId: "demo-cp-atraso" },
+      create: { id: "demo-pgi-energia", lojaId: LOJA_ID, pagamentoId: "demo-pg-energia", contaPagarId: "demo-cp-atraso", valor: dec(680) },
+      update: { pagamentoId: "demo-pg-energia", valor: dec(680) },
+    });
+    // (b) "Pagar colaborador": vendA recebe salário + comissão do mês passado numa saída só.
+    const salAcpId = `demo-cpsal-${COMP_FECH}-demo-sal-A`;
+    await prisma.contaPagar.updateMany({ where: { id: { in: [salAcpId, "demo-cp-com-A"] } }, data: { status: ContaPagarStatus.PAGA } });
+    await prisma.contaPagar.updateMany({ where: { id: "demo-cp-atraso" }, data: { status: ContaPagarStatus.PAGA } });
+    const comissaoA = comissaoDe(CT.filter((c) => c.vend === "A" && c.comp === COMP_FECH).reduce((s, c) => s + precoVestido(NOIVAS.find((x) => x.n === c.noivaN)!.reservaVestidoN!), 0));
+    const totalPagoA = 3000 + comissaoA.comissao + comissaoA.bonus;
+    await prisma.pagamento.upsert({
+      where: { id: "demo-pg-colabA" },
+      create: { id: "demo-pg-colabA", lojaId: LOJA_ID, colaboradorId: vendA.id, data: diaDe(COMP_ATUAL, 5), valorPago: dec(totalPagoA), forma: "Pix", enviadoContabilidadeEm: diaDe(COMP_ATUAL, 7) },
+      update: { colaboradorId: vendA.id, data: diaDe(COMP_ATUAL, 5), valorPago: dec(totalPagoA), forma: "Pix", enviadoContabilidadeEm: diaDe(COMP_ATUAL, 7) },
+    });
+    await prisma.pagamentoItem.upsert({ where: { contaPagarId: salAcpId }, create: { id: "demo-pgi-salA", lojaId: LOJA_ID, pagamentoId: "demo-pg-colabA", contaPagarId: salAcpId, valor: dec(3000) }, update: { pagamentoId: "demo-pg-colabA", valor: dec(3000) } });
+    await prisma.pagamentoItem.upsert({ where: { contaPagarId: "demo-cp-com-A" }, create: { id: "demo-pgi-comA", lojaId: LOJA_ID, pagamentoId: "demo-pg-colabA", contaPagarId: "demo-cp-com-A", valor: dec(comissaoA.comissao + comissaoA.bonus) }, update: { pagamentoId: "demo-pg-colabA", valor: dec(comissaoA.comissao + comissaoA.bonus) } });
+  }
+
+  // 7) VERIFICAÇÃO — confere os dois cenários-roteiro de disponibilidade usando o
   //    MOTOR REAL do sistema (mesma lógica de bloco contínuo da tela). Import
   //    relativo (motor é puro, sem alias @) → roda no tsx sem configuração extra.
   const { vestidoDisponivel } = await import("../src/lib/disponibilidade/motor");
