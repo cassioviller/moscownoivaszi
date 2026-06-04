@@ -89,79 +89,99 @@ export default async function OrcamentoDetalhePage({
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
   const podeMexer = podeEditar && orc.editavel;
 
+  const STATUS_CLASSE: Record<OrcamentoStatus, string> = {
+    RASCUNHO: "border-borda-suave bg-papel text-grafite",
+    ENVIADO: "border-champagne/60 bg-papel text-bordo",
+    APROVADO: "border-champagne bg-champagne/10 text-grafite",
+    RECUSADO: "border-borda bg-papel text-cinza-fumo",
+  };
+
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-1.5">
-        <Link href={`/loja/${lojaId}/orcamentos`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
-          ← Orçamentos
-        </Link>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
+      <Link href={`/loja/${lojaId}/orcamentos`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
+        ← Orçamentos
+      </Link>
+
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
           <h1 className="font-display text-[26px] font-light leading-tight tracking-tight text-tinta">
             Orçamento de{" "}
             {orc.leadId ? (
-              <Link href={`/loja/${lojaId}/noivas/${orc.leadId}`} className="hover:text-bordo">
-                {orc.noivaNome ?? "Noiva"}
-              </Link>
+              <Link href={`/loja/${lojaId}/noivas/${orc.leadId}`} className="hover:text-bordo">{orc.noivaNome ?? "Noiva"}</Link>
             ) : (
-              (orc.noivaNome ?? "Noiva")
+              orc.noivaNome ?? "Noiva"
             )}
           </h1>
-          <span className="inline-flex min-h-7 items-center rounded-full border border-borda-suave bg-papel px-3 py-0.5 text-[12px] text-grafite">
-            {ROTULO_STATUS[orc.status]}
-          </span>
+          <p className="text-[13px] text-cinza-fumo">Vendedora: {orc.vendedoraNome}</p>
         </div>
-        <p className="text-[13px] text-cinza-fumo">Vendedora: {orc.vendedoraNome}</p>
+        <span className={`inline-flex min-h-7 items-center rounded-full border px-3 py-0.5 text-[12px] ${STATUS_CLASSE[orc.status]}`}>
+          {ROTULO_STATUS[orc.status]}
+        </span>
       </header>
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
-      {/* Itens */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Itens</h2>
+      {/* Itens — leitura limpa; edição sob demanda (clica no item para abrir) */}
+      <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Itens</h2>
+          {podeMexer && orc.itens.length > 0 && <span className="text-[11px] text-cinza-fumo">clique para editar</span>}
+        </div>
+
         {orc.itens.length === 0 ? (
-          <p className="text-[14px] text-grafite">Nenhum item ainda.</p>
+          <p className="text-[14px] text-cinza-fumo">Nenhum item ainda. Comece adicionando o vestido.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
-            {orc.itens.map((it) => (
-              <li key={it.id} className="flex flex-col gap-2 px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
+          <ul className="flex flex-col divide-y divide-borda-suave">
+            {orc.itens.map((it) => {
+              const Linha = (
+                <>
                   <div className="flex min-w-0 flex-col">
-                    <span className="text-[15px] text-tinta">{it.descricao}</span>
-                    <span className="text-[12px] text-cinza-fumo">
-                      {ROTULO_TIPO[it.tipo]} · {brl(it.valorUnitario)} × {it.quantidade}
-                    </span>
+                    <span className="truncate text-[15px] text-tinta">{it.descricao}</span>
+                    <span className="text-[12px] text-cinza-fumo">{ROTULO_TIPO[it.tipo]} · {brl(it.valorUnitario)} × {it.quantidade}</span>
                   </div>
                   <span className="shrink-0 font-display text-[15px] font-light tabular-nums text-tinta">{brl(it.subtotal)}</span>
-                </div>
-                {podeMexer && (
-                  <div className="flex flex-wrap items-end gap-2 border-t border-borda-suave pt-2">
-                    <form action={editarItemAction} className="flex flex-wrap items-end gap-2">
-                      <input type="hidden" name="orcamentoId" value={orc.id} />
-                      <input type="hidden" name="itemId" value={it.id} />
-                      <input name="descricao" defaultValue={it.descricao} aria-label="Descrição" className={`${inputBase} min-w-[10rem] flex-1`} />
-                      <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor unitário" className={`${inputBase} w-28`} />
-                      <input name="quantidade" type="number" min={1} defaultValue={it.quantidade} aria-label="Quantidade" className={`${inputBase} w-20`} />
-                      <button type="submit" className={botaoSuave}>Salvar</button>
-                    </form>
-                    <form action={removerItemAction}>
-                      <input type="hidden" name="orcamentoId" value={orc.id} />
-                      <input type="hidden" name="itemId" value={it.id} />
-                      <BotaoConfirmar mensagem={`Remover "${it.descricao}"?`} ariaLabel="Remover item" className={botaoSuave}>
-                        Remover
-                      </BotaoConfirmar>
-                    </form>
-                  </div>
-                )}
-              </li>
-            ))}
+                </>
+              );
+              return (
+                <li key={it.id}>
+                  {podeMexer ? (
+                    <details className="group">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 marker:content-[''] hover:[&_span:first-child]:text-bordo">
+                        {Linha}
+                        <span aria-hidden className="shrink-0 text-cinza-fumo transition-transform duration-150 group-open:rotate-180">▾</span>
+                      </summary>
+                      <div className="flex flex-wrap items-end gap-2 border-t border-borda-suave pb-3 pt-3">
+                        <form action={editarItemAction} className="flex flex-wrap items-end gap-2">
+                          <input type="hidden" name="orcamentoId" value={orc.id} />
+                          <input type="hidden" name="itemId" value={it.id} />
+                          <input name="descricao" defaultValue={it.descricao} aria-label="Descrição" className={`${inputBase} min-w-[10rem] flex-1`} />
+                          <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor unitário" className={`${inputBase} w-28`} />
+                          <input name="quantidade" type="number" min={1} defaultValue={it.quantidade} aria-label="Quantidade" className={`${inputBase} w-20`} />
+                          <button type="submit" className={botaoSuave}>Salvar</button>
+                        </form>
+                        <form action={removerItemAction}>
+                          <input type="hidden" name="orcamentoId" value={orc.id} />
+                          <input type="hidden" name="itemId" value={it.id} />
+                          <BotaoConfirmar mensagem={`Remover "${it.descricao}"?`} ariaLabel="Remover item" className={botaoSuave}>Remover</BotaoConfirmar>
+                        </form>
+                      </div>
+                    </details>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3 py-3">{Linha}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
 
         {podeMexer && (
-          <form action={adicionarItemAction} className="flex flex-col gap-2 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel p-4">
-            <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Adicionar item</span>
-            <input type="hidden" name="orcamentoId" value={orc.id} />
-            <div className="flex flex-wrap items-end gap-2">
+          <details className="group rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-[13px] text-bordo marker:content-['']">
+              <span aria-hidden className="transition-transform duration-150 group-open:rotate-45">+</span> Adicionar item
+            </summary>
+            <form action={adicionarItemAction} className="flex flex-wrap items-end gap-2 border-t border-borda-suave px-4 py-3">
+              <input type="hidden" name="orcamentoId" value={orc.id} />
               <select name="tipo" defaultValue="VESTIDO" aria-label="Tipo do item" className={inputBase}>
                 {TIPOS.map((t) => (
                   <option key={t} value={t}>{ROTULO_TIPO[t]}</option>
@@ -171,15 +191,15 @@ export default async function OrcamentoDetalhePage({
               <input name="valorUnitario" placeholder="0,00" aria-label="Valor unitário" className={`${inputBase} w-28`} required />
               <input name="quantidade" type="number" min={1} defaultValue={1} aria-label="Quantidade" className={`${inputBase} w-20`} />
               <button type="submit" className={botaoPrincipal}>Adicionar</button>
-            </div>
-          </form>
+            </form>
+          </details>
         )}
       </section>
 
-      {/* Totais + desconto */}
-      <section className="flex flex-col gap-3">
+      {/* Valores + desconto */}
+      <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
         <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Valores</h2>
-        <div className="flex flex-col gap-1.5 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
+        <div className="flex flex-col gap-1.5">
           <div className="flex justify-between text-[14px] text-grafite">
             <span>Subtotal</span>
             <span className="tabular-nums">{brl(orc.totais.subtotal)}</span>
@@ -188,15 +208,14 @@ export default async function OrcamentoDetalhePage({
             <span>Desconto{orc.descontoTipo === "PERCENTUAL" ? ` (${Number(orc.descontoValor)}%)` : ""}</span>
             <span className="tabular-nums">− {brl(orc.totais.desconto)}</span>
           </div>
-          <div className="mt-1 flex justify-between border-t border-borda-suave pt-2 text-[16px] text-tinta">
-            <span>Total</span>
-            <span className="font-display font-light tabular-nums text-bordo">{brl(orc.totais.total)}</span>
+          <div className="mt-1 flex items-baseline justify-between border-t border-borda-suave pt-2.5">
+            <span className="text-[15px] text-tinta">Total</span>
+            <span className="font-display text-[22px] font-light tabular-nums text-bordo">{brl(orc.totais.total)}</span>
           </div>
         </div>
 
         {podeMexer && (
-          <form action={definirDescontoAction} className="flex flex-wrap items-end gap-2">
-            <input type="hidden" name="orcamentoId" value={orc.id} />
+          <form action={definirDescontoAction} className="flex flex-wrap items-end gap-2 border-t border-borda-suave pt-3">
             <label className="flex flex-col gap-1">
               <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Desconto</span>
               <select name="tipo" defaultValue={orc.descontoTipo ?? "PERCENTUAL"} aria-label="Tipo do desconto" className={inputBase}>
@@ -204,60 +223,60 @@ export default async function OrcamentoDetalhePage({
                 <option value="VALOR">Valor (R$)</option>
               </select>
             </label>
+            <input type="hidden" name="orcamentoId" value={orc.id} />
             <input name="valor" placeholder="0" defaultValue={orc.descontoValor ?? ""} aria-label="Valor do desconto" className={`${inputBase} w-28`} />
-            <button type="submit" className={botaoSuave}>Aplicar desconto</button>
+            <button type="submit" className={botaoSuave}>Aplicar</button>
           </form>
         )}
       </section>
 
-      {/* Aprovado → contrato */}
-      {orc.status === "APROVADO" && (
-        <section className="flex flex-wrap items-center gap-3 border-t border-borda-suave pt-5">
-          {orc.contratoId ? (
-            <Link href={`/loja/${lojaId}/contratos/${orc.contratoId}`} className={botaoPrincipal}>
-              Ver contrato
-            </Link>
+      {/* Ações de status / contrato — a barra do ciclo do orçamento */}
+      {(orc.status === "APROVADO" || (podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO"))) && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
+          {orc.status === "APROVADO" ? (
+            <>
+              <span className="text-[13px] text-grafite">Aprovado — pronto para virar contrato.</span>
+              {orc.contratoId ? (
+                <Link href={`/loja/${lojaId}/contratos/${orc.contratoId}`} className={botaoPrincipal}>Ver contrato</Link>
+              ) : (
+                podeEditar && (
+                  <form action={gerarContratoDeOrcamentoAction}>
+                    <input type="hidden" name="orcamentoId" value={orc.id} />
+                    <button type="submit" className={botaoPrincipal}>Gerar contrato</button>
+                  </form>
+                )
+              )}
+            </>
           ) : (
-            podeEditar && (
-              <form action={gerarContratoDeOrcamentoAction}>
+            <>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                {orc.status === "RASCUNHO" && (
+                  <form action={mudarStatusAction}>
+                    <input type="hidden" name="orcamentoId" value={orc.id} />
+                    <input type="hidden" name="status" value="ENVIADO" />
+                    <button type="submit" className={botaoSuave}>Marcar como enviado</button>
+                  </form>
+                )}
+                {orc.status === "ENVIADO" && (
+                  <form action={mudarStatusAction}>
+                    <input type="hidden" name="orcamentoId" value={orc.id} />
+                    <input type="hidden" name="status" value="RASCUNHO" />
+                    <button type="submit" className={botaoSuave}>Voltar para rascunho</button>
+                  </form>
+                )}
+                <form action={mudarStatusAction}>
+                  <input type="hidden" name="orcamentoId" value={orc.id} />
+                  <input type="hidden" name="status" value="RECUSADO" />
+                  <BotaoConfirmar mensagem="Marcar este orçamento como recusado?" className={botaoSuave}>Recusado</BotaoConfirmar>
+                </form>
+              </div>
+              <form action={mudarStatusAction}>
                 <input type="hidden" name="orcamentoId" value={orc.id} />
-                <button type="submit" className={botaoPrincipal}>
-                  Gerar contrato
-                </button>
+                <input type="hidden" name="status" value="APROVADO" />
+                <button type="submit" className={botaoPrincipal}>Aprovar</button>
               </form>
-            )
+            </>
           )}
-          <span className="text-[12px] text-cinza-fumo">Orçamento aprovado — pronto para virar contrato.</span>
-        </section>
-      )}
-
-      {/* Status */}
-      {podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO") && (
-        <section className="flex flex-wrap items-center gap-2 border-t border-borda-suave pt-5">
-          {orc.status === "RASCUNHO" && (
-            <form action={mudarStatusAction}>
-              <input type="hidden" name="orcamentoId" value={orc.id} />
-              <input type="hidden" name="status" value="ENVIADO" />
-              <button type="submit" className={botaoSuave}>Marcar como enviado</button>
-            </form>
-          )}
-          {orc.status === "ENVIADO" && (
-            <form action={mudarStatusAction}>
-              <input type="hidden" name="orcamentoId" value={orc.id} />
-              <input type="hidden" name="status" value="RASCUNHO" />
-              <button type="submit" className={botaoSuave}>Voltar para rascunho</button>
-            </form>
-          )}
-          <form action={mudarStatusAction}>
-            <input type="hidden" name="orcamentoId" value={orc.id} />
-            <input type="hidden" name="status" value="RECUSADO" />
-            <button type="submit" className={botaoSuave}>Recusado</button>
-          </form>
-          <form action={mudarStatusAction}>
-            <input type="hidden" name="orcamentoId" value={orc.id} />
-            <input type="hidden" name="status" value="APROVADO" />
-            <button type="submit" className={botaoPrincipal}>Aprovar</button>
-          </form>
         </section>
       )}
     </main>
