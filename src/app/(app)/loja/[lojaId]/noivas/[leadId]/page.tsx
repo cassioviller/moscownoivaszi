@@ -197,11 +197,12 @@ export default async function NoivaPage({
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
-      {/* Jornada — o coração, largura total */}
-      <PainelJornadaNoiva passos={passos} encerrada={encerrada} />
+      {/* Jornada à esquerda (timeline magra) + blocos de detalhe à direita,
+          aproveitando a horizontal que a jornada sozinha deixava vazia. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[17rem_1fr] lg:items-start">
+        <PainelJornadaNoiva passos={passos} encerrada={encerrada} />
 
-      {/* Grade de blocos de detalhe (2 colunas no desktop) */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
         {/* Agendar — vai para a tela de agenda com a noiva já selecionada */}
         {podeCriar && ativa && (
           <Bloco titulo="Agendar atendimento">
@@ -317,6 +318,7 @@ export default async function NoivaPage({
             )}
           </Bloco>
         )}
+        </div>
       </div>
 
       {/* Vestido reservado — largura total (tem o reservar inline) */}
