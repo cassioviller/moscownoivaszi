@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { gradeDoDia, agendarAtendimento, cancelarAtendimento } from "@/lib/atendimentos/atendimentos";
+import { acaoAutorizada } from "@/lib/server/acoes";
+import { str, comAviso } from "@/lib/server/form";
 import type { Slot } from "@/lib/atendimentos/slots";
+
+// gradeDoDiaAction (RPC, retorna Slot[]) e agendarAtendimentoAction (useActionState, retorna
+// {erro}) NÃO usam acaoAutorizada: têm contrato diferente do (FormData)=>redirect do seam.
 
 // Server action chamada pelo client p/ buscar a grade do dia (não é form action).
 export async function gradeDoDiaAction(input: { dataYMD: string; cabineId: string; vendedoraId: string }): Promise<Slot[]> {
@@ -41,10 +46,7 @@ export async function agendarAtendimentoAction(_prev: AgendarState, formData: Fo
   return { erro: MOTIVOS[r.motivo] ?? "Não foi possível agendar." };
 }
 
-export async function cancelarAtendimentoAction(formData: FormData) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"))) redirect(`/loja/${sc.loja.id}/atendimentos/novo`);
-  await cancelarAtendimento(sc.loja.id, String(formData.get("atendimentoId") ?? ""));
-  redirect(`/loja/${sc.loja.id}/atendimentos/novo?ok=cancelado`);
-}
+export const cancelarAtendimentoAction = acaoAutorizada("leads", "criar", async (sc, formData) => {
+  await cancelarAtendimento(sc.loja.id, str(formData, "atendimentoId"));
+  redirect(comAviso(`/loja/${sc.loja.id}/atendimentos/novo`, "ok", "cancelado"));
+});

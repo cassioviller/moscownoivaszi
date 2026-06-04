@@ -1,38 +1,29 @@
 // src/app/(app)/loja/[lojaId]/atendimentos/actions.ts
-// O ato de "atender": transições de situação a partir da fila. Server Actions com
-// <form> nativo; gate em leads:editar (mesmo dos marcos da jornada). Volta por
-// query-param (?ok / ?erro). Criar/cancelar atendimento continua na tela Agendar.
+// O ato de "atender": transições de situação a partir da fila, via acaoAutorizada(leads,
+// editar). Volta por query-param (?ok / ?erro). Criar/cancelar atendimento continua na
+// tela Agendar.
 "use server";
 
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
-import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { iniciarAtendimento, concluirAtendimento, marcarFalta } from "@/lib/atendimentos/atendimentos";
+import { acaoAutorizada } from "@/lib/server/acoes";
+import { str, comAviso } from "@/lib/server/form";
 import type { AtendimentoDesfecho } from "@/generated/prisma/client";
 
-async function guard(formData: FormData) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
+export const iniciarAtendimentoAction = acaoAutorizada("leads", "editar", async (sc, formData) => {
   const base = `/loja/${sc.loja.id}/atendimentos`;
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"))) redirect(base);
-  return { lojaId: sc.loja.id, base, id: String(formData.get("id") ?? "") };
-}
+  const r = await iniciarAtendimento(sc.loja.id, str(formData, "id"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "iniciado" : r.motivo));
+});
 
-export async function iniciarAtendimentoAction(formData: FormData) {
-  const { lojaId, base, id } = await guard(formData);
-  const r = await iniciarAtendimento(lojaId, id);
-  redirect(r.ok ? `${base}?ok=iniciado` : `${base}?erro=${r.motivo}`);
-}
+export const concluirAtendimentoAction = acaoAutorizada("leads", "editar", async (sc, formData) => {
+  const base = `/loja/${sc.loja.id}/atendimentos`;
+  const r = await concluirAtendimento(sc.loja.id, str(formData, "id"), str(formData, "desfecho") as AtendimentoDesfecho);
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "concluido" : r.motivo));
+});
 
-export async function concluirAtendimentoAction(formData: FormData) {
-  const { lojaId, base, id } = await guard(formData);
-  const desfecho = String(formData.get("desfecho") ?? "") as AtendimentoDesfecho;
-  const r = await concluirAtendimento(lojaId, id, desfecho);
-  redirect(r.ok ? `${base}?ok=concluido` : `${base}?erro=${r.motivo}`);
-}
-
-export async function marcarFaltaAction(formData: FormData) {
-  const { lojaId, base, id } = await guard(formData);
-  const r = await marcarFalta(lojaId, id);
-  redirect(r.ok ? `${base}?ok=falta` : `${base}?erro=${r.motivo}`);
-}
+export const marcarFaltaAction = acaoAutorizada("leads", "editar", async (sc, formData) => {
+  const base = `/loja/${sc.loja.id}/atendimentos`;
+  const r = await marcarFalta(sc.loja.id, str(formData, "id"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "falta" : r.motivo));
+});
