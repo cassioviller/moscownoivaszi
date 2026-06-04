@@ -18,24 +18,40 @@ const AVISOS: Record<string, string> = {
   reativada: "Noiva reativada.",
 };
 
+// Filtro por estado da jornada. "Ativas" = não encerrada (inclui em andamento e casamento);
+// "Concluídas" = devolvido; "Desativadas" = perdida. Padrão: Ativas (lista do dia a dia limpa).
+const FILTROS = ["ativas", "concluidas", "desativadas", "todas"] as const;
+type Filtro = (typeof FILTROS)[number];
+const ROTULO_FILTRO: Record<Filtro, string> = { ativas: "Ativas", concluidas: "Concluídas", desativadas: "Desativadas", todas: "Todas" };
+
 export default async function NoivasPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ ok?: string }>;
+  searchParams: Promise<{ ok?: string; filtro?: string }>;
 }) {
   const sc = await exigirAcesso("leads");
 
   const { lojaId } = await params;
-  const { ok } = await searchParams;
+  const sp = await searchParams;
   const [noivas, estagios, podeCriar, podeEditar] = await Promise.all([
     listarLeads(sc.loja.id),
     estagiosDasNoivas(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
   ]);
-  const aviso = ok ? (AVISOS[ok] ?? null) : null;
+  const aviso = sp.ok ? (AVISOS[sp.ok] ?? null) : null;
+
+  // Classifica cada noiva pela jornada e conta por estado (para os chips).
+  const estadoDe = (id: string): "ativas" | "concluidas" | "desativadas" => {
+    const e = estagios.get(id)?.encerrada ?? null;
+    return e === "Perdida" ? "desativadas" : e === "Devolvido" ? "concluidas" : "ativas";
+  };
+  const contagem: Record<string, number> = { ativas: 0, concluidas: 0, desativadas: 0 };
+  for (const n of noivas) contagem[estadoDe(n.id)]++;
+  const filtro: Filtro = (FILTROS as readonly string[]).includes(sp.filtro ?? "") ? (sp.filtro as Filtro) : "ativas";
+  const visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.id) === filtro);
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
@@ -69,9 +85,35 @@ export default async function NoivasPage({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {noivas.map((n) => {
-            const est = estagios.get(n.id);
+        <>
+          <nav className="flex flex-wrap gap-2">
+            {FILTROS.map((f) => {
+              const ativo = f === filtro;
+              const qtd = f === "todas" ? noivas.length : contagem[f];
+              return (
+                <Link
+                  key={f}
+                  href={`/loja/${lojaId}/noivas?filtro=${f}`}
+                  className={[
+                    "inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] transition-colors duration-150",
+                    ativo
+                      ? "border-bordo bg-bordo/5 text-bordo"
+                      : "border-borda-suave bg-papel text-grafite hover:border-cinza-fumo hover:text-tinta",
+                  ].join(" ")}
+                >
+                  {ROTULO_FILTRO[f]}
+                  {qtd > 0 ? ` · ${qtd}` : ""}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {visiveis.length === 0 ? (
+            <p className="text-[14px] text-cinza-fumo">Nenhuma noiva nesta lente no momento.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {visiveis.map((n) => {
+                const est = estagios.get(n.id);
             // A jornada sai da ativa de dois jeitos: "Perdida" (desativada — negativo,
             // reversível) e "Devolvido" (concluída — positivo, fim natural da jornada).
             const encerrada = est?.encerrada ?? null; // "Perdida" | "Devolvido" | null
@@ -145,7 +187,9 @@ export default async function NoivasPage({
               </article>
             );
           })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </main>
   );
