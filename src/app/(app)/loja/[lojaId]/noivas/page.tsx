@@ -72,8 +72,17 @@ export default async function NoivasPage({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {noivas.map((n) => {
             const est = estagios.get(n.id);
-            const rotuloEtapa = est ? (est.encerrada ?? ROTULO_ESTAGIO[est.atual]) : "Cadastrada";
-            const perdida = n.perdidaEm != null; // "desativada" = fora da jornada ativa
+            // A jornada sai da ativa de dois jeitos: "Perdida" (desativada — negativo,
+            // reversível) e "Devolvido" (concluída — positivo, fim natural da jornada).
+            const encerrada = est?.encerrada ?? null; // "Perdida" | "Devolvido" | null
+            const perdida = encerrada === "Perdida";
+            const concluida = encerrada === "Devolvido";
+            const badge = perdida ? "Desativada" : concluida ? "Concluída" : est ? ROTULO_ESTAGIO[est.atual] : "Cadastrada";
+            const badgeClasse = perdida
+              ? "border-borda text-cinza-fumo"
+              : concluida
+                ? "border-champagne/60 text-grafite"
+                : "border-champagne/60 text-bordo";
             return (
               <article
                 key={n.id}
@@ -84,11 +93,7 @@ export default async function NoivasPage({
                     <h2 className="truncate text-[17px] font-light text-tinta">{n.noivaNome}</h2>
                     {n.noivoNome && <span className="text-[12px] text-cinza-fumo">&amp; {n.noivoNome}</span>}
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${perdida ? "border-borda text-cinza-fumo" : "border-champagne/60 text-bordo"}`}
-                  >
-                    {perdida ? "Desativada" : rotuloEtapa}
-                  </span>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${badgeClasse}`}>{badge}</span>
                 </div>
 
                 <dl className="flex flex-col gap-1 border-t border-borda-suave pt-3 text-[13px]">
@@ -111,7 +116,10 @@ export default async function NoivasPage({
                   >
                     Detalhes
                   </Link>
-                  {podeEditar && (
+                  {concluida ? (
+                    // Jornada finalizada com sucesso (devolução): nada a desativar.
+                    <span className="text-[12px] text-cinza-fumo">Jornada concluída</span>
+                  ) : podeEditar ? (
                     <form action={marcarPerdidaAction}>
                       <input type="hidden" name="leadId" value={n.id} />
                       <input type="hidden" name="ligar" value={perdida ? "0" : "1"} />
@@ -132,7 +140,7 @@ export default async function NoivasPage({
                         </BotaoConfirmar>
                       )}
                     </form>
-                  )}
+                  ) : null}
                 </div>
               </article>
             );
