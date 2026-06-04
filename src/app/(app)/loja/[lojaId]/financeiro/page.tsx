@@ -14,7 +14,6 @@ import { inputBase, botaoSuave, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Ca
 export const dynamic = "force-dynamic";
 
 const rotuloMes = (c: string) => rotuloCompetencia(c);
-const rotuloMesCurto = (c: string) => rotuloCompetencia(c, { curto: true });
 
 export default async function FluxoDeCaixaPage({
   params,
@@ -61,33 +60,25 @@ export default async function FluxoDeCaixaPage({
         <Card rotulo="Saldo" valor={resumo.saldo} destaque={saldoNegativo} />
       </section>
 
-      {/* — Tendência dos últimos meses (sem gráfico, DESIGN §13) — */}
+      {/* — Tendência dos últimos meses (sem gráfico, DESIGN §13): o ritmo do caixa como
+          lista quieta — saldo é o ponto; entradas/saídas ficam na sub-linha. — */}
       <section className="flex flex-col gap-3">
-        <SecaoTitulo>Últimos meses</SecaoTitulo>
-        <table className="w-full text-[14px]">
-          <thead>
-            <tr className="border-b border-borda-suave text-left text-[11px] uppercase tracking-[0.14em] text-cinza-fumo">
-              <th className="py-2 font-medium">Mês</th>
-              <th className="py-2 text-right font-medium">Entradas</th>
-              <th className="py-2 text-right font-medium">Saídas</th>
-              <th className="py-2 text-right font-medium">Saldo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tendencia.map((p) => {
-              const atual = p.competencia === competencia;
-              const neg = Number(p.saldo) < 0;
-              return (
-                <tr key={p.competencia} className={`border-b border-borda-suave ${atual ? "bg-bordo/5" : ""}`}>
-                  <td className={`py-2 ${atual ? "text-bordo" : "text-tinta"}`}>{rotuloMesCurto(p.competencia)}</td>
-                  <td className="py-2 text-right tabular-nums text-grafite">{brl(p.entradas)}</td>
-                  <td className="py-2 text-right tabular-nums text-grafite">{brl(p.saidas)}</td>
-                  <td className={`py-2 text-right tabular-nums ${neg ? "text-bordo" : "text-tinta"}`}>{brl(p.saldo)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <SecaoTitulo>O ritmo dos últimos meses</SecaoTitulo>
+        <ol className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+          {tendencia.map((p) => {
+            const atual = p.competencia === competencia;
+            const neg = Number(p.saldo) < 0;
+            return (
+              <li key={p.competencia} className={`flex items-center justify-between gap-4 px-4 py-3 ${atual ? "bg-bordo/5" : ""}`}>
+                <div className="flex min-w-0 flex-col">
+                  <span className={`text-[14px] capitalize ${atual ? "text-bordo" : "text-tinta"}`}>{rotuloMes(p.competencia)}</span>
+                  <span className="text-[12px] tabular-nums text-cinza-fumo">+{brl(p.entradas)} · −{brl(p.saidas)}</span>
+                </div>
+                <span className={`shrink-0 font-display text-[16px] font-light tabular-nums ${neg ? "text-bordo" : "text-tinta"}`}>{brl(p.saldo)}</span>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       {/* — Linha do tempo do mês — */}
