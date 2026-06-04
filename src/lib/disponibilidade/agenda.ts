@@ -7,8 +7,9 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import type { TipoJanela } from "./tipos";
 import { calcularJanelas, FUTURO_DISTANTE } from "./motor";
-import { parseDiaUTC, addDias } from "./datas";
+import { addDias } from "./datas";
 import { obterRegras, toBloqueio } from "./reservas";
+import { hojeUTC } from "@/lib/tempo";
 
 export const ROTULO_JANELA: Record<TipoJanela, string> = {
   preparacao: "Preparação / provas",
@@ -28,18 +29,6 @@ export type EventoAgenda = {
   vestidoCodigo: string;
   noivaNome: string | null;
 };
-
-// Hoje como meia-noite UTC do dia-calendário em São Paulo (mesma convenção do painel
-// e das datas gravadas) — evita off-by-one ao comparar com as janelas projetadas.
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return parseDiaUTC(ymd);
-}
 
 /**
  * Compromissos do atelier que tocam a janela [hoje, hoje+horizonte]. Cada reserva

@@ -5,17 +5,15 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { gradeDeSlots, type Slot } from "./slots";
 import { obterHorarioLoja } from "./cabines";
+import { meiaNoiteUTC, hojeUTC } from "@/lib/tempo";
 import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
 
 // "YYYY-MM-DD" + hora → Date (wall-clock em UTC).
 function instante(dataYMD: string, hora: number): Date {
   return new Date(`${dataYMD}T${String(hora).padStart(2, "0")}:00:00.000Z`);
 }
-function inicioDoDia(dataYMD: string): Date {
-  return new Date(`${dataYMD}T00:00:00.000Z`);
-}
 function fimDoDia(dataYMD: string): Date {
-  const d = inicioDoDia(dataYMD);
+  const d = meiaNoiteUTC(dataYMD);
   d.setUTCDate(d.getUTCDate() + 1);
   return d;
 }
@@ -29,7 +27,7 @@ async function horasOcupadas(
 ): Promise<number[]> {
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
     where: {
-      inicio: { gte: inicioDoDia(dataYMD), lt: fimDoDia(dataYMD) },
+      inicio: { gte: meiaNoiteUTC(dataYMD), lt: fimDoDia(dataYMD) },
       OR: [{ cabineId }, { vendedoraId }],
     },
     select: { inicio: true },
@@ -92,15 +90,9 @@ export type AtendimentoItem = {
   vendedoraNome: string;
 };
 
-// Hoje (meia-noite UTC do dia em SP) — mesma convenção do resto do sistema.
-function inicioDeHojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
-
 export async function listarProximosAtendimentos(lojaId: string): Promise<AtendimentoItem[]> {
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { inicio: { gte: inicioDeHojeUTC() } },
+    where: { inicio: { gte: hojeUTC() } },
     orderBy: { inicio: "asc" },
     include: { lead: { select: { noivaNome: true } }, cabine: { select: { nome: true } }, vendedora: { select: { nome: true } } },
   });

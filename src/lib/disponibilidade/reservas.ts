@@ -8,7 +8,8 @@ import { tenantPrisma } from "@/lib/tenant";
 import type { BloqueioVestido } from "@/generated/prisma/client";
 import type { Bloqueio, Conflito, ErroBloqueio, Regras, TipoJanela } from "./tipos";
 import { vestidoDisponivel, calcularJanelas, FUTURO_DISTANTE } from "./motor";
-import { parseDiaUTC } from "./datas";
+import { diaValido } from "./datas";
+import { meiaNoiteUTC, hojeUTC, ymd } from "@/lib/tempo";
 
 // Defaults espelham os @default do model RegraDisponibilidade — usados quando a
 // loja ainda não personalizou suas regras (linha ausente).
@@ -19,27 +20,6 @@ const REGRAS_PADRAO: Regras = {
   usoDiasDepois: 2,
   lavagemDiasDepois: 7,
 };
-
-// DateTime (meia-noite UTC) → "YYYY-MM-DD". null permanece null.
-function ymd(d: Date | null): string | null {
-  return d ? d.toISOString().slice(0, 10) : null;
-}
-
-// "YYYY-MM-DD" → DateTime em meia-noite UTC (mesma convenção do resto do sistema).
-function meiaNoiteUTC(dia: string): Date {
-  return new Date(`${dia}T00:00:00.000Z`);
-}
-
-// Valida "YYYY-MM-DD" reusando o parser do motor (rejeita formato e datas
-// impossíveis, ex.: 2026-13-40). True = data utilizável.
-function diaValido(s: string): boolean {
-  try {
-    parseDiaUTC(s);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // BloqueioVestido (Prisma) → Bloqueio (motor). Tipo do enum vira a união minúscula.
 // Exportado: a Agenda reusa a mesma conversão (datas.ts ↔ motor num só lugar).
@@ -317,16 +297,6 @@ export type ReservaDaLoja = {
   nome: string;
 };
 
-// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema).
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
 
 /**
  * Livro de reservas da loja, com noiva e vestido. Por padrão traz as

@@ -10,28 +10,13 @@
 // e como DateTime (meia-noite UTC) no banco — mesma convenção de reservas.ts.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { parseDiaUTC } from "@/lib/disponibilidade/datas";
+import { diaValido } from "@/lib/disponibilidade/datas";
+import { meiaNoiteUTC, hojeUTC } from "@/lib/tempo";
 import type {
   ProvaTipo,
   ProvaComparecimento,
   AjusteStatus,
 } from "@/generated/prisma/client";
-
-// "YYYY-MM-DD" → DateTime meia-noite UTC (convenção do sistema).
-function meiaNoiteUTC(dia: string): Date {
-  return new Date(`${dia}T00:00:00.000Z`);
-}
-
-// Valida "YYYY-MM-DD" reusando o parser do motor (rejeita formato e datas
-// impossíveis, ex.: 2026-13-40). True = data utilizável.
-function diaValido(s: string): boolean {
-  try {
-    parseDiaUTC(s);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 const COMPARECIMENTOS_VALIDOS = new Set<ProvaComparecimento>([
   "AGENDADA",
@@ -93,17 +78,6 @@ export async function listarProvasDaReserva(
   }));
 }
 
-// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema,
-// igual a reservas.listarReservasDaLoja).
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
 
 export type ProvaDaLoja = {
   id: string;

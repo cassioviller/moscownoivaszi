@@ -21,6 +21,20 @@ export function parseDiaUTC(s: string): Date {
 }
 
 /**
+ * Valida "YYYY-MM-DD" pelo parser estrito do motor (rejeita formato e datas
+ * impossíveis, ex.: 2026-13-40). True = data utilizável. Mora aqui, junto do
+ * parseDiaUTC que sustenta a regra — antes copiada em reservas.ts e provas.ts.
+ */
+export function diaValido(s: string): boolean {
+  try {
+    parseDiaUTC(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Soma (ou subtrai, com n negativo) dias a uma data em UTC.
  * Recebe sempre uma Date em UTC-meia-noite (de parseDiaUTC ou de outro addDias);
  * setUTCDate trata viradas de mês e ano corretamente.

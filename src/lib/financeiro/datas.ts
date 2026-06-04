@@ -1,20 +1,10 @@
 // src/lib/financeiro/datas.ts
-// Datas do financeiro na convenção do sistema: meia-noite UTC do dia-calendário em SP.
-// Compartilhado por receber (S4) e pagar (S5).
+// Datas do financeiro: a convenção de fuso (meia-noite UTC do dia em SP) mora em @/lib/tempo;
+// aqui ficam o parser estrito (diaParaData) e os utilitários de COMPETÊNCIA ("YYYY-MM"), que
+// são do financeiro/folha/comissão. Reexporta hojeYMD/hojeUTC p/ não quebrar imports de receber/pagar.
+import { hojeYMD, hojeUTC } from "@/lib/tempo";
 
-// "YYYY-MM-DD" do dia-calendário em SP (fonte única da convenção de fuso).
-export function hojeYMD(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-export function hojeUTC(): Date {
-  return new Date(`${hojeYMD()}T00:00:00.000Z`);
-}
+export { hojeYMD, hojeUTC };
 
 // "YYYY-MM-DD" → meia-noite UTC; lança se inválida.
 export function diaParaData(s: string): Date {

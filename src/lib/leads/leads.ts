@@ -8,6 +8,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import type { Lead, Prisma } from "@/generated/prisma/client";
 import { LeadOrigem } from "@/generated/prisma/client";
 import { estagioDaNoiva, type FatosJornada, type EstagioChave } from "./jornada";
+import { hojeUTC } from "@/lib/tempo";
 
 // Lead + presença do interesse (id só, p/ a lista decidir "Preencher" vs "Editar").
 export type LeadListado = Prisma.LeadGetPayload<{ include: { interesse: { select: { id: true } } } }>;
@@ -107,16 +108,6 @@ export async function editarLead(lojaId: string, leadId: string, input: NovaNoiv
   });
 }
 
-// Meia-noite UTC do dia de HOJE no fuso da loja (mesma convenção de painel/reservas).
-function inicioDeHojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
 
 // include mínimo p/ derivar a jornada: interesse (atributos), atendimentos (situação),
 // reservas (datas + provas). Exportado p/ o painel reusar a MESMA derivação (sem cópia).
@@ -167,14 +158,14 @@ export async function fatosDaNoiva(lojaId: string, leadId: string): Promise<Fato
     include: INCLUDE_JORNADA,
   });
   if (!lead) return null;
-  return fatosDeLead(lead, inicioDeHojeUTC());
+  return fatosDeLead(lead, hojeUTC());
 }
 
 export type EstagioResumo = { atual: EstagioChave; encerrada: string | null };
 
 /** Estágio derivado de TODAS as noivas da loja (lote, em memória). */
 export async function estagiosDasNoivas(lojaId: string): Promise<Map<string, EstagioResumo>> {
-  const hoje = inicioDeHojeUTC();
+  const hoje = hojeUTC();
   const leads = await tenantPrisma(prisma, lojaId).lead.findMany({ include: INCLUDE_JORNADA });
   const mapa = new Map<string, EstagioResumo>();
   for (const l of leads) {

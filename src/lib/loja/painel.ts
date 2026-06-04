@@ -17,6 +17,7 @@ import {
   type EstagioChave,
 } from "@/lib/leads/jornada";
 import { fatosDeLead, INCLUDE_JORNADA } from "@/lib/leads/leads";
+import { hojeUTC } from "@/lib/tempo";
 
 // Atenção imediata = casamento muito próximo E ainda com trabalho em aberto
 // (em provas ou orçamento aberto). Heurística de urgência aprovada pelo produto.
@@ -58,21 +59,9 @@ export type PainelLoja = {
   destaque: Destaque | null; // vestido do acervo em destaque (com foto)
 };
 
-// Meia-noite UTC do dia de HOJE no fuso da loja — casa com a convenção de
-// Lead.casamentoData (data-só guardada à meia-noite UTC), evitando off-by-one.
-function inicioDeHojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
-
 export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const db = tenantPrisma(prisma, lojaId);
-  const hoje = inicioDeHojeUTC();
+  const hoje = hojeUTC();
 
   const [leads, vestidos, destaqueRow] = await Promise.all([
     db.lead.findMany({ include: INCLUDE_JORNADA }),
