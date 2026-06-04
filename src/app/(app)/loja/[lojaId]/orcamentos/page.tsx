@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarOrcamentosDaLoja, type OrcamentoResumo } from "@/lib/orcamentos/orcamentos";
+import { brl } from "@/lib/dinheiro";
 import type { OrcamentoStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -26,10 +27,6 @@ const FILTROS: { chave: string; rotulo: string; status?: OrcamentoStatus }[] = [
   { chave: "APROVADO", rotulo: "Aprovados", status: "APROVADO" },
   { chave: "RECUSADO", rotulo: "Recusados", status: "RECUSADO" },
 ];
-
-function brl(v: string): string {
-  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 export default async function OrcamentosPage({
   params,

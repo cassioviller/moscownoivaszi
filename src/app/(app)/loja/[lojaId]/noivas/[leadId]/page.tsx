@@ -31,6 +31,7 @@ import {
 } from "./reserva-actions";
 import { ReservaLivreInline } from "@/components/disponibilidade/reserva-livre-inline";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
+import { brl } from "@/lib/dinheiro";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,6 @@ const ROTULO_STATUS_ORC: Record<string, string> = {
   RECUSADO: "Recusado",
 };
 const ROTULO_STATUS_CONTR: Record<string, string> = { ATIVO: "Ativo", CANCELADO: "Cancelado" };
-const brlNoiva = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 // UTC: a data nasce em meia-noite UTC (leads.ts) — exibir em UTC evita off-by-one.
 const dataFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -224,7 +224,7 @@ export default async function NoivaPage({
                       {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "item" : "itens"}
                     </span>
                     <span className="font-display text-[14px] font-light tabular-nums text-tinta">
-                      {Number(o.total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {brl(o.total)}
                     </span>
                   </Link>
                 </li>
@@ -262,7 +262,7 @@ export default async function NoivaPage({
                     <span className={`text-[13px] ${c.status === "CANCELADO" ? "text-cinza-fumo line-through" : "text-grafite"}`}>
                       {ROTULO_STATUS_CONTR[c.status]}
                     </span>
-                    <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brlNoiva(c.valorTotal)}</span>
+                    <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brl(c.valorTotal)}</span>
                   </Link>
                 </li>
               ))}

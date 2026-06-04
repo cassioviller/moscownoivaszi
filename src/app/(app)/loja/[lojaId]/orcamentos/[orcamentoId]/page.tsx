@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterOrcamento } from "@/lib/orcamentos/orcamentos";
+import { brl } from "@/lib/dinheiro";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import type { OrcamentoItemTipo, OrcamentoStatus } from "@/generated/prisma/client";
 import {
@@ -50,10 +51,6 @@ const AVISOS: Record<string, string> = {
   ja_tem_contrato: "Este orçamento já gerou um contrato.",
   nao_aprovado: "Aprove o orçamento antes de gerar o contrato.",
 };
-
-function brl(v: string): string {
-  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 const inputBase =
   "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta " +

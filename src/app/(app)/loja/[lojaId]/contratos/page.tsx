@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarContratosDaLoja, type ContratoResumo } from "@/lib/contratos/contratos";
+import { brl } from "@/lib/dinheiro";
 import type { ContratoStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +19,6 @@ const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
   { chave: "ATIVO", rotulo: "Ativos", status: "ATIVO" },
   { chave: "CANCELADO", rotulo: "Cancelados", status: "CANCELADO" },
 ];
-
-const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default async function ContratosPage({
   params,

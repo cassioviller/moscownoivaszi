@@ -8,6 +8,7 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterContrato } from "@/lib/contratos/contratos";
 import { listarParcelasDoContrato } from "@/lib/financeiro/receber";
+import { brl } from "@/lib/dinheiro";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { editarContratoAction, cancelarContratoAction } from "../actions";
 import {
@@ -87,7 +88,6 @@ export default async function ContratoDetalhePage({
   const voltar = `/loja/${lojaId}/contratos/${contratoId}`;
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
   const podeMexer = podeEditar && c.editavel;
-  const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const ymdFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
   const totalPlano = parcelas.reduce((s, p) => s + Math.round(Number(p.valorPrevisto) * 100), 0);
   const planoDivergente = parcelas.length > 0 && totalPlano !== Math.round(Number(c.valorTotal) * 100);
