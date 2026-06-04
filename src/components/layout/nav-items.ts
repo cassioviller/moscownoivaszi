@@ -72,12 +72,13 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
     acervo.push({ href: loja("/catalogo"), label: "Catálogo" });
   }
 
-  // FINANCEIRO — módulo próprio (dado sensível): receber, pagar e fluxo de caixa.
+  // FINANCEIRO — módulo próprio (dado sensível): receber, pagar, comissões e fluxo de caixa.
   const financeiro: NavItem[] = [];
   if (flags.podeVerFinanceiro) {
     financeiro.push(
       { href: loja("/financeiro/receber"), label: "Contas a receber" },
       { href: loja("/financeiro/pagar"), label: "Contas a pagar" },
+      { href: loja("/financeiro/comissoes"), label: "Comissões" },
       // Fluxo de caixa é a raiz /financeiro; exact p/ não acender em /receber e /pagar.
       { href: loja("/financeiro"), label: "Fluxo de caixa", exact: true },
     );

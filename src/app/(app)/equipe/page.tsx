@@ -2,7 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { ehAdminDaLoja, listarEquipe } from "@/lib/admin/usuarios";
+import { podeNoModulo } from "@/lib/permissoes/modulos";
+import { previewComissao } from "@/lib/financeiro/comissao";
+import { hojeYMD } from "@/lib/financeiro/datas";
 import { VendedoraForm } from "./vendedora-form";
+
+const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default async function EquipePage({
   searchParams,
@@ -15,7 +20,16 @@ export default async function EquipePage({
   if (!(await ehAdminDaLoja(sc.usuario.id, sc.loja.id))) redirect("/");
 
   const { ok, erro } = await searchParams;
-  const equipe = await listarEquipe(sc.loja.id);
+  // Comissão do mês ao vivo por membro (preview, não grava). Só quem pode ver o Financeiro
+  // enxerga o número — dado sensível; sem permissão, a lista some sem ruído.
+  const competencia = hojeYMD().slice(0, 7);
+  const [equipe, podeVerFinanceiro] = await Promise.all([
+    listarEquipe(sc.loja.id),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"),
+  ]);
+  const comissaoPorMembro = podeVerFinanceiro
+    ? new Map((await previewComissao(sc.loja.id, competencia)).map((l) => [l.vendedoraId, l.total]))
+    : new Map<string, string>();
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10 flex flex-col gap-10">
@@ -57,10 +71,25 @@ export default async function EquipePage({
                   <span className="text-[14px] text-tinta">{m.nome}</span>
                   <span className="text-[12px] text-cinza-fumo">{m.email}</span>
                 </span>
-                <span className="text-[12px] text-grafite">{m.perfil}</span>
+                <span className="flex flex-col items-end gap-0.5">
+                  <span className="text-[12px] text-grafite">{m.perfil}</span>
+                  {comissaoPorMembro.has(m.id) && (
+                    <span className="text-[12px] tabular-nums text-bordo">
+                      {brl(comissaoPorMembro.get(m.id)!)} este mês
+                    </span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
+        )}
+        {podeVerFinanceiro && (
+          <Link
+            href={`/loja/${sc.loja.id}/financeiro/comissoes`}
+            className="w-fit text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo"
+          >
+            Ver ranking de comissões →
+          </Link>
         )}
       </section>
 
