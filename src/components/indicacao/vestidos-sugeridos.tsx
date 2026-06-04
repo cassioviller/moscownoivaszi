@@ -48,12 +48,12 @@ export function VestidosSugeridos({
         </p>
       )}
 
-      <ul className="flex flex-col gap-3">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {vestidos.map((v) => (
           <li
             key={v.id}
-            className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave
-              bg-papel-elevado px-5 py-4 shadow-[var(--mn-shadow-soft)]
+            className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave
+              bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]
               transition-shadow duration-200 ease-out hover:shadow-[var(--mn-shadow-hover)]"
           >
             <div className="flex items-baseline justify-between gap-4">
