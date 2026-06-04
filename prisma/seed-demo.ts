@@ -39,19 +39,20 @@ const prisma = new PrismaClient({ adapter });
 
 const LOJA_ID = "loja-moscow";
 
-// ╔═══════════════════════════════════════════════════════════════════════════╗
-// ║  DATA-BASE DA DEMO — TROQUE AQUI para deslocar TODA a demonstração no tempo. ║
-// ║  Tudo (casamentos, reservas, manutenções, provas) é calculado RELATIVO a    ║
-// ║  esta data. É também a "data movimentada" do roteiro (12+ vestidos presos). ║
-// ╚═══════════════════════════════════════════════════════════════════════════╝
-const DEMO_BASE_DATE = "2026-09-12"; // sábado — alta temporada de casamentos
-
 // ── Helpers de data (UTC, sem off-by-one — mesma convenção do resto do sistema) ──
 function addDias(isoBase: string, n: number): string {
   const d = new Date(`${isoBase}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  DATA-BASE DA DEMO — relativa a HOJE para a demo ficar sempre "atual": o      ║
+// ║  cluster de casamentos cai ~7 semanas à frente, DENTRO da janela de 60 dias   ║
+// ║  da Agenda (senão ela aparece vazia). Tudo (casamentos, reservas, manutenções,║
+// ║  provas) é RELATIVO a esta data. Troque o +50 para deslocar TODA a demo.      ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+const DEMO_BASE_DATE = addDias(new Date().toISOString().slice(0, 10), 50);
 function meiaNoiteUTC(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);
 }
