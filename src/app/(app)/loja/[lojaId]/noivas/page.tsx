@@ -3,7 +3,7 @@ import Link from "next/link";
 import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarLeads, estagiosDasNoivas } from "@/lib/leads/leads";
-import { ROTULO_ESTAGIO } from "@/lib/leads/jornada";
+import { ESTAGIOS, ROTULO_ESTAGIO, type EstagioChave } from "@/lib/leads/jornada";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { marcarPerdidaAction } from "./[leadId]/jornada-actions";
 
@@ -29,7 +29,7 @@ export default async function NoivasPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ ok?: string; filtro?: string }>;
+  searchParams: Promise<{ ok?: string; filtro?: string; etapa?: string }>;
 }) {
   const sc = await exigirAcesso("leads");
 
@@ -51,7 +51,10 @@ export default async function NoivasPage({
   const contagem: Record<string, number> = { ativas: 0, concluidas: 0, desativadas: 0 };
   for (const n of noivas) contagem[estadoDe(n.id)]++;
   const filtro: Filtro = (FILTROS as readonly string[]).includes(sp.filtro ?? "") ? (sp.filtro as Filtro) : "ativas";
-  const visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.id) === filtro);
+  // Filtro fino por ETAPA da jornada (compõe com o estado). "" = todas as etapas.
+  const etapa: EstagioChave | "" = (ESTAGIOS as readonly string[]).includes(sp.etapa ?? "") ? (sp.etapa as EstagioChave) : "";
+  let visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.id) === filtro);
+  if (etapa) visiveis = visiveis.filter((n) => estagios.get(n.id)?.atual === etapa);
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
@@ -86,27 +89,53 @@ export default async function NoivasPage({
         </div>
       ) : (
         <>
-          <nav className="flex flex-wrap gap-2">
-            {FILTROS.map((f) => {
-              const ativo = f === filtro;
-              const qtd = f === "todas" ? noivas.length : contagem[f];
-              return (
-                <Link
-                  key={f}
-                  href={`/loja/${lojaId}/noivas?filtro=${f}`}
-                  className={[
-                    "inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] transition-colors duration-150",
-                    ativo
-                      ? "border-bordo bg-bordo/5 text-bordo"
-                      : "border-borda-suave bg-papel text-grafite hover:border-cinza-fumo hover:text-tinta",
-                  ].join(" ")}
-                >
-                  {ROTULO_FILTRO[f]}
-                  {qtd > 0 ? ` · ${qtd}` : ""}
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <nav className="flex flex-wrap gap-2">
+              {FILTROS.map((f) => {
+                const ativo = f === filtro;
+                const qtd = f === "todas" ? noivas.length : contagem[f];
+                const href = `/loja/${lojaId}/noivas?filtro=${f}${etapa ? `&etapa=${etapa}` : ""}`;
+                return (
+                  <Link
+                    key={f}
+                    href={href}
+                    className={[
+                      "inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] transition-colors duration-150",
+                      ativo
+                        ? "border-bordo bg-bordo/5 text-bordo"
+                        : "border-borda-suave bg-papel text-grafite hover:border-cinza-fumo hover:text-tinta",
+                    ].join(" ")}
+                  >
+                    {ROTULO_FILTRO[f]}
+                    {qtd > 0 ? ` · ${qtd}` : ""}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Filtro fino por etapa da jornada (GET, sem JS) — preserva o estado escolhido. */}
+            <form method="get" className="flex items-center gap-2">
+              <input type="hidden" name="filtro" value={filtro} />
+              <label htmlFor="etapa" className="text-[12px] uppercase tracking-[0.14em] text-cinza-fumo">Etapa</label>
+              <select
+                id="etapa"
+                name="etapa"
+                defaultValue={etapa}
+                className="min-h-9 rounded-md border border-borda bg-papel-elevado px-2.5 text-[13px] text-tinta focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              >
+                <option value="">Todas</option>
+                {ESTAGIOS.map((e) => (
+                  <option key={e} value={e}>{ROTULO_ESTAGIO[e]}</option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="inline-flex min-h-9 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              >
+                Filtrar
+              </button>
+            </form>
+          </div>
 
           {visiveis.length === 0 ? (
             <p className="text-[14px] text-cinza-fumo">Nenhuma noiva nesta lente no momento.</p>
