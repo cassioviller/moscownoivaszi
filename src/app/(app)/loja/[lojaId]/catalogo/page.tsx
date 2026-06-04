@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/catalogo/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarAtributosAdmin } from "@/lib/catalogo/catalogo";
 
@@ -14,9 +14,7 @@ export default async function CatalogoPage({
   params: Promise<{ lojaId: string }>;
   searchParams: Promise<{ ok?: string }>;
 }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "config", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("config");
 
   const { lojaId } = await params;
   const { ok } = await searchParams;

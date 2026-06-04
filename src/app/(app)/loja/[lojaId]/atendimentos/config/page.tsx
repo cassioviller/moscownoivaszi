@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/atendimentos/config/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarCabines, obterHorarioLoja } from "@/lib/atendimentos/cabines";
 import { criarCabineAction, alternarCabineAction, salvarHorarioAction } from "./actions";
@@ -25,9 +25,7 @@ const acao =
 export default async function ConfigAtendimentosPage({
   params, searchParams,
 }: { params: Promise<{ lojaId: string }>; searchParams: Promise<{ ok?: string; erro?: string }> }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "config", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("config");
   const { lojaId } = await params;
   const { ok, erro } = await searchParams;
 

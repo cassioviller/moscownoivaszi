@@ -4,8 +4,7 @@
 // atendimento ou do perfil da noiva (não há "novo" solto aqui). Gate em leads:ver.
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
-import { podeNoModulo } from "@/lib/permissoes/modulos";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { listarOrcamentosDaLoja, type OrcamentoResumo } from "@/lib/orcamentos/orcamentos";
 import { brl } from "@/lib/dinheiro";
 import type { OrcamentoStatus } from "@/generated/prisma/client";
@@ -35,9 +34,7 @@ export default async function OrcamentosPage({
   params: Promise<{ lojaId: string }>;
   searchParams: Promise<{ status?: string }>;
 }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("leads");
 
   const { lojaId } = await params;
   const { status } = await searchParams;

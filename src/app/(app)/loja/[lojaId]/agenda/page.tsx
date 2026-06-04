@@ -4,8 +4,7 @@
 // mês: o que pede a mão do atelier, em ordem. Gate em leads:ver.
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
-import { podeNoModulo } from "@/lib/permissoes/modulos";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { agendaDoAtelier, type EventoAgenda } from "@/lib/disponibilidade/agenda";
 
 export const dynamic = "force-dynamic";
@@ -68,9 +67,7 @@ function agruparAgenda(eventos: EventoAgenda[]): GrupoAgenda[] {
 }
 
 export default async function AgendaPage({ params }: { params: Promise<{ lojaId: string }> }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("leads");
 
   const { lojaId } = await params;
   const eventos = await agendaDoAtelier(sc.loja.id, HORIZONTE_DIAS);

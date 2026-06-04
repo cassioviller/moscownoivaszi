@@ -5,8 +5,7 @@
 // reservado à urgência (casamento próximo), não a toda data. Gate em leads:ver.
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
-import { podeNoModulo } from "@/lib/permissoes/modulos";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { listarReservasDaLoja, type ReservaDaLoja } from "@/lib/disponibilidade/reservas";
 import { estagiosDasNoivas } from "@/lib/leads/leads";
 import { ROTULO_ESTAGIO } from "@/lib/leads/jornada";
@@ -58,9 +57,7 @@ export default async function ReservasPage({
   params: Promise<{ lojaId: string }>;
   searchParams: Promise<{ quando?: string }>;
 }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("leads");
 
   const { lojaId } = await params;
   const { quando } = await searchParams;

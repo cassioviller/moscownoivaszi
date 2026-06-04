@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/atendimentos/novo/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarLeads } from "@/lib/leads/leads";
 import { listarEquipe } from "@/lib/admin/usuarios";
@@ -19,9 +19,7 @@ const dataHora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "shor
 export default async function NovoAtendimentoPage({
   params, searchParams,
 }: { params: Promise<{ lojaId: string }>; searchParams: Promise<{ noiva?: string; ok?: string }> }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("leads");
   const { lojaId } = await params;
   const { noiva, ok } = await searchParams;
 

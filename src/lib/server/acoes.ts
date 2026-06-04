@@ -12,9 +12,21 @@ import { podeNoModulo, type Modulo, type Acao } from "@/lib/permissoes/modulos";
 export type CtxAcao = NonNullable<Awaited<ReturnType<typeof getSessaoComLoja>>>;
 
 /**
- * Embrulha uma Server Action com o gate de segurança. Sem sessão → /login; sem permissão
- * no (módulo, ação) → volta pro início da loja. O corpo recebe o ctx e o FormData e cuida
- * do próprio redirect de resultado (que varia por ação).
+ * Gate de acesso de loja: sessão válida + permissão no (módulo, ação). Sem sessão → /login;
+ * sem permissão → início da loja. Devolve o ctx (sessão+usuário+loja). É o invariante que o
+ * lado de AÇÕES (acaoAutorizada) e o de LEITURA (exigirAcesso) compartilham. Para páginas com
+ * gate de OR (ex.: leads:ver OU ajustes:ver) ou afim, fazer o gate à mão.
+ */
+export async function exigirAcesso(modulo: Modulo, acao: Acao = "ver"): Promise<CtxAcao> {
+  const sc = await getSessaoComLoja();
+  if (!sc) redirect("/login");
+  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, modulo, acao))) redirect(`/loja/${sc.loja.id}`);
+  return sc;
+}
+
+/**
+ * Embrulha uma Server Action com o gate de segurança (via exigirAcesso). O corpo recebe o
+ * ctx e o FormData e cuida do próprio redirect de resultado (que varia por ação).
  */
 export function acaoAutorizada(
   modulo: Modulo,
@@ -22,9 +34,7 @@ export function acaoAutorizada(
   corpo: (ctx: CtxAcao, fd: FormData) => Promise<void>,
 ): (fd: FormData) => Promise<void> {
   return async (fd: FormData) => {
-    const sc = await getSessaoComLoja();
-    if (!sc) redirect("/login");
-    if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, modulo, acao))) redirect(`/loja/${sc.loja.id}`);
+    const sc = await exigirAcesso(modulo, acao);
     await corpo(sc, fd);
   };
 }

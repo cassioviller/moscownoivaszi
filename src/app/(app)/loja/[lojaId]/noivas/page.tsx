@@ -1,7 +1,7 @@
 // src/app/(app)/loja/[lojaId]/noivas/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarLeads, estagiosDasNoivas } from "@/lib/leads/leads";
 import { ROTULO_ESTAGIO } from "@/lib/leads/jornada";
@@ -23,9 +23,7 @@ export default async function NoivasPage({
   params: Promise<{ lojaId: string }>;
   searchParams: Promise<{ ok?: string }>;
 }) {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) redirect(`/loja/${sc.loja.id}`);
+  const sc = await exigirAcesso("leads");
 
   const { lojaId } = await params;
   const { ok } = await searchParams;
