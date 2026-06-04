@@ -6,20 +6,9 @@
 
 import { redirect } from "next/navigation";
 import { definirRegra, removerRegra, fecharCompetencia, type FaixaInput } from "@/lib/financeiro/comissao";
-import { caminhoInternoSeguro } from "@/lib/url-interna";
 import { acaoAutorizada } from "@/lib/server/acoes";
+import { str, comAviso, destino } from "@/lib/server/form";
 
-function str(fd: FormData, k: string): string {
-  return String(fd.get(k) ?? "").trim();
-}
-function destino(fd: FormData, lojaId: string, fallback: string): string {
-  return caminhoInternoSeguro(str(fd, "voltar"), lojaId, fallback);
-}
-function comAviso(base: string, chave: "ok" | "erro", valor: string): string {
-  return `${base}${base.includes("?") ? "&" : "?"}${chave}=${valor}`;
-}
-
-// SPIKE fase 2: prova do HOF acaoAutorizada como Server Action neste Next.
 export const fecharCompetenciaAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const volta = destino(formData, lojaId, `/loja/${lojaId}/financeiro/comissoes`);
