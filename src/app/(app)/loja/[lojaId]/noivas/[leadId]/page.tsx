@@ -127,8 +127,9 @@ export default async function NoivaPage({
   const lead = dados.lead;
   const i = dados.interesse;
 
-  const [podeEditar, iVer, iCriar, iEditar, podeReservar, reservas, orcamentos, contratos] = await Promise.all([
+  const [podeEditar, podeCriar, iVer, iCriar, iEditar, podeReservar, reservas, orcamentos, contratos] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "ver"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "editar"),
@@ -142,6 +143,7 @@ export default async function NoivaPage({
   const fatos = await fatosDaNoiva(sc.loja.id, leadId);
   const { passos, atual, encerrada } = estagioDaNoiva(fatos!); // lead existe → fatos != null
   const concluida = encerrada === "Devolvido"; // fim positivo (devolução): nada a desativar
+  const ativa = encerrada === null; // agendar/atender só faz sentido na jornada viva
 
   // Indicação só faz sentido (e só roda a query) se a equipe pode ver interesses.
   const sugeridos = iVer ? await indicarVestidos(sc.loja.id, leadId) : [];
@@ -176,6 +178,11 @@ export default async function NoivaPage({
     "decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta " +
     "hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 " +
     "focus-visible:outline-bordo";
+  // Botão dos blocos de ação (Agendar / Interesses): alvo claro, bordô no hover.
+  const botaoBloco =
+    "inline-flex min-h-9 w-fit items-center rounded-md border border-borda px-3 text-[13px] text-tinta " +
+    "transition-colors duration-150 hover:border-bordo hover:text-bordo focus-visible:outline-2 " +
+    "focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
@@ -196,11 +203,6 @@ export default async function NoivaPage({
           {podeEditar && (
             <Link href={editarHref} className={acaoLink}>Editar dados</Link>
           )}
-          {(iMexer || iVer) && (
-            <Link href={interessesHref} className={acaoLink}>
-              {iMexer ? (i ? "Editar interesses" : "Preencher interesses") : "Ver interesses"}
-            </Link>
-          )}
           {concluida ? (
             <span className="text-[12px] text-cinza-fumo">Jornada concluída</span>
           ) : podeEditar ? (
@@ -216,6 +218,26 @@ export default async function NoivaPage({
 
       {/* Grade de blocos de detalhe (2 colunas no desktop) */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        {/* Agendar — vai para a tela de agenda com a noiva já selecionada */}
+        {podeCriar && ativa && (
+          <Bloco titulo="Agendar atendimento">
+            <p className="text-[13px] text-cinza-fumo">Marque a próxima visita ao atelier — a noiva já vem selecionada.</p>
+            <Link href={`/loja/${lojaId}/atendimentos/novo?noiva=${leadId}`} className={botaoBloco}>Agendar atendimento →</Link>
+          </Bloco>
+        )}
+
+        {/* Interesses — bloco de ação (espelha o Agendar) */}
+        {(iMexer || iVer) && (
+          <Bloco titulo="Interesses">
+            <p className="text-[13px] text-cinza-fumo">
+              {temInteressePreenchido ? "Desejos da noiva registrados — base das sugestões de vestido." : "Ainda não preenchidos. Registre para ver os vestidos que combinam."}
+            </p>
+            <Link href={interessesHref} className={botaoBloco}>
+              {iMexer ? (i ? "Editar interesses" : "Preencher interesses") : "Ver interesses"} →
+            </Link>
+          </Bloco>
+        )}
+
         {/* O casamento */}
         {lead.casamentoData && (
           <Bloco
