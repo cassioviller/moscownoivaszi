@@ -295,7 +295,8 @@ export type OrcamentoItemView = {
   tipo: OrcamentoItemTipo;
   vestidoId: string | null;
   descricao: string;
-  valorUnitario: string;
+  valorPadrao: string | null; // preço de tabela do vestido (referência); null se não for vestido
+  valorUnitario: string; // o valor combinado com a noiva
   quantidade: number;
   subtotal: string;
 };
@@ -323,7 +324,7 @@ export async function obterOrcamento(lojaId: string, orcamentoId: string): Promi
     include: {
       lead: { select: { noivaNome: true } },
       vendedora: { select: { nome: true } },
-      itens: { orderBy: { createdAt: "asc" } },
+      itens: { orderBy: { createdAt: "asc" }, include: { vestido: { select: { precoBase: true } } } },
       contrato: { select: { id: true } },
     },
   });
@@ -345,6 +346,7 @@ export async function obterOrcamento(lojaId: string, orcamentoId: string): Promi
       tipo: it.tipo,
       vestidoId: it.vestidoId,
       descricao: it.descricao,
+      valorPadrao: it.vestido?.precoBase != null ? Number(it.vestido.precoBase).toFixed(2) : null,
       valorUnitario: Number(it.valorUnitario).toFixed(2),
       quantidade: it.quantidade,
       subtotal: deCentavos(decParaCentavos(it.valorUnitario) * it.quantidade),

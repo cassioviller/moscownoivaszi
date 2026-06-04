@@ -12,7 +12,6 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterNoivaComInteresse } from "@/lib/leads/interesses";
-import { indicarVestidos } from "@/lib/indicacao/indicacao";
 import { ROTULO_ORIGEM, fatosDaNoiva } from "@/lib/leads/leads";
 import { estagioDaNoiva, ROTULO_ESTAGIO } from "@/lib/leads/jornada";
 import { marcarPerdidaAction } from "./jornada-actions";
@@ -21,9 +20,7 @@ import { gerarContratoDaNoivaAction } from "../../contratos/actions";
 import { listarOrcamentosDaNoiva } from "@/lib/orcamentos/orcamentos";
 import { listarContratosDaNoiva } from "@/lib/contratos/contratos";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
-import { PainelVazio } from "@/components/dashboard/painel-vazio";
-import { VestidosSugeridos } from "@/components/indicacao/vestidos-sugeridos";
-import { listarReservasDaNoiva, vestidosLivresEntre } from "@/lib/disponibilidade/reservas";
+import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
 import {
   reservarPelaNoivaAction,
   cancelarReservaPelaNoivaAction,
@@ -57,8 +54,6 @@ const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
-// Compacto p/ caber no botão "Reservar para 12/09".
-const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
 
 // Mensagem humana para o retorno das ações de reserva (?ok / ?erro).
 const AVISOS: Record<string, string> = {
@@ -144,19 +139,8 @@ export default async function NoivaPage({
   const { passos, atual, encerrada } = estagioDaNoiva(fatos!); // lead existe → fatos != null
   const concluida = encerrada === "Devolvido"; // fim positivo (devolução): nada a desativar
   const ativa = encerrada === null; // agendar/atender só faz sentido na jornada viva
-
-  // Indicação só faz sentido (e só roda a query) se a equipe pode ver interesses.
-  const sugeridos = iVer ? await indicarVestidos(sc.loja.id, leadId) : [];
+  // Os vestidos indicados agora vivem dentro do Atendimento (não mais no perfil).
   const temInteressePreenchido = (i?.atributos.length ?? 0) > 0;
-
-  // Para os botões "Reservar" nas sugestões: checagem ALVO (só os vestidos sugeridos),
-  // barata a cada carregamento. A lista completa de livres é buscada sob demanda
-  // (ReservaLivreInline), evitando varrer o acervo quando ninguém vai reservar.
-  const dia = lead.casamentoData ? lead.casamentoData.toISOString().slice(0, 10) : null;
-  const livresSugeridosIds =
-    podeReservar && dia && sugeridos.length > 0
-      ? await vestidosLivresEntre(sc.loja.id, dia, sugeridos.map((s) => s.id))
-      : [];
 
   const editarHref = `/loja/${lojaId}/noivas/${leadId}/editar`;
   const interessesHref = `/loja/${lojaId}/noivas/${leadId}/interesses`;
@@ -276,18 +260,18 @@ export default async function NoivaPage({
           </Bloco>
         )}
 
-        {/* Orçamentos */}
+        {/* Atendimentos — escolher vestido(s) + valor combinado (era "orçamento") */}
         {(orcamentos.length > 0 || podeEditar) && (
-          <Bloco titulo="Orçamentos">
+          <Bloco titulo="Atendimentos">
             {orcamentos.length === 0 ? (
-              <p className="text-[13px] text-cinza-fumo">Nenhum orçamento ainda.</p>
+              <p className="text-[13px] text-cinza-fumo">Nenhum atendimento ainda. Inicie para escolher o vestido e o valor.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-borda-suave">
                 {orcamentos.map((o) => (
                   <li key={o.id}>
                     <Link href={`/loja/${lojaId}/orcamentos/${o.id}`} className="flex items-center justify-between gap-3 py-2.5 transition-colors duration-150 hover:text-bordo">
                       <span className="text-[13px] text-grafite">
-                        {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "item" : "itens"}
+                        {ROTULO_STATUS_ORC[o.status]} · {o.qtdItens} {o.qtdItens === 1 ? "vestido" : "vestidos"}
                       </span>
                       <span className="font-display text-[14px] font-light tabular-nums text-tinta">{brl(o.total)}</span>
                     </Link>
@@ -295,11 +279,11 @@ export default async function NoivaPage({
                 ))}
               </ul>
             )}
-            {podeEditar && (
+            {podeEditar && ativa && (
               <form action={criarOrcamentoAction}>
                 <input type="hidden" name="leadId" value={leadId} />
-                <button type="submit" className="inline-flex min-h-9 w-fit items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
-                  Abrir orçamento
+                <button type="submit" className="inline-flex min-h-9 w-fit items-center rounded-md border border-borda px-3 text-[13px] text-tinta transition-colors duration-150 hover:border-bordo hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                  Iniciar atendimento →
                 </button>
               </form>
             )}
@@ -378,35 +362,7 @@ export default async function NoivaPage({
         </Bloco>
       )}
 
-      {/* Vestidos do acervo que combinam — largura total */}
-      {iVer &&
-        (sugeridos.length > 0 ? (
-          <VestidosSugeridos
-            vestidos={sugeridos}
-            naoQuerUsar={i?.naoQuerUsar}
-            reserva={
-              podeReservar && lead.casamentoData
-                ? {
-                    action: reservarPelaNoivaAction,
-                    leadId,
-                    livresIds: livresSugeridosIds,
-                    reservadosIds: reservas.map((r) => r.vestidoId),
-                    dataLabel: lead.casamentoData ? diaMes.format(lead.casamentoData) : undefined,
-                  }
-                : undefined
-            }
-          />
-        ) : (
-          <PainelVazio
-            titulo="Vestidos para esta noiva"
-            mensagem={
-              temInteressePreenchido
-                ? "Por enquanto nenhum vestido do acervo combina com os interesses dela. Revise os interesses ou cadastre novos modelos."
-                : "Os interesses dela ainda não foram registrados. Preencha para ver os vestidos que combinam."
-            }
-            acao={iMexer ? { href: interessesHref, label: "Preencher interesses" } : undefined}
-          />
-        ))}
+      {/* Os vestidos indicados moveram-se para dentro do Atendimento (escolher peça + valor). */}
 
       <footer className="border-t border-borda-suave pt-4">
         <p className="text-[11px] text-cinza-fumo">Adicionada via {ROTULO_ORIGEM[lead.origem]}</p>

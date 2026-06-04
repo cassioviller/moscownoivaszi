@@ -7,14 +7,14 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterOrcamento } from "@/lib/orcamentos/orcamentos";
+import { indicarVestidos } from "@/lib/indicacao/indicacao";
 import { brl } from "@/lib/dinheiro";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
-import type { OrcamentoItemTipo, OrcamentoStatus } from "@/generated/prisma/client";
+import type { OrcamentoStatus } from "@/generated/prisma/client";
 import {
   adicionarItemAction,
   editarItemAction,
   removerItemAction,
-  definirDescontoAction,
   mudarStatusAction,
 } from "../actions";
 import { gerarContratoDeOrcamentoAction } from "../../contratos/actions";
@@ -27,13 +27,6 @@ const ROTULO_STATUS: Record<OrcamentoStatus, string> = {
   APROVADO: "Aprovado",
   RECUSADO: "Recusado",
 };
-const ROTULO_TIPO: Record<OrcamentoItemTipo, string> = {
-  VESTIDO: "Vestido",
-  SERVICO: "Serviço",
-  AJUSTE: "Ajuste",
-};
-const TIPOS: OrcamentoItemTipo[] = ["VESTIDO", "SERVICO", "AJUSTE"];
-
 const AVISOS: Record<string, string> = {
   item: "Item atualizado.",
   item_removido: "Item removido.",
@@ -89,6 +82,11 @@ export default async function OrcamentoDetalhePage({
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
   const podeMexer = podeEditar && orc.editavel;
 
+  // Vestidos indicados para a noiva (a mesma indicação que antes vivia no perfil) —
+  // é a partir deles que se escolhe a peça e o valor combinado no atendimento.
+  const sugeridos = orc.leadId ? await indicarVestidos(sc.loja.id, orc.leadId) : [];
+  const adicionadosIds = new Set(orc.itens.map((it) => it.vestidoId).filter((x): x is string => !!x));
+
   const STATUS_CLASSE: Record<OrcamentoStatus, string> = {
     RASCUNHO: "border-borda-suave bg-papel text-grafite",
     ENVIADO: "border-champagne/60 bg-papel text-bordo",
@@ -96,21 +94,21 @@ export default async function OrcamentoDetalhePage({
     RECUSADO: "border-borda bg-papel text-cinza-fumo",
   };
 
+  const interessesHref = orc.leadId ? `/loja/${lojaId}/noivas/${orc.leadId}/interesses` : null;
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
-      <Link href={`/loja/${lojaId}/orcamentos`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
-        ← Orçamentos
+      <Link
+        href={orc.leadId ? `/loja/${lojaId}/noivas/${orc.leadId}` : `/loja/${lojaId}/orcamentos`}
+        className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta"
+      >
+        ← {orc.noivaNome ?? "Noivas"}
       </Link>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="font-display text-[26px] font-light leading-tight tracking-tight text-tinta">
-            Orçamento de{" "}
-            {orc.leadId ? (
-              <Link href={`/loja/${lojaId}/noivas/${orc.leadId}`} className="hover:text-bordo">{orc.noivaNome ?? "Noiva"}</Link>
-            ) : (
-              orc.noivaNome ?? "Noiva"
-            )}
+            Atendimento de {orc.noivaNome ?? "Noiva"}
           </h1>
           <p className="text-[13px] text-cinza-fumo">Vendedora: {orc.vendedoraNome}</p>
         </div>
@@ -121,116 +119,122 @@ export default async function OrcamentoDetalhePage({
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
-      {/* Itens — leitura limpa; edição sob demanda (clica no item para abrir) */}
+      {/* Vestidos escolhidos — o que ficou do atendimento: peça + valor combinado */}
       <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Itens</h2>
-          {podeMexer && orc.itens.length > 0 && <span className="text-[11px] text-cinza-fumo">clique para editar</span>}
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Vestidos escolhidos</h2>
+          {podeMexer && orc.itens.length > 0 && <span className="text-[11px] text-cinza-fumo">clique para ajustar o valor</span>}
         </div>
 
         {orc.itens.length === 0 ? (
-          <p className="text-[14px] text-cinza-fumo">Nenhum item ainda. Comece adicionando o vestido.</p>
+          <p className="text-[14px] text-cinza-fumo">Nenhum vestido escolhido ainda. Adicione a partir dos indicados, abaixo.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-borda-suave">
-            {orc.itens.map((it) => {
-              const Linha = (
-                <>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-[15px] text-tinta">{it.descricao}</span>
-                    <span className="text-[12px] text-cinza-fumo">{ROTULO_TIPO[it.tipo]} · {brl(it.valorUnitario)} × {it.quantidade}</span>
-                  </div>
-                  <span className="shrink-0 font-display text-[15px] font-light tabular-nums text-tinta">{brl(it.subtotal)}</span>
-                </>
-              );
-              return (
-                <li key={it.id}>
-                  {podeMexer ? (
-                    <details className="group">
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 marker:content-[''] hover:[&_span:first-child]:text-bordo">
-                        {Linha}
-                        <span aria-hidden className="shrink-0 text-cinza-fumo transition-transform duration-150 group-open:rotate-180">▾</span>
-                      </summary>
-                      <div className="flex flex-wrap items-end gap-2 border-t border-borda-suave pb-3 pt-3">
-                        <form action={editarItemAction} className="flex flex-wrap items-end gap-2">
-                          <input type="hidden" name="orcamentoId" value={orc.id} />
-                          <input type="hidden" name="itemId" value={it.id} />
-                          <input name="descricao" defaultValue={it.descricao} aria-label="Descrição" className={`${inputBase} min-w-[10rem] flex-1`} />
-                          <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor unitário" className={`${inputBase} w-28`} />
-                          <input name="quantidade" type="number" min={1} defaultValue={it.quantidade} aria-label="Quantidade" className={`${inputBase} w-20`} />
-                          <button type="submit" className={botaoSuave}>Salvar</button>
-                        </form>
-                        <form action={removerItemAction}>
-                          <input type="hidden" name="orcamentoId" value={orc.id} />
-                          <input type="hidden" name="itemId" value={it.id} />
-                          <BotaoConfirmar mensagem={`Remover "${it.descricao}"?`} ariaLabel="Remover item" className={botaoSuave}>Remover</BotaoConfirmar>
-                        </form>
+          <>
+            <ul className="flex flex-col divide-y divide-borda-suave">
+              {orc.itens.map((it) => {
+                const mudou = it.valorPadrao != null && Number(it.valorPadrao) !== Number(it.valorUnitario);
+                const Linha = (
+                  <>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-[15px] text-tinta">{it.descricao}</span>
+                      {it.valorPadrao != null && (
+                        <span className="text-[12px] text-cinza-fumo">
+                          padrão {brl(it.valorPadrao)}
+                          {mudou ? <span className="text-rose-dust"> · combinado</span> : null}
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 font-display text-[16px] font-light tabular-nums text-bordo">{brl(it.valorUnitario)}</span>
+                  </>
+                );
+                return (
+                  <li key={it.id}>
+                    {podeMexer ? (
+                      <details className="group">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 marker:content-[''] hover:[&_span:first-child]:text-bordo">
+                          {Linha}
+                          <span aria-hidden className="shrink-0 text-cinza-fumo transition-transform duration-150 group-open:rotate-180">▾</span>
+                        </summary>
+                        <div className="flex flex-wrap items-end gap-2 border-t border-borda-suave pb-3 pt-3">
+                          <form action={editarItemAction} className="flex flex-wrap items-end gap-2">
+                            <input type="hidden" name="orcamentoId" value={orc.id} />
+                            <input type="hidden" name="itemId" value={it.id} />
+                            <label className="flex flex-col gap-1">
+                              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor combinado</span>
+                              <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor combinado" className={`${inputBase} w-32`} />
+                            </label>
+                            <button type="submit" className={botaoSuave}>Salvar</button>
+                          </form>
+                          <form action={removerItemAction}>
+                            <input type="hidden" name="orcamentoId" value={orc.id} />
+                            <input type="hidden" name="itemId" value={it.id} />
+                            <BotaoConfirmar mensagem={`Remover "${it.descricao}"?`} ariaLabel="Remover vestido" className={botaoSuave}>Remover</BotaoConfirmar>
+                          </form>
+                        </div>
+                      </details>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 py-3">{Linha}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-1 flex items-baseline justify-between border-t border-borda-suave pt-2.5">
+              <span className="text-[15px] text-tinta">Total combinado</span>
+              <span className="font-display text-[22px] font-light tabular-nums text-bordo">{brl(orc.totais.total)}</span>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Vestidos indicados — escolher a peça e registrar o valor combinado */}
+      {podeMexer && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Vestidos indicados</h2>
+          {sugeridos.length === 0 ? (
+            <p className="text-[14px] text-cinza-fumo">
+              Sem vestidos indicados — registre os interesses da noiva para ver sugestões.{" "}
+              {interessesHref && <Link href={interessesHref} className="text-bordo underline decoration-borda underline-offset-2">Interesses</Link>}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {sugeridos.map((v) => {
+                const jaAdd = adicionadosIds.has(v.id);
+                return (
+                  <article key={v.id} className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-display text-[17px] font-light tracking-tight text-tinta">{v.nome}</span>
+                        <span className="text-[12px] text-cinza-fumo">{v.codigo} · padrão R$ {v.precoBase}</span>
                       </div>
-                    </details>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3 py-3">{Linha}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                      <span className="shrink-0 rounded-full border border-champagne/60 px-2.5 py-1 text-[11px] text-bordo">
+                        {v.pontos}/{v.total}
+                      </span>
+                    </div>
+                    {jaAdd ? (
+                      <p className="border-t border-borda-suave pt-3 text-[12px] text-cinza-fumo">✓ Já escolhido neste atendimento</p>
+                    ) : (
+                      <form action={adicionarItemAction} className="flex flex-wrap items-end gap-2 border-t border-borda-suave pt-3">
+                        <input type="hidden" name="orcamentoId" value={orc.id} />
+                        <input type="hidden" name="tipo" value="VESTIDO" />
+                        <input type="hidden" name="vestidoId" value={v.id} />
+                        <input type="hidden" name="descricao" value={v.nome} />
+                        <label className="flex flex-col gap-1">
+                          <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor combinado</span>
+                          <input name="valorUnitario" defaultValue={v.precoBase} aria-label={`Valor combinado de ${v.nome}`} className={`${inputBase} w-32`} required />
+                        </label>
+                        <button type="submit" className={botaoPrincipal}>Adicionar</button>
+                      </form>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
-        {podeMexer && (
-          <details className="group rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-[13px] text-bordo marker:content-['']">
-              <span aria-hidden className="transition-transform duration-150 group-open:rotate-45">+</span> Adicionar item
-            </summary>
-            <form action={adicionarItemAction} className="flex flex-wrap items-end gap-2 border-t border-borda-suave px-4 py-3">
-              <input type="hidden" name="orcamentoId" value={orc.id} />
-              <select name="tipo" defaultValue="VESTIDO" aria-label="Tipo do item" className={inputBase}>
-                {TIPOS.map((t) => (
-                  <option key={t} value={t}>{ROTULO_TIPO[t]}</option>
-                ))}
-              </select>
-              <input name="descricao" placeholder="Descrição (ex.: Vestido Valentina)" aria-label="Descrição" className={`${inputBase} min-w-[12rem] flex-1`} required />
-              <input name="valorUnitario" placeholder="0,00" aria-label="Valor unitário" className={`${inputBase} w-28`} required />
-              <input name="quantidade" type="number" min={1} defaultValue={1} aria-label="Quantidade" className={`${inputBase} w-20`} />
-              <button type="submit" className={botaoPrincipal}>Adicionar</button>
-            </form>
-          </details>
-        )}
-      </section>
-
-      {/* Valores + desconto */}
-      <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
-        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Valores</h2>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex justify-between text-[14px] text-grafite">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{brl(orc.totais.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-[14px] text-grafite">
-            <span>Desconto{orc.descontoTipo === "PERCENTUAL" ? ` (${Number(orc.descontoValor)}%)` : ""}</span>
-            <span className="tabular-nums">− {brl(orc.totais.desconto)}</span>
-          </div>
-          <div className="mt-1 flex items-baseline justify-between border-t border-borda-suave pt-2.5">
-            <span className="text-[15px] text-tinta">Total</span>
-            <span className="font-display text-[22px] font-light tabular-nums text-bordo">{brl(orc.totais.total)}</span>
-          </div>
-        </div>
-
-        {podeMexer && (
-          <form action={definirDescontoAction} className="flex flex-wrap items-end gap-2 border-t border-borda-suave pt-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Desconto</span>
-              <select name="tipo" defaultValue={orc.descontoTipo ?? "PERCENTUAL"} aria-label="Tipo do desconto" className={inputBase}>
-                <option value="PERCENTUAL">Percentual (%)</option>
-                <option value="VALOR">Valor (R$)</option>
-              </select>
-            </label>
-            <input type="hidden" name="orcamentoId" value={orc.id} />
-            <input name="valor" placeholder="0" defaultValue={orc.descontoValor ?? ""} aria-label="Valor do desconto" className={`${inputBase} w-28`} />
-            <button type="submit" className={botaoSuave}>Aplicar</button>
-          </form>
-        )}
-      </section>
-
-      {/* Ações de status / contrato — a barra do ciclo do orçamento */}
+      {/* Ações de status / contrato — o ciclo do atendimento */}
       {(orc.status === "APROVADO" || (podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO"))) && (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
           {orc.status === "APROVADO" ? (
