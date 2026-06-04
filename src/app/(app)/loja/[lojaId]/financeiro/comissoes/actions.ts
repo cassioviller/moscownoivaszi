@@ -5,16 +5,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getSessaoComLoja } from "@/lib/auth";
-import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { definirRegra, removerRegra, fecharCompetencia, type FaixaInput } from "@/lib/financeiro/comissao";
 import { caminhoInternoSeguro } from "@/lib/url-interna";
+import { acaoAutorizada } from "@/lib/server/acoes";
 
-async function guard() {
-  const sc = await getSessaoComLoja();
-  if (!sc) redirect("/login");
-  return sc;
-}
 function str(fd: FormData, k: string): string {
   return String(fd.get(k) ?? "").trim();
 }
@@ -25,20 +19,17 @@ function comAviso(base: string, chave: "ok" | "erro", valor: string): string {
   return `${base}${base.includes("?") ? "&" : "?"}${chave}=${valor}`;
 }
 
-export async function fecharCompetenciaAction(formData: FormData) {
-  const sc = await guard();
+// SPIKE fase 2: prova do HOF acaoAutorizada como Server Action neste Next.
+export const fecharCompetenciaAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const volta = destino(formData, lojaId, `/loja/${lojaId}/financeiro/comissoes`);
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(volta);
   const r = await fecharCompetencia(lojaId, str(formData, "competencia"));
   redirect(comAviso(volta, r.ok ? "ok" : "erro", r.ok ? `fechado_${r.fechadas}` : r.motivo));
-}
+});
 
-export async function definirRegraAction(formData: FormData) {
-  const sc = await guard();
+export const definirRegraAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const volta = destino(formData, lojaId, `/loja/${lojaId}/financeiro/comissoes/regras`);
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(volta);
 
   // Faixas vêm como colunas paralelas (getAll); linhas com tudo vazio são ignoradas.
   const mins = formData.getAll("min").map(String);
@@ -66,13 +57,11 @@ export async function definirRegraAction(formData: FormData) {
     faixas,
   });
   redirect(comAviso(volta, r.ok ? "ok" : "erro", r.ok ? "regra" : r.motivo));
-}
+});
 
-export async function removerRegraAction(formData: FormData) {
-  const sc = await guard();
+export const removerRegraAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const volta = destino(formData, lojaId, `/loja/${lojaId}/financeiro/comissoes/regras`);
-  if (!(await podeNoModulo(sc.usuario.id, lojaId, "financeiro", "editar"))) redirect(volta);
   await removerRegra(lojaId, str(formData, "regraId"));
   redirect(comAviso(volta, "ok", "regra_removida"));
-}
+});
