@@ -6,18 +6,11 @@
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
-import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
+import { hojeUTC, diaParaData, competenciaValida } from "@/lib/financeiro/datas";
+import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import type { ContaPagarTipo, ContaPagarStatus } from "@/generated/prisma/client";
 
 const TIPOS = new Set<ContaPagarTipo>(["DESPESA", "FORNECEDOR", "SALARIO", "COMISSAO"]);
-const atrasadaDe = (status: ContaPagarStatus, vencimento: Date, hoje: number) =>
-  status === "PREVISTA" && vencimento.getTime() < hoje;
-
-function competenciaValida(s: string): boolean {
-  if (!/^\d{4}-\d{2}$/.test(s)) return false;
-  const mes = Number(s.slice(5, 7));
-  return mes >= 1 && mes <= 12;
-}
 
 async function ehMembro(lojaId: string, usuarioId: string): Promise<boolean> {
   const v = await prisma.usuarioLoja.findUnique({
@@ -353,7 +346,7 @@ export async function listarContasAPagar(
     valorPrevisto: Number(c.valorPrevisto).toFixed(2),
     vencimento: c.vencimento,
     status: c.status,
-    atrasada: atrasadaDe(c.status, c.vencimento, h),
+    atrasada: ehAtrasada(c.status, c.vencimento, h),
     pagamentoId: c.itemPagto?.pagamentoId ?? null,
   }));
 }

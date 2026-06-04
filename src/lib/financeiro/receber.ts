@@ -7,12 +7,10 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
+import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import type { ParcelaStatus } from "@/generated/prisma/client";
 
 const DIA_MS = 86_400_000;
-
-const atrasadaDe = (status: ParcelaStatus, vencimento: Date, hoje: number) =>
-  status === "PREVISTA" && vencimento.getTime() < hoje;
 
 // — Gerar plano —
 
@@ -254,7 +252,7 @@ export async function listarParcelasDoContrato(lojaId: string, contratoId: strin
     valorRecebido: p.valorRecebido != null ? Number(p.valorRecebido).toFixed(2) : null,
     recebidoEm: p.recebidoEm,
     formaRecebimento: p.formaRecebimento,
-    atrasada: atrasadaDe(p.status, p.vencimento, hoje),
+    atrasada: ehAtrasada(p.status, p.vencimento, hoje),
   }));
 }
 
@@ -298,7 +296,7 @@ export async function listarContasAReceber(lojaId: string, opts: { filtro?: Filt
     valorPrevisto: Number(p.valorPrevisto).toFixed(2),
     vencimento: p.vencimento,
     status: p.status,
-    atrasada: atrasadaDe(p.status, p.vencimento, h),
+    atrasada: ehAtrasada(p.status, p.vencimento, h),
   }));
 }
 
