@@ -2,9 +2,12 @@
 // fila de ajustes pendentes. O trabalho operacional (registrar, marcar feito) segue
 // nas páginas dedicadas — daí os links. Reaproveita listarProvasDaLoja / listarAjustesPendentes.
 import Link from "next/link";
-import { hojeYMD } from "@/lib/tempo";
+import { hojeYMD, hojeUTC } from "@/lib/tempo";
 import { listarProvasDaLoja } from "@/lib/atelier/provas";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
+
+const DIA_MS = 86_400_000;
+const JANELA_URGENCIA_DIAS = 14; // mesmo limiar do dashboard/ajustes/perfil
 
 const ROTULO_TIPO_PROVA: Record<"PRIMEIRA" | "INTERMEDIARIA" | "FINAL", string> = {
   PRIMEIRA: "1ª prova",
@@ -16,8 +19,27 @@ const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short"
 // pt-BR devolve "15 de jan." — tiramos o conector e o ponto → "15 jan".
 const fmtDia = (d: Date) => diaMes.format(d).replace(" de ", " ").replace(".", "");
 
+// Dias-calendário (UTC) entre hoje e um alvo à meia-noite UTC.
+const diasAte = (hojeMs: number, alvo: Date) => Math.round((alvo.getTime() - hojeMs) / DIA_MS);
+
+// Prazo até a prova (lista é sempre futura: dias ≥ 0).
+function prazoProva(dias: number): string {
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "amanhã";
+  return `em ${dias} dias`;
+}
+
+// Prazo até o casamento, do ponto de vista do ajuste (pode estar atrasado).
+function prazoCasamento(dias: number): string {
+  if (dias < 0) return "casamento passou";
+  if (dias === 0) return "casamento hoje";
+  if (dias === 1) return "casamento amanhã";
+  return `casamento em ${dias} dias`;
+}
+
 export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
   const hoje = hojeYMD();
+  const hojeMs = hojeUTC().getTime();
   const [provas, ajustes] = await Promise.all([
     listarProvasDaLoja(lojaId),
     listarAjustesPendentes(lojaId),
@@ -47,7 +69,9 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
                     <span className="text-[14px] text-tinta">{ROTULO_TIPO_PROVA[p.tipo]}</span>
                     {p.noivaNome && <span className="text-[13px] text-cinza-fumo">{p.noivaNome}</span>}
                   </span>
-                  <span className="text-[12px] text-cinza-fumo">{p.vestidoCodigo} · {p.vestidoNome}</span>
+                  <span className="text-[12px] text-cinza-fumo">
+                    {p.vestidoCodigo} · {p.vestidoNome} · {prazoProva(diasAte(hojeMs, p.dataReal))}
+                  </span>
                 </div>
               </li>
             ))}
@@ -69,23 +93,32 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           <p className="text-[13px] text-cinza-fumo">Nenhum ajuste pendente. Tudo em dia.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
-            {ajustes.map((a) => (
-              <li key={a.id} className="flex items-center gap-4 px-4 py-3">
-                <span className="w-16 shrink-0 whitespace-nowrap text-[13px] tabular-nums text-grafite">
-                  {a.casamentoData ? fmtDia(a.casamentoData) : "—"}
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="truncate text-[14px] text-tinta">{a.descricao}</span>
-                    {a.noivaNome && <span className="text-[13px] text-cinza-fumo">{a.noivaNome}</span>}
+            {ajustes.map((a) => {
+              const dias = a.casamentoData ? diasAte(hojeMs, a.casamentoData) : null;
+              const urgente = dias !== null && dias >= 0 && dias <= JANELA_URGENCIA_DIAS;
+              return (
+                <li key={a.id} className="flex items-center gap-4 px-4 py-3">
+                  <span
+                    className={`w-16 shrink-0 whitespace-nowrap text-[13px] tabular-nums ${urgente ? "text-bordo" : "text-grafite"}`}
+                  >
+                    {a.casamentoData ? fmtDia(a.casamentoData) : "—"}
                   </span>
-                  <span className="text-[12px] text-cinza-fumo">
-                    {a.vestidoCodigo} · {a.vestidoNome}
-                    {a.checklistTotal > 0 && <> · {a.checklistFeitos}/{a.checklistTotal} no checklist</>}
-                  </span>
-                </div>
-              </li>
-            ))}
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="truncate text-[14px] text-tinta">{a.descricao}</span>
+                      {a.noivaNome && <span className="text-[13px] text-cinza-fumo">{a.noivaNome}</span>}
+                    </span>
+                    <span className="text-[12px] text-cinza-fumo">
+                      {a.vestidoCodigo} · {a.vestidoNome}
+                      {dias !== null && (
+                        <> · <span className={urgente ? "text-bordo" : undefined}>{prazoCasamento(dias)}</span></>
+                      )}
+                      {a.checklistTotal > 0 && <> · {a.checklistFeitos}/{a.checklistTotal} no checklist</>}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
