@@ -9,6 +9,7 @@ import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
+import { paginar } from "@/lib/paginacao";
 import type { ParcelaStatus } from "@/generated/prisma/client";
 
 const DIA_MS = 86_400_000;
@@ -273,8 +274,8 @@ export type ContaReceberView = {
 
 export async function listarContasAReceber(
   lojaId: string,
-  opts: { filtro?: FiltroReceber; intervalo?: { gte: Date; lt: Date } } = {},
-): Promise<ContaReceberView[]> {
+  opts: { filtro?: FiltroReceber; intervalo?: { gte: Date; lt: Date }; pagina?: number | string; tamanho?: number } = {},
+): Promise<{ itens: ContaReceberView[]; total: number }> {
   const hoje = hojeUTC();
   const filtro = opts.filtro ?? "abertas";
   const status =
@@ -286,13 +287,20 @@ export async function listarContasAReceber(
   // "atrasadas" = vencido (teto = hoje); o helper intersecta com o intervalo (lt mais restritivo).
   const vencimento = vencimentoNaJanela(opts.intervalo, filtro === "atrasadas" ? hoje : undefined);
   const where = vencimento ? { ...status, vencimento } : status;
-  const rows = await tenantPrisma(prisma, lojaId).parcela.findMany({
-    where,
-    orderBy: { vencimento: "asc" },
-    include: { contrato: { select: { leadId: true, lead: { select: { noivaNome: true } } } } },
-  });
+  const { skip, take } = paginar(opts.pagina, opts.tamanho);
+  const db = tenantPrisma(prisma, lojaId);
+  const [rows, total] = await Promise.all([
+    db.parcela.findMany({
+      where,
+      orderBy: { vencimento: "asc" },
+      include: { contrato: { select: { leadId: true, lead: { select: { noivaNome: true } } } } },
+      skip,
+      take,
+    }),
+    db.parcela.count({ where }),
+  ]);
   const h = hoje.getTime();
-  return rows.map((p) => ({
+  const itens = rows.map((p) => ({
     id: p.id,
     contratoId: p.contratoId,
     leadId: p.contrato.leadId,
@@ -303,6 +311,7 @@ export async function listarContasAReceber(
     status: p.status,
     atrasada: ehAtrasada(p.status, p.vencimento, h),
   }));
+  return { itens, total };
 }
 
 export type ResumoReceber = { totalAReceber: string; recebidoTotal: string; emAtraso: string };

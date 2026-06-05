@@ -9,6 +9,7 @@ import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData, competenciaValida } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
+import { paginar } from "@/lib/paginacao";
 import type { ContaPagarTipo, ContaPagarStatus } from "@/generated/prisma/client";
 
 const TIPOS = new Set<ContaPagarTipo>(["DESPESA", "FORNECEDOR", "SALARIO", "COMISSAO"]);
@@ -316,8 +317,8 @@ export type ContaPagarView = {
 
 export async function listarContasAPagar(
   lojaId: string,
-  opts: { filtro?: FiltroPagar; tipo?: ContaPagarTipo; colaboradorId?: string; intervalo?: { gte: Date; lt: Date } } = {},
-): Promise<ContaPagarView[]> {
+  opts: { filtro?: FiltroPagar; tipo?: ContaPagarTipo; colaboradorId?: string; intervalo?: { gte: Date; lt: Date }; pagina?: number | string; tamanho?: number } = {},
+): Promise<{ itens: ContaPagarView[]; total: number }> {
   const hoje = hojeUTC();
   const filtro = opts.filtro ?? "abertas";
   const base: Record<string, unknown> = {};
@@ -328,13 +329,20 @@ export async function listarContasAPagar(
   // "atrasadas" = vencido (teto = hoje); o helper intersecta com o intervalo (lt mais restritivo).
   const vencimento = vencimentoNaJanela(opts.intervalo, filtro === "atrasadas" ? hoje : undefined);
   if (vencimento) base.vencimento = vencimento;
-  const rows = await tenantPrisma(prisma, lojaId).contaPagar.findMany({
-    where: base,
-    orderBy: { vencimento: "asc" },
-    include: { colaborador: { select: { nome: true } }, itemPagto: { select: { pagamentoId: true } } },
-  });
+  const { skip, take } = paginar(opts.pagina, opts.tamanho);
+  const db = tenantPrisma(prisma, lojaId);
+  const [rows, total] = await Promise.all([
+    db.contaPagar.findMany({
+      where: base,
+      orderBy: { vencimento: "asc" },
+      include: { colaborador: { select: { nome: true } }, itemPagto: { select: { pagamentoId: true } } },
+      skip,
+      take,
+    }),
+    db.contaPagar.count({ where: base }),
+  ]);
   const h = hoje.getTime();
-  return rows.map((c) => ({
+  const itens = rows.map((c) => ({
     id: c.id,
     tipo: c.tipo,
     colaboradorId: c.colaboradorId,
@@ -349,6 +357,7 @@ export async function listarContasAPagar(
     atrasada: ehAtrasada(c.status, c.vencimento, h),
     pagamentoId: c.itemPagto?.pagamentoId ?? null,
   }));
+  return { itens, total };
 }
 
 export type PagamentoView = {
@@ -366,16 +375,23 @@ export type PagamentoView = {
  *  conferência da folha e o envio à contabilidade. */
 export async function listarPagamentos(
   lojaId: string,
-  opts: { colaboradorId?: string } = {},
-): Promise<PagamentoView[]> {
+  opts: { colaboradorId?: string; pagina?: number | string; tamanho?: number } = {},
+): Promise<{ itens: PagamentoView[]; total: number }> {
   const where: Record<string, unknown> = {};
   if (opts.colaboradorId) where.colaboradorId = opts.colaboradorId;
-  const rows = await tenantPrisma(prisma, lojaId).pagamento.findMany({
-    where,
-    orderBy: { data: "desc" },
-    include: { colaborador: { select: { nome: true } }, itens: { include: { contaPagar: { select: { descricao: true } } } } },
-  });
-  return rows.map((p) => ({
+  const { skip, take } = paginar(opts.pagina, opts.tamanho);
+  const db = tenantPrisma(prisma, lojaId);
+  const [rows, total] = await Promise.all([
+    db.pagamento.findMany({
+      where,
+      orderBy: { data: "desc" },
+      include: { colaborador: { select: { nome: true } }, itens: { include: { contaPagar: { select: { descricao: true } } } } },
+      skip,
+      take,
+    }),
+    db.pagamento.count({ where }),
+  ]);
+  const itens = rows.map((p) => ({
     id: p.id,
     data: p.data,
     valorPago: Number(p.valorPago).toFixed(2),
@@ -385,6 +401,7 @@ export async function listarPagamentos(
     enviadoContabilidade: p.enviadoContabilidadeEm !== null,
     contas: p.itens.map((i) => ({ descricao: i.contaPagar.descricao, valor: Number(i.valor).toFixed(2) })),
   }));
+  return { itens, total };
 }
 
 export type ResumoPagar = { totalAPagar: string; pagoTotal: string; emAtraso: string };

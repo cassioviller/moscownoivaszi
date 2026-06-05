@@ -100,7 +100,7 @@ describe("receber: baixa, ajuste e atraso", () => {
     const [p] = await listarParcelasDoContrato(loja, c);
     expect(p.atrasada).toBe(true);
     const atrasadas = await listarContasAReceber(loja, { filtro: "atrasadas" });
-    expect(atrasadas.some((x) => x.id === p.id)).toBe(true);
+    expect(atrasadas.itens.some((x) => x.id === p.id)).toBe(true);
   });
 
   it("recusa recebimento de R$0 (baixa fantasma)", async () => {
@@ -153,7 +153,7 @@ describe("receber: resumo e isolamento", () => {
     expect(r.emAtraso).toBe("500.00"); // a 1ª vence em 2020 → atrasada
 
     // outra loja não enxerga
-    expect((await listarContasAReceber(loja, { filtro: "todas" })).some((x) => x.contratoId === c)).toBe(false);
+    expect((await listarContasAReceber(loja, { filtro: "todas" })).itens.some((x) => x.contratoId === c)).toBe(false);
   });
 });
 
@@ -167,17 +167,22 @@ describe("receber: filtro por intervalo de vencimento", () => {
     // 3 parcelas mensais a partir de 2027-03-15 → 03-15, 04-14, 05-14 (periodicidade 30d).
     await gerarPlanoDePagamento(l3, c, { numParcelas: 3, primeiroVencimento: "2027-03-15", periodicidadeDias: 30 });
     const todas = await listarContasAReceber(l3, { filtro: "todas" });
-    expect(todas).toHaveLength(3);
+    expect(todas.itens).toHaveLength(3);
 
     // intervalo cobrindo só março (2027-03-01..2027-03-31).
     const gte = new Date("2027-03-01T00:00:00.000Z");
     const lt = new Date("2027-04-01T00:00:00.000Z");
     const dentro = await listarContasAReceber(l3, { filtro: "todas", intervalo: { gte, lt } });
-    expect(dentro).toHaveLength(1);
-    expect(dentro[0].vencimento.toISOString().slice(0, 10)).toBe("2027-03-15");
+    expect(dentro.itens).toHaveLength(1);
+    expect(dentro.itens[0].vencimento.toISOString().slice(0, 10)).toBe("2027-03-15");
 
     // sem intervalo: todas as 3.
-    expect(await listarContasAReceber(l3, { filtro: "todas" })).toHaveLength(3);
+    expect((await listarContasAReceber(l3, { filtro: "todas" })).itens).toHaveLength(3);
+
+    // paginação: tamanho 1 retorna 1 item mas total reflete as 3.
+    const pag1 = await listarContasAReceber(l3, { filtro: "todas", tamanho: 1 });
+    expect(pag1.total).toBe(3);
+    expect(pag1.itens).toHaveLength(1);
 
     // resumo escopado ao intervalo de março: só a 1ª parcela conta como a receber.
     const rDentro = await resumoReceber(l3, { intervalo: { gte, lt } });

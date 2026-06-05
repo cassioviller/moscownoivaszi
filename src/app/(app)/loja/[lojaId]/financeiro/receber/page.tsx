@@ -8,6 +8,8 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarContasAReceber, resumoReceber, type FiltroReceber } from "@/lib/financeiro/receber";
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
+import { TAMANHO_PAGINA } from "@/lib/paginacao";
+import { Paginacao } from "@/components/Paginacao";
 import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
 import { registrarRecebimentoAction, estornarRecebimentoAction } from "./actions";
 
@@ -48,13 +50,13 @@ export default async function ReceberPage({
   const sp = await searchParams;
   const { filtro: filtroRaw, ok, erro } = sp;
   const filtro = (FILTROS.find((f) => f.chave === filtroRaw)?.chave ?? "abertas") as FiltroReceber;
-  const { intervalo, qs } = lerFiltroFinanceiro(sp);
+  const { intervalo, pagina, qs } = lerFiltroFinanceiro(sp);
   const janela = { gte: intervalo.gte, lt: intervalo.lt };
   const voltar = `/loja/${lojaId}/financeiro/receber?${qs({ filtro })}`;
 
-  const [resumo, lista] = await Promise.all([
+  const [resumo, { itens: lista, total }] = await Promise.all([
     resumoReceber(sc.loja.id, { intervalo: janela }),
-    listarContasAReceber(sc.loja.id, { filtro, intervalo: janela }),
+    listarContasAReceber(sc.loja.id, { filtro, intervalo: janela, pagina }),
   ]);
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
 
@@ -140,6 +142,8 @@ export default async function ReceberPage({
           ))}
         </ul>
       )}
+
+      <Paginacao pagina={pagina} total={total} tamanho={TAMANHO_PAGINA} href={(p) => `?${qs({ filtro, p })}`} />
     </main>
   );
 }

@@ -16,6 +16,8 @@ import {
 } from "@/lib/financeiro/pagar";
 import { hojeYMD } from "@/lib/financeiro/datas";
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
+import { TAMANHO_PAGINA } from "@/lib/paginacao";
+import { Paginacao } from "@/components/Paginacao";
 import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo, FiltroIntervalo, rotuloCompetencia } from "../../ui";
 import {
   definirSalarioAction,
@@ -65,20 +67,22 @@ export default async function FolhaPage({
   const sp = await searchParams;
   // O filtro de intervalo é a lente de visualização uniforme do financeiro; aqui o MÊS
   // DO INÍCIO define a competência exibida — a Folha segue mensal (gerar/pagar por competência).
-  const { intervalo, qs } = lerFiltroFinanceiro(sp);
+  const { intervalo, pagina, qs } = lerFiltroFinanceiro(sp);
   const competencia = intervalo.iniYMD.slice(0, 7);
   const colaboradorSel = sp.colaborador ?? "";
   const voltar = `/loja/${lojaId}/financeiro/pagar/folha?${qs({ colaborador: colaboradorSel })}`;
 
   // Tudo num único batch: contasColab/pagamentos só dependem de colaboradorSel (searchParams),
   // não dos demais reads — não há razão para serializar dois Promise.all.
-  const [equipe, salarios, folha, contasColab, pagamentos] = await Promise.all([
+  const [equipe, salarios, folha, contasColab, pagamentosRes] = await Promise.all([
     listarEquipe(sc.loja.id),
     listarSalariosRecorrentes(sc.loja.id),
     resumoPorCompetencia(sc.loja.id, competencia),
-    colaboradorSel ? listarContasAPagar(sc.loja.id, { filtro: "abertas", colaboradorId: colaboradorSel }) : Promise.resolve([]),
-    colaboradorSel ? listarPagamentos(sc.loja.id, { colaboradorId: colaboradorSel }) : Promise.resolve([]),
+    colaboradorSel ? listarContasAPagar(sc.loja.id, { filtro: "abertas", colaboradorId: colaboradorSel }) : Promise.resolve({ itens: [], total: 0 }),
+    colaboradorSel ? listarPagamentos(sc.loja.id, { colaboradorId: colaboradorSel, pagina }) : Promise.resolve({ itens: [], total: 0 }),
   ]);
+  const contasColabItens = contasColab.itens;
+  const { itens: pagamentos, total: pagamentosTotal } = pagamentosRes;
   const nomeColab = equipe.find((e) => e.id === colaboradorSel)?.nome ?? null;
   const aviso = (sp.ok && AVISOS[sp.ok]) || (sp.erro && AVISOS[sp.erro]) || (sp.ok?.startsWith("folha_") ? `Folha gerada: ${sp.ok.slice(6)} salário(s).` : null);
 
@@ -186,7 +190,7 @@ export default async function FolhaPage({
         </form>
 
         {colaboradorSel && (
-          contasColab.length === 0 ? (
+          contasColabItens.length === 0 ? (
             <p className="text-[14px] text-cinza-fumo">{nomeColab ?? "Colaborador"} não tem contas em aberto.</p>
           ) : podeEditar ? (
             <form action={pagarContasAction} className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
@@ -194,7 +198,7 @@ export default async function FolhaPage({
               <input type="hidden" name="voltar" value={voltar} />
               <p className="text-[13px] text-grafite">Uma saída do caixa quita todas as contas abaixo — ajuste o valor real de cada uma.</p>
               <ul className="flex flex-col gap-2">
-                {contasColab.map((c) => (
+                {contasColabItens.map((c) => (
                   <li key={c.id} className="flex items-center justify-between gap-3">
                     <span className="min-w-0 text-[14px] text-tinta">
                       {c.descricao}
@@ -239,6 +243,12 @@ export default async function FolhaPage({
                 </li>
               ))}
             </ul>
+            <Paginacao
+              pagina={pagina}
+              total={pagamentosTotal}
+              tamanho={TAMANHO_PAGINA}
+              href={(p) => `?${qs({ colaborador: colaboradorSel, p })}`}
+            />
           </div>
         )}
       </section>

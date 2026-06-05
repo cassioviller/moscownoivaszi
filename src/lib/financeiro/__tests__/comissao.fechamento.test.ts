@@ -67,7 +67,7 @@ describe("fecharCompetencia: fechamento + ContaPagar + idempotência", () => {
 
     // a ContaPagar COMISSAO existe, ligada ao fechamento, vence 05/04
     const contas = await listarContasAPagar(loja, { tipo: "COMISSAO", filtro: "todas" });
-    const conta = contas.find((c) => c.competencia === "2025-03");
+    const conta = contas.itens.find((c) => c.competencia === "2025-03");
     expect(conta).toMatchObject({ tipo: "COMISSAO", colaboradorId: vera, valorPrevisto: "2500.00" });
     expect(conta!.vencimento.toISOString().slice(0, 10)).toBe("2025-04-05");
 
@@ -75,7 +75,7 @@ describe("fecharCompetencia: fechamento + ContaPagar + idempotência", () => {
     const r2 = await fecharCompetencia(loja, "2025-03");
     expect(r2).toMatchObject({ ok: true, fechadas: 0 });
     expect((await listarFechamentos(loja, { competencia: "2025-03" }))).toHaveLength(1);
-    expect((await listarContasAPagar(loja, { tipo: "COMISSAO", filtro: "todas" })).filter((c) => c.competencia === "2025-03")).toHaveLength(1);
+    expect((await listarContasAPagar(loja, { tipo: "COMISSAO", filtro: "todas" })).itens.filter((c) => c.competencia === "2025-03")).toHaveLength(1);
   });
 
   it("cruzamento S5: a comissão aparece no resumo por competência", async () => {

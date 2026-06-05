@@ -8,6 +8,8 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarContasAPagar, resumoPagar, type FiltroPagar } from "@/lib/financeiro/pagar";
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
+import { TAMANHO_PAGINA } from "@/lib/paginacao";
+import { Paginacao } from "@/components/Paginacao";
 import { hojeYMD } from "@/lib/financeiro/datas";
 import type { ContaPagarTipo } from "@/generated/prisma/client";
 import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
@@ -58,12 +60,12 @@ export default async function PagarPage({
   const sp = await searchParams;
   const { filtro: filtroRaw, ok, erro } = sp;
   const filtro = (FILTROS.find((f) => f.chave === filtroRaw)?.chave ?? "abertas") as FiltroPagar;
-  const { intervalo, qs } = lerFiltroFinanceiro(sp);
+  const { intervalo, pagina, qs } = lerFiltroFinanceiro(sp);
   const janela = { gte: intervalo.gte, lt: intervalo.lt };
 
-  const [resumo, lista] = await Promise.all([
+  const [resumo, { itens: lista, total }] = await Promise.all([
     resumoPagar(sc.loja.id, { intervalo: janela }),
-    listarContasAPagar(sc.loja.id, { filtro, intervalo: janela }),
+    listarContasAPagar(sc.loja.id, { filtro, intervalo: janela, pagina }),
   ]);
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || (ok?.startsWith("folha_") ? "Folha gerada." : null);
 
@@ -184,6 +186,8 @@ export default async function PagarPage({
           ))}
         </ul>
       )}
+
+      <Paginacao pagina={pagina} total={total} tamanho={TAMANHO_PAGINA} href={(p) => `?${qs({ filtro, p })}`} />
     </main>
   );
 }

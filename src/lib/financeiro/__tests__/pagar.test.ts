@@ -74,7 +74,7 @@ describe("pagar: salário recorrente (motor)", () => {
     expect(g2).toMatchObject({ ok: true, geradas: 0 });
 
     const salarios = await listarContasAPagar(loja, { tipo: "SALARIO", filtro: "todas" });
-    const doMes = salarios.filter((c) => c.competencia === "2027-08");
+    const doMes = salarios.itens.filter((c) => c.competencia === "2027-08");
     expect(doMes).toHaveLength(1);
     expect(doMes[0].valorPrevisto).toBe("2000.00");
     expect(doMes[0].vencimento.toISOString().slice(0, 10)).toBe("2027-08-05");
@@ -98,8 +98,8 @@ describe("pagar: pagamento (quita N contas, transacional)", () => {
     if (!pg.ok) return;
 
     const pagas = await listarContasAPagar(loja, { filtro: "pagas" });
-    expect(pagas.some((c) => c.id === c1.contaId)).toBe(true);
-    expect(pagas.some((c) => c.id === c2.contaId)).toBe(true);
+    expect(pagas.itens.some((c) => c.id === c1.contaId)).toBe(true);
+    expect(pagas.itens.some((c) => c.id === c2.contaId)).toBe(true);
     const pagamento = await tenantPrisma(prisma, loja).pagamento.findUnique({ where: { id: pg.pagamentoId } });
     expect(Number(pagamento!.valorPago).toFixed(2)).toBe("2200.00"); // 1900 + 300
 
@@ -109,7 +109,7 @@ describe("pagar: pagamento (quita N contas, transacional)", () => {
     // estorno devolve as contas a PREVISTA
     expect((await estornarPagamento(loja, pg.pagamentoId)).ok).toBe(true);
     const abertas = await listarContasAPagar(loja, { filtro: "abertas" });
-    expect(abertas.some((c) => c.id === c1.contaId)).toBe(true);
+    expect(abertas.itens.some((c) => c.id === c1.contaId)).toBe(true);
   });
 
   it("recusa lista vazia, item ≤ 0 e conta inexistente", async () => {
@@ -126,7 +126,7 @@ describe("pagar: pagamento (quita N contas, transacional)", () => {
     // tenta quitar a conta da Ana dentro de um pagamento da Vera → recusado, e a conta da Ana segue PREVISTA
     expect(await registrarPagamento(loja, { colaboradorId: colaborador, data: "2027-11-06", itens: [{ contaPagarId: cAna.contaId, valor: "1.000,00" }] })).toMatchObject({ ok: false, motivo: "conta_invalida" });
     const abertas = await listarContasAPagar(loja, { filtro: "abertas", colaboradorId: colaborador2 });
-    expect(abertas.some((c) => c.id === cAna.contaId)).toBe(true);
+    expect(abertas.itens.some((c) => c.id === cAna.contaId)).toBe(true);
   });
 });
 
@@ -154,20 +154,29 @@ describe("pagar: resumo, atraso e contabilidade", () => {
 
     // contabilidade: lista o pagamento, marca enviado e reflete o flag
     const antes = await listarPagamentos(l2, { colaboradorId: col });
-    expect(antes.every((p) => !p.enviadoContabilidade)).toBe(true);
-    const pgLuz = (await listarPagamentos(l2)).find((p) => p.id === pg.pagamentoId);
+    expect(antes.itens.every((p) => !p.enviadoContabilidade)).toBe(true);
+    const pgLuz = (await listarPagamentos(l2)).itens.find((p) => p.id === pg.pagamentoId);
     expect(pgLuz?.contas).toEqual([{ descricao: "Luz", valor: "100.00" }]);
     expect((await marcarEnviadoContabilidade(l2, pg.pagamentoId, true)).ok).toBe(true);
-    expect((await listarPagamentos(l2)).find((p) => p.id === pg.pagamentoId)?.enviadoContabilidade).toBe(true);
+    expect((await listarPagamentos(l2)).itens.find((p) => p.id === pg.pagamentoId)?.enviadoContabilidade).toBe(true);
+
+    // paginação: 2º pagamento (comissão) → tamanho 1 retorna 1 item, total = 2.
+    const ccom = (await listarContasAPagar(l2, { tipo: "COMISSAO", filtro: "abertas" })).itens[0];
+    const pg2 = await registrarPagamento(l2, { colaboradorId: col, data: "2027-10-07", itens: [{ contaPagarId: ccom.id, valor: "500,00" }] });
+    if (!pg2.ok) throw new Error("falhou");
+    const pagPag = await listarPagamentos(l2, { tamanho: 1 });
+    expect(pagPag.total).toBe(2);
+    expect(pagPag.itens).toHaveLength(1);
+
     // re-marcar NÃO sobrescreve o carimbo original (preserva a data do envio)
     const carimbo1 = (await tenantPrisma(prisma, l2).pagamento.findUnique({ where: { id: pg.pagamentoId } }))!.enviadoContabilidadeEm;
     await marcarEnviadoContabilidade(l2, pg.pagamentoId, true);
     const carimbo2 = (await tenantPrisma(prisma, l2).pagamento.findUnique({ where: { id: pg.pagamentoId } }))!.enviadoContabilidadeEm;
     expect(carimbo2?.getTime()).toBe(carimbo1?.getTime());
-    expect((await listarPagamentos(loja)).some((p) => p.id === pg.pagamentoId)).toBe(false); // isolamento
+    expect((await listarPagamentos(loja)).itens.some((p) => p.id === pg.pagamentoId)).toBe(false); // isolamento
 
     // isolamento
-    expect((await listarContasAPagar(loja, { filtro: "todas" })).some((c) => c.competencia === "2027-10" && c.descricao === "Comissão")).toBe(false);
+    expect((await listarContasAPagar(loja, { filtro: "todas" })).itens.some((c) => c.competencia === "2027-10" && c.descricao === "Comissão")).toBe(false);
   });
 });
 
@@ -180,14 +189,19 @@ describe("pagar: filtro por intervalo de vencimento", () => {
     await lancarConta(l4, { tipo: "DESPESA", descricao: "Mar", valorPrevisto: "300,00", vencimento: "2020-03-15" });
 
     // sem intervalo: todas as 3.
-    expect(await listarContasAPagar(l4, { filtro: "todas" })).toHaveLength(3);
+    expect((await listarContasAPagar(l4, { filtro: "todas" })).itens).toHaveLength(3);
+
+    // paginação: tamanho 1 retorna 1 item mas total reflete as 3.
+    const pag1 = await listarContasAPagar(l4, { filtro: "todas", tamanho: 1 });
+    expect(pag1.total).toBe(3);
+    expect(pag1.itens).toHaveLength(1);
 
     // intervalo cobrindo só fevereiro (2020-02-01..2020-03-01 exclusivo).
     const gte = new Date("2020-02-01T00:00:00.000Z");
     const lt = new Date("2020-03-01T00:00:00.000Z");
     const dentro = await listarContasAPagar(l4, { filtro: "todas", intervalo: { gte, lt } });
-    expect(dentro).toHaveLength(1);
-    expect(dentro[0].descricao).toBe("Fev");
+    expect(dentro.itens).toHaveLength(1);
+    expect(dentro.itens[0].descricao).toBe("Fev");
 
     // resumo escopado a fevereiro: só os 200,00 contam como a pagar.
     const rDentro = await resumoPagar(l4, { intervalo: { gte, lt } });
@@ -196,10 +210,10 @@ describe("pagar: filtro por intervalo de vencimento", () => {
     expect((await resumoPagar(l4)).totalAPagar).toBe("600.00");
 
     // atrasadas: as 3 estão vencidas (2020 < hoje). Sem intervalo, as 3 aparecem.
-    expect(await listarContasAPagar(l4, { filtro: "atrasadas" })).toHaveLength(3);
+    expect((await listarContasAPagar(l4, { filtro: "atrasadas" })).itens).toHaveLength(3);
     // Com intervalo de fevereiro, combina o lt mais restritivo (vencido E dentro): só Fev.
     const atrasadasFev = await listarContasAPagar(l4, { filtro: "atrasadas", intervalo: { gte, lt } });
-    expect(atrasadasFev.map((c) => c.descricao)).toEqual(["Fev"]);
+    expect(atrasadasFev.itens.map((c) => c.descricao)).toEqual(["Fev"]);
     // o resumo "em atraso" escopado a fevereiro = 200,00 (de 600,00 sem intervalo).
     expect((await resumoPagar(l4)).emAtraso).toBe("600.00");
     expect((await resumoPagar(l4, { intervalo: { gte, lt } })).emAtraso).toBe("200.00");
