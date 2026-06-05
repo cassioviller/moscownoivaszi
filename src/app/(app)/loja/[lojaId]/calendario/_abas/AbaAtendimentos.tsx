@@ -1,6 +1,101 @@
-// Aba Atendimentos — grade semana × hora. (Conteúdo real na Task 4.)
+// Aba Atendimentos — a semana de consultas: colunas de dia × linhas de hora, blocos
+// de 60min. Cada bloco mostra a noiva; cor por situação (bordô só no agendado, foco
+// do dia). Navegação ‹ semana › preserva a aba na URL.
+import Link from "next/link";
+import { hojeYMD } from "@/lib/tempo";
+import {
+  diasDaSemana,
+  semanaDeRef,
+  refDaSemana,
+  chaveCelula,
+  indexarPorCelula,
+} from "@/lib/calendario/semana";
+import { atendimentosNoIntervalo, type AtendimentoCalendario } from "@/lib/calendario/dados";
+import type { AtendimentoSituacao } from "@/generated/prisma/client";
+
+const HORA_INICIO = 9;
+const HORA_FIM = 19; // exclusivo
+const HORAS = Array.from({ length: HORA_FIM - HORA_INICIO }, (_, i) => HORA_INICIO + i);
+const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+
+const COR_SITUACAO: Record<AtendimentoSituacao, string> = {
+  AGENDADO: "bg-bordo text-papel-elevado",
+  EM_ATENDIMENTO: "bg-rose-dust text-tinta",
+  CONCLUIDO: "bg-papel-suave text-grafite",
+  FALTOU: "bg-papel-suave text-cinza-fumo line-through",
+};
+
 export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; refParam?: string }) {
-  void lojaId;
-  void refParam;
-  return <p className="text-[14px] text-cinza-fumo">Semana de atendimentos em breve.</p>;
+  const hoje = hojeYMD();
+  const inicioSemana = semanaDeRef(refParam, hoje);
+  const dias = diasDaSemana(inicioSemana);
+
+  const fim = new Date(dias[6].getTime());
+  fim.setUTCDate(fim.getUTCDate() + 1); // exclusivo (fim do sábado)
+
+  const atendimentos = await atendimentosNoIntervalo(lojaId, inicioSemana, fim);
+  const porCelula = indexarPorCelula<AtendimentoCalendario>(atendimentos);
+
+  const anterior = new Date(inicioSemana.getTime());
+  anterior.setUTCDate(anterior.getUTCDate() - 7);
+  const proxima = new Date(inicioSemana.getTime());
+  proxima.setUTCDate(proxima.getUTCDate() + 7);
+  const link = (d: Date) => `/loja/${lojaId}/calendario?aba=atendimentos&ref=${refDaSemana(d)}`;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[16px] font-light text-tinta">
+          {diaMes.format(dias[0])} – {diaMes.format(dias[6])}
+        </h2>
+        <div className="flex items-center gap-1">
+          <Link href={link(anterior)} aria-label="Semana anterior" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta">‹</Link>
+          <Link href={link(proxima)} aria-label="Próxima semana" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta">›</Link>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[640px] grid-cols-[48px_repeat(7,1fr)] gap-px rounded-[var(--mn-radius-md)] border border-borda-suave bg-borda-suave">
+          {/* cabeçalho */}
+          <div className="bg-papel-elevado" />
+          {dias.map((d, i) => (
+            <div key={d.toISOString()} className="bg-papel-elevado py-2 text-center">
+              <div className="text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">{SEMANA[i]}</div>
+              <div className={`text-[13px] tabular-nums ${d.toISOString().slice(0, 10) === hoje ? "text-bordo" : "text-grafite"}`}>
+                {d.getUTCDate()}
+              </div>
+            </div>
+          ))}
+
+          {/* linhas de hora */}
+          {HORAS.map((h) => (
+            <div key={`linha-${h}`} className="contents">
+              <div className="bg-papel-elevado py-2 pr-1 text-right text-[11px] tabular-nums text-cinza-fumo">
+                {String(h).padStart(2, "0")}h
+              </div>
+              {dias.map((d) => {
+                const ymd = d.toISOString().slice(0, 10);
+                const itens = porCelula.get(chaveCelula(ymd, h)) ?? [];
+                return (
+                  <div key={`${ymd}-${h}`} className="min-h-12 bg-papel-elevado p-0.5">
+                    {itens.map((a) => (
+                      <Link
+                        key={a.id}
+                        href={`/loja/${lojaId}/noivas/${a.leadId}`}
+                        className={`block truncate rounded-[6px] px-1.5 py-1 text-[11px] transition-opacity duration-150 hover:opacity-90 ${COR_SITUACAO[a.situacao]}`}
+                      >
+                        {a.noivaNome ?? "Atendimento"}
+                      </Link>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
