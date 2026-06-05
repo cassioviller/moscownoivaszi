@@ -2,9 +2,10 @@
 // Calendário do atelier — quatro vistas da mesma operação, em abas. A aba ativa
 // vive na URL (?aba=) para dar link direto e sobreviver ao recarregar. Gate em
 // leads:ver (mesma porta da antiga Agenda). Cada aba é um Server Component próprio.
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { exigirAcesso } from "@/lib/server/acoes";
-import { ABAS, resolverAba } from "@/lib/calendario/abas";
+import { ABAS, resolverAba, type AbaId } from "@/lib/calendario/abas";
 import { AbaMes } from "./_abas/AbaMes";
 import { AbaVestidos } from "./_abas/AbaVestidos";
 import { AbaAtendimentos } from "./_abas/AbaAtendimentos";
@@ -58,11 +59,18 @@ export default async function CalendarioPage({
         })}
       </nav>
 
+      {/* refParam só vai às abas que navegam no tempo (Mês, Atendimentos). */}
       <section>
-        {aba === "mes" && <AbaMes lojaId={lojaId} refParam={sp.ref} />}
-        {aba === "vestidos" && <AbaVestidos lojaId={lojaId} />}
-        {aba === "atendimentos" && <AbaAtendimentos lojaId={lojaId} refParam={sp.ref} />}
-        {aba === "provas-ajustes" && <AbaProvasAjustes lojaId={lojaId} />}
+        {
+          (
+            {
+              mes: <AbaMes lojaId={lojaId} refParam={sp.ref} />,
+              vestidos: <AbaVestidos lojaId={lojaId} />,
+              atendimentos: <AbaAtendimentos lojaId={lojaId} refParam={sp.ref} />,
+              "provas-ajustes": <AbaProvasAjustes lojaId={lojaId} />,
+            } satisfies Record<AbaId, ReactNode>
+          )[aba]
+        }
       </section>
     </main>
   );
