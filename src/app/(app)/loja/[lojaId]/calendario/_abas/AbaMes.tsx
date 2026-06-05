@@ -1,6 +1,108 @@
-// Aba Mês — grade mensal com marcadores. (Conteúdo real na Task 2.)
+// Aba Mês — a grade do mês de relance. Cada dia traz marcadores delicados (um ponto
+// por tipo): bordô = casamento (o grande dia, §6), champagne = prova, grafite =
+// atendimento. Navegação ‹ mês › preserva a aba na URL.
+import Link from "next/link";
+import { hojeYMD } from "@/lib/tempo";
+import {
+  gradeDoMes,
+  mesDeRef,
+  refDoMes,
+  mesVizinho,
+  agruparMarcadoresPorDia,
+  type TipoMarcador,
+} from "@/lib/calendario/mes";
+import { marcadoresNoIntervalo } from "@/lib/calendario/dados";
+
+const tituloMes = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
+const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+const COR_MARCADOR: Record<TipoMarcador, string> = {
+  casamento: "bg-bordo",
+  prova: "bg-champagne",
+  atendimento: "bg-grafite",
+};
+const ORDEM_MARCADOR: TipoMarcador[] = ["casamento", "prova", "atendimento"];
+
 export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: string }) {
-  void lojaId;
-  void refParam;
-  return <p className="text-[14px] text-cinza-fumo">Grade do mês em breve.</p>;
+  const hoje = hojeYMD();
+  const { ano, mes0 } = mesDeRef(refParam, hoje);
+  const dias = gradeDoMes(ano, mes0, hoje);
+
+  const inicio = dias[0].data;
+  const fim = new Date(dias[41].data.getTime());
+  fim.setUTCDate(fim.getUTCDate() + 1); // exclusivo
+
+  const marcadores = await marcadoresNoIntervalo(lojaId, inicio, fim);
+  const porDia = agruparMarcadoresPorDia(marcadores);
+
+  const ant = mesVizinho(ano, mes0, -1);
+  const prox = mesVizinho(ano, mes0, +1);
+  const link = (a: { ano: number; mes0: number }) =>
+    `/loja/${lojaId}/calendario?aba=mes&ref=${refDoMes(a.ano, a.mes0)}`;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[16px] font-light capitalize text-tinta">
+          {tituloMes.format(dias.find((d) => d.noMes)!.data)}
+        </h2>
+        <div className="flex items-center gap-1">
+          <Link
+            href={link(ant)}
+            aria-label="Mês anterior"
+            className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta"
+          >
+            ‹
+          </Link>
+          <Link
+            href={link(prox)}
+            aria-label="Próximo mês"
+            className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta"
+          >
+            ›
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[var(--mn-radius-md)] border border-borda-suave bg-borda-suave">
+        {SEMANA.map((d) => (
+          <div key={d} className="bg-papel-elevado py-2 text-center text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">
+            {d}
+          </div>
+        ))}
+        {dias.map((dia) => {
+          const tipos = porDia.get(dia.ymd);
+          return (
+            <div
+              key={dia.ymd}
+              className={`flex min-h-20 flex-col gap-1 bg-papel-elevado p-1.5 ${dia.noMes ? "" : "opacity-40"}`}
+            >
+              <span
+                className={`text-[12px] tabular-nums ${
+                  dia.hoje
+                    ? "flex h-5 w-5 items-center justify-center rounded-full bg-bordo text-papel-elevado"
+                    : "text-grafite"
+                }`}
+              >
+                {dia.data.getUTCDate()}
+              </span>
+              {tipos && (
+                <span className="mt-auto flex flex-wrap gap-1">
+                  {ORDEM_MARCADOR.filter((t) => tipos.has(t)).map((t) => (
+                    <span key={t} className={`h-1.5 w-1.5 rounded-full ${COR_MARCADOR[t]}`} />
+                  ))}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-cinza-fumo">
+        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-bordo" /> Casamento</span>
+        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-champagne" /> Prova</span>
+        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-grafite" /> Atendimento</span>
+      </div>
+    </div>
+  );
 }
