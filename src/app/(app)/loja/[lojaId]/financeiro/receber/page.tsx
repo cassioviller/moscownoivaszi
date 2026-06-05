@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarContasAReceber, resumoReceber, type FiltroReceber } from "@/lib/financeiro/receber";
-import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
 import { registrarRecebimentoAction, estornarRecebimentoAction } from "./actions";
 
@@ -45,12 +45,12 @@ export default async function ReceberPage({
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const { filtro: filtroRaw, ini, fim, ok, erro } = await searchParams;
+  const sp = await searchParams;
+  const { filtro: filtroRaw, ok, erro } = sp;
   const filtro = (FILTROS.find((f) => f.chave === filtroRaw)?.chave ?? "abertas") as FiltroReceber;
-  const intervalo = resolverIntervalo(ini, fim);
+  const { intervalo, qs } = lerFiltroFinanceiro(sp);
   const janela = { gte: intervalo.gte, lt: intervalo.lt };
-  const qsIntervalo = `&ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}`;
-  const voltar = `/loja/${lojaId}/financeiro/receber?filtro=${filtro}${qsIntervalo}`;
+  const voltar = `/loja/${lojaId}/financeiro/receber?${qs({ filtro })}`;
 
   const [resumo, lista] = await Promise.all([
     resumoReceber(sc.loja.id, { intervalo: janela }),
@@ -84,7 +84,7 @@ export default async function ReceberPage({
           return (
             <Link
               key={f.chave}
-              href={`/loja/${lojaId}/financeiro/receber?filtro=${f.chave}${qsIntervalo}`}
+              href={`/loja/${lojaId}/financeiro/receber?${qs({ filtro: f.chave })}`}
               className={[
                 "inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] transition-colors duration-150",
                 ativo ? "border-bordo bg-bordo/5 text-bordo" : "border-borda-suave bg-papel text-grafite hover:border-cinza-fumo hover:text-tinta",

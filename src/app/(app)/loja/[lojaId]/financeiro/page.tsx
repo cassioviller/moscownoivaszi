@@ -9,7 +9,7 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { resumoCaixaIntervalo, movimentosNoIntervalo, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
 import { competenciaAtual } from "@/lib/financeiro/datas";
-import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card, FiltroIntervalo } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -28,8 +28,8 @@ export default async function FluxoDeCaixaPage({
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"))) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const { ini, fim } = await searchParams;
-  const intervalo = resolverIntervalo(ini, fim);
+  const sp = await searchParams;
+  const { intervalo } = lerFiltroFinanceiro(sp);
   const janela = { gte: intervalo.gte, lt: intervalo.lt };
   const competenciaHoje = competenciaAtual();
 

@@ -15,7 +15,7 @@ import {
   listarPagamentos,
 } from "@/lib/financeiro/pagar";
 import { hojeYMD } from "@/lib/financeiro/datas";
-import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo, FiltroIntervalo, rotuloCompetencia } from "../../ui";
 import {
   definirSalarioAction,
@@ -65,9 +65,10 @@ export default async function FolhaPage({
   const sp = await searchParams;
   // O filtro de intervalo é a lente de visualização uniforme do financeiro; aqui o MÊS
   // DO INÍCIO define a competência exibida — a Folha segue mensal (gerar/pagar por competência).
-  const intervalo = resolverIntervalo(sp.ini, sp.fim);
+  const { intervalo, qs } = lerFiltroFinanceiro(sp);
   const competencia = intervalo.iniYMD.slice(0, 7);
   const colaboradorSel = sp.colaborador ?? "";
+  const voltar = `/loja/${lojaId}/financeiro/pagar/folha?${qs({ colaborador: colaboradorSel })}`;
 
   // Tudo num único batch: contasColab/pagamentos só dependem de colaboradorSel (searchParams),
   // não dos demais reads — não há razão para serializar dois Promise.all.
@@ -190,7 +191,7 @@ export default async function FolhaPage({
           ) : podeEditar ? (
             <form action={pagarContasAction} className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
               <input type="hidden" name="colaboradorId" value={colaboradorSel} />
-              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}&colaborador=${colaboradorSel}`} />
+              <input type="hidden" name="voltar" value={voltar} />
               <p className="text-[13px] text-grafite">Uma saída do caixa quita todas as contas abaixo — ajuste o valor real de cada uma.</p>
               <ul className="flex flex-col gap-2">
                 {contasColab.map((c) => (
@@ -228,7 +229,7 @@ export default async function FolhaPage({
                   {podeEditar && (
                     <form action={enviarContabilidadeAction} className="shrink-0">
                       <input type="hidden" name="pagamentoId" value={p.id} />
-                      <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}&colaborador=${colaboradorSel}`} />
+                      <input type="hidden" name="voltar" value={voltar} />
                       <input type="hidden" name="enviado" value={p.enviadoContabilidade ? "0" : "1"} />
                       <button type="submit" className={botaoSuave}>
                         {p.enviadoContabilidade ? "✓ na contabilidade" : "Enviar à contabilidade"}

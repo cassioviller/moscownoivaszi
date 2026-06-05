@@ -9,7 +9,7 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { previewComissaoIntervalo, listarFechamentos } from "@/lib/financeiro/comissao";
 import { competenciaAtual } from "@/lib/financeiro/datas";
-import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card, FiltroIntervalo } from "../ui";
 import { fecharCompetenciaAction } from "./actions";
 
@@ -44,9 +44,8 @@ export default async function ComissoesPage({
   // reflete só este período. O FECHAMENTO, porém, segue mensal — derivamos a competência do
   // INÍCIO do intervalo (não se fecha meio mês). Faixas/degraus acumulam sobre o período
   // escolhido (aproximação intencional — ver previewComissaoIntervalo em comissao.ts).
-  const intervalo = resolverIntervalo(sp.ini, sp.fim);
+  const { intervalo, qs } = lerFiltroFinanceiro(sp);
   const competencia = intervalo.iniYMD.slice(0, 7);
-  const qsIntervalo = `?ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}`;
 
   const [ranking, fechamentos] = await Promise.all([
     previewComissaoIntervalo(sc.loja.id, { gte: intervalo.gte, lt: intervalo.lt }),
@@ -113,7 +112,7 @@ export default async function ComissoesPage({
             </summary>
             <form action={fecharCompetenciaAction} className="flex flex-col gap-3 border-t border-borda-suave px-4 py-4">
               <input type="hidden" name="competencia" value={competencia} />
-              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/comissoes${qsIntervalo}`} />
+              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/comissoes?${qs()}`} />
               <p className="text-[13px] text-grafite">
                 Fecha o mês inteiro de {rotuloCompetencia(competencia)} (não o período acima): gera uma conta a pagar de comissão por
                 vendedora, com a faixa do mês completo. A ação é definitiva — o mês fechado não é reescrito.
