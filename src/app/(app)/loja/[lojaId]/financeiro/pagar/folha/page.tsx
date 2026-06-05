@@ -172,6 +172,16 @@ export default async function FolhaPage({
           </ol>
         )}
         <p className="text-[12px] text-cinza-fumo">Salário e comissão de cada colaborador — o resumo que vai à contabilidade.</p>
+        <div className="flex flex-col gap-1 border-t border-borda-suave pt-3">
+          <a
+            href={`/loja/${lojaId}/financeiro/pagar/folha/exportar?${qs()}`}
+            download
+            className={`${botaoSuave} w-fit`}
+          >
+            Exportar à contabilidade (xlsx)
+          </a>
+          <p className="text-[12px] text-cinza-fumo">Baixa os pagamentos do período e marca como enviados à contabilidade.</p>
+        </div>
       </section>
 
       {/* — Pagar colaborador (o cruzamento) — */}
