@@ -47,10 +47,17 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-light text-tinta">
-          {diaMes.format(dias[0])} – {diaMes.format(dias[6])}
-        </h2>
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[16px] font-light text-tinta">
+            {diaMes.format(dias[0])} – {diaMes.format(dias[6])}
+          </h2>
+          <p className="text-[12px] text-cinza-fumo">
+            {atendimentos.length === 0
+              ? "Nenhum atendimento nesta semana."
+              : `${atendimentos.length} ${atendimentos.length === 1 ? "atendimento" : "atendimentos"} nesta semana.`}
+          </p>
+        </div>
         <div className="flex items-center gap-1">
           <Link href={link(anterior)} aria-label="Semana anterior" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta">‹</Link>
           <Link href={link(proxima)} aria-label="Próxima semana" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta">›</Link>

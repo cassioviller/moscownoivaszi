@@ -27,6 +27,12 @@ const ROTULO_MARCADOR: Record<TipoMarcador, string> = {
   prova: "Prova",
   atendimento: "Atendimento",
 };
+// [singular, plural] para a contagem do mês — "3 casamentos · 5 provas".
+const PLURAL_MARCADOR: Record<TipoMarcador, [string, string]> = {
+  casamento: ["casamento", "casamentos"],
+  prova: ["prova", "provas"],
+  atendimento: ["atendimento", "atendimentos"],
+};
 
 export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: string }) {
   const hoje = hojeYMD();
@@ -40,6 +46,15 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
   const marcadores = await marcadoresNoIntervalo(lojaId, inicio, fim);
   const porDia = agruparMarcadoresPorDia(marcadores);
 
+  // Contagem do mês de referência (ignora os dias vazantes dos meses vizinhos).
+  const noMes = marcadores.filter((m) => {
+    const [a, mm] = m.ymd.split("-");
+    return Number(a) === ano && Number(mm) - 1 === mes0;
+  });
+  const contagem = ORDEM_MARCADOR.map((t) => ({ t, n: noMes.filter((m) => m.tipo === t).length })).filter(
+    (c) => c.n > 0,
+  );
+
   const ant = mesVizinho(ano, mes0, -1);
   const prox = mesVizinho(ano, mes0, +1);
   const link = (a: { ano: number; mes0: number }) =>
@@ -47,10 +62,17 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-light capitalize text-tinta">
-          {tituloMes.format(dias.find((d) => d.noMes)!.data)}
-        </h2>
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[16px] font-light capitalize text-tinta">
+            {tituloMes.format(dias.find((d) => d.noMes)!.data)}
+          </h2>
+          {contagem.length > 0 && (
+            <p className="text-[12px] text-cinza-fumo">
+              {contagem.map((c) => `${c.n} ${PLURAL_MARCADOR[c.t][c.n === 1 ? 0 : 1]}`).join(" · ")} neste mês
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <Link
             href={link(ant)}

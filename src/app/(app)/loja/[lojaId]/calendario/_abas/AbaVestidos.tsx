@@ -58,7 +58,9 @@ export async function AbaVestidos({ lojaId }: { lojaId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[13px] text-cinza-fumo">Próximos {HORIZONTE_DIAS} dias · cada faixa é o tempo que a peça fica fora.</p>
+      <p className="text-[13px] text-cinza-fumo">
+        {linhas.length} {linhas.length === 1 ? "peça fora" : "peças fora"} · próximos {HORIZONTE_DIAS} dias · cada faixa é o tempo que a peça fica fora.
+      </p>
 
       {/* Eixo de tempo — datas alinhadas à faixa (desktop). */}
       <div className="hidden items-center gap-4 px-4 sm:flex">
