@@ -291,16 +291,22 @@ export async function listarOrcamentosDaNoiva(lojaId: string, leadId: string): P
 }
 
 // Vestido escolhido em algum atendimento da noiva (item tipo VESTIDO). Peça de
-// acervo para mostrar no perfil — sem valor, só identidade + capa. Deduplicado:
-// o mesmo vestido pode aparecer em mais de um atendimento, mas é um card só.
+// acervo para mostrar no perfil (identidade + capa), agora com o histórico do
+// orçamento: valor de tabela, valor combinado e a data em que foi orçado. NÃO
+// deduplicado de propósito — o mesmo vestido orçado em datas/valores diferentes
+// rende um card por orçamento, e a sequência É o histórico da negociação.
 export type VestidoPreEscolhido = {
-  id: string;
+  itemId: string; // chave única (um por item de orçamento)
+  id: string; // vestidoId — alvo do link para o acervo
   codigo: string;
   nome: string;
   categoria: string | null;
   status: string;
   temFoto: boolean;
   versaoFoto: number; // updatedAt da foto 0 — cache-busting na URL (igual ao destaque)
+  valorBase: string | null; // preço de tabela do vestido ("1234.56"); null se não houver
+  valorOrcado: string; // o valor combinado com a noiva neste orçamento ("1234.56")
+  orcadoEm: Date; // quando o orçamento foi aberto
 };
 
 export async function listarVestidosPreEscolhidosDaNoiva(
@@ -311,6 +317,9 @@ export async function listarVestidosPreEscolhidosDaNoiva(
     where: { tipo: "VESTIDO", vestidoId: { not: null }, orcamento: { leadId } },
     orderBy: { createdAt: "asc" },
     select: {
+      id: true,
+      valorUnitario: true,
+      orcamento: { select: { createdAt: true } },
       vestido: {
         select: {
           id: true,
@@ -318,18 +327,19 @@ export async function listarVestidosPreEscolhidosDaNoiva(
           nome: true,
           categoria: true,
           status: true,
+          precoBase: true,
           fotos: { where: { ordem: 0 }, select: { updatedAt: true } },
         },
       },
     },
   });
 
-  const vistos = new Set<string>();
   const out: VestidoPreEscolhido[] = [];
-  for (const { vestido: v } of itens) {
-    if (!v || vistos.has(v.id)) continue;
-    vistos.add(v.id);
+  for (const it of itens) {
+    const v = it.vestido;
+    if (!v) continue;
     out.push({
+      itemId: it.id,
       id: v.id,
       codigo: v.codigo,
       nome: v.nome,
@@ -337,6 +347,9 @@ export async function listarVestidosPreEscolhidosDaNoiva(
       status: v.status,
       temFoto: v.fotos.length > 0,
       versaoFoto: v.fotos[0]?.updatedAt.getTime() ?? 0,
+      valorBase: v.precoBase != null ? Number(v.precoBase).toFixed(2) : null,
+      valorOrcado: Number(it.valorUnitario).toFixed(2),
+      orcadoEm: it.orcamento.createdAt,
     });
   }
   return out;

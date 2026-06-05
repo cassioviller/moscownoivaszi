@@ -48,6 +48,15 @@ const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
+// Data de um timestamp real (ex.: quando o orçamento foi aberto). Diferente de
+// dataCurta: aqui o dado é um instante, não uma data-só — formata no fuso de
+// São Paulo para não escorregar de dia perto da meia-noite.
+const dataInstante = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "America/Sao_Paulo",
+});
 
 // Mensagem humana para o retorno das ações de reserva (?ok / ?erro).
 const AVISOS: Record<string, string> = {
@@ -302,12 +311,14 @@ export default async function NoivaPage({
       </div>
 
       {/* Vestidos pré-escolhidos — peças escolhidas nos atendimentos, como acervo
-          (foto de capa + identidade), sem valor. Largura total: respira em grade. */}
+          (foto de capa + identidade) com o histórico do orçamento: valor de
+          tabela, valor combinado e data. Um card por orçamento — a sequência é o
+          histórico. Largura total: respira em grade. */}
       {vestidosPreEscolhidos.length > 0 && (
         <Bloco titulo="Vestidos pré-escolhidos">
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {vestidosPreEscolhidos.map((v) => (
-              <li key={v.id}>
+              <li key={v.itemId}>
                 <Link
                   href={`/loja/${lojaId}/vestidos/${v.id}`}
                   className="group flex flex-col gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
@@ -327,13 +338,30 @@ export default async function NoivaPage({
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="truncate text-[14px] text-tinta transition-colors duration-150 group-hover:text-bordo">{v.nome}</span>
-                    <span className="text-[12px] text-cinza-fumo">
-                      {v.codigo}
-                      {v.categoria ? ` · ${v.categoria}` : ""}
-                      {v.status !== "ativo" ? " · inativo" : ""}
-                    </span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="truncate text-[14px] text-tinta transition-colors duration-150 group-hover:text-bordo">{v.nome}</span>
+                      <span className="text-[12px] text-cinza-fumo">
+                        {v.codigo}
+                        {v.categoria ? ` · ${v.categoria}` : ""}
+                        {v.status !== "ativo" ? " · inativo" : ""}
+                      </span>
+                    </div>
+                    {/* Histórico do orçamento deste card */}
+                    <dl className="flex flex-col gap-0.5 border-t border-borda-suave pt-1.5 text-[12px]">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <dt className="text-cinza-fumo">Tabela</dt>
+                        <dd className="tabular-nums text-grafite">{v.valorBase ? brl(v.valorBase) : "—"}</dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <dt className="text-cinza-fumo">Orçado</dt>
+                        <dd className="font-display font-light tabular-nums text-tinta">{brl(v.valorOrcado)}</dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <dt className="text-cinza-fumo">Em</dt>
+                        <dd className="tabular-nums text-cinza-fumo">{dataInstante.format(v.orcadoEm)}</dd>
+                      </div>
+                    </dl>
                   </div>
                 </Link>
               </li>
