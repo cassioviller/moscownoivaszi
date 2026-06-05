@@ -11,11 +11,9 @@ import {
   indexarPorCelula,
 } from "@/lib/calendario/semana";
 import { atendimentosNoIntervalo, type AtendimentoCalendario } from "@/lib/calendario/dados";
+import { obterHorarioLoja } from "@/lib/atendimentos/cabines";
 import type { AtendimentoSituacao } from "@/generated/prisma/client";
 
-const HORA_INICIO = 9;
-const HORA_FIM = 19; // exclusivo
-const HORAS = Array.from({ length: HORA_FIM - HORA_INICIO }, (_, i) => HORA_INICIO + i);
 const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
@@ -31,6 +29,9 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
   const hoje = hojeYMD();
   const inicioSemana = semanaDeRef(refParam, hoje);
   const dias = diasDaSemana(inicioSemana);
+
+  const { abertura, fechamento } = await obterHorarioLoja(lojaId);
+  const horas = Array.from({ length: Math.max(0, fechamento - abertura) }, (_, i) => abertura + i);
 
   const fim = new Date(dias[6].getTime());
   fim.setUTCDate(fim.getUTCDate() + 1); // exclusivo (fim do sábado)
@@ -70,7 +71,7 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
           ))}
 
           {/* linhas de hora */}
-          {HORAS.map((h) => (
+          {horas.map((h) => (
             <div key={`linha-${h}`} className="contents">
               <div className="bg-papel-elevado py-2 pr-1 text-right text-[11px] tabular-nums text-cinza-fumo">
                 {String(h).padStart(2, "0")}h
