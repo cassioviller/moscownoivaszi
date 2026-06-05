@@ -40,10 +40,12 @@ function prazoCasamento(dias: number): string {
 export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
   const hoje = hojeYMD();
   const hojeMs = hojeUTC().getTime();
-  const [provas, ajustes] = await Promise.all([
-    listarProvasDaLoja(lojaId),
-    listarAjustesPendentes(lojaId),
+  const [provasPg, ajustesPg] = await Promise.all([
+    listarProvasDaLoja(lojaId, { tamanho: 5 }),
+    listarAjustesPendentes(lojaId, { tamanho: 5 }),
   ]);
+  const { itens: provas, total: totalProvas } = provasPg;
+  const { itens: ajustes, total: totalAjustes } = ajustesPg;
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,10 +53,10 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">
-            Próximas provas{provas.length > 0 && <span className="text-grafite"> · {provas.length}</span>}
+            Próximas provas{totalProvas > 0 && <span className="text-grafite"> · {totalProvas}</span>}
           </h2>
           <Link href={`/loja/${lojaId}/provas`} className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
-            Ver todas
+            {totalProvas > provas.length ? `Ver todas (${totalProvas})` : "Ver todas"}
           </Link>
         </div>
         {provas.length === 0 ? (
@@ -83,10 +85,10 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">
-            Ajustes pendentes{ajustes.length > 0 && <span className="text-grafite"> · {ajustes.length}</span>}
+            Ajustes pendentes{totalAjustes > 0 && <span className="text-grafite"> · {totalAjustes}</span>}
           </h2>
           <Link href={`/loja/${lojaId}/ajustes`} className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
-            Ver fila
+            {totalAjustes > ajustes.length ? `Ver fila (${totalAjustes})` : "Ver fila"}
           </Link>
         </div>
         {ajustes.length === 0 ? (

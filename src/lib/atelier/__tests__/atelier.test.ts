@@ -199,7 +199,7 @@ describe("fila global de pendentes", () => {
     // um ajuste feito não deve aparecer na fila
     await alternarStatusAjuste(loja, aA.ajusteId);
 
-    const fila = await listarAjustesPendentes(loja);
+    const fila = (await listarAjustesPendentes(loja)).itens;
     const meus = fila.filter((f) => f.id === aA.ajusteId || f.id === aB.ajusteId);
     expect(meus.map((f) => f.id)).toEqual([aB.ajusteId]); // só o pendente (julho)
     expect(meus[0].noivaNome).toBe(`${MARK}Bia`);
@@ -207,14 +207,20 @@ describe("fila global de pendentes", () => {
 
     // marca aA de volta como pendente → agora os dois aparecem, julho antes de setembro
     await alternarStatusAjuste(loja, aA.ajusteId);
-    const fila2 = (await listarAjustesPendentes(loja)).filter(
+    const fila2 = (await listarAjustesPendentes(loja)).itens.filter(
       (f) => f.id === aA.ajusteId || f.id === aB.ajusteId,
     );
     expect(fila2.map((f) => f.id)).toEqual([aB.ajusteId, aA.ajusteId]); // ordenado por casamento
+
+    // paginação: tamanho 1 traz só o primeiro (julho), mas total conta a fila inteira
+    const pagina1 = await listarAjustesPendentes(loja, { tamanho: 1 });
+    expect(pagina1.itens.length).toBe(1);
+    expect(pagina1.total).toBeGreaterThanOrEqual(2);
+    expect(pagina1.itens[0].id).toBe(aB.ajusteId); // ordem preservada antes de fatiar
   });
 
   it("isolamento: a outra loja não vê os pendentes desta", async () => {
-    const fila = await listarAjustesPendentes(lojaOutra);
+    const fila = (await listarAjustesPendentes(lojaOutra)).itens;
     expect(fila.every((f) => f.vestidoCodigo.startsWith(`${MARK}`) === false || f.noivaNome === null)).toBe(true);
     // de forma direta: nenhum ajuste desta loja vaza
     expect(fila.length).toBe(0);
@@ -235,7 +241,7 @@ describe("agenda de provas da loja (listarProvasDaLoja)", () => {
   });
 
   it("próximas: traz as futuras em ordem ascendente, com noiva e vestido", async () => {
-    const lista = await listarProvasDaLoja(loja);
+    const lista = (await listarProvasDaLoja(loja)).itens;
     const ids = lista.map((p) => p.id);
     expect(ids).toContain(provaProx);
     expect(ids).toContain(provaDistante);
@@ -249,8 +255,15 @@ describe("agenda de provas da loja (listarProvasDaLoja)", () => {
     expect(minha.bloqueioId).toBe(reservaId);
   });
 
+  it("paginação: tamanho 1 traz a primeira futura, mas total conta todas", async () => {
+    const r = await listarProvasDaLoja(loja, { tamanho: 1 });
+    expect(r.itens.length).toBe(1);
+    expect(r.total).toBeGreaterThanOrEqual(2); // provaProx + provaDistante
+    expect(r.itens[0].id).toBe(provaProx); // a mais próxima (ordem ascendente preservada)
+  });
+
   it("passadas: traz só o histórico (descendente) e exclui as futuras", async () => {
-    const lista = await listarProvasDaLoja(loja, { passadas: true });
+    const lista = (await listarProvasDaLoja(loja, { passadas: true })).itens;
     const ids = lista.map((p) => p.id);
     expect(ids).toContain(provaPassada);
     expect(ids).not.toContain(provaProx);
@@ -258,7 +271,8 @@ describe("agenda de provas da loja (listarProvasDaLoja)", () => {
   });
 
   it("isolamento: a outra loja não vê as provas desta", async () => {
-    const lista = await listarProvasDaLoja(lojaOutra);
-    expect(lista.length).toBe(0);
+    const r = await listarProvasDaLoja(lojaOutra);
+    expect(r.itens.length).toBe(0);
+    expect(r.total).toBe(0);
   });
 });

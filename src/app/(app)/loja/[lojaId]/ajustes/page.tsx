@@ -8,6 +8,8 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
+import { paginar, TAMANHO_PAGINA } from "@/lib/paginacao";
+import { Paginacao } from "@/components/Paginacao";
 import { marcarFeitoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +42,7 @@ export default async function AjustesPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ ok?: string }>;
+  searchParams: Promise<{ ok?: string; p?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -49,13 +51,14 @@ export default async function AjustesPage({
   }
 
   const { lojaId } = await params;
-  const { ok } = await searchParams;
-  const [podeEditar, pendentes] = await Promise.all([
+  const sp = await searchParams;
+  const [podeEditar, fila] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "ajustes", "editar"),
-    listarAjustesPendentes(sc.loja.id),
+    listarAjustesPendentes(sc.loja.id, { pagina: sp.p }),
   ]);
+  const { itens: pendentes, total } = fila;
   const hoje = hojeUTC();
-  const aviso = ok ? AVISOS[ok] : null;
+  const aviso = sp.ok ? AVISOS[sp.ok] : null;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
@@ -157,6 +160,13 @@ export default async function AjustesPage({
           })}
         </ul>
       )}
+
+      <Paginacao
+        pagina={paginar(sp.p).pagina}
+        total={total}
+        tamanho={TAMANHO_PAGINA}
+        href={(p) => `?${new URLSearchParams({ p: String(p) }).toString()}`}
+      />
     </main>
   );
 }

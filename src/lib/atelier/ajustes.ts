@@ -6,6 +6,7 @@
 // lojaId): só a tocamos depois de confirmar o Ajuste pai pela loja (padrão fotos.ts).
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
+import { paginar } from "@/lib/paginacao";
 
 export type ResultadoAjuste =
   | { ok: true; ajusteId: string }
@@ -123,7 +124,10 @@ export type AjustePendente = {
  * (urgência primeiro; sem data ao fim). Consulta direta em `ajuste` graças ao
  * lojaId + tenantPrisma — junta prova → reserva → noiva/vestido para o contexto.
  */
-export async function listarAjustesPendentes(lojaId: string): Promise<AjustePendente[]> {
+export async function listarAjustesPendentes(
+  lojaId: string,
+  opts: { pagina?: number | string; tamanho?: number } = {},
+): Promise<{ itens: AjustePendente[]; total: number }> {
   const rows = await tenantPrisma(prisma, lojaId).ajuste.findMany({
     where: { status: "PENDENTE" },
     include: {
@@ -141,7 +145,7 @@ export async function listarAjustesPendentes(lojaId: string): Promise<AjustePend
     },
   });
 
-  return rows
+  const ordenados = rows
     .map((a) => ({
       id: a.id,
       descricao: a.descricao,
@@ -162,4 +166,11 @@ export async function listarAjustesPendentes(lojaId: string): Promise<AjustePend
       const ty = y.casamentoData?.getTime() ?? Number.POSITIVE_INFINITY;
       return tx - ty;
     });
+
+  // Paginamos após ordenar em memória (a urgência por casamentoData é calculada aqui,
+  // não no banco) — assim a página N preserva a ordem global da fila.
+  const { skip, take } = paginar(opts.pagina, opts.tamanho);
+  const total = ordenados.length;
+  const itens = ordenados.slice(skip, skip + take);
+  return { itens, total };
 }

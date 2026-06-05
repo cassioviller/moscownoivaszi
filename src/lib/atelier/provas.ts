@@ -12,6 +12,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { diaValido } from "@/lib/disponibilidade/datas";
 import { meiaNoiteUTC, hojeUTC } from "@/lib/tempo";
+import { paginar } from "@/lib/paginacao";
 import type {
   ProvaTipo,
   ProvaComparecimento,
@@ -99,22 +100,30 @@ export type ProvaDaLoja = {
  */
 export async function listarProvasDaLoja(
   lojaId: string,
-  opts: { passadas?: boolean } = {},
-): Promise<ProvaDaLoja[]> {
+  opts: { passadas?: boolean; pagina?: number | string; tamanho?: number } = {},
+): Promise<{ itens: ProvaDaLoja[]; total: number }> {
   const hoje = hojeUTC();
-  const rows = await tenantPrisma(prisma, lojaId).prova.findMany({
-    where: { dataReal: opts.passadas ? { lt: hoje } : { gte: hoje } },
-    orderBy: { dataReal: opts.passadas ? "desc" : "asc" },
-    include: {
-      bloqueio: {
-        include: {
-          lead: { select: { id: true, noivaNome: true } },
-          vestido: { select: { codigo: true, nome: true } },
+  const where = { dataReal: opts.passadas ? { lt: hoje } : { gte: hoje } };
+  const { skip, take } = paginar(opts.pagina, opts.tamanho);
+  const db = tenantPrisma(prisma, lojaId);
+  const [rows, total] = await Promise.all([
+    db.prova.findMany({
+      where,
+      orderBy: { dataReal: opts.passadas ? "desc" : "asc" },
+      skip,
+      take,
+      include: {
+        bloqueio: {
+          include: {
+            lead: { select: { id: true, noivaNome: true } },
+            vestido: { select: { codigo: true, nome: true } },
+          },
         },
       },
-    },
-  });
-  return rows.map((p) => ({
+    }),
+    db.prova.count({ where }),
+  ]);
+  const itens = rows.map((p) => ({
     id: p.id,
     dataReal: p.dataReal,
     tipo: p.tipo,
@@ -126,6 +135,7 @@ export async function listarProvasDaLoja(
     vestidoNome: p.bloqueio.vestido.nome,
     casamentoData: p.bloqueio.casamentoData,
   }));
+  return { itens, total };
 }
 
 const TIPOS_VALIDOS = new Set<ProvaTipo>(["PRIMEIRA", "INTERMEDIARIA", "FINAL"]);

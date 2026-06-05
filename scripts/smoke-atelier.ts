@@ -84,9 +84,9 @@ async function main() {
   ck(a.ok, "adicionarAjuste ok");
   const ajusteId = a.ok ? a.ajusteId : "";
   ck((await listarProvasDaReserva(LOJA, BID))[0]?.ajustes.length === 1, "prova lista 1 ajuste");
-  ck((await listarAjustesPendentes(LOJA)).some((x) => x.id === ajusteId), "ajuste aparece na fila global");
+  ck((await listarAjustesPendentes(LOJA)).itens.some((x) => x.id === ajusteId), "ajuste aparece na fila global");
   await alternarStatusAjuste(LOJA, ajusteId);
-  ck(!(await listarAjustesPendentes(LOJA)).some((x) => x.id === ajusteId), "apos marcar feito, sai da fila");
+  ck(!(await listarAjustesPendentes(LOJA)).itens.some((x) => x.id === ajusteId), "apos marcar feito, sai da fila");
 
   console.log("\n[Motor] bloco continuo + prova nao altera disponibilidade");
   ck(!(await vestidosLivresPara(LOJA, "2026-06-30")).some((v) => v.id === vestido.id), "reservado nao aparece livre em 30/06");

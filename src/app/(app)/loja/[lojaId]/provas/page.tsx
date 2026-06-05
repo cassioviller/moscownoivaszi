@@ -9,6 +9,8 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarProvasDaLoja, type ProvaDaLoja } from "@/lib/atelier/provas";
+import { paginar, TAMANHO_PAGINA } from "@/lib/paginacao";
+import { Paginacao } from "@/components/Paginacao";
 import type { ProvaTipo, ProvaComparecimento } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +70,7 @@ export default async function ProvasPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ quando?: string }>;
+  searchParams: Promise<{ quando?: string; p?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -80,10 +82,10 @@ export default async function ProvasPage({
   if (!podeVerNoivas && !podeVerAjustes) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const { quando } = await searchParams;
-  const passadas = quando === "passadas";
+  const sp = await searchParams;
+  const passadas = sp.quando === "passadas";
 
-  const provas = await listarProvasDaLoja(sc.loja.id, { passadas });
+  const { itens: provas, total } = await listarProvasDaLoja(sc.loja.id, { passadas, pagina: sp.p });
   const meses = agruparPorMes(provas);
   const hoje = hojeUTC().getTime();
 
@@ -190,6 +192,18 @@ export default async function ProvasPage({
           ))}
         </div>
       )}
+
+      <Paginacao
+        pagina={paginar(sp.p).pagina}
+        total={total}
+        tamanho={TAMANHO_PAGINA}
+        href={(p) =>
+          `?${new URLSearchParams({
+            ...(passadas ? { quando: "passadas" } : {}),
+            p: String(p),
+          }).toString()}`
+        }
+      />
 
       {/* Porta para o histórico (ou volta), discreta no rodapé */}
       <div className="border-t border-borda-suave pt-5">
