@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarContasAReceber, resumoReceber, type FiltroReceber } from "@/lib/financeiro/receber";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card } from "../ui";
+import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
 import { registrarRecebimentoAction, estornarRecebimentoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export default async function ReceberPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ filtro?: string; ok?: string; erro?: string }>;
+  searchParams: Promise<{ filtro?: string; ini?: string; fim?: string; ok?: string; erro?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -44,11 +45,17 @@ export default async function ReceberPage({
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const { filtro: filtroRaw, ok, erro } = await searchParams;
+  const { filtro: filtroRaw, ini, fim, ok, erro } = await searchParams;
   const filtro = (FILTROS.find((f) => f.chave === filtroRaw)?.chave ?? "abertas") as FiltroReceber;
-  const voltar = `/loja/${lojaId}/financeiro/receber?filtro=${filtro}`;
+  const intervalo = resolverIntervalo(ini, fim);
+  const janela = { gte: intervalo.gte, lt: intervalo.lt };
+  const qsIntervalo = `&ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}`;
+  const voltar = `/loja/${lojaId}/financeiro/receber?filtro=${filtro}${qsIntervalo}`;
 
-  const [resumo, lista] = await Promise.all([resumoReceber(sc.loja.id), listarContasAReceber(sc.loja.id, { filtro })]);
+  const [resumo, lista] = await Promise.all([
+    resumoReceber(sc.loja.id, { intervalo: janela }),
+    listarContasAReceber(sc.loja.id, { filtro, intervalo: janela }),
+  ]);
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
 
   return (
@@ -60,6 +67,8 @@ export default async function ReceberPage({
         <h1 className="text-[24px] font-light tracking-tight text-tinta">Contas a receber</h1>
         <p className="text-[14px] text-cinza-fumo">O que entra das noivas, por contrato.</p>
       </header>
+
+      <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} hidden={{ filtro }} />
 
       <section className="flex flex-wrap gap-3">
         <Card rotulo="A receber" valor={resumo.totalAReceber} />
@@ -75,7 +84,7 @@ export default async function ReceberPage({
           return (
             <Link
               key={f.chave}
-              href={`/loja/${lojaId}/financeiro/receber?filtro=${f.chave}`}
+              href={`/loja/${lojaId}/financeiro/receber?filtro=${f.chave}${qsIntervalo}`}
               className={[
                 "inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] transition-colors duration-150",
                 ativo ? "border-bordo bg-bordo/5 text-bordo" : "border-borda-suave bg-papel text-grafite hover:border-cinza-fumo hover:text-tinta",

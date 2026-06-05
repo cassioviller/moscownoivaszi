@@ -270,10 +270,13 @@ export type ContaReceberView = {
   atrasada: boolean;
 };
 
-export async function listarContasAReceber(lojaId: string, opts: { filtro?: FiltroReceber } = {}): Promise<ContaReceberView[]> {
+export async function listarContasAReceber(
+  lojaId: string,
+  opts: { filtro?: FiltroReceber; intervalo?: { gte: Date; lt: Date } } = {},
+): Promise<ContaReceberView[]> {
   const hoje = hojeUTC();
   const filtro = opts.filtro ?? "abertas";
-  const where =
+  const base =
     filtro === "recebidas"
       ? { status: "PAGA" as const }
       : filtro === "atrasadas"
@@ -281,6 +284,18 @@ export async function listarContasAReceber(lojaId: string, opts: { filtro?: Filt
         : filtro === "abertas"
           ? { status: "PREVISTA" as const }
           : {};
+  // Intervalo escopa por vencimento. Para "atrasadas" o base já traz { lt: hoje };
+  // combinamos pegando o lt mais restritivo (vencido E dentro da janela).
+  const baseVenc = (base as { vencimento?: { lt?: Date } }).vencimento;
+  const where = opts.intervalo
+    ? {
+        ...base,
+        vencimento: {
+          gte: opts.intervalo.gte,
+          lt: baseVenc?.lt && baseVenc.lt < opts.intervalo.lt ? baseVenc.lt : opts.intervalo.lt,
+        },
+      }
+    : base;
   const rows = await tenantPrisma(prisma, lojaId).parcela.findMany({
     where,
     orderBy: { vencimento: "asc" },
@@ -302,13 +317,29 @@ export async function listarContasAReceber(lojaId: string, opts: { filtro?: Filt
 
 export type ResumoReceber = { totalAReceber: string; recebidoTotal: string; emAtraso: string };
 
-export async function resumoReceber(lojaId: string): Promise<ResumoReceber> {
+export async function resumoReceber(
+  lojaId: string,
+  opts: { intervalo?: { gte: Date; lt: Date } } = {},
+): Promise<ResumoReceber> {
   const db = tenantPrisma(prisma, lojaId);
   const hoje = hojeUTC();
+  // Intervalo (quando presente) escopa todos os totais por vencimento.
+  const janela = opts.intervalo ? { gte: opts.intervalo.gte, lt: opts.intervalo.lt } : undefined;
+  const vencAReceber = janela ?? {};
+  const vencRecebido = janela ?? {};
+  // Em atraso: vencido (< hoje) e, se houver janela, dentro dela (lt mais restritivo).
+  const ltAtraso = janela && janela.lt < hoje ? janela.lt : hoje;
+  const vencAtraso = janela ? { gte: janela.gte, lt: ltAtraso } : { lt: hoje };
   const [aReceber, recebido, atraso] = await Promise.all([
-    db.parcela.aggregate({ where: { status: "PREVISTA" }, _sum: { valorPrevisto: true } }),
-    db.parcela.aggregate({ where: { status: "PAGA" }, _sum: { valorRecebido: true } }),
-    db.parcela.aggregate({ where: { status: "PREVISTA", vencimento: { lt: hoje } }, _sum: { valorPrevisto: true } }),
+    db.parcela.aggregate({
+      where: { status: "PREVISTA", ...(Object.keys(vencAReceber).length ? { vencimento: vencAReceber } : {}) },
+      _sum: { valorPrevisto: true },
+    }),
+    db.parcela.aggregate({
+      where: { status: "PAGA", ...(Object.keys(vencRecebido).length ? { vencimento: vencRecebido } : {}) },
+      _sum: { valorRecebido: true },
+    }),
+    db.parcela.aggregate({ where: { status: "PREVISTA", vencimento: vencAtraso }, _sum: { valorPrevisto: true } }),
   ]);
   return {
     totalAReceber: deCentavos(decParaCentavos(aReceber._sum.valorPrevisto)),

@@ -156,3 +156,34 @@ describe("receber: resumo e isolamento", () => {
     expect((await listarContasAReceber(loja, { filtro: "todas" })).some((x) => x.contratoId === c)).toBe(false);
   });
 });
+
+describe("receber: filtro por intervalo de vencimento", () => {
+  it("escopa a lista e o resumo por vencimento; sem intervalo, retorna tudo", async () => {
+    const l3 = (await prisma.loja.create({ data: { nome: `${MARK}intervalo` } })).id;
+    const db3 = tenantPrisma(prisma, l3);
+    const noiva3 = (await db3.lead.create({ data: { noivaNome: `${MARK}Cida` } as never })).id;
+    await prisma.usuarioLoja.create({ data: { usuarioId: vend, lojaId: l3, perfilId: "perfil-vendedora" } });
+    const c = await contrato("900,00", l3, noiva3);
+    // 3 parcelas mensais a partir de 2027-03-15 → 03-15, 04-14, 05-14 (periodicidade 30d).
+    await gerarPlanoDePagamento(l3, c, { numParcelas: 3, primeiroVencimento: "2027-03-15", periodicidadeDias: 30 });
+    const todas = await listarContasAReceber(l3, { filtro: "todas" });
+    expect(todas).toHaveLength(3);
+
+    // intervalo cobrindo só março (2027-03-01..2027-03-31).
+    const gte = new Date("2027-03-01T00:00:00.000Z");
+    const lt = new Date("2027-04-01T00:00:00.000Z");
+    const dentro = await listarContasAReceber(l3, { filtro: "todas", intervalo: { gte, lt } });
+    expect(dentro).toHaveLength(1);
+    expect(dentro[0].vencimento.toISOString().slice(0, 10)).toBe("2027-03-15");
+
+    // sem intervalo: todas as 3.
+    expect(await listarContasAReceber(l3, { filtro: "todas" })).toHaveLength(3);
+
+    // resumo escopado ao intervalo de março: só a 1ª parcela conta como a receber.
+    const rDentro = await resumoReceber(l3, { intervalo: { gte, lt } });
+    expect(rDentro.totalAReceber).toBe("300.00");
+    // resumo sem intervalo: as 3 (900,00) a receber.
+    const rTudo = await resumoReceber(l3);
+    expect(rTudo.totalAReceber).toBe("900.00");
+  });
+});
