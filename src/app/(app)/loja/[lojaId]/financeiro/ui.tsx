@@ -33,6 +33,37 @@ export function SecaoTitulo({ children }: { children: React.ReactNode }) {
   return <h2 className="text-[12px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">{children}</h2>;
 }
 
+// — Filtro de intervalo (lente de visualização: ?ini=&fim=) —
+// Form GET com Início/Fim já pré-preenchidos (1º/último dia do mês por padrão).
+// `hidden` preserva outros params da URL (status, colaborador…) ao submeter.
+export function FiltroIntervalo({
+  iniYMD,
+  fimYMD,
+  hidden,
+}: {
+  iniYMD: string;
+  fimYMD: string;
+  hidden?: Record<string, string>;
+}) {
+  return (
+    <form method="get" className="flex flex-wrap items-end gap-2">
+      {hidden &&
+        Object.entries(hidden).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+      <label className="flex flex-col gap-1 text-[12px] text-cinza-fumo">
+        Início
+        <input name="ini" type="date" defaultValue={iniYMD} aria-label="Data inicial" className={`${inputBase} w-40`} />
+      </label>
+      <label className="flex flex-col gap-1 text-[12px] text-cinza-fumo">
+        Fim
+        <input name="fim" type="date" defaultValue={fimYMD} aria-label="Data final" className={`${inputBase} w-40`} />
+      </label>
+      <button type="submit" className={botaoSuave}>
+        Ver
+      </button>
+    </form>
+  );
+}
+
 // — Card de métrica do financeiro (resumo de carteira) —
 export function Card({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
   return (
