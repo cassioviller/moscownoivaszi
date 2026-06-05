@@ -2,7 +2,15 @@
 // pagas (entrada) e pagamentos (saída), por competência do MOVIMENTO.
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
-import { resumoCaixa, movimentosDoMes, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
+import { resumoCaixa, movimentosDoMes, resumoCaixaIntervalo, movimentosNoIntervalo, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
+
+/** Range [gte, lt) a partir de "YYYY-MM-DD" inclusivos (meia-noite UTC, lt = fim+1d). */
+function range(iniYMD: string, fimYMD: string) {
+  const gte = new Date(`${iniYMD}T00:00:00Z`);
+  const lt = new Date(`${fimYMD}T00:00:00Z`);
+  lt.setUTCDate(lt.getUTCDate() + 1);
+  return { gte, lt };
+}
 
 const MARK = "t-fluxo-";
 let loja = "";
@@ -95,6 +103,54 @@ describe("movimentosDoMes", () => {
 
   it("competência sem movimento → lista vazia", async () => {
     expect(await movimentosDoMes(loja, "2026-01")).toEqual([]);
+  });
+});
+
+describe("resumoCaixaIntervalo", () => {
+  it("considera só o que cai no range [gte, lt); fim inclusivo, isola loja", async () => {
+    // 10/03 a 31/03: entradas 5k+3k = 8k, saída 2k → saldo 6k (igual ao mês cheio).
+    expect(await resumoCaixaIntervalo(loja, range("2027-03-10", "2027-03-31"))).toEqual({
+      entradas: "8000.00",
+      saidas: "2000.00",
+      saldo: "6000.00",
+    });
+    // 01/03 a 14/03: pega só a entrada do dia 10 (5k); deixa de fora 15/03 e 31/03.
+    expect(await resumoCaixaIntervalo(loja, range("2027-03-01", "2027-03-14"))).toEqual({
+      entradas: "5000.00",
+      saidas: "0.00",
+      saldo: "5000.00",
+    });
+    // 11/03 a 30/03: exclui as bordas (10 e 31); fica só a saída do 15.
+    expect(await resumoCaixaIntervalo(loja, range("2027-03-11", "2027-03-30"))).toEqual({
+      entradas: "0.00",
+      saidas: "2000.00",
+      saldo: "-2000.00",
+    });
+    // intervalo que cruza março→abril vê os dois meses (8k − 2k − 4k = 2k).
+    expect(await resumoCaixaIntervalo(loja, range("2027-03-01", "2027-04-30"))).toEqual({
+      entradas: "8000.00",
+      saidas: "6000.00",
+      saldo: "2000.00",
+    });
+    // outra loja só tem a entrada de 7777 no dia 12/03.
+    expect(await resumoCaixaIntervalo(outraLoja, range("2027-03-01", "2027-03-31"))).toEqual({
+      entradas: "7777.00",
+      saidas: "0.00",
+      saldo: "7777.00",
+    });
+  });
+});
+
+describe("movimentosNoIntervalo", () => {
+  it("só os movimentos dentro do range, ordenados por data desc", async () => {
+    const movs = await movimentosNoIntervalo(loja, range("2027-03-01", "2027-03-14"));
+    expect(movs).toHaveLength(1);
+    expect(movs[0]).toMatchObject({ tipo: "ENTRADA", valor: "5000.00" });
+
+    const cheio = await movimentosNoIntervalo(loja, range("2027-03-01", "2027-03-31"));
+    expect(cheio.map((m) => m.tipo)).toEqual(["ENTRADA", "SAIDA", "ENTRADA"]);
+
+    expect(await movimentosNoIntervalo(loja, range("2026-01-01", "2026-01-31"))).toEqual([]);
   });
 });
 

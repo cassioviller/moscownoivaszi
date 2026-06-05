@@ -7,9 +7,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { resumoCaixa, movimentosDoMes, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
-import { competenciaValida, competenciaAtual } from "@/lib/financeiro/datas";
-import { inputBase, botaoSuave, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card } from "./ui";
+import { resumoCaixaIntervalo, movimentosNoIntervalo, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
+import { competenciaAtual } from "@/lib/financeiro/datas";
+import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card, FiltroIntervalo } from "./ui";
 
 export const dynamic = "force-dynamic";
 
@@ -20,23 +21,26 @@ export default async function FluxoDeCaixaPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ competencia?: string }>;
+  searchParams: Promise<{ ini?: string; fim?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver"))) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const sp = await searchParams;
-  const competencia = competenciaValida(sp.competencia ?? "") ? sp.competencia! : competenciaAtual();
+  const { ini, fim } = await searchParams;
+  const intervalo = resolverIntervalo(ini, fim);
+  const janela = { gte: intervalo.gte, lt: intervalo.lt };
+  const competenciaHoje = competenciaAtual();
 
   const [resumo, movimentos, tendencia, horizonte] = await Promise.all([
-    resumoCaixa(sc.loja.id, competencia),
-    movimentosDoMes(sc.loja.id, competencia),
-    tendenciaCaixa(sc.loja.id, { meses: 6, ate: competencia }),
+    resumoCaixaIntervalo(sc.loja.id, janela),
+    movimentosNoIntervalo(sc.loja.id, janela),
+    tendenciaCaixa(sc.loja.id, { meses: 6, ate: competenciaHoje }),
     horizonteAberto(sc.loja.id),
   ]);
   const saldoNegativo = Number(resumo.saldo) < 0;
+  const periodoFmt = `${dataFmt.format(intervalo.gte)} – ${dataFmt.format(new Date(intervalo.lt.getTime() - 86_400_000))}`;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-10">
@@ -48,12 +52,9 @@ export default async function FluxoDeCaixaPage({
         <p className="text-[14px] text-cinza-fumo">O que entrou e saiu do caixa do atelier — pelo que foi registrado aqui, não é o extrato do banco.</p>
       </header>
 
-      <form method="get" className="flex items-end gap-2">
-        <input name="competencia" type="month" defaultValue={competencia} aria-label="Competência" className={`${inputBase} w-44`} />
-        <button type="submit" className={botaoSuave}>Ver</button>
-      </form>
+      <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} />
 
-      {/* — Caixa do mês — */}
+      {/* — Caixa no período — */}
       <section className="flex flex-wrap gap-3">
         <Card rotulo="Entradas" valor={resumo.entradas} />
         <Card rotulo="Saídas" valor={resumo.saidas} />
@@ -66,7 +67,7 @@ export default async function FluxoDeCaixaPage({
         <SecaoTitulo>O ritmo dos últimos meses</SecaoTitulo>
         <ol className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
           {tendencia.map((p) => {
-            const atual = p.competencia === competencia;
+            const atual = p.competencia === competenciaHoje;
             const neg = Number(p.saldo) < 0;
             return (
               <li key={p.competencia} className={`flex items-center justify-between gap-4 px-4 py-3 ${atual ? "bg-bordo/5" : ""}`}>
@@ -81,11 +82,11 @@ export default async function FluxoDeCaixaPage({
         </ol>
       </section>
 
-      {/* — Linha do tempo do mês — */}
+      {/* — Linha do tempo do período — */}
       <section className="flex flex-col gap-3">
-        <SecaoTitulo>Movimentos de {rotuloMes(competencia)}</SecaoTitulo>
+        <SecaoTitulo>Movimentos · {periodoFmt}</SecaoTitulo>
         {movimentos.length === 0 ? (
-          <p className="text-[14px] text-cinza-fumo">Nenhum movimento em {rotuloMes(competencia)}.</p>
+          <p className="text-[14px] text-cinza-fumo">Nenhum movimento neste período.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {movimentos.map((m) => {

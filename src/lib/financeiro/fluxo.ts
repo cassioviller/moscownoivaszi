@@ -26,10 +26,11 @@ export type HorizonteAberto = { aReceber: string; aReceberAtraso: string; aPagar
 
 const ZERO_CAIXA: ResumoCaixa = { entradas: "0.00", saidas: "0.00", saldo: "0.00" };
 
-/** Entradas/saídas/saldo realizados na competência do movimento. Saldo pode ser negativo. */
-export async function resumoCaixa(lojaId: string, competencia: string): Promise<ResumoCaixa> {
-  if (!competenciaValida(competencia)) return ZERO_CAIXA;
-  const { gte, lt } = competenciaRange(competencia);
+/** Range [gte, lt) do movimento — gte inclusivo, lt exclusivo (meia-noite UTC). */
+export type RangeCaixa = { gte: Date; lt: Date };
+
+/** Entradas/saídas/saldo realizados num intervalo [gte, lt) do movimento. Saldo pode ser negativo. */
+export async function resumoCaixaIntervalo(lojaId: string, { gte, lt }: RangeCaixa): Promise<ResumoCaixa> {
   const db = tenantPrisma(prisma, lojaId);
   const [ent, sai] = await Promise.all([
     db.parcela.aggregate({ where: { status: "PAGA", recebidoEm: { gte, lt } }, _sum: { valorRecebido: true } }),
@@ -40,10 +41,14 @@ export async function resumoCaixa(lojaId: string, competencia: string): Promise<
   return { entradas: deCentavos(entradasC), saidas: deCentavos(saidasC), saldo: deCentavos(entradasC - saidasC) };
 }
 
-/** Linha do tempo unificada do mês (entradas + saídas), mais recente primeiro. */
-export async function movimentosDoMes(lojaId: string, competencia: string): Promise<Movimento[]> {
-  if (!competenciaValida(competencia)) return [];
-  const { gte, lt } = competenciaRange(competencia);
+/** Entradas/saídas/saldo realizados na competência do movimento. Wrapper fino sobre o intervalo. */
+export async function resumoCaixa(lojaId: string, competencia: string): Promise<ResumoCaixa> {
+  if (!competenciaValida(competencia)) return ZERO_CAIXA;
+  return resumoCaixaIntervalo(lojaId, competenciaRange(competencia));
+}
+
+/** Linha do tempo unificada num intervalo [gte, lt) (entradas + saídas), mais recente primeiro. */
+export async function movimentosNoIntervalo(lojaId: string, { gte, lt }: RangeCaixa): Promise<Movimento[]> {
   const db = tenantPrisma(prisma, lojaId);
 
   const [parcelas, pagamentos] = await Promise.all([
@@ -87,6 +92,12 @@ export async function movimentosDoMes(lojaId: string, competencia: string): Prom
   });
 
   return [...entradas, ...saidas].sort((a, b) => b.data.getTime() - a.data.getTime());
+}
+
+/** Linha do tempo unificada do mês. Wrapper fino sobre o intervalo. */
+export async function movimentosDoMes(lojaId: string, competencia: string): Promise<Movimento[]> {
+  if (!competenciaValida(competencia)) return [];
+  return movimentosNoIntervalo(lojaId, competenciaRange(competencia));
 }
 
 /** Lista de competências "YYYY-MM" terminando no mês de `ate`, do mais antigo ao mais recente. */
