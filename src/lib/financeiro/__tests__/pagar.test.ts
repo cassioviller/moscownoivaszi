@@ -170,3 +170,38 @@ describe("pagar: resumo, atraso e contabilidade", () => {
     expect((await listarContasAPagar(loja, { filtro: "todas" })).some((c) => c.competencia === "2027-10" && c.descricao === "Comissão")).toBe(false);
   });
 });
+
+describe("pagar: filtro por intervalo de vencimento", () => {
+  it("escopa a lista e o resumo por vencimento; sem intervalo, retorna tudo; atrasadas combina o lt mais restritivo", async () => {
+    const l4 = (await prisma.loja.create({ data: { nome: `${MARK}intervalo` } })).id;
+    // 3 despesas vencidas (no passado, p/ atraso): jan, fev, mar de 2020.
+    await lancarConta(l4, { tipo: "DESPESA", descricao: "Jan", valorPrevisto: "100,00", vencimento: "2020-01-15" });
+    await lancarConta(l4, { tipo: "DESPESA", descricao: "Fev", valorPrevisto: "200,00", vencimento: "2020-02-15" });
+    await lancarConta(l4, { tipo: "DESPESA", descricao: "Mar", valorPrevisto: "300,00", vencimento: "2020-03-15" });
+
+    // sem intervalo: todas as 3.
+    expect(await listarContasAPagar(l4, { filtro: "todas" })).toHaveLength(3);
+
+    // intervalo cobrindo só fevereiro (2020-02-01..2020-03-01 exclusivo).
+    const gte = new Date("2020-02-01T00:00:00.000Z");
+    const lt = new Date("2020-03-01T00:00:00.000Z");
+    const dentro = await listarContasAPagar(l4, { filtro: "todas", intervalo: { gte, lt } });
+    expect(dentro).toHaveLength(1);
+    expect(dentro[0].descricao).toBe("Fev");
+
+    // resumo escopado a fevereiro: só os 200,00 contam como a pagar.
+    const rDentro = await resumoPagar(l4, { intervalo: { gte, lt } });
+    expect(rDentro.totalAPagar).toBe("200.00");
+    // resumo sem intervalo: as 3 (600,00).
+    expect((await resumoPagar(l4)).totalAPagar).toBe("600.00");
+
+    // atrasadas: as 3 estão vencidas (2020 < hoje). Sem intervalo, as 3 aparecem.
+    expect(await listarContasAPagar(l4, { filtro: "atrasadas" })).toHaveLength(3);
+    // Com intervalo de fevereiro, combina o lt mais restritivo (vencido E dentro): só Fev.
+    const atrasadasFev = await listarContasAPagar(l4, { filtro: "atrasadas", intervalo: { gte, lt } });
+    expect(atrasadasFev.map((c) => c.descricao)).toEqual(["Fev"]);
+    // o resumo "em atraso" escopado a fevereiro = 200,00 (de 600,00 sem intervalo).
+    expect((await resumoPagar(l4)).emAtraso).toBe("600.00");
+    expect((await resumoPagar(l4, { intervalo: { gte, lt } })).emAtraso).toBe("200.00");
+  });
+});
