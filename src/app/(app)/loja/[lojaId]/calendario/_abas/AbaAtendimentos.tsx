@@ -61,14 +61,17 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
         <div className="grid min-w-[640px] grid-cols-[48px_repeat(7,1fr)] gap-px rounded-[var(--mn-radius-md)] border border-borda-suave bg-borda-suave">
           {/* cabeçalho */}
           <div className="bg-papel-elevado" />
-          {dias.map((d, i) => (
-            <div key={d.toISOString()} className="bg-papel-elevado py-2 text-center">
-              <div className="text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">{SEMANA[i]}</div>
-              <div className={`text-[13px] tabular-nums ${d.toISOString().slice(0, 10) === hoje ? "text-bordo" : "text-grafite"}`}>
-                {d.getUTCDate()}
+          {dias.map((d, i) => {
+            const ehHoje = d.toISOString().slice(0, 10) === hoje;
+            return (
+              <div key={d.toISOString()} className={`py-2 text-center ${ehHoje ? "bg-papel-suave" : "bg-papel-elevado"}`}>
+                <div className="text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">{SEMANA[i]}</div>
+                <div className={`text-[13px] tabular-nums ${ehHoje ? "text-bordo" : "text-grafite"}`}>
+                  {d.getUTCDate()}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* linhas de hora */}
           {horas.map((h) => (
@@ -80,7 +83,7 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
                 const ymd = d.toISOString().slice(0, 10);
                 const itens = porCelula.get(chaveCelula(ymd, h)) ?? [];
                 return (
-                  <div key={`${ymd}-${h}`} className="min-h-12 bg-papel-elevado p-0.5">
+                  <div key={`${ymd}-${h}`} className={`min-h-12 p-0.5 ${ymd === hoje ? "bg-papel-suave" : "bg-papel-elevado"}`}>
                     {itens.map((a) => (
                       <Link
                         key={a.id}

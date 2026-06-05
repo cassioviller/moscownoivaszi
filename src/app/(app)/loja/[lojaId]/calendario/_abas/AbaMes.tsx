@@ -80,7 +80,7 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
           return (
             <div
               key={dia.ymd}
-              className={`flex min-h-20 flex-col gap-1 bg-papel-elevado p-1.5 ${dia.noMes ? "" : "opacity-40"}`}
+              className={`flex min-h-20 flex-col gap-1 p-1.5 ${dia.hoje ? "bg-papel-suave" : "bg-papel-elevado"} ${dia.noMes ? "" : "opacity-40"}`}
             >
               <span
                 className={`text-[12px] tabular-nums ${

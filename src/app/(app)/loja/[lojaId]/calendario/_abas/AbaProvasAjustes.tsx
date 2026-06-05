@@ -2,6 +2,7 @@
 // fila de ajustes pendentes. O trabalho operacional (registrar, marcar feito) segue
 // nas páginas dedicadas — daí os links. Reaproveita listarProvasDaLoja / listarAjustesPendentes.
 import Link from "next/link";
+import { hojeYMD } from "@/lib/tempo";
 import { listarProvasDaLoja } from "@/lib/atelier/provas";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
 
@@ -16,6 +17,7 @@ const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short"
 const fmtDia = (d: Date) => diaMes.format(d).replace(" de ", " ").replace(".", "");
 
 export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
+  const hoje = hojeYMD();
   const [provas, ajustes] = await Promise.all([
     listarProvasDaLoja(lojaId),
     listarAjustesPendentes(lojaId),
@@ -37,7 +39,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {provas.map((p) => (
               <li key={p.id} className="flex items-center gap-4 px-4 py-3">
-                <span className="w-16 shrink-0 whitespace-nowrap text-[13px] tabular-nums text-grafite">{fmtDia(p.dataReal)}</span>
+                <span className={`w-16 shrink-0 whitespace-nowrap text-[13px] tabular-nums ${p.dataReal.toISOString().slice(0, 10) === hoje ? "text-bordo" : "text-grafite"}`}>{fmtDia(p.dataReal)}</span>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-[14px] text-tinta">{ROTULO_TIPO_PROVA[p.tipo]}</span>

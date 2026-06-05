@@ -67,10 +67,10 @@ export async function AbaVestidos({ lojaId }: { lojaId: string }) {
           {eixo.map((t, i) => (
             <span
               key={i}
-              className="absolute top-0 text-[11px] tabular-nums whitespace-nowrap text-cinza-fumo"
+              className={`absolute top-0 text-[11px] tabular-nums whitespace-nowrap ${i === 0 ? "text-bordo" : "text-cinza-fumo"}`}
               style={{ left: `${t.posPct}%` }}
             >
-              {fmtDia(t.data)}
+              {i === 0 ? "hoje" : fmtDia(t.data)}
             </span>
           ))}
         </div>
