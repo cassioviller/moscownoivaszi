@@ -77,14 +77,14 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
           <Link
             href={link(ant)}
             aria-label="Mês anterior"
-            className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta"
+            className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
           >
             ‹
           </Link>
           <Link
             href={link(prox)}
             aria-label="Próximo mês"
-            className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta"
+            className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
           >
             ›
           </Link>

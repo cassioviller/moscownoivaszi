@@ -83,7 +83,7 @@ export async function AbaVestidos({ lojaId }: { lojaId: string }) {
           <li key={l.vestidoId} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
             <Link
               href={`/loja/${lojaId}/vestidos/${l.vestidoId}`}
-              className="w-full shrink-0 rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne sm:w-44"
+              className="w-full shrink-0 rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo sm:w-44"
             >
               {l.vestidoCodigo} · {l.vestidoNome}
               <span className="block text-[12px] text-cinza-fumo no-underline">

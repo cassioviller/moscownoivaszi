@@ -53,7 +53,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">
             Próximas provas{provas.length > 0 && <span className="text-grafite"> · {provas.length}</span>}
           </h2>
-          <Link href={`/loja/${lojaId}/provas`} className="text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne">
+          <Link href={`/loja/${lojaId}/provas`} className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
             Ver todas
           </Link>
         </div>
@@ -85,7 +85,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">
             Ajustes pendentes{ajustes.length > 0 && <span className="text-grafite"> · {ajustes.length}</span>}
           </h2>
-          <Link href={`/loja/${lojaId}/ajustes`} className="text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne">
+          <Link href={`/loja/${lojaId}/ajustes`} className="rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
             Ver fila
           </Link>
         </div>

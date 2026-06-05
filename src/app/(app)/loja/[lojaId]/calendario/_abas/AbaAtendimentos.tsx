@@ -59,8 +59,8 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <Link href={link(anterior)} aria-label="Semana anterior" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta">‹</Link>
-          <Link href={link(proxima)} aria-label="Próxima semana" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta">›</Link>
+          <Link href={link(anterior)} aria-label="Semana anterior" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">‹</Link>
+          <Link href={link(proxima)} aria-label="Próxima semana" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">›</Link>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
                         <Link
                           key={a.id}
                           href={`/loja/${lojaId}/noivas/${a.leadId}`}
-                          className={`block truncate rounded-[6px] px-1.5 py-1 text-[11px] transition-opacity duration-150 hover:opacity-90 ${COR_SITUACAO[a.situacao]}`}
+                          className={`block truncate rounded-[6px] px-1.5 py-1 text-[11px] transition-opacity duration-150 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo ${COR_SITUACAO[a.situacao]}`}
                         >
                           {a.noivaNome ?? "Atendimento"}
                         </Link>

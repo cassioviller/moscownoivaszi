@@ -30,7 +30,7 @@ export default async function CalendarioPage({
       <header className="flex flex-col gap-1">
         <Link
           href={`/loja/${lojaId}`}
-          className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta"
+          className="w-fit rounded-sm text-[13px] text-grafite transition-colors duration-150 hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
         >
           ← {sc.loja.nome}
         </Link>
@@ -47,7 +47,7 @@ export default async function CalendarioPage({
               key={a.id}
               href={`/loja/${lojaId}/calendario?aba=${a.id}`}
               aria-current={ativa ? "page" : undefined}
-              className={`-mb-px shrink-0 border-b-2 pb-3 text-[14px] transition-colors duration-150 ${
+              className={`-mb-px shrink-0 rounded-sm border-b-2 pb-3 text-[14px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo ${
                 ativa
                   ? "border-bordo text-tinta"
                   : "border-transparent text-cinza-fumo hover:text-tinta"
