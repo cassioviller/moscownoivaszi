@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { primeiroDiaDoMes, ultimoDiaDoMes, resolverIntervalo } from "@/lib/financeiro/intervalo";
+import {
+  primeiroDiaDoMes,
+  ultimoDiaDoMes,
+  resolverIntervalo,
+  vencimentoNaJanela,
+} from "@/lib/financeiro/intervalo";
 
 describe("primeiroDiaDoMes / ultimoDiaDoMes", () => {
   it("primeiro dia é sempre o 01 do mês de referência", () => {
@@ -39,5 +44,25 @@ describe("resolverIntervalo", () => {
     const r = resolverIntervalo("2026-06-20", "2026-06-10", "2026-06-15");
     expect([r.iniYMD, r.fimYMD]).toEqual(["2026-06-10", "2026-06-20"]);
     expect(r.lt.toISOString().slice(0, 10)).toBe("2026-06-21");
+  });
+});
+
+describe("vencimentoNaJanela", () => {
+  const jan = { gte: new Date("2026-06-01T00:00:00.000Z"), lt: new Date("2026-07-01T00:00:00.000Z") };
+  const hoje = new Date("2026-06-15T00:00:00.000Z");
+
+  it("sem intervalo nem teto → undefined (não filtra)", () => {
+    expect(vencimentoNaJanela(undefined)).toBeUndefined();
+  });
+  it("sem intervalo, com teto → só o teto (atrasadas sem filtro de período)", () => {
+    expect(vencimentoNaJanela(undefined, hoje)).toEqual({ lt: hoje });
+  });
+  it("com intervalo, sem teto → gte/lt do intervalo", () => {
+    expect(vencimentoNaJanela(jan)).toEqual({ gte: jan.gte, lt: jan.lt });
+  });
+  it("com intervalo e teto → lt é o MENOR (mais restritivo)", () => {
+    expect(vencimentoNaJanela(jan, hoje)).toEqual({ gte: jan.gte, lt: hoje }); // hoje < jan.lt
+    const tetoTardio = new Date("2026-08-01T00:00:00.000Z");
+    expect(vencimentoNaJanela(jan, tetoTardio)).toEqual({ gte: jan.gte, lt: jan.lt }); // jan.lt menor
   });
 });

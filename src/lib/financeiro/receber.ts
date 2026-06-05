@@ -8,6 +8,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
+import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
 import type { ParcelaStatus } from "@/generated/prisma/client";
 
 const DIA_MS = 86_400_000;
@@ -276,26 +277,15 @@ export async function listarContasAReceber(
 ): Promise<ContaReceberView[]> {
   const hoje = hojeUTC();
   const filtro = opts.filtro ?? "abertas";
-  const base =
+  const status =
     filtro === "recebidas"
       ? { status: "PAGA" as const }
-      : filtro === "atrasadas"
-        ? { status: "PREVISTA" as const, vencimento: { lt: hoje } }
-        : filtro === "abertas"
-          ? { status: "PREVISTA" as const }
-          : {};
-  // Intervalo escopa por vencimento. Para "atrasadas" o base já traz { lt: hoje };
-  // combinamos pegando o lt mais restritivo (vencido E dentro da janela).
-  const baseVenc = (base as { vencimento?: { lt?: Date } }).vencimento;
-  const where = opts.intervalo
-    ? {
-        ...base,
-        vencimento: {
-          gte: opts.intervalo.gte,
-          lt: baseVenc?.lt && baseVenc.lt < opts.intervalo.lt ? baseVenc.lt : opts.intervalo.lt,
-        },
-      }
-    : base;
+      : filtro === "abertas" || filtro === "atrasadas"
+        ? { status: "PREVISTA" as const }
+        : {};
+  // "atrasadas" = vencido (teto = hoje); o helper intersecta com o intervalo (lt mais restritivo).
+  const vencimento = vencimentoNaJanela(opts.intervalo, filtro === "atrasadas" ? hoje : undefined);
+  const where = vencimento ? { ...status, vencimento } : status;
   const rows = await tenantPrisma(prisma, lojaId).parcela.findMany({
     where,
     orderBy: { vencimento: "asc" },
@@ -323,20 +313,16 @@ export async function resumoReceber(
 ): Promise<ResumoReceber> {
   const db = tenantPrisma(prisma, lojaId);
   const hoje = hojeUTC();
-  // Intervalo (quando presente) escopa todos os totais por vencimento.
-  const janela = opts.intervalo ? { gte: opts.intervalo.gte, lt: opts.intervalo.lt } : undefined;
-  const vencAReceber = janela ?? {};
-  const vencRecebido = janela ?? {};
-  // Em atraso: vencido (< hoje) e, se houver janela, dentro dela (lt mais restritivo).
-  const ltAtraso = janela && janela.lt < hoje ? janela.lt : hoje;
-  const vencAtraso = janela ? { gte: janela.gte, lt: ltAtraso } : { lt: hoje };
+  // Intervalo escopa os totais por vencimento; "em atraso" ainda exige < hoje (teto).
+  const venc = vencimentoNaJanela(opts.intervalo);
+  const vencAtraso = vencimentoNaJanela(opts.intervalo, hoje);
   const [aReceber, recebido, atraso] = await Promise.all([
     db.parcela.aggregate({
-      where: { status: "PREVISTA", ...(Object.keys(vencAReceber).length ? { vencimento: vencAReceber } : {}) },
+      where: { status: "PREVISTA", ...(venc ? { vencimento: venc } : {}) },
       _sum: { valorPrevisto: true },
     }),
     db.parcela.aggregate({
-      where: { status: "PAGA", ...(Object.keys(vencRecebido).length ? { vencimento: vencRecebido } : {}) },
+      where: { status: "PAGA", ...(venc ? { vencimento: venc } : {}) },
       _sum: { valorRecebido: true },
     }),
     db.parcela.aggregate({ where: { status: "PREVISTA", vencimento: vencAtraso }, _sum: { valorPrevisto: true } }),

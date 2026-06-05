@@ -8,6 +8,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData, competenciaValida } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
+import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
 import type { ContaPagarTipo, ContaPagarStatus } from "@/generated/prisma/client";
 
 const TIPOS = new Set<ContaPagarTipo>(["DESPESA", "FORNECEDOR", "SALARIO", "COMISSAO"]);
@@ -323,20 +324,10 @@ export async function listarContasAPagar(
   if (opts.tipo) base.tipo = opts.tipo;
   if (opts.colaboradorId) base.colaboradorId = opts.colaboradorId;
   if (filtro === "pagas") base.status = "PAGA";
-  else if (filtro === "abertas") base.status = "PREVISTA";
-  else if (filtro === "atrasadas") {
-    base.status = "PREVISTA";
-    base.vencimento = { lt: hoje };
-  }
-  // Intervalo escopa por vencimento. Para "atrasadas" o base já traz { lt: hoje };
-  // combinamos pegando o lt mais restritivo (vencido E dentro da janela).
-  if (opts.intervalo) {
-    const baseVenc = base.vencimento as { lt?: Date } | undefined;
-    base.vencimento = {
-      gte: opts.intervalo.gte,
-      lt: baseVenc?.lt && baseVenc.lt < opts.intervalo.lt ? baseVenc.lt : opts.intervalo.lt,
-    };
-  }
+  else if (filtro === "abertas" || filtro === "atrasadas") base.status = "PREVISTA";
+  // "atrasadas" = vencido (teto = hoje); o helper intersecta com o intervalo (lt mais restritivo).
+  const vencimento = vencimentoNaJanela(opts.intervalo, filtro === "atrasadas" ? hoje : undefined);
+  if (vencimento) base.vencimento = vencimento;
   const rows = await tenantPrisma(prisma, lojaId).contaPagar.findMany({
     where: base,
     orderBy: { vencimento: "asc" },
@@ -401,22 +392,19 @@ export type ResumoPagar = { totalAPagar: string; pagoTotal: string; emAtraso: st
 export async function resumoPagar(lojaId: string, opts: { intervalo?: { gte: Date; lt: Date } } = {}): Promise<ResumoPagar> {
   const db = tenantPrisma(prisma, lojaId);
   const hoje = hojeUTC();
-  // Intervalo (quando presente) escopa todos os totais por vencimento.
-  const janela = opts.intervalo ? { gte: opts.intervalo.gte, lt: opts.intervalo.lt } : undefined;
-  const vencAPagar = janela ? { vencimento: janela } : {};
-  // Em atraso: vencido (< hoje) e, se houver janela, dentro dela (lt mais restritivo).
-  const ltAtraso = janela && janela.lt < hoje ? janela.lt : hoje;
-  const vencAtraso = janela ? { gte: janela.gte, lt: ltAtraso } : { lt: hoje };
+  // Intervalo escopa os totais por vencimento; "em atraso" ainda exige < hoje (teto).
+  const venc = vencimentoNaJanela(opts.intervalo);
+  const vencAtraso = vencimentoNaJanela(opts.intervalo, hoje);
   const [aPagar, pago, atraso] = await Promise.all([
-    db.contaPagar.aggregate({ where: { status: "PREVISTA", ...vencAPagar }, _sum: { valorPrevisto: true } }),
+    db.contaPagar.aggregate({ where: { status: "PREVISTA", ...(venc ? { vencimento: venc } : {}) }, _sum: { valorPrevisto: true } }),
     // O "pago" não tem vencimento na saída de caixa; com janela, somamos os ITENS de
     // pagamento cuja conta quitada vence dentro dela (evita dupla contagem do valorPago).
-    janela
-      ? db.pagamentoItem.aggregate({ where: { contaPagar: { vencimento: janela } }, _sum: { valor: true } })
+    venc
+      ? db.pagamentoItem.aggregate({ where: { contaPagar: { vencimento: venc } }, _sum: { valor: true } })
       : db.pagamento.aggregate({ _sum: { valorPago: true } }),
     db.contaPagar.aggregate({ where: { status: "PREVISTA", vencimento: vencAtraso }, _sum: { valorPrevisto: true } }),
   ]);
-  const pagoSoma = janela
+  const pagoSoma = venc
     ? (pago as { _sum: { valor: Parameters<typeof decParaCentavos>[0] } })._sum.valor
     : (pago as { _sum: { valorPago: Parameters<typeof decParaCentavos>[0] } })._sum.valorPago;
   return {

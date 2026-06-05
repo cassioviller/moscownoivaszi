@@ -45,3 +45,20 @@ export function resolverIntervalo(
   lt.setUTCDate(lt.getUTCDate() + 1); // fim inclusivo → exclusivo no lt
   return { iniYMD: ini, fimYMD: fim, gte, lt };
 }
+
+/**
+ * Filtro de `vencimento` (Prisma) para um intervalo, opcionalmente limitado por um
+ * `teto` (ex.: `hoje`, para "atrasadas" = já vencido). Centraliza a interseção que
+ * vivia copiada em receber.ts/pagar.ts (listar + resumo):
+ *  - sem intervalo, sem teto → undefined (não filtra por vencimento);
+ *  - sem intervalo, com teto → `{ lt: teto }`;
+ *  - com intervalo → `{ gte, lt }`, onde `lt` é o MENOR entre o do intervalo e o teto.
+ */
+export function vencimentoNaJanela(
+  intervalo: { gte: Date; lt: Date } | undefined,
+  teto?: Date,
+): { gte: Date; lt: Date } | { lt: Date } | undefined {
+  if (!intervalo) return teto ? { lt: teto } : undefined;
+  const lt = teto && teto < intervalo.lt ? teto : intervalo.lt;
+  return { gte: intervalo.gte, lt };
+}
