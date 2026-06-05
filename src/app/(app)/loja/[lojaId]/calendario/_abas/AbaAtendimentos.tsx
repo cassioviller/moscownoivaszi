@@ -49,7 +49,7 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-[16px] font-light text-tinta">
+          <h2 className="font-display text-[18px] font-light text-tinta">
             {diaMes.format(dias[0])} – {diaMes.format(dias[6])}
           </h2>
           <p className="text-[12px] text-cinza-fumo">
