@@ -3,7 +3,7 @@
 // próximos 60 dias. Bordô reservado ao uso/casamento. Dado pronto via agendaDoAtelier.
 import Link from "next/link";
 import { hojeUTC } from "@/lib/tempo";
-import { agendaDoAtelier } from "@/lib/disponibilidade/agenda";
+import { agendaDoAtelier, ROTULO_JANELA } from "@/lib/disponibilidade/agenda";
 import { montarGantt, type BarraGantt } from "@/lib/calendario/gantt";
 import type { TipoJanela } from "@/lib/disponibilidade/tipos";
 
@@ -15,6 +15,8 @@ const COR_BARRA: Record<TipoJanela, string> = {
   lavagem: "bg-champagne",
   manutencao: "bg-grafite/40",
 };
+
+const ORDEM_BARRA: TipoJanela[] = ["preparacao", "uso", "lavagem", "manutencao"];
 
 function tituloBarra(b: BarraGantt): string {
   return b.abertoFim ? `${b.rotulo} (em aberto)` : b.rotulo;
@@ -64,10 +66,11 @@ export async function AbaVestidos({ lojaId }: { lojaId: string }) {
       </ul>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-cinza-fumo">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-full bg-rose-dust" /> Preparação</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-full bg-bordo" /> Uso / casamento</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-full bg-champagne" /> Higienização</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-full bg-grafite/40" /> Manutenção</span>
+        {ORDEM_BARRA.map((t) => (
+          <span key={t} className="flex items-center gap-1.5">
+            <span className={`h-2 w-3 rounded-full ${COR_BARRA[t]}`} /> {ROTULO_JANELA[t]}
+          </span>
+        ))}
       </div>
     </div>
   );

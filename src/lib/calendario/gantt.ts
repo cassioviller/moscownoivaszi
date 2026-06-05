@@ -32,6 +32,7 @@ export function montarGantt(
   janelaInicio: Date,
   janelaDias: number,
 ): LinhaGantt[] {
+  if (janelaDias <= 0) return [];
   const base = janelaInicio.getTime();
   const porVestido = new Map<string, LinhaGantt>();
 

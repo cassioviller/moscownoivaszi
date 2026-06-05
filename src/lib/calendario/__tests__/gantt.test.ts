@@ -77,4 +77,8 @@ describe("montarGantt", () => {
     );
     expect(linhas.map((l) => l.vestidoId)).toEqual(["v1", "v2"]);
   });
+
+  it("janela de 0 dias → sem linhas (sem divisão por zero)", () => {
+    expect(montarGantt([ev({})], janelaInicio, 0)).toEqual([]);
+  });
 });
