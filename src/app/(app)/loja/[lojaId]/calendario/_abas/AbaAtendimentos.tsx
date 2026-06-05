@@ -65,13 +65,14 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
       </div>
 
       <div className="overflow-x-auto">
-        <div className="grid min-w-[640px] grid-cols-[48px_repeat(7,1fr)] gap-px rounded-[var(--mn-radius-md)] border border-borda-suave bg-borda-suave">
+        {/* Sem fios verticais: só separadores horizontais de hora — agenda, não planilha. */}
+        <div className="grid min-w-[640px] grid-cols-[48px_repeat(7,1fr)] overflow-hidden rounded-[var(--mn-radius-md)] border border-borda-suave">
           {/* cabeçalho */}
-          <div className="bg-papel-elevado" />
+          <div className="border-b border-borda-suave bg-papel-elevado" />
           {dias.map((d, i) => {
             const ehHoje = d.toISOString().slice(0, 10) === hoje;
             return (
-              <div key={d.toISOString()} className={`py-2 text-center ${ehHoje ? "bg-papel-suave" : "bg-papel-elevado"}`}>
+              <div key={d.toISOString()} className={`border-b border-borda-suave py-2 text-center ${ehHoje ? "bg-papel-suave" : "bg-papel-elevado"}`}>
                 <div className="text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">{SEMANA[i]}</div>
                 <div className={`text-[13px] tabular-nums ${ehHoje ? "text-bordo" : "text-grafite"}`}>
                   {d.getUTCDate()}
@@ -81,30 +82,33 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
           })}
 
           {/* linhas de hora */}
-          {horas.map((h) => (
-            <div key={`linha-${h}`} className="contents">
-              <div className="bg-papel-elevado py-2 pr-1 text-right text-[11px] tabular-nums text-cinza-fumo">
-                {String(h).padStart(2, "0")}h
+          {horas.map((h, idx) => {
+            const fioHora = idx === 0 ? "" : "border-t border-borda-suave";
+            return (
+              <div key={`linha-${h}`} className="contents">
+                <div className={`bg-papel-elevado py-2 pr-1 text-right text-[11px] tabular-nums text-cinza-fumo ${fioHora}`}>
+                  {String(h).padStart(2, "0")}h
+                </div>
+                {dias.map((d) => {
+                  const ymd = d.toISOString().slice(0, 10);
+                  const itens = porCelula.get(chaveCelula(ymd, h)) ?? [];
+                  return (
+                    <div key={`${ymd}-${h}`} className={`min-h-12 p-0.5 ${fioHora} ${ymd === hoje ? "bg-papel-suave" : "bg-papel-elevado"}`}>
+                      {itens.map((a) => (
+                        <Link
+                          key={a.id}
+                          href={`/loja/${lojaId}/noivas/${a.leadId}`}
+                          className={`block truncate rounded-[6px] px-1.5 py-1 text-[11px] transition-opacity duration-150 hover:opacity-90 ${COR_SITUACAO[a.situacao]}`}
+                        >
+                          {a.noivaNome ?? "Atendimento"}
+                        </Link>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
-              {dias.map((d) => {
-                const ymd = d.toISOString().slice(0, 10);
-                const itens = porCelula.get(chaveCelula(ymd, h)) ?? [];
-                return (
-                  <div key={`${ymd}-${h}`} className={`min-h-12 p-0.5 ${ymd === hoje ? "bg-papel-suave" : "bg-papel-elevado"}`}>
-                    {itens.map((a) => (
-                      <Link
-                        key={a.id}
-                        href={`/loja/${lojaId}/noivas/${a.leadId}`}
-                        className={`block truncate rounded-[6px] px-1.5 py-1 text-[11px] transition-opacity duration-150 hover:opacity-90 ${COR_SITUACAO[a.situacao]}`}
-                      >
-                        {a.noivaNome ?? "Atendimento"}
-                      </Link>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
