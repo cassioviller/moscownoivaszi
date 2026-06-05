@@ -237,10 +237,30 @@ export async function totalVendasCentavos(lojaId: string, vendedoraId: string, c
 export type PreviewLinha = { vendedoraId: string; nome: string; totalVendas: string; estornoPendente: string; percentual: string | null; comissao: string; bonus: string; total: string };
 
 /** Ranking ao vivo da competência: por vendedora com vendas, aplica a regra vigente já
- *  descontando o estorno §6.4 pendente (cancelados de meses fechados). */
+ *  descontando o estorno §6.4 pendente (cancelados de meses fechados). Wrapper fino sobre
+ *  previewComissaoIntervalo com a janela [gte, lt) da competência — o resultado é idêntico. */
 export async function previewComissao(lojaId: string, competencia: string): Promise<PreviewLinha[]> {
   if (!competenciaValida(competencia)) return [];
-  const { gte, lt } = competenciaRange(competencia);
+  return previewComissaoIntervalo(lojaId, competenciaRange(competencia));
+}
+
+/** Núcleo do ranking ao vivo, parametrizado por uma JANELA de datas arbitrária [gte, lt).
+ *  Serve à lente de visualização "comissões da semana/período": soma os contratos ATIVO
+ *  cujo fechadoEm cai no intervalo e aplica a regra vigente já descontando o estorno §6.4.
+ *
+ *  CAVEAT (aproximação intencional): as faixas/degraus acumulam sobre o TOTAL do intervalo
+ *  escolhido, não sobre o mês-calendário. Para um período menor que o mês (ex.: uma semana),
+ *  o acumulado é menor e pode cair numa faixa de % inferior — é uma PRÉVIA do período, não a
+ *  comissão definitiva. O fechamento continua sendo mensal (competência), com a faixa do mês
+ *  inteiro. A regra vigente e o estorno §6.4 são ancorados na competência do FIM do intervalo. */
+export async function previewComissaoIntervalo(
+  lojaId: string,
+  janela: { gte: Date; lt: Date },
+): Promise<PreviewLinha[]> {
+  const { gte, lt } = janela;
+  // Competência de referência p/ regra vigente e estorno: o mês do último dia do intervalo
+  // (lt é exclusivo, então recua um instante antes de extrair "YYYY-MM").
+  const competencia = new Date(lt.getTime() - 1).toISOString().slice(0, 7);
   const db = tenantPrisma(prisma, lojaId);
   const grupos = await db.contrato.groupBy({
     by: ["vendedoraId"],

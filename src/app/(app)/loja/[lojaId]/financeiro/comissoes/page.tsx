@@ -7,9 +7,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { previewComissao, listarFechamentos } from "@/lib/financeiro/comissao";
-import { competenciaValida, competenciaAtual } from "@/lib/financeiro/datas";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card } from "../ui";
+import { previewComissaoIntervalo, listarFechamentos } from "@/lib/financeiro/comissao";
+import { competenciaAtual } from "@/lib/financeiro/datas";
+import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card, FiltroIntervalo } from "../ui";
 import { fecharCompetenciaAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export default async function ComissoesPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ competencia?: string; ok?: string; erro?: string }>;
+  searchParams: Promise<{ ini?: string; fim?: string; ok?: string; erro?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -38,10 +39,17 @@ export default async function ComissoesPage({
 
   const { lojaId } = await params;
   const sp = await searchParams;
-  const competencia = competenciaValida(sp.competencia ?? "") ? sp.competencia! : competenciaAtual();
+
+  // Lente de visualização por intervalo (ex.: "as comissões da semana"). O ranking abaixo
+  // reflete só este período. O FECHAMENTO, porém, segue mensal — derivamos a competência do
+  // INÍCIO do intervalo (não se fecha meio mês). Faixas/degraus acumulam sobre o período
+  // escolhido (aproximação intencional — ver previewComissaoIntervalo em comissao.ts).
+  const intervalo = resolverIntervalo(sp.ini, sp.fim);
+  const competencia = intervalo.iniYMD.slice(0, 7);
+  const qsIntervalo = `?ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}`;
 
   const [ranking, fechamentos] = await Promise.all([
-    previewComissao(sc.loja.id, competencia),
+    previewComissaoIntervalo(sc.loja.id, { gte: intervalo.gte, lt: intervalo.lt }),
     listarFechamentos(sc.loja.id, { competencia }),
   ]);
 
@@ -61,30 +69,32 @@ export default async function ComissoesPage({
           ← {sc.loja.nome}
         </Link>
         <h1 className="text-[24px] font-light tracking-tight text-tinta">Comissões</h1>
-        <p className="text-[14px] text-cinza-fumo">Quanto cada vendedora fez no mês — e o que isso vira de comissão.</p>
+        <p className="text-[14px] text-cinza-fumo">Quanto cada vendedora fez no período — e o que isso vira de comissão.</p>
       </header>
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <form method="get" className="flex items-end gap-2">
-          <input name="competencia" type="month" defaultValue={competencia} aria-label="Competência" className={`${inputBase} w-44`} />
-          <button type="submit" className={botaoSuave}>Ver</button>
-        </form>
+        <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} />
         <Link href={`/loja/${lojaId}/financeiro/comissoes/regras`} className={botaoSuave}>
           Faixas por vendedora
         </Link>
       </div>
 
+      <p className="text-[12px] text-cinza-fumo">
+        O ranking reflete o período selecionado — as faixas acumulam sobre ele, então é uma prévia. O fechamento é sempre mensal.
+      </p>
+
       <section className="flex flex-wrap gap-3">
-        <Card rotulo="Comissão do mês" valor={totalAPagar} destaque />
+        <Card rotulo="Comissão no período" valor={totalAPagar} destaque />
         <div className="flex flex-1 flex-col gap-1 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
           <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Vendedoras</span>
           <span className="font-display text-[20px] font-light tabular-nums text-tinta">{ranking.length}</span>
         </div>
       </section>
 
-      {/* Fechar mês — só competência já encerrada; deliberado em dois passos (Concierge calmo). */}
+      {/* Fechar mês — sempre mensal (competência derivada do início do intervalo); só mês já
+          encerrado; deliberado em dois passos (Concierge calmo). */}
       {podeEditar && (
         jaFechada ? (
           <p className="text-[13px] text-grafite">
@@ -96,27 +106,28 @@ export default async function ComissoesPage({
           </p>
         ) : ehCorrente ? (
           <p className="text-[13px] text-cinza-fumo">{rotuloCompetencia(competencia)} ainda está em curso — o mês fecha quando encerrar.</p>
-        ) : ranking.length > 0 ? (
+        ) : (
           <details className="rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             <summary className="cursor-pointer list-none px-4 py-3 text-[14px] text-tinta marker:content-['']">
-              Fechar {rotuloCompetencia(competencia)}
+              Fechar competência {rotuloCompetencia(competencia)}
             </summary>
             <form action={fecharCompetenciaAction} className="flex flex-col gap-3 border-t border-borda-suave px-4 py-4">
               <input type="hidden" name="competencia" value={competencia} />
-              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/comissoes?competencia=${competencia}`} />
+              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/comissoes${qsIntervalo}`} />
               <p className="text-[13px] text-grafite">
-                Gera uma conta a pagar de comissão por vendedora desta competência. A ação é definitiva — o mês fechado não é reescrito.
+                Fecha o mês inteiro de {rotuloCompetencia(competencia)} (não o período acima): gera uma conta a pagar de comissão por
+                vendedora, com a faixa do mês completo. A ação é definitiva — o mês fechado não é reescrito.
               </p>
               <button type="submit" className={botaoPrincipal}>Confirmar fechamento</button>
             </form>
           </details>
-        ) : null
+        )
       )}
 
       <section className="flex flex-col gap-3">
-        <SecaoTitulo>Ranking do mês</SecaoTitulo>
+        <SecaoTitulo>Ranking do período</SecaoTitulo>
         {ranking.length === 0 ? (
-        <p className="text-[15px] text-tinta">Nenhuma venda fechada em {rotuloCompetencia(competencia)}.</p>
+        <p className="text-[15px] text-tinta">Nenhuma venda fechada de {dataFmt.format(intervalo.gte)} a {dataFmt.format(new Date(intervalo.lt.getTime() - 1))}.</p>
       ) : (
         // Ranking como lista curada (não planilha): posição · vendedora em destaque ·
         // linha discreta (vendas/%/bônus) · comissão como número-herói à direita.
