@@ -5,9 +5,8 @@
 // atendimentos (Atendimento.inicio). Datas saem como "YYYY-MM-DD" (UTC).
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
+import { ymd } from "@/lib/tempo";
 import type { Marcador } from "./mes";
-
-const ymdUTC = (d: Date): string => d.toISOString().slice(0, 10);
 
 /** Marcadores (casamento/prova/atendimento) com data em [inicio, fim). */
 export async function marcadoresNoIntervalo(
@@ -33,9 +32,9 @@ export async function marcadoresNoIntervalo(
 
   const marcadores: Marcador[] = [];
   for (const c of casamentos) {
-    if (c.casamentoData) marcadores.push({ ymd: ymdUTC(c.casamentoData), tipo: "casamento" });
+    if (c.casamentoData) marcadores.push({ ymd: ymd(c.casamentoData)!, tipo: "casamento" });
   }
-  for (const p of provas) marcadores.push({ ymd: ymdUTC(p.dataReal), tipo: "prova" });
-  for (const a of atendimentos) marcadores.push({ ymd: ymdUTC(a.inicio), tipo: "atendimento" });
+  for (const p of provas) marcadores.push({ ymd: ymd(p.dataReal)!, tipo: "prova" });
+  for (const a of atendimentos) marcadores.push({ ymd: ymd(a.inicio)!, tipo: "atendimento" });
   return marcadores;
 }

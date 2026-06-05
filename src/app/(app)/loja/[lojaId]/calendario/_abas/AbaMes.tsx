@@ -22,6 +22,11 @@ const COR_MARCADOR: Record<TipoMarcador, string> = {
   atendimento: "bg-grafite",
 };
 const ORDEM_MARCADOR: TipoMarcador[] = ["casamento", "prova", "atendimento"];
+const ROTULO_MARCADOR: Record<TipoMarcador, string> = {
+  casamento: "Casamento",
+  prova: "Prova",
+  atendimento: "Atendimento",
+};
 
 export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: string }) {
   const hoje = hojeYMD();
@@ -99,9 +104,11 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-cinza-fumo">
-        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-bordo" /> Casamento</span>
-        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-champagne" /> Prova</span>
-        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-grafite" /> Atendimento</span>
+        {ORDEM_MARCADOR.map((t) => (
+          <span key={t} className="flex items-center gap-1.5">
+            <span className={`h-1.5 w-1.5 rounded-full ${COR_MARCADOR[t]}`} /> {ROTULO_MARCADOR[t]}
+          </span>
+        ))}
       </div>
     </div>
   );
