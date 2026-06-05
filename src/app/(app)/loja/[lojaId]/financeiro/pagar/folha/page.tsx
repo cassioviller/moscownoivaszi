@@ -14,8 +14,9 @@ import {
   listarContasAPagar,
   listarPagamentos,
 } from "@/lib/financeiro/pagar";
-import { hojeYMD, competenciaAtual } from "@/lib/financeiro/datas";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo } from "../../ui";
+import { hojeYMD } from "@/lib/financeiro/datas";
+import { resolverIntervalo } from "@/lib/financeiro/intervalo";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo, FiltroIntervalo, rotuloCompetencia } from "../../ui";
 import {
   definirSalarioAction,
   removerSalarioAction,
@@ -50,7 +51,7 @@ export default async function FolhaPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ competencia?: string; colaborador?: string; ok?: string; erro?: string }>;
+  searchParams: Promise<{ ini?: string; fim?: string; colaborador?: string; ok?: string; erro?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -62,7 +63,10 @@ export default async function FolhaPage({
 
   const { lojaId } = await params;
   const sp = await searchParams;
-  const competencia = /^\d{4}-\d{2}$/.test(sp.competencia ?? "") ? sp.competencia! : competenciaAtual();
+  // O filtro de intervalo é a lente de visualização uniforme do financeiro; aqui o MÊS
+  // DO INÍCIO define a competência exibida — a Folha segue mensal (gerar/pagar por competência).
+  const intervalo = resolverIntervalo(sp.ini, sp.fim);
+  const competencia = intervalo.iniYMD.slice(0, 7);
   const colaboradorSel = sp.colaborador ?? "";
 
   // Tudo num único batch: contasColab/pagamentos só dependem de colaboradorSel (searchParams),
@@ -133,19 +137,20 @@ export default async function FolhaPage({
       {/* — Gerar folha + resumo da competência — */}
       <section className="flex flex-col gap-3">
         <SecaoTitulo>Competência</SecaoTitulo>
-        <form method="get" className="flex flex-wrap items-end gap-2">
-          <input name="competencia" type="month" defaultValue={competencia} aria-label="Competência" className={`${inputBase} w-44`} />
-          {colaboradorSel && <input type="hidden" name="colaborador" value={colaboradorSel} />}
-          <button type="submit" className={botaoSuave}>Ver</button>
-        </form>
+        <FiltroIntervalo
+          iniYMD={intervalo.iniYMD}
+          fimYMD={intervalo.fimYMD}
+          hidden={colaboradorSel ? { colaborador: colaboradorSel } : undefined}
+        />
+        <p className="text-[12px] text-cinza-fumo">Folha de {rotuloCompetencia(competencia)} — a folha é mensal e mostra a competência do início do período selecionado.</p>
         {podeEditar && (
           <form action={gerarFolhaAction} className="flex flex-wrap items-end gap-2">
             <input type="hidden" name="competencia" value={competencia} />
-            <button type="submit" className={botaoPrincipal}>Gerar folha de {competencia}</button>
+            <button type="submit" className={botaoPrincipal}>Gerar folha de {rotuloCompetencia(competencia)}</button>
           </form>
         )}
         {folha.length === 0 ? (
-          <p className="text-[14px] text-cinza-fumo">Sem salários ou comissões lançados em {competencia}.</p>
+          <p className="text-[14px] text-cinza-fumo">Sem salários ou comissões lançados em {rotuloCompetencia(competencia)}.</p>
         ) : (
           // Folha como lista por colaborador (não planilha): salário + comissão na
           // sub-linha, total da pessoa como número-herói à direita.
@@ -168,7 +173,8 @@ export default async function FolhaPage({
       <section className="flex flex-col gap-3">
         <SecaoTitulo>Pagar colaborador</SecaoTitulo>
         <form method="get" className="flex flex-wrap items-end gap-2">
-          <input type="hidden" name="competencia" value={competencia} />
+          <input type="hidden" name="ini" value={intervalo.iniYMD} />
+          <input type="hidden" name="fim" value={intervalo.fimYMD} />
           <select name="colaborador" defaultValue={colaboradorSel} aria-label="Colaborador a pagar" className={`${inputBase} min-w-0 flex-1`}>
             <option value="">Escolha um colaborador…</option>
             {equipe.map((e) => (
@@ -184,7 +190,7 @@ export default async function FolhaPage({
           ) : podeEditar ? (
             <form action={pagarContasAction} className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado p-4">
               <input type="hidden" name="colaboradorId" value={colaboradorSel} />
-              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?competencia=${competencia}&colaborador=${colaboradorSel}`} />
+              <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}&colaborador=${colaboradorSel}`} />
               <p className="text-[13px] text-grafite">Uma saída do caixa quita todas as contas abaixo — ajuste o valor real de cada uma.</p>
               <ul className="flex flex-col gap-2">
                 {contasColab.map((c) => (
@@ -222,7 +228,7 @@ export default async function FolhaPage({
                   {podeEditar && (
                     <form action={enviarContabilidadeAction} className="shrink-0">
                       <input type="hidden" name="pagamentoId" value={p.id} />
-                      <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?competencia=${competencia}&colaborador=${colaboradorSel}`} />
+                      <input type="hidden" name="voltar" value={`/loja/${lojaId}/financeiro/pagar/folha?ini=${intervalo.iniYMD}&fim=${intervalo.fimYMD}&colaborador=${colaboradorSel}`} />
                       <input type="hidden" name="enviado" value={p.enviadoContabilidade ? "0" : "1"} />
                       <button type="submit" className={botaoSuave}>
                         {p.enviadoContabilidade ? "✓ na contabilidade" : "Enviar à contabilidade"}
