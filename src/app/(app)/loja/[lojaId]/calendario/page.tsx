@@ -1,0 +1,69 @@
+// src/app/(app)/loja/[lojaId]/calendario/page.tsx
+// Calendário do atelier — quatro vistas da mesma operação, em abas. A aba ativa
+// vive na URL (?aba=) para dar link direto e sobreviver ao recarregar. Gate em
+// leads:ver (mesma porta da antiga Agenda). Cada aba é um Server Component próprio.
+import Link from "next/link";
+import { exigirAcesso } from "@/lib/server/acoes";
+import { ABAS, resolverAba } from "@/lib/calendario/abas";
+import { AbaMes } from "./_abas/AbaMes";
+import { AbaVestidos } from "./_abas/AbaVestidos";
+import { AbaAtendimentos } from "./_abas/AbaAtendimentos";
+import { AbaProvasAjustes } from "./_abas/AbaProvasAjustes";
+
+export const dynamic = "force-dynamic";
+
+export default async function CalendarioPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lojaId: string }>;
+  searchParams: Promise<{ aba?: string; ref?: string }>;
+}) {
+  const sc = await exigirAcesso("leads");
+  const { lojaId } = await params;
+  const sp = await searchParams;
+  const aba = resolverAba(sp.aba);
+
+  return (
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
+      <header className="flex flex-col gap-1">
+        <Link
+          href={`/loja/${lojaId}`}
+          className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta"
+        >
+          ← {sc.loja.nome}
+        </Link>
+        <h1 className="text-[24px] font-light tracking-tight text-tinta">Calendário</h1>
+        <p className="text-[14px] text-cinza-fumo">A operação do atelier, em quatro vistas.</p>
+      </header>
+
+      {/* Abas: a ativa marcada por um traço bordô fino (a joia com intenção, §6). */}
+      <nav className="flex gap-6 overflow-x-auto border-b border-borda-suave">
+        {ABAS.map((a) => {
+          const ativa = a.id === aba;
+          return (
+            <Link
+              key={a.id}
+              href={`/loja/${lojaId}/calendario?aba=${a.id}`}
+              aria-current={ativa ? "page" : undefined}
+              className={`-mb-px shrink-0 border-b-2 pb-3 text-[14px] transition-colors duration-150 ${
+                ativa
+                  ? "border-bordo text-tinta"
+                  : "border-transparent text-cinza-fumo hover:text-tinta"
+              }`}
+            >
+              {a.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <section>
+        {aba === "mes" && <AbaMes lojaId={lojaId} refParam={sp.ref} />}
+        {aba === "vestidos" && <AbaVestidos lojaId={lojaId} />}
+        {aba === "atendimentos" && <AbaAtendimentos lojaId={lojaId} refParam={sp.ref} />}
+        {aba === "provas-ajustes" && <AbaProvasAjustes lojaId={lojaId} />}
+      </section>
+    </main>
+  );
+}

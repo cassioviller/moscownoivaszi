@@ -50,7 +50,7 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
     atelie.push(
       { href: loja("/noivas"), label: "Noivas" },
       { href: loja("/atendimentos/novo"), label: "Agendar" },
-      { href: loja("/agenda"), label: "Calendário" },
+      { href: loja("/calendario"), label: "Calendário" },
       { href: loja("/contratos"), label: "Contratos" },
       { href: loja("/reservas"), label: "Reservas" },
     );
