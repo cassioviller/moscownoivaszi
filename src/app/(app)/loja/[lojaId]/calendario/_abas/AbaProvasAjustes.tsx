@@ -12,7 +12,8 @@ const ROTULO_TIPO_PROVA: Record<"PRIMEIRA" | "INTERMEDIARIA" | "FINAL", string> 
 };
 
 const diaMes = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
-const fmtDia = (d: Date) => diaMes.format(d).replace(".", "");
+// pt-BR devolve "15 de jan." — tiramos o conector e o ponto → "15 jan".
+const fmtDia = (d: Date) => diaMes.format(d).replace(" de ", " ").replace(".", "");
 
 export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
   const [provas, ajustes] = await Promise.all([
@@ -36,7 +37,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {provas.map((p) => (
               <li key={p.id} className="flex items-center gap-4 px-4 py-3">
-                <span className="w-12 shrink-0 text-[13px] tabular-nums text-grafite">{fmtDia(p.dataReal)}</span>
+                <span className="w-16 shrink-0 whitespace-nowrap text-[13px] tabular-nums text-grafite">{fmtDia(p.dataReal)}</span>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-[14px] text-tinta">{ROTULO_TIPO_PROVA[p.tipo]}</span>
@@ -64,7 +65,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {ajustes.map((a) => (
               <li key={a.id} className="flex items-center gap-4 px-4 py-3">
-                <span className="w-12 shrink-0 text-[13px] tabular-nums text-grafite">
+                <span className="w-16 shrink-0 whitespace-nowrap text-[13px] tabular-nums text-grafite">
                   {a.casamentoData ? fmtDia(a.casamentoData) : "—"}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col">
