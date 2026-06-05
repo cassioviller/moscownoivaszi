@@ -99,6 +99,7 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
         ))}
         {dias.map((dia) => {
           const tipos = porDia.get(dia.ymd);
+          const temCasamento = tipos?.has("casamento") ?? false;
           return (
             <div
               key={dia.ymd}
@@ -108,7 +109,9 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
                 className={`text-[12px] tabular-nums ${
                   dia.hoje
                     ? "flex h-5 w-5 items-center justify-center rounded-full bg-bordo text-papel-elevado"
-                    : "text-grafite"
+                    : temCasamento
+                      ? "font-medium text-bordo"
+                      : "text-grafite"
                 }`}
               >
                 {dia.data.getUTCDate()}
