@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { montarGantt } from "@/lib/calendario/gantt";
+import { montarGantt, eixoGantt } from "@/lib/calendario/gantt";
 import type { EventoAgenda } from "@/lib/disponibilidade/agenda";
 
 const ev = (over: Partial<EventoAgenda>): EventoAgenda => ({
@@ -80,5 +80,32 @@ describe("montarGantt", () => {
 
   it("janela de 0 dias → sem linhas (sem divisão por zero)", () => {
     expect(montarGantt([ev({})], janelaInicio, 0)).toEqual([]);
+  });
+
+  it("cada barra carrega as datas reais do evento", () => {
+    const [linha] = montarGantt(
+      [ev({ inicio: new Date("2026-06-11T00:00:00.000Z"), fim: new Date("2026-06-13T00:00:00.000Z") })],
+      janelaInicio,
+      30,
+    );
+    expect(linha.barras[0].inicio.toISOString().slice(0, 10)).toBe("2026-06-11");
+    expect(linha.barras[0].fim.toISOString().slice(0, 10)).toBe("2026-06-13");
+  });
+});
+
+describe("eixoGantt", () => {
+  it("gera nTicks marcas alinhadas à esquerda (0% sem tick no fim)", () => {
+    const ticks = eixoGantt(new Date("2026-06-01T00:00:00.000Z"), 60, 4);
+    expect(ticks.map((t) => t.posPct)).toEqual([0, 25, 50, 75]);
+  });
+  it("cada tick traz a data UTC daquela posição", () => {
+    const ticks = eixoGantt(new Date("2026-06-01T00:00:00.000Z"), 60, 4); // passo 15 dias
+    expect(ticks.map((t) => t.data.toISOString().slice(0, 10))).toEqual([
+      "2026-06-01", "2026-06-16", "2026-07-01", "2026-07-16",
+    ]);
+  });
+  it("janela ou nTicks ≤ 0 → vazio", () => {
+    expect(eixoGantt(new Date("2026-06-01T00:00:00.000Z"), 0, 4)).toEqual([]);
+    expect(eixoGantt(new Date("2026-06-01T00:00:00.000Z"), 60, 0)).toEqual([]);
   });
 });

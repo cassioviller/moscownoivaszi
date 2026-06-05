@@ -12,10 +12,30 @@ const clampPct = (n: number) => Math.max(0, Math.min(100, n));
 export type BarraGantt = {
   tipo: TipoJanela;
   rotulo: string;
+  inicio: Date; // datas reais do evento (para rótulo de período)
+  fim: Date;
   inicioPct: number;
   larguraPct: number;
   abertoFim: boolean;
 };
+
+export type TickEixo = { posPct: number; data: Date };
+
+/**
+ * Ticks do eixo de tempo da timeline: nTicks marcas igualmente espaçadas a partir
+ * de janelaInicio (a 0%, sem tick no fim da janela — rótulos alinhados à esquerda,
+ * sem vazar a borda direita). Cada tick traz a data (UTC) daquela posição.
+ */
+export function eixoGantt(janelaInicio: Date, janelaDias: number, nTicks: number): TickEixo[] {
+  if (janelaDias <= 0 || nTicks <= 0) return [];
+  const base = janelaInicio.getTime();
+  const ticks: TickEixo[] = [];
+  for (let i = 0; i < nTicks; i++) {
+    const frac = i / nTicks;
+    ticks.push({ posPct: frac * 100, data: new Date(base + Math.round(frac * janelaDias) * DIA_MS) });
+  }
+  return ticks;
+}
 
 export type LinhaGantt = {
   vestidoId: string;
@@ -54,7 +74,15 @@ export function montarGantt(
       };
       porVestido.set(e.vestidoId, linha);
     }
-    linha.barras.push({ tipo: e.tipo, rotulo: e.rotulo, inicioPct, larguraPct, abertoFim: e.abertoFim });
+    linha.barras.push({
+      tipo: e.tipo,
+      rotulo: e.rotulo,
+      inicio: e.inicio,
+      fim: e.fim,
+      inicioPct,
+      larguraPct,
+      abertoFim: e.abertoFim,
+    });
   }
 
   const linhas = [...porVestido.values()];
