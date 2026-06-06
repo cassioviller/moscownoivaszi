@@ -11,11 +11,10 @@ import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
 import { paginar, TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
 import { marcarFeitoAction } from "./actions";
+import { hojeUTC } from "@/lib/tempo";
+import { diasAteCasamento, casamentoUrgente } from "@/lib/leads/contagem-casamento";
 
 export const dynamic = "force-dynamic";
-
-const DIA_MS = 86_400_000;
-const JANELA_URGENCIA_DIAS = 14; // mesmo limiar do dashboard/perfil/livro
 
 const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -23,17 +22,6 @@ const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
-
-// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema).
-function hojeUTC(): number {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`).getTime();
-}
 
 const AVISOS: Record<string, string> = { feito: "Ajuste concluído." };
 
@@ -57,7 +45,7 @@ export default async function AjustesPage({
     listarAjustesPendentes(sc.loja.id, { pagina: sp.p }),
   ]);
   const { itens: pendentes, total } = fila;
-  const hoje = hojeUTC();
+  const hoje = hojeUTC().getTime();
   const aviso = sp.ok ? AVISOS[sp.ok] : null;
 
   return (
@@ -90,9 +78,9 @@ export default async function AjustesPage({
           {pendentes.map((a) => {
             const dias =
               a.casamentoData != null
-                ? Math.round((a.casamentoData.getTime() - hoje) / DIA_MS)
+                ? diasAteCasamento(a.casamentoData, hoje)
                 : null;
-            const urgente = dias !== null && dias >= 0 && dias <= JANELA_URGENCIA_DIAS;
+            const urgente = dias !== null && casamentoUrgente(dias);
             return (
               <li key={a.id} className="flex items-center gap-4 px-4 py-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
