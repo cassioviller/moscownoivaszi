@@ -65,7 +65,7 @@ export default async function ReservasPage({
         >
           ← {sc.loja.nome}
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">
           {passadas ? "Reservas passadas" : "Reservas"}
         </h1>
         <p className="text-[14px] text-cinza-fumo">
