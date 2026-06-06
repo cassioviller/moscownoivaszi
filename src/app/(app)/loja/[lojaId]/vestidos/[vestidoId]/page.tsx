@@ -99,7 +99,7 @@ export default async function VestidoPage({
   const aviso = (ok && AVISOS[ok]) || avisoConflito || (erro && AVISOS[erro]) || null;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1.5">
         <Link
           href={`/loja/${lojaId}/vestidos`}
@@ -122,6 +122,12 @@ export default async function VestidoPage({
 
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
+      {/* Composição de lookbook (§8): no desktop a peça é âncora à esquerda
+          (acompanha a leitura — sticky) e os fatos da peça ficam à direita.
+          No mobile, coluna única na ordem natural: peça → preço → disponibilidade. */}
+      <div className="grid gap-8 lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-12">
+        {/* Coluna da peça — âncora visual */}
+        <div className="flex flex-col gap-4 lg:sticky lg:top-10">
       {/* A peça é a âncora visual: capa maior, 2ª menor ao lado (§8). Foto de apoio,
           não hero gigante (§9). Capa carrega eager (é o LCP); as demais, lazy. */}
       {fotos.length > 0 ? (
@@ -129,7 +135,7 @@ export default async function VestidoPage({
           {fotos.map((f) => (
             <div
               key={f.ordem}
-              className={`${f.ordem === 0 ? "w-56" : "w-36"} aspect-[3/4] shrink-0 overflow-hidden rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-suave`}
+              className={`${f.ordem === 0 ? "w-56 lg:w-full" : "w-36"} aspect-[3/4] shrink-0 overflow-hidden rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-suave`}
             >
               {/* foto já otimizada (WebP), servida pelo route escopado; v= cache-busting */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -148,18 +154,21 @@ export default async function VestidoPage({
         <Link
           href={editarHref}
           className="flex aspect-[3/4] w-56 flex-col items-center justify-center gap-1.5 rounded-[var(--mn-radius-md)]
-            border border-borda-suave bg-papel-suave text-center transition-colors duration-150
+            border border-borda-suave bg-papel-suave text-center transition-colors duration-150 lg:w-full
             hover:border-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
         >
           <span className="text-[13px] text-grafite">Adicionar foto</span>
           <span className="text-[11px] text-cinza-fumo">ainda sem retrato</span>
         </Link>
       ) : (
-        <div className="flex aspect-[3/4] w-56 items-center justify-center rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-suave text-center">
+        <div className="flex aspect-[3/4] w-56 items-center justify-center rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-suave text-center lg:w-full">
           <span className="text-[12px] text-cinza-fumo">Ainda sem retrato</span>
         </div>
       )}
+        </div>
 
+        {/* Coluna dos fatos da peça */}
+        <div className="flex flex-col gap-8">
       {/* Preço — dado útil, discreto (a peça é o herói, não a etiqueta) */}
       <div className="flex flex-col gap-0.5">
         <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Preço</span>
@@ -346,6 +355,8 @@ export default async function VestidoPage({
           </Link>
         </footer>
       )}
+        </div>
+      </div>
     </main>
   );
 }
