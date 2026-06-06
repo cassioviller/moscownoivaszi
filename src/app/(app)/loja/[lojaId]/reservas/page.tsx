@@ -9,25 +9,13 @@ import { exigirAcesso } from "@/lib/server/acoes";
 import { listarReservasDaLoja, type ReservaDaLoja } from "@/lib/disponibilidade/reservas";
 import { estagiosDasNoivas } from "@/lib/leads/leads";
 import { ROTULO_ESTAGIO } from "@/lib/leads/jornada";
+import { hojeUTC } from "@/lib/tempo";
+import { diasAteCasamento, casamentoUrgente } from "@/lib/leads/contagem-casamento";
 
 export const dynamic = "force-dynamic";
 
-const DIA_MS = 86_400_000;
-const JANELA_URGENCIA_DIAS = 14; // mesmo limiar do dashboard/perfil
-
 const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
 const mesAbrev = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
-
-// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema).
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
 
 function chaveMes(d: Date): string {
   return `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
@@ -107,10 +95,10 @@ export default async function ReservasPage({
               <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
                 {mes.reservas.map((r) => {
                   const dias = r.casamentoData
-                    ? Math.round((r.casamentoData.getTime() - hoje) / DIA_MS)
+                    ? diasAteCasamento(r.casamentoData, hoje)
                     : null;
                   // Bordô só na urgência: casamento próximo (≤14d). Distante = tinta (§6).
-                  const urgente = !passadas && dias !== null && dias >= 0 && dias <= JANELA_URGENCIA_DIAS;
+                  const urgente = !passadas && dias !== null && casamentoUrgente(dias);
                   return (
                     <li key={r.id} className="flex items-center gap-4 px-4 py-3">
                       <div className="flex w-11 shrink-0 flex-col items-center">
