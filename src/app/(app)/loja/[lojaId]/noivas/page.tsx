@@ -6,6 +6,7 @@ import { listarLeads, estagiosDasNoivas } from "@/lib/leads/leads";
 import { ESTAGIOS, ROTULO_ESTAGIO, type EstagioChave } from "@/lib/leads/jornada";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { marcarPerdidaAction } from "./[leadId]/jornada-actions";
+import { diasAteCasamento, rotuloContagem, casamentoUrgente } from "@/lib/leads/contagem-casamento";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export default async function NoivasPage({
           <Link href={`/loja/${lojaId}`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
             ← {sc.loja.nome}
           </Link>
-          <h1 className="text-[24px] font-light tracking-tight text-tinta">Noivas</h1>
+          <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Noivas</h1>
           <p className="text-[14px] text-cinza-fumo">Cada noiva, sua jornada e o casamento à vista.</p>
         </div>
         {podeCriar && (
@@ -171,6 +172,11 @@ export default async function NoivasPage({
               : concluida
                 ? "border-champagne/60 text-grafite"
                 : "border-champagne/60 text-bordo";
+            // Contagem regressiva do casamento — só na jornada viva e no futuro
+            // (não insiste no passado, nem em perdida/concluída). ≤14d pesa em bordô.
+            const dias = n.casamentoData ? diasAteCasamento(n.casamentoData) : null;
+            const mostrarContagem = dias !== null && dias >= 0 && !perdida && !concluida;
+            const urgente = mostrarContagem && casamentoUrgente(dias);
             return (
               <article
                 key={n.id}
@@ -185,9 +191,14 @@ export default async function NoivasPage({
                 </div>
 
                 <dl className="flex flex-col gap-1 border-t border-borda-suave pt-3 text-[13px]">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <dt className="text-cinza-fumo">Casamento</dt>
-                    <dd className="tabular-nums text-grafite">{n.casamentoData ? dataFmt.format(n.casamentoData) : "a definir"}</dd>
+                    <dd className="flex flex-col items-end gap-0.5">
+                      <span className="tabular-nums text-grafite">{n.casamentoData ? dataFmt.format(n.casamentoData) : "a definir"}</span>
+                      {mostrarContagem && (
+                        <span className={`text-[11px] ${urgente ? "text-bordo" : "text-cinza-fumo"}`}>{rotuloContagem(dias)}</span>
+                      )}
+                    </dd>
                   </div>
                   {n.whatsapp && (
                     <div className="flex items-center justify-between gap-2">

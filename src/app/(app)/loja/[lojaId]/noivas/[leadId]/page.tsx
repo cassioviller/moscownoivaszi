@@ -29,6 +29,7 @@ import {
 import { ReservaLivreInline } from "@/components/disponibilidade/reserva-livre-inline";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { brl } from "@/lib/dinheiro";
+import { diasAteCasamento, rotuloContagem, casamentoUrgente } from "@/lib/leads/contagem-casamento";
 
 export const dynamic = "force-dynamic";
 
@@ -74,22 +75,8 @@ const AVISOS: Record<string, string> = {
   atendimento_invalido: "Atendimento inválido.",
 };
 
-const DIA_MS = 86_400_000;
-// Mesmo limiar de urgência das "Atenções" do dashboard: casamento ≤14d pesa mais.
-const JANELA_URGENCIA_DIAS = 14;
-
-// Dias até o casamento (base UTC, para casar com o dado). Negativo = já passou.
-function diasAte(casamentoData: Date): number {
-  const hoje = new Date();
-  const hojeUTC = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate());
-  return Math.round((casamentoData.getTime() - hojeUTC) / DIA_MS);
-}
-
-function rotuloContagem(dias: number): string {
-  if (dias === 0) return "É hoje";
-  if (dias === 1) return "Amanhã";
-  return `Em ${dias} dias`;
-}
+// Contagem e urgência do casamento: helper puro compartilhado (mesmo limiar ≤14d
+// das "Atenções" do dashboard). Ver src/lib/leads/contagem-casamento.ts.
 
 // Linha de dado discreta (rótulo pequeno + valor). Não renderiza se vazio.
 function Dado({ rotulo, valor }: { rotulo: string; valor: string | null | undefined }) {
@@ -155,9 +142,9 @@ export default async function NoivaPage({
   const aviso = (ok && AVISOS[ok]) || avisoConflito || (erro && AVISOS[erro]) || null;
 
   const whatsappDigits = lead.whatsapp?.replace(/\D/g, "");
-  const dias = lead.casamentoData ? diasAte(lead.casamentoData) : null;
+  const dias = lead.casamentoData ? diasAteCasamento(lead.casamentoData) : null;
   const mostrarContagem = dias !== null && dias >= 0; // não insistir no passado
-  const urgente = mostrarContagem && dias <= JANELA_URGENCIA_DIAS;
+  const urgente = dias !== null && casamentoUrgente(dias);
 
   // Classe compartilhada dos links de ação: alvo de toque ≥44px sem deslocar layout.
   const acaoLink =
