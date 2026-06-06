@@ -25,3 +25,13 @@ export function rotuloContagem(dias: number): string {
 export function casamentoUrgente(dias: number): boolean {
   return dias >= 0 && dias <= JANELA_URGENCIA_DIAS;
 }
+
+/** Prazo do casamento na voz de uma fila de trabalho (prova/ajuste): pode estar
+ *  atrasado. "casamento passou" | "casamento hoje" | "casamento amanhã" |
+ *  "casamento em N dias". Usado na aba Provas & ajustes e na fila de Ajustes. */
+export function prazoCasamento(dias: number): string {
+  if (dias < 0) return "casamento passou";
+  if (dias === 0) return "casamento hoje";
+  if (dias === 1) return "casamento amanhã";
+  return `casamento em ${dias} dias`;
+}

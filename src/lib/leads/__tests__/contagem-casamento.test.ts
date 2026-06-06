@@ -3,6 +3,7 @@ import {
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
+  prazoCasamento,
   JANELA_URGENCIA_DIAS,
 } from "@/lib/leads/contagem-casamento";
 
@@ -35,5 +36,14 @@ describe("casamentoUrgente", () => {
     expect(casamentoUrgente(JANELA_URGENCIA_DIAS)).toBe(true);
     expect(casamentoUrgente(JANELA_URGENCIA_DIAS + 1)).toBe(false);
     expect(casamentoUrgente(-1)).toBe(false);
+  });
+});
+
+describe("prazoCasamento", () => {
+  it("fala na voz da fila de trabalho, incluindo atraso", () => {
+    expect(prazoCasamento(-1)).toBe("casamento passou");
+    expect(prazoCasamento(0)).toBe("casamento hoje");
+    expect(prazoCasamento(1)).toBe("casamento amanhã");
+    expect(prazoCasamento(43)).toBe("casamento em 43 dias");
   });
 });

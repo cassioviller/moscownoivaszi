@@ -12,7 +12,7 @@ import { paginar, TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
 import { marcarFeitoAction } from "./actions";
 import { hojeUTC } from "@/lib/tempo";
-import { diasAteCasamento, casamentoUrgente } from "@/lib/leads/contagem-casamento";
+import { diasAteCasamento, casamentoUrgente, prazoCasamento } from "@/lib/leads/contagem-casamento";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +57,7 @@ export default async function AjustesPage({
         >
           ← {sc.loja.nome}
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Ajustes</h1>
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Ajustes</h1>
         <p className="text-[14px] text-cinza-fumo">
           Os ajustes de costura que pedem atenção, do casamento mais próximo ao mais distante.
         </p>
@@ -101,12 +101,13 @@ export default async function AjustesPage({
                     <span>
                       {a.vestidoCodigo} · {a.vestidoNome}
                     </span>
-                    {a.casamentoData && (
+                    {a.casamentoData && dias !== null && (
                       <>
                         <span>·</span>
-                        <span className={urgente ? "text-bordo" : undefined}>
-                          casamento {dataCurta.format(a.casamentoData)}
-                        </span>
+                        {/* urgência primeiro (bordô só ≤14d), data exata como referência */}
+                        <span className={urgente ? "text-bordo" : undefined}>{prazoCasamento(dias)}</span>
+                        <span>·</span>
+                        <span>{dataCurta.format(a.casamentoData)}</span>
                       </>
                     )}
                     {a.checklistTotal > 0 && (

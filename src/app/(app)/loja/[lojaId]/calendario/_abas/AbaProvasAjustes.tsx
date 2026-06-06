@@ -5,7 +5,7 @@ import Link from "next/link";
 import { hojeYMD, hojeUTC } from "@/lib/tempo";
 import { listarProvasDaLoja } from "@/lib/atelier/provas";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
-import { diasAteCasamento, casamentoUrgente } from "@/lib/leads/contagem-casamento";
+import { diasAteCasamento, casamentoUrgente, prazoCasamento } from "@/lib/leads/contagem-casamento";
 
 const DIA_MS = 86_400_000;
 
@@ -28,14 +28,7 @@ function prazoProva(dias: number): string {
   if (dias === 1) return "amanhã";
   return `em ${dias} dias`;
 }
-
-// Prazo até o casamento, do ponto de vista do ajuste (pode estar atrasado).
-function prazoCasamento(dias: number): string {
-  if (dias < 0) return "casamento passou";
-  if (dias === 0) return "casamento hoje";
-  if (dias === 1) return "casamento amanhã";
-  return `casamento em ${dias} dias`;
-}
+// prazoCasamento (com atraso) vive em @/lib/leads/contagem-casamento — DRY com a fila de Ajustes.
 
 export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
   const hoje = hojeYMD();
