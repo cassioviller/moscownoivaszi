@@ -64,7 +64,7 @@ export async function AbaMes({ lojaId, refParam }: { lojaId: string; refParam?: 
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
-          <h2 className="font-display text-[18px] font-light capitalize text-tinta">
+          <h2 className="font-display text-[18px] font-light text-tinta first-letter:uppercase">
             {tituloMes.format(dias.find((d) => d.noMes)!.data)}
           </h2>
           {contagem.length > 0 && (
