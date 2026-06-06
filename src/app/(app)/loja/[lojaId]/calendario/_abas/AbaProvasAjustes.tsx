@@ -5,9 +5,9 @@ import Link from "next/link";
 import { hojeYMD, hojeUTC } from "@/lib/tempo";
 import { listarProvasDaLoja } from "@/lib/atelier/provas";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
+import { diasAteCasamento, casamentoUrgente } from "@/lib/leads/contagem-casamento";
 
 const DIA_MS = 86_400_000;
-const JANELA_URGENCIA_DIAS = 14; // mesmo limiar do dashboard/ajustes/perfil
 
 const ROTULO_TIPO_PROVA: Record<"PRIMEIRA" | "INTERMEDIARIA" | "FINAL", string> = {
   PRIMEIRA: "1ª prova",
@@ -96,8 +96,8 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
         ) : (
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {ajustes.map((a) => {
-              const dias = a.casamentoData ? diasAte(hojeMs, a.casamentoData) : null;
-              const urgente = dias !== null && dias >= 0 && dias <= JANELA_URGENCIA_DIAS;
+              const dias = a.casamentoData ? diasAteCasamento(a.casamentoData, hojeMs) : null;
+              const urgente = dias !== null && casamentoUrgente(dias);
               return (
                 <li key={a.id} className="flex items-center gap-4 px-4 py-3">
                   <span
