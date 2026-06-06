@@ -6,19 +6,18 @@ import {
   JANELA_URGENCIA_DIAS,
 } from "@/lib/leads/contagem-casamento";
 
-const ymd = (s: string) => new Date(`${s}T00:00:00.000Z`);
-// "Hoje" fixo (com hora) para provar que a contagem ignora o horário e usa só o dia UTC.
-const hoje = new Date("2026-06-06T15:30:00.000Z");
+const ms = (s: string) => new Date(`${s}T00:00:00.000Z`).getTime();
+const hojeMs = ms("2026-06-06"); // meia-noite UTC do dia (convenção do sistema)
 
 describe("diasAteCasamento", () => {
-  it("conta em dias de calendário UTC, ignorando a hora de 'hoje'", () => {
-    expect(diasAteCasamento(ymd("2026-06-06"), hoje)).toBe(0);
-    expect(diasAteCasamento(ymd("2026-06-07"), hoje)).toBe(1);
-    expect(diasAteCasamento(ymd("2026-06-20"), hoje)).toBe(14);
-    expect(diasAteCasamento(ymd("2026-06-21"), hoje)).toBe(15);
+  it("conta em dias-calendário UTC a partir de hojeMs", () => {
+    expect(diasAteCasamento(new Date("2026-06-06T00:00:00.000Z"), hojeMs)).toBe(0);
+    expect(diasAteCasamento(new Date("2026-06-07T00:00:00.000Z"), hojeMs)).toBe(1);
+    expect(diasAteCasamento(new Date("2026-06-20T00:00:00.000Z"), hojeMs)).toBe(14);
+    expect(diasAteCasamento(new Date("2026-06-21T00:00:00.000Z"), hojeMs)).toBe(15);
   });
   it("é negativo quando o casamento já passou", () => {
-    expect(diasAteCasamento(ymd("2026-06-01"), hoje)).toBe(-5);
+    expect(diasAteCasamento(new Date("2026-06-01T00:00:00.000Z"), hojeMs)).toBe(-5);
   });
 });
 
