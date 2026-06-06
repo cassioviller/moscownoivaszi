@@ -1,12 +1,15 @@
 // src/lib/vestidos/__tests__/vestidos.test.ts
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import sharp from "sharp";
 import { prisma } from "@/lib/db";
 import {
   listarVestidos,
+  listarAcervo,
   obterVestido,
   criarVestido,
   editarVestido,
 } from "@/lib/vestidos/vestidos";
+import { salvarFoto } from "@/lib/vestidos/fotos";
 
 const MARK = "t-vest-";
 let lojaA = "";
@@ -56,6 +59,32 @@ describe("data layer de vestidos", () => {
     const doB = await criarVestido(lojaB, { codigo: "B2", nome: "Aurora", precoBase: "500" });
     expect(await obterVestido(lojaA, doB.id)).toBeNull();
     expect(await obterVestido(lojaB, doB.id)).not.toBeNull();
+  });
+
+  it("listarAcervo traz capa (temFoto/versaoFoto), é escopado e ordenado (V7)", async () => {
+    const comFoto = await criarVestido(lojaA, { codigo: "ACV1", nome: "AAA-com-capa", precoBase: "2000" });
+    await criarVestido(lojaA, { codigo: "ACV2", nome: "AAB-sem-capa", precoBase: "1500" });
+    const png = await sharp({
+      create: { width: 60, height: 80, channels: 3, background: { r: 210, g: 190, b: 170 } },
+    })
+      .png()
+      .toBuffer();
+    await salvarFoto(lojaA, comFoto.id, 0, png);
+
+    const acervo = await listarAcervo(lojaA);
+    expect(acervo.every((v) => "temFoto" in v && "versaoFoto" in v)).toBe(true);
+    const a1 = acervo.find((v) => v.id === comFoto.id)!;
+    expect(a1.temFoto).toBe(true);
+    expect(a1.versaoFoto).toBeGreaterThan(0);
+    expect(a1.precoBase).toBe("2000.00"); // string normalizada p/ a UI
+    const a2 = acervo.find((v) => v.codigo === "ACV2")!;
+    expect(a2.temFoto).toBe(false);
+    expect(a2.versaoFoto).toBe(0);
+
+    // escopo + ordem por nome (mesma garantia do listarVestidos)
+    expect(acervo.some((v) => v.nome === "ZZZ-loja-b")).toBe(false);
+    const nomes = acervo.map((v) => v.nome);
+    expect(nomes).toEqual([...nomes].sort((a, b) => a.localeCompare(b)));
   });
 
   it("editarVestido altera campos e não re-tenanta (V6)", async () => {

@@ -67,6 +67,45 @@ export async function listarVestidos(lojaId: string): Promise<Vestido[]> {
   return tenantPrisma(prisma, lojaId).vestido.findMany({ orderBy: { nome: "asc" } });
 }
 
+// Vestido como peça de acervo: identidade + capa (foto ordem 0) para a grade.
+// `versaoFoto` = updatedAt da foto 0 p/ cache-busting na URL (mesmo padrão do
+// destaque e dos pré-escolhidos da noiva — orcamentos.ts).
+export type VestidoAcervo = {
+  id: string;
+  codigo: string;
+  nome: string;
+  categoria: string | null;
+  status: string;
+  precoBase: string; // "1234.56"
+  temFoto: boolean;
+  versaoFoto: number;
+};
+
+export async function listarAcervo(lojaId: string): Promise<VestidoAcervo[]> {
+  const vs = await tenantPrisma(prisma, lojaId).vestido.findMany({
+    orderBy: { nome: "asc" },
+    select: {
+      id: true,
+      codigo: true,
+      nome: true,
+      categoria: true,
+      status: true,
+      precoBase: true,
+      fotos: { where: { ordem: 0 }, select: { updatedAt: true } },
+    },
+  });
+  return vs.map((v) => ({
+    id: v.id,
+    codigo: v.codigo,
+    nome: v.nome,
+    categoria: v.categoria,
+    status: v.status,
+    precoBase: Number(v.precoBase).toFixed(2),
+    temFoto: v.fotos.length > 0,
+    versaoFoto: v.fotos[0]?.updatedAt.getTime() ?? 0,
+  }));
+}
+
 export async function obterVestido(
   lojaId: string,
   vestidoId: string,
