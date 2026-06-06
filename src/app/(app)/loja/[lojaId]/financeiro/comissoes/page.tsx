@@ -67,7 +67,7 @@ export default async function ComissoesPage({
         <Link href={`/loja/${lojaId}`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
           ← {sc.loja.nome}
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Comissões</h1>
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Comissões</h1>
         <p className="text-[14px] text-cinza-fumo">Quanto cada vendedora fez no período — e o que isso vira de comissão.</p>
       </header>
 

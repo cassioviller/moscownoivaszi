@@ -92,7 +92,7 @@ export default async function FolhaPage({
         <Link href={`/loja/${lojaId}/financeiro/pagar`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
           ← Contas a pagar
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Folha do mês</h1>
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Folha do mês</h1>
         <p className="text-[14px] text-cinza-fumo">Salário-base do atelier, geração da folha e o pagamento de cada colaborador.</p>
       </header>
 

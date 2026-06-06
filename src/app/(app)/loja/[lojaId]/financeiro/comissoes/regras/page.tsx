@@ -52,7 +52,7 @@ export default async function RegrasComissaoPage({
         <Link href={`/loja/${lojaId}/financeiro/comissoes`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
           ← Comissões
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Faixas por vendedora</h1>
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Faixas por vendedora</h1>
         <p className="text-[14px] text-cinza-fumo">A régua de cada vendedora — a faixa do total final rege o mês inteiro.</p>
       </header>
 
