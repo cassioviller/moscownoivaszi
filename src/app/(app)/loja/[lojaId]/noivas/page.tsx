@@ -89,13 +89,21 @@ export default async function NoivasPage({
       {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
 
       {noivas.length === 0 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-[15px] text-tinta">Nenhuma noiva por aqui ainda.</p>
-          <p className="text-[13px] text-cinza-fumo">
+        <div className="flex flex-col items-center gap-5 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado px-6 py-16 text-center shadow-[var(--mn-shadow-soft)]">
+          <p className="font-display text-[22px] font-light tracking-tight text-tinta">O atelier aguarda a primeira noiva.</p>
+          <p className="max-w-md text-[14px] leading-relaxed text-cinza-fumo">
             {podeCriar
-              ? "Adicione a primeira noiva para começar a acompanhar a jornada."
-              : "Peça à administração para adicionar as noivas."}
+              ? "Cada história começa por um nome. Adicione a primeira noiva e acompanhe a jornada, prova a prova, até o grande dia."
+              : "Assim que a administração adicionar as noivas, a jornada de cada uma vai aparecer aqui."}
           </p>
+          {podeCriar && (
+            <Link
+              href={`/loja/${lojaId}/noivas/nova`}
+              className="inline-flex items-center justify-center rounded-md bg-bordo px-4 py-2.5 text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+            >
+              Adicionar a primeira noiva
+            </Link>
+          )}
         </div>
       ) : (
         <>
