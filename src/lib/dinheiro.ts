@@ -36,5 +36,16 @@ export function decParaCentavos(d: Prisma.Decimal | string | null): number {
   return Math.round(Number(d) * 100);
 }
 
+// Decimal do Prisma (ou string/number) → "1234.56" (string Decimal-friendly p/ as Views).
+// Dono canônico do Number(x).toFixed(2) que se repetia em receber/pagar/comissao/contabilidade.
+export function decParaString(d: Prisma.Decimal | string | number): string {
+  return Number(d).toFixed(2);
+}
+
+// Idem, preservando o null (campos opcionais nas Views).
+export function decParaStringN(d: Prisma.Decimal | string | number | null): string | null {
+  return d === null ? null : decParaString(d);
+}
+
 // "1234.56" (string Decimal-friendly) → "R$ 1.234,56" p/ exibição. Negativo vira "-R$ …".
 export const brl = (v: string) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

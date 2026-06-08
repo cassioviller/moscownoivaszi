@@ -5,7 +5,7 @@
 // a folha do mês (idempotente). ATRASADA é derivado. Dinheiro em centavos; tenant-scoped.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
+import { paraCentavos, deCentavos, decParaCentavos, decParaString } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData, competenciaValida } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
@@ -168,7 +168,7 @@ export async function listarSalariosRecorrentes(lojaId: string): Promise<Salario
     id: s.id,
     colaboradorId: s.colaboradorId,
     colaboradorNome: s.colaborador.nome,
-    valorBase: Number(s.valorBase).toFixed(2),
+    valorBase: decParaString(s.valorBase),
     diaVencimento: s.diaVencimento,
     ativo: s.ativo,
   }));
@@ -195,7 +195,7 @@ export async function gerarFolhaDoMes(lojaId: string, competencia: string): Prom
       colaboradorId: r.colaboradorId,
       competencia,
       descricao: `Salário ${competencia}`,
-      valorPrevisto: Number(r.valorBase).toFixed(2),
+      valorPrevisto: decParaString(r.valorBase),
       vencimento: diaParaData(`${competencia}-${String(r.diaVencimento).padStart(2, "0")}`),
       salarioRecorrenteId: r.id,
     })) as never,
@@ -351,7 +351,7 @@ export async function listarContasAPagar(
     descricao: c.descricao,
     categoria: c.categoria,
     fornecedor: c.fornecedor,
-    valorPrevisto: Number(c.valorPrevisto).toFixed(2),
+    valorPrevisto: decParaString(c.valorPrevisto),
     vencimento: c.vencimento,
     status: c.status,
     atrasada: ehAtrasada(c.status, c.vencimento, h),
@@ -394,12 +394,12 @@ export async function listarPagamentos(
   const itens = rows.map((p) => ({
     id: p.id,
     data: p.data,
-    valorPago: Number(p.valorPago).toFixed(2),
+    valorPago: decParaString(p.valorPago),
     forma: p.forma,
     colaboradorId: p.colaboradorId,
     colaboradorNome: p.colaborador?.nome ?? null,
     enviadoContabilidade: p.enviadoContabilidadeEm !== null,
-    contas: p.itens.map((i) => ({ descricao: i.contaPagar.descricao, valor: Number(i.valor).toFixed(2) })),
+    contas: p.itens.map((i) => ({ descricao: i.contaPagar.descricao, valor: decParaString(i.valor) })),
   }));
   return { itens, total };
 }

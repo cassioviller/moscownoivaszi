@@ -3,6 +3,7 @@
 // marcação de "enviado à contabilidade" dos pagamentos do período. Escopo de loja.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
+import { decParaString } from "@/lib/dinheiro";
 import type { ContaPagarTipo } from "@/generated/prisma/client";
 
 export type ItemContabil = {
@@ -34,7 +35,7 @@ export async function itensPagosNoIntervalo(
     tipo: r.contaPagar.tipo,
     descricao: r.contaPagar.descricao,
     competencia: r.contaPagar.competencia,
-    valor: Number(r.valor).toFixed(2),
+    valor: decParaString(r.valor),
     forma: r.pagamento.forma,
   }));
 }

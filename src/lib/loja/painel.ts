@@ -18,14 +18,14 @@ import {
 } from "@/lib/leads/jornada";
 import { fatosDeLead, INCLUDE_JORNADA } from "@/lib/leads/leads";
 import { hojeUTC } from "@/lib/tempo";
+import { diasAteCasamento, JANELA_URGENCIA_DIAS } from "@/lib/leads/contagem-casamento";
 
 // Atenção imediata = casamento muito próximo E ainda com trabalho em aberto
 // (em provas ou orçamento aberto). Heurística de urgência aprovada pelo produto.
 const ESTAGIOS_ATENCAO = new Set<EstagioChave>(["orcamento_aberto", "em_provas"]);
 
-const DIA_MS = 86_400_000;
-const JANELA_PROXIMOS_DIAS = 30;
-const JANELA_ATENCAO_DIAS = 14;
+const JANELA_PROXIMOS_DIAS = 30; // contador "casamentos da semana/mês" do dashboard
+// A janela de atenção (≤14d) vem do helper canônico JANELA_URGENCIA_DIAS.
 
 export type EtapaJornada = { chave: EstagioChave; rotulo: string; total: number };
 export type CasamentoProximo = {
@@ -62,6 +62,7 @@ export type PainelLoja = {
 export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const db = tenantPrisma(prisma, lojaId);
   const hoje = hojeUTC();
+  const hojeMs = hoje.getTime();
 
   const [leads, vestidos, destaqueRow] = await Promise.all([
     db.lead.findMany({ include: INCLUDE_JORNADA }),
@@ -111,26 +112,26 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     id: l.id,
     noivaNome: l.noivaNome,
     data: l.casamentoData!,
-    diasRestantes: Math.round((l.casamentoData!.getTime() - hoje.getTime()) / DIA_MS),
+    diasRestantes: diasAteCasamento(l.casamentoData!, hojeMs),
   }));
 
-  const limite = hoje.getTime() + JANELA_PROXIMOS_DIAS * DIA_MS;
-  const casamentosProximos = futuros.filter((l) => l.casamentoData!.getTime() <= limite).length;
+  const casamentosProximos = futuros.filter(
+    (l) => diasAteCasamento(l.casamentoData!, hojeMs) <= JANELA_PROXIMOS_DIAS,
+  ).length;
 
-  const limiteAtencao = hoje.getTime() + JANELA_ATENCAO_DIAS * DIA_MS;
   const atencoes: Atencao[] = futuros
     .filter(
       (l) =>
         noivaAtiva(l.atual, l.encerrada) &&
         ESTAGIOS_ATENCAO.has(l.atual) &&
-        l.casamentoData!.getTime() <= limiteAtencao,
+        diasAteCasamento(l.casamentoData!, hojeMs) <= JANELA_URGENCIA_DIAS,
     )
     .map((l) => ({
       id: l.id,
       noivaNome: l.noivaNome,
       rotulo: ROTULO_ESTAGIO[l.atual],
       data: l.casamentoData!,
-      diasRestantes: Math.round((l.casamentoData!.getTime() - hoje.getTime()) / DIA_MS),
+      diasRestantes: diasAteCasamento(l.casamentoData!, hojeMs),
     }));
 
   const destaque: Destaque | null = destaqueRow

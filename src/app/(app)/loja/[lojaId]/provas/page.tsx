@@ -11,6 +11,7 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarProvasDaLoja, type ProvaDaLoja } from "@/lib/atelier/provas";
 import { paginar, TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
+import { hojeUTC } from "@/lib/tempo";
 import type { ProvaTipo, ProvaComparecimento } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -33,17 +34,6 @@ const ROTULO_COMPARECIMENTO: Record<ProvaComparecimento, string> = {
   FALTOU: "Faltou",
   REMARCADA: "Remarcada",
 };
-
-// Hoje como meia-noite UTC do dia-calendário em São Paulo (convenção do sistema).
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
 
 function chaveMes(d: Date): string {
   return `${d.getUTCFullYear()}-${d.getUTCMonth()}`;

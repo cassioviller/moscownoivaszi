@@ -5,7 +5,7 @@
 // tudo escopado por loja. Decisão: docs/.../2026-06-03-s4-contas-a-receber-design.md.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
+import { paraCentavos, deCentavos, decParaCentavos, decParaString, decParaStringN } from "@/lib/dinheiro";
 import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
@@ -248,10 +248,10 @@ export async function listarParcelasDoContrato(lojaId: string, contratoId: strin
     id: p.id,
     numero: p.numero,
     descricao: p.descricao,
-    valorPrevisto: Number(p.valorPrevisto).toFixed(2),
+    valorPrevisto: decParaString(p.valorPrevisto),
     vencimento: p.vencimento,
     status: p.status,
-    valorRecebido: p.valorRecebido != null ? Number(p.valorRecebido).toFixed(2) : null,
+    valorRecebido: decParaStringN(p.valorRecebido),
     recebidoEm: p.recebidoEm,
     formaRecebimento: p.formaRecebimento,
     atrasada: ehAtrasada(p.status, p.vencimento, hoje),
@@ -306,7 +306,7 @@ export async function listarContasAReceber(
     leadId: p.contrato.leadId,
     noivaNome: p.contrato.lead?.noivaNome ?? null,
     descricao: p.descricao,
-    valorPrevisto: Number(p.valorPrevisto).toFixed(2),
+    valorPrevisto: decParaString(p.valorPrevisto),
     vencimento: p.vencimento,
     status: p.status,
     atrasada: ehAtrasada(p.status, p.vencimento, h),

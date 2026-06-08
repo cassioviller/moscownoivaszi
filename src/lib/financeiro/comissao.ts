@@ -6,7 +6,7 @@
 // O fechamento (grava ContaPagar) + o estorno §6.4 entram na fatia seguinte.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
+import { paraCentavos, deCentavos, decParaCentavos, decParaString, decParaStringN } from "@/lib/dinheiro";
 import { hojeUTC, hojeYMD, diaParaData, competenciaValida, competenciaRange } from "@/lib/financeiro/datas";
 
 export type FaixaCalc = {
@@ -100,9 +100,9 @@ function parsePercentual(s: string | null): number | null {
   return Math.round(n * 100) / 100;
 }
 
-// Decimal/string do banco → "0.00" p/ as Views (dec2n preserva o null).
-const dec2 = (v: unknown): string => Number(v).toFixed(2);
-const dec2n = (v: unknown): string | null => (v === null ? null : Number(v).toFixed(2));
+// Decimal/string do banco → "0.00" p/ as Views — via dono canônico (dinheiro.ts).
+const dec2 = decParaString;
+const dec2n = decParaStringN;
 
 // — Regras —
 

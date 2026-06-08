@@ -12,6 +12,7 @@ import { listarAtendimentos, type AtendimentoFila } from "@/lib/atendimentos/ate
 import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
 import { iniciarAtendimentoAction, concluirAtendimentoAction, marcarFaltaAction } from "./actions";
 import { criarOrcamentoAction } from "../orcamentos/actions";
+import { hojeUTC } from "@/lib/tempo";
 
 export const dynamic = "force-dynamic";
 
@@ -40,15 +41,6 @@ const AVISOS: Record<string, string> = {
   desfecho_invalido: "Escolha como o atendimento terminou.",
 };
 
-function hojeUTC(): Date {
-  const ymd = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  return new Date(`${ymd}T00:00:00.000Z`);
-}
 
 const inputBase =
   "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta " +
