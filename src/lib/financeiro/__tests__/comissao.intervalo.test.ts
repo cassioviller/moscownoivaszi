@@ -82,4 +82,24 @@ describe("comissao: preview por intervalo", () => {
     const linha = porComp.find((l) => l.vendedoraId === vera);
     expect(linha).toMatchObject({ totalVendas: "85000.00", percentual: "7.00", comissao: "5950.00" });
   });
+
+  it("duas vendedoras numa leitura: cada linha pega SUA regra (guarda do lote)", async () => {
+    // bia com regra plana de 10% (distinta da escada da vera) e uma venda de 20k em março.
+    // Como o preview pré-carrega regras/estornos EM LOTE, isto trava o agrupamento por
+    // vendedora — um bug de chave faria as linhas trocarem de regra.
+    const bia = await novoUsuario("Bia");
+    await prisma.usuarioLoja.create({ data: { usuarioId: bia, lojaId: loja, perfilId: "perfil-vendedora" } });
+    await definirRegra(loja, bia, {
+      vigenciaInicio: "2027-01-01",
+      bonusAcumulaFaixas: false,
+      faixas: [{ minAcumulado: "0", maxAcumulado: null, percentual: "10", bonusFixo: null }],
+    });
+    await venda(bia, 20000.0, "2027-03-05");
+
+    const r = await previewComissao(loja, "2027-03");
+    // vera: escada sobre 85k → 7% → 5950 (inalterada pela presença de bia)
+    expect(r.find((l) => l.vendedoraId === vera)).toMatchObject({ totalVendas: "85000.00", percentual: "7.00", comissao: "5950.00" });
+    // bia: 10% sobre 20k → 2000 (regra própria, não a escada da vera)
+    expect(r.find((l) => l.vendedoraId === bia)).toMatchObject({ totalVendas: "20000.00", percentual: "10.00", comissao: "2000.00" });
+  });
 });

@@ -200,6 +200,24 @@ export async function removerRegra(lojaId: string, regraId: string): Promise<{ o
 
 export type RegraVigente = { regraId: string; bonusAcumulaFaixas: boolean; faixas: FaixaCalc[] };
 
+// Linha de ComissaoRegra com faixas → RegraVigente (centavos). Dono único da conversão,
+// reusado por regraVigente (1 vendedora) e regrasVigentesEmLote (várias).
+type RegraComFaixas = { id: string; bonusAcumulaFaixas: boolean; faixas: {
+  minAcumulado: unknown; maxAcumulado: unknown; percentual: unknown; bonusFixo: unknown;
+}[] };
+function paraRegraVigente(r: RegraComFaixas): RegraVigente {
+  return {
+    regraId: r.id,
+    bonusAcumulaFaixas: r.bonusAcumulaFaixas,
+    faixas: r.faixas.map((f) => ({
+      minAcumulado: decParaCentavos(f.minAcumulado as never),
+      maxAcumulado: f.maxAcumulado === null ? null : decParaCentavos(f.maxAcumulado as never),
+      percentual: f.percentual === null ? null : Number(f.percentual),
+      bonusFixo: f.bonusFixo === null ? null : decParaCentavos(f.bonusFixo as never),
+    })),
+  };
+}
+
 /** Regra ATIVA cuja vigência começou até o fim da competência, mais recente. null se nenhuma. */
 export async function regraVigente(lojaId: string, vendedoraId: string, competencia: string): Promise<RegraVigente | null> {
   if (!competenciaValida(competencia)) return null;
@@ -209,17 +227,29 @@ export async function regraVigente(lojaId: string, vendedoraId: string, competen
     orderBy: { vigenciaInicio: "desc" },
     include: { faixas: true },
   });
-  if (!r) return null;
-  return {
-    regraId: r.id,
-    bonusAcumulaFaixas: r.bonusAcumulaFaixas,
-    faixas: r.faixas.map((f) => ({
-      minAcumulado: decParaCentavos(f.minAcumulado),
-      maxAcumulado: f.maxAcumulado === null ? null : decParaCentavos(f.maxAcumulado),
-      percentual: f.percentual === null ? null : Number(f.percentual),
-      bonusFixo: f.bonusFixo === null ? null : decParaCentavos(f.bonusFixo),
-    })),
-  };
+  return r ? paraRegraVigente(r) : null;
+}
+
+/** Regra vigente de VÁRIAS vendedoras numa competência, em UMA leitura — evita o N+1 do
+ *  preview/fechamento. Mesma seleção de regraVigente (ATIVA, vigência iniciada até o fim
+ *  da competência, a mais recente por vendedora). */
+async function regrasVigentesEmLote(
+  lojaId: string,
+  vendedoraIds: string[],
+  competencia: string,
+): Promise<Map<string, RegraVigente>> {
+  const mapa = new Map<string, RegraVigente>();
+  if (vendedoraIds.length === 0 || !competenciaValida(competencia)) return mapa;
+  const { lt } = competenciaRange(competencia);
+  const rows = await tenantPrisma(prisma, lojaId).comissaoRegra.findMany({
+    where: { vendedoraId: { in: vendedoraIds }, ativo: true, vigenciaInicio: { lt } },
+    orderBy: { vigenciaInicio: "desc" }, // a 1ª de cada vendedora é a vigente
+    include: { faixas: true },
+  });
+  for (const r of rows) {
+    if (!mapa.has(r.vendedoraId)) mapa.set(r.vendedoraId, paraRegraVigente(r)); // orderBy desc → 1ª = mais recente
+  }
+  return mapa;
 }
 
 /** Acumulado (centavos) dos contratos ATIVO da vendedora na competência (por fechadoEm). */
@@ -268,28 +298,32 @@ export async function previewComissaoIntervalo(
     _sum: { valorTotal: true },
   });
   if (grupos.length === 0) return [];
-  const nomes = new Map(
-    (await prisma.usuario.findMany({ where: { id: { in: grupos.map((g) => g.vendedoraId) } }, select: { id: true, nome: true } })).map((u) => [u.id, u.nome]),
-  );
-  const linhas = await Promise.all(
-    grupos.map(async (g) => {
-      const bruto = decParaCentavos(g._sum.valorTotal);
-      const est = await estornoPendenteDe(db as unknown as ClienteLeitura, lojaId, g.vendedoraId, competencia);
-      const total = bruto - est.totalC;
-      const regra = await regraVigente(lojaId, g.vendedoraId, competencia);
-      const r = regra ? calcularComissao(total, regra.faixas, regra.bonusAcumulaFaixas) : ZERO;
-      return {
-        vendedoraId: g.vendedoraId,
-        nome: nomes.get(g.vendedoraId) ?? "—",
-        totalVendas: deCentavos(Math.max(0, total)),
-        estornoPendente: deCentavos(est.totalC),
-        percentual: r.percentualAplicado === null ? null : r.percentualAplicado.toFixed(2),
-        comissao: deCentavos(r.valorComissao),
-        bonus: deCentavos(r.valorBonus),
-        total: deCentavos(r.valorTotal),
-      };
-    }),
-  );
+  const vendedoraIds = grupos.map((g) => g.vendedoraId);
+  // Pré-carrega estorno e regra de TODAS as vendedoras em lote (antes: 3 queries por
+  // vendedora dentro do map). nomes/estornos/regras viram 3 leituras fixas no total.
+  const [nomesRows, estornos, regras] = await Promise.all([
+    prisma.usuario.findMany({ where: { id: { in: vendedoraIds } }, select: { id: true, nome: true } }),
+    estornosPendentesEmLote(db as unknown as ClienteLeitura, lojaId, vendedoraIds, competencia),
+    regrasVigentesEmLote(lojaId, vendedoraIds, competencia),
+  ]);
+  const nomes = new Map(nomesRows.map((u) => [u.id, u.nome]));
+  const linhas = grupos.map((g) => {
+    const bruto = decParaCentavos(g._sum.valorTotal);
+    const est = estornos.get(g.vendedoraId) ?? { totalC: 0, contratoIds: [] };
+    const total = bruto - est.totalC;
+    const regra = regras.get(g.vendedoraId) ?? null;
+    const r = regra ? calcularComissao(total, regra.faixas, regra.bonusAcumulaFaixas) : ZERO;
+    return {
+      vendedoraId: g.vendedoraId,
+      nome: nomes.get(g.vendedoraId) ?? "—",
+      totalVendas: deCentavos(Math.max(0, total)),
+      estornoPendente: deCentavos(est.totalC),
+      percentual: r.percentualAplicado === null ? null : r.percentualAplicado.toFixed(2),
+      comissao: deCentavos(r.valorComissao),
+      bonus: deCentavos(r.valorBonus),
+      total: deCentavos(r.valorTotal),
+    };
+  });
   return linhas.sort((a, b) => Number(b.total) - Number(a.total));
 }
 
@@ -374,10 +408,13 @@ function vencimentoComissao(competencia: string): Date {
 }
 
 // Cliente mínimo que serve tanto p/ tenantPrisma quanto p/ o tx do $transaction.
+// vendedoraId entra nos selects p/ a variante em lote agrupar por vendedora.
 type ClienteLeitura = {
-  comissaoFechamento: { findMany: (args: unknown) => Promise<{ competencia: string }[]> };
-  contrato: { findMany: (args: unknown) => Promise<{ id: string; valorTotal: unknown; fechadoEm: Date }[]> };
+  comissaoFechamento: { findMany: (args: unknown) => Promise<{ vendedoraId: string; competencia: string }[]> };
+  contrato: { findMany: (args: unknown) => Promise<{ id: string; vendedoraId: string; valorTotal: unknown; fechadoEm: Date }[]> };
 };
+
+type EstornoPendente = { totalC: number; contratoIds: string[] };
 
 /** Estorno §6.4 pendente de uma vendedora: contratos CANCELADO, ainda não reconciliados,
  *  de competências ANTERIORES já fechadas. Retorna o total (centavos) e os contratoIds. */
@@ -386,22 +423,39 @@ async function estornoPendenteDe(
   lojaId: string,
   vendedoraId: string,
   competenciaLimite: string,
-): Promise<{ totalC: number; contratoIds: string[] }> {
+): Promise<EstornoPendente> {
+  const lote = await estornosPendentesEmLote(client, lojaId, [vendedoraId], competenciaLimite);
+  return lote.get(vendedoraId) ?? { totalC: 0, contratoIds: [] };
+}
+
+/** Estorno §6.4 pendente de VÁRIAS vendedoras em DUAS leituras (evita o N+1 do
+ *  preview/fechamento). Mesma regra de estornoPendenteDe, agrupada por vendedora. */
+async function estornosPendentesEmLote(
+  client: ClienteLeitura,
+  lojaId: string,
+  vendedoraIds: string[],
+  competenciaLimite: string,
+): Promise<Map<string, EstornoPendente>> {
+  const mapa = new Map<string, EstornoPendente>();
+  for (const id of vendedoraIds) mapa.set(id, { totalC: 0, contratoIds: [] });
+  if (vendedoraIds.length === 0) return mapa;
   const [fechs, cancelados] = await Promise.all([
-    client.comissaoFechamento.findMany({ where: { lojaId, vendedoraId }, select: { competencia: true } }),
-    client.contrato.findMany({ where: { lojaId, vendedoraId, status: "CANCELADO", comissaoEstornadaEm: null }, select: { id: true, valorTotal: true, fechadoEm: true } }),
+    client.comissaoFechamento.findMany({ where: { lojaId, vendedoraId: { in: vendedoraIds } }, select: { vendedoraId: true, competencia: true } }),
+    client.contrato.findMany({ where: { lojaId, vendedoraId: { in: vendedoraIds }, status: "CANCELADO", comissaoEstornadaEm: null }, select: { id: true, vendedoraId: true, valorTotal: true, fechadoEm: true } }),
   ]);
-  const fechadas = new Set(fechs.map((f) => f.competencia));
-  let totalC = 0;
-  const contratoIds: string[] = [];
+  const fechadasPor = new Map<string, Set<string>>();
+  for (const f of fechs) {
+    (fechadasPor.get(f.vendedoraId) ?? fechadasPor.set(f.vendedoraId, new Set()).get(f.vendedoraId)!).add(f.competencia);
+  }
   for (const c of cancelados) {
     const comp = c.fechadoEm.toISOString().slice(0, 7); // competência UTC do contrato
-    if (comp < competenciaLimite && fechadas.has(comp)) {
-      totalC += decParaCentavos(c.valorTotal as never);
-      contratoIds.push(c.id);
+    if (comp < competenciaLimite && fechadasPor.get(c.vendedoraId)?.has(comp)) {
+      const e = mapa.get(c.vendedoraId)!;
+      e.totalC += decParaCentavos(c.valorTotal as never);
+      e.contratoIds.push(c.id);
     }
   }
-  return { totalC, contratoIds };
+  return mapa;
 }
 
 export type ResultadoFechamento =
@@ -422,14 +476,21 @@ export async function fecharCompetencia(lojaId: string, competencia: string): Pr
     const jaFechadas = new Set(
       (await tx.comissaoFechamento.findMany({ where: { lojaId, competencia }, select: { vendedoraId: true } })).map((f) => f.vendedoraId),
     );
+    // Pré-carrega estorno (via tx, p/ consistência transacional) e regra das vendedoras
+    // ainda a fechar — em lote, fora do loop (antes: 3 reads por vendedora dentro do for).
+    const aFechar = grupos.filter((g) => !jaFechadas.has(g.vendedoraId)).map((g) => g.vendedoraId);
+    const [estornos, regras] = await Promise.all([
+      estornosPendentesEmLote(tx as unknown as ClienteLeitura, lojaId, aFechar, competencia),
+      regrasVigentesEmLote(lojaId, aFechar, competencia),
+    ]);
     let fechadas = 0;
     let somaC = 0;
     for (const g of grupos) {
       if (jaFechadas.has(g.vendedoraId)) continue;
       const bruto = decParaCentavos(g._sum.valorTotal);
-      const est = await estornoPendenteDe(tx as unknown as ClienteLeitura, lojaId, g.vendedoraId, competencia);
+      const est = estornos.get(g.vendedoraId) ?? { totalC: 0, contratoIds: [] };
       const net = bruto - est.totalC;
-      const regra = await regraVigente(lojaId, g.vendedoraId, competencia);
+      const regra = regras.get(g.vendedoraId) ?? null;
       const res = regra ? calcularComissao(net, regra.faixas, regra.bonusAcumulaFaixas) : ZERO;
       const baseSalva = Math.max(0, net);
 
