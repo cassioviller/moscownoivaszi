@@ -12,6 +12,15 @@ export type ResultadoAjuste =
   | { ok: true; ajusteId: string }
   | { ok: false; motivo: "sem_descricao" | "prova_invalida" };
 
+// Mutações que podem cair no caminho falha-fechada (ajuste/item de outra loja ou
+// inexistente). Antes retornavam void e a action reportava "feito" mesmo no no-op;
+// agora devolvem {ok} para a action distinguir sucesso de "não encontrado".
+export type ResultadoMutacaoAjuste = { ok: true } | { ok: false; motivo: "ajuste_invalido" };
+export type ResultadoItemChecklist =
+  | { ok: true }
+  | { ok: false; motivo: "sem_descricao" | "ajuste_invalido" };
+export type ResultadoMutacaoItem = { ok: true } | { ok: false; motivo: "item_invalido" };
+
 /** Adiciona um ajuste a uma prova da loja. Valida o pai (Prova) via tenantPrisma. */
 export async function adicionarAjuste(
   lojaId: string,
@@ -36,19 +45,21 @@ export async function adicionarAjuste(
  * reserva quanto na fila global ("marcar feito"). Escopo de loja: lê o atual e
  * grava o oposto; ajuste de outra loja não é encontrado (findUnique → null).
  */
-export async function alternarStatusAjuste(lojaId: string, ajusteId: string): Promise<void> {
+export async function alternarStatusAjuste(lojaId: string, ajusteId: string): Promise<ResultadoMutacaoAjuste> {
   const db = tenantPrisma(prisma, lojaId);
   const atual = await db.ajuste.findUnique({ where: { id: ajusteId }, select: { status: true } });
-  if (!atual) return; // outra loja / inexistente → no-op (falha fechada)
+  if (!atual) return { ok: false, motivo: "ajuste_invalido" }; // outra loja / inexistente (falha fechada)
   await db.ajuste.update({
     where: { id: ajusteId },
     data: { status: atual.status === "PENDENTE" ? "FEITO" : "PENDENTE" },
   });
+  return { ok: true };
 }
 
 /** Remove um ajuste (e seu checklist por cascade). Escopo de loja. */
-export async function removerAjuste(lojaId: string, ajusteId: string): Promise<void> {
-  await tenantPrisma(prisma, lojaId).ajuste.deleteMany({ where: { id: ajusteId } });
+export async function removerAjuste(lojaId: string, ajusteId: string): Promise<ResultadoMutacaoAjuste> {
+  const { count } = await tenantPrisma(prisma, lojaId).ajuste.deleteMany({ where: { id: ajusteId } });
+  return count > 0 ? { ok: true } : { ok: false, motivo: "ajuste_invalido" };
 }
 
 // ── Checklist de costura (filha pura: confirmar o Ajuste pai antes de tocar) ──
@@ -67,37 +78,40 @@ export async function adicionarItemChecklist(
   lojaId: string,
   ajusteId: string,
   descricao: string,
-): Promise<void> {
+): Promise<ResultadoItemChecklist> {
   const texto = descricao?.trim();
-  if (!texto) return;
-  if (!(await exigirAjusteDaLoja(lojaId, ajusteId))) return;
+  if (!texto) return { ok: false, motivo: "sem_descricao" };
+  if (!(await exigirAjusteDaLoja(lojaId, ajusteId))) return { ok: false, motivo: "ajuste_invalido" };
   const qtd = await prisma.ajusteChecklistItem.count({ where: { ajusteId } });
   await prisma.ajusteChecklistItem.create({
     data: { ajusteId, descricao: texto, ordem: qtd },
   });
+  return { ok: true };
 }
 
 /** Marca/desmarca um item do checklist. Confirma a loja pelo Ajuste pai do item. */
-export async function alternarItemChecklist(lojaId: string, itemId: string): Promise<void> {
+export async function alternarItemChecklist(lojaId: string, itemId: string): Promise<ResultadoMutacaoItem> {
   const item = await prisma.ajusteChecklistItem.findUnique({
     where: { id: itemId },
     select: { feito: true, ajuste: { select: { lojaId: true } } },
   });
-  if (!item || item.ajuste.lojaId !== lojaId) return; // falha fechada
+  if (!item || item.ajuste.lojaId !== lojaId) return { ok: false, motivo: "item_invalido" }; // falha fechada
   await prisma.ajusteChecklistItem.update({
     where: { id: itemId },
     data: { feito: !item.feito },
   });
+  return { ok: true };
 }
 
 /** Remove um item do checklist. Confirma a loja pelo Ajuste pai do item. */
-export async function removerItemChecklist(lojaId: string, itemId: string): Promise<void> {
+export async function removerItemChecklist(lojaId: string, itemId: string): Promise<ResultadoMutacaoItem> {
   const item = await prisma.ajusteChecklistItem.findUnique({
     where: { id: itemId },
     select: { ajuste: { select: { lojaId: true } } },
   });
-  if (!item || item.ajuste.lojaId !== lojaId) return; // falha fechada
+  if (!item || item.ajuste.lojaId !== lojaId) return { ok: false, motivo: "item_invalido" }; // falha fechada
   await prisma.ajusteChecklistItem.delete({ where: { id: itemId } });
+  return { ok: true };
 }
 
 // ── Fila global da costureira ────────────────────────────────────────────────

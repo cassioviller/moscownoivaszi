@@ -76,6 +76,8 @@ const AVISOS: Record<string, string> = {
   reserva_invalida: "Reserva inválida.",
   sem_descricao: "Descreva o ajuste.",
   prova_invalida: "Prova inválida.",
+  ajuste_invalido: "Ajuste não encontrado.",
+  item_invalido: "Item do checklist não encontrado.",
   sem_retirada: "Registre a retirada antes da devolução.",
   data_invertida: "A devolução não pode ser antes da retirada.",
   devolucao_orfa: "Desfaça a devolução antes de desfazer a retirada.",

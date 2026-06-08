@@ -82,32 +82,32 @@ export const adicionarAjusteAction = acaoAutorizada("ajustes", "criar", async (s
 
 export const alternarAjusteAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  await alternarStatusAjuste(sc.loja.id, str(formData, "ajusteId"));
-  redirect(comAviso(base, "ok", "ajuste"));
+  const r = await alternarStatusAjuste(sc.loja.id, str(formData, "ajusteId"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "ajuste" : r.motivo));
 });
 
 export const removerAjusteAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  await removerAjuste(sc.loja.id, str(formData, "ajusteId"));
-  redirect(comAviso(base, "ok", "ajuste_removido"));
+  const r = await removerAjuste(sc.loja.id, str(formData, "ajusteId"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "ajuste_removido" : r.motivo));
 });
 
 export const adicionarItemAction = acaoAutorizada("ajustes", "criar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  await adicionarItemChecklist(sc.loja.id, str(formData, "ajusteId"), str(formData, "descricao"));
-  redirect(comAviso(base, "ok", "item"));
+  const r = await adicionarItemChecklist(sc.loja.id, str(formData, "ajusteId"), str(formData, "descricao"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "item" : r.motivo));
 });
 
 export const alternarItemAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  await alternarItemChecklist(sc.loja.id, str(formData, "itemId"));
-  redirect(comAviso(base, "ok", "item"));
+  const r = await alternarItemChecklist(sc.loja.id, str(formData, "itemId"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "item" : r.motivo));
 });
 
 export const removerItemAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  await removerItemChecklist(sc.loja.id, str(formData, "itemId"));
-  redirect(comAviso(base, "ok", "item"));
+  const r = await removerItemChecklist(sc.loja.id, str(formData, "itemId"));
+  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "item" : r.motivo));
 });
 
 // — Movimentação do vestido (retirada/devolução) — gate de OR, guardMovimentacao —

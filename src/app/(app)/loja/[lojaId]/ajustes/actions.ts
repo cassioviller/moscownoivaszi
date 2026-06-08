@@ -9,6 +9,6 @@ import { acaoAutorizada } from "@/lib/server/acoes";
 import { str, comAviso } from "@/lib/server/form";
 
 export const marcarFeitoAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
-  await alternarStatusAjuste(sc.loja.id, str(formData, "ajusteId"));
-  redirect(comAviso(`/loja/${sc.loja.id}/ajustes`, "ok", "feito"));
+  const r = await alternarStatusAjuste(sc.loja.id, str(formData, "ajusteId"));
+  redirect(comAviso(`/loja/${sc.loja.id}/ajustes`, r.ok ? "ok" : "erro", r.ok ? "feito" : r.motivo));
 });

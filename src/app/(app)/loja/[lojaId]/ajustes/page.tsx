@@ -24,14 +24,17 @@ const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
-const AVISOS: Record<string, string> = { feito: "Ajuste concluído." };
+const AVISOS: Record<string, string> = {
+  feito: "Ajuste concluído.",
+  ajuste_invalido: "Ajuste não encontrado.",
+};
 
 export default async function AjustesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ ok?: string; p?: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string; p?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -47,7 +50,7 @@ export default async function AjustesPage({
   ]);
   const { itens: pendentes, total } = fila;
   const hoje = hojeUTC().getTime();
-  const aviso = sp.ok ? AVISOS[sp.ok] : null;
+  const aviso = (sp.ok && AVISOS[sp.ok]) || (sp.erro && AVISOS[sp.erro]) || null;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">

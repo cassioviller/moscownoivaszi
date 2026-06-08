@@ -169,11 +169,14 @@ describe("ajustes + checklist", () => {
     const provas = await listarProvasDaReserva(loja, reservaId);
     const item = provas.flatMap((p) => p.ajustes).find((x) => x.id === a.ajusteId)!.checklist[0];
 
-    await alternarItemChecklist(lojaOutra, item.id); // não deve marcar
+    const r = await alternarItemChecklist(lojaOutra, item.id); // não deve marcar
+    expect(r).toEqual({ ok: false, motivo: "item_invalido" }); // contrato {ok}, não no-op mudo
     const depois = (await listarProvasDaReserva(loja, reservaId))
       .flatMap((p) => p.ajustes).find((x) => x.id === a.ajusteId)!.checklist[0];
     expect(depois.feito).toBe(false);
-    await removerAjuste(loja, a.ajusteId);
+    // ajuste de outra loja → {ok:false}, mesmo contrato (antes void/sucesso falso)
+    expect(await alternarStatusAjuste(lojaOutra, a.ajusteId)).toEqual({ ok: false, motivo: "ajuste_invalido" });
+    expect(await removerAjuste(loja, a.ajusteId)).toEqual({ ok: true });
   });
 });
 
