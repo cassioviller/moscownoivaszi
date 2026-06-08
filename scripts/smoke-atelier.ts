@@ -13,7 +13,8 @@ import { prisma } from "../src/lib/db";
 import { tenantPrisma } from "../src/lib/tenant";
 import { criarSessao, definirLojaAtiva } from "../src/lib/auth/sessao";
 import { reservarVestido, vestidosLivresPara, vestidosLivresEntre } from "../src/lib/disponibilidade/reservas";
-import { registrarProva, listarProvasDaReserva } from "../src/lib/atelier/provas";
+import { listarProvasDaReserva } from "../src/lib/atelier/provas";
+import { agendarAtendimento } from "../src/lib/atendimentos/atendimentos";
 import { adicionarAjuste, alternarStatusAjuste, listarAjustesPendentes } from "../src/lib/atelier/ajustes";
 
 const LOJA = "loja-moscow";
@@ -45,6 +46,7 @@ async function main() {
   // fixture limpa
   await prisma.lead.deleteMany({ where: { lojaId: LOJA, noivaNome: { startsWith: MARK } } });
   await prisma.vestido.deleteMany({ where: { lojaId: LOJA, codigo: { startsWith: MARK } } });
+  await prisma.cabine.deleteMany({ where: { lojaId: LOJA, nome: { startsWith: MARK } } });
 
   const db = tenantPrisma(prisma, LOJA);
   const vestido = await db.vestido.create({ data: { codigo: `${MARK}-001`, nome: `${MARK} Vestido Sereia`, precoBase: "3500.00" } as never });
@@ -53,6 +55,9 @@ async function main() {
   const r = await reservarVestido(LOJA, { vestidoId: vestido.id, leadId: noiva.id, casamentoData: "2026-06-30" });
   if (!r.ok) throw new Error("reserva: " + JSON.stringify(r));
   const BID = r.bloqueioId;
+  // Prova é Atendimento{tipo:PROVA}: precisa de cabine ativa + vendedora (membro da loja).
+  const cabine = await db.cabine.create({ data: { nome: `${MARK} Cabine` } as never });
+  const gerente = await prisma.usuario.findUniqueOrThrow({ where: { email: "gerente@moscow.local" } });
 
   sGerente = await forjarSessao("gerente@moscow.local");
   sCostureira = await forjarSessao("costureira@moscow.local");
@@ -77,10 +82,10 @@ async function main() {
   }
 
   console.log("\n[Fluxo] prova -> ajuste -> fila -> feito (camada real)");
-  const p = await registrarProva(LOJA, { bloqueioId: BID, dataReal: "2026-06-16", tipo: "PRIMEIRA", comparecimento: "COMPARECEU" });
-  ck(p.ok, "registrarProva ok");
-  const provaId = p.ok ? p.provaId : "";
-  const a = await adicionarAjuste(LOJA, { provaId, descricao: "Bainha 3cm" });
+  const p = await agendarAtendimento(LOJA, { leadId: noiva.id, cabineId: cabine.id, vendedoraId: gerente.id, dataYMD: "2026-06-16", hora: 10, tipo: "PROVA", bloqueioId: BID });
+  ck(p.ok, "agendar prova ok");
+  const provaId = p.ok ? p.atendimentoId : "";
+  const a = await adicionarAjuste(LOJA, { atendimentoId: provaId, descricao: "Bainha 3cm" });
   ck(a.ok, "adicionarAjuste ok");
   const ajusteId = a.ok ? a.ajusteId : "";
   ck((await listarProvasDaReserva(LOJA, BID))[0]?.ajustes.length === 1, "prova lista 1 ajuste");
@@ -93,7 +98,7 @@ async function main() {
   ck((await vestidosLivresPara(LOJA, "2026-06-30")).some((v) => v.id === outro.id), "outro vestido aparece livre");
   ck((await vestidosLivresEntre(LOJA, "2026-06-24", [vestido.id])).length === 0, "bloqueado em 24/06 (sem buraco)");
   const antes = (await vestidosLivresEntre(LOJA, "2026-06-30", [vestido.id])).length;
-  await registrarProva(LOJA, { bloqueioId: BID, dataReal: "2026-06-10", tipo: "INTERMEDIARIA", comparecimento: "COMPARECEU" });
+  await agendarAtendimento(LOJA, { leadId: noiva.id, cabineId: cabine.id, vendedoraId: gerente.id, dataYMD: "2026-06-10", hora: 11, tipo: "PROVA", bloqueioId: BID });
   const depois = (await vestidosLivresEntre(LOJA, "2026-06-30", [vestido.id])).length;
   ck(antes === 0 && depois === 0, `prova nao muda disponibilidade (${antes}/${depois})`);
   } finally {
@@ -101,6 +106,7 @@ async function main() {
     if (ids.length) await prisma.sessao.deleteMany({ where: { id: { in: ids } } });
     await prisma.lead.deleteMany({ where: { lojaId: LOJA, noivaNome: { startsWith: MARK } } });
     await prisma.vestido.deleteMany({ where: { lojaId: LOJA, codigo: { startsWith: MARK } } });
+    await prisma.cabine.deleteMany({ where: { lojaId: LOJA, nome: { startsWith: MARK } } });
   }
 
   console.log(`\n=== ${pass.length} ok / ${fail.length} falhas ===`);

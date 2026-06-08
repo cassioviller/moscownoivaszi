@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { reservarVestido } from "@/lib/disponibilidade/reservas";
-import { registrarProva } from "@/lib/atelier/provas";
+import { agendarAtendimento } from "@/lib/atendimentos/atendimentos";
 import { marcadoresNoIntervalo } from "@/lib/calendario/dados";
 
 const MARK = "t-cal-dados-";
@@ -27,16 +27,21 @@ beforeAll(async () => {
   const db = tenantPrisma(prisma, loja);
   vestido = (await db.vestido.create({ data: { codigo: `${MARK}v`, nome: `${MARK}Vestido`, precoBase: 1000 } as never })).id;
   noiva = (await db.lead.create({ data: { noivaNome: `${MARK}Noiva`, etapa: "NOVO" } as never })).id;
+  const cabine = (await db.cabine.create({ data: { nome: `${MARK}C1` } as never })).id;
+  const u = await prisma.usuario.create({ data: { nome: `${MARK}Vend`, email: `${MARK}${Date.now()}@x.local`, senhaHash: "x" } });
+  await prisma.usuarioLoja.create({ data: { usuarioId: u.id, lojaId: loja, perfilId: "perfil-vendedora" } });
   const r = await reservarVestido(loja, { vestidoId: vestido, leadId: noiva, casamentoData: casamentoDia });
   expect(r.ok).toBe(true);
   if (r.ok) {
-    const p = await registrarProva(loja, { bloqueioId: r.bloqueioId, dataReal: casamentoDia, tipo: "PRIMEIRA" });
+    // Prova = Atendimento{tipo:PROVA} com inicio no dia do casamento (só p/ o marcador).
+    const p = await agendarAtendimento(loja, { leadId: noiva, cabineId: cabine, vendedoraId: u.id, dataYMD: casamentoDia, hora: 10, tipo: "PROVA", bloqueioId: r.bloqueioId });
     expect(p.ok).toBe(true);
   }
 });
 
 afterAll(async () => {
   await prisma.loja.deleteMany({ where: { nome: { startsWith: MARK } } });
+  await prisma.usuario.deleteMany({ where: { email: { startsWith: MARK } } });
 });
 
 describe("marcadoresNoIntervalo", () => {

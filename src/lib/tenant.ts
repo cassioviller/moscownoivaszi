@@ -34,7 +34,6 @@ export const TENANT_MODELS = [
   "BloqueioVestido",
   "RegraDisponibilidade",
   "PerfilOverrideLoja",
-  "Prova",
   "Ajuste",
   "Cabine",
   "Atendimento",

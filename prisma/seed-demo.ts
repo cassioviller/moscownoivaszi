@@ -24,6 +24,7 @@ import {
   PrismaClient,
   type LeadEtapa,
   AtendimentoSituacao,
+  AtendimentoTipo,
   OrcamentoStatus,
   OrcamentoItemTipo,
   DescontoTipo,
@@ -339,32 +340,8 @@ async function main() {
     await prisma.bloqueioVestido.upsert({ where: { id: m.id }, create: { id: m.id, ...dados }, update: dados });
   }
 
-  // 5) PROVAS & AJUSTES — dentro das reservas (operacional, não move disponibilidade).
-  for (const p of PROVAS) {
-    const blqId = `demo-blq-${String(p.reservaNoivaN).padStart(2, "0")}`;
-    const dadosProva = {
-      lojaId: LOJA_ID,
-      bloqueioId: blqId,
-      dataReal: meiaNoiteUTC(p.dataReal),
-      tipo: p.tipo,
-      comparecimento: p.comparecimento,
-      observacao: p.observacao ?? null,
-      responsavel: p.responsavel ?? null,
-    };
-    await prisma.prova.upsert({ where: { id: p.id }, create: { id: p.id, ...dadosProva }, update: dadosProva });
-
-    for (const aj of p.ajustes ?? []) {
-      const dadosAjuste = { lojaId: LOJA_ID, provaId: p.id, descricao: aj.descricao, status: aj.status };
-      await prisma.ajuste.upsert({ where: { id: aj.id }, create: { id: aj.id, ...dadosAjuste }, update: dadosAjuste });
-      // Checklist (filha sem lojaId): substitui o conjunto a cada run.
-      await prisma.ajusteChecklistItem.deleteMany({ where: { ajusteId: aj.id } });
-      if (aj.checklist.length > 0) {
-        await prisma.ajusteChecklistItem.createMany({
-          data: aj.checklist.map((descricao, ordem) => ({ ajusteId: aj.id, descricao, feito: false, ordem })),
-        });
-      }
-    }
-  }
+  // 5) PROVAS & AJUSTES — provas agora são Atendimento{tipo:PROVA} presos à reserva
+  //    (criados na seção 6, junto com cabine/vendedora, que a prova exige como slot).
 
   // ─────────────────────── 6) COMERCIAL & FINANCEIRO ──────────────────────────
   // Atendimentos, orçamentos, contratos, parcelas (receber), contas a pagar + folha
@@ -398,6 +375,42 @@ async function main() {
 
     // — Cabine (o seed base não cria) —
     await prisma.cabine.upsert({ where: { id: "demo-cab-01" }, create: { id: "demo-cab-01", lojaId: LOJA_ID, nome: "Cabine Marfim" }, update: { nome: "Cabine Marfim", ativo: true } });
+
+    // — Provas (Atendimento{tipo:PROVA}) + ajustes/checklist. A prova vive presa à
+    //   reserva (bloqueioId) e ocupa um slot de cabine/vendedora, como no app real.
+    //   comparecimento antigo → situacao: COMPARECEU=CONCLUIDO, FALTOU=FALTOU, resto=AGENDADO.
+    const situacaoDaProva = (c: ProvaDemo["comparecimento"]): AtendimentoSituacao =>
+      c === "COMPARECEU" ? AtendimentoSituacao.CONCLUIDO : c === "FALTOU" ? AtendimentoSituacao.FALTOU : AtendimentoSituacao.AGENDADO;
+    for (const p of PROVAS) {
+      const blqId = `demo-blq-${String(p.reservaNoivaN).padStart(2, "0")}`;
+      const sit = situacaoDaProva(p.comparecimento);
+      const inicio = new Date(`${p.dataReal}T14:00:00.000Z`);
+      const dadosProva = {
+        lojaId: LOJA_ID,
+        leadId: idNoiva(p.reservaNoivaN),
+        cabineId: "demo-cab-01",
+        vendedoraId: vendId("A"),
+        tipo: AtendimentoTipo.PROVA,
+        bloqueioId: blqId,
+        inicio,
+        situacao: sit,
+        atendidoEm: sit === AtendimentoSituacao.CONCLUIDO ? inicio : null,
+        observacao: p.observacao ?? null,
+      };
+      await prisma.atendimento.upsert({ where: { id: p.id }, create: { id: p.id, ...dadosProva }, update: dadosProva });
+
+      for (const aj of p.ajustes ?? []) {
+        const dadosAjuste = { lojaId: LOJA_ID, atendimentoId: p.id, descricao: aj.descricao, status: aj.status };
+        await prisma.ajuste.upsert({ where: { id: aj.id }, create: { id: aj.id, ...dadosAjuste }, update: dadosAjuste });
+        // Checklist (filha sem lojaId): substitui o conjunto a cada run.
+        await prisma.ajusteChecklistItem.deleteMany({ where: { ajusteId: aj.id } });
+        if (aj.checklist.length > 0) {
+          await prisma.ajusteChecklistItem.createMany({
+            data: aj.checklist.map((descricao, ordem) => ({ ajusteId: aj.id, descricao, feito: false, ordem })),
+          });
+        }
+      }
+    }
 
     // — Atendimentos (a fila do dia, situações variadas) —
     const ATEND = [

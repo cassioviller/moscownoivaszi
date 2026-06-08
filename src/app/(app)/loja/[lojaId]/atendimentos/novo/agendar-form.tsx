@@ -3,9 +3,10 @@
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { rotuloSlot, type Slot } from "@/lib/atendimentos/slots";
 import { gradeDoDiaAction, agendarAtendimentoAction, reservasDaNoivaAction, type AgendarState } from "./actions";
+import type { ReservaDaNoiva } from "@/lib/disponibilidade/reservas";
 
 type Opcao = { id: string; nome: string };
-type Reserva = { id: string; vestidoCodigo: string; vestidoNome: string; casamentoData: string | null };
+type Reserva = ReservaDaNoiva;
 const INICIAL: AgendarState = { erro: null };
 const campo =
   "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[15px] text-tinta " +
@@ -110,7 +111,7 @@ export function AgendarForm({
               <option value="">Selecione a reserva…</option>
               {reservas.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.vestidoCodigo} · {r.vestidoNome}{r.casamentoData ? ` — casamento ${fmtCasamento.format(new Date(r.casamentoData))}` : ""}
+                  {r.codigo} · {r.nome}{r.casamentoData ? ` — casamento ${fmtCasamento.format(new Date(r.casamentoData))}` : ""}
                 </option>
               ))}
             </select>

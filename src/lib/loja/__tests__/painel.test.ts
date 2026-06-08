@@ -8,6 +8,8 @@ const MARK = "t-painel-";
 let loja = "";
 let outra = "";
 let destaqueId = "";
+let cabineProva = "";
+let vendProva = "";
 
 // Mesma convenção do painel: meia-noite UTC do dia de hoje em SP.
 const ymd = new Intl.DateTimeFormat("en-CA", {
@@ -19,14 +21,23 @@ const ymd = new Intl.DateTimeFormat("en-CA", {
 const hoje = new Date(`${ymd}T00:00:00.000Z`);
 const emDias = (n: number) => new Date(hoje.getTime() + n * 86_400_000);
 
-// Cria uma reserva (BloqueioVestido RESERVA_CASAMENTO) com uma prova COMPARECEU
-// para o lead — é assim que a noiva DERIVA o estágio "em_provas" (prova realizada).
+// Cria uma reserva (BloqueioVestido RESERVA_CASAMENTO) com uma prova realizada
+// (Atendimento{tipo:PROVA, situacao:CONCLUIDO}) para o lead — é assim que a noiva
+// DERIVA o estágio "em_provas" (prova realizada = situacao EM_ATENDIMENTO/CONCLUIDO).
 async function comProvaRealizada(db: ReturnType<typeof tenantPrisma>, leadId: string, vestidoId: string) {
   const b = await db.bloqueioVestido.create({
     data: { vestidoId, leadId, tipo: "RESERVA_CASAMENTO" } as never,
   });
-  await db.prova.create({
-    data: { bloqueioId: b.id, dataReal: hoje, tipo: "PRIMEIRA", comparecimento: "COMPARECEU" } as never,
+  await db.atendimento.create({
+    data: {
+      leadId,
+      cabineId: cabineProva,
+      vendedoraId: vendProva,
+      tipo: "PROVA",
+      bloqueioId: b.id,
+      inicio: hoje,
+      situacao: "CONCLUIDO",
+    } as never,
   });
 }
 
@@ -51,6 +62,12 @@ beforeAll(async () => {
   const vReserva = await db.vestido.create({
     data: { codigo: "R1", nome: `${MARK}reserva`, precoBase: "100.00" } as never,
   });
+
+  // Cabine + vendedora para as provas (Atendimento{tipo:PROVA}).
+  cabineProva = (await db.cabine.create({ data: { nome: `${MARK}C1` } as never })).id;
+  const uProva = await prisma.usuario.create({ data: { nome: `${MARK}Vend`, email: `${MARK}${Date.now()}@x.local`, senhaHash: "x" } });
+  vendProva = uProva.id;
+  await prisma.usuarioLoja.create({ data: { usuarioId: uProva.id, lojaId: loja, perfilId: "perfil-vendedora" } });
 
   // Estágios derivados de FATOS reais (não há mais coluna Lead.etapa para setar):
   //   cadastrada: lead "pelado" (n1 sem casamento, n2 +10d, n3 +40d)
@@ -100,6 +117,7 @@ afterAll(async () => {
   await prisma.vestido.deleteMany({ where: { lojaId: { in: [loja, outra] } } });
   await prisma.atributo.deleteMany({ where: { lojaId: { in: [loja, outra] } } });
   await prisma.loja.deleteMany({ where: { id: { in: [loja, outra] } } });
+  await prisma.usuario.deleteMany({ where: { email: { startsWith: MARK } } });
   await prisma.$disconnect();
 });
 

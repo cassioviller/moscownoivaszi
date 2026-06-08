@@ -1,14 +1,15 @@
 // src/app/(app)/loja/[lojaId]/reservas/[bloqueioId]/actions.ts
-// Provas e ajustes a partir do detalhe da reserva. As ações de prova/ajuste têm permissão
-// fixa no módulo "ajustes" → usam acaoAutorizada. As de MOVIMENTAÇÃO (retirada/devolução)
-// exigem leads:editar OU ajustes:editar (a costureira que entrega/recebe também registra) —
-// gate de OR que o seam de permissão única não modela, então mantêm guardMovimentacao local.
+// Ajustes a partir do detalhe da reserva (leitura + manutenção dos ajustes da prova).
+// A prova é agendada/iniciada/concluída na aba Provas & ajustes; aqui não há registro
+// de prova. As ações de ajuste têm permissão fixa no módulo "ajustes" → usam acaoAutorizada.
+// As de MOVIMENTAÇÃO (retirada/devolução) exigem leads:editar OU ajustes:editar (a
+// costureira que entrega/recebe também registra) — gate de OR que o seam de permissão
+// única não modela, então mantêm guardMovimentacao local.
 "use server";
 
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { registrarProva, editarProva, removerProva } from "@/lib/atelier/provas";
 import { definirMovimentacaoReserva } from "@/lib/disponibilidade/reservas";
 import {
   adicionarAjuste,
@@ -20,7 +21,6 @@ import {
 } from "@/lib/atelier/ajustes";
 import { acaoAutorizada } from "@/lib/server/acoes";
 import { str, comAviso } from "@/lib/server/form";
-import type { ProvaTipo, ProvaComparecimento } from "@/generated/prisma/client";
 
 const baseReserva = (lojaId: string, bloqueioId: string) => `/loja/${lojaId}/reservas/${bloqueioId}`;
 
@@ -39,42 +39,10 @@ async function guardMovimentacao(formData: FormData) {
   return { lojaId: sc.loja.id, bloqueioId, base };
 }
 
-export const registrarProvaAction = acaoAutorizada("ajustes", "criar", async (sc, formData) => {
-  const bloqueioId = str(formData, "bloqueioId");
-  const base = baseReserva(sc.loja.id, bloqueioId);
-  const r = await registrarProva(sc.loja.id, {
-    bloqueioId,
-    dataReal: str(formData, "dataReal"),
-    tipo: str(formData, "tipo") as ProvaTipo,
-    comparecimento: (str(formData, "comparecimento") || "AGENDADA") as ProvaComparecimento,
-    responsavel: str(formData, "responsavel") || null,
-    observacao: str(formData, "observacao") || null,
-  });
-  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "prova" : r.motivo));
-});
-
-export const editarProvaAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
-  const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  const r = await editarProva(sc.loja.id, str(formData, "provaId"), {
-    dataReal: str(formData, "dataReal"),
-    tipo: str(formData, "tipo") as ProvaTipo,
-    comparecimento: str(formData, "comparecimento") as ProvaComparecimento,
-    responsavel: str(formData, "responsavel"),
-    observacao: str(formData, "observacao"),
-  });
-  redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "prova" : r.motivo));
-});
-
-export const removerProvaAction = acaoAutorizada("ajustes", "editar", async (sc, formData) => {
-  const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
-  await removerProva(sc.loja.id, str(formData, "provaId"));
-  redirect(comAviso(base, "ok", "prova_removida"));
-});
-
 export const adicionarAjusteAction = acaoAutorizada("ajustes", "criar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
   const r = await adicionarAjuste(sc.loja.id, {
-    provaId: str(formData, "provaId"),
+    atendimentoId: str(formData, "provaId"),
     descricao: str(formData, "descricao"),
   });
   redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "ajuste" : r.motivo));

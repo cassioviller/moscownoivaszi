@@ -12,7 +12,7 @@ import { listarProvasDaLoja, type ProvaDaLoja } from "@/lib/atelier/provas";
 import { paginar, TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
 import { hojeUTC } from "@/lib/tempo";
-import type { ProvaTipo, ProvaComparecimento } from "@/generated/prisma/client";
+import type { AtendimentoSituacao } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +23,11 @@ const mesAno = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric"
 const mesAbrev = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
 const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
-const ROTULO_TIPO: Record<ProvaTipo, string> = {
-  PRIMEIRA: "1ª prova",
-  INTERMEDIARIA: "Prova intermediária",
-  FINAL: "Prova final",
-};
-const ROTULO_COMPARECIMENTO: Record<ProvaComparecimento, string> = {
-  AGENDADA: "Agendada",
-  COMPARECEU: "Compareceu",
+const ROTULO_SITUACAO: Record<AtendimentoSituacao, string> = {
+  AGENDADO: "Agendada",
+  EM_ATENDIMENTO: "Em atendimento",
+  CONCLUIDO: "Concluída",
   FALTOU: "Faltou",
-  REMARCADA: "Remarcada",
 };
 
 function chaveMes(d: Date): string {
@@ -44,10 +39,10 @@ type Grupo = { chave: string; rotulo: string; provas: ProvaDaLoja[] };
 function agruparPorMes(provas: ProvaDaLoja[]): Grupo[] {
   const grupos: Grupo[] = [];
   for (const p of provas) {
-    const chave = chaveMes(p.dataReal);
+    const chave = chaveMes(p.inicio);
     let grupo = grupos.find((g) => g.chave === chave);
     if (!grupo) {
-      grupo = { chave, rotulo: mesAno.format(p.dataReal), provas: [] };
+      grupo = { chave, rotulo: mesAno.format(p.inicio), provas: [] };
       grupos.push(grupo);
     }
     grupo.provas.push(p);
@@ -117,7 +112,7 @@ export default async function ProvasPage({
               </h2>
               <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
                 {mes.provas.map((p) => {
-                  const dias = Math.round((p.dataReal.getTime() - hoje) / DIA_MS);
+                  const dias = Math.round((p.inicio.getTime() - hoje) / DIA_MS);
                   // Bordô só na iminência: prova nos próximos 7 dias. Distante = tinta (§6).
                   const iminente = !passadas && dias >= 0 && dias <= JANELA_IMINENTE_DIAS;
                   return (
@@ -128,10 +123,10 @@ export default async function ProvasPage({
                             iminente ? "text-bordo" : "text-tinta"
                           }`}
                         >
-                          {p.dataReal.getUTCDate()}
+                          {p.inicio.getUTCDate()}
                         </span>
                         <span className="mt-0.5 text-[11px] uppercase tracking-[0.1em] text-cinza-fumo">
-                          {mesAbrev.format(p.dataReal).replace(".", "")}
+                          {mesAbrev.format(p.inicio).replace(".", "")}
                         </span>
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -149,29 +144,33 @@ export default async function ProvasPage({
                           ) : (
                             <span className="text-[15px] text-tinta">{p.noivaNome ?? "Noiva"}</span>
                           )}
-                          <span className="text-[12px] text-cinza-fumo">{ROTULO_TIPO[p.tipo]}</span>
+                          <span className="text-[12px] text-cinza-fumo">Prova</span>
                         </span>
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                           <span className="inline-flex min-h-8 items-center rounded-full border border-borda-suave bg-papel px-2.5 py-0.5 text-[12px] text-grafite">
-                            {ROTULO_COMPARECIMENTO[p.comparecimento]}
+                            {ROTULO_SITUACAO[p.situacao]}
                           </span>
-                          <span className="text-[12px] text-cinza-fumo">
-                            {p.vestidoCodigo} · {p.vestidoNome}
-                          </span>
+                          {p.vestidoCodigo && p.vestidoNome && (
+                            <span className="text-[12px] text-cinza-fumo">
+                              {p.vestidoCodigo} · {p.vestidoNome}
+                            </span>
+                          )}
                           {p.casamentoData && (
                             <span className="text-[12px] text-cinza-fumo">
                               casamento {dataCurta.format(p.casamentoData)}
                             </span>
                           )}
-                          <Link
-                            href={`/loja/${lojaId}/reservas/${p.bloqueioId}`}
-                            className="rounded-sm text-[12px] text-grafite underline decoration-borda
-                              underline-offset-4 transition-colors duration-150 hover:text-bordo
-                              hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
-                              focus-visible:outline-bordo"
-                          >
-                            Abrir reserva
-                          </Link>
+                          {p.bloqueioId && (
+                            <Link
+                              href={`/loja/${lojaId}/reservas/${p.bloqueioId}`}
+                              className="rounded-sm text-[12px] text-grafite underline decoration-borda
+                                underline-offset-4 transition-colors duration-150 hover:text-bordo
+                                hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2
+                                focus-visible:outline-bordo"
+                            >
+                              Abrir reserva
+                            </Link>
+                          )}
                         </span>
                       </div>
                     </li>

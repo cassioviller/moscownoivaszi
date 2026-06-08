@@ -1,9 +1,10 @@
 // src/app/(app)/loja/[lojaId]/reservas/[bloqueioId]/page.tsx
 // Detalhe da reserva — o lar das provas e ajustes da noiva. Lê a reserva (noiva +
 // vestido + o bloco contínuo de indisponibilidade) e, abaixo, a operação do atelier:
-// provas registradas e, dentro de cada prova, os ajustes de costura com checklist.
-// Ver = leads:ver; mexer em provas/ajustes = módulo "ajustes". A prova é registro
-// operacional: NÃO altera disponibilidade (decisão 2026-06-01).
+// provas da reserva (leitura) e, dentro de cada prova, os ajustes de costura com
+// checklist. A prova é agendada/iniciada/concluída na aba Provas & ajustes do
+// Calendário — aqui há só leitura da prova + o atalho "Agendar prova".
+// Ver = leads:ver; mexer em ajustes = módulo "ajustes".
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AvisoFlash } from "@/components/ui/aviso-flash";
@@ -13,13 +14,9 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterReservaDetalhe } from "@/lib/disponibilidade/reservas";
 import { listarProvasDaReserva } from "@/lib/atelier/provas";
 import { ROTULO_JANELA } from "@/lib/disponibilidade/agenda";
-import { SelectNativo } from "@/components/ui/select-nativo";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
-import type { ProvaTipo, ProvaComparecimento } from "@/generated/prisma/client";
+import type { AtendimentoSituacao } from "@/generated/prisma/client";
 import {
-  registrarProvaAction,
-  editarProvaAction,
-  removerProvaAction,
   adicionarAjusteAction,
   alternarAjusteAction,
   removerAjusteAction,
@@ -46,34 +43,28 @@ const dataCurta = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
+const dataHora = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
 
-const ROTULO_TIPO: Record<ProvaTipo, string> = {
-  PRIMEIRA: "1ª prova",
-  INTERMEDIARIA: "Prova intermediária",
-  FINAL: "Prova final",
-};
-const ROTULO_COMPARECIMENTO: Record<ProvaComparecimento, string> = {
-  AGENDADA: "Agendada",
-  COMPARECEU: "Compareceu",
+const ROTULO_SITUACAO: Record<AtendimentoSituacao, string> = {
+  AGENDADO: "Agendada",
+  EM_ATENDIMENTO: "Em atendimento",
+  CONCLUIDO: "Concluída",
   FALTOU: "Faltou",
-  REMARCADA: "Remarcada",
 };
-const TIPOS: ProvaTipo[] = ["PRIMEIRA", "INTERMEDIARIA", "FINAL"];
-const COMPARECIMENTOS: ProvaComparecimento[] = ["AGENDADA", "COMPARECEU", "FALTOU", "REMARCADA"];
 
 const AVISOS: Record<string, string> = {
-  prova: "Prova registrada.",
-  prova_removida: "Prova removida.",
   ajuste: "Ajuste atualizado.",
   ajuste_removido: "Ajuste removido.",
   item: "Checklist atualizado.",
   movimentacao: "Movimentação registrada.",
   movimentacao_desfeita: "Registro desfeito.",
-  sem_data: "Informe a data da prova.",
-  tipo_invalido: "Escolha o tipo da prova.",
-  data_invalida: "Data inválida.",
-  comparecimento_invalido: "Comparecimento inválido.",
-  reserva_invalida: "Reserva inválida.",
   sem_descricao: "Descreva o ajuste.",
   prova_invalida: "Prova inválida.",
   ajuste_invalido: "Ajuste não encontrado.",
@@ -274,10 +265,20 @@ export default async function ReservaDetalhePage({
 
       {/* Provas */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Provas</h2>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Provas</h2>
+          {podeEditarNoivas && reserva.leadId && (
+            <Link
+              href={`/loja/${lojaId}/atendimentos/novo?noiva=${reserva.leadId}&tipo=PROVA&reserva=${bloqueioId}`}
+              className={botaoSuave}
+            >
+              Agendar prova
+            </Link>
+          )}
+        </div>
 
         {provas.length === 0 ? (
-          <p className="text-[14px] text-grafite">Nenhuma prova registrada ainda.</p>
+          <p className="text-[14px] text-grafite">Nenhuma prova agendada ainda.</p>
         ) : (
           <ul className="flex flex-col gap-4">
             {provas.map((p) => (
@@ -287,69 +288,17 @@ export default async function ReservaDetalhePage({
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[15px] text-tinta">{ROTULO_TIPO[p.tipo]}</span>
+                    <span className="text-[15px] text-tinta">{dataHora.format(p.inicio)}</span>
                     <span className="text-[12px] text-cinza-fumo">
-                      {dataLonga.format(p.dataReal)}
-                      {p.responsavel ? ` · ${p.responsavel}` : ""}
+                      {[p.cabineNome, p.vendedoraNome].filter(Boolean).join(" · ") || "—"}
                     </span>
                   </div>
                   <span className="rounded-full border border-borda-suave bg-papel px-2.5 py-0.5 text-[12px] text-grafite">
-                    {ROTULO_COMPARECIMENTO[p.comparecimento]}
+                    {ROTULO_SITUACAO[p.situacao]}
                   </span>
                 </div>
 
                 {p.observacao && <p className="text-[13px] text-grafite">{p.observacao}</p>}
-
-                {podeEditar && (
-                  <form action={editarProvaAction} className="flex flex-col gap-2 border-t border-borda-suave pt-3">
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Editar prova</span>
-                    <input type="hidden" name="bloqueioId" value={bloqueioId} />
-                    <input type="hidden" name="provaId" value={p.id} />
-                    <div className="flex flex-wrap gap-2">
-                      <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Data</span>
-                        <input
-                          type="date"
-                          name="dataReal"
-                          defaultValue={p.dataReal.toISOString().slice(0, 10)}
-                          className={`${inputBase} py-2 text-[14px]`}
-                          aria-label="Data da prova"
-                        />
-                      </label>
-                      <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Tipo</span>
-                        <select name="tipo" defaultValue={p.tipo} aria-label="Tipo da prova" className={`${inputBase} py-2 text-[14px]`}>
-                          {TIPOS.map((t) => (
-                            <option key={t} value={t}>{ROTULO_TIPO[t]}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Comparecimento</span>
-                        <select name="comparecimento" defaultValue={p.comparecimento} aria-label="Comparecimento" className={`${inputBase} py-2 text-[14px]`}>
-                          {COMPARECIMENTOS.map((c) => (
-                            <option key={c} value={c}>{ROTULO_COMPARECIMENTO[c]}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <input
-                      name="responsavel"
-                      defaultValue={p.responsavel ?? ""}
-                      placeholder="Responsável (opcional)"
-                      className={`${inputBase} py-2 text-[14px]`}
-                      aria-label="Responsável"
-                    />
-                    <input
-                      name="observacao"
-                      defaultValue={p.observacao ?? ""}
-                      placeholder="Observação (opcional)"
-                      className={`${inputBase} py-2 text-[14px]`}
-                      aria-label="Observação"
-                    />
-                    <button type="submit" className={`${botaoSuave} no-underline self-start`}>Salvar prova</button>
-                  </form>
-                )}
 
                 {/* Ajustes desta prova */}
                 <div className="flex flex-col gap-2 border-t border-borda-suave pt-3">
@@ -469,84 +418,9 @@ export default async function ReservaDetalhePage({
                     </form>
                   )}
                 </div>
-
-                {/* Remover prova */}
-                {podeEditar && (
-                  <form action={removerProvaAction} className="self-end">
-                    <input type="hidden" name="bloqueioId" value={bloqueioId} />
-                    <input type="hidden" name="provaId" value={p.id} />
-                    <BotaoConfirmar
-                      mensagem="Remover esta prova e seus ajustes?"
-                      ariaLabel="Remover prova"
-                      className={botaoSuave}
-                    >
-                      Remover prova
-                    </BotaoConfirmar>
-                  </form>
-                )}
               </li>
             ))}
           </ul>
-        )}
-
-        {/* Registrar prova */}
-        {podeCriar && (
-          <form
-            action={registrarProvaAction}
-            className="flex flex-col gap-3 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel p-4"
-          >
-            <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">
-              Registrar prova
-            </span>
-            <input type="hidden" name="bloqueioId" value={bloqueioId} />
-            <div className="flex flex-wrap gap-3">
-              <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
-                <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Data</span>
-                <input
-                  type="date"
-                  name="dataReal"
-                  required
-                  defaultValue={casamentoYmd}
-                  className={`${inputBase} py-2 text-[14px]`}
-                  aria-label="Data da prova"
-                />
-              </label>
-              <SelectNativo name="tipo" label="Tipo" placeholder="Tipo da prova">
-                {TIPOS.map((t) => (
-                  <option key={t} value={t}>
-                    {ROTULO_TIPO[t]}
-                  </option>
-                ))}
-              </SelectNativo>
-              <SelectNativo name="comparecimento" label="Comparecimento" placeholder="Comparecimento">
-                {COMPARECIMENTOS.map((c) => (
-                  <option key={c} value={c}>
-                    {ROTULO_COMPARECIMENTO[c]}
-                  </option>
-                ))}
-              </SelectNativo>
-            </div>
-            <input
-              name="responsavel"
-              placeholder="Responsável (opcional)"
-              className={`${inputBase} py-2 text-[14px]`}
-              aria-label="Responsável"
-            />
-            <input
-              name="observacao"
-              placeholder="Observação (opcional)"
-              className={`${inputBase} py-2 text-[14px]`}
-              aria-label="Observação"
-            />
-            <button
-              type="submit"
-              className="inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium
-                text-papel transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2
-                focus-visible:outline-offset-2 focus-visible:outline-bordo"
-            >
-              Registrar prova
-            </button>
-          </form>
         )}
       </section>
     </main>

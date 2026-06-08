@@ -28,6 +28,7 @@ beforeAll(async () => {
 afterAll(async () => {
   // Cascade Loja → filhos cuida do resto (todas as FKs pra Loja são onDelete: Cascade).
   await base.loja.deleteMany({ where: { id: { in: [lojaA, lojaB] } } });
+  await base.usuario.deleteMany({ where: { email: { startsWith: MARK } } });
   await base.$disconnect();
 });
 
@@ -151,38 +152,38 @@ proveZeroVazamento({
   delegate: (c) => c.lead,
 });
 
-// Prova/Ajuste: filhas de uma reserva, mas carregam lojaId e entram no guard.
-// O seed monta a cadeia Vestido → BloqueioVestido(reserva) → Prova → Ajuste na loja.
+// Cria uma PROVA (Atendimento{tipo:PROVA}) presa a uma reserva da loja, montando
+// a cadeia Vestido → BloqueioVestido(reserva) + Cabine + Vendedora → Atendimento.
+async function seedProvaAtendimento(lojaId: string): Promise<{ id: string }> {
+  const vestido = await base.vestido.create({
+    data: { lojaId, codigo: codigoUnico(), nome: `${MARK}v-prova`, precoBase: "100.00" },
+  });
+  const bloqueio = await base.bloqueioVestido.create({
+    data: { lojaId, vestidoId: vestido.id, tipo: "RESERVA_CASAMENTO", casamentoData: new Date("2026-09-12T00:00:00.000Z") },
+  });
+  const lead = await base.lead.create({ data: { lojaId, noivaNome: `${MARK}n-prova` } });
+  const cabine = await base.cabine.create({ data: { lojaId, nome: `${MARK}c-prova` } });
+  const u = await base.usuario.create({ data: { nome: `${MARK}v-prova`, email: `${codigoUnico()}@x.local`, senhaHash: "x" } });
+  await base.usuarioLoja.create({ data: { usuarioId: u.id, lojaId, perfilId: "perfil-vendedora" } });
+  return base.atendimento.create({
+    data: { lojaId, leadId: lead.id, cabineId: cabine.id, vendedoraId: u.id, tipo: "PROVA", bloqueioId: bloqueio.id, inicio: new Date("2026-09-01T14:00:00.000Z") },
+  });
+}
+
+// Prova: agora é Atendimento{tipo:PROVA}; carrega lojaId e entra no guard.
 proveZeroVazamento({
-  label: "Prova",
-  seed: async (lojaId) => {
-    const vestido = await base.vestido.create({
-      data: { lojaId, codigo: codigoUnico(), nome: `${MARK}v-prova`, precoBase: "100.00" },
-    });
-    const bloqueio = await base.bloqueioVestido.create({
-      data: { lojaId, vestidoId: vestido.id, tipo: "RESERVA_CASAMENTO", casamentoData: new Date("2026-09-12T00:00:00.000Z") },
-    });
-    return base.prova.create({
-      data: { lojaId, bloqueioId: bloqueio.id, dataReal: new Date("2026-09-01T00:00:00.000Z"), tipo: "PRIMEIRA" },
-    });
-  },
-  delegate: (c) => c.prova,
+  label: "Prova (Atendimento tipo=PROVA)",
+  seed: seedProvaAtendimento,
+  delegate: (c) => c.atendimento,
 });
 
+// Ajuste: nasce de uma prova (Atendimento{tipo:PROVA}); carrega lojaId.
 proveZeroVazamento({
   label: "Ajuste",
   seed: async (lojaId) => {
-    const vestido = await base.vestido.create({
-      data: { lojaId, codigo: codigoUnico(), nome: `${MARK}v-ajuste`, precoBase: "100.00" },
-    });
-    const bloqueio = await base.bloqueioVestido.create({
-      data: { lojaId, vestidoId: vestido.id, tipo: "RESERVA_CASAMENTO", casamentoData: new Date("2026-09-12T00:00:00.000Z") },
-    });
-    const prova = await base.prova.create({
-      data: { lojaId, bloqueioId: bloqueio.id, dataReal: new Date("2026-09-01T00:00:00.000Z"), tipo: "PRIMEIRA" },
-    });
+    const prova = await seedProvaAtendimento(lojaId);
     return base.ajuste.create({
-      data: { lojaId, provaId: prova.id, descricao: `${MARK}ajuste` },
+      data: { lojaId, atendimentoId: prova.id, descricao: `${MARK}ajuste` },
     });
   },
   delegate: (c) => c.ajuste,
