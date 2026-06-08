@@ -4,10 +4,10 @@ import type { Loja, Usuario } from "@/generated/prisma/client";
 
 // Perfis vêm do seed. Papéis são DADOS (UsuarioLoja.perfilId), não enums novos.
 // Os IDs moram numa folha pura (./perfis-ids) para não acoplar quem só precisa do ID
-// a este módulo (que arrasta prisma + bcrypt). Importados para uso interno e
-// re-exportados pela API antiga (quem já importava daqui segue funcionando).
-import { PERFIL_ADMIN_ID, PERFIL_VENDEDORA_ID, PERFIL_RECEPCAO_ID } from "./perfis-ids";
-export { PERFIL_ADMIN_ID, PERFIL_VENDEDORA_ID, PERFIL_RECEPCAO_ID };
+// a este módulo (que arrasta prisma + bcrypt).
+// Re-exportados via "export from" (não import+export) para evitar bug do Turbopack
+// onde variáveis importadas e re-exportadas ficam undefined no chunk de SSR.
+export { PERFIL_ADMIN_ID, PERFIL_VENDEDORA_ID, PERFIL_RECEPCAO_ID } from "./perfis-ids";
 
 const SENHA_MIN = 8;
 
@@ -44,7 +44,7 @@ export interface AdminListado {
 /** Admins (não super-admin) com as lojas onde têm perfil Admin. */
 export async function listarAdmins(): Promise<AdminListado[]> {
   const usuarios = await prisma.usuario.findMany({
-    where: { isSuperAdmin: false, lojas: { some: { perfilId: PERFIL_ADMIN_ID } } },
+    where: { isSuperAdmin: false, lojas: { some: { perfilId: "perfil-admin" } } },
     orderBy: { nome: "asc" },
     include: { lojas: { include: { loja: true } } },
   });
@@ -53,7 +53,7 @@ export async function listarAdmins(): Promise<AdminListado[]> {
     nome: u.nome,
     email: u.email,
     lojas: u.lojas
-      .filter((ul) => ul.perfilId === PERFIL_ADMIN_ID)
+      .filter((ul) => ul.perfilId === "perfil-admin")
       .map((ul) => ul.loja.nome)
       .sort(),
   }));
@@ -102,7 +102,7 @@ async function criarUsuarioComPerfil(input: NovoAdmin, perfilId: string): Promis
 
 /** Cria um admin (perfil Admin) em 1+ lojas. Quem chama (super-admin) é guardado na rota. */
 export async function criarAdmin(input: NovoAdmin): Promise<Usuario> {
-  return criarUsuarioComPerfil(input, PERFIL_ADMIN_ID);
+  return criarUsuarioComPerfil(input, "perfil-admin");
 }
 
 // ─────────────────────── Vendedoras / equipe ───────────────────────
@@ -132,7 +132,7 @@ export async function ehAdminDaLoja(usuarioId: string, lojaId: string): Promise<
     where: { usuarioId_lojaId: { usuarioId, lojaId } },
     select: { perfilId: true },
   });
-  return vinc?.perfilId === PERFIL_ADMIN_ID;
+  return vinc?.perfilId === "perfil-admin";
 }
 
 /** Membros vinculados a uma loja (qualquer perfil), ordenados por nome. */
@@ -154,6 +154,6 @@ export async function listarEquipe(lojaId: string): Promise<MembroEquipe[]> {
 export async function criarVendedora(input: NovaVendedora): Promise<Usuario> {
   return criarUsuarioComPerfil(
     { nome: input.nome, email: input.email, senha: input.senha, lojaIds: [input.lojaId] },
-    PERFIL_VENDEDORA_ID,
+    "perfil-vendedora",
   );
 }

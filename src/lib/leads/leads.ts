@@ -168,10 +168,18 @@ export async function fatosDaNoiva(lojaId: string, leadId: string): Promise<Fato
 
 export type EstagioResumo = { atual: EstagioChave; encerrada: string | null };
 
-/** Estágio derivado de TODAS as noivas da loja (lote, em memória). */
-export async function estagiosDasNoivas(lojaId: string): Promise<Map<string, EstagioResumo>> {
+/** Estágio derivado das noivas da loja (lote, em memória).
+ *  Se `leadIds` for passado, busca apenas esses leads — útil quando a tela
+ *  já sabe quais noivas precisa (ex.: reservas filtra pelos leadIds da lista). */
+export async function estagiosDasNoivas(
+  lojaId: string,
+  opts: { leadIds?: string[] } = {},
+): Promise<Map<string, EstagioResumo>> {
   const hoje = hojeUTC();
-  const leads = await tenantPrisma(prisma, lojaId).lead.findMany({ include: INCLUDE_JORNADA });
+  const leads = await tenantPrisma(prisma, lojaId).lead.findMany({
+    where: opts.leadIds?.length ? { id: { in: opts.leadIds } } : undefined,
+    include: INCLUDE_JORNADA,
+  });
   const mapa = new Map<string, EstagioResumo>();
   for (const l of leads) {
     const { atual, encerrada } = estagioDaNoiva(fatosDeLead(l, hoje));
