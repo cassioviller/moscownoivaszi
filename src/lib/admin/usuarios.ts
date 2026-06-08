@@ -3,9 +3,11 @@ import { gerarHash } from "@/lib/auth/senha";
 import type { Loja, Usuario } from "@/generated/prisma/client";
 
 // Perfis vêm do seed. Papéis são DADOS (UsuarioLoja.perfilId), não enums novos.
-export const PERFIL_ADMIN_ID = "perfil-admin";
-export const PERFIL_VENDEDORA_ID = "perfil-vendedora";
-export const PERFIL_RECEPCAO_ID = "perfil-recepcao";
+// Os IDs moram numa folha pura (./perfis-ids) para não acoplar quem só precisa do ID
+// a este módulo (que arrasta prisma + bcrypt). Importados para uso interno e
+// re-exportados pela API antiga (quem já importava daqui segue funcionando).
+import { PERFIL_ADMIN_ID, PERFIL_VENDEDORA_ID, PERFIL_RECEPCAO_ID } from "./perfis-ids";
+export { PERFIL_ADMIN_ID, PERFIL_VENDEDORA_ID, PERFIL_RECEPCAO_ID };
 
 const SENHA_MIN = 8;
 

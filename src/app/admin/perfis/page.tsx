@@ -1,6 +1,6 @@
 // src/app/admin/perfis/page.tsx
 import { listarPerfis } from "@/lib/permissoes/perfis";
-import { PERFIL_ADMIN_ID } from "@/lib/admin/usuarios";
+import { PERFIL_ADMIN_ID } from "@/lib/admin/perfis-ids";
 import { MODULOS_VISIVEIS } from "@/lib/permissoes/modulos";
 import { MatrizPermissoes } from "@/components/permissoes/matriz-permissoes";
 import { salvarTemplateAction } from "./actions";

@@ -1,7 +1,7 @@
 // src/lib/permissoes/modulos.ts
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { PERFIL_ADMIN_ID } from "@/lib/admin/usuarios";
+import { PERFIL_ADMIN_ID } from "@/lib/admin/perfis-ids";
 
 export const MODULOS = ["leads", "interesses", "vestidos", "ajustes", "config", "financeiro"] as const;
 export const ACOES = ["ver", "criar", "editar"] as const;

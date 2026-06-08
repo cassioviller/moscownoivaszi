@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getSessao } from "@/lib/auth";
 import { lerAcessosDoForm } from "@/lib/permissoes/modulos";
 import { salvarTemplate } from "@/lib/permissoes/perfis";
-import { PERFIL_ADMIN_ID } from "@/lib/admin/usuarios";
+import { PERFIL_ADMIN_ID } from "@/lib/admin/perfis-ids";
 import type { MatrizFormState } from "@/components/permissoes/matriz-permissoes";
 
 export async function salvarTemplateAction(
