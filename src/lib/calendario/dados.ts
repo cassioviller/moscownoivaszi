@@ -1,8 +1,8 @@
 // src/lib/calendario/dados.ts
 // Leituras Prisma do calendário (escopo de loja via tenantPrisma). Reúne, num
 // intervalo [inicio, fim), os pontos que viram marcadores na grade do mês:
-// casamentos (BloqueioVestido.casamentoData), provas (Prova.dataReal) e
-// atendimentos (Atendimento.inicio). Datas saem como "YYYY-MM-DD" (UTC).
+// casamentos (BloqueioVestido.casamentoData), provas (Atendimento{tipo:PROVA}.inicio)
+// e atendimentos (Atendimento{tipo:ATENDIMENTO}.inicio). Datas saem como "YYYY-MM-DD" (UTC).
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { ymd } from "@/lib/tempo";
@@ -21,12 +21,12 @@ export async function marcadoresNoIntervalo(
       where: { casamentoData: { gte: inicio, lt: fim } },
       select: { casamentoData: true },
     }),
-    db.prova.findMany({
-      where: { dataReal: { gte: inicio, lt: fim } },
-      select: { dataReal: true },
+    db.atendimento.findMany({
+      where: { tipo: "PROVA", inicio: { gte: inicio, lt: fim } },
+      select: { inicio: true },
     }),
     db.atendimento.findMany({
-      where: { inicio: { gte: inicio, lt: fim } },
+      where: { tipo: "ATENDIMENTO", inicio: { gte: inicio, lt: fim } },
       select: { inicio: true },
     }),
   ]);
@@ -35,7 +35,7 @@ export async function marcadoresNoIntervalo(
   for (const c of casamentos) {
     if (c.casamentoData) marcadores.push({ ymd: ymd(c.casamentoData)!, tipo: "casamento" });
   }
-  for (const p of provas) marcadores.push({ ymd: ymd(p.dataReal)!, tipo: "prova" });
+  for (const p of provas) marcadores.push({ ymd: ymd(p.inicio)!, tipo: "prova" });
   for (const a of atendimentos) marcadores.push({ ymd: ymd(a.inicio)!, tipo: "atendimento" });
   return marcadores;
 }
@@ -55,7 +55,7 @@ export async function atendimentosNoIntervalo(
   fim: Date,
 ): Promise<AtendimentoCalendario[]> {
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { inicio: { gte: inicio, lt: fim } },
+    where: { tipo: "ATENDIMENTO", inicio: { gte: inicio, lt: fim } },
     orderBy: { inicio: "asc" },
     include: { lead: { select: { noivaNome: true } } },
   });

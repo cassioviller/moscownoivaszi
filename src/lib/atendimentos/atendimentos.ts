@@ -6,7 +6,7 @@ import { tenantPrisma } from "@/lib/tenant";
 import { gradeDeSlots, type Slot } from "./slots";
 import { obterHorarioLoja } from "./cabines";
 import { meiaNoiteUTC, hojeUTC } from "@/lib/tempo";
-import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
+import type { AtendimentoSituacao, AtendimentoDesfecho, AtendimentoTipo } from "@/generated/prisma/client";
 
 // "YYYY-MM-DD" + hora → Date (wall-clock em UTC).
 function instante(dataYMD: string, hora: number): Date {
@@ -48,13 +48,26 @@ export async function gradeDoDia(
 
 export type ResultadoAgendar =
   | { ok: true; atendimentoId: string }
-  | { ok: false; motivo: "lead_invalido" | "cabine_invalida" | "vendedora_invalida" | "sem_horario" | "fora_funcionamento" | "indisponivel" };
+  | { ok: false; motivo: "lead_invalido" | "cabine_invalida" | "vendedora_invalida" | "sem_horario" | "fora_funcionamento" | "indisponivel" | "tipo_invalido" | "reserva_invalida" | "reserva_nao_e_da_noiva" };
+
+const TIPOS_AGENDAMENTO = new Set<AtendimentoTipo>(["ATENDIMENTO", "PROVA"]);
 
 export async function agendarAtendimento(
   lojaId: string,
-  input: { leadId: string; cabineId: string; vendedoraId: string; dataYMD: string; hora: number; observacao?: string | null },
+  input: {
+    leadId: string;
+    cabineId: string;
+    vendedoraId: string;
+    dataYMD: string;
+    hora: number;
+    observacao?: string | null;
+    tipo?: AtendimentoTipo;
+    bloqueioId?: string | null;
+  },
 ): Promise<ResultadoAgendar> {
   const { leadId, cabineId, vendedoraId, dataYMD, hora, observacao } = input;
+  const tipo: AtendimentoTipo = input.tipo ?? "ATENDIMENTO";
+  if (!TIPOS_AGENDAMENTO.has(tipo)) return { ok: false, motivo: "tipo_invalido" };
   if (!dataYMD || !Number.isInteger(hora)) return { ok: false, motivo: "sem_horario" };
 
   const db = tenantPrisma(prisma, lojaId);
@@ -70,13 +83,26 @@ export async function agendarAtendimento(
   if (!vinc) return { ok: false, motivo: "vendedora_invalida" };
   if (hora < abertura || hora >= fechamento) return { ok: false, motivo: "fora_funcionamento" };
 
+  // Prova exige uma reserva de casamento da própria noiva.
+  let bloqueioId: string | null = null;
+  if (tipo === "PROVA") {
+    if (!input.bloqueioId) return { ok: false, motivo: "reserva_invalida" };
+    const reserva = await db.bloqueioVestido.findUnique({
+      where: { id: input.bloqueioId },
+      select: { tipo: true, leadId: true },
+    });
+    if (!reserva || reserva.tipo !== "RESERVA_CASAMENTO") return { ok: false, motivo: "reserva_invalida" };
+    if (reserva.leadId !== leadId) return { ok: false, motivo: "reserva_nao_e_da_noiva" };
+    bloqueioId = input.bloqueioId;
+  }
+
   // Revalida sobreposição (cabine OU vendedora na mesma hora).
   const ocupadas = await horasOcupadas(lojaId, dataYMD, cabineId, vendedoraId);
   if (ocupadas.includes(hora)) return { ok: false, motivo: "indisponivel" };
 
   const obs = observacao?.trim();
   const criado = await db.atendimento.create({
-    data: { leadId, cabineId, vendedoraId, inicio: instante(dataYMD, hora), observacao: obs ? obs : null } as never,
+    data: { leadId, cabineId, vendedoraId, tipo, bloqueioId, inicio: instante(dataYMD, hora), observacao: obs ? obs : null } as never,
   });
   return { ok: true, atendimentoId: criado.id };
 }
@@ -92,7 +118,7 @@ export type AtendimentoItem = {
 
 export async function listarProximosAtendimentos(lojaId: string): Promise<AtendimentoItem[]> {
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { inicio: { gte: hojeUTC() } },
+    where: { inicio: { gte: hojeUTC() }, tipo: "ATENDIMENTO" },
     orderBy: { inicio: "asc" },
     include: { lead: { select: { noivaNome: true } }, cabine: { select: { nome: true } }, vendedora: { select: { nome: true } } },
   });
@@ -137,7 +163,7 @@ export async function listarAtendimentos(
   const abertos: AtendimentoSituacao[] = ["AGENDADO", "EM_ATENDIMENTO"];
   const fechados: AtendimentoSituacao[] = ["CONCLUIDO", "FALTOU"];
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { situacao: { in: opts.finalizados ? fechados : abertos } },
+    where: { situacao: { in: opts.finalizados ? fechados : abertos }, tipo: "ATENDIMENTO" },
     orderBy: { inicio: opts.finalizados ? "desc" : "asc" },
     include: {
       lead: { select: { noivaNome: true } },
@@ -160,7 +186,7 @@ export async function listarAtendimentos(
 
 export type ResultadoSituacao =
   | { ok: true }
-  | { ok: false; motivo: "atendimento_invalido" | "transicao_invalida" | "desfecho_invalido" };
+  | { ok: false; motivo: "atendimento_invalido" | "transicao_invalida" | "desfecho_invalido" | "nao_e_prova" };
 
 const DESFECHOS_VALIDOS = new Set<AtendimentoDesfecho>(["RESERVOU", "VAI_PENSAR", "NAO_SERVIU"]);
 
@@ -208,4 +234,65 @@ export async function marcarFalta(lojaId: string, id: string): Promise<Resultado
   if (at.situacao !== "AGENDADO") return { ok: false, motivo: "transicao_invalida" };
   await db.atendimento.update({ where: { id }, data: { situacao: "FALTOU" } });
   return { ok: true };
+}
+
+/** Conclui uma PROVA (sem desfecho). AGENDADO|EM_ATENDIMENTO → CONCLUIDO. */
+export async function concluirProva(lojaId: string, id: string): Promise<ResultadoSituacao> {
+  const db = tenantPrisma(prisma, lojaId);
+  const at = await db.atendimento.findUnique({ where: { id }, select: { situacao: true, tipo: true, atendidoEm: true } });
+  if (!at) return { ok: false, motivo: "atendimento_invalido" };
+  if (at.tipo !== "PROVA") return { ok: false, motivo: "nao_e_prova" };
+  if (at.situacao !== "AGENDADO" && at.situacao !== "EM_ATENDIMENTO") return { ok: false, motivo: "transicao_invalida" };
+  await db.atendimento.update({ where: { id }, data: { situacao: "CONCLUIDO", atendidoEm: at.atendidoEm ?? new Date() } });
+  return { ok: true };
+}
+
+export type ProvaAberta = {
+  id: string;
+  inicio: Date;
+  situacao: AtendimentoSituacao;
+  leadId: string;
+  noivaNome: string | null;
+  cabineNome: string | null;
+  vendedoraNome: string | null;
+  bloqueioId: string | null;
+  vestidoCodigo: string | null;
+  vestidoNome: string | null;
+  casamentoData: Date | null;
+  ajustes: { id: string; descricao: string; status: import("@/generated/prisma/client").AjusteStatus; checklistFeitos: number; checklistTotal: number }[];
+};
+
+/** Provas ABERTAS (AGENDADO/EM_ATENDIMENTO) da loja, por horário — a fila de trabalho da aba Provas & ajustes. */
+export async function listarProvasAbertas(lojaId: string): Promise<ProvaAberta[]> {
+  const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
+    where: { tipo: "PROVA", situacao: { in: ["AGENDADO", "EM_ATENDIMENTO"] } },
+    orderBy: { inicio: "asc" },
+    include: {
+      lead: { select: { noivaNome: true } },
+      cabine: { select: { nome: true } },
+      vendedora: { select: { nome: true } },
+      bloqueio: { include: { vestido: { select: { codigo: true, nome: true } } } },
+      ajustes: { orderBy: { createdAt: "asc" }, include: { checklist: { select: { feito: true } } } },
+    },
+  });
+  return rows.map((a) => ({
+    id: a.id,
+    inicio: a.inicio,
+    situacao: a.situacao,
+    leadId: a.leadId,
+    noivaNome: a.lead?.noivaNome ?? null,
+    cabineNome: a.cabine?.nome ?? null,
+    vendedoraNome: a.vendedora?.nome ?? null,
+    bloqueioId: a.bloqueioId,
+    vestidoCodigo: a.bloqueio?.vestido.codigo ?? null,
+    vestidoNome: a.bloqueio?.vestido.nome ?? null,
+    casamentoData: a.bloqueio?.casamentoData ?? null,
+    ajustes: a.ajustes.map((aj) => ({
+      id: aj.id,
+      descricao: aj.descricao,
+      status: aj.status,
+      checklistFeitos: aj.checklist.filter((c) => c.feito).length,
+      checklistTotal: aj.checklist.length,
+    })),
+  }));
 }

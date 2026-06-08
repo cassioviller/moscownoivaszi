@@ -118,7 +118,8 @@ export async function editarLead(lojaId: string, leadId: string, input: NovaNoiv
 // reservas (datas + provas). Exportado p/ o painel reusar a MESMA derivação (sem cópia).
 export const INCLUDE_JORNADA = {
   interesse: { select: { atributos: { select: { atributoId: true } } } },
-  atendimentos: { select: { situacao: true } },
+  // Consultas (fila /atendimentos). Provas vivem por reserva (bloqueios.atendimentos).
+  atendimentos: { where: { tipo: "ATENDIMENTO" as const }, select: { situacao: true } },
   orcamentos: { select: { status: true } },
   contratos: { select: { status: true } },
   bloqueios: {
@@ -126,7 +127,8 @@ export const INCLUDE_JORNADA = {
     select: {
       retiradaDataReal: true,
       devolucaoDataReal: true,
-      provas: { select: { comparecimento: true } },
+      // Provas da reserva = Atendimento{tipo:PROVA} preso ao bloqueio.
+      atendimentos: { where: { tipo: "PROVA" as const }, select: { situacao: true } },
     },
   },
 } as const;
@@ -134,7 +136,8 @@ export const INCLUDE_JORNADA = {
 export type LeadComJornada = Prisma.LeadGetPayload<{ include: typeof INCLUDE_JORNADA }>;
 
 export function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
-  const provas = lead.bloqueios.flatMap((b) => b.provas);
+  // Provas da noiva = Atendimento{tipo:PROVA} presos às suas reservas.
+  const provas = lead.bloqueios.flatMap((b) => b.atendimentos);
   return {
     // "houve atendimento" é STICKY: qualquer atendimento já marca a etapa. Assim uma
     // noiva que FALTOU não regride para "cadastrada" (ela foi agendada um dia).
@@ -142,13 +145,13 @@ export function fatosDeLead(lead: LeadComJornada, hoje: Date): FatosJornada {
     foiAtendida: lead.atendimentos.some(
       (a) => a.situacao === "EM_ATENDIMENTO" || a.situacao === "CONCLUIDO",
     ),
-    temProvaAgendada: provas.some((p) => p.comparecimento === "AGENDADA"),
+    temProvaAgendada: provas.some((p) => p.situacao === "AGENDADO"),
     temInteresse: (lead.interesse?.atributos.length ?? 0) > 0,
     temOrcamento: lead.orcamentos.some((o) => o.status !== "RECUSADO"),
     orcamentoAbertoEm: lead.orcamentoAbertoEm,
     temContrato: lead.contratos.some((c) => c.status === "ATIVO"),
     contratoFechadoEm: lead.contratoFechadoEm,
-    temProvaRealizada: provas.some((p) => p.comparecimento === "COMPARECEU"),
+    temProvaRealizada: provas.some((p) => p.situacao === "EM_ATENDIMENTO" || p.situacao === "CONCLUIDO"),
     temRetirada: lead.bloqueios.some((b) => b.retiradaDataReal !== null),
     casamentoPassou: lead.casamentoData !== null && lead.casamentoData < hoje,
     temDevolucao: lead.bloqueios.some((b) => b.devolucaoDataReal !== null),

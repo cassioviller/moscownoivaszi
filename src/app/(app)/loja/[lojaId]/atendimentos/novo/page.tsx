@@ -19,10 +19,11 @@ const dataHora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "shor
 
 export default async function NovoAtendimentoPage({
   params, searchParams,
-}: { params: Promise<{ lojaId: string }>; searchParams: Promise<{ noiva?: string; ok?: string }> }) {
+}: { params: Promise<{ lojaId: string }>; searchParams: Promise<{ noiva?: string; ok?: string; tipo?: string; reserva?: string }> }) {
   const sc = await exigirAcesso("leads");
   const { lojaId } = await params;
-  const { noiva, ok } = await searchParams;
+  const { noiva, ok, tipo, reserva } = await searchParams;
+  const tipoInicial = tipo === "PROVA" ? "PROVA" : "ATENDIMENTO";
 
   const [podeCriar, podeVerConfig, noivas, equipe, cabines, proximos] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
@@ -38,7 +39,7 @@ export default async function NovoAtendimentoPage({
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-1">
         <Link href={`/loja/${lojaId}`} className="w-fit text-[13px] text-grafite hover:text-tinta">← {sc.loja.nome}</Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Agendar atendimento</h1>
+        <h1 className="text-[24px] font-light tracking-tight text-tinta">Agendar</h1>
         {podeVerConfig && (
           <Link href={`/loja/${lojaId}/atendimentos/config`} className="w-fit text-[13px] text-grafite underline decoration-borda underline-offset-4 hover:text-tinta">
             Cabines &amp; horário
@@ -59,6 +60,8 @@ export default async function NovoAtendimentoPage({
           cabines={cabines.map((c) => ({ id: c.id, nome: c.nome }))}
           vendedoras={equipe.map((e) => ({ id: e.id, nome: e.nome }))}
           noivaInicial={noiva}
+          tipoInicial={tipoInicial}
+          bloqueioInicial={reserva}
         />
       )}
 

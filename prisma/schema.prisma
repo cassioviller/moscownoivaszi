@@ -38,19 +38,6 @@ enum BloqueioTipo {
   MANUTENCAO
 }
 
-enum ProvaTipo {
-  PRIMEIRA
-  INTERMEDIARIA
-  FINAL
-}
-
-enum ProvaComparecimento {
-  AGENDADA
-  COMPARECEU
-  FALTOU
-  REMARCADA
-}
-
 enum AjusteStatus {
   PENDENTE
   FEITO
@@ -74,7 +61,6 @@ model Loja {
   vestidos             Vestido[]
   leads                Lead[]
   bloqueios            BloqueioVestido[]
-  provas               Prova[]
   ajustes              Ajuste[]
   // Relação inversa virtual (sem coluna/SQL em Loja) exigida pela FK de Sessao.lojaAtivaId.
   sessoesAtivas        Sessao[]
@@ -310,46 +296,25 @@ model BloqueioVestido {
   loja    Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   vestido Vestido @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
   lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  provas  Prova[]
+  atendimentos Atendimento[]
   contratos Contrato[]
 }
 
-// Prova — registro OPERACIONAL dentro de uma reserva (BloqueioVestido do tipo
-// RESERVA_CASAMENTO). NÃO alimenta o motor de disponibilidade: a peça já está
-// presa à reserva pelo bloco contínuo, então registrar uma prova (cedo, tarde,
-// falta, remarcação) não move a janela nem libera o vestido para outra noiva.
-// Decisão: docs/superpowers/specs/2026-06-01-provas-ajustes-design.md.
-model Prova {
-  id             String              @id @default(cuid())
-  lojaId         String
-  bloqueioId     String
-  dataReal       DateTime
-  tipo           ProvaTipo
-  comparecimento ProvaComparecimento @default(AGENDADA)
-  observacao     String?
-  responsavel    String? // texto livre (como cerimonialista no Lead)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-
-  loja     Loja            @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  bloqueio BloqueioVestido @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
-  ajustes  Ajuste[]
-}
-
-// Ajuste de costura nascido de uma Prova. Carrega lojaId (entra no tenantPrisma)
-// para a tela global da costureira consultar os pendentes direto, com isolamento.
+// Ajuste de costura nascido de uma prova (Atendimento{tipo:PROVA}). Carrega lojaId
+// (entra no tenantPrisma) para a tela global da costureira consultar os pendentes
+// direto, com isolamento.
 model Ajuste {
-  id        String       @id @default(cuid())
-  lojaId    String
-  provaId   String
-  descricao String
-  status    AjusteStatus @default(PENDENTE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  lojaId        String
+  atendimentoId String
+  descricao     String
+  status        AjusteStatus @default(PENDENTE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  loja      Loja                  @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  prova     Prova                 @relation(fields: [provaId], references: [id], onDelete: Cascade)
-  checklist AjusteChecklistItem[]
+  loja        Loja        @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  atendimento Atendimento @relation(fields: [atendimentoId], references: [id], onDelete: Cascade)
+  checklist   AjusteChecklistItem[]
 }
 
 // Checklist de costura de um Ajuste. Filha pura (sem lojaId): acessada só via o
@@ -407,6 +372,13 @@ model Cabine {
 
 // Ciclo de vida do atendimento (o ato de "atender"). Cancelar continua sendo delete,
 // não vira status. Decisão: docs/superpowers/specs/2026-06-03-s1-atendimentos-design.md.
+// Tipo do agendamento na grade. Roteia o destino, não a forma de agendar:
+// ATENDIMENTO → fila /atendimentos; PROVA → aba Provas & ajustes (presa a uma reserva).
+enum AtendimentoTipo {
+  ATENDIMENTO
+  PROVA
+}
+
 enum AtendimentoSituacao {
   AGENDADO // criado, ainda não aconteceu
   EM_ATENDIMENTO // noiva chegou, vendedora atendendo
@@ -429,6 +401,8 @@ model Atendimento {
   leadId      String
   cabineId    String
   vendedoraId String
+  tipo        AtendimentoTipo     @default(ATENDIMENTO)
+  bloqueioId  String?
   inicio      DateTime
   situacao    AtendimentoSituacao  @default(AGENDADO)
   atendidoEm  DateTime? // quando entrou em atendimento
@@ -437,11 +411,13 @@ model Atendimento {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
-  loja      Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
-  lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  cabine    Cabine  @relation(fields: [cabineId], references: [id], onDelete: Cascade)
-  vendedora Usuario @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  loja      Loja             @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  lead      Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  cabine    Cabine           @relation(fields: [cabineId], references: [id], onDelete: Cascade)
+  vendedora Usuario          @relation(fields: [vendedoraId], references: [id], onDelete: Cascade)
+  bloqueio  BloqueioVestido? @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
   orcamentos Orcamento[]
+  ajustes    Ajuste[]
 }
 
 // Orçamento — a negociação com a noiva registrada (itens, desconto, status). O

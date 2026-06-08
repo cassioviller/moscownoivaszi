@@ -1,6 +1,6 @@
 // src/lib/atelier/ajustes.ts
 //
-// Ajustes de costura — nascem de uma Prova e carregam lojaId (entram no
+// Ajustes de costura — nascem de uma prova (Atendimento{tipo:PROVA}) e carregam lojaId (entram no
 // tenantPrisma), o que deixa a fila global da costureira ser uma consulta direta
 // e isolada. O checklist de costura (AjusteChecklistItem) é filha PURA (sem
 // lojaId): só a tocamos depois de confirmar o Ajuste pai pela loja (padrão fotos.ts).
@@ -21,21 +21,21 @@ export type ResultadoItemChecklist =
   | { ok: false; motivo: "sem_descricao" | "ajuste_invalido" };
 export type ResultadoMutacaoItem = { ok: true } | { ok: false; motivo: "item_invalido" };
 
-/** Adiciona um ajuste a uma prova da loja. Valida o pai (Prova) via tenantPrisma. */
+/** Adiciona um ajuste a uma PROVA (Atendimento{tipo:PROVA}) da loja. */
 export async function adicionarAjuste(
   lojaId: string,
-  input: { provaId: string; descricao: string },
+  input: { atendimentoId: string; descricao: string },
 ): Promise<ResultadoAjuste> {
   const descricao = input.descricao?.trim();
   if (!descricao) return { ok: false, motivo: "sem_descricao" };
 
   const db = tenantPrisma(prisma, lojaId);
-  const prova = await db.prova.findUnique({ where: { id: input.provaId }, select: { id: true } });
-  if (!prova) return { ok: false, motivo: "prova_invalida" };
+  const prova = await db.atendimento.findUnique({ where: { id: input.atendimentoId }, select: { tipo: true } });
+  if (!prova || prova.tipo !== "PROVA") return { ok: false, motivo: "prova_invalida" };
 
   const criado = await db.ajuste.create({
     // tenantPrisma carimba lojaId; cast pela mesma razão dos outros creates de tenant.
-    data: { provaId: input.provaId, descricao } as never,
+    data: { atendimentoId: input.atendimentoId, descricao } as never,
   });
   return { ok: true, ajusteId: criado.id };
 }
@@ -120,10 +120,10 @@ export type AjustePendente = {
   id: string;
   descricao: string;
   // contexto pra costureira saber de quem é e qual a urgência
-  provaDataReal: Date;
+  provaInicio: Date;
   noivaNome: string | null;
   leadId: string | null;
-  bloqueioId: string;
+  bloqueioId: string | null;
   vestidoId: string;
   vestidoCodigo: string;
   vestidoNome: string;
@@ -136,7 +136,7 @@ export type AjustePendente = {
 /**
  * Fila de ajustes PENDENTES da loja, do casamento mais próximo ao mais distante
  * (urgência primeiro; sem data ao fim). Consulta direta em `ajuste` graças ao
- * lojaId + tenantPrisma — junta prova → reserva → noiva/vestido para o contexto.
+ * lojaId + tenantPrisma — junta atendimento → reserva → noiva/vestido para o contexto.
  * `intervalo` (gte/lt, lente da aba Provas & ajustes do calendário) restringe aos
  * ajustes cujo casamento cai na janela — ajustes sem data de casamento ficam de
  * fora enquanto o filtro está ativo (não há data para casar com o período).
@@ -149,12 +149,12 @@ export async function listarAjustesPendentes(
   const where = opts.intervalo
     ? {
         status: "PENDENTE" as const,
-        prova: { bloqueio: { casamentoData: { gte: opts.intervalo.gte, lt: opts.intervalo.lt } } },
+        atendimento: { bloqueio: { casamentoData: { gte: opts.intervalo.gte, lt: opts.intervalo.lt } } },
       }
     : { status: "PENDENTE" as const };
   const { skip, take } = paginar(opts.pagina, opts.tamanho);
   // Urgência primeiro (casamento mais próximo); sem data ao fim. A ordenação e a
-  // paginação vão para o BANCO via orderBy aninhado por relação (ajuste → prova →
+  // paginação vão para o BANCO via orderBy aninhado por relação (ajuste → atendimento →
   // bloqueio.casamentoData) — antes a fila inteira era materializada e ordenada em
   // memória a cada página. Chave secundária `id` desempata para paginação estável.
   const [total, rows] = await Promise.all([
@@ -162,14 +162,14 @@ export async function listarAjustesPendentes(
     db.ajuste.findMany({
       where,
       orderBy: [
-        { prova: { bloqueio: { casamentoData: { sort: "asc", nulls: "last" } } } },
+        { atendimento: { bloqueio: { casamentoData: { sort: "asc", nulls: "last" } } } },
         { id: "asc" },
       ],
       skip,
       take,
       include: {
         checklist: { select: { feito: true } },
-        prova: {
+        atendimento: {
           include: {
             bloqueio: {
               include: {
@@ -186,14 +186,14 @@ export async function listarAjustesPendentes(
   const itens: AjustePendente[] = rows.map((a) => ({
     id: a.id,
     descricao: a.descricao,
-    provaDataReal: a.prova.dataReal,
-    noivaNome: a.prova.bloqueio.lead?.noivaNome ?? null,
-    leadId: a.prova.bloqueio.leadId,
-    bloqueioId: a.prova.bloqueioId,
-    vestidoId: a.prova.bloqueio.vestido.id,
-    vestidoCodigo: a.prova.bloqueio.vestido.codigo,
-    vestidoNome: a.prova.bloqueio.vestido.nome,
-    casamentoData: a.prova.bloqueio.casamentoData,
+    provaInicio: a.atendimento.inicio,
+    noivaNome: a.atendimento.bloqueio?.lead?.noivaNome ?? null,
+    leadId: a.atendimento.bloqueio?.leadId ?? null,
+    bloqueioId: a.atendimento.bloqueioId,
+    vestidoId: a.atendimento.bloqueio?.vestido.id ?? "",
+    vestidoCodigo: a.atendimento.bloqueio?.vestido.codigo ?? "",
+    vestidoNome: a.atendimento.bloqueio?.vestido.nome ?? "",
+    casamentoData: a.atendimento.bloqueio?.casamentoData ?? null,
     checklistFeitos: a.checklist.filter((c) => c.feito).length,
     checklistTotal: a.checklist.length,
   }));

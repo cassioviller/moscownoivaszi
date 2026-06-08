@@ -486,3 +486,15 @@ export async function vestidosLivresEntre(
       }).disponivel,
   );
 }
+
+export type ReservaDaNoiva = { id: string; vestidoCodigo: string; vestidoNome: string; casamentoData: Date | null };
+
+/** Reservas de casamento de uma noiva (para escolher em qual o agendamento de prova entra). */
+export async function listarReservasDaNoiva(lojaId: string, leadId: string): Promise<ReservaDaNoiva[]> {
+  const rows = await tenantPrisma(prisma, lojaId).bloqueioVestido.findMany({
+    where: { tipo: "RESERVA_CASAMENTO", leadId },
+    orderBy: { casamentoData: "asc" },
+    include: { vestido: { select: { codigo: true, nome: true } } },
+  });
+  return rows.map((b) => ({ id: b.id, vestidoCodigo: b.vestido.codigo, vestidoNome: b.vestido.nome, casamentoData: b.casamentoData }));
+}
