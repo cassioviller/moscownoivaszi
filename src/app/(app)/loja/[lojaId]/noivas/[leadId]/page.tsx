@@ -112,7 +112,7 @@ export default async function NoivaPage({
   const lead = dados.lead;
   const i = dados.interesse;
 
-  const [podeEditar, podeCriar, iVer, iCriar, iEditar, podeReservar, reservas, vestidosPreEscolhidos, contratos] = await Promise.all([
+  const [podeEditar, podeCriar, iVer, iCriar, iEditar, podeReservar, reservas, vestidosPreEscolhidos, contratos, fatos] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "ver"),
@@ -122,10 +122,10 @@ export default async function NoivaPage({
     listarReservasDaNoiva(sc.loja.id, leadId),
     listarVestidosPreEscolhidosDaNoiva(sc.loja.id, leadId),
     listarContratosDaNoiva(sc.loja.id, leadId),
+    fatosDaNoiva(sc.loja.id, leadId),
   ]);
   const iMexer = iCriar || iEditar;
 
-  const fatos = await fatosDaNoiva(sc.loja.id, leadId);
   const { passos, atual, encerrada } = estagioDaNoiva(fatos!); // lead existe → fatos != null
   const concluida = encerrada === "Devolvido"; // fim positivo (devolução): nada a desativar
   const ativa = encerrada === null; // agendar/atender só faz sentido na jornada viva

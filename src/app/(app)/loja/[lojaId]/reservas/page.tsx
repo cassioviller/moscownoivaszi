@@ -51,8 +51,10 @@ export default async function ReservasPage({
   const { quando } = await searchParams;
   const passadas = quando === "passadas";
 
-  const reservas = await listarReservasDaLoja(sc.loja.id, { passadas });
-  const estagios = await estagiosDasNoivas(sc.loja.id);
+  const [reservas, estagios] = await Promise.all([
+    listarReservasDaLoja(sc.loja.id, { passadas }),
+    estagiosDasNoivas(sc.loja.id),
+  ]);
   const meses = agruparPorMes(reservas);
   const hoje = hojeUTC().getTime();
 
