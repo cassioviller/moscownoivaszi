@@ -67,7 +67,7 @@ export default async function CalendarioPage({
               mes: <AbaMes lojaId={lojaId} refParam={sp.ref} />,
               vestidos: <AbaVestidos lojaId={lojaId} ini={sp.ini} fim={sp.fim} />,
               atendimentos: <AbaAtendimentos lojaId={lojaId} refParam={sp.ref} />,
-              "provas-ajustes": <AbaProvasAjustes lojaId={lojaId} />,
+              "provas-ajustes": <AbaProvasAjustes lojaId={lojaId} ini={sp.ini} fim={sp.fim} />,
             } satisfies Record<AbaId, ReactNode>
           )[aba]
         }

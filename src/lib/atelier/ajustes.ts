@@ -137,13 +137,21 @@ export type AjustePendente = {
  * Fila de ajustes PENDENTES da loja, do casamento mais próximo ao mais distante
  * (urgência primeiro; sem data ao fim). Consulta direta em `ajuste` graças ao
  * lojaId + tenantPrisma — junta prova → reserva → noiva/vestido para o contexto.
+ * `intervalo` (gte/lt, lente da aba Provas & ajustes do calendário) restringe aos
+ * ajustes cujo casamento cai na janela — ajustes sem data de casamento ficam de
+ * fora enquanto o filtro está ativo (não há data para casar com o período).
  */
 export async function listarAjustesPendentes(
   lojaId: string,
-  opts: { pagina?: number | string; tamanho?: number } = {},
+  opts: { pagina?: number | string; tamanho?: number; intervalo?: { gte: Date; lt: Date } } = {},
 ): Promise<{ itens: AjustePendente[]; total: number }> {
   const db = tenantPrisma(prisma, lojaId);
-  const where = { status: "PENDENTE" as const };
+  const where = opts.intervalo
+    ? {
+        status: "PENDENTE" as const,
+        prova: { bloqueio: { casamentoData: { gte: opts.intervalo.gte, lt: opts.intervalo.lt } } },
+      }
+    : { status: "PENDENTE" as const };
   const { skip, take } = paginar(opts.pagina, opts.tamanho);
   // Urgência primeiro (casamento mais próximo); sem data ao fim. A ordenação e a
   // paginação vão para o BANCO via orderBy aninhado por relação (ajuste → prova →

@@ -95,21 +95,34 @@ export type ProvaDaLoja = {
 
 /**
  * Agenda de provas da loja, com noiva e vestido. Padrão: próximas (dataReal ≥ hoje,
- * ascendente); `passadas` traz o histórico (dataReal < hoje, descendente). É o
- * data-layer da tela dedicada de Provas — o registro/edição segue no detalhe da reserva.
+ * ascendente); `passadas` traz o histórico (dataReal < hoje, descendente). `intervalo`
+ * (gte/lt, lente da aba Provas & ajustes do calendário) tem precedência e filtra
+ * dataReal na janela, sempre ascendente. É o data-layer da tela dedicada de Provas —
+ * o registro/edição segue no detalhe da reserva.
  */
 export async function listarProvasDaLoja(
   lojaId: string,
-  opts: { passadas?: boolean; pagina?: number | string; tamanho?: number } = {},
+  opts: {
+    passadas?: boolean;
+    pagina?: number | string;
+    tamanho?: number;
+    intervalo?: { gte: Date; lt: Date };
+  } = {},
 ): Promise<{ itens: ProvaDaLoja[]; total: number }> {
-  const hoje = hojeUTC();
-  const where = { dataReal: opts.passadas ? { lt: hoje } : { gte: hoje } };
+  const where = {
+    dataReal: opts.intervalo
+      ? { gte: opts.intervalo.gte, lt: opts.intervalo.lt }
+      : opts.passadas
+        ? { lt: hojeUTC() }
+        : { gte: hojeUTC() },
+  };
+  const ascendente = opts.intervalo ? true : !opts.passadas;
   const { skip, take } = paginar(opts.pagina, opts.tamanho);
   const db = tenantPrisma(prisma, lojaId);
   const [rows, total] = await Promise.all([
     db.prova.findMany({
       where,
-      orderBy: { dataReal: opts.passadas ? "desc" : "asc" },
+      orderBy: { dataReal: ascendente ? "asc" : "desc" },
       skip,
       take,
       include: {

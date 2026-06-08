@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { hojeYMD, meiaNoiteUTC } from "@/lib/tempo";
 import { agendaDoAtelier, ROTULO_JANELA } from "@/lib/disponibilidade/agenda";
-import { resolverPeriodoVestidos } from "@/lib/calendario/periodo";
+import { resolverPeriodo } from "@/lib/calendario/periodo";
 import { montarGantt, eixoGantt, type BarraGantt, type LinhaGantt } from "@/lib/calendario/gantt";
 import { botaoSuave } from "@/components/ui/acoes";
 import type { TipoJanela } from "@/lib/disponibilidade/tipos";
@@ -56,7 +56,7 @@ export async function AbaVestidos({
   fim?: string;
 }) {
   const hoje = hojeYMD();
-  const { iniYMD, fimYMD, inicio, dias } = resolverPeriodoVestidos(ini, fim, hoje);
+  const { iniYMD, fimYMD, inicio, dias } = resolverPeriodo(ini, fim, hoje);
   const eventos = await agendaDoAtelier(lojaId, dias, inicio);
   const linhas = montarGantt(eventos, inicio, dias);
   const eixo = eixoGantt(inicio, dias, N_TICKS);

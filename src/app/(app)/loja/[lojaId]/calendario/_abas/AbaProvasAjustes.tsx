@@ -1,13 +1,21 @@
-// Aba Provas & ajustes — uma vista consolidada (só leitura) das próximas provas e da
-// fila de ajustes pendentes. O trabalho operacional (registrar, marcar feito) segue
-// nas páginas dedicadas — daí os links. Reaproveita listarProvasDaLoja / listarAjustesPendentes.
+// Aba Provas & ajustes — uma vista consolidada (só leitura) das provas e da fila de
+// ajustes pendentes no período escolhido (padrão: próximos 60 dias). O trabalho
+// operacional (registrar, marcar feito) segue nas páginas dedicadas — daí os links.
+// Reaproveita listarProvasDaLoja / listarAjustesPendentes; janela via ?ini=&fim=.
 import Link from "next/link";
-import { hojeYMD, hojeUTC } from "@/lib/tempo";
+import { hojeYMD, hojeUTC, meiaNoiteUTC } from "@/lib/tempo";
 import { listarProvasDaLoja } from "@/lib/atelier/provas";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
+import { resolverPeriodo } from "@/lib/calendario/periodo";
+import { botaoSuave } from "@/components/ui/acoes";
 import { diasAteCasamento, casamentoUrgente, prazoCasamento } from "@/lib/leads/contagem-casamento";
 
 const DIA_MS = 86_400_000;
+
+// Campo de data do filtro — mesmos estados de foco do design (foco bordô, §6).
+const inputData =
+  "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
 const ROTULO_TIPO_PROVA: Record<"PRIMEIRA" | "INTERMEDIARIA" | "FINAL", string> = {
   PRIMEIRA: "1ª prova",
@@ -22,26 +30,61 @@ const fmtDia = (d: Date) => diaMes.format(d).replace(" de ", " ").replace(".", "
 // Dias-calendário (UTC) entre hoje e um alvo à meia-noite UTC.
 const diasAte = (hojeMs: number, alvo: Date) => Math.round((alvo.getTime() - hojeMs) / DIA_MS);
 
-// Prazo até a prova (lista é sempre futura: dias ≥ 0).
+// Prazo relativo à prova. Com o filtro de período, a janela pode incluir dias
+// passados — daí os ramos negativos ("ontem", "há X dias").
 function prazoProva(dias: number): string {
-  if (dias <= 0) return "hoje";
+  if (dias < -1) return `há ${-dias} dias`;
+  if (dias === -1) return "ontem";
+  if (dias === 0) return "hoje";
   if (dias === 1) return "amanhã";
   return `em ${dias} dias`;
 }
 // prazoCasamento (com atraso) vive em @/lib/leads/contagem-casamento — DRY com a fila de Ajustes.
 
-export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
+export async function AbaProvasAjustes({
+  lojaId,
+  ini,
+  fim,
+}: {
+  lojaId: string;
+  ini?: string;
+  fim?: string;
+}) {
   const hoje = hojeYMD();
   const hojeMs = hojeUTC().getTime();
+  const { iniYMD, fimYMD, inicio, fimExclusivo } = resolverPeriodo(ini, fim, hoje);
+  const intervalo = { gte: inicio, lt: fimExclusivo };
   const [provasPg, ajustesPg] = await Promise.all([
-    listarProvasDaLoja(lojaId, { tamanho: 5 }),
-    listarAjustesPendentes(lojaId, { tamanho: 5 }),
+    listarProvasDaLoja(lojaId, { tamanho: 5, intervalo }),
+    listarAjustesPendentes(lojaId, { tamanho: 5, intervalo }),
   ]);
   const { itens: provas, total: totalProvas } = provasPg;
   const { itens: ajustes, total: totalAjustes } = ajustesPg;
 
+  const periodoLabel = `${fmtDia(inicio)} – ${fmtDia(meiaNoiteUTC(fimYMD))}`;
+
   return (
     <div className="flex flex-col gap-8">
+      {/* Filtro de período (lente: ?ini=&fim=). hidden aba=provas-ajustes preserva a
+          aba ao trocar a janela; pré-preenchido com o período resolvido. */}
+      <div className="flex flex-col gap-2">
+        <form method="get" className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="aba" value="provas-ajustes" />
+          <label className="flex flex-col gap-1 text-[12px] text-cinza-fumo">
+            De
+            <input name="ini" type="date" defaultValue={iniYMD} aria-label="Início do período" className={`${inputData} w-40`} />
+          </label>
+          <label className="flex flex-col gap-1 text-[12px] text-cinza-fumo">
+            Até
+            <input name="fim" type="date" defaultValue={fimYMD} aria-label="Fim do período" className={`${inputData} w-40`} />
+          </label>
+          <button type="submit" className={botaoSuave}>
+            Ver período
+          </button>
+        </form>
+        <p className="text-[12px] text-cinza-fumo">{periodoLabel}</p>
+      </div>
+
       {/* Provas */}
       <section className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
@@ -53,7 +96,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           </Link>
         </div>
         {provas.length === 0 ? (
-          <p className="text-[13px] text-cinza-fumo">Nenhuma prova marcada por aqui.</p>
+          <p className="text-[13px] text-cinza-fumo">Nenhuma prova neste período.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {provas.map((p) => (
@@ -85,7 +128,7 @@ export async function AbaProvasAjustes({ lojaId }: { lojaId: string }) {
           </Link>
         </div>
         {ajustes.length === 0 ? (
-          <p className="text-[13px] text-cinza-fumo">Nenhum ajuste pendente. Tudo em dia.</p>
+          <p className="text-[13px] text-cinza-fumo">Nenhum ajuste pendente neste período.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
             {ajustes.map((a) => {

@@ -222,6 +222,30 @@ describe("fila global de pendentes", () => {
     expect(pagina1.itens[0].id).toBe(aB.ajusteId); // ordem preservada antes de fatiar
   });
 
+  it("intervalo: filtra a fila pelo casamento na janela [gte, lt)", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const noivaC = (await db.lead.create({ data: { noivaNome: `${MARK}Cida`, etapa: "EM_PROVAS" } as never })).id;
+    const vC = (await db.vestido.create({ data: { codigo: `${MARK}vc`, nome: `${MARK}vc`, precoBase: 1000 } as never })).id;
+    const rC = await reservarVestido(loja, { vestidoId: vC, leadId: noivaC, casamentoData: "2027-03-15" });
+    if (!rC.ok) throw new Error("reserva C falhou");
+    const pC = await registrarProva(loja, { bloqueioId: rC.bloqueioId, dataReal: "2027-02-01", tipo: "PRIMEIRA" });
+    if (!pC.ok) throw new Error("prova C falhou");
+    const aC = await adicionarAjuste(loja, { provaId: pC.provaId, descricao: "ajuste março/27" });
+    if (!aC.ok) throw new Error("ajuste C falhou");
+
+    // janela que contém 2027-03-15 → aparece
+    const dentro = await listarAjustesPendentes(loja, {
+      intervalo: { gte: new Date("2027-03-01T00:00:00.000Z"), lt: new Date("2027-04-01T00:00:00.000Z") },
+    });
+    expect(dentro.itens.map((f) => f.id)).toContain(aC.ajusteId);
+
+    // janela que termina antes do casamento → não aparece
+    const fora = await listarAjustesPendentes(loja, {
+      intervalo: { gte: new Date("2027-01-01T00:00:00.000Z"), lt: new Date("2027-03-01T00:00:00.000Z") },
+    });
+    expect(fora.itens.map((f) => f.id)).not.toContain(aC.ajusteId);
+  });
+
   it("isolamento: a outra loja não vê os pendentes desta", async () => {
     const fila = (await listarAjustesPendentes(lojaOutra)).itens;
     expect(fila.every((f) => f.vestidoCodigo.startsWith(`${MARK}`) === false || f.noivaNome === null)).toBe(true);
@@ -263,6 +287,18 @@ describe("agenda de provas da loja (listarProvasDaLoja)", () => {
     expect(r.itens.length).toBe(1);
     expect(r.total).toBeGreaterThanOrEqual(2); // provaProx + provaDistante
     expect(r.itens[0].id).toBe(provaProx); // a mais próxima (ordem ascendente preservada)
+  });
+
+  it("intervalo: filtra dataReal na janela [gte, lt), incluindo dias passados", async () => {
+    // janela [dia-50, dia+30): pega a passada (dia-40) e a próxima (dia+20), exclui a distante (dia+40)
+    const gte = new Date(`${dia(-50)}T00:00:00.000Z`);
+    const lt = new Date(`${dia(30)}T00:00:00.000Z`);
+    const ids = (await listarProvasDaLoja(loja, { intervalo: { gte, lt } })).itens.map((p) => p.id);
+    expect(ids).toContain(provaPassada);
+    expect(ids).toContain(provaProx);
+    expect(ids).not.toContain(provaDistante);
+    // ascendente mesmo com passada: dia-40 antes de dia+20
+    expect(ids.indexOf(provaPassada)).toBeLessThan(ids.indexOf(provaProx));
   });
 
   it("passadas: traz só o histórico (descendente) e exclui as futuras", async () => {
