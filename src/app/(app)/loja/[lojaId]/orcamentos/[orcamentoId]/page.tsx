@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AvisoFlash } from "@/components/ui/aviso-flash";
+import { botaoSuave, botaoPrincipal } from "@/components/ui/acoes";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterOrcamento } from "@/lib/orcamentos/orcamentos";
@@ -50,14 +51,6 @@ const inputBase =
   "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta " +
   "transition-colors duration-150 hover:border-cinza-fumo focus:border-tinta focus:outline-none " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-const botaoSuave =
-  "inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda " +
-  "underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-const botaoPrincipal =
-  "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel " +
-  "transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2 " +
-  "focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
 export default async function OrcamentoDetalhePage({
   params,

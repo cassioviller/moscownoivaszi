@@ -3,19 +3,17 @@
 // formatação de dinheiro/data, rótulo de competência, título de seção e o card de
 // métrica — para que a consistência Concierge viva num lugar só, sem drift.
 import { brl } from "@/lib/dinheiro";
+// botaoSuave/botaoPrincipal vivem em @/components/ui/acoes (fonte única, sem drift) —
+// importados aqui para uso local (botaoLinha) e re-exportados para as telas do
+// financeiro continuarem importando tudo de "../ui".
+import { botaoSuave, botaoPrincipal } from "@/components/ui/acoes";
 
-export { brl }; // re-export: telas do financeiro importam tudo de "../ui"
+export { brl, botaoSuave, botaoPrincipal };
 
 // — Classes de campo/ação (estados de foco/hover do design) —
 export const inputBase =
   "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-export const botaoSuave =
-  "inline-flex min-h-11 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 " +
-  "transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
-export const botaoPrincipal =
-  "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel transition-colors duration-150 " +
-  "ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
 // Ação que se REPETE por linha de lista (receber/pagar): bordô em contorno, não sólido —
 // assim o bordô preenchido continua raro (DESIGN §6, "a cor como joia") e fica reservado
 // aos momentos singulares (Lançar, Gerar, Salvar, Confirmar). Mesmo alvo de toque (min-h-11).
