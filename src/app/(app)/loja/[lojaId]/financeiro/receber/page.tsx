@@ -26,6 +26,7 @@ const AVISOS: Record<string, string> = {
   estornado: "Recebimento estornado.",
   parcela_invalida: "Parcela inválida.",
   nao_previsto: "Esta parcela não está em aberto.",
+  nao_pago: "Este recebimento não está pago — nada a estornar.",
   valor_invalido: "Valor inválido.",
   data_invalida: "Data inválida.",
   contrato_nao_ativo: "Contrato cancelado — sem movimentação de parcelas.",

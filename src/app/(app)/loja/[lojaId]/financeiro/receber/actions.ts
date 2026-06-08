@@ -43,8 +43,8 @@ export const adicionarParcelaAction = acaoAutorizada("financeiro", "editar", asy
 export const removerParcelaAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const volta = `/loja/${lojaId}/contratos/${str(formData, "contratoId")}`;
-  await removerParcela(lojaId, str(formData, "parcelaId"));
-  redirect(comAviso(volta, "ok", "parcela_removida"));
+  const r = await removerParcela(lojaId, str(formData, "parcelaId"));
+  redirect(comAviso(volta, r.ok ? "ok" : "erro", r.ok ? "parcela_removida" : r.motivo));
 });
 
 export const registrarRecebimentoAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
@@ -61,6 +61,6 @@ export const registrarRecebimentoAction = acaoAutorizada("financeiro", "editar",
 export const estornarRecebimentoAction = acaoAutorizada("financeiro", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const volta = destino(formData, lojaId, `/loja/${lojaId}/financeiro/receber`);
-  await estornarRecebimento(lojaId, str(formData, "parcelaId"));
-  redirect(comAviso(volta, "ok", "estornado"));
+  const r = await estornarRecebimento(lojaId, str(formData, "parcelaId"));
+  redirect(comAviso(volta, r.ok ? "ok" : "erro", r.ok ? "estornado" : r.motivo));
 });

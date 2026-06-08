@@ -38,6 +38,8 @@ const AVISOS: Record<string, string> = {
   num_invalido: "Número de parcelas inválido (1 a 360).",
   nao_previsto: "Esta parcela não está em aberto.",
   contrato_nao_ativo: "Contrato cancelado — sem movimentação de parcelas.",
+  parcela_invalida: "Parcela inválida.",
+  nao_pago: "Este recebimento não está pago — nada a estornar.",
 };
 
 const ymd = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
