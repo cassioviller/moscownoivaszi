@@ -1,14 +1,21 @@
 // Aba Vestidos fora — a timeline do acervo: uma linha por vestido, barras mostrando
-// quando cada peça está fora (preparação → uso → higienização → manutenção) nos
-// próximos 60 dias. Bordô reservado ao uso/casamento. Dado pronto via agendaDoAtelier.
+// quando cada peça está fora (preparação → uso → higienização → manutenção) no
+// período escolhido (padrão: próximos 60 dias). Bordô reservado ao uso/casamento e
+// à marca de "hoje". Dado pronto via agendaDoAtelier; janela via ?ini=&fim=.
 import Link from "next/link";
-import { hojeUTC } from "@/lib/tempo";
+import { hojeYMD, meiaNoiteUTC } from "@/lib/tempo";
 import { agendaDoAtelier, ROTULO_JANELA } from "@/lib/disponibilidade/agenda";
+import { resolverPeriodoVestidos } from "@/lib/calendario/periodo";
 import { montarGantt, eixoGantt, type BarraGantt, type LinhaGantt } from "@/lib/calendario/gantt";
+import { botaoSuave } from "@/components/ui/acoes";
 import type { TipoJanela } from "@/lib/disponibilidade/tipos";
 
-const HORIZONTE_DIAS = 60;
-const N_TICKS = 5; // marcas de data no eixo (passo de 12 dias em 60)
+const N_TICKS = 5; // marcas de data no eixo, igualmente espaçadas na janela
+
+// Campo de data do filtro — mesmos estados de foco do design (foco bordô, §6).
+const inputData =
+  "rounded-md border border-borda bg-papel-elevado px-3 py-2 text-[14px] text-tinta focus:border-tinta focus:outline-none " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
 const COR_BARRA: Record<TipoJanela, string> = {
   preparacao: "bg-rose-dust",
@@ -39,17 +46,52 @@ function periodoLinha(l: LinhaGantt): string {
   return `${fmtDia(ini)} – ${fmtDia(fim)}`;
 }
 
-export async function AbaVestidos({ lojaId }: { lojaId: string }) {
-  const inicioJanela = hojeUTC();
-  const eventos = await agendaDoAtelier(lojaId, HORIZONTE_DIAS);
-  const linhas = montarGantt(eventos, inicioJanela, HORIZONTE_DIAS);
-  const eixo = eixoGantt(inicioJanela, HORIZONTE_DIAS, N_TICKS);
+export async function AbaVestidos({
+  lojaId,
+  ini,
+  fim,
+}: {
+  lojaId: string;
+  ini?: string;
+  fim?: string;
+}) {
+  const hoje = hojeYMD();
+  const { iniYMD, fimYMD, inicio, dias } = resolverPeriodoVestidos(ini, fim, hoje);
+  const eventos = await agendaDoAtelier(lojaId, dias, inicio);
+  const linhas = montarGantt(eventos, inicio, dias);
+  const eixo = eixoGantt(inicio, dias, N_TICKS);
+
+  const periodoLabel = `${fmtDia(inicio)} – ${fmtDia(meiaNoiteUTC(fimYMD))}`;
+
+  // Filtro de período (lente de visualização: ?ini=&fim=). Form GET com hidden
+  // aba=vestidos para preservar a aba ao trocar a janela. Pré-preenchido com a
+  // janela resolvida (padrão hoje → +60).
+  const filtro = (
+    <form method="get" className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="aba" value="vestidos" />
+      <label className="flex flex-col gap-1 text-[12px] text-cinza-fumo">
+        De
+        <input name="ini" type="date" defaultValue={iniYMD} aria-label="Início do período" className={`${inputData} w-40`} />
+      </label>
+      <label className="flex flex-col gap-1 text-[12px] text-cinza-fumo">
+        Até
+        <input name="fim" type="date" defaultValue={fimYMD} aria-label="Fim do período" className={`${inputData} w-40`} />
+      </label>
+      <button type="submit" className={botaoSuave}>
+        Ver período
+      </button>
+    </form>
+  );
 
   if (linhas.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="font-display text-[18px] font-light text-tinta">Vestidos em movimento</h2>
-        <p className="text-[15px] text-tinta">Nenhum vestido fora nos próximos {HORIZONTE_DIAS} dias.</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-display text-[18px] font-light text-tinta">Vestidos em movimento</h2>
+          <p className="text-[12px] text-cinza-fumo">{periodoLabel}</p>
+        </div>
+        {filtro}
+        <p className="text-[15px] text-tinta">Nenhum vestido fora neste período.</p>
         <p className="max-w-[46ch] text-[13px] text-cinza-fumo">
           Quando uma noiva reservar um vestido, o tempo em que a peça fica fora aparece aqui, em faixas.
         </p>
@@ -62,23 +104,28 @@ export async function AbaVestidos({ lojaId }: { lojaId: string }) {
       <div className="flex flex-col gap-0.5">
         <h2 className="font-display text-[18px] font-light text-tinta">Vestidos em movimento</h2>
         <p className="text-[12px] text-cinza-fumo">
-          {linhas.length} {linhas.length === 1 ? "peça fora" : "peças fora"} · próximos {HORIZONTE_DIAS} dias · cada faixa é o tempo que a peça fica fora
+          {linhas.length} {linhas.length === 1 ? "peça fora" : "peças fora"} · {periodoLabel} · cada faixa é o tempo que a peça fica fora
         </p>
       </div>
+
+      {filtro}
 
       {/* Eixo de tempo — datas alinhadas à faixa (desktop). */}
       <div className="hidden items-center gap-4 px-4 sm:flex">
         <div className="w-44 shrink-0" />
         <div className="relative h-4 flex-1">
-          {eixo.map((t, i) => (
-            <span
-              key={i}
-              className={`absolute top-0 text-[11px] tabular-nums whitespace-nowrap ${i === 0 ? "text-bordo" : "text-cinza-fumo"}`}
-              style={{ left: `${t.posPct}%` }}
-            >
-              {i === 0 ? "hoje" : fmtDia(t.data)}
-            </span>
-          ))}
+          {eixo.map((t, i) => {
+            const ehHoje = t.data.toISOString().slice(0, 10) === hoje;
+            return (
+              <span
+                key={i}
+                className={`absolute top-0 text-[11px] tabular-nums whitespace-nowrap ${ehHoje ? "text-bordo" : "text-cinza-fumo"}`}
+                style={{ left: `${t.posPct}%` }}
+              >
+                {ehHoje ? "hoje" : fmtDia(t.data)}
+              </span>
+            );
+          })}
         </div>
       </div>
 

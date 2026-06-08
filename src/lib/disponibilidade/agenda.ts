@@ -31,13 +31,16 @@ export type EventoAgenda = {
 };
 
 /**
- * Compromissos do atelier que tocam a janela [hoje, hoje+horizonte]. Cada reserva
+ * Compromissos do atelier que tocam a janela [inicio, inicio+horizonte]. Cada reserva
  * vira de 1 a 3 eventos (prova/uso/lavagem). Bloqueios malformados são pulados —
  * a agenda nunca quebra por um dado ruim (eles já aparecem barrados na reserva).
+ * `inicio` é a borda esquerda da janela (padrão: hoje) — a aba Vestidos passa o
+ * início escolhido no filtro de período.
  */
 export async function agendaDoAtelier(
   lojaId: string,
   horizonteDias = 60,
+  inicio = hojeUTC(),
 ): Promise<EventoAgenda[]> {
   const db = tenantPrisma(prisma, lojaId);
   const [regras, bloqueios] = await Promise.all([
@@ -50,8 +53,7 @@ export async function agendaDoAtelier(
     }),
   ]);
 
-  const hoje = hojeUTC();
-  const limite = addDias(hoje, horizonteDias);
+  const limite = addDias(inicio, horizonteDias);
   const eventos: EventoAgenda[] = [];
 
   for (const b of bloqueios) {
@@ -62,7 +64,7 @@ export async function agendaDoAtelier(
       continue; // dado malformado: não derruba a agenda
     }
     for (const j of janelas) {
-      if (j.fim < hoje || j.inicio > limite) continue; // fora da janela visível
+      if (j.fim < inicio || j.inicio > limite) continue; // fora da janela visível
       eventos.push({
         tipo: j.tipo,
         rotulo: ROTULO_JANELA[j.tipo],

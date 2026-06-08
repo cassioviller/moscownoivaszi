@@ -18,7 +18,7 @@ export default async function CalendarioPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ aba?: string; ref?: string }>;
+  searchParams: Promise<{ aba?: string; ref?: string; ini?: string; fim?: string }>;
 }) {
   const sc = await exigirAcesso("leads");
   const { lojaId } = await params;
@@ -65,7 +65,7 @@ export default async function CalendarioPage({
           (
             {
               mes: <AbaMes lojaId={lojaId} refParam={sp.ref} />,
-              vestidos: <AbaVestidos lojaId={lojaId} />,
+              vestidos: <AbaVestidos lojaId={lojaId} ini={sp.ini} fim={sp.fim} />,
               atendimentos: <AbaAtendimentos lojaId={lojaId} refParam={sp.ref} />,
               "provas-ajustes": <AbaProvasAjustes lojaId={lojaId} />,
             } satisfies Record<AbaId, ReactNode>
