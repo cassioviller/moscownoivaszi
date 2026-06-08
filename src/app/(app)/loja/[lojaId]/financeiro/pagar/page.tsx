@@ -12,7 +12,7 @@ import { TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
 import { hojeYMD } from "@/lib/financeiro/datas";
 import type { ContaPagarTipo } from "@/generated/prisma/client";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
+import { inputBase, botaoSuave, botaoPrincipal, botaoLinha, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
 import { lancarDespesaAction, removerContaAction, pagarContasAction, estornarPagamentoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -168,7 +168,7 @@ export default async function PagarPage({
                     <input name="valor" defaultValue={c.valorPrevisto} aria-label="Valor pago" className={`${inputBase} w-28`} />
                     <input type="date" name="data" defaultValue={hojeYMD()} aria-label="Data do pagamento" className={`${inputBase} w-44`} />
                     <input name="forma" placeholder="Forma (Pix…)" aria-label="Forma de pagamento" className={`${inputBase} w-32`} />
-                    <button type="submit" className={botaoPrincipal}>Pagar</button>
+                    <button type="submit" className={botaoLinha}>Pagar</button>
                   </form>
                   <form action={removerContaAction}>
                     <input type="hidden" name="contaId" value={c.id} />

@@ -10,7 +10,7 @@ import { listarContasAReceber, resumoReceber, type FiltroReceber } from "@/lib/f
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
+import { inputBase, botaoSuave, botaoLinha, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
 import { registrarRecebimentoAction, estornarRecebimentoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -128,7 +128,7 @@ export default async function ReceberPage({
                   <input type="hidden" name="voltar" value={voltar} />
                   <input name="valor" defaultValue={p.valorPrevisto} aria-label="Valor recebido" className={`${inputBase} w-28`} />
                   <input name="forma" placeholder="Forma (Pix…)" aria-label="Forma de recebimento" className={`${inputBase} w-36`} />
-                  <button type="submit" className={botaoPrincipal}>Receber</button>
+                  <button type="submit" className={botaoLinha}>Receber</button>
                 </form>
               )}
               {podeEditar && p.status === "PAGA" && (

@@ -16,6 +16,12 @@ export const botaoSuave =
 export const botaoPrincipal =
   "inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel transition-colors duration-150 " +
   "ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
+// Ação que se REPETE por linha de lista (receber/pagar): bordô em contorno, não sólido —
+// assim o bordô preenchido continua raro (DESIGN §6, "a cor como joia") e fica reservado
+// aos momentos singulares (Lançar, Gerar, Salvar, Confirmar). Mesmo alvo de toque (min-h-11).
+export const botaoLinha =
+  "inline-flex min-h-11 w-fit items-center rounded-md border border-bordo/40 px-4 text-[13px] font-medium text-bordo " +
+  "transition-colors duration-150 ease-out hover:border-bordo hover:bg-bordo/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo";
 
 // — Formatação (data em UTC, na convenção do sistema; brl vem de @/lib/dinheiro) —
 export const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
