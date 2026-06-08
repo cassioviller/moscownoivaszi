@@ -128,19 +128,22 @@ export default async function RegrasComissaoPage({
               Somar o bônus de todas as faixas atingidas (senão, só o da faixa final)
             </label>
 
+            {/* A régua, não a planilha: cada faixa é uma frase legível (DESIGN §13, evitar
+                tabela hostil). Os name/ordem/contagem dos inputs são os mesmos — só a moldura
+                muda; definirRegraAction continua lendo min/max/percentual/bonus como antes. */}
             <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-[1fr_1fr_4rem_1fr] gap-2 text-[11px] uppercase tracking-[0.14em] text-cinza-fumo">
-                <span>De (R$)</span>
-                <span>Até (R$)</span>
-                <span>%</span>
-                <span>Bônus (R$)</span>
-              </div>
               {Array.from({ length: LINHAS_FAIXA }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[1fr_1fr_4rem_1fr] gap-2">
-                  <input name="min" placeholder="0,00" aria-label={`Faixa ${i + 1} — de`} className={inputBase} />
-                  <input name="max" placeholder="aberta" aria-label={`Faixa ${i + 1} — até`} className={inputBase} />
-                  <input name="percentual" placeholder="0" aria-label={`Faixa ${i + 1} — percentual`} className={inputBase} />
-                  <input name="bonus" placeholder="0,00" aria-label={`Faixa ${i + 1} — bônus`} className={inputBase} />
+                <div key={i} className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel p-3">
+                  <span aria-hidden className="w-4 shrink-0 text-center font-display text-[13px] tabular-nums text-champagne">{i + 1}</span>
+                  <span className="text-[13px] text-cinza-fumo">De</span>
+                  <input name="min" placeholder="0,00" aria-label={`Faixa ${i + 1} — de (R$)`} className={`${inputBase} w-24`} />
+                  <span className="text-[13px] text-cinza-fumo">até</span>
+                  <input name="max" placeholder="aberta" aria-label={`Faixa ${i + 1} — até (R$)`} className={`${inputBase} w-24`} />
+                  <span className="text-[13px] text-cinza-fumo">rende</span>
+                  <input name="percentual" placeholder="0" aria-label={`Faixa ${i + 1} — percentual (%)`} className={`${inputBase} w-14`} />
+                  <span className="text-[13px] text-cinza-fumo">%</span>
+                  <span className="text-[13px] text-cinza-fumo">+ bônus</span>
+                  <input name="bonus" placeholder="0,00" aria-label={`Faixa ${i + 1} — bônus (R$)`} className={`${inputBase} w-24`} />
                 </div>
               ))}
               <p className="text-[12px] text-cinza-fumo">
