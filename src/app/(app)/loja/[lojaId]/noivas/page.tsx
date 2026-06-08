@@ -3,7 +3,7 @@ import Link from "next/link";
 import { exigirAcesso } from "@/lib/server/acoes";
 import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { listarLeads, estagiosDasNoivas } from "@/lib/leads/leads";
+import { listarNoivasComEstagio, type EstagioResumo } from "@/lib/leads/leads";
 import { ESTAGIOS, ROTULO_ESTAGIO, type EstagioChave } from "@/lib/leads/jornada";
 import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { marcarPerdidaAction } from "./[leadId]/jornada-actions";
@@ -37,35 +37,41 @@ export default async function NoivasPage({
 
   const { lojaId } = await params;
   const sp = await searchParams;
-  const [noivas, estagios, podeCriar, podeEditar] = await Promise.all([
-    listarLeads(sc.loja.id),
-    estagiosDasNoivas(sc.loja.id),
+  // UMA leitura: noivas já com o estágio derivado (antes eram duas findMany).
+  const [noivas, podeCriar, podeEditar] = await Promise.all([
+    listarNoivasComEstagio(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
   ]);
   const aviso = sp.ok ? (AVISOS[sp.ok] ?? null) : null;
 
   // Classifica cada noiva pela jornada e conta por estado (para os chips).
-  const estadoDe = (id: string): "ativas" | "concluidas" | "desativadas" => {
-    const e = estagios.get(id)?.encerrada ?? null;
-    return e === "Perdida" ? "desativadas" : e === "Devolvido" ? "concluidas" : "ativas";
-  };
+  const estadoDe = (e: EstagioResumo): "ativas" | "concluidas" | "desativadas" =>
+    e.encerrada === "Perdida" ? "desativadas" : e.encerrada === "Devolvido" ? "concluidas" : "ativas";
   const contagem: Record<string, number> = { ativas: 0, concluidas: 0, desativadas: 0 };
-  for (const n of noivas) contagem[estadoDe(n.id)]++;
+  for (const n of noivas) contagem[estadoDe(n.estagio)]++;
   const filtro: Filtro = (FILTROS as readonly string[]).includes(sp.filtro ?? "") ? (sp.filtro as Filtro) : "ativas";
   // Filtro fino por ETAPA da jornada (compõe com o estado). "" = todas as etapas.
   const etapa: EstagioChave | "" = (ESTAGIOS as readonly string[]).includes(sp.etapa ?? "") ? (sp.etapa as EstagioChave) : "";
   // Busca por nome (noiva ou noivo), sem acentuação-sensível-demais: simples includes.
   const busca = (sp.busca ?? "").trim();
   const buscaLower = busca.toLowerCase();
-  let visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.id) === filtro);
-  if (etapa) visiveis = visiveis.filter((n) => estagios.get(n.id)?.atual === etapa);
+  let visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.estagio) === filtro);
+  if (etapa) visiveis = visiveis.filter((n) => n.estagio.atual === etapa);
   if (buscaLower) {
     visiveis = visiveis.filter(
       (n) => n.noivaNome.toLowerCase().includes(buscaLower) || (n.noivoNome?.toLowerCase().includes(buscaLower) ?? false),
     );
   }
   const extra = `${etapa ? `&etapa=${etapa}` : ""}${busca ? `&busca=${encodeURIComponent(busca)}` : ""}`;
+  // Estado da lente atual (filtro/etapa/busca) p/ devolver lista→detalhe→voltar à mesma
+  // vista. Só o que difere do padrão entra na URL — lente padrão volta à lista crua.
+  const lente = new URLSearchParams();
+  if (filtro !== "ativas") lente.set("filtro", filtro);
+  if (etapa) lente.set("etapa", etapa);
+  if (busca) lente.set("busca", busca);
+  const queryLente = lente.toString();
+  const voltarLista = `/loja/${lojaId}/noivas${queryLente ? `?${queryLente}` : ""}`;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
@@ -169,13 +175,13 @@ export default async function NoivasPage({
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {visiveis.map((n) => {
-                const est = estagios.get(n.id);
+                const est = n.estagio;
             // A jornada sai da ativa de dois jeitos: "Perdida" (desativada — negativo,
             // reversível) e "Devolvido" (concluída — positivo, fim natural da jornada).
-            const encerrada = est?.encerrada ?? null; // "Perdida" | "Devolvido" | null
+            const encerrada = est.encerrada; // "Perdida" | "Devolvido" | null
             const perdida = encerrada === "Perdida";
             const concluida = encerrada === "Devolvido";
-            const badge = perdida ? "Desativada" : concluida ? "Concluída" : est ? ROTULO_ESTAGIO[est.atual] : "Cadastrada";
+            const badge = perdida ? "Desativada" : concluida ? "Concluída" : ROTULO_ESTAGIO[est.atual];
             const badgeClasse = perdida
               ? "border-borda text-cinza-fumo"
               : concluida
@@ -219,7 +225,7 @@ export default async function NoivasPage({
 
                 <div className="flex items-center justify-between gap-3 border-t border-borda-suave pt-3">
                   <Link
-                    href={`/loja/${lojaId}/noivas/${n.id}`}
+                    href={`/loja/${lojaId}/noivas/${n.id}${queryLente ? `?de=${encodeURIComponent(queryLente)}` : ""}`}
                     className="inline-flex min-h-9 items-center rounded-md border border-borda px-3 text-[13px] text-tinta transition-colors duration-150 hover:border-bordo hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
                   >
                     Detalhes
@@ -231,7 +237,7 @@ export default async function NoivasPage({
                     <form action={marcarPerdidaAction}>
                       <input type="hidden" name="leadId" value={n.id} />
                       <input type="hidden" name="ligar" value={perdida ? "0" : "1"} />
-                      <input type="hidden" name="voltar" value={`/loja/${lojaId}/noivas`} />
+                      <input type="hidden" name="voltar" value={voltarLista} />
                       {perdida ? (
                         <button
                           type="submit"

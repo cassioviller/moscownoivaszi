@@ -95,7 +95,7 @@ export default async function NoivaPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string; leadId: string }>;
-  searchParams: Promise<{ ok?: string; erro?: string; em?: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string; em?: string; de?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -104,7 +104,9 @@ export default async function NoivaPage({
   }
 
   const { lojaId, leadId } = await params;
-  const { ok, erro, em } = await searchParams;
+  const { ok, erro, em, de } = await searchParams;
+  // "de" carrega a lente da lista (filtro/etapa/busca) p/ o voltar devolver à mesma vista.
+  const voltarNoivas = `/loja/${lojaId}/noivas${de ? `?${de}` : ""}`;
 
   // Leitura read-only: confirma que a noiva é da loja e traz o interesse de uma vez.
   const dados = await obterNoivaComInteresse(sc.loja.id, leadId);
@@ -161,7 +163,7 @@ export default async function NoivaPage({
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
-      <Link href={`/loja/${lojaId}/noivas`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
+      <Link href={voltarNoivas} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
         ← Noivas
       </Link>
 

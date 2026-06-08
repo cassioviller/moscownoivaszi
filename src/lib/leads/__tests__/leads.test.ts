@@ -2,7 +2,7 @@
 // Espelha o teste do data layer de vestidos (Prisma real, isolamento cross-loja).
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
-import { listarLeads, criarLead, obterLead, editarLead, fatosDaNoiva, estagiosDasNoivas, definirMarcoJornada } from "@/lib/leads/leads";
+import { listarLeads, criarLead, obterLead, editarLead, fatosDaNoiva, estagiosDasNoivas, listarNoivasComEstagio, definirMarcoJornada } from "@/lib/leads/leads";
 import { estagioDaNoiva } from "@/lib/leads/jornada";
 import { tenantPrisma } from "@/lib/tenant";
 
@@ -133,6 +133,16 @@ describe("jornada derivada (fatos + marcos)", () => {
   it("estagiosDasNoivas mapeia a loja inteira", async () => {
     const mapa = await estagiosDasNoivas(loja);
     expect(mapa.get(leadId)?.atual).toBeDefined();
+  });
+
+  it("listarNoivasComEstagio: uma leitura traz noiva + estágio, ordenada e escopada", async () => {
+    const lista = await listarNoivasComEstagio(loja);
+    expect(lista.every((n) => n.lojaId === loja)).toBe(true);
+    const nomes = lista.map((n) => n.noivaNome);
+    expect(nomes).toEqual([...nomes].sort((a, b) => a.localeCompare(b)));
+    const ana = lista.find((n) => n.id === leadId);
+    expect(ana?.estagio.atual).toBeDefined();
+    expect(ana?.estagio.encerrada).toBe(null);
   });
 
   it("marco de outra loja é no-op (escopo)", async () => {

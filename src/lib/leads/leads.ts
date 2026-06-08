@@ -180,6 +180,23 @@ export async function estagiosDasNoivas(lojaId: string): Promise<Map<string, Est
   return mapa;
 }
 
+export type NoivaComEstagio = LeadComJornada & { estagio: EstagioResumo };
+
+/** Lista as noivas da loja JÁ com o estágio derivado — UMA leitura ordenada por nome.
+ *  Antes a tela de Noivas fazia duas findMany sobre o mesmo lead (listarLeads para os
+ *  dados + estagiosDasNoivas para a jornada); aqui as duas viram uma só. */
+export async function listarNoivasComEstagio(lojaId: string): Promise<NoivaComEstagio[]> {
+  const hoje = hojeUTC();
+  const leads = await tenantPrisma(prisma, lojaId).lead.findMany({
+    orderBy: { noivaNome: "asc" },
+    include: INCLUDE_JORNADA,
+  });
+  return leads.map((l) => {
+    const { atual, encerrada } = estagioDaNoiva(fatosDeLead(l, hoje));
+    return { ...l, estagio: { atual, encerrada } };
+  });
+}
+
 /** Noivas em acompanhamento ATIVO (fora: perdida, devolvida, casada). Para os selects de
  *  formulário — só faz sentido agendar/orçar/reservar para quem está na jornada viva. */
 export async function listarNoivasAtivas(lojaId: string): Promise<LeadComJornada[]> {
