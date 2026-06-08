@@ -4,6 +4,7 @@
 // Ver = leads:ver; mutar = leads:editar.
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterOrcamento } from "@/lib/orcamentos/orcamentos";
@@ -117,7 +118,7 @@ export default async function OrcamentoDetalhePage({
         </span>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {/* Vestidos escolhidos — o que ficou do atendimento: peça + valor combinado */}
       <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">

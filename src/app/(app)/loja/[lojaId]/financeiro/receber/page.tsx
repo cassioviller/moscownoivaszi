@@ -10,7 +10,7 @@ import { listarContasAReceber, resumoReceber, type FiltroReceber } from "@/lib/f
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
-import { inputBase, botaoSuave, botaoLinha, brl, dataFmt, Card, FiltroIntervalo, Aviso } from "../ui";
+import { inputBase, botaoSuave, botaoLinha, brl, dataFmt, Card, FiltroIntervalo, AvisoFlash } from "../ui";
 import { registrarRecebimentoAction, estornarRecebimentoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -79,7 +79,7 @@ export default async function ReceberPage({
         <Card rotulo="Em atraso" valor={resumo.emAtraso} destaque />
       </section>
 
-      {aviso && <Aviso tom={ok ? "ok" : "erro"}>{aviso}</Aviso>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       <nav className="flex flex-wrap gap-2">
         {FILTROS.map((f) => {

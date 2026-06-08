@@ -1,6 +1,7 @@
 // src/app/(app)/loja/[lojaId]/atendimentos/novo/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarNoivasAtivas } from "@/lib/leads/leads";
@@ -44,7 +45,7 @@ export default async function NovoAtendimentoPage({
           </Link>
         )}
       </header>
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {!podeCriar ? (
         <p className="text-[14px] text-grafite">Você não tem permissão para agendar.</p>

@@ -9,7 +9,7 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarEquipe } from "@/lib/admin/usuarios";
 import { listarRegras } from "@/lib/financeiro/comissao";
 import { hojeYMD } from "@/lib/financeiro/datas";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, Aviso } from "../../ui";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, AvisoFlash } from "../../ui";
 import { definirRegraAction, removerRegraAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,7 @@ export default async function RegrasComissaoPage({
         <p className="text-[14px] text-cinza-fumo">A régua de cada vendedora — a faixa do total final rege o mês inteiro.</p>
       </header>
 
-      {aviso && <Aviso tom={sp.ok ? "ok" : "erro"}>{aviso}</Aviso>}
+      {aviso && <AvisoFlash tom={sp.ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {/* — Regras vigentes — */}
       <section className="flex flex-col gap-3">

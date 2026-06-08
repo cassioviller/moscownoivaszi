@@ -5,6 +5,7 @@
 // transições movem a jornada (Atendimento agendado → Atendida). Ver = leads:ver;
 // agir = leads:editar.
 import Link from "next/link";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
@@ -200,7 +201,7 @@ export default async function AtendimentosPage({
         </p>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {historico ? (
         lista.length === 0 ? (

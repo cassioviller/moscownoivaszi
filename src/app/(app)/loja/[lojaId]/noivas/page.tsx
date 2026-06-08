@@ -1,6 +1,7 @@
 // src/app/(app)/loja/[lojaId]/noivas/page.tsx
 import Link from "next/link";
 import { exigirAcesso } from "@/lib/server/acoes";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarLeads, estagiosDasNoivas } from "@/lib/leads/leads";
 import { ESTAGIOS, ROTULO_ESTAGIO, type EstagioChave } from "@/lib/leads/jornada";
@@ -86,7 +87,7 @@ export default async function NoivasPage({
         )}
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={sp.ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {noivas.length === 0 ? (
         <div className="flex flex-col items-center gap-5 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado px-6 py-16 text-center shadow-[var(--mn-shadow-soft)]">

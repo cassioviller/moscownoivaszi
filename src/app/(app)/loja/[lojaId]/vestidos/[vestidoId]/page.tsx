@@ -5,6 +5,7 @@
 // /editar. Auth + tenant espelham as páginas irmãs.
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterVestido } from "@/lib/vestidos/vestidos";
@@ -120,7 +121,7 @@ export default async function VestidoPage({
         {meta && <p className="text-[14px] text-cinza-fumo">{meta}</p>}
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {/* Composição de lookbook (§8): no desktop a peça é âncora à esquerda
           (acompanha a leitura — sticky) e os fatos da peça ficam à direita.

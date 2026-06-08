@@ -1,6 +1,7 @@
 // src/app/(app)/loja/[lojaId]/atendimentos/config/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { exigirAcesso } from "@/lib/server/acoes";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarCabines, obterHorarioLoja } from "@/lib/atendimentos/cabines";
@@ -39,7 +40,7 @@ export default async function ConfigAtendimentosPage({
         <Link href={`/loja/${lojaId}/atendimentos/novo`} className="w-fit text-[13px] text-grafite hover:text-tinta">← Agendar</Link>
         <h1 className="text-[24px] font-light tracking-tight text-tinta">Cabines &amp; horário</h1>
       </header>
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Horário de funcionamento</h2>

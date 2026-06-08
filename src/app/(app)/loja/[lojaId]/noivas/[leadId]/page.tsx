@@ -8,6 +8,7 @@
 // o coração. Contato e casamento são blocos leves, sem moldura. Os vestidos
 // voltam a elevar. Pesado → leve → leve → pesado cria respiro e hierarquia.
 import Link from "next/link";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
@@ -185,7 +186,7 @@ export default async function NoivaPage({
         </div>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {/* Jornada à esquerda (timeline magra) + blocos de detalhe à direita,
           aproveitando a horizontal que a jornada sozinha deixava vazia. */}

@@ -3,6 +3,7 @@
 // ATIVO; baixar o PDF do contrato salvo; cancelar (distrato). Ver = leads:ver; editar/
 // cancelar = leads:editar.
 import Link from "next/link";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
@@ -118,7 +119,7 @@ export default async function ContratoDetalhePage({
         </p>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/loja/${lojaId}/contratos/${c.id}/pdf`} className={botaoPrincipal} prefetch={false}>

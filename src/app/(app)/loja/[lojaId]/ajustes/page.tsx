@@ -5,6 +5,7 @@
 // urgência (casamento ≤14d), não a toda linha. Gate: ajustes:ver; marcar: ajustes:editar.
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarAjustesPendentes } from "@/lib/atelier/ajustes";
@@ -63,7 +64,7 @@ export default async function AjustesPage({
         </p>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={sp.ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {pendentes.length === 0 ? (
         <div className="flex flex-col gap-2">

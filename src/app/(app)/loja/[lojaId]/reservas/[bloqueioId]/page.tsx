@@ -6,6 +6,7 @@
 // operacional: NÃO altera disponibilidade (decisão 2026-06-01).
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterReservaDetalhe } from "@/lib/disponibilidade/reservas";
@@ -165,7 +166,7 @@ export default async function ReservaDetalhePage({
         </p>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
       {/* Bloco contínuo de indisponibilidade — honesto e calmo (não é "alerta") */}
       {reserva.fases.length > 0 && (
