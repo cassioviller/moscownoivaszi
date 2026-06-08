@@ -42,7 +42,7 @@ async function guardMovimentacao(formData: FormData) {
 export const adicionarAjusteAction = acaoAutorizada("ajustes", "criar", async (sc, formData) => {
   const base = baseReserva(sc.loja.id, str(formData, "bloqueioId"));
   const r = await adicionarAjuste(sc.loja.id, {
-    atendimentoId: str(formData, "provaId"),
+    atendimentoId: str(formData, "atendimentoId"),
     descricao: str(formData, "descricao"),
   });
   redirect(comAviso(base, r.ok ? "ok" : "erro", r.ok ? "ajuste" : r.motivo));

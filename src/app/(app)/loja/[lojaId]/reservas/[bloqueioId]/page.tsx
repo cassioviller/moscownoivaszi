@@ -405,7 +405,7 @@ export default async function ReservaDetalhePage({
                   {podeCriar && (
                     <form action={adicionarAjusteAction} className="flex items-center gap-2">
                       <input type="hidden" name="bloqueioId" value={bloqueioId} />
-                      <input type="hidden" name="provaId" value={p.id} />
+                      <input type="hidden" name="atendimentoId" value={p.id} />
                       <input
                         name="descricao"
                         placeholder="Novo ajuste (ex.: bainha 3cm)…"

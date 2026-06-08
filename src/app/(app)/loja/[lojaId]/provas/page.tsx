@@ -1,8 +1,8 @@
 // src/app/(app)/loja/[lojaId]/provas/page.tsx
-// Agenda de provas do atelier — todas as provas da loja em um só lugar (hoje cada
-// prova só vive dentro da reserva). Lente "calendário do atelier": agrupa por mês da
-// prova, deep-linka para a reserva (onde se registra/edita/marca comparecimento). O
-// registro e a edição NÃO vivem aqui de propósito (continuam no detalhe da reserva).
+// Agenda de provas do atelier — todas as provas da loja (Atendimento{tipo:PROVA}) em
+// um só lugar. Lente "calendário do atelier": agrupa por mês da prova e deep-linka para
+// a reserva. O agendamento da prova vive no Agendar e o ciclo (iniciar/ajustes/concluir)
+// na aba Provas & ajustes — não aqui, de propósito.
 // Ver = leads:ver OU ajustes:ver (mesma lente do detalhe da reserva).
 import Link from "next/link";
 import { redirect } from "next/navigation";
