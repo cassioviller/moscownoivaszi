@@ -142,49 +142,52 @@ export async function listarAjustesPendentes(
   lojaId: string,
   opts: { pagina?: number | string; tamanho?: number } = {},
 ): Promise<{ itens: AjustePendente[]; total: number }> {
-  const rows = await tenantPrisma(prisma, lojaId).ajuste.findMany({
-    where: { status: "PENDENTE" },
-    include: {
-      checklist: { select: { feito: true } },
-      prova: {
-        include: {
-          bloqueio: {
-            include: {
-              lead: { select: { id: true, noivaNome: true } },
-              vestido: { select: { id: true, codigo: true, nome: true } },
+  const db = tenantPrisma(prisma, lojaId);
+  const where = { status: "PENDENTE" as const };
+  const { skip, take } = paginar(opts.pagina, opts.tamanho);
+  // Urgência primeiro (casamento mais próximo); sem data ao fim. A ordenação e a
+  // paginação vão para o BANCO via orderBy aninhado por relação (ajuste → prova →
+  // bloqueio.casamentoData) — antes a fila inteira era materializada e ordenada em
+  // memória a cada página. Chave secundária `id` desempata para paginação estável.
+  const [total, rows] = await Promise.all([
+    db.ajuste.count({ where }),
+    db.ajuste.findMany({
+      where,
+      orderBy: [
+        { prova: { bloqueio: { casamentoData: { sort: "asc", nulls: "last" } } } },
+        { id: "asc" },
+      ],
+      skip,
+      take,
+      include: {
+        checklist: { select: { feito: true } },
+        prova: {
+          include: {
+            bloqueio: {
+              include: {
+                lead: { select: { id: true, noivaNome: true } },
+                vestido: { select: { id: true, codigo: true, nome: true } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+  ]);
 
-  const ordenados = rows
-    .map((a) => ({
-      id: a.id,
-      descricao: a.descricao,
-      provaDataReal: a.prova.dataReal,
-      noivaNome: a.prova.bloqueio.lead?.noivaNome ?? null,
-      leadId: a.prova.bloqueio.leadId,
-      bloqueioId: a.prova.bloqueioId,
-      vestidoId: a.prova.bloqueio.vestido.id,
-      vestidoCodigo: a.prova.bloqueio.vestido.codigo,
-      vestidoNome: a.prova.bloqueio.vestido.nome,
-      casamentoData: a.prova.bloqueio.casamentoData,
-      checklistFeitos: a.checklist.filter((c) => c.feito).length,
-      checklistTotal: a.checklist.length,
-    }))
-    .sort((x, y) => {
-      // casamento mais próximo primeiro; sem data vai pro fim.
-      const tx = x.casamentoData?.getTime() ?? Number.POSITIVE_INFINITY;
-      const ty = y.casamentoData?.getTime() ?? Number.POSITIVE_INFINITY;
-      return tx - ty;
-    });
-
-  // Paginamos após ordenar em memória (a urgência por casamentoData é calculada aqui,
-  // não no banco) — assim a página N preserva a ordem global da fila.
-  const { skip, take } = paginar(opts.pagina, opts.tamanho);
-  const total = ordenados.length;
-  const itens = ordenados.slice(skip, skip + take);
+  const itens: AjustePendente[] = rows.map((a) => ({
+    id: a.id,
+    descricao: a.descricao,
+    provaDataReal: a.prova.dataReal,
+    noivaNome: a.prova.bloqueio.lead?.noivaNome ?? null,
+    leadId: a.prova.bloqueio.leadId,
+    bloqueioId: a.prova.bloqueioId,
+    vestidoId: a.prova.bloqueio.vestido.id,
+    vestidoCodigo: a.prova.bloqueio.vestido.codigo,
+    vestidoNome: a.prova.bloqueio.vestido.nome,
+    casamentoData: a.prova.bloqueio.casamentoData,
+    checklistFeitos: a.checklist.filter((c) => c.feito).length,
+    checklistTotal: a.checklist.length,
+  }));
   return { itens, total };
 }
