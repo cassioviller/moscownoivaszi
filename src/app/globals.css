@@ -1,59 +1,42 @@
 @import "tailwindcss";
 
-:root {
-  /* Neutros warm-tinted — DESIGN.md §2/§5. papel = marfim quente (≈ #fbf7f1,
-     hue 80): a luminância fica em ~98% DE PROPÓSITO p/ preservar o contraste do
-     texto (cinza-fumo continua ≥4.5:1) — a sensação de "marfim" vem do hue
-     quente + chroma, não de escurecer o fundo. papel-elevado fica mais claro
-     p/ as superfícies de papel nobre subirem do campo marfim. */
-  --color-papel: oklch(98% 0.011 80);
+/* Tailwind v4: definir tokens direto no @theme com valores reais.
+   O @theme exporta automaticamente como CSS vars (--color-papel, etc.)
+   e habilita as utilities (bg-papel, text-tinta, border-borda, ...).
+   NUNCA usar @theme inline { --x: var(--x) } — causa loop no PostCSS. */
+@theme {
+  /* Neutros warm-tinted — DESIGN.md §2/§5 */
+  --color-papel:         oklch(98% 0.011 80);
   --color-papel-elevado: oklch(99.3% 0.006 80);
-  --color-borda-suave: oklch(92% 0.005 40);
-  --color-borda: oklch(85% 0.005 40);
-  --color-cinza-fumo: oklch(55% 0.006 40);
-  --color-grafite: oklch(35% 0.008 40);
-  --color-tinta: oklch(15% 0.01 40);
+  --color-borda-suave:   oklch(92% 0.005 40);
+  --color-borda:         oklch(85% 0.005 40);
+  --color-cinza-fumo:    oklch(55% 0.006 40);
+  --color-grafite:       oklch(35% 0.008 40);
+  --color-tinta:         oklch(15% 0.01 40);
 
   /* Único acento — Bordô Profundo (≤5% de qualquer tela) */
-  --color-bordo: oklch(38% 0.08 25);
-  --color-bordo-hover: oklch(33% 0.09 25);
+  --color-bordo:         oklch(38% 0.08 25);
+  --color-bordo-hover:   oklch(33% 0.09 25);
 
-  /* Concierge Atelier — acentos quentes (derivados dos hex do DESIGN.md §5,
-     convertidos p/ OKLCH na convenção warm do projeto). EM USO no shell de
-     navegação (Fatia 2/3a): champagne nas divisórias institucionais e rose-dust
-     no hover dos itens. SÓ atmosfera — nunca CTA, foco ou status (DESIGN §6). */
-  --color-papel-suave: oklch(95.5% 0.009 70); /* surface-soft  #f7efe7 — superfície recuada (papel nobre) */
-  --color-champagne:   oklch(73% 0.06 80);    /* champagne     #c8a976 — bordas/ícones de luxo discreto */
-  --color-rose-dust:   oklch(79% 0.035 35);   /* rosé queimado #d8b6ad — hover/badges delicados */
+  /* Concierge Atelier — acentos quentes (DESIGN.md §5) */
+  --color-papel-suave:   oklch(95.5% 0.009 70);
+  --color-champagne:     oklch(73% 0.06 80);
+  --color-rose-dust:     oklch(79% 0.035 35);
 
-  /* Estrutura — prefixo --mn-* DE PROPÓSITO: NÃO entram no @theme para não
-     remapear o rounded-md / shadow-* padrão do Tailwind que as telas atuais
-     já usam. Consumir via valor arbitrário nas próximas fatias:
-     rounded-[var(--mn-radius-lg)], shadow-[var(--mn-shadow-soft)]. */
-  --mn-radius-md: 14px;
-  --mn-radius-lg: 22px;
-  --mn-shadow-soft:  0 12px 40px rgba(70, 40, 28, 0.06);
-  --mn-shadow-hover: 0 16px 48px rgba(70, 40, 28, 0.10);
+  /* Fontes — vars injetadas pelo Next.js no <html> */
+  --font-sans:    var(--font-geist-sans);
+  --font-mono:    var(--font-geist-mono);
+  --font-display: var(--font-display);
 }
 
-@theme inline {
-  --color-papel: var(--color-papel);
-  --color-papel-elevado: var(--color-papel-elevado);
-  --color-borda-suave: var(--color-borda-suave);
-  --color-borda: var(--color-borda);
-  --color-cinza-fumo: var(--color-cinza-fumo);
-  --color-grafite: var(--color-grafite);
-  --color-tinta: var(--color-tinta);
-  --color-bordo: var(--color-bordo);
-  --color-bordo-hover: var(--color-bordo-hover);
-  --color-papel-suave: var(--color-papel-suave);
-  --color-champagne: var(--color-champagne);
-  --color-rose-dust: var(--color-rose-dust);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  /* Serifa editorial — habilita a utility font-display. Uso restrito a
-     wordmark/títulos especiais; NÃO é a body font (que segue em --font-sans). */
-  --font-display: var(--font-display);
+/* Estrutura — prefixo --mn-* fora do @theme para não remapear
+   o rounded-md / shadow-* padrão do Tailwind.
+   Consumir via valor arbitrário: rounded-[var(--mn-radius-lg)]. */
+:root {
+  --mn-radius-md:    14px;
+  --mn-radius-lg:    22px;
+  --mn-shadow-soft:  0 12px 40px rgba(70, 40, 28, 0.06);
+  --mn-shadow-hover: 0 16px 48px rgba(70, 40, 28, 0.10);
 }
 
 body {
@@ -64,16 +47,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Inputs de texto a ≥16px evitam o zoom-on-focus do Safari iOS (uso em tablet no
-   salão, PRODUCT.md). Regra fora de @layer → vence as utilities do Tailwind sem
-   precisar editar cada form. Não afeta o desktop de forma perceptível (15→16px). */
+/* Inputs ≥16px evitam zoom-on-focus no Safari iOS (tablet no salão — PRODUCT.md) */
 input:not([type="radio"]):not([type="checkbox"]):not([type="submit"]),
 textarea,
 select {
   font-size: 16px;
 }
 
-/* DESIGN.md: respeitar prefers-reduced-motion */
+/* Respeitar prefers-reduced-motion — DESIGN.md */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
