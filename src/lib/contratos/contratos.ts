@@ -8,16 +8,21 @@ import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos } from "@/lib/dinheiro";
 import { calcularTotais } from "@/lib/orcamentos/orcamentos";
 import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
+import { parseDiaUTC } from "@/lib/disponibilidade/datas";
 import type { DadosContrato } from "@/lib/contratos/pdf";
 import type { ContratoStatus } from "@/generated/prisma/client";
 
 // "YYYY-MM-DD" → DateTime meia-noite UTC; "" / null → null. Lança em data inválida.
+// Delega ao parser estrito do motor, que rejeita datas impossíveis ("2027-02-30")
+// que a checagem antiga (isNaN) deixava passar (rolavam para o mês seguinte).
 function diaParaData(s: string | null | undefined): Date | null {
   const t = (s ?? "").trim();
   if (t === "") return null;
-  const d = new Date(`${t}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) throw new Error("data inválida");
-  return d;
+  try {
+    return parseDiaUTC(t);
+  } catch {
+    throw new Error("data inválida");
+  }
 }
 
 function ehErroP2002(e: unknown): boolean {

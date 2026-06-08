@@ -9,6 +9,7 @@ import type { Lead, Prisma } from "@/generated/prisma/client";
 import { LeadOrigem } from "@/generated/prisma/client";
 import { estagioDaNoiva, noivaAtiva, type FatosJornada, type EstagioChave } from "./jornada";
 import { hojeUTC } from "@/lib/tempo";
+import { parseDiaUTC } from "@/lib/disponibilidade/datas";
 
 // Lead + presença do interesse (id só, p/ a lista decidir "Preencher" vs "Editar").
 export type LeadListado = Prisma.LeadGetPayload<{ include: { interesse: { select: { id: true } } } }>;
@@ -43,13 +44,17 @@ function parseOrigem(raw: string | undefined): LeadOrigem {
 
 // Data-só "YYYY-MM-DD" → DateTime à meia-noite UTC. Guardar e exibir em UTC mantém
 // o dia do calendário estável (sem off-by-one por fuso). Vazio é permitido (null).
+// Delega ao parser estrito do motor (parseDiaUTC), que também rejeita datas
+// impossíveis ("2027-02-30") — antes passavam e rolavam para março, contaminando
+// a contagem regressiva e o agrupamento da jornada.
 function parseData(raw: string | undefined): Date | null {
   const v = (raw ?? "").trim();
   if (v === "") return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error("Informe uma data de casamento válida");
-  const d = new Date(`${v}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) throw new Error("Informe uma data de casamento válida");
-  return d;
+  try {
+    return parseDiaUTC(v);
+  } catch {
+    throw new Error("Informe uma data de casamento válida");
+  }
 }
 
 function validar(input: NovaNoiva): {
