@@ -18,7 +18,7 @@ import { hojeYMD } from "@/lib/financeiro/datas";
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
 import { TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
-import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo, FiltroIntervalo, rotuloCompetencia } from "../../ui";
+import { inputBase, botaoSuave, botaoPrincipal, brl, dataFmt, SecaoTitulo, FiltroIntervalo, rotuloCompetencia, Aviso } from "../../ui";
 import {
   definirSalarioAction,
   removerSalarioAction,
@@ -96,7 +96,7 @@ export default async function FolhaPage({
         <p className="text-[14px] text-cinza-fumo">Salário-base do atelier, geração da folha e o pagamento de cada colaborador.</p>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <Aviso tom={sp.ok ? "ok" : "erro"}>{aviso}</Aviso>}
 
       {/* — Salários recorrentes — */}
       <section className="flex flex-col gap-3">

@@ -39,6 +39,25 @@ export function SecaoTitulo({ children }: { children: React.ReactNode }) {
   return <h2 className="text-[12px] font-medium uppercase tracking-[0.2em] text-cinza-fumo">{children}</h2>;
 }
 
+// Aviso do atelier — a confirmação após uma ação. Calmo, não banner: hairline + superfície
+// recuada (papel nobre) e uma marca discreta. Sucesso veste champagne (luxo silencioso);
+// erro veste bordô (atenção, DESIGN §6). role=status p/ leitores de tela.
+export function Aviso({ children, tom = "ok" }: { children: React.ReactNode; tom?: "ok" | "erro" }) {
+  const erro = tom === "erro";
+  return (
+    <p
+      role="status"
+      className={[
+        "flex items-center gap-2.5 rounded-[var(--mn-radius-md)] border px-4 py-3 text-[13px]",
+        erro ? "border-bordo/25 bg-bordo/5 text-bordo" : "border-champagne/40 bg-papel-suave text-grafite",
+      ].join(" ")}
+    >
+      <span aria-hidden className={`text-[12px] ${erro ? "text-bordo" : "text-champagne"}`}>{erro ? "•" : "✓"}</span>
+      {children}
+    </p>
+  );
+}
+
 // — Filtro de intervalo (lente de visualização: ?ini=&fim=) —
 // Form GET com Início/Fim já pré-preenchidos (1º/último dia do mês por padrão).
 // `hidden` preserva outros params da URL (status, colaborador…) ao submeter.

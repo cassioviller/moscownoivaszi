@@ -12,7 +12,7 @@ import { TAMANHO_PAGINA } from "@/lib/paginacao";
 import { Paginacao } from "@/components/Paginacao";
 import { hojeYMD } from "@/lib/financeiro/datas";
 import type { ContaPagarTipo } from "@/generated/prisma/client";
-import { inputBase, botaoSuave, botaoPrincipal, botaoLinha, brl, dataFmt, Card, FiltroIntervalo } from "../ui";
+import { inputBase, botaoSuave, botaoPrincipal, botaoLinha, brl, dataFmt, Card, FiltroIntervalo, Aviso } from "../ui";
 import { lancarDespesaAction, removerContaAction, pagarContasAction, estornarPagamentoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +87,7 @@ export default async function PagarPage({
         <Card rotulo="Em atraso" valor={resumo.emAtraso} destaque />
       </section>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <Aviso tom={ok ? "ok" : "erro"}>{aviso}</Aviso>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav className="flex flex-wrap gap-2">

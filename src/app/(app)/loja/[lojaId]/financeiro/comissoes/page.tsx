@@ -10,7 +10,7 @@ import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { previewComissaoIntervalo, listarFechamentos } from "@/lib/financeiro/comissao";
 import { competenciaAtual } from "@/lib/financeiro/datas";
 import { lerFiltroFinanceiro } from "@/lib/financeiro/intervalo-params";
-import { botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card, FiltroIntervalo } from "../ui";
+import { botaoSuave, botaoPrincipal, brl, dataFmt, rotuloCompetencia, SecaoTitulo, Card, FiltroIntervalo, Aviso } from "../ui";
 import { fecharCompetenciaAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +71,7 @@ export default async function ComissoesPage({
         <p className="text-[14px] text-cinza-fumo">Quanto cada vendedora fez no período — e o que isso vira de comissão.</p>
       </header>
 
-      {aviso && <p className="text-[13px] text-grafite">{aviso}</p>}
+      {aviso && <Aviso tom={sp.ok ? "ok" : "erro"}>{aviso}</Aviso>}
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} />
