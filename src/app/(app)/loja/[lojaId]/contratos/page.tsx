@@ -39,7 +39,7 @@ export default async function ContratosPage({
         <Link href={`/loja/${lojaId}`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
           ← {sc.loja.nome}
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Contratos</h1>
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Contratos</h1>
         <p className="text-[14px] text-cinza-fumo">A venda firmada de cada noiva.</p>
       </header>
 

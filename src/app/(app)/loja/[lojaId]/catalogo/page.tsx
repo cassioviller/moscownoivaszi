@@ -34,7 +34,7 @@ export default async function CatalogoPage({
           >
             ← {sc.loja.nome}
           </Link>
-          <h1 className="text-[24px] font-light tracking-tight text-tinta">Catálogo</h1>
+          <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Catálogo</h1>
           <p className="text-[14px] text-cinza-fumo">
             As características que descrevem vestidos e interesses — e conectam um ao outro.
           </p>

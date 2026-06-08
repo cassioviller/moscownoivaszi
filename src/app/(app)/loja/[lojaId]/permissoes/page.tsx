@@ -29,7 +29,7 @@ export default async function PermissoesPage() {
         >
           ← {sc.loja.nome}
         </Link>
-        <h1 className="text-[24px] font-light tracking-tight text-tinta">Permissões</h1>
+        <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Permissões</h1>
         <p className="text-[13px] text-cinza-fumo">
           O que cada perfil pode fazer nesta loja. Sem personalização, segue o modelo global.
         </p>

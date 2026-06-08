@@ -45,7 +45,7 @@ export default async function CalendarioPage({
           return (
             <Link
               key={a.id}
-              href={`/loja/${lojaId}/calendario?aba=${a.id}`}
+              href={`/loja/${lojaId}/calendario?aba=${a.id}${sp.ref ? `&ref=${encodeURIComponent(sp.ref)}` : ""}`}
               aria-current={ativa ? "page" : undefined}
               className={`-mb-px shrink-0 rounded-sm border-b-2 pb-3 text-[14px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo ${
                 ativa

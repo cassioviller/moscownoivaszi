@@ -188,7 +188,7 @@ export default async function AtendimentosPage({
           ← {sc.loja.nome}
         </Link>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-[24px] font-light tracking-tight text-tinta">
+          <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">
             {historico ? "Atendimentos anteriores" : "Atendimentos"}
           </h1>
           <Link href={`/loja/${lojaId}/atendimentos/novo`} className={botaoSuave}>
