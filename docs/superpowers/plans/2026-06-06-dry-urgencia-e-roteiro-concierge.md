@@ -1,5 +1,15 @@
 # DRY da urgência + roteiro Concierge Atelier — Implementation Plan
 
+> **✅ CONCLUÍDO e verificado (2026-06-08).** As três fases foram entregues na `main`, com
+> `tsc --noEmit` limpo e `vitest run` verde (427 testes) a cada commit, e o C6 verificado
+> visualmente no app (desktop + 375px). Mapa fase → commit:
+>
+> - **Fase A** (DRY urgência): `4f9a49a` (helper SP) · `2d10f3b` (reservas) · `de9c383` (ajustes) · `e3ff408` (calendário).
+> - **Fase B** (verificação Noivas): `6186c50` (playwright) · `09dbecf` (`verify_b1.mjs`).
+> - **Fase C** (Concierge nas telas): C1/C2 acervo `f0192e1`/`c6a45b0`/`ec67b67` · C3 agenda→calendário `c5aa7fc` · C4 ajustes `d330b20` · C5 reservas `6af45ec` · C6 financeiro `735ad38` (serifa) + **refino**: `3221e3a` (bordô como joia nas linhas), `6a212f9` (componente `Aviso` ok/erro), `a5190b8` (faixas como régua) · verificação visual `verify_c6.mjs`.
+>
+> Resumo no `docs/estado-atual.md` (seção "Concierge Atelier — roteiro das telas + DRY da urgência").
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) ou superpowers:executing-plans para implementar task-a-task. Os passos usam checkbox (`- [ ]`) para acompanhamento.
 
 **Goal:** (A) Centralizar a lógica de urgência do casamento (hoje duplicada em reservas, ajustes e na aba do calendário) no helper `contagem-casamento`, alinhando todos à convenção de tempo de São Paulo; (B) verificar visualmente as telas de Noivas já refinadas; (C) levar a direção Concierge Atelier às telas restantes do roteiro (Vestidos/Acervo, Detalhe do vestido, Agenda, Ajustes, Reservas, Financeiro), cada uma como sub-projeto guiado por revisão.

@@ -1,6 +1,33 @@
 # Estado atual — Moscow Noivas
 
-> Snapshot de onde paramos. Atualizado em **2026-06-01**. Envelhece — confira os commits e os testes antes de confiar.
+> Snapshot de onde paramos. Atualizado em **2026-06-08**. Envelhece — confira os commits e os testes antes de confiar.
+
+## Concierge Atelier — roteiro das telas + DRY da urgência (2026-06-08) ✅
+
+Plano: `docs/superpowers/plans/2026-06-06-dry-urgencia-e-roteiro-concierge.md` (concluído e verificado).
+
+Fechou o roteiro de direção criativa **Concierge Atelier** (`docs/design/`) nas telas operacionais e
+unificou a contagem de urgência do casamento. Três fases, todas na `main` com gates verdes (`tsc` limpo,
+427 testes) e o módulo Financeiro verificado visualmente no app (desktop + 375px).
+
+- **Fase A — DRY da urgência:** a lógica do "faltam N dias / urgente ≤14d" deixou de ser recopiada em
+  reservas/ajustes/calendário e passou a viver em `src/lib/leads/contagem-casamento.ts` (`diasAteCasamento`,
+  `casamentoUrgente`, `JANELA_URGENCIA_DIAS`), na convenção de dia de São Paulo (`hojeUTC` de `@/lib/tempo`,
+  meia-noite UTC) — some um off-by-one latente entre 21h–24h. Puro e testado.
+- **Fase B — verificação visual de Noivas:** `verify_b1.mjs` (Playwright/Chromium) com o fluxo login +
+  seleção de loja + checklist da lista e do detalhe.
+- **Fase C — Concierge nas telas restantes (C1→C6):** acervo/detalhe do vestido como peça (capa 3:4,
+  lookbook), agenda→calendário, ajustes, reservas e **financeiro**. No financeiro, além dos títulos em
+  serifa, três refinos presentacionais (sem tocar regra/rota/banco): (1) **bordô como joia** — a ação que
+  se repete por linha (Receber/Pagar) virou contorno bordô (`botaoLinha` em `ui.tsx`), deixando o bordô
+  sólido para os momentos singulares (Lançar/Gerar/Salvar/Confirmar); (2) **componente `Aviso`** calmo com
+  intenção ok (champagne) / erro (bordô), no lugar da linha cinza de log; (3) **faixas de comissão como
+  régua legível** ("De __ até __ rende __% + bônus __") no lugar da grade de planilha. Verificação visual:
+  `verify_c6.mjs` (7 telas, screenshots em `/tmp/c6`).
+
+Tokens reusados de `globals.css` (`bordo`/`champagne`/`papel-suave`/`borda-suave`/`font-display`) — nenhum
+token novo. Nota: o *submit* das ações do financeiro não foi exercitado na verificação (não mexer em dados);
+o `Aviso` foi validado pelo caminho de render `?ok=`/`?erro=`.
 
 ## Agendar atendimento (2026-06-01)
 
