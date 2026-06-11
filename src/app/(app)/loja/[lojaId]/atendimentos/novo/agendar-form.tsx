@@ -111,7 +111,7 @@ export function AgendarForm({
               <option value="">Selecione a reserva…</option>
               {reservas.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.codigo} · {r.nome}{r.casamentoData ? ` — casamento ${fmtCasamento.format(new Date(r.casamentoData))}` : ""}
+                  Vestido {r.codigo} · {r.nome}{r.casamentoData ? ` — casamento ${fmtCasamento.format(new Date(r.casamentoData))}` : ""}
                 </option>
               ))}
             </select>
