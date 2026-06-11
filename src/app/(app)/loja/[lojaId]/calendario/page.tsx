@@ -34,7 +34,7 @@ export default async function CalendarioPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ aba?: string; ref?: string; ini?: string; fim?: string; ok?: string; erro?: string }>;
+  searchParams: Promise<{ aba?: string; ref?: string; dia?: string; ini?: string; fim?: string; ok?: string; erro?: string }>;
 }) {
   const sc = await exigirAcesso("leads");
   const { lojaId } = await params;
@@ -83,7 +83,7 @@ export default async function CalendarioPage({
         {
           (
             {
-              mes: <AbaMes lojaId={lojaId} refParam={sp.ref} />,
+              mes: <AbaMes lojaId={lojaId} refParam={sp.ref} dia={sp.dia} />,
               vestidos: <AbaVestidos lojaId={lojaId} ini={sp.ini} fim={sp.fim} />,
               atendimentos: <AbaAtendimentos lojaId={lojaId} refParam={sp.ref} />,
               "provas-ajustes": <AbaProvasAjustes lojaId={lojaId} ini={sp.ini} fim={sp.fim} />,
