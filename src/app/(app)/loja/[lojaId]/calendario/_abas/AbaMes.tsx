@@ -74,7 +74,8 @@ export async function AbaMes({ lojaId, refParam, dia }: { lojaId: string; refPar
                 </span>
                 {info?.temFinanceiro && <span className="text-[10px] text-champagne">R$</span>}
               </span>
-              <span className="flex flex-col gap-0.5">
+              {/* Desktop/tablet: mini-agenda detalhada */}
+              <span className="hidden flex-col gap-0.5 sm:flex">
                 {itens.slice(0, MAX_ITENS).map((i, idx) => (
                   <span key={idx} className={`truncate text-[10px] leading-tight ${i.tipo === "casamento" ? "text-bordo" : "text-grafite"}`}>
                     {rotuloItem(i)}
@@ -82,6 +83,23 @@ export async function AbaMes({ lojaId, refParam, dia }: { lojaId: string; refPar
                 ))}
                 {extra > 0 && <span className="text-[10px] text-cinza-fumo">+{extra}</span>}
               </span>
+              {/* Mobile: contagem por categoria */}
+              {itens.length > 0 && (
+                <span className="flex flex-col gap-0.5 sm:hidden">
+                  {(() => {
+                    const nC = itens.filter((i) => i.tipo === "casamento").length;
+                    const nP = itens.filter((i) => i.tipo === "prova").length;
+                    const nA = itens.filter((i) => i.tipo === "atendimento").length;
+                    return (
+                      <>
+                        {nC > 0 && <span className="text-[10px] text-bordo">{nC} casamento{nC > 1 ? "s" : ""}</span>}
+                        {nP > 0 && <span className="text-[10px] text-grafite">{nP} prova{nP > 1 ? "s" : ""}</span>}
+                        {nA > 0 && <span className="text-[10px] text-grafite">{nA} atend.</span>}
+                      </>
+                    );
+                  })()}
+                </span>
+              )}
             </Link>
           );
         })}
