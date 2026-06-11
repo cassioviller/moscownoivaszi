@@ -10,6 +10,11 @@ import { PainelAtencoes } from "@/components/dashboard/painel-atencoes";
 import { DestaqueAtelier } from "@/components/dashboard/destaque-atelier";
 import { CardMetrica } from "@/components/dashboard/card-metrica";
 import { PainelVazio } from "@/components/dashboard/painel-vazio";
+import { detalheDoDia } from "@/lib/calendario/dia";
+import { vencidasDaLoja } from "@/lib/financeiro/vencidas";
+import { hojeYMD, hojeUTC } from "@/lib/tempo";
+import { DiaDoAtelier } from "@/components/dashboard/dia-do-atelier";
+import { AvisoVencidas } from "@/components/dashboard/aviso-vencidas";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +22,12 @@ export default async function DashboardLoja() {
   const sc = await getSessaoComLoja();
   if (!sc) return null;
 
-  const [painel, podeVerNoivas] = await Promise.all([
+  const podeFinanceiro = await podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "ver");
+  const [painel, podeVerNoivas, diaHoje, vencidas] = await Promise.all([
     carregarPainel(sc.loja.id),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
+    detalheDoDia(sc.loja.id, hojeYMD(), { financeiro: podeFinanceiro }),
+    podeFinanceiro ? vencidasDaLoja(sc.loja.id, hojeUTC()) : Promise.resolve(null),
   ]);
 
   const agora = new Date();
@@ -44,6 +52,14 @@ export default async function DashboardLoja() {
 
       {/* Divisória atmosférica — champagne como linha institucional, não decoração */}
       <div aria-hidden className="h-px bg-champagne/40" />
+
+      {/* Hoje no atelier — o coração do dia (agenda + financeiro, este só com permissão) */}
+      <section className="flex flex-col gap-4">
+        <h2 className="font-display text-[18px] font-light text-tinta">Hoje no atelier</h2>
+        <DiaDoAtelier lojaId={sc.loja.id} dia={diaHoje} />
+      </section>
+
+      {vencidas && <AvisoVencidas lojaId={sc.loja.id} vencidas={vencidas} />}
 
       {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3).
           Strip voltado à operação da noiva; sem leads.ver, o foco vai pro acervo abaixo. */}
