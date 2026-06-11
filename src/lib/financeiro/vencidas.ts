@@ -3,7 +3,8 @@
 // pagar (contas). Alimenta a "Atenção imediata" de financeiro no Início. Escopo de loja.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { decParaString } from "@/lib/dinheiro";
+import { decParaCentavos, deCentavos } from "@/lib/dinheiro";
+import type { Prisma } from "@/generated/prisma/client";
 
 export type Vencidas = {
   receberQtd: number;
@@ -18,12 +19,13 @@ export async function vencidasDaLoja(lojaId: string, hoje: Date): Promise<Vencid
     db.parcela.findMany({ where: { status: "PREVISTA", vencimento: { lt: hoje } }, select: { valorPrevisto: true } }),
     db.contaPagar.findMany({ where: { status: "PREVISTA", vencimento: { lt: hoje } }, select: { valorPrevisto: true } }),
   ]);
-  const soma = (rows: { valorPrevisto: unknown }[]) =>
-    rows.reduce((acc, r) => acc + Number(decParaString(r.valorPrevisto as never)), 0);
+  // Soma em CENTAVOS inteiros (convenção do módulo financeiro — sem float).
+  const somaCentavos = (rows: { valorPrevisto: Prisma.Decimal }[]) =>
+    rows.reduce((acc, r) => acc + decParaCentavos(r.valorPrevisto), 0);
   return {
     receberQtd: parcelas.length,
-    receberTotal: String(soma(parcelas)),
+    receberTotal: deCentavos(somaCentavos(parcelas)),
     pagarQtd: contas.length,
-    pagarTotal: String(soma(contas)),
+    pagarTotal: deCentavos(somaCentavos(contas)),
   };
 }

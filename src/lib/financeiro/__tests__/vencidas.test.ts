@@ -34,8 +34,8 @@ describe("vencidasDaLoja", () => {
   it("conta só PREVISTA com vencimento < hoje", async () => {
     const v = await vencidasDaLoja(loja, hoje);
     expect(v.receberQtd).toBe(1);
-    expect(v.receberTotal).toBe("300");
+    expect(v.receberTotal).toBe("300.00");
     expect(v.pagarQtd).toBe(1);
-    expect(v.pagarTotal).toBe("150");
+    expect(v.pagarTotal).toBe("150.00");
   });
 });
