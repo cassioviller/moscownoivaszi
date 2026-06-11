@@ -108,7 +108,7 @@ export function AgendarForm({
             <p className="text-[13px] text-cinza-fumo">Esta noiva não tem reserva de casamento. Crie a reserva antes de agendar a prova.</p>
           ) : (
             <select value={bloqueioId} onChange={(e) => setBloqueioId(e.target.value)} className={campo} aria-label="Reserva">
-              <option value="">Selecione a reserva…</option>
+              <option value="">Selecione o vestido reservado…</option>
               {reservas.map((r) => (
                 <option key={r.id} value={r.id}>
                   Vestido {r.codigo} · {r.nome}{r.casamentoData ? ` — casamento ${fmtCasamento.format(new Date(r.casamentoData))}` : ""}
