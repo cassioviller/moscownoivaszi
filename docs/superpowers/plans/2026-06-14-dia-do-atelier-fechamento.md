@@ -137,28 +137,32 @@ Expected: commit criado na `main`.
 
 ---
 
-## Task 3: Limpar artefatos de debug (REQUER CONFIRMAÇÃO DO DONO)
+## Task 3: Versionar os artefatos de debug (decisão do dono: guardar)
 
 **Files:**
-- Remove: `repro_prova.mjs`, `repro_prova2.mjs`, `repro_prova3.mjs`, `repro_prova4.mjs`, `verify_dia.mjs`
+- Move: `repro_prova.mjs`, `repro_prova2.mjs`, `repro_prova3.mjs`, `repro_prova4.mjs`, `verify_dia.mjs` → `scripts/repro/`
+- Create: `scripts/repro/README.md`
 
-CLAUDE.md: **deletar qualquer arquivo requer confirmação explícita.** Não execute sem o "ok" do dono. Estes 5 `.mjs` são scripts Playwright de diagnóstico (4 da investigação Prova→Atendimento, já resolvida em `31ed9d2`/`e06a987`; 1 da verificação visual do Dia do atelier). São descartáveis, mas a decisão é do dono.
+Decisão do dono (2026-06-14): **não deletar** — versionar os 5 scripts Playwright de diagnóstico em `scripts/repro/` (com README) para reuso. Não entram na suíte nem em CI; são ferramentas de diagnóstico manual.
 
-- [ ] **Step 1: Confirmar com o dono**
-
-Perguntar: "Posso deletar os 5 scripts de debug (`repro_prova*.mjs`, `verify_dia.mjs`)? Alternativa: movê-los para `scripts/repro/` versionado, ou adicioná-los ao `.gitignore`."
-
-- [ ] **Step 2 (se o dono autorizar deletar): remover e confirmar**
+- [x] **Step 1: Mover os scripts para `scripts/repro/`**
 
 ```bash
-rm repro_prova.mjs repro_prova2.mjs repro_prova3.mjs repro_prova4.mjs verify_dia.mjs
-git status --porcelain
+mkdir -p scripts/repro
+mv repro_prova.mjs repro_prova2.mjs repro_prova3.mjs repro_prova4.mjs verify_dia.mjs scripts/repro/
 ```
-Expected: `git status` limpo (eram não rastreados; nada a commitar).
 
-- [ ] **Step 2-alt (se o dono preferir guardar): ignorar no git**
+- [x] **Step 2: Documentar em `scripts/repro/README.md`**
 
-Adicionar ao `.gitignore` uma linha `repro_*.mjs` e `verify_*.mjs`, ou mover para `scripts/repro/`. Seguir a preferência expressa pelo dono.
+README descrevendo cada script, o pré-requisito (app em `localhost:5000` + `REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE`) e o contexto (investigação Prova→Atendimento e verificação visual do Dia do atelier).
+
+- [x] **Step 3: Commit**
+
+```bash
+git add scripts/repro/
+git commit -m "chore(scripts): versiona diagnósticos Playwright em scripts/repro/ (+README)"
+```
+Expected: commit criado na `main`.
 
 ---
 
