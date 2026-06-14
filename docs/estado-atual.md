@@ -2,6 +2,28 @@
 
 > Snapshot de onde paramos. Atualizado em **2026-06-14**. Envelhece — confira os commits e os testes antes de confiar.
 
+## Cobrança / inadimplência (2026-06-14) ✅ — Fatia 2 de 3 melhorias do financeiro
+
+Spec: `docs/superpowers/specs/2026-06-14-cobranca-inadimplencia-design.md`. Plano:
+`docs/superpowers/plans/2026-06-14-cobranca-inadimplencia.md` (6 tarefas, por subagentes).
+Commits `bfd03d5`…`<fix linkWhatsApp>`. `main` com gates verdes (`tsc` limpo, **467 testes**).
+
+Régua de cobrança no tom Concierge: **ver** quem está em atraso, **agir** e **registrar**.
+- **Motor** `src/lib/financeiro/cobranca.ts`: `faixaDeAtraso` (pura — 1-30/31-60/60+), `linkWhatsApp`
+  (pura — deep-link `wa.me`, sem API; prefixa DDI 55 só p/ número nacional), `agingDaLoja`
+  (parcelas PREVISTA vencidas agrupadas por faixa e por noiva, mais antigo primeiro),
+  `historicoCobranca`, `registrarCobranca` (por noiva; valida lead da loja + canal).
+- **Dados**: `RegistroCobranca` (nova tabela em `TENANT_MODELS`) `{ leadId, data, canal, observacao }`
+  + enum `CobrancaCanal` (WHATSAPP/TELEFONE/PRESENCIAL/OUTRO).
+- **Tela** `/loja/[id]/financeiro/cobranca`: 3 cards de faixa (60+ em bordô), lista de inadimplentes
+  por noiva com **Abrir WhatsApp** (mensagem pronta, gentil), **Registrar cobrança** (`<details>` +
+  form) e histórico inline; estado vazio gentil. Gate `financeiro:ver`; registrar exige `financeiro:editar`.
+  Links de entrada a partir de Contas a receber e do bloco "Em atraso" da Projeção.
+- **Sem mensageria automática** (YAGNI): o WhatsApp é só um link; o histórico nasce do registro manual.
+
+**Nota:** mesma pendência da Projeção — reiniciar o dev server `:5000` p/ pegar o client Prisma
+após a migração. **Próxima fatia:** (3) DRE por categoria.
+
 ## Projeção de caixa (2026-06-14) ✅ — Fatia 1 de 3 melhorias do financeiro
 
 Spec: `docs/superpowers/specs/2026-06-14-projecao-de-caixa-design.md`. Plano:
