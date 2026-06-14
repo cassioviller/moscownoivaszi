@@ -2,6 +2,26 @@
 
 > Snapshot de onde paramos. Atualizado em **2026-06-14**. Envelhece — confira os commits e os testes antes de confiar.
 
+## DRE por categoria (2026-06-14) ✅ — Fatia 3 de 3 (financeiro completo)
+
+Spec: `docs/superpowers/specs/2026-06-14-dre-por-categoria-design.md`. Plano:
+`docs/superpowers/plans/2026-06-14-dre-por-categoria.md` (2 tarefas). Commits `b10d524`/`8495baf`
++ ajuste de escopo de loja. `main` com gates verdes (`tsc` limpo, **473 testes**).
+
+"Resultado do mês" simples, **regime de caixa**: receitas − despesas por categoria = resultado.
+- **Motor** `src/lib/financeiro/dre.ts` (leitura pura, **sem tabela/migração**): `rotuloCategoria`
+  (pura — categoria livre, com fallback no rótulo do tipo: Salários/Comissões/Fornecedores/Despesas)
+  + `dreDoMes(lojaId, competencia)` → receitas (`Parcela` PAGA por `recebidoEm`) − despesas
+  (`PagamentoItem` por `pagamento.data`, agrupado por `rotuloCategoria`, maior primeiro) = resultado.
+  Competência inválida → DRE zerado.
+- **Tela** `/loja/[id]/financeiro/dre`: seletor de competência (mês ‹ ›), Recebimentos, Despesas por
+  categoria, Resultado (bordô se negativo), estado vazio. Gate `financeiro:ver`, read-only. Link do Fluxo.
+- Receita é **uma linha** (não há categoria de receita no dado). Sem gráfico/export (YAGNI).
+
+**As 3 fatias do financeiro estão fechadas:** Projeção de caixa, Cobrança/inadimplência e DRE por
+categoria. Nota operacional comum: reiniciar o dev server `:5000` para o client Prisma pegar as
+migrações da sessão (Projeção e Cobrança criaram tabelas; o DRE não).
+
 ## Cobrança / inadimplência (2026-06-14) ✅ — Fatia 2 de 3 melhorias do financeiro
 
 Spec: `docs/superpowers/specs/2026-06-14-cobranca-inadimplencia-design.md`. Plano:
