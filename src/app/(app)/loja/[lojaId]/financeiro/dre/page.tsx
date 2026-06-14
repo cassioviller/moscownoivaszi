@@ -19,11 +19,11 @@ export default async function DREPage({
   params: Promise<{ lojaId: string }>;
   searchParams: Promise<{ comp?: string }>;
 }) {
-  await exigirAcesso("financeiro");
+  const sc = await exigirAcesso("financeiro");
   const { lojaId } = await params;
   const sp = await searchParams;
   const comp = competenciaValida(sp.comp ?? "") ? sp.comp! : competenciaAtual();
-  const dre = await dreDoMes(lojaId, comp);
+  const dre = await dreDoMes(sc.loja.id, comp);
 
   const [y, m] = comp.split("-").map(Number);
   const prev = m === 1 ? comp2(y - 1, 12) : comp2(y, m - 1);
