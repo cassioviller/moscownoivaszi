@@ -56,7 +56,7 @@ pagar isso?"* — e hoje o sistema não responde.
 | Tipo de projeção | **Saldo projetado** (com saldo de partida), não fluxo líquido. |
 | Saldo de partida | **Saldo de referência persistido**: `{ dataReferencia, valor }`; saldo de hoje = referência + realizado(ref→hoje). |
 | Vencidos em aberto | **Bloco "Em atraso" separado**, fora da curva. |
-| Horizonte | Selecionável **30 / 60 / 90 dias** (default **90**), via `?h=`. |
+| Horizonte | Selecionável **30 / 60 / 90 dias** (default **90**), via `?h=`. Janela `[hoje, hoje+H]`. |
 | Visual | **Lista dia a dia** (só dias com movimento), **sem gráfico** (DESIGN §13). |
 
 ## 5. Modelo de dados (uma tabela nova)
@@ -126,7 +126,9 @@ projecaoCaixa(lojaId, { horizonteDias = 90 }): Promise<{
 }>
 ```
 
-- Janela da curva: `(hoje, hoje + H]` (H ∈ {30,60,90}; default 90).
+- Janela da curva: `[hoje, hoje + H]` (H ∈ {30,60,90}; default 90) — **inclui** vencimentos de
+  hoje (que não são atraso: `ehAtrasada` usa `vencimento < hoje`). Partição completa por
+  vencimento: `< hoje` → atraso; `[hoje, hoje+H]` → curva; `> hoje+H` → além do horizonte.
 - Recebíveis: `Parcela` `status=PREVISTA`, `vencimento` na janela → `entradasC` por dia.
 - A pagar: `ContaPagar` `status=PREVISTA`, `vencimento` na janela → `saidasC` por dia.
 - `emAtraso` = `resumoReceber(lojaId).emAtraso` e `resumoPagar(lojaId).emAtraso` (já existem;
