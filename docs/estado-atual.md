@@ -2,6 +2,32 @@
 
 > Snapshot de onde paramos. Atualizado em **2026-06-14**. Envelhece — confira os commits e os testes antes de confiar.
 
+## Projeção de caixa (2026-06-14) ✅ — Fatia 1 de 3 melhorias do financeiro
+
+Spec: `docs/superpowers/specs/2026-06-14-projecao-de-caixa-design.md`. Plano:
+`docs/superpowers/plans/2026-06-14-projecao-de-caixa.md` (7 tarefas, executado por subagentes).
+Commits `cbde207`…`b6fdedb`. `main` com gates verdes (`tsc` limpo, **457 testes**).
+
+Enquanto o S7 (Fluxo de caixa) mostra o **realizado**, esta fatia mostra o **futuro projetado**:
+a partir de um saldo de referência, soma recebíveis e subtrai contas a pagar **por vencimento**
+e responde *"em que dia o caixa fica negativo?"*. Leitura quase pura sobre `Parcela`/`ContaPagar`.
+
+- **Âncora** `SaldoReferencia` (nova tabela, em `TENANT_MODELS`): `{ dataReferencia, valor }`. O
+  registro mais recente ≤ hoje é a âncora ativa. Convenção: `valor` = saldo no início do dia da
+  âncora; o realizado conta `[âncora, hoje]`. `src/lib/financeiro/saldo-referencia.ts`
+  (`definirSaldoReferencia`, `ancoraAtiva`, `saldoDeHoje` = âncora + `resumoCaixaIntervalo` do S7).
+- **Motor** `src/lib/financeiro/projecao.ts`: `montarCurva` (pura — curva dia a dia, menor saldo,
+  primeiro dia negativo) + `projecaoCaixa` (curva de quem vence em `[hoje, hoje+H]`, H∈{30,60,90};
+  vencidos em aberto vão num bloco **"Em atraso" fora da curva**, via `resumoReceber/Pagar.emAtraso`).
+- **Tela** `/loja/[id]/financeiro/projecao`: saldo de hoje, bloco "Em atraso", veredito
+  ("fica negativo em DD/MM" em bordô), curva dia a dia e seletor de horizonte; estado vazio
+  convidando a cadastrar o saldo. Gate `financeiro:ver`; registrar saldo exige `financeiro:editar`
+  (ação em `projecao/actions.ts`). Link a partir do Fluxo de caixa. Verificação: `scripts/repro/verify_projecao.mjs`.
+
+**Nota operacional:** o dev server `:5000` que subiu antes da migração fica com o client Prisma
+defasado (tela dá erro até reiniciar). Código verificado em processo novo + suíte; reiniciar o dev
+server resolve. **Próximas fatias:** (2) Régua de cobrança/inadimplência, (3) DRE por categoria.
+
 ## Dia do atelier — Início + Calendário (2026-06-11 → fechado 2026-06-14) ✅
 
 Spec: `docs/superpowers/specs/2026-06-11-calendario-mes-painel-central-design.md`. Decisão:
