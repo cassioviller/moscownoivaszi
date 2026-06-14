@@ -1,6 +1,47 @@
 # Estado atual — Moscow Noivas
 
-> Snapshot de onde paramos. Atualizado em **2026-06-08**. Envelhece — confira os commits e os testes antes de confiar.
+> Snapshot de onde paramos. Atualizado em **2026-06-14**. Envelhece — confira os commits e os testes antes de confiar.
+
+## Dia do atelier — Início + Calendário (2026-06-11 → fechado 2026-06-14) ✅
+
+Spec: `docs/superpowers/specs/2026-06-11-calendario-mes-painel-central-design.md`. Decisão:
+`docs/adr/0001-dia-do-atelier-inicio-e-calendario.md`. Planos:
+`docs/superpowers/plans/2026-06-11-dia-do-atelier.md` (8 tarefas, entregue) e
+`docs/superpowers/plans/2026-06-14-dia-do-atelier-fechamento.md` (fechamento). Commits `d0fa4a7`…`94208f2`
++ `b8d559d`. `main` com gates verdes (`tsc` limpo, **443 testes**).
+
+Deu ao gestor a visão de "tudo de um dia" (agenda + financeiro), servida em duas telas a partir de **uma
+leitura** e **um componente** reusados:
+- **Dado** `detalheDoDia(lojaId, ymd, {financeiro})` (`src/lib/calendario/dia.ts`): atendimentos, provas,
+  casamentos e — só com permissão — parcelas a receber / contas a pagar que vencem no dia. Janela
+  [meia-noite UTC, +1d), escopo de loja via `tenantPrisma`.
+- **Componente** `DiaDoAtelier` (`src/components/dashboard/dia-do-atelier.tsx`): as seções de um dia. Server,
+  recebe o dado já filtrado por permissão.
+- **Início** (`src/app/(app)/loja/[lojaId]/page.tsx`): "Hoje no atelier" + `AvisoVencidas`
+  (`src/components/dashboard/aviso-vencidas.tsx`, contas vencidas via `vencidasDaLoja` em
+  `src/lib/financeiro/vencidas.ts`, soma em centavos).
+- **Calendário aba Mês** (`_abas/AbaMes.tsx`): a grade virou **mini-agenda** — `itensDoMes`
+  (`src/lib/calendario/dados.ts`) agrupa casamento (nome, bordô) + provas/atendimentos (hora) por dia;
+  clicar num dia abre o Dia do atelier via `?dia=` (repassado pela `calendario/page.tsx`). Fallback de
+  contagem por categoria em telas estreitas.
+
+**Gating de financeiro** (dado sensível, atrás de `financeiro:ver`) confirmado e **testado** nos três
+pontos: a camada de dados nem busca parcela/conta sem permissão (`dia.test.ts`), o Início não chama
+`vencidasDaLoja` nem renderiza `AvisoVencidas`, e a célula do calendário só mostra o marcador `R$` quando
+`itensDoMes` recebe `financeiro:true` — este último trancado por teste de regressão com prova de mutação
+(`itens-mes.test.ts`, commit `b8d559d`).
+
+Diagnósticos Playwright versionados em `scripts/repro/` (`verify_dia.mjs` cobre esta feature).
+
+## Agendar prova unificado — fusão Prova→Atendimento (2026-06-08) ✅
+
+Spec: `docs/superpowers/specs/2026-06-08-agendar-prova-unificado-design.md`. Commits `da35ec8`
+(fusão) + `e5b4d97` (rename `provaId`→`atendimentoId`) + `31ed9d2`/`e06a987` (polish UX do seletor).
+
+"Prova" deixou de ser entidade separada e passou a ser um **tipo de `Atendimento`** (`tipo` + `bloqueioId`;
+ajuste aponta para `atendimentoId`). No fluxo de agendar prova, o seletor de reserva mostra o **vestido
+reservado** (prefixo "Vestido") para o nome do modelo não ser lido como noiva. Diagnóstico daquela
+investigação em `scripts/repro/repro_prova*.mjs`.
 
 ## Concierge Atelier — roteiro das telas + DRY da urgência (2026-06-08) ✅
 
