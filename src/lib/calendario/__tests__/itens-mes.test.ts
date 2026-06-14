@@ -22,7 +22,15 @@ beforeAll(async () => {
   const u = await prisma.usuario.create({ data: { nome: `${MARK}V`, email: `${MARK}${Date.now()}@x.local`, senhaHash: "x" } });
   await prisma.usuarioLoja.create({ data: { usuarioId: u.id, lojaId: loja, perfilId: "perfil-vendedora" } });
   const r = await reservarVestido(loja, { vestidoId: vestido, leadId: noiva, casamentoData: dia });
-  if (r.ok) await agendarAtendimento(loja, { leadId: noiva, cabineId: cabine, vendedoraId: u.id, dataYMD: dia, hora: 9, tipo: "PROVA", bloqueioId: r.bloqueioId });
+  if (r.ok) {
+    await agendarAtendimento(loja, { leadId: noiva, cabineId: cabine, vendedoraId: u.id, dataYMD: dia, hora: 9, tipo: "PROVA", bloqueioId: r.bloqueioId });
+    const contrato = await db.contrato.create({
+      data: { leadId: noiva, vendedoraId: u.id, valorTotal: 1000 } as never,
+    });
+    await db.parcela.create({
+      data: { contratoId: contrato.id, numero: 1, valorPrevisto: 500, vencimento: new Date(`${dia}T00:00:00.000Z`) } as never,
+    });
+  }
 });
 
 afterAll(async () => {
@@ -40,5 +48,19 @@ describe("itensDoMes", () => {
     expect(d).toBeTruthy();
     expect(d!.itens[0]).toMatchObject({ tipo: "casamento", noivaNome: `${MARK}Maria` });
     expect(d!.itens.some((i) => i.tipo === "prova" && i.hora === 9)).toBe(true);
+  });
+  it("marca temFinanceiro quando financeiro=true e há conta vencendo no dia", async () => {
+    const inicio = new Date(`${dia}T00:00:00.000Z`);
+    const fim = new Date(inicio.getTime());
+    fim.setUTCDate(fim.getUTCDate() + 1);
+    const porDia = await itensDoMes(loja, inicio, fim, { financeiro: true });
+    expect(porDia.get(dia)?.temFinanceiro).toBe(true);
+  });
+  it("não vaza temFinanceiro quando financeiro=false", async () => {
+    const inicio = new Date(`${dia}T00:00:00.000Z`);
+    const fim = new Date(inicio.getTime());
+    fim.setUTCDate(fim.getUTCDate() + 1);
+    const porDia = await itensDoMes(loja, inicio, fim, { financeiro: false });
+    expect(porDia.get(dia)?.temFinanceiro).toBe(false);
   });
 });
