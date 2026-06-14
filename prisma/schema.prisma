@@ -78,6 +78,7 @@ model Loja {
   comissaoRegras       ComissaoRegra[]
   comissaoFaixas       ComissaoFaixa[]
   comissaoFechamentos  ComissaoFechamento[]
+  saldosReferencia     SaldoReferencia[]
 }
 
 model Perfil {
@@ -672,4 +673,17 @@ model ComissaoFechamento {
   contaPagar ContaPagar? @relation(fields: [contaPagarId], references: [id], onDelete: SetNull)
 
   @@unique([lojaId, vendedoraId, competencia]) // idempotência do fechamento
+}
+
+model SaldoReferencia {
+  id             String   @id @default(cuid())
+  lojaId         String
+  dataReferencia DateTime
+  valor          Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  loja Loja @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId, dataReferencia])
 }
