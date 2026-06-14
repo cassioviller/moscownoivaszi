@@ -491,6 +491,18 @@ enum ContratoStatus {
   CANCELADO
 }
 
+// Método de pagamento como seleção (não prazo — o parcelamento é o plano de parcelas).
+// Compartilhado pelo contrato (forma combinada) e pela parcela (forma do recebimento).
+enum FormaPagamento {
+  PIX
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  DINHEIRO
+  BOLETO
+  TRANSFERENCIA
+  OUTRO
+}
+
 model Contrato {
   id                String         @id @default(cuid())
   lojaId            String
@@ -502,8 +514,8 @@ model Contrato {
   cpf               String?
   vestidoDescricao  String?
   valorTotal        Decimal        @db.Decimal(10, 2)
-  entrada           Decimal?       @db.Decimal(10, 2)
-  formaPagamento    String?
+  formaPagamento    FormaPagamento?
+  canceladoMotivo   String? // motivo registrado no distrato (cancelamento)
   dataCasamento     DateTime?
   dataRetirada      DateTime?
   dataDevolucao     DateTime?
@@ -526,6 +538,7 @@ model Contrato {
 enum ParcelaStatus {
   PREVISTA
   PAGA
+  CANCELADA // contrato cancelado: sai das leituras de recebíveis (não é PREVISTA nem PAGA)
 }
 
 model Parcela {
@@ -539,7 +552,7 @@ model Parcela {
   status           ParcelaStatus @default(PREVISTA)
   valorRecebido    Decimal?      @db.Decimal(10, 2)
   recebidoEm       DateTime?
-  formaRecebimento String?
+  formaRecebimento FormaPagamento?
   createdAt        DateTime      @default(now())
 
   loja     Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)

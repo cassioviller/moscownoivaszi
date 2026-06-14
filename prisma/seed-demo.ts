@@ -30,6 +30,7 @@ import {
   DescontoTipo,
   ContratoStatus,
   ParcelaStatus,
+  FormaPagamento,
   ContaPagarTipo,
   ContaPagarStatus,
   CobrancaCanal,
@@ -464,7 +465,7 @@ async function main() {
       const entrada = Math.round(total * 0.3);
       const dados = {
         lojaId: LOJA_ID, leadId: idNoiva(c.noivaN), bloqueioVestidoId: `demo-blq-${String(c.noivaN).padStart(2, "0")}`,
-        vendedoraId: vendId(c.vend), valorTotal: dec(total), entrada: dec(entrada), formaPagamento: "Pix + 2x",
+        vendedoraId: vendId(c.vend), valorTotal: dec(total), formaPagamento: FormaPagamento.PIX,
         vestidoDescricao: `${VESTIDOS.find((v) => v.n === vN)!.nome} (${codigoVestido(vN)})`,
         dataCasamento: meiaNoiteUTC(D(noiva.offset)), status: ContratoStatus.ATIVO, fechadoEm: diaDe(c.comp, 15),
       };
@@ -483,11 +484,16 @@ async function main() {
         const dadosP = {
           lojaId: LOJA_ID, contratoId: id, numero: pa.numero, descricao: pa.descricao, valorPrevisto: dec(pa.valor),
           vencimento: pa.venc, status: pa.pago ? ParcelaStatus.PAGA : ParcelaStatus.PREVISTA,
-          valorRecebido: pa.pago ? dec(pa.valor) : null, recebidoEm: pa.pago ? pa.venc : null, formaRecebimento: pa.pago ? "Pix" : null,
+          valorRecebido: pa.pago ? dec(pa.valor) : null, recebidoEm: pa.pago ? pa.venc : null, formaRecebimento: pa.pago ? FormaPagamento.PIX : null,
         };
         await prisma.parcela.upsert({ where: { id: pid }, create: { id: pid, ...dadosP }, update: dadosP });
       }
     }
+
+    // — Um contrato cancelado de exemplo (distrato): parcelas em aberto viram CANCELADA
+    //   e somem dos recebíveis; a entrada paga (nº0) fica como recebida (destino "manter").
+    await prisma.contrato.updateMany({ where: { id: "demo-ct-11" }, data: { status: ContratoStatus.CANCELADO, canceladoMotivo: "Noiva desistiu" } });
+    await prisma.parcela.updateMany({ where: { contratoId: "demo-ct-11", status: ParcelaStatus.PREVISTA }, data: { status: ParcelaStatus.CANCELADA } });
 
     // — Comissão: regra + faixas (3% até 30k; 5% + bônus 500 acima) p/ as 2 vendedoras —
     function comissaoDe(total: number) {
