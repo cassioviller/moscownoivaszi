@@ -53,6 +53,7 @@ export default async function FluxoDeCaixaPage({
         <Link href={`/loja/${lojaId}/financeiro/projecao`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
           Projeção de caixa →
         </Link>
+        <Link href={`/loja/${lojaId}/financeiro/dre`} className="text-[13px] text-grafite hover:text-tinta">Resultado do mês →</Link>
       </header>
 
       <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} />
