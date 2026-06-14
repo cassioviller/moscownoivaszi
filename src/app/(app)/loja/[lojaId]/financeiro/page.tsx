@@ -50,6 +50,9 @@ export default async function FluxoDeCaixaPage({
         </Link>
         <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Fluxo de caixa</h1>
         <p className="text-[14px] text-cinza-fumo">O que entrou e saiu do caixa do atelier — pelo que foi registrado aqui, não é o extrato do banco.</p>
+        <Link href={`/loja/${lojaId}/financeiro/projecao`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
+          Projeção de caixa →
+        </Link>
       </header>
 
       <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} />
