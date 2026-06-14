@@ -79,6 +79,7 @@ model Loja {
   comissaoFaixas       ComissaoFaixa[]
   comissaoFechamentos  ComissaoFechamento[]
   saldosReferencia     SaldoReferencia[]
+  registrosCobranca    RegistroCobranca[]
 }
 
 model Perfil {
@@ -251,6 +252,7 @@ model Lead {
   atendimentos Atendimento[]
   orcamentos   Orcamento[]
   contratos    Contrato[]
+  registrosCobranca RegistroCobranca[]
 }
 
 model LeadInteresse {
@@ -686,4 +688,26 @@ model SaldoReferencia {
   loja Loja @relation(fields: [lojaId], references: [id], onDelete: Cascade)
 
   @@index([lojaId, dataReferencia])
+}
+
+enum CobrancaCanal {
+  WHATSAPP
+  TELEFONE
+  PRESENCIAL
+  OUTRO
+}
+
+model RegistroCobranca {
+  id         String        @id @default(cuid())
+  lojaId     String
+  leadId     String
+  data       DateTime
+  canal      CobrancaCanal
+  observacao String?
+  createdAt  DateTime      @default(now())
+
+  loja Loja @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([lojaId, leadId, data])
 }
