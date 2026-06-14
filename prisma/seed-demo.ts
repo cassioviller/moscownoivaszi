@@ -32,6 +32,7 @@ import {
   ParcelaStatus,
   ContaPagarTipo,
   ContaPagarStatus,
+  CobrancaCanal,
 } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -586,6 +587,42 @@ async function main() {
     });
     await prisma.pagamentoItem.upsert({ where: { contaPagarId: salAcpId }, create: { id: "demo-pgi-salA", lojaId: LOJA_ID, pagamentoId: "demo-pg-colabA", contaPagarId: salAcpId, valor: dec(3000) }, update: { pagamentoId: "demo-pg-colabA", valor: dec(3000) } });
     await prisma.pagamentoItem.upsert({ where: { contaPagarId: "demo-cp-com-A" }, create: { id: "demo-pgi-comA", lojaId: LOJA_ID, pagamentoId: "demo-pg-colabA", contaPagarId: "demo-cp-com-A", valor: dec(comissaoA.comissao + comissaoA.bonus) }, update: { pagamentoId: "demo-pg-colabA", valor: dec(comissaoA.comissao + comissaoA.bonus) } });
+
+    // — Projeção de caixa: saldo de referência (âncora) no início do mês corrente —
+    await prisma.saldoReferencia.upsert({
+      where: { id: "demo-saldo-ref" },
+      create: { id: "demo-saldo-ref", lojaId: LOJA_ID, dataReferencia: diaDe(COMP_ATUAL, 1), valor: dec(15000) },
+      update: { dataReferencia: diaDe(COMP_ATUAL, 1), valor: dec(15000) },
+    });
+
+    // — Cobrança/inadimplência: parcelas vencidas em aberto nas 3 faixas + 1 histórico —
+    // hoje ≈ D(-50) (DEMO_BASE = hoje+50); então X dias de atraso = D(-50 - X).
+    const ATRASOS = [
+      { noivaN: 4, diasAtras: 15, valor: 1200 }, // faixa até 30 dias
+      { noivaN: 6, diasAtras: 45, valor: 900 },  // faixa 31–60 dias
+      { noivaN: 10, diasAtras: 75, valor: 1500 }, // faixa 60+ dias
+    ];
+    for (const a of ATRASOS) {
+      const pid = `demo-pc-atraso-${a.noivaN}`;
+      const dados = {
+        lojaId: LOJA_ID,
+        contratoId: `demo-ct-${String(a.noivaN).padStart(2, "0")}`,
+        numero: 9,
+        descricao: "Parcela em atraso",
+        valorPrevisto: dec(a.valor),
+        vencimento: meiaNoiteUTC(D(-50 - a.diasAtras)),
+        status: ParcelaStatus.PREVISTA,
+        valorRecebido: null,
+        recebidoEm: null,
+        formaRecebimento: null,
+      };
+      await prisma.parcela.upsert({ where: { id: pid }, create: { id: pid, ...dados }, update: dados });
+    }
+    await prisma.registroCobranca.upsert({
+      where: { id: "demo-cob-10" },
+      create: { id: "demo-cob-10", lojaId: LOJA_ID, leadId: idNoiva(10), data: meiaNoiteUTC(D(-55)), canal: CobrancaCanal.WHATSAPP, observacao: "Prometeu pagar até sexta." },
+      update: { leadId: idNoiva(10), data: meiaNoiteUTC(D(-55)), canal: CobrancaCanal.WHATSAPP, observacao: "Prometeu pagar até sexta." },
+    });
   }
 
   // 7) VERIFICAÇÃO — confere os dois cenários-roteiro de disponibilidade usando o
