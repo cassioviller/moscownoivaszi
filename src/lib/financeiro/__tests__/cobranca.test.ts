@@ -21,9 +21,13 @@ describe("linkWhatsApp", () => {
   it("monta wa.me com DDI 55 e mensagem encodada", () => {
     expect(linkWhatsApp("(11) 99999-8888", "Olá Ana!")).toBe("https://wa.me/5511999998888?text=Ol%C3%A1%20Ana!");
   });
-  it("sem whatsapp → null", () => {
+  it("mantém o número que já vem com DDI 55", () => {
+    expect(linkWhatsApp("55 11 99999-8888", "oi")).toBe("https://wa.me/5511999998888?text=oi");
+  });
+  it("sem whatsapp ou número implausível → null", () => {
     expect(linkWhatsApp(null, "x")).toBeNull();
     expect(linkWhatsApp("", "x")).toBeNull();
+    expect(linkWhatsApp("123", "x")).toBeNull();
   });
 });
 

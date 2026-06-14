@@ -19,12 +19,17 @@ export function faixaDeAtraso(diasDeAtraso: number): Faixa {
   return "mais60";
 }
 
-/** Deep-link wa.me (DDI Brasil) com a mensagem encodada. null se a noiva não tem whatsapp. */
+/** Deep-link wa.me com a mensagem encodada. Prefixa o DDI 55 só se o número for nacional
+ *  (10–11 dígitos); mantém se já vier com DDI (12–13 começando em 55). null se ausente/implausível. */
 export function linkWhatsApp(whatsapp: string | null, mensagem: string): string | null {
   if (!whatsapp) return null;
-  const digitos = whatsapp.replace(/\D/g, "");
-  if (digitos === "") return null;
-  return `https://wa.me/55${digitos}?text=${encodeURIComponent(mensagem)}`;
+  let digitos = whatsapp.replace(/\D/g, "");
+  if (digitos.length === 10 || digitos.length === 11) {
+    digitos = `55${digitos}`; // nacional (DDD + 8/9 dígitos) → acrescenta DDI Brasil
+  } else if (!(digitos.length >= 12 && digitos.length <= 13 && digitos.startsWith("55"))) {
+    return null; // vazio, curto ou formato implausível
+  }
+  return `https://wa.me/${digitos}?text=${encodeURIComponent(mensagem)}`;
 }
 
 export type NoivaInadimplente = {
