@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 16 (App Router, Server Components, `force-dynamic`), Prisma 7 (`tenantPrisma` p/ isolamento de loja), Tailwind v4, vitest (integração com Postgres real), Playwright (verificação visual).
 
+**Status (2026-06-14):** Entregue nos commits d0fa4a7…94208f2; gate do marcador R$ trancado por teste em 2026-06-14 (b8d559d). Fechamento: ver `2026-06-14-dia-do-atelier-fechamento.md`.
+
 **Convenções do repo (ler antes de começar):**
 - Commits **direto na `main`** (sem branch/worktree). Antes de cada commit: `node node_modules/typescript/bin/tsc --noEmit` limpo e `npx vitest run` verde. (O binário `.bin/tsc` está sem permissão de execução; rode via `node node_modules/typescript/bin/tsc`.)
 - Dia-calendário = meia-noite UTC do dia em São Paulo. Helpers em `@/lib/tempo`: `hojeYMD()`, `hojeUTC()`, `meiaNoiteUTC(ymd)`, `ymd(date)`.
@@ -44,7 +46,7 @@
 - Create: `src/lib/calendario/dia.ts`
 - Test: `src/lib/calendario/__tests__/dia.test.ts`
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Criar `src/lib/calendario/__tests__/dia.test.ts`:
 
@@ -129,12 +131,12 @@ describe("detalheDoDia", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar o teste e ver falhar**
+- [x] **Step 2: Rodar o teste e ver falhar**
 
 Run: `npx vitest run src/lib/calendario/__tests__/dia.test.ts`
 Expected: FAIL — `Cannot find module '@/lib/calendario/dia'`.
 
-- [ ] **Step 3: Implementar `detalheDoDia`**
+- [x] **Step 3: Implementar `detalheDoDia`**
 
 Criar `src/lib/calendario/dia.ts`:
 
@@ -283,12 +285,12 @@ export async function detalheDoDia(
 }
 ```
 
-- [ ] **Step 4: Rodar o teste e ver passar**
+- [x] **Step 4: Rodar o teste e ver passar**
 
 Run: `npx vitest run src/lib/calendario/__tests__/dia.test.ts`
 Expected: PASS (3 testes).
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
@@ -304,7 +306,7 @@ git commit -m "feat(calendario): detalheDoDia — agenda + financeiro de um dia 
 - Create: `src/lib/financeiro/vencidas.ts`
 - Test: `src/lib/financeiro/__tests__/vencidas.test.ts`
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Criar `src/lib/financeiro/__tests__/vencidas.test.ts`:
 
@@ -354,12 +356,12 @@ describe("vencidasDaLoja", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/lib/financeiro/__tests__/vencidas.test.ts`
 Expected: FAIL — módulo não encontrado.
 
-- [ ] **Step 3: Implementar `vencidasDaLoja`**
+- [x] **Step 3: Implementar `vencidasDaLoja`**
 
 Criar `src/lib/financeiro/vencidas.ts`:
 
@@ -395,12 +397,12 @@ export async function vencidasDaLoja(lojaId: string, hoje: Date): Promise<Vencid
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx vitest run src/lib/financeiro/__tests__/vencidas.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
@@ -418,7 +420,7 @@ git commit -m "feat(financeiro): vencidasDaLoja — contas em atraso (a receber/
 
 `itensDoMes` devolve, por dia do intervalo: a lista de itens curtos da célula (casamento com nome; prova/atendimento com hora), se há financeiro vencendo no dia (gated), e se o dia merece "atenção" (algo vencido/pendente — financeiro PREVISTA do dia já passado, ou prova/atendimento de dia passado ainda em aberto).
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Criar `src/lib/calendario/__tests__/itens-mes.test.ts`:
 
@@ -469,12 +471,12 @@ describe("itensDoMes", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/lib/calendario/__tests__/itens-mes.test.ts`
 Expected: FAIL — `itensDoMes` não exportado.
 
-- [ ] **Step 3: Implementar `itensDoMes` em `dados.ts`**
+- [x] **Step 3: Implementar `itensDoMes` em `dados.ts`**
 
 Adicionar ao final de `src/lib/calendario/dados.ts` (manter o que já existe):
 
@@ -559,12 +561,12 @@ export async function itensDoMes(
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx vitest run src/lib/calendario/__tests__/itens-mes.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: tsc + suíte cheia + commit**
+- [x] **Step 5: tsc + suíte cheia + commit**
 
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
@@ -582,7 +584,7 @@ Componente server puro de apresentação: recebe um `DiaDoAtelier` (já filtrado
 **Files:**
 - Create: `src/components/dashboard/dia-do-atelier.tsx`
 
-- [ ] **Step 1: Implementar o componente**
+- [x] **Step 1: Implementar o componente**
 
 Criar `src/components/dashboard/dia-do-atelier.tsx`:
 
@@ -686,7 +688,7 @@ export function DiaDoAtelier({ lojaId, dia }: { lojaId: string; dia: DiaDoAtelie
 }
 ```
 
-- [ ] **Step 2: tsc + commit**
+- [x] **Step 2: tsc + commit**
 
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
@@ -702,7 +704,7 @@ git commit -m "feat(dashboard): componente DiaDoAtelier (seções de um dia)"
 - Create: `src/components/dashboard/aviso-vencidas.tsx`
 - Modify: `src/app/(app)/loja/[lojaId]/page.tsx`
 
-- [ ] **Step 1: Componente de aviso de vencidas**
+- [x] **Step 1: Componente de aviso de vencidas**
 
 Criar `src/components/dashboard/aviso-vencidas.tsx`:
 
@@ -736,7 +738,7 @@ export function AvisoVencidas({ lojaId, vencidas }: { lojaId: string; vencidas: 
 }
 ```
 
-- [ ] **Step 2: Encaixar no Início**
+- [x] **Step 2: Encaixar no Início**
 
 Em `src/app/(app)/loja/[lojaId]/page.tsx`, adicionar imports no topo (junto aos outros):
 
@@ -772,12 +774,12 @@ Logo após a divisória atmosférica (`<div aria-hidden className="h-px bg-champ
       {vencidas && <AvisoVencidas lojaId={sc.loja.id} vencidas={vencidas} />}
 ```
 
-- [ ] **Step 3: tsc**
+- [x] **Step 3: tsc**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Expected: sem erros.
 
-- [ ] **Step 4: Verificação visual (Playwright)**
+- [x] **Step 4: Verificação visual (Playwright)**
 
 Criar `verify_dia.mjs` na raiz reaproveitando o preâmbulo de login de `repro_prova.mjs` (login `admin@moscownoivas.local`/`admin123`, loja `loja-moscow`). Após logar, ir a `/loja/loja-moscow` e capturar:
 
@@ -791,7 +793,7 @@ await page.screenshot({ path: "/tmp/dia/inicio.png", fullPage: true });
 Run: `node verify_dia.mjs` e abrir `/tmp/dia/inicio.png`.
 Expected: seção "Hoje no atelier" presente; sem quebra de layout.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/"(app)"/loja/"[lojaId]"/page.tsx src/components/dashboard/aviso-vencidas.tsx
@@ -805,7 +807,7 @@ git commit -m "feat(inicio): Dia do atelier de hoje + atenção de contas vencid
 **Files:**
 - Modify: `src/app/(app)/loja/[lojaId]/calendario/_abas/AbaMes.tsx`
 
-- [ ] **Step 1: Reescrever a célula usando `itensDoMes`**
+- [x] **Step 1: Reescrever a célula usando `itensDoMes`**
 
 Substituir o corpo de `AbaMes.tsx`. Pontos-chave:
 1. trocar `marcadoresNoIntervalo`/`agruparMarcadoresPorDia` por `itensDoMes`;
@@ -917,7 +919,7 @@ export async function AbaMes({ lojaId, refParam, dia }: { lojaId: string; refPar
 }
 ```
 
-- [ ] **Step 2: Passar `?dia=` na page**
+- [x] **Step 2: Passar `?dia=` na page**
 
 Em `src/app/(app)/loja/[lojaId]/calendario/page.tsx`: adicionar `dia` ao tipo de `searchParams` e repassar à `AbaMes`.
 
@@ -928,12 +930,12 @@ Render (linha ~86): trocar a entrada `mes` para:
               mes: <AbaMes lojaId={lojaId} refParam={sp.ref} dia={sp.dia} />,
 ```
 
-- [ ] **Step 3: tsc**
+- [x] **Step 3: tsc**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Expected: sem erros. (Se `marcadoresNoIntervalo`/`agruparMarcadoresPorDia` ficarem sem uso e o ESLint reclamar em build, manter as funções em `dados.ts`/`mes.ts` — ainda são cobertas por `dados.test.ts`; só os imports na `AbaMes` saem.)
 
-- [ ] **Step 4: Verificação visual**
+- [x] **Step 4: Verificação visual**
 
 Estender `verify_dia.mjs`: navegar a `/loja/loja-moscow/calendario?aba=mes`, screenshot da grade; clicar num dia com itens (ex.: localizar um link de dia via `page.locator('a[href*="&dia="]')`), e screenshot do painel aberto.
 
@@ -948,7 +950,7 @@ await page.screenshot({ path: "/tmp/dia/mes-aberto.png", fullPage: true });
 
 Expected: grade com mini-agenda (sem pontos); ao clicar, painel "Dia do atelier" abaixo.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/"(app)"/loja/"[lojaId]"/calendario/_abas/AbaMes.tsx src/app/"(app)"/loja/"[lojaId]"/calendario/page.tsx
@@ -961,25 +963,25 @@ git commit -m "feat(calendario): aba Mês vira mini-agenda + abre Dia do atelier
 
 **Files:** (sem novos arquivos — verificação e ajustes finos)
 
-- [ ] **Step 1: Conferir os três pontos de gate**
+- [x] **Step 1: Conferir os três pontos de gate**
 
 Revisar que nenhum caminho busca/renderiza financeiro sem `financeiro:ver`:
 - `page.tsx` (Início): `detalheDoDia(..., { financeiro: podeFinanceiro })` e `vencidas` só com `podeFinanceiro`. ✓
 - `AbaMes.tsx`: `itensDoMes(..., { financeiro: podeFinanceiro })` e `detalheDoDia(..., { financeiro: podeFinanceiro })`. ✓
 - `DiaDoAtelier`: só renderiza `aReceber`/`aPagar` quando os arrays têm itens (vazios sem permissão). ✓
 
-- [ ] **Step 2: Verificação visual com perfil sem financeiro**
+- [x] **Step 2: Verificação visual com perfil sem financeiro**
 
 No seed-demo há usuários de perfis variados. Identificar (via `/equipe` ou seed) um login **sem** `financeiro:ver` (ex.: costureira/vendedora) e repetir a captura de Início e Calendário, confirmando: sem marcador `R$`, sem seções "A receber"/"A pagar", sem bloco de vencidas.
 
 Se não houver credencial à mão, criar um teste de integração mínimo que chama `detalheDoDia(loja, dia, { financeiro: false })` e afirma `aReceber`/`aPagar` vazios (já coberto na Task 1, Step 1, 3º caso) e documentar no relatório que o gate de UI espelha o de dados.
 
-- [ ] **Step 3: Suíte cheia + tsc**
+- [x] **Step 3: Suíte cheia + tsc**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit && npx vitest run`
 Expected: tsc limpo, todos os testes verdes.
 
-- [ ] **Step 4: Commit (se houve ajuste)**
+- [x] **Step 4: Commit (se houve ajuste)**
 
 ```bash
 git add -A
@@ -993,7 +995,7 @@ git commit -m "chore(calendario): confirma gating financeiro:ver no Início e Ca
 **Files:**
 - Modify: `src/app/(app)/loja/[lojaId]/calendario/_abas/AbaMes.tsx` (fallback responsivo)
 
-- [ ] **Step 1: Fallback de contagem no mobile**
+- [x] **Step 1: Fallback de contagem no mobile**
 
 Na célula, esconder o texto detalhado em telas estreitas e mostrar contagem por categoria. Envolver a lista de itens detalhada em `hidden sm:flex` e adicionar uma versão compacta `flex sm:hidden` que conta por tipo:
 
@@ -1017,12 +1019,12 @@ Na célula, esconder o texto detalhado em telas estreitas e mostrar contagem por
 
 E trocar o `flex flex-col` da lista detalhada para `hidden flex-col sm:flex`.
 
-- [ ] **Step 2: tsc + verificação 375px**
+- [x] **Step 2: tsc + verificação 375px**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Estender `verify_dia.mjs` com viewport 375×812 e checar overflow (padrão `verify_c6.mjs`): `document.documentElement.scrollWidth > clientWidth + 2` deve ser falso. Screenshots `/tmp/dia/mes-375.png` e `/tmp/dia/inicio-375.png`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/"(app)"/loja/"[lojaId]"/calendario/_abas/AbaMes.tsx
