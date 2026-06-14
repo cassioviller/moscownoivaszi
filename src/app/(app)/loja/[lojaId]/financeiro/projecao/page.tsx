@@ -101,6 +101,7 @@ export default async function ProjecaoCaixaPage({
             {Number(p.emAtraso.aPagar) !== 0 && (
               <Link href={`/loja/${lojaId}/financeiro/pagar?filtro=atrasadas`} className="hover:text-bordo">{brl(p.emAtraso.aPagar)} a pagar</Link>
             )}
+            <Link href={`/loja/${lojaId}/financeiro/cobranca`} className="hover:text-bordo">acompanhar cobrança →</Link>
           </div>
         </section>
       )}

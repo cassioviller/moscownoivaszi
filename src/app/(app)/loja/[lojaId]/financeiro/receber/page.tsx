@@ -69,6 +69,7 @@ export default async function ReceberPage({
         </Link>
         <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Contas a receber</h1>
         <p className="text-[14px] text-cinza-fumo">O que entra das noivas, por contrato.</p>
+        <Link href={`/loja/${lojaId}/financeiro/cobranca`} className="text-[13px] text-grafite hover:text-tinta">Cobrança →</Link>
       </header>
 
       <FiltroIntervalo iniYMD={intervalo.iniYMD} fimYMD={intervalo.fimYMD} hidden={{ filtro }} />
