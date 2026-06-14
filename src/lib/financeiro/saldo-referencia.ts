@@ -38,7 +38,8 @@ export async function definirSaldoReferencia(lojaId: string, input: { data: stri
 export async function ancoraAtiva(lojaId: string): Promise<Ancora | null> {
   const row = await tenantPrisma(prisma, lojaId).saldoReferencia.findFirst({
     where: { dataReferencia: { lte: hojeUTC() } },
-    orderBy: { dataReferencia: "desc" },
+    orderBy: [{ dataReferencia: "desc" }, { createdAt: "desc" }], // desempata mesmo-dia pelo mais recente registrado
+
   });
   return row ? { data: row.dataReferencia, valor: decParaString(row.valor) } : null;
 }

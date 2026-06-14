@@ -35,10 +35,10 @@ export default async function ProjecaoCaixaPage({
   const sp = await searchParams;
   const podeEditar = await podeNoModulo(sc.usuario.id, sc.loja.id, "financeiro", "editar");
 
-  const p = await projecaoCaixa(lojaId, { horizonteDias: Number(sp.h) });
+  const p = await projecaoCaixa(sc.loja.id, { horizonteDias: Number(sp.h) });
   const aviso = sp.ok ? AVISOS[sp.ok] : sp.erro ? AVISOS[sp.erro] ?? "Não foi possível concluir a ação." : null;
 
-  const temAtraso = p.emAtraso.aReceber !== "0.00" || p.emAtraso.aPagar !== "0.00";
+  const temAtraso = Number(p.emAtraso.aReceber) !== 0 || Number(p.emAtraso.aPagar) !== 0;
   const semAncora = p.saldoHoje === null;
 
   const campo = "rounded-md border border-borda-suave bg-papel px-3 py-2 text-[14px] text-tinta";
@@ -95,10 +95,10 @@ export default async function ProjecaoCaixaPage({
         <section className="flex flex-col gap-2 rounded-[var(--mn-radius-md)] border border-bordo/30 bg-papel-elevado p-4">
           <h2 className="text-[11px] uppercase tracking-[0.2em] text-bordo">Em atraso · fora da curva</h2>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-[14px] text-tinta">
-            {p.emAtraso.aReceber !== "0.00" && (
+            {Number(p.emAtraso.aReceber) !== 0 && (
               <Link href={`/loja/${lojaId}/financeiro/receber?filtro=atrasadas`} className="hover:text-bordo">{brl(p.emAtraso.aReceber)} a receber</Link>
             )}
-            {p.emAtraso.aPagar !== "0.00" && (
+            {Number(p.emAtraso.aPagar) !== 0 && (
               <Link href={`/loja/${lojaId}/financeiro/pagar?filtro=atrasadas`} className="hover:text-bordo">{brl(p.emAtraso.aPagar)} a pagar</Link>
             )}
           </div>
@@ -143,8 +143,8 @@ export default async function ProjecaoCaixaPage({
                   <span className="flex min-w-0 flex-col">
                     <span className="text-[14px] text-tinta">{diaFmt.format(l.data)}</span>
                     <span className="text-[12px] text-cinza-fumo">
-                      {l.entradas !== "0.00" && <>+{brl(l.entradas)} </>}
-                      {l.saidas !== "0.00" && <>−{brl(l.saidas)}</>}
+                      {Number(l.entradas) !== 0 && <>+{brl(l.entradas)} </>}
+                      {Number(l.saidas) !== 0 && <>−{brl(l.saidas)}</>}
                     </span>
                   </span>
                   {!semAncora && (
