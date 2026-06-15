@@ -62,6 +62,16 @@ describe("atendimentos", () => {
     const prox2 = await listarProximosAtendimentos(loja);
     expect(prox2.some((a) => a.id === r.atendimentoId)).toBe(false);
   });
+
+  it("próximos exclui CONCLUIDO/FALTOU mesmo com data futura (B2)", async () => {
+    const r = await agendarAtendimento(loja, { leadId: lead, cabineId: cabine, vendedoraId: vend, dataYMD: "2099-02-02", hora: 12 });
+    if (!r.ok) throw new Error("falhou");
+    expect((await listarProximosAtendimentos(loja)).some((a) => a.id === r.atendimentoId)).toBe(true);
+    await concluirAtendimento(loja, r.atendimentoId, "RESERVOU");
+    // concluído some dos "próximos" (já não é trabalho em aberto), apesar da data futura.
+    expect((await listarProximosAtendimentos(loja)).some((a) => a.id === r.atendimentoId)).toBe(false);
+    await cancelarAtendimento(loja, r.atendimentoId);
+  });
 });
 
 describe("atendimentos: ciclo de vida (atender)", () => {

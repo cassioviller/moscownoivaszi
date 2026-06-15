@@ -60,6 +60,17 @@ export function AgendarForm({
   const horaValida = !carregando && hora !== null && Boolean(slotsVisiveis?.some((s) => s.hora === hora && s.livre));
   // Quando Tipo=Prova, exige uma reserva válida da noiva escolhida.
   const provaSemReserva = tipo === "PROVA" && !bloqueioId;
+  // Por que o botão Agendar está desabilitado? Diz a próxima pré-condição que falta
+  // (I2) — em vez de só desabilitar mudo. Ordem = ordem de preenchimento do form.
+  const dicaBloqueio = !leadId
+    ? "Escolha a noiva para agendar."
+    : provaSemReserva
+      ? "Escolha o vestido reservado para a prova."
+      : !prontoParaGrade
+        ? "Escolha cabine, vendedora e data."
+        : !horaValida
+          ? "Escolha um horário livre na grade."
+          : null;
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -82,7 +93,9 @@ export function AgendarForm({
               aria-pressed={tipo === t}
               className={
                 "min-h-11 px-4 text-[13px] transition-colors duration-150 " +
-                (tipo === t ? "bg-bordo text-papel" : "bg-papel-elevado text-tinta hover:border-bordo")
+                // Selecionado em grafite (neutro), não bordô: o bordô fica reservado
+                // ao CTA "Agendar" (a joia rara, §6 do DESIGN).
+                (tipo === t ? "bg-tinta text-papel" : "bg-papel-elevado text-grafite hover:text-tinta")
               }
             >
               {t === "ATENDIMENTO" ? "Atendimento" : "Prova"}
@@ -175,7 +188,8 @@ export function AgendarForm({
 
       {state.erro && <p className="text-[13px] text-bordo">{state.erro}</p>}
 
-      <button
+      <div className="flex flex-col gap-2">
+        <button
         type="submit"
         disabled={pending || !leadId || !horaValida || provaSemReserva}
         className="inline-flex min-h-11 w-fit items-center rounded-md bg-bordo px-4 text-[14px] font-medium text-papel
@@ -184,6 +198,10 @@ export function AgendarForm({
       >
         Agendar
       </button>
+        {!pending && dicaBloqueio && (
+          <p aria-live="polite" className="text-[12px] text-cinza-fumo">{dicaBloqueio}</p>
+        )}
+      </div>
     </form>
   );
 }

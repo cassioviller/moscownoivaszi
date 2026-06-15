@@ -57,6 +57,13 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
               ? "Nenhum atendimento nesta semana."
               : `${atendimentos.length} ${atendimentos.length === 1 ? "atendimento" : "atendimentos"} nesta semana.`}
           </p>
+          {/* N1: daqui (visão no tempo) para a fila de trabalho do dia. */}
+          <Link
+            href={`/loja/${lojaId}/atendimentos`}
+            className="mt-0.5 w-fit rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+          >
+            Ir para a fila de atendimentos
+          </Link>
         </div>
         <div className="flex items-center gap-1">
           <Link href={link(anterior)} aria-label="Semana anterior" className="rounded-md px-2 py-1 text-[14px] text-grafite transition-colors duration-150 hover:bg-papel-suave hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">‹</Link>

@@ -185,9 +185,15 @@ export default async function AtendimentosPage({
           <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">
             {historico ? "Atendimentos anteriores" : "Atendimentos"}
           </h1>
-          <Link href={`/loja/${lojaId}/atendimentos/novo`} className={botaoSuave}>
-            Agendar
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* N1: a fila é o trabalho do dia; o calendário é a visão no tempo. */}
+            <Link href={`/loja/${lojaId}/calendario?aba=atendimentos`} className={botaoSuave}>
+              Ver na semana
+            </Link>
+            <Link href={`/loja/${lojaId}/atendimentos/novo`} className={botaoSuave}>
+              Agendar
+            </Link>
+          </div>
         </div>
         <p className="text-[14px] text-cinza-fumo">
           {historico ? "Os atendimentos já finalizados." : "Receba a noiva, registre o atendimento e o desfecho."}

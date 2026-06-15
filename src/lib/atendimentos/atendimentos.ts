@@ -118,7 +118,8 @@ export type AtendimentoItem = {
 
 export async function listarProximosAtendimentos(lojaId: string): Promise<AtendimentoItem[]> {
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { inicio: { gte: hojeUTC() }, tipo: "ATENDIMENTO" },
+    // Só os ABERTOS: um já CONCLUIDO/FALTOU com data futura não é "próximo" (B2).
+    where: { inicio: { gte: hojeUTC() }, tipo: "ATENDIMENTO", situacao: { in: ["AGENDADO", "EM_ATENDIMENTO"] } },
     orderBy: { inicio: "asc" },
     include: { lead: { select: { noivaNome: true } }, cabine: { select: { nome: true } }, vendedora: { select: { nome: true } } },
   });
