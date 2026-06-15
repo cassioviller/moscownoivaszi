@@ -246,4 +246,29 @@ describe("buscarAtendimentos (núcleo parametrizado)", () => {
     const dentro = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde, ate });
     expect(dentro.map((r) => r.id)).not.toContain(aBorda.id);
   });
+
+  it("filtra por vendedoraId", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const i = (h: number) => new Date(`2099-11-01T${String(h).padStart(2, "0")}:00:00.000Z`);
+    const u2 = await prisma.usuario.create({ data: { nome: `${MARK}Vend2`, email: `${MARK}v2-${Date.now()}@x.local`, senhaHash: "x" } });
+    await prisma.usuarioLoja.create({ data: { usuarioId: u2.id, lojaId: loja, perfilId: "perfil-vendedora" } });
+    const a1 = await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: i(9), tipo: "ATENDIMENTO", situacao: "AGENDADO" } as never });
+    const a2 = await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: u2.id, inicio: i(10), tipo: "ATENDIMENTO", situacao: "AGENDADO" } as never });
+    const so2 = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde: i(0), ate: i(23), vendedoraId: u2.id });
+    expect(so2.map((r) => r.id)).toContain(a2.id);
+    expect(so2.map((r) => r.id)).not.toContain(a1.id);
+  });
+
+  it("filtra por noivaBusca (contains, case-insensitive)", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const i = (h: number) => new Date(`2099-11-02T${String(h).padStart(2, "0")}:00:00.000Z`);
+    const marina = (await db.lead.create({ data: { noivaNome: `${MARK}Marina Silva` } as never })).id;
+    const a = await db.atendimento.create({ data: { leadId: marina, cabineId: cabine, vendedoraId: vend, inicio: i(9), tipo: "ATENDIMENTO", situacao: "AGENDADO" } as never });
+    const porMin = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde: i(0), ate: i(23), noivaBusca: "marina" });
+    expect(porMin.map((r) => r.id)).toContain(a.id);
+    const porMaiusc = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde: i(0), ate: i(23), noivaBusca: "MARINA" });
+    expect(porMaiusc.map((r) => r.id)).toContain(a.id);
+    const semMatch = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde: i(0), ate: i(23), noivaBusca: "zzzznao" });
+    expect(semMatch.map((r) => r.id)).not.toContain(a.id);
+  });
 });

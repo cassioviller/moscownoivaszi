@@ -126,6 +126,8 @@ export type FiltroAtendimentos = {
   desde?: Date; // inicio >= desde
   ate?: Date; // inicio < ate
   ordem?: "asc" | "desc";
+  vendedoraId?: string; // where.vendedoraId
+  noivaBusca?: string; // contains no nome da noiva (case-insensitive)
 };
 
 export type AtendimentoLinha = {
@@ -160,6 +162,9 @@ export async function buscarAtendimentos(
       ...(filtro.ate ? { lt: filtro.ate } : {}),
     };
   }
+  if (filtro.vendedoraId) where.vendedoraId = filtro.vendedoraId;
+  const q = filtro.noivaBusca?.trim();
+  if (q) where.lead = { noivaNome: { contains: q, mode: "insensitive" } };
   const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
     // where montado dinamicamente → cast no estilo da casa (o arquivo já usa `as never`).
     where: where as never,
