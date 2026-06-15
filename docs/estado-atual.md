@@ -24,9 +24,15 @@
 >   de `temOrcamento`/`temContrato`; os marcos manuais `orcamentoAbertoEm`/`contratoFechadoEm`
 >   viraram só **legado/compatibilidade**. Supera o fast-follow de `## Jornada derivada`.
 >
-> **Genuinamente em aberto:** suíte **E2E integrada** — `playwright` é devDependency, mas não há
-> `playwright.config`, script `test:e2e` nem pasta `e2e/`; só diagnósticos avulsos em
-> `scripts/repro/*.mjs`. Este é o próximo trabalho real de qualidade.
+> **Suíte E2E integrada ✅ (2026-06-15):** entregue. `playwright.config.ts` + pasta `e2e/` +
+> `npm run test:e2e` (Chromium via nix, sem download). Isolamento por **loja efêmera `loja-e2e`**
+> que nasce no `globalSetup` (Prisma via subprocess `tsx`, ver `scripts/e2e-db.ts`) e é destruída
+> no `globalTeardown` (cascade) — `loja-moscow` nunca é tocada. Cobre gate + jornada read-only +
+> **4 fluxos de mutação** (cadastrar noiva/vestido, agendar atendimento, fechar/cancelar contrato),
+> cada um exercido pela UI real. **10 testes verdes.** Spec/plano:
+> `docs/superpowers/specs/2026-06-15-e2e-mutacao-design.md` /
+> `docs/superpowers/plans/2026-06-15-e2e-mutacao.md`. Fora de escopo (próximas fatias): pipeline de
+> CI propriamente e specs de fluxos adicionais (reserva/prova/ajuste, cobrança).
 
 ## DRE por categoria (2026-06-14) ✅ — Fatia 3 de 3 (financeiro completo)
 
