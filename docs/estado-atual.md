@@ -35,6 +35,55 @@
 > CI propriamente (idealmente contra `next build && next start`, sem compile on-demand do dev) e
 > specs de fluxos adicionais (reserva/prova/ajuste, cobrança).
 
+## Atendimento — diagnóstico + 1ª leva de melhorias (2026-06-15)
+
+Revisão da área de **Atendimento** com 3 skills em sequência (atelier-design-review →
+impeccable critique → improve-codebase-architecture). Diagnóstico completo virou backlog;
+a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, **vitest 482**).
+
+**Entregue (commits `d718e96`, `ca12e19`):**
+- **I1** — toggle Tipo (Atendimento/Prova) em grafite neutro; bordô reservado só ao CTA "Agendar"
+  (`atendimentos/novo/agendar-form.tsx`).
+- **I2** — botão "Agendar" mostra a próxima pré-condição que falta (noiva / vestido da prova /
+  cabine+vendedora+data / horário), em vez de só `disabled` mudo (mesmo arquivo).
+- **N1** — link recíproco fila `/atendimentos` ↔ calendário aba atendimentos
+  (`atendimentos/page.tsx`, `calendario/_abas/AbaAtendimentos.tsx`).
+- **B2** — `listarProximosAtendimentos` (`src/lib/atendimentos/atendimentos.ts`) agora exclui
+  CONCLUÍDO/FALTOU (só ABERTOS) — antes um concluído com data futura aparecia como "próximo".
+  Coberto por teste novo.
+- **Vestidos V-a** — link "Ver acervo completo" ao lado das sugestões (Interesses + Orçamento).
+  A indicação (`src/lib/indicacao/indicacao.ts`) é **curadoria proposital**: top-6 por afinidade
+  (`limite=6` + `.filter(pontos>0)`); texto livre (`algoAMais`/`naoQuerUsar`) não pontua. Não é
+  bug — o link dá a saída para o acervo inteiro sem quebrar a curadoria.
+
+**Backlog priorizado (próximas fatias — NÃO feito ainda):**
+- **B1** [bug, alta] **double-booking**: `agendarAtendimento` faz SELECT (`horasOcupadas`) → CREATE
+  sem transação, e `model Atendimento` **não tem `@@unique`** (cabine/início). Fix: constraint
+  `@@unique([lojaId, cabineId, inicio])` (+ vendedora?) + tratar o erro de unique. Exige migração
+  → fatia própria. (`atendimentos.ts:99-106`).
+- **B3** [refactor] **3 leituras divergentes** de atendimento: `listarAtendimentos` vs
+  `listarProximosAtendimentos` (atendimentos.ts) vs `atendimentosNoIntervalo` (calendario/dados.ts).
+  Unificar numa leitura parametrizada (situação/tipo/intervalo) — concentra a regra "o que conta".
+- **F1/F2** [UX] busca + filtros (noiva · vendedora · situação) na fila e na semana — hoje **não
+  existem** filtros na operação de atendimento.
+- **M1** [UX] clímax no "Concluir" (desfecho RESERVOU → encaminhar p/ criar reserva/contrato).
+  **M2** desfazer/confirmar em concluir/iniciar/falta (hoje irreversível; só o cancelar confirma).
+- **Vestidos V-b/V-c/V-d** (se quiser ir além do V-a): grupo recolhido "Outros do acervo" (inclui
+  sem match estruturado); indisponível com card esmaecido + tag (não só frase); `naoQuerUsar` como
+  alerta no card quando bate no recusado.
+
+> **Falso positivo registrado (não reabrir):** o uso de `prisma` cru em `atendimentos.ts:78`
+> (`usuarioLoja.findUnique` por chave composta `usuarioId_lojaId`) **não** vaza tenant — o `lojaId`
+> vem da sessão (`sc.loja.id`), não de input, e escopa só a loja. É a exceção documentada do guard.
+
+> **ADR a respeitar:** `docs/adr/0001-dia-do-atelier-inicio-e-calendario.md` — a duplicação
+> Início ↔ Calendário do "Dia do atelier" é **aceita de propósito**. Não unificar essas duas.
+
+> **Ambiente:** o dev server do Replit (instância única + `force-dynamic`) **degrada na corrida
+> serial longa de E2E** (compila rotas on-demand; vimos login dar timeout e a suíte ir a ~11min).
+> Cada spec passa **isolado**; a flakiness da suíte cheia é do server, não do código. Para um verde
+> limpo dos 12: reiniciar o app antes de `npm run test:e2e`, ou rodar contra `next build && next start`.
+
 ## DRE por categoria (2026-06-14) ✅ — Fatia 3 de 3 (financeiro completo)
 
 Spec: `docs/superpowers/specs/2026-06-14-dre-por-categoria-design.md`. Plano:
