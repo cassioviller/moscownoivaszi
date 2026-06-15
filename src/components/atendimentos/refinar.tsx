@@ -55,7 +55,7 @@ export function RefinarAtendimentos({
         <label className="flex flex-col gap-1">
           <span className={rotulo}>Situação</span>
           <select name="situacao" defaultValue={valores.situacao ?? ""} className={campo}>
-            <option value="">Todas</option>
+            <option value="">Todas as situações</option>
             {situacoes.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.rotulo}

@@ -75,8 +75,15 @@ a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, *
   assinaturas e tipos (`AtendimentoItem`/`AtendimentoFila`/`AtendimentoCalendario`) — zero mudança
   de comportamento, a suíte existente passou sem edição de consumidor. `listarProvasAbertas` ficou
   fora (tipo=PROVA + include pesado). Abre caminho p/ **F1/F2** (os filtros vão usar `FiltroAtendimentos`).
-- **F1/F2** [UX] busca + filtros (noiva · vendedora · situação) na fila e na semana — hoje **não
-  existem** filtros na operação de atendimento.
+- **F1/F2** [UX] busca + filtros ✅ (2026-06-15, spec/plano `…/2026-06-15-f1-f2-filtros-atendimento*`):
+  componente `RefinarAtendimentos` (`src/components/atendimentos/refinar.tsx`) — um `<details>`
+  "Refinar" calmo (Concierge, abre sozinho com filtro ativo) + `<form method="get">`, **sem client
+  JS**, na fila `/atendimentos` **e** na semana do calendário. Filtra por **noiva** (busca contains
+  case-insensitive), **vendedora** (`listarEquipe`) e **situação**. Núcleo `FiltroAtendimentos`
+  ganhou `vendedoraId`/`noivaBusca`; `listarAtendimentos` aceita `{vendedoraId,noivaBusca,situacao}`
+  (situação singular **estreita** o grupo da vista) e `atendimentosNoIntervalo` ganhou 4º param
+  `filtro`. Bordô só com intenção (dot de filtro ativo + foco). Revisado pela skill
+  `atelier-design-review` (microcopy "Todas as situações"). 4 testes de data layer; suíte 491 verde.
 - **M1** [UX] clímax no "Concluir" (desfecho RESERVOU → encaminhar p/ criar reserva/contrato).
   **M2** desfazer/confirmar em concluir/iniciar/falta (hoje irreversível; só o cancelar confirma).
 - **Vestidos V-b/V-c/V-d** (se quiser ir além do V-a): grupo recolhido "Outros do acervo" (inclui
