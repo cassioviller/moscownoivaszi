@@ -421,6 +421,9 @@ model Atendimento {
   bloqueio  BloqueioVestido? @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
   orcamentos Orcamento[]
   ajustes    Ajuste[]
+
+  @@unique([cabineId, inicio])
+  @@unique([lojaId, vendedoraId, inicio])
 }
 
 // Orçamento — a negociação com a noiva registrada (itens, desconto, status). O
