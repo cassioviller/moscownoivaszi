@@ -285,6 +285,21 @@ listar os vestidos da reserva (carregar via `obterReserva(lojaId, contrato.reser
 `@/lib/reservas/reservas`, server-side); fallback a `vestidoDescricao` para contratos antigos. Sem
 mudança de regra/rota — só exibição.
 
+**Design (impeccable):** usar o **mesmo vocabulário** do `#reserva` — lista com fio `border-b
+borda-suave`, **sem caixa**, código em `tabular-nums cinza-fumo` + nome em `tinta`. Sem bordô (o
+detalhe do contrato é leitura; bordô fica para a ação/estado crítico do contrato, não para a lista de
+vestidos). Consistência de componente entre as duas telas é a regra (PRODUCT: "mesma régua, mesma
+decisão repetida"):
+```tsx
+                <ul className="flex flex-col">
+                  {vestidosDaReserva.map((it) => (
+                    <li key={it.bloqueioId} className="flex items-baseline gap-2 border-b border-borda-suave py-2 last:border-0 text-[14px] text-tinta">
+                      <span className="text-[12px] tabular-nums text-cinza-fumo">{it.codigo}</span>{it.nome}
+                    </li>
+                  ))}
+                </ul>
+```
+
 - [ ] **Step 3: Gates + commit**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit && node node_modules/vitest/vitest.mjs run`

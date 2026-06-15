@@ -182,7 +182,25 @@ renomes), `atelier`, `atendimentos`, **`contratos`** (consome `listarVestidosRes
 - HOLD que expira + sinal/depósito → Fatia 4.
 - Detalhe unificado `[reservaId]` — mantém `[bloqueioId]`.
 
-## 10. Direção visual (Concierge Atelier)
-A reserva é "a escolha da noiva", não um carrinho de e-commerce: vestidos como **peças** (chip código +
-nome), bordô só no CTA "Fechar a reserva" e na urgência ≤14d; estado-zero gentil ("Nenhum vestido
-reservado ainda"). Sem a palavra "sacola". Passar pela `atelier-design-review` antes de fechar.
+## 10. Direção visual (impeccable — register *product*, atmosfera Concierge)
+
+A reserva é "a escolha da noiva", não um carrinho de e-commerce. Decisões fechadas (PRODUCT/DESIGN):
+
+- **Sem cards.** As reservas (em montagem / confirmada) são **grupos rotulados por tipografia** +
+  lista com **fio `border-b borda-suave`** (régua de atelier), não caixas. Uma noiva tem tipicamente
+  **uma** confirmada — boxear seria ruído. (Lei: "cards are the lazy answer".)
+- **Estado por tipografia, não cor.** "Em montagem" / "Reserva confirmada" são micro-labels uppercase
+  (`tracking-[0.08em]`, `cinza-fumo`). Champagne/rosé **nunca** sinalizam estado/função — só atmosfera.
+- **Fio champagne** separa "em montagem" de "confirmada" (`border-champagne/50`) — divisória delicada
+  de atmosfera, não estado. Fio neutro (`borda-suave`) separa o bloco de adicionar.
+- **Bordô como joia (≤5%).** Único bordô sólido = CTA **"Fechar a reserva"** (texto `text-papel`, não
+  `#fff`/`text-white`, banido). Remover/cancelar = texto quieto `cinza-fumo` + underline `decoration-borda`
+  (hover → `bordo`/`decoration-champagne`). Na linha do livro, o único bordô é a urgência ≤14d.
+- **Peça como acervo:** código em `tabular-nums cinza-fumo` + nome em `tinta`. No livro, **nomes inline**
+  (não chips) — densidade-documento (Stripe/Notion), uma linha por compromisso.
+- **Microcopy** humano e enxuto: montagem-vazio "Comece a montar a reserva dela."; estado-zero "Nenhum
+  vestido reservado ainda." Sem a palavra "sacola". Sem em-dash.
+- **A11y/estados:** touch ≥44px (`min-h-11`) nas ações; focus ring `bordo` 2px + offset; sem client JS
+  (server actions), motion só nos hovers (150ms, respeita `prefers-reduced-motion` global).
+
+Passar pela `atelier-design-review` antes de fechar a fatia.

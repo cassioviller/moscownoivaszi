@@ -741,70 +741,107 @@ Substituir o bloco `<section id="reserva">…</section>` (~375-414) por (usa `Bl
       {(reservas.length > 0 || podeReservar) && (
         <section id="reserva" className="scroll-mt-24">
           <Bloco titulo="Reserva">
-            {reservaEmMontagem && (
-              <div className="mb-6">
-                <p className="mb-2 text-[12px] uppercase tracking-wide text-cinza-fumo">Em montagem</p>
-                <ul className="flex flex-col gap-2">
-                  {reservaEmMontagem.itens.map((it) => (
-                    <li key={it.bloqueioId} className="flex items-center justify-between gap-3">
-                      <span className="text-[14px] text-grafite"><span className="text-cinza-fumo">{it.codigo}</span> · {it.nome}</span>
-                      {podeReservar && (
-                        <form action={removerVestidoPelaNoivaAction}>
-                          <input type="hidden" name="leadId" value={leadId} />
-                          <input type="hidden" name="reservaId" value={reservaEmMontagem.id} />
-                          <input type="hidden" name="bloqueioId" value={it.bloqueioId} />
-                          <BotaoConfirmar mensagem={`Remover ${it.nome} da reserva?`} ariaLabel={`Remover ${it.nome}`} className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">remover</BotaoConfirmar>
-                        </form>
-                      )}
-                    </li>
-                  ))}
-                  {reservaEmMontagem.itens.length === 0 && <li className="text-[13px] text-cinza-fumo">Nenhum vestido selecionado ainda.</li>}
-                </ul>
-                {podeReservar && reservaEmMontagem.itens.length > 0 && (
-                  <form action={fecharReservaAction} className="mt-3">
-                    <input type="hidden" name="leadId" value={leadId} />
-                    <input type="hidden" name="reservaId" value={reservaEmMontagem.id} />
-                    <button type="submit" className="inline-flex min-h-11 items-center rounded-md bg-bordo px-4 text-[13px] font-medium text-white transition-colors duration-150 hover:bg-bordo/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">Fechar a reserva</button>
-                  </form>
-                )}
-              </div>
-            )}
+            <div className="flex flex-col gap-7">
+              {/* Em montagem — a escolha sendo composta. Sem caixa: rótulo tipográfico + lista com fio. */}
+              {reservaEmMontagem && (
+                <div>
+                  <p className="mb-3 text-[12px] font-medium uppercase tracking-[0.08em] text-cinza-fumo">Em montagem</p>
+                  <ul className="flex flex-col">
+                    {reservaEmMontagem.itens.map((it) => (
+                      <li key={it.bloqueioId} className="flex items-baseline justify-between gap-4 border-b border-borda-suave py-2.5 last:border-0">
+                        <span className="text-[14px] text-tinta">
+                          <span className="mr-2 text-[12px] tabular-nums text-cinza-fumo">{it.codigo}</span>{it.nome}
+                        </span>
+                        {podeReservar && (
+                          <form action={removerVestidoPelaNoivaAction}>
+                            <input type="hidden" name="leadId" value={leadId} />
+                            <input type="hidden" name="reservaId" value={reservaEmMontagem.id} />
+                            <input type="hidden" name="bloqueioId" value={it.bloqueioId} />
+                            <BotaoConfirmar mensagem={`Remover ${it.nome} da reserva?`} ariaLabel={`Remover ${it.nome}`} className="-my-2 inline-flex min-h-11 items-center rounded-sm px-1 text-[12px] text-cinza-fumo underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">remover</BotaoConfirmar>
+                          </form>
+                        )}
+                      </li>
+                    ))}
+                    {reservaEmMontagem.itens.length === 0 && <li className="py-2.5 text-[13px] text-cinza-fumo">Comece a montar a reserva dela.</li>}
+                  </ul>
+                  {podeReservar && reservaEmMontagem.itens.length > 0 && (
+                    <form action={fecharReservaAction} className="mt-4">
+                      <input type="hidden" name="leadId" value={leadId} />
+                      <input type="hidden" name="reservaId" value={reservaEmMontagem.id} />
+                      <button type="submit" className="inline-flex min-h-11 items-center rounded-md bg-bordo px-4 text-[13px] font-medium text-papel transition-colors duration-150 hover:bg-bordo/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">Fechar a reserva</button>
+                    </form>
+                  )}
+                </div>
+              )}
 
-            {reservasConfirmadas.length > 0 && (
-              <div className="mb-6 flex flex-col gap-4">
-                {reservasConfirmadas.map((r) => (
-                  <div key={r.id} className="rounded-md border border-borda-suave p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[12px] uppercase tracking-wide text-cinza-fumo">Confirmada</p>
-                      {podeReservar && (
-                        <form action={cancelarReservaPelaNoivaAction}>
-                          <input type="hidden" name="leadId" value={leadId} />
-                          <input type="hidden" name="reservaId" value={r.id} />
-                          <BotaoConfirmar mensagem="Cancelar esta reserva inteira? Os vestidos voltam a ficar livres." ariaLabel="Cancelar reserva" className="inline-flex min-h-11 items-center rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">cancelar reserva</BotaoConfirmar>
-                        </form>
-                      )}
-                    </div>
-                    <ul className="flex flex-col gap-1">
-                      {r.itens.map((it) => (
-                        <li key={it.bloqueioId}>
-                          <Link href={`/loja/${lojaId}/reservas/${it.bloqueioId}`} className="rounded-sm text-[14px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"><span className="text-cinza-fumo">{it.codigo}</span> · {it.nome}</Link>
-                        </li>
-                      ))}
-                    </ul>
+              {/* Confirmada(s) — sem caixa. Fio champagne separa de "em montagem" (atmosfera, não estado). */}
+              {reservasConfirmadas.map((r) => (
+                <div key={r.id} className={reservaEmMontagem ? "border-t border-champagne/50 pt-7" : undefined}>
+                  <div className="mb-3 flex items-baseline justify-between gap-4">
+                    <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-cinza-fumo">Reserva confirmada</p>
+                    {podeReservar && (
+                      <form action={cancelarReservaPelaNoivaAction}>
+                        <input type="hidden" name="leadId" value={leadId} />
+                        <input type="hidden" name="reservaId" value={r.id} />
+                        <BotaoConfirmar mensagem="Cancelar esta reserva inteira? Os vestidos voltam a ficar livres." ariaLabel="Cancelar reserva" className="inline-flex min-h-11 items-center rounded-sm px-1 text-[12px] text-cinza-fumo underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">cancelar</BotaoConfirmar>
+                      </form>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                  <ul className="flex flex-col">
+                    {r.itens.map((it) => (
+                      <li key={it.bloqueioId} className="border-b border-borda-suave py-2.5 last:border-0">
+                        <Link href={`/loja/${lojaId}/reservas/${it.bloqueioId}`} className="group inline-flex items-baseline gap-2 rounded-sm text-[14px] text-tinta transition-colors duration-150 hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+                          <span className="text-[12px] tabular-nums text-cinza-fumo">{it.codigo}</span>
+                          <span className="underline decoration-borda underline-offset-4 group-hover:decoration-champagne">{it.nome}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
 
-            {reservas.length === 0 && <p className="text-[14px] text-grafite">Nenhum vestido reservado ainda.</p>}
+              {reservas.length === 0 && <p className="text-[14px] text-grafite">Nenhum vestido reservado ainda.</p>}
 
-            {podeReservar && (lead.casamentoData
-              ? <ReservaLivreInline leadId={leadId} reservar={reservarPelaNoivaAction} buscarLivres={buscarVestidosLivresAction} />
-              : <p className="text-[13px] text-cinza-fumo">Defina a data do casamento para reservar um vestido.</p>)}
+              {/* Adicionar — separado por fio neutro quando já há reserva acima. */}
+              {podeReservar && (lead.casamentoData
+                ? <div className={reservas.length > 0 ? "border-t border-borda-suave pt-6" : undefined}><ReservaLivreInline leadId={leadId} reservar={reservarPelaNoivaAction} buscarLivres={buscarVestidosLivresAction} /></div>
+                : <p className="text-[13px] text-cinza-fumo">Defina a data do casamento para reservar um vestido.</p>)}
+            </div>
           </Bloco>
         </section>
       )}
 ```
+
+> **Tokens a confirmar contra `globals.css`:** `text-papel` (off-white quente para o botão bordô — substitui `text-white`, banido pelo DESIGN), `border-champagne` (fio de atmosfera; existe como cor — `decoration-champagne` já é usada), `tabular-nums`. Se algum não existir como utilitário, registrar o token (não inventar cor nova) ou usar o vizinho já presente.
+
+**Refino UX (ui-ux-pro-max — feedback de submit no CTA de commit).** "Fechar a reserva" é a ação
+consequente; sem feedback de pending o usuário pode clicar duas vezes numa rede lenta. O codebase já
+usa `useFormStatus` (`reserva-livre-inline.tsx`) — seguir o mesmo padrão. Trocar o `<button>` do form de
+fechar por um componente client `SubmitFechar` que desabilita + troca o rótulo enquanto pendente
+(consistência com o resto; demais ações seguem `<form>` puro / `BotaoConfirmar`):
+```tsx
+// src/components/reservas/submit-fechar.tsx
+"use client";
+import { useFormStatus } from "react-dom";
+export function SubmitFechar() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} aria-busy={pending}
+      className="inline-flex min-h-11 items-center rounded-md bg-bordo px-4 text-[13px] font-medium text-papel transition-colors duration-150 hover:bg-bordo/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo disabled:opacity-40">
+      {pending ? "Fechando…" : "Fechar a reserva"}
+    </button>
+  );
+}
+```
+Usar `<SubmitFechar />` no lugar do `<button>` dentro do `<form action={fecharReservaAction}>`.
+**Demais verificações ui-ux-pro-max (já satisfeitas, registrar):** estado por **texto** não-cor
+(`color-not-only` ✓); confirmação nativa nas destrutivas via `BotaoConfirmar` (`confirmation-dialogs` ✓);
+`role="status"` do `Aviso` cobre o anúncio do flash (`aria-live`/`toast-accessibility` ✓); `tabular-nums`
+no código da peça (`number-tabular` ✓); focus ring 2px bordô + offset (`focus-states` ✓). **Touch target:**
+linhas de item são `py-2.5` (~40px) — **desktop é primário** (PRODUCT.md), tablet é apoio; se a operação
+em tablet crescer, subir as linhas para `min-h-11`. **Destrutivo sem vermelho:** o `DESIGN` usa bordô como
+cor crítica e a reserva o reserva ao CTA; a ênfase destrutiva fica no **confirm bloqueante** do
+`BotaoConfirmar` + hover→bordô do gatilho (decisão consciente vs. `destructive-emphasis` genérico).
 
 - [ ] **Step 5: Gates**
 
@@ -856,18 +893,18 @@ Trocar a chamada na page:
 
 - [ ] **Step 2: Linha de cada reserva (JSX)**
 
-Onde hoje mostra `r.codigo`/`r.nome` (um vestido só), trocar para chips dos N vestidos + badge de estado (conferir `bg-papel-suave`/`border-borda` contra `globals.css`):
+Onde hoje mostra `r.codigo`/`r.nome` (um vestido só), trocar para os **nomes dos N vestidos inline** (calmo, densidade-documento — chips com borda virariam "card soup" num livro de uma linha por compromisso) + o estado como micro-label tipográfico (não cor):
 ```tsx
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {r.itens.map((it) => (
-                    <span key={it.bloqueioId} className="inline-flex items-center rounded-sm bg-papel-suave px-2 py-0.5 text-[12px] text-grafite" title={`${it.codigo} · ${it.nome}`}>{it.nome}</span>
-                  ))}
-                  {r.itens.length === 0 && <span className="text-[12px] text-cinza-fumo">sem vestidos</span>}
+                <p className="text-[13px] text-grafite">
+                  {r.itens.length > 0
+                    ? r.itens.map((it) => it.nome).join(", ")
+                    : <span className="text-cinza-fumo">sem vestidos</span>}
                   {r.status === "EM_MONTAGEM" && (
-                    <span className="inline-flex items-center rounded-sm border border-borda px-2 py-0.5 text-[11px] uppercase tracking-wide text-cinza-fumo">Em montagem</span>
+                    <span className="ml-2 text-[11px] font-medium uppercase tracking-[0.08em] text-cinza-fumo">· em montagem</span>
                   )}
-                </div>
+                </p>
 ```
+> O estado fica em **tipografia** (micro-label), nunca em champagne/rosé (atmosfera, não função). A urgência ≤14d segue sendo o único bordô da linha.
 O link da noiva (`/loja/${lojaId}/noivas/${r.leadId}`) e a urgência bordô (`casamentoUrgente`) **permanecem**. Se houver `<Link href={.../reservas/${r.id}}>` apontando ao detalhe do bloqueio antigo, trocar por `href={.../noivas/${r.leadId}#reserva}` (a cabeça não tem página própria; o detalhe é por vestido).
 
 - [ ] **Step 3: Gates**
