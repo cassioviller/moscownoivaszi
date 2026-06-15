@@ -194,19 +194,20 @@ export type AtendimentoItem = {
 };
 
 export async function listarProximosAtendimentos(lojaId: string): Promise<AtendimentoItem[]> {
-  const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    // Só os ABERTOS: um já CONCLUIDO/FALTOU com data futura não é "próximo" (B2).
-    where: { inicio: { gte: hojeUTC() }, tipo: "ATENDIMENTO", situacao: { in: ["AGENDADO", "EM_ATENDIMENTO"] } },
-    orderBy: { inicio: "asc" },
-    include: { lead: { select: { noivaNome: true } }, cabine: { select: { nome: true } }, vendedora: { select: { nome: true } } },
+  // Só os ABERTOS a partir de hoje (um já CONCLUIDO/FALTOU com data futura não é
+  // "próximo" — B2). Núcleo concentra a regra.
+  const rows = await buscarAtendimentos(lojaId, {
+    tipo: "ATENDIMENTO",
+    situacoes: SITUACOES_ABERTAS,
+    desde: hojeUTC(),
   });
   return rows.map((a) => ({
     id: a.id,
     inicio: a.inicio,
-    noivaNome: a.lead?.noivaNome ?? null,
+    noivaNome: a.noivaNome,
     leadId: a.leadId,
-    cabineNome: a.cabine.nome,
-    vendedoraNome: a.vendedora.nome,
+    cabineNome: a.cabineNome,
+    vendedoraNome: a.vendedoraNome,
   }));
 }
 
@@ -238,16 +239,10 @@ export async function listarAtendimentos(
   lojaId: string,
   opts: { finalizados?: boolean } = {},
 ): Promise<AtendimentoFila[]> {
-  const abertos: AtendimentoSituacao[] = ["AGENDADO", "EM_ATENDIMENTO"];
-  const fechados: AtendimentoSituacao[] = ["CONCLUIDO", "FALTOU"];
-  const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { situacao: { in: opts.finalizados ? fechados : abertos }, tipo: "ATENDIMENTO" },
-    orderBy: { inicio: opts.finalizados ? "desc" : "asc" },
-    include: {
-      lead: { select: { noivaNome: true } },
-      cabine: { select: { nome: true } },
-      vendedora: { select: { nome: true } },
-    },
+  const rows = await buscarAtendimentos(lojaId, {
+    tipo: "ATENDIMENTO",
+    situacoes: opts.finalizados ? SITUACOES_FECHADAS : SITUACOES_ABERTAS,
+    ordem: opts.finalizados ? "desc" : "asc",
   });
   return rows.map((a) => ({
     id: a.id,
@@ -255,10 +250,10 @@ export async function listarAtendimentos(
     situacao: a.situacao,
     desfecho: a.desfecho,
     atendidoEm: a.atendidoEm,
-    noivaNome: a.lead?.noivaNome ?? null,
+    noivaNome: a.noivaNome,
     leadId: a.leadId,
-    cabineNome: a.cabine.nome,
-    vendedoraNome: a.vendedora.nome,
+    cabineNome: a.cabineNome,
+    vendedoraNome: a.vendedoraNome,
   }));
 }
 
