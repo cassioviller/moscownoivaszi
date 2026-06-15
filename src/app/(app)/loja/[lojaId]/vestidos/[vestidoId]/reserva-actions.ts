@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterLead } from "@/lib/leads/leads";
-import { reservarVestido, cancelarReserva, criarManutencao } from "@/lib/disponibilidade/reservas";
+import { reservarVestido, removerBloqueio, criarManutencao } from "@/lib/disponibilidade/reservas";
 
 export async function reservarPeloVestidoAction(formData: FormData) {
   const sc = await getSessaoComLoja();
@@ -43,7 +43,7 @@ export async function cancelarReservaPeloVestidoAction(formData: FormData) {
 
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) redirect(base);
 
-  await cancelarReserva(sc.loja.id, bloqueioId);
+  await removerBloqueio(sc.loja.id, bloqueioId);
   redirect(`${base}?ok=cancelada`);
 }
 
@@ -73,6 +73,6 @@ export async function removerManutencaoAction(formData: FormData) {
 
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"))) redirect(base);
 
-  await cancelarReserva(sc.loja.id, bloqueioId); // remove o bloqueio (type-agnóstico)
+  await removerBloqueio(sc.loja.id, bloqueioId); // remove o bloqueio (type-agnóstico)
   redirect(`${base}?ok=manutencao_removida`);
 }

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { gradeDoDia, agendarAtendimento, cancelarAtendimento } from "@/lib/atendimentos/atendimentos";
-import { listarReservasDaNoiva, type ReservaDaNoiva } from "@/lib/disponibilidade/reservas";
+import { listarVestidosReservadosDaNoiva, type ReservaDaNoiva } from "@/lib/disponibilidade/reservas";
 import { acaoAutorizada } from "@/lib/server/acoes";
 import { str, comAviso } from "@/lib/server/form";
 import type { Slot } from "@/lib/atendimentos/slots";
@@ -28,7 +28,7 @@ export async function reservasDaNoivaAction(leadId: string): Promise<ReservaDaNo
   if (!sc) return [];
   if (!(await podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"))) return [];
   if (!leadId) return [];
-  return listarReservasDaNoiva(sc.loja.id, leadId);
+  return listarVestidosReservadosDaNoiva(sc.loja.id, leadId);
 }
 
 export type AgendarState = { erro: string | null };

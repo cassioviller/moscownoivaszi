@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import { paraCentavos, deCentavos } from "@/lib/dinheiro";
 import { calcularTotais } from "@/lib/orcamentos/orcamentos";
-import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
+import { listarVestidosReservadosDaNoiva } from "@/lib/disponibilidade/reservas";
 import { parseDiaUTC } from "@/lib/disponibilidade/datas";
 import type { DadosContrato } from "@/lib/contratos/pdf";
 import { listarParcelasDoContrato } from "@/lib/financeiro/receber";
@@ -51,7 +51,7 @@ export async function criarContratoDeOrcamento(lojaId: string, orcamentoId: stri
 
   const total = calcularTotais(orc.itens, orc.descontoTipo, orc.descontoValor).total;
   const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO");
-  const reservas = await listarReservasDaNoiva(lojaId, orc.leadId);
+  const reservas = await listarVestidosReservadosDaNoiva(lojaId, orc.leadId);
   // Casa a reserva pelo VESTIDO do item do orçamento (a noiva pode ter várias reservas).
   // Sem item-vestido identificável, só anexa se houver UMA reserva (senão fica ambíguo).
   const reserva = itemVestido?.vestidoId
@@ -90,7 +90,7 @@ export async function criarContratoDaNoiva(lojaId: string, leadId: string, vende
   if (!lead) return { ok: false, motivo: "lead_invalido" };
   if (!vinc) return { ok: false, motivo: "vendedora_invalida" };
 
-  const reservas = await listarReservasDaNoiva(lojaId, leadId);
+  const reservas = await listarVestidosReservadosDaNoiva(lojaId, leadId);
   // Sem orçamento p/ desambiguar: só anexa se houver UMA reserva.
   const reserva = reservas.length === 1 ? reservas[0] : null;
 

@@ -69,10 +69,10 @@ export type ResultadoReserva =
  */
 export async function reservarVestido(
   lojaId: string,
-  input: { vestidoId: string; leadId: string; casamentoData: string },
+  input: { vestidoId: string; leadId: string; casamentoData: string; reservaId?: string },
 ): Promise<ResultadoReserva> {
   const db = tenantPrisma(prisma, lojaId);
-  const { vestidoId, leadId, casamentoData } = input;
+  const { vestidoId, leadId, casamentoData, reservaId } = input;
 
   if (!casamentoData) return { ok: false, motivo: "sem_data" };
 
@@ -122,17 +122,25 @@ export async function reservarVestido(
       leadId,
       tipo: "RESERVA_CASAMENTO",
       casamentoData: meiaNoiteUTC(casamentoData),
+      reservaId: reservaId ?? null,
     } as never,
   });
   return { ok: true, bloqueioId: criado.id };
 }
 
 /** Cancela (remove) uma reserva OU manutenção. Escopo de loja via tenantPrisma. */
-export async function cancelarReserva(lojaId: string, bloqueioId: string): Promise<void> {
+export async function removerBloqueio(lojaId: string, bloqueioId: string): Promise<void> {
   // delete por id é carimbado com lojaId (extendedWhereUnique) → P2025 se for de
   // outra loja. deleteMany evita o throw e simplesmente não apaga o que não é da loja.
   await tenantPrisma(prisma, lojaId).bloqueioVestido.deleteMany({ where: { id: bloqueioId } });
 }
+
+/**
+ * @deprecated Alias transitório de `removerBloqueio`. Mantido só para o perfil da
+ * noiva (`noivas/[leadId]/reserva-actions.ts`), que será reescrito na Task 6 e
+ * deixará de usar o primitivo de item. Remover junto com aquela reescrita.
+ */
+export const cancelarReserva = removerBloqueio;
 
 export type ResultadoMovimentacao =
   | { ok: true }
@@ -327,7 +335,7 @@ export type ReservaDaNoiva = {
 };
 
 /** Reservas (casamento) de uma noiva, com o vestido reservado. */
-export async function listarReservasDaNoiva(
+export async function listarVestidosReservadosDaNoiva(
   lojaId: string,
   leadId: string,
 ): Promise<ReservaDaNoiva[]> {

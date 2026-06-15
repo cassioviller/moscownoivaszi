@@ -6,9 +6,9 @@ import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
 import {
   reservarVestido,
-  cancelarReserva,
+  removerBloqueio,
   listarReservasDoVestido,
-  listarReservasDaNoiva,
+  listarVestidosReservadosDaNoiva,
   vestidosLivresPara,
   criarManutencao,
   listarManutencoesDoVestido,
@@ -74,7 +74,7 @@ describe("reservas: motor ligado ao banco", () => {
     const livresAntes = await vestidosLivresPara(loja, "2026-12-05");
     expect(livresAntes.some((v) => v.id === vestidoB)).toBe(false);
 
-    if (r.ok) await cancelarReserva(loja, r.bloqueioId);
+    if (r.ok) await removerBloqueio(loja, r.bloqueioId);
 
     const livresDepois = await vestidosLivresPara(loja, "2026-12-05");
     expect(livresDepois.some((v) => v.id === vestidoB)).toBe(true);
@@ -85,8 +85,20 @@ describe("reservas: motor ligado ao banco", () => {
     expect(doVestido.length).toBeGreaterThan(0);
     expect(doVestido[0].noivaNome).toBe(`${MARK}n`);
 
-    const daNoiva = await listarReservasDaNoiva(loja, noiva);
+    const daNoiva = await listarVestidosReservadosDaNoiva(loja, noiva);
     expect(daNoiva.some((r) => r.vestidoId === vestidoA)).toBe(true);
+  });
+
+  it("grava reservaId no bloqueio quando passado", async () => {
+    const reserva = await tenantPrisma(prisma, loja).reserva.create({
+      data: { leadId: noiva, casamentoData: new Date("2028-03-10T00:00:00.000Z"), status: "EM_MONTAGEM" } as never,
+    });
+    const r = await reservarVestido(loja, { vestidoId: vestidoA, leadId: noiva, casamentoData: "2028-03-10", reservaId: reserva.id });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const row = await tenantPrisma(prisma, loja).bloqueioVestido.findUnique({ where: { id: r.bloqueioId } });
+      expect(row?.reservaId).toBe(reserva.id);
+    }
   });
 
   it("manutenção bloqueia reserva no período e cancelar libera", async () => {
@@ -108,14 +120,14 @@ describe("reservas: motor ligado ao banco", () => {
     expect(bloqueada.ok).toBe(false);
 
     // Cancela a manutenção → volta a ficar livre.
-    if (m.ok) await cancelarReserva(loja, m.id);
+    if (m.ok) await removerBloqueio(loja, m.id);
     const livre = await reservarVestido(loja, {
       vestidoId: vestidoB,
       leadId: noiva,
       casamentoData: "2027-03-15",
     });
     expect(livre.ok).toBe(true);
-    if (livre.ok) await cancelarReserva(loja, livre.bloqueioId); // limpa p/ não vazar
+    if (livre.ok) await removerBloqueio(loja, livre.bloqueioId); // limpa p/ não vazar
   });
 
   it("recusa manutenção com datas invertidas", async () => {
@@ -137,7 +149,7 @@ describe("reservas: motor ligado ao banco", () => {
     const hoje = new Date(new Date().toISOString().slice(0, 10));
     expect(livro.every((x) => x.casamentoData && x.casamentoData >= hoje)).toBe(true);
 
-    if (r.ok) await cancelarReserva(loja, r.bloqueioId);
+    if (r.ok) await removerBloqueio(loja, r.bloqueioId);
   });
 });
 
@@ -273,7 +285,7 @@ describe("movimentação da reserva (retirada/devolução)", () => {
     if (!m.ok) return;
     const r = await definirMovimentacaoReserva(loja, m.id, { retiradaDataReal: "2028-01-12" });
     expect(r).toMatchObject({ ok: false, motivo: "reserva_invalida" });
-    await cancelarReserva(loja, m.id);
+    await removerBloqueio(loja, m.id);
   });
 
   it("isolamento: outra loja não move a reserva", async () => {

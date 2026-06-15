@@ -21,7 +21,7 @@ import { gerarContratoDaNoivaAction } from "../../contratos/actions";
 import { listarVestidosPreEscolhidosDaNoiva } from "@/lib/orcamentos/orcamentos";
 import { listarContratosDaNoiva } from "@/lib/contratos/contratos";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
-import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
+import { listarVestidosReservadosDaNoiva } from "@/lib/disponibilidade/reservas";
 import {
   reservarPelaNoivaAction,
   cancelarReservaPelaNoivaAction,
@@ -123,7 +123,7 @@ export default async function NoivaPage({
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "criar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "interesses", "editar"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "vestidos", "editar"),
-    listarReservasDaNoiva(sc.loja.id, leadId),
+    listarVestidosReservadosDaNoiva(sc.loja.id, leadId),
     listarVestidosPreEscolhidosDaNoiva(sc.loja.id, leadId),
     listarContratosDaNoiva(sc.loja.id, leadId),
     fatosDaNoiva(sc.loja.id, leadId),
