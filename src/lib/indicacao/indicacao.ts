@@ -31,6 +31,24 @@ export type VestidoIndicado = {
 };
 
 /**
+ * Heurística SÓ de exibição (não pontua, não ordena — respeita o LIMITE deste
+ * módulo): true se algum token de `naoQuerUsar` (palavras com ≥ 4 letras)
+ * aparece no nome ou nos atributos que combinaram. É um sinal para a vendedora
+ * olhar com atenção; o julgamento continua humano.
+ */
+export function conflitaComRecusa(
+  naoQuerUsar: string | null | undefined,
+  alvo: { nome: string; combinam: { valor: string }[] },
+): boolean {
+  const txt = (naoQuerUsar ?? "").toLowerCase();
+  if (!txt.trim()) return false;
+  const tokens = txt.split(/[^a-zà-ú0-9]+/i).filter((t) => t.length >= 4);
+  if (tokens.length === 0) return false;
+  const haystack = [alvo.nome, ...alvo.combinam.map((c) => c.valor)].join(" ").toLowerCase();
+  return tokens.some((t) => haystack.includes(t));
+}
+
+/**
  * Vestidos ativos da loja ranqueados pela afinidade com o interesse da noiva.
  * Retorna [] se a noiva não é da loja, não tem interesse, ou não preencheu nenhum
  * atributo. Só lista vestidos com ao menos 1 atributo em comum.

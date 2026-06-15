@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { criarLead } from "@/lib/leads/leads";
 import { salvarInteresse } from "@/lib/leads/interesses";
 import { criarVestido } from "@/lib/vestidos/vestidos";
-import { indicarVestidos } from "@/lib/indicacao/indicacao";
+import { indicarVestidos, conflitaComRecusa } from "@/lib/indicacao/indicacao";
 
 const MARK = "t-indic-";
 let loja = "";
@@ -137,5 +137,24 @@ describe("indicação de vestido por interesse", () => {
     } finally {
       await prisma.loja.delete({ where: { id: outra } });
     }
+  });
+});
+
+describe("conflitaComRecusa (V-d — heurística só de exibição)", () => {
+  it("bate no nome do vestido", () => {
+    expect(conflitaComRecusa("renda e brilho", { nome: "Vestido com renda", combinam: [] })).toBe(true);
+  });
+  it("bate num atributo que combinou", () => {
+    expect(conflitaComRecusa("decote", { nome: "Sereia", combinam: [{ valor: "Decote V" }] })).toBe(true);
+  });
+  it("não bate quando nenhum token aparece", () => {
+    expect(conflitaComRecusa("cauda longa", { nome: "Tomara que caia", combinam: [{ valor: "Tomara que caia" }] })).toBe(false);
+  });
+  it("vazio/null → false", () => {
+    expect(conflitaComRecusa("", { nome: "Vestido", combinam: [] })).toBe(false);
+    expect(conflitaComRecusa(null, { nome: "Vestido", combinam: [] })).toBe(false);
+  });
+  it("token curto (< 4 letras) é descartado", () => {
+    expect(conflitaComRecusa("ok", { nome: "ok vestido", combinam: [] })).toBe(false);
   });
 });
