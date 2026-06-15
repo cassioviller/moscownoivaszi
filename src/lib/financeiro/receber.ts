@@ -10,7 +10,8 @@ import { hojeUTC, diaParaData } from "@/lib/financeiro/datas";
 import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
 import { paginar } from "@/lib/paginacao";
-import type { ParcelaStatus } from "@/generated/prisma/client";
+import { formaValida } from "@/lib/financeiro/forma";
+import type { ParcelaStatus, FormaPagamento } from "@/generated/prisma/client";
 
 const DIA_MS = 86_400_000;
 
@@ -128,7 +129,7 @@ export async function adicionarParcela(
 
 export type ResultadoOp =
   | { ok: true }
-  | { ok: false; motivo: "parcela_invalida" | "nao_previsto" | "nao_pago" | "valor_invalido" | "data_invalida" | "contrato_nao_ativo" };
+  | { ok: false; motivo: "parcela_invalida" | "nao_previsto" | "nao_pago" | "valor_invalido" | "data_invalida" | "contrato_nao_ativo" | "forma_invalida" };
 
 export async function editarParcela(
   lojaId: string,
@@ -204,9 +205,15 @@ export async function registrarRecebimento(
   } catch {
     return { ok: false, motivo: "data_invalida" };
   }
+  let forma: FormaPagamento | null = null;
+  const fr = input.forma?.trim();
+  if (fr) {
+    if (!formaValida(fr)) return { ok: false, motivo: "forma_invalida" };
+    forma = fr; // narrowed para FormaPagamento pelo type-guard
+  }
   await db.parcela.updateMany({
     where: { id: parcelaId },
-    data: { status: "PAGA", valorRecebido: deCentavos(valorC), recebidoEm, formaRecebimento: input.forma?.trim() || null },
+    data: { status: "PAGA", valorRecebido: deCentavos(valorC), recebidoEm, formaRecebimento: forma },
   });
   return { ok: true };
 }
@@ -234,7 +241,7 @@ export type ParcelaView = {
   status: ParcelaStatus;
   valorRecebido: string | null;
   recebidoEm: Date | null;
-  formaRecebimento: string | null;
+  formaRecebimento: FormaPagamento | null;
   atrasada: boolean;
 };
 
@@ -283,7 +290,7 @@ export async function listarContasAReceber(
       ? { status: "PAGA" as const }
       : filtro === "abertas" || filtro === "atrasadas"
         ? { status: "PREVISTA" as const }
-        : {};
+        : { status: { not: "CANCELADA" as const } }; // "todas": tudo menos as canceladas
   // "atrasadas" = vencido (teto = hoje); o helper intersecta com o intervalo (lt mais restritivo).
   const vencimento = vencimentoNaJanela(opts.intervalo, filtro === "atrasadas" ? hoje : undefined);
   const where = vencimento ? { ...status, vencimento } : status;

@@ -81,11 +81,11 @@ describe("receber: baixa, ajuste e atraso", () => {
     const c = await contrato("300,00");
     await gerarPlanoDePagamento(loja, c, { numParcelas: 1, primeiroVencimento: "2027-04-01" });
     const [p] = await listarParcelasDoContrato(loja, c);
-    expect((await registrarRecebimento(loja, p.id, { forma: "Pix" })).ok).toBe(true);
+    expect((await registrarRecebimento(loja, p.id, { forma: "PIX" })).ok).toBe(true);
     const depois = (await listarParcelasDoContrato(loja, c))[0];
     expect(depois.status).toBe("PAGA");
     expect(depois.valorRecebido).toBe("300.00");
-    expect(depois.formaRecebimento).toBe("Pix");
+    expect(depois.formaRecebimento).toBe("PIX");
     // editar/remover travados após pago
     expect(await editarParcela(loja, p.id, { valorPrevisto: "10" })).toMatchObject({ ok: false, motivo: "nao_previsto" });
     expect(await removerParcela(loja, p.id)).toMatchObject({ ok: false, motivo: "nao_previsto" });
@@ -110,13 +110,21 @@ describe("receber: baixa, ajuste e atraso", () => {
     expect(await registrarRecebimento(loja, p.id, { valor: "0" })).toMatchObject({ ok: false, motivo: "valor_invalido" });
   });
 
+  it("registrarRecebimento valida a forma (enum)", async () => {
+    const c = await contrato("200,00");
+    await gerarPlanoDePagamento(loja, c, { numParcelas: 2, primeiroVencimento: "2027-08-01" });
+    const ps = await listarParcelasDoContrato(loja, c);
+    expect((await registrarRecebimento(loja, ps[0].id, { valor: "100", forma: "CARTAO_CREDITO" })).ok).toBe(true);
+    expect(await registrarRecebimento(loja, ps[1].id, { valor: "100", forma: "qualquer" })).toEqual({ ok: false, motivo: "forma_invalida" });
+  });
+
   it("contrato CANCELADO: bloqueia receber/remover, mas permite estornar", async () => {
     const c = await contrato("300,00");
     await gerarPlanoDePagamento(loja, c, { numParcelas: 1, primeiroVencimento: "2027-07-01" });
     const [p] = await listarParcelasDoContrato(loja, c);
     // recebe antes de cancelar
     await registrarRecebimento(loja, p.id, {});
-    await cancelarContrato(loja, c);
+    await cancelarContrato(loja, c, { destinoPago: "manter" });
     // estornar AINDA funciona (corrigir erro), mas receber/remover não
     expect((await estornarRecebimento(loja, p.id)).ok).toBe(true);
     expect(await registrarRecebimento(loja, p.id, {})).toMatchObject({ ok: false, motivo: "contrato_nao_ativo" });

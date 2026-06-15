@@ -14,6 +14,14 @@ import {
   listarContratosDaNoiva,
   dadosParaPdf,
 } from "@/lib/contratos/contratos";
+import {
+  gerarPlanoDePagamento,
+  registrarRecebimento,
+  listarParcelasDoContrato,
+  listarContasAReceber,
+  resumoReceber,
+} from "@/lib/financeiro/receber";
+import { agingDaLoja } from "@/lib/financeiro/cobranca";
 import { fatosDaNoiva } from "@/lib/leads/leads";
 import { estagioDaNoiva } from "@/lib/leads/jornada";
 
@@ -109,17 +117,27 @@ describe("contratos: edição, cancelamento, PDF", () => {
     const r = await criarContratoDaNoiva(loja, lead, vend);
     if (!r.ok) throw new Error("falhou");
     const id = r.contratoId;
-    expect((await editarContrato(loja, id, { valorTotal: "3.500,00", entrada: "1.000", formaPagamento: "50% + 2x", cpf: "123", dataRetirada: "2026-12-10" })).ok).toBe(true);
+    expect((await editarContrato(loja, id, { valorTotal: "3.500,00", formaPagamento: "PIX", cpf: "123", dataRetirada: "2026-12-10" })).ok).toBe(true);
     const det = (await obterContrato(loja, id))!;
     expect(det.valorTotal).toBe("3500.00");
-    expect(det.entrada).toBe("1000.00");
+    expect(det.formaPagamento).toBe("PIX");
     expect(det.dataRetirada?.toISOString().slice(0, 10)).toBe("2026-12-10");
 
     expect(await editarContrato(loja, id, { valorTotal: "abc" })).toMatchObject({ ok: false, motivo: "valor_invalido" });
 
-    expect((await cancelarContrato(loja, id)).ok).toBe(true);
+    expect((await cancelarContrato(loja, id, { destinoPago: "manter" })).ok).toBe(true);
     expect((await obterContrato(loja, id))!.status).toBe("CANCELADO");
     expect(await editarContrato(loja, id, { cpf: "999" })).toMatchObject({ ok: false, motivo: "nao_ativo" });
+  });
+
+  it("editarContrato valida a forma de pagamento (enum)", async () => {
+    const r = await criarContratoDaNoiva(loja, lead, vend);
+    if (!r.ok) throw new Error("falhou");
+    const id = r.contratoId;
+    expect((await editarContrato(loja, id, { formaPagamento: "PIX" })).ok).toBe(true);
+    expect((await editarContrato(loja, id, { formaPagamento: "" })).ok).toBe(true); // "" limpa
+    expect((await obterContrato(loja, id))!.formaPagamento).toBeNull();
+    expect(await editarContrato(loja, id, { formaPagamento: "qualquer" })).toEqual({ ok: false, motivo: "forma_invalida" });
   });
 
   it("dadosParaPdf mapeia o contrato persistido", async () => {
@@ -136,6 +154,60 @@ describe("contratos: edição, cancelamento, PDF", () => {
   });
 });
 
+// Loja dedicada por teste → resumoReceber/agingDaLoja (loja-wide) ficam determinísticos.
+async function semearLojaNoivaVendedora(): Promise<{ loja: string; leadId: string; vendId: string }> {
+  const l = (await prisma.loja.create({ data: { nome: `${MARK}cancel-${Date.now()}-${Math.round(Math.random() * 1e6)}` } })).id;
+  const leadId = (await tenantPrisma(prisma, l).lead.create({ data: { noivaNome: `${MARK}Noiva` } as never })).id;
+  await prisma.usuarioLoja.create({ data: { usuarioId: vend, lojaId: l, perfilId: "perfil-vendedora" } });
+  return { loja: l, leadId, vendId: vend };
+}
+
+describe("contratos: cancelar limpa as parcelas (bug de conciliação)", () => {
+  it("manter: previstas viram CANCELADA e somem de receber/atraso/aging; paga continua recebida", async () => {
+    const { loja: lj, leadId, vendId } = await semearLojaNoivaVendedora();
+    const r = await criarContratoDaNoiva(lj, leadId, vendId);
+    if (!r.ok) throw new Error("contrato falhou");
+    const cid = r.contratoId;
+    await editarContrato(lj, cid, { valorTotal: "3.000,00" });
+    // 3 parcelas vencidas (2020) → todas atrasadas; paga a 1ª.
+    await gerarPlanoDePagamento(lj, cid, { numParcelas: 3, primeiroVencimento: "2020-01-10", periodicidadeDias: 30 });
+    const parcelas = await listarParcelasDoContrato(lj, cid);
+    await registrarRecebimento(lj, parcelas[0].id, { valor: parcelas[0].valorPrevisto, forma: "PIX" });
+
+    expect((await listarContasAReceber(lj, { filtro: "todas" })).total).toBe(3);
+
+    const cc = await cancelarContrato(lj, cid, { destinoPago: "manter", motivo: "desistiu" });
+    expect(cc.ok).toBe(true);
+
+    // previstas viraram CANCELADA → somem de abertas, resumo e aging.
+    expect((await listarContasAReceber(lj, { filtro: "abertas" })).total).toBe(0);
+    expect((await resumoReceber(lj)).emAtraso).toBe("0.00");
+    expect((await agingDaLoja(lj)).noivas.length).toBe(0);
+    // a paga continua como recebida (destino "manter").
+    expect((await listarContasAReceber(lj, { filtro: "recebidas" })).total).toBe(1);
+    // "todas" exclui as canceladas → só a paga.
+    expect((await listarContasAReceber(lj, { filtro: "todas" })).total).toBe(1);
+  });
+
+  it("estornar: a paga também vira CANCELADA (sai da receita)", async () => {
+    const { loja: lj, leadId, vendId } = await semearLojaNoivaVendedora();
+    const r = await criarContratoDaNoiva(lj, leadId, vendId);
+    if (!r.ok) throw new Error("contrato falhou");
+    const cid = r.contratoId;
+    await editarContrato(lj, cid, { valorTotal: "1.000,00" });
+    await gerarPlanoDePagamento(lj, cid, { numParcelas: 1, primeiroVencimento: "2026-01-10" });
+    const ps = await listarParcelasDoContrato(lj, cid);
+    await registrarRecebimento(lj, ps[0].id, { valor: ps[0].valorPrevisto, forma: "PIX" });
+
+    await cancelarContrato(lj, cid, { destinoPago: "estornar" });
+    expect((await listarContasAReceber(lj, { filtro: "recebidas" })).total).toBe(0);
+    // a parcela ficou CANCELADA (não some do detalhe, mas sai dos recebíveis).
+    const det = await listarParcelasDoContrato(lj, cid);
+    expect(det[0].status).toBe("CANCELADA");
+    expect(det[0].valorRecebido).toBeNull();
+  });
+});
+
 describe("contratos: jornada e isolamento", () => {
   it("contrato ATIVO → contrato_fechado; cancelado regride (ao orçamento)", async () => {
     const noiva = (await tenantPrisma(prisma, loja).lead.create({ data: { noivaNome: `${MARK}Bia` } as never })).id;
@@ -144,7 +216,7 @@ describe("contratos: jornada e isolamento", () => {
     if (!r.ok) throw new Error("falhou");
 
     expect(estagioDaNoiva((await fatosDaNoiva(loja, noiva))!).atual).toBe("contrato_fechado");
-    await cancelarContrato(loja, r.contratoId);
+    await cancelarContrato(loja, r.contratoId, { destinoPago: "manter" });
     // orçamento segue aprovado → regride para orcamento_aberto, não some.
     expect(estagioDaNoiva((await fatosDaNoiva(loja, noiva))!).atual).toBe("orcamento_aberto");
   });

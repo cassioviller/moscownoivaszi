@@ -10,7 +10,9 @@ import { calcularTotais } from "@/lib/orcamentos/orcamentos";
 import { listarReservasDaNoiva } from "@/lib/disponibilidade/reservas";
 import { parseDiaUTC } from "@/lib/disponibilidade/datas";
 import type { DadosContrato } from "@/lib/contratos/pdf";
-import type { ContratoStatus } from "@/generated/prisma/client";
+import { listarParcelasDoContrato } from "@/lib/financeiro/receber";
+import { formaValida, rotuloForma } from "@/lib/financeiro/forma";
+import type { ContratoStatus, FormaPagamento } from "@/generated/prisma/client";
 
 // "YYYY-MM-DD" → DateTime meia-noite UTC; "" / null → null. Lança em data inválida.
 // Delega ao parser estrito do motor, que rejeita datas impossíveis ("2027-02-30")
@@ -107,14 +109,13 @@ export async function criarContratoDaNoiva(lojaId: string, leadId: string, vende
 
 export type ResultadoOp =
   | { ok: true }
-  | { ok: false; motivo: "contrato_invalido" | "nao_ativo" | "valor_invalido" | "data_invalida" };
+  | { ok: false; motivo: "contrato_invalido" | "nao_ativo" | "valor_invalido" | "data_invalida" | "forma_invalida" };
 
 export type PatchContrato = {
   cpf?: string;
   vestidoDescricao?: string;
   valorTotal?: string;
-  entrada?: string; // "" limpa
-  formaPagamento?: string;
+  formaPagamento?: string; // "" limpa; valor deve ser do enum FormaPagamento
   dataCasamento?: string;
   dataRetirada?: string;
   dataDevolucao?: string;
@@ -131,24 +132,19 @@ export async function editarContrato(lojaId: string, contratoId: string, patch: 
   const vazioNull = (v: string) => (v.trim() === "" ? null : v.trim());
   if (patch.cpf !== undefined) data.cpf = vazioNull(patch.cpf);
   if (patch.vestidoDescricao !== undefined) data.vestidoDescricao = vazioNull(patch.vestidoDescricao);
-  if (patch.formaPagamento !== undefined) data.formaPagamento = vazioNull(patch.formaPagamento);
   if (patch.observacoes !== undefined) data.observacoes = vazioNull(patch.observacoes);
+  if (patch.formaPagamento !== undefined) {
+    const f = patch.formaPagamento.trim();
+    if (f === "") data.formaPagamento = null;
+    else if (!formaValida(f)) return { ok: false, motivo: "forma_invalida" };
+    else data.formaPagamento = f;
+  }
 
   if (patch.valorTotal !== undefined) {
     try {
       data.valorTotal = deCentavos(paraCentavos(patch.valorTotal));
     } catch {
       return { ok: false, motivo: "valor_invalido" };
-    }
-  }
-  if (patch.entrada !== undefined) {
-    if (patch.entrada.trim() === "") data.entrada = null;
-    else {
-      try {
-        data.entrada = deCentavos(paraCentavos(patch.entrada));
-      } catch {
-        return { ok: false, motivo: "valor_invalido" };
-      }
     }
   }
   try {
@@ -167,12 +163,43 @@ export async function editarContrato(lojaId: string, contratoId: string, patch: 
   return { ok: true };
 }
 
-export async function cancelarContrato(lojaId: string, contratoId: string): Promise<ResultadoOp> {
+export type DestinoPago = "manter" | "estornar";
+
+/**
+ * Cancela (distrato) um contrato ATIVO. As parcelas em aberto (PREVISTA) sempre viram
+ * CANCELADA — saindo automaticamente das leituras de recebíveis/cobrança/projeção, que
+ * só leem PREVISTA/PAGA. Sobre o que já foi recebido (PAGA), o gestor escolhe:
+ *  - "manter": cliente perdeu o sinal → a parcela paga fica como recebida (segue no caixa/DRE);
+ *  - "estornar": valor devolvido → a parcela paga também vira CANCELADA (sai da receita).
+ * Tudo numa transação. lojaId explícito no where preserva o isolamento (o contrato já foi
+ * validado como da loja via tenantPrisma acima) — `tx` do $transaction não passa pelo guard.
+ */
+export async function cancelarContrato(
+  lojaId: string,
+  contratoId: string,
+  opts: { destinoPago: DestinoPago; motivo?: string },
+): Promise<ResultadoOp> {
   const db = tenantPrisma(prisma, lojaId);
   const c = await db.contrato.findUnique({ where: { id: contratoId }, select: { status: true } });
   if (!c) return { ok: false, motivo: "contrato_invalido" };
   if (c.status !== "ATIVO") return { ok: false, motivo: "nao_ativo" };
-  await db.contrato.updateMany({ where: { id: contratoId }, data: { status: "CANCELADO" } });
+
+  const ops = [
+    prisma.contrato.updateMany({
+      where: { id: contratoId, lojaId },
+      data: { status: "CANCELADO", canceladoMotivo: opts.motivo?.trim() || null },
+    }),
+    prisma.parcela.updateMany({ where: { contratoId, lojaId, status: "PREVISTA" }, data: { status: "CANCELADA" } }),
+  ];
+  if (opts.destinoPago === "estornar") {
+    ops.push(
+      prisma.parcela.updateMany({
+        where: { contratoId, lojaId, status: "PAGA" },
+        data: { status: "CANCELADA", valorRecebido: null, recebidoEm: null, formaRecebimento: null },
+      }),
+    );
+  }
+  await prisma.$transaction(ops);
   return { ok: true };
 }
 
@@ -235,8 +262,7 @@ export type ContratoDetalhe = {
   cpf: string | null;
   vestidoDescricao: string | null;
   valorTotal: string;
-  entrada: string | null;
-  formaPagamento: string | null;
+  formaPagamento: FormaPagamento | null;
   dataCasamento: Date | null;
   dataRetirada: Date | null;
   dataDevolucao: Date | null;
@@ -261,7 +287,6 @@ export async function obterContrato(lojaId: string, contratoId: string): Promise
     cpf: c.cpf,
     vestidoDescricao: c.vestidoDescricao,
     valorTotal: Number(c.valorTotal).toFixed(2),
-    entrada: c.entrada != null ? Number(c.entrada).toFixed(2) : null,
     formaPagamento: c.formaPagamento,
     dataCasamento: c.dataCasamento,
     dataRetirada: c.dataRetirada,
@@ -282,6 +307,15 @@ export async function dadosParaPdf(lojaId: string, contratoId: string): Promise<
     include: { lead: { select: { noivaNome: true, whatsapp: true } }, loja: { select: { nome: true } } },
   });
   if (!c) return null;
+  // Entrada e parcelas vêm do plano (fonte única). Canceladas não entram no documento.
+  const parcelas = (await listarParcelasDoContrato(lojaId, contratoId))
+    .filter((p) => p.status !== "CANCELADA")
+    .map((p) => ({
+      descricao: p.descricao ?? (p.numero === 0 ? "Entrada" : `Parcela ${p.numero}`),
+      valor: brl(p.valorPrevisto),
+      vencimento: dataBR.format(p.vencimento),
+      forma: p.formaRecebimento ? rotuloForma(p.formaRecebimento) : undefined,
+    }));
   return {
     lojaNome: c.loja.nome,
     noivaNome: c.lead?.noivaNome ?? "",
@@ -289,8 +323,8 @@ export async function dadosParaPdf(lojaId: string, contratoId: string): Promise<
     whatsapp: c.lead?.whatsapp ?? undefined,
     vestido: c.vestidoDescricao ?? undefined,
     valorTotal: brl(c.valorTotal),
-    entrada: c.entrada != null ? brl(c.entrada) : undefined,
-    formaPagamento: c.formaPagamento ?? undefined,
+    formaPagamento: c.formaPagamento ? rotuloForma(c.formaPagamento) : undefined,
+    parcelas,
     dataCasamento: c.dataCasamento ? dataBR.format(c.dataCasamento) : undefined,
     dataRetirada: c.dataRetirada ? dataBR.format(c.dataRetirada) : undefined,
     dataDevolucao: c.dataDevolucao ? dataBR.format(c.dataDevolucao) : undefined,

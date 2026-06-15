@@ -11,8 +11,9 @@ export type DadosContrato = {
   whatsapp?: string;
   vestido?: string;
   valorTotal?: string;
-  entrada?: string;
   formaPagamento?: string;
+  // Plano de pagamento (entrada = parcela nº0). Fonte única da entrada — substitui o campo solto.
+  parcelas?: { descricao: string; valor: string; vencimento?: string; forma?: string }[];
   dataCasamento?: string;
   dataRetirada?: string;
   dataDevolucao?: string;
@@ -68,8 +69,16 @@ function montarLinhas(d: DadosContrato): Linha[] {
 
   add("VALORES E PAGAMENTO", 12);
   dado("Valor total", d.valorTotal);
-  dado("Entrada / Sinal", d.entrada);
   dado("Forma de pagamento", d.formaPagamento);
+  if (d.parcelas && d.parcelas.length > 0) {
+    vazio();
+    add("Plano de pagamento:", 11);
+    for (const p of d.parcelas) {
+      const venc = p.vencimento ? ` · vence ${p.vencimento}` : "";
+      const forma = p.forma ? ` · ${p.forma}` : "";
+      add(`  ${p.descricao}: ${p.valor}${venc}${forma}`, 10);
+    }
+  }
   vazio();
 
   add("DATAS", 12);

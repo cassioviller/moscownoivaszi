@@ -22,4 +22,22 @@ describe("gerarContratoPdf", () => {
     const txt = Buffer.from(gerarContratoPdf({ lojaNome: "L", noivaNome: "Bia" })).toString("latin1");
     expect(txt).toContain("CPF: -");
   });
+
+  it("renderiza o plano de pagamento quando há parcelas", () => {
+    const txt = Buffer.from(
+      gerarContratoPdf({
+        lojaNome: "L",
+        noivaNome: "Ana",
+        valorTotal: "R$ 3.000,00",
+        formaPagamento: "Pix",
+        parcelas: [
+          { descricao: "Entrada", valor: "R$ 900,00", vencimento: "10/06/2026", forma: "Pix" },
+          { descricao: "Parcela 1/2", valor: "R$ 1.050,00", vencimento: "10/07/2026" },
+        ],
+      }),
+    ).toString("latin1");
+    expect(txt).toContain("Plano de pagamento:");
+    expect(txt).toContain("Entrada");
+    expect(txt).toContain("Parcela 1/2");
+  });
 });
