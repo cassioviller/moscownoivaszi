@@ -5,6 +5,7 @@
 // e atendimentos (Atendimento{tipo:ATENDIMENTO}.inicio). Datas saem como "YYYY-MM-DD" (UTC).
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
+import { buscarAtendimentos } from "@/lib/atendimentos/atendimentos";
 import { ymd, hojeUTC } from "@/lib/tempo";
 import type { Marcador } from "./mes";
 import type { AtendimentoSituacao } from "@/generated/prisma/client";
@@ -131,16 +132,12 @@ export async function atendimentosNoIntervalo(
   inicio: Date,
   fim: Date,
 ): Promise<AtendimentoCalendario[]> {
-  const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
-    where: { tipo: "ATENDIMENTO", inicio: { gte: inicio, lt: fim } },
-    orderBy: { inicio: "asc" },
-    include: { lead: { select: { noivaNome: true } } },
-  });
+  const rows = await buscarAtendimentos(lojaId, { tipo: "ATENDIMENTO", desde: inicio, ate: fim });
   return rows.map((a) => ({
     id: a.id,
     inicio: a.inicio,
     situacao: a.situacao,
-    noivaNome: a.lead?.noivaNome ?? null,
+    noivaNome: a.noivaNome,
     leadId: a.leadId,
   }));
 }
