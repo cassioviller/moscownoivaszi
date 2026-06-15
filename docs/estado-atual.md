@@ -84,8 +84,16 @@ a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, *
   (situação singular **estreita** o grupo da vista) e `atendimentosNoIntervalo` ganhou 4º param
   `filtro`. Bordô só com intenção (dot de filtro ativo + foco). Revisado pela skill
   `atelier-design-review` (microcopy "Todas as situações"). 4 testes de data layer; suíte 491 verde.
-- **M1** [UX] clímax no "Concluir" (desfecho RESERVOU → encaminhar p/ criar reserva/contrato).
-  **M2** desfazer/confirmar em concluir/iniciar/falta (hoje irreversível; só o cancelar confirma).
+- **M1/M2** ✅ (2026-06-15, spec/plano `…/2026-06-15-m1-m2-concluir-desfazer*`): **M1** — concluir
+  com desfecho **RESERVOU** encaminha a vendedora ao perfil da noiva direto na reserva
+  (`?ok=reservou_concluido#reserva`, `<section id="reserva">` + aviso "Agora reserve o vestido
+  escolhido"); demais desfechos voltam à fila como antes. Concluir **não** cria reserva — só roteia.
+  **M2** — `reabrirAtendimento(lojaId,id)` (EM_ATENDIMENTO/CONCLUIDO/FALTOU → AGENDADO, limpa
+  desfecho/atendidoEm; AGENDADO → transicao_invalida) + `reabrirAtendimentoAction`. Confirmação
+  `BotaoConfirmar` nas terminais (**Marcou falta**, **Concluir**); "**Voltar para agendado**"
+  (EM_ATENDIMENTO) e "**Reabrir**" (CONCLUIDO/FALTOU no histórico, que agora recebe `podeEditar`
+  real) — recuperação discreta em grafite, bordô só no Concluir. 5 testes de reabrir; revisado pela
+  skill `atelier-design-review`.
 - **Vestidos V-b/V-c/V-d** (se quiser ir além do V-a): grupo recolhido "Outros do acervo" (inclui
   sem match estruturado); indisponível com card esmaecido + tag (não só frase); `naoQuerUsar` como
   alerta no card quando bate no recusado.

@@ -142,7 +142,7 @@ function Linha({
               <form action={reabrirAtendimentoAction}>
                 <input type="hidden" name="id" value={a.id} />
                 <button type="submit" className={botaoSuave}>
-                  Voltar
+                  Voltar para agendado
                 </button>
               </form>
             </>
