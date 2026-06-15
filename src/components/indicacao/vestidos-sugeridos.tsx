@@ -1,6 +1,7 @@
 // src/components/indicacao/vestidos-sugeridos.tsx
 import Link from "next/link";
 import type { VestidoIndicado } from "@/lib/indicacao/indicacao";
+import { conflitaComRecusa } from "@/lib/indicacao/indicacao";
 
 // Quando presente, liga a sugestão à ação de reservar (perfil da noiva): fecha
 // desejo→ação no mesmo lugar. `livresIds` = peças livres para a data dela;
@@ -63,12 +64,20 @@ export function VestidosSugeridos({
       )}
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {vestidos.map((v) => (
+        {vestidos.map((v) => {
+          // V-c: indisponível para a data dela = com reserva ligada, fora de livres e de reservados.
+          const indisponivel = reserva
+            ? !reserva.reservadosIds.includes(v.id) && !reserva.livresIds.includes(v.id)
+            : false;
+          // V-d: sinal de exibição quando o texto livre da recusa pode bater nesta peça.
+          const conflito = conflitaComRecusa(naoQuerUsar, v);
+          return (
           <li
             key={v.id}
-            className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave
+            className={`flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave
               bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]
-              transition-shadow duration-200 ease-out hover:shadow-[var(--mn-shadow-hover)]"
+              transition-shadow duration-200 ease-out hover:shadow-[var(--mn-shadow-hover)]
+              ${indisponivel ? "opacity-60" : ""}`}
           >
             <div className="flex items-baseline justify-between gap-4">
               <div className="flex flex-col gap-0.5">
@@ -77,15 +86,24 @@ export function VestidosSugeridos({
                 </span>
                 <span className="text-[12px] tracking-[0.02em] text-cinza-fumo">{v.codigo}</span>
               </div>
-              <span className="shrink-0 text-[14px] text-grafite">
+              <span className="shrink-0 text-right text-[14px] text-grafite">
                 R$ {v.precoBase}
                 {!v.dentroDoOrcamento && (
                   <span className="ml-2 text-[11px] tracking-[0.02em] text-rose-dust">
                     acima do teto
                   </span>
                 )}
+                {indisponivel && (
+                  <span className="ml-2 block text-[11px] tracking-[0.02em] text-cinza-fumo">
+                    Indisponível na data
+                  </span>
+                )}
               </span>
             </div>
+
+            {conflito && (
+              <p className="text-[12px] text-rose-dust">Pode bater no que ela não quer.</p>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
@@ -126,13 +144,12 @@ export function VestidosSugeridos({
                       {reserva.dataLabel ? `Reservar para ${reserva.dataLabel}` : "Reservar para o casamento"}
                     </button>
                   </form>
-                ) : (
-                  <p className="text-[12px] text-cinza-fumo">Indisponível para a data dela.</p>
-                )}
+                ) : null}
               </div>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );
