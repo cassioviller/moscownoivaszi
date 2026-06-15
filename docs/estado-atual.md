@@ -1,6 +1,11 @@
 # Estado atual — Moscow Noivas
 
 > Snapshot de onde paramos. Atualizado em **2026-06-15**. Envelhece — confira os commits e os testes antes de confiar.
+>
+> **Sessão 2026-06-15 (fim):** backlog de atendimento ESGOTADO (B1/B3/F1-F2/M1-M2/V-c-V-d ✅,
+> suíte 501 verde, tudo na `main`, **não** foi feito `git push`). Próxima frente: núcleo
+> **Seleção → Reserva** — ver `docs/superpowers/research/2026-06-15-atendimento-selecao-reserva.md`
+> e a nota no fim do bloco "Atendimento" abaixo.
 
 ## Verdade de hoje — fast-follows JÁ entregues (re-auditoria 2026-06-15)
 
@@ -101,6 +106,16 @@ a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, *
   que ela não quer." em rose-dust no card. 5 testes da pura; revisado pela `atelier-design-review`.
   **V-b** ("Outros do acervo") **fora de escopo de propósito** — já coberto pelo link "Ver acervo
   completo" (V-a); reabrir só se pedirem.
+
+**Backlog de atendimento ESGOTADO** (B1/B3/F1/F2/M1/M2/V-c/V-d entregues; V-b deixado
+de propósito). Próxima **frente grande** mapeada: o **núcleo Seleção → Reserva** está cru
+(hoje reserva 1 vestido por vez, sem carrinho nem acessórios). Pesquisa + proposta de redesign
+(sem código) em **`docs/superpowers/research/2026-06-15-atendimento-selecao-reserva.md`**
+(⚠️ o harness `deep-research` foi interrompido por crédito → é síntese de conhecimento
+consolidado, não relatório citado; pontos `[verificar]` pendentes). **Próximo passo recomendado:**
+Fatia 1 = **carrinho multi-item de vestidos** (`Reserva` cabeça + `ReservaItem` filhos, migrando
+`BloqueioVestido` p/ papel de item sem quebrar o motor de disponibilidade), no ciclo
+brainstorming → writing-plans → executing-plans.
 
 > **Falso positivo registrado (não reabrir):** o uso de `prisma` cru em `atendimentos.ts:78`
 > (`usuarioLoja.findUnique` por chave composta `usuarioId_lojaId`) **não** vaza tenant — o `lojaId`
