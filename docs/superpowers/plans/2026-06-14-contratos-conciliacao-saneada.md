@@ -29,7 +29,7 @@
 
 **Files:** `prisma/schema.prisma`, `prisma/seed-demo.ts`, migração gerada.
 
-- [ ] **Step 1: Editar o schema**
+- [x] **Step 1: Editar o schema**
 
 Em `prisma/schema.prisma`:
 1. Adicionar o enum (perto dos outros enums):
@@ -55,12 +55,12 @@ enum ParcelaStatus {
 3. No `model Contrato`: trocar `formaPagamento String?` por `formaPagamento FormaPagamento?`; **remover** a linha `entrada Decimal? @db.Decimal(10, 2)`; adicionar `canceladoMotivo String?`.
 4. No `model Parcela`: trocar `formaRecebimento String?` por `formaRecebimento FormaPagamento?`.
 
-- [ ] **Step 2: Criar a migração SEM aplicar (para editar o SQL do cast)**
+- [x] **Step 2: Criar a migração SEM aplicar (para editar o SQL do cast)**
 
 Run: `node node_modules/prisma/build/index.js migrate dev --create-only --name contratos_saneamento`
 Expected: cria `prisma/migrations/<ts>_contratos_saneamento/migration.sql` sem aplicar.
 
-- [ ] **Step 3: Editar a migração para zerar os texto-livre ANTES do cast**
+- [x] **Step 3: Editar a migração para zerar os texto-livre ANTES do cast**
 
 Abrir o `migration.sql` gerado. **No topo do arquivo** (antes de qualquer `ALTER TABLE ... TYPE`), inserir:
 ```sql
@@ -72,7 +72,7 @@ Garantir que o arquivo também contém o `CREATE TYPE "FormaPagamento"`, o `ALTE
 
 > Nota Postgres: `ALTER TYPE ... ADD VALUE` não pode rodar na mesma transação que usa o valor novo. Como esta migração só **adiciona** o valor `CANCELADA` (não o usa), roda sem problema.
 
-- [ ] **Step 4: Aplicar a migração + gerar client**
+- [x] **Step 4: Aplicar a migração + gerar client**
 
 Run:
 ```bash
@@ -81,7 +81,7 @@ node node_modules/prisma/build/index.js generate
 ```
 Expected: migração aplicada; client com `FormaPagamento`, `ParcelaStatus.CANCELADA`, `Contrato` sem `entrada`/com `canceladoMotivo`.
 
-- [ ] **Step 5: Atualizar o seed-demo (não usar mais entrada/texto-livre)**
+- [x] **Step 5: Atualizar o seed-demo (não usar mais entrada/texto-livre)**
 
 Em `prisma/seed-demo.ts`:
 - No import de enums, adicionar `FormaPagamento`.
@@ -95,7 +95,7 @@ Em `prisma/seed-demo.ts`:
 ```
 (`ParcelaStatus` já é importado no seed.)
 
-- [ ] **Step 6: Rodar o seed + tsc**
+- [x] **Step 6: Rodar o seed + tsc**
 
 Run:
 ```bash
@@ -104,7 +104,7 @@ node node_modules/typescript/bin/tsc --noEmit
 ```
 Expected: seed conclui; tsc reclamará nos arquivos que ainda usam `entrada`/string em forma — **isso é esperado** e será corrigido nas próximas tasks. Se o ÚNICO erro de tsc for nesses pontos (contratos.ts, receber.ts, page.tsx), seguir. (Para isolar o schema, conferir que o seed rodou sem erro de runtime.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add prisma/schema.prisma prisma/migrations prisma/seed-demo.ts
@@ -118,7 +118,7 @@ git commit -m "feat(contratos): schema — FormaPagamento enum, Parcela.CANCELAD
 
 **Files:** Create `src/lib/financeiro/forma.ts`, Test `src/lib/financeiro/__tests__/forma.test.ts`.
 
-- [ ] **Step 1: Teste que falha**
+- [x] **Step 1: Teste que falha**
 
 Criar `src/lib/financeiro/__tests__/forma.test.ts`:
 ```ts
@@ -147,9 +147,9 @@ describe("forma", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/financeiro/__tests__/forma.test.ts` (módulo inexistente).
+- [x] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/financeiro/__tests__/forma.test.ts` (módulo inexistente).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Criar `src/lib/financeiro/forma.ts`:
 ```ts
@@ -181,9 +181,9 @@ export function rotuloForma(f: FormaPagamento): string {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar** — `npx vitest run src/lib/financeiro/__tests__/forma.test.ts` (3 testes).
+- [x] **Step 4: Rodar e ver passar** — `npx vitest run src/lib/financeiro/__tests__/forma.test.ts` (3 testes).
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
 git add src/lib/financeiro/forma.ts src/lib/financeiro/__tests__/forma.test.ts
@@ -197,7 +197,7 @@ git commit -m "feat(financeiro): forma.ts — enum FormaPagamento (validação +
 
 **Files:** Modify `src/lib/contratos/contratos.ts`, Test `src/lib/contratos/__tests__/contratos.test.ts`.
 
-- [ ] **Step 1: Teste de integração que falha (regressão do bug)**
+- [x] **Step 1: Teste de integração que falha (regressão do bug)**
 
 Em `src/lib/contratos/__tests__/contratos.test.ts`, adicionar (usando os imports já existentes do arquivo + os de receber/financeiro; importar `gerarPlanoDePagamento`, `listarContasAReceber`, `resumoReceber` de `@/lib/financeiro/receber`, `registrarRecebimento` idem, e `agingDaLoja` de `@/lib/financeiro/cobranca`):
 ```ts
@@ -246,9 +246,9 @@ describe("contratos: cancelar limpa as parcelas (bug de conciliação)", () => {
 ```
 > Se já não houver um helper `semearLojaNoivaVendedora`, criar um local no arquivo de teste que cria loja+lead+usuário+usuarioLoja (prefixo `MARK`) e devolve `{ loja, leadId, vendId }`, espelhando o `beforeAll` existente. Garantir limpeza no `afterAll` por `startsWith(MARK)`.
 
-- [ ] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts` (assinatura nova de `cancelarContrato`; previstas não somem).
+- [x] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts` (assinatura nova de `cancelarContrato`; previstas não somem).
 
-- [ ] **Step 3: Implementar `cancelarContrato(opts)`**
+- [x] **Step 3: Implementar `cancelarContrato(opts)`**
 
 Em `src/lib/contratos/contratos.ts`, substituir a função `cancelarContrato` por:
 ```ts
@@ -283,11 +283,11 @@ export async function cancelarContrato(
 ```
 > `tenantPrisma` aceita um client transacional? Conferir a assinatura de `tenantPrisma` (em `src/lib/tenant.ts`) — ele recebe um `PrismaClient`-like; o `tx` do `$transaction(async (tx) => ...)` é compatível. Se `tenantPrisma(tx, ...)` não tipar, usar `tx.contrato.updateMany({ where: { id: contratoId, lojaId }, ... })` etc. com `lojaId` explícito no where (o contrato já foi validado como da loja acima). Manter o comportamento.
 
-- [ ] **Step 4: Rodar e ver passar** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts`.
+- [x] **Step 4: Rodar e ver passar** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts`.
 
 > Observação: o teste antigo `"edita valores/datas só em ATIVO; cancelar trava edição"` chama `cancelarContrato(loja, id)` sem opts e usa `entrada`. **Atualizar** essa chamada para `cancelarContrato(loja, id, { destinoPago: "manter" })` e **remover** o uso de `entrada` (ver Task 5) — fazer aqui a parte do `cancelarContrato`; a parte de `entrada` fecha na Task 5.
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
 git add src/lib/contratos/contratos.ts src/lib/contratos/__tests__/contratos.test.ts
@@ -301,7 +301,7 @@ git commit -m "fix(contratos): cancelar marca parcelas como CANCELADA (some dos 
 
 **Files:** Modify `src/lib/financeiro/receber.ts`, Test `src/lib/financeiro/__tests__/receber.test.ts`.
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Em `src/lib/financeiro/__tests__/receber.test.ts`, adicionar (reusar o setup do arquivo):
 ```ts
@@ -315,9 +315,9 @@ it("registrarRecebimento valida a forma (enum)", async () => {
 ```
 > Adaptar `parcelaPrevistaId`/`outraParcelaPrevistaId` aos dados do `beforeAll` existente em `receber.test.ts` (criar duas parcelas PREVISTA se necessário). Se o arquivo não tiver setup reaproveitável, criar um `describe` próprio com `beforeAll`/`afterAll` (prefixo `MARK`).
 
-- [ ] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/financeiro/__tests__/receber.test.ts`.
+- [x] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/financeiro/__tests__/receber.test.ts`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Em `src/lib/financeiro/receber.ts`:
 1. Import: `import { formaValida } from "@/lib/financeiro/forma";`. Trocar o tipo de `ParcelaStatus` import se necessário (já importa de `@/generated/prisma/client`).
@@ -335,9 +335,9 @@ e no `data` do update usar `formaRecebimento: forma || null` (em vez do `input.f
 (os filtros `abertas`/`atrasadas`/`recebidas` já fixam `PREVISTA`/`PAGA`, então não mudam.)
 5. Em `listarParcelasDoContrato`, manter as canceladas visíveis mas marcadas: incluir `status` no retorno já existe (`ParcelaView.status`); nenhuma query muda (o detalhe do contrato mostra todas com rótulo). **Não** filtrar aqui — a UI rotula `CANCELADA`.
 
-- [ ] **Step 4: Rodar e ver passar** — `npx vitest run src/lib/financeiro/__tests__/receber.test.ts`.
+- [x] **Step 4: Rodar e ver passar** — `npx vitest run src/lib/financeiro/__tests__/receber.test.ts`.
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
 git add src/lib/financeiro/receber.ts src/lib/financeiro/__tests__/receber.test.ts
@@ -350,7 +350,7 @@ git commit -m "feat(financeiro): registrarRecebimento valida forma (enum) + 'tod
 
 **Files:** Modify `src/lib/contratos/contratos.ts`, Test `src/lib/contratos/__tests__/contratos.test.ts`.
 
-- [ ] **Step 1: Atualizar/adicionar testes**
+- [x] **Step 1: Atualizar/adicionar testes**
 
 No `contratos.test.ts`:
 - No teste existente `"edita valores/datas só em ATIVO; cancelar trava edição"`, **remover** `entrada: "1.000"` da chamada e a asserção `expect(det.entrada).toBe("1000.00")` (o campo não existe mais); trocar `formaPagamento: "50% + 2x"` por `formaPagamento: "PIX"`.
@@ -365,9 +365,9 @@ it("editarContrato valida a forma de pagamento (enum)", async () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts`.
+- [x] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Em `src/lib/contratos/contratos.ts`:
 1. Import `import { formaValida } from "@/lib/financeiro/forma";`.
@@ -386,9 +386,9 @@ Em `src/lib/contratos/contratos.ts`:
 (substituindo a linha atual `if (patch.formaPagamento !== undefined) data.formaPagamento = vazioNull(patch.formaPagamento);`).
 6. No tipo `ContratoDetalhe` e em `obterContrato`, **remover** `entrada` (campo e mapeamento). `formaPagamento` continua `string | null` (o valor do enum).
 
-- [ ] **Step 4: Rodar e ver passar (arquivo + suíte)** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts` e depois `npx vitest run`.
+- [x] **Step 4: Rodar e ver passar (arquivo + suíte)** — `npx vitest run src/lib/contratos/__tests__/contratos.test.ts` e depois `npx vitest run`.
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
 git add src/lib/contratos/contratos.ts src/lib/contratos/__tests__/contratos.test.ts
@@ -402,7 +402,7 @@ git commit -m "feat(contratos): remove campo entrada (vai p/ plano) + valida for
 
 **Files:** Modify `src/lib/contratos/pdf.ts`, `src/lib/contratos/contratos.ts`, Test `src/lib/contratos/__tests__/pdf.test.ts`.
 
-- [ ] **Step 1: Teste**
+- [x] **Step 1: Teste**
 
 Em `pdf.test.ts`, adicionar/ajustar para o novo `DadosContrato` (sem `entrada`, com `parcelas`):
 ```ts
@@ -421,9 +421,9 @@ it("renderiza o plano de pagamento quando há parcelas", () => {
 ```
 > Conferir o nome real da função de geração em `pdf.ts` (ex.: `gerarPdfContrato`) e o tipo de retorno (Uint8Array/Buffer) e ajustar o teste à API real.
 
-- [ ] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/contratos/__tests__/pdf.test.ts`.
+- [x] **Step 2: Rodar e ver falhar** — `npx vitest run src/lib/contratos/__tests__/pdf.test.ts`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Em `src/lib/contratos/pdf.ts`:
 1. No tipo `DadosContrato`: **remover** `entrada?: string;` e adicionar `parcelas?: { descricao: string; valor: string; vencimento?: string; forma?: string }[];`. Manter `formaPagamento?: string` (agora o rótulo do método).
@@ -458,9 +458,9 @@ Em `src/lib/contratos/contratos.ts`, `dadosParaPdf`: substituir `entrada: c.entr
 e no objeto de retorno trocar `entrada: ...` por `parcelas, formaPagamento: c.formaPagamento ? rotuloForma(c.formaPagamento) : undefined,`.
 > `listarParcelasDoContrato` retorna `formaRecebimento: string | null` — como agora é o enum, o valor é um `FormaPagamento`. Se o tipo do `ParcelaView.formaRecebimento` for `string | null`, fazer `rotuloForma(p.formaRecebimento as FormaPagamento)` ou ajustar o tipo do view para `FormaPagamento | null`.
 
-- [ ] **Step 4: Rodar e ver passar (arquivo + suíte)** — `npx vitest run src/lib/contratos/__tests__/pdf.test.ts` e `npx vitest run`.
+- [x] **Step 4: Rodar e ver passar (arquivo + suíte)** — `npx vitest run src/lib/contratos/__tests__/pdf.test.ts` e `npx vitest run`.
 
-- [ ] **Step 5: tsc + commit**
+- [x] **Step 5: tsc + commit**
 ```bash
 node node_modules/typescript/bin/tsc --noEmit
 git add src/lib/contratos/pdf.ts src/lib/contratos/contratos.ts src/lib/contratos/__tests__/pdf.test.ts
@@ -473,7 +473,7 @@ git commit -m "feat(contratos): PDF mostra o plano de pagamento (entrada = parce
 
 **Files:** Modify `src/app/(app)/loja/[lojaId]/contratos/[contratoId]/page.tsx`, `src/app/(app)/loja/[lojaId]/contratos/actions.ts`.
 
-- [ ] **Step 1: Ação de cancelar com opts**
+- [x] **Step 1: Ação de cancelar com opts**
 
 Em `contratos/actions.ts`, trocar `cancelarContratoAction`:
 ```ts
@@ -486,7 +486,7 @@ export const cancelarContratoAction = acaoAutorizada("leads", "editar", async (s
 });
 ```
 
-- [ ] **Step 2: Página — remover campo entrada, select de forma, diálogo de cancelar**
+- [x] **Step 2: Página — remover campo entrada, select de forma, diálogo de cancelar**
 
 Em `contratos/[contratoId]/page.tsx`:
 1. **Remover** o `<Campo name="entrada" ... />` do form de editar (o bloco "Valores e pagamento").
@@ -521,17 +521,17 @@ Em `contratos/[contratoId]/page.tsx`:
 5. Se a página exibe `c.entrada` / `det.entrada` em algum lugar (resumo/cabeçalho), remover. O resumo de "Total do plano" e a divergência (`planoDivergente`) continuam.
 6. Se a lista de parcelas (plano) exibe `formaRecebimento`, mostrar `rotuloForma(...)`; marcar parcelas `status === "CANCELADA"` com rótulo "cancelada" e sem ações.
 
-- [ ] **Step 3: tsc + conferir**
+- [x] **Step 3: tsc + conferir**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit`
 Expected: **limpo** (fecha todos os usos de `entrada`/forma string). Conferir que não restou nenhuma referência a `.entrada` no app: `grep -rn "\.entrada\b" src/app src/lib | grep -v node_modules` deve voltar vazio (fora de `gerarPlanoDePagamento`/seed, que usam `entrada` como input local, não campo do contrato).
 
-- [ ] **Step 4: Verificação final**
+- [x] **Step 4: Verificação final**
 
 Run: `npx vitest run`
 Expected: suíte verde.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add "src/app/(app)/loja/[lojaId]/contratos/[contratoId]/page.tsx" "src/app/(app)/loja/[lojaId]/contratos/actions.ts"
 git commit -m "feat(contratos): select de forma + diálogo de cancelar (manter/estornar) + sem campo entrada"
