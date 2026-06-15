@@ -11,6 +11,8 @@ import { redirect } from "next/navigation";
 import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { listarAtendimentos, type AtendimentoFila } from "@/lib/atendimentos/atendimentos";
+import { listarEquipe } from "@/lib/admin/usuarios";
+import { RefinarAtendimentos } from "@/components/atendimentos/refinar";
 import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
 import { iniciarAtendimentoAction, concluirAtendimentoAction, marcarFaltaAction } from "./actions";
 import { criarOrcamentoAction } from "../orcamentos/actions";
@@ -147,7 +149,7 @@ export default async function AtendimentosPage({
   searchParams,
 }: {
   params: Promise<{ lojaId: string }>;
-  searchParams: Promise<{ ok?: string; erro?: string; quando?: string }>;
+  searchParams: Promise<{ ok?: string; erro?: string; quando?: string; q?: string; vendedora?: string; situacao?: string }>;
 }) {
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
@@ -159,10 +161,26 @@ export default async function AtendimentosPage({
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 
   const { lojaId } = await params;
-  const { ok, erro, quando } = await searchParams;
+  const { ok, erro, quando, q, vendedora, situacao } = await searchParams;
   const historico = quando === "historico";
 
-  const lista = await listarAtendimentos(sc.loja.id, { finalizados: historico });
+  // Situações válidas DESTA vista (abertas na fila, fechadas no histórico).
+  const opcoesSituacao: { value: AtendimentoSituacao; rotulo: string }[] = historico
+    ? [{ value: "CONCLUIDO", rotulo: "Concluído" }, { value: "FALTOU", rotulo: "Faltou" }]
+    : [{ value: "AGENDADO", rotulo: "Agendado" }, { value: "EM_ATENDIMENTO", rotulo: "Em atendimento" }];
+  const situacaoValida = opcoesSituacao.find((o) => o.value === situacao)?.value;
+  const buscaNoiva = q?.trim() || undefined;
+  const temFiltro = Boolean(buscaNoiva || vendedora || situacaoValida);
+
+  const [lista, equipe] = await Promise.all([
+    listarAtendimentos(sc.loja.id, {
+      finalizados: historico,
+      vendedoraId: vendedora || undefined,
+      noivaBusca: buscaNoiva,
+      situacao: situacaoValida,
+    }),
+    listarEquipe(sc.loja.id),
+  ]);
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
 
   // Fila (abertos): atrasados (data vencida, ainda em aberto), hoje e próximos.
@@ -202,7 +220,25 @@ export default async function AtendimentosPage({
 
       {aviso && <AvisoFlash tom={ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
 
-      {historico ? (
+      <RefinarAtendimentos
+        action={`/loja/${lojaId}/atendimentos`}
+        vendedoras={equipe.map((e) => ({ id: e.id, nome: e.nome }))}
+        situacoes={opcoesSituacao.map((o) => ({ value: o.value, rotulo: o.rotulo }))}
+        hidden={historico ? [{ name: "quando", value: "historico" }] : []}
+        valores={{ q: buscaNoiva, vendedora: vendedora || undefined, situacao: situacaoValida }}
+        temFiltro={temFiltro}
+      />
+
+      {temFiltro && lista.length === 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-[15px] text-tinta">Nenhum atendimento com esses filtros.</p>
+          <Link href={historico ? `/loja/${lojaId}/atendimentos?quando=historico` : `/loja/${lojaId}/atendimentos`} className={botaoSuave}>
+            Limpar filtros
+          </Link>
+        </div>
+      )}
+
+      {!(temFiltro && lista.length === 0) && (historico ? (
         lista.length === 0 ? (
           <p className="text-[15px] text-tinta">Nenhum atendimento finalizado ainda.</p>
         ) : (
@@ -254,7 +290,7 @@ export default async function AtendimentosPage({
             </section>
           )}
         </div>
-      )}
+      ))}
 
       <div className="border-t border-borda-suave pt-5">
         <Link
