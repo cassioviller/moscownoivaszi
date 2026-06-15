@@ -210,6 +210,27 @@ describe("atendimentos: constraint de slot (anti double-booking)", () => {
   });
 });
 
+describe("listarAtendimentos — filtros (F2)", () => {
+  it("situacao estreita o grupo aberto; noivaBusca filtra no histórico", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const dora = (await db.lead.create({ data: { noivaNome: `${MARK}Dora Lima` } as never })).id;
+    const r = await agendarAtendimento(loja, { leadId: dora, cabineId: cabine, vendedoraId: vend, dataYMD: "2099-12-01", hora: 9 });
+    if (!r.ok) throw new Error("setup falhou");
+    const r2 = await agendarAtendimento(loja, { leadId: lead, cabineId: cabine, vendedoraId: vend, dataYMD: "2099-12-01", hora: 10 });
+    if (!r2.ok) throw new Error("setup falhou");
+    await iniciarAtendimento(loja, r2.atendimentoId);
+
+    const soAgendados = await listarAtendimentos(loja, { situacao: "AGENDADO" });
+    expect(soAgendados.some((a) => a.id === r.atendimentoId)).toBe(true);
+    expect(soAgendados.some((a) => a.id === r2.atendimentoId)).toBe(false);
+
+    await concluirAtendimento(loja, r.atendimentoId, "RESERVOU");
+    const hist = await listarAtendimentos(loja, { finalizados: true, noivaBusca: "dora" });
+    expect(hist.some((a) => a.id === r.atendimentoId)).toBe(true);
+    expect(hist.every((a) => (a.noivaNome ?? "").toLowerCase().includes("dora"))).toBe(true);
+  });
+});
+
 describe("buscarAtendimentos (núcleo parametrizado)", () => {
   it("filtra por tipo, situação e intervalo [desde, ate); respeita a ordem", async () => {
     const db = tenantPrisma(prisma, loja);

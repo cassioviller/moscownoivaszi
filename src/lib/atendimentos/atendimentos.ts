@@ -242,12 +242,17 @@ export type AtendimentoFila = {
  */
 export async function listarAtendimentos(
   lojaId: string,
-  opts: { finalizados?: boolean } = {},
+  opts: { finalizados?: boolean; vendedoraId?: string; noivaBusca?: string; situacao?: AtendimentoSituacao } = {},
 ): Promise<AtendimentoFila[]> {
+  const grupo = opts.finalizados ? SITUACOES_FECHADAS : SITUACOES_ABERTAS;
+  // situacao (singular) só estreita se pertencer ao grupo da vista atual; senão usa o grupo.
+  const situacoes = opts.situacao && grupo.includes(opts.situacao) ? [opts.situacao] : grupo;
   const rows = await buscarAtendimentos(lojaId, {
     tipo: "ATENDIMENTO",
-    situacoes: opts.finalizados ? SITUACOES_FECHADAS : SITUACOES_ABERTAS,
+    situacoes,
     ordem: opts.finalizados ? "desc" : "asc",
+    vendedoraId: opts.vendedoraId,
+    noivaBusca: opts.noivaBusca,
   });
   return rows.map((a) => ({
     id: a.id,
