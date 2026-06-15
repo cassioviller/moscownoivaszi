@@ -319,6 +319,19 @@ export async function marcarFalta(lojaId: string, id: string): Promise<Resultado
   return { ok: true };
 }
 
+/**
+ * Desfaz uma transição: EM_ATENDIMENTO | CONCLUIDO | FALTOU → AGENDADO, limpando
+ * desfecho e atendidoEm. AGENDADO → transicao_invalida (já aberto). Só da loja.
+ */
+export async function reabrirAtendimento(lojaId: string, id: string): Promise<ResultadoSituacao> {
+  const db = tenantPrisma(prisma, lojaId);
+  const at = await db.atendimento.findUnique({ where: { id }, select: { situacao: true } });
+  if (!at) return { ok: false, motivo: "atendimento_invalido" };
+  if (at.situacao === "AGENDADO") return { ok: false, motivo: "transicao_invalida" };
+  await db.atendimento.update({ where: { id }, data: { situacao: "AGENDADO", desfecho: null, atendidoEm: null } });
+  return { ok: true };
+}
+
 /** Conclui uma PROVA (sem desfecho). AGENDADO|EM_ATENDIMENTO → CONCLUIDO. */
 export async function concluirProva(lojaId: string, id: string): Promise<ResultadoSituacao> {
   const db = tenantPrisma(prisma, lojaId);

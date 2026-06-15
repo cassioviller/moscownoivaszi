@@ -10,6 +10,7 @@ import {
   iniciarAtendimento,
   concluirAtendimento,
   marcarFalta,
+  reabrirAtendimento,
   buscarAtendimentos,
   SITUACOES_FECHADAS,
 } from "@/lib/atendimentos/atendimentos";
@@ -228,6 +229,54 @@ describe("listarAtendimentos — filtros (F2)", () => {
     const hist = await listarAtendimentos(loja, { finalizados: true, noivaBusca: "dora" });
     expect(hist.some((a) => a.id === r.atendimentoId)).toBe(true);
     expect(hist.every((a) => (a.noivaNome ?? "").toLowerCase().includes("dora"))).toBe(true);
+  });
+});
+
+describe("reabrirAtendimento (M2 — desfazer)", () => {
+  async function novo(dataYMD: string, hora: number): Promise<string> {
+    const r = await agendarAtendimento(loja, { leadId: lead, cabineId: cabine, vendedoraId: vend, dataYMD, hora });
+    if (!r.ok) throw new Error(`setup falhou: ${r.motivo}`);
+    return r.atendimentoId;
+  }
+  const sit = async (id: string) =>
+    (await tenantPrisma(prisma, loja).atendimento.findUnique({ where: { id }, select: { situacao: true, desfecho: true, atendidoEm: true } }))!;
+
+  it("EM_ATENDIMENTO → AGENDADO, atendidoEm nulo", async () => {
+    const id = await novo("2099-04-01", 9);
+    await iniciarAtendimento(loja, id);
+    expect(await reabrirAtendimento(loja, id)).toEqual({ ok: true });
+    const a = await sit(id);
+    expect(a.situacao).toBe("AGENDADO");
+    expect(a.atendidoEm).toBeNull();
+  });
+
+  it("CONCLUIDO (com desfecho) → AGENDADO, desfecho e atendidoEm nulos", async () => {
+    const id = await novo("2099-04-02", 9);
+    await concluirAtendimento(loja, id, "RESERVOU");
+    expect(await reabrirAtendimento(loja, id)).toEqual({ ok: true });
+    const a = await sit(id);
+    expect(a.situacao).toBe("AGENDADO");
+    expect(a.desfecho).toBeNull();
+    expect(a.atendidoEm).toBeNull();
+  });
+
+  it("FALTOU → AGENDADO", async () => {
+    const id = await novo("2099-04-03", 9);
+    await marcarFalta(loja, id);
+    expect(await reabrirAtendimento(loja, id)).toEqual({ ok: true });
+    expect((await sit(id)).situacao).toBe("AGENDADO");
+  });
+
+  it("AGENDADO → transicao_invalida (já está aberto)", async () => {
+    const id = await novo("2099-04-04", 9);
+    expect(await reabrirAtendimento(loja, id)).toMatchObject({ ok: false, motivo: "transicao_invalida" });
+  });
+
+  it("id inexistente e outra loja → atendimento_invalido", async () => {
+    const outra = (await prisma.loja.create({ data: { nome: `${MARK}reabrir-outra` } })).id;
+    const id = await novo("2099-04-05", 9);
+    expect(await reabrirAtendimento(loja, "nao-existe")).toMatchObject({ ok: false, motivo: "atendimento_invalido" });
+    expect(await reabrirAtendimento(outra, id)).toMatchObject({ ok: false, motivo: "atendimento_invalido" });
   });
 });
 
