@@ -1,6 +1,32 @@
 # Estado atual — Moscow Noivas
 
-> Snapshot de onde paramos. Atualizado em **2026-06-14**. Envelhece — confira os commits e os testes antes de confiar.
+> Snapshot de onde paramos. Atualizado em **2026-06-15**. Envelhece — confira os commits e os testes antes de confiar.
+
+## Verdade de hoje — fast-follows JÁ entregues (re-auditoria 2026-06-15)
+
+> As seções abaixo são um **diário cronológico**: cada nota de "Fast-follow" é um instantâneo
+> da época, não a verdade de hoje. Re-auditando contra o código (2026-06-15), estes itens
+> que aparecem como pendentes/fast-follow **já foram entregues** — não reabrir:
+>
+> - **Foto do vestido** (✅ commit `080591d`): até 2 fotos WebP no Postgres, upload com Sharp,
+>   serving autenticado por rota, exibição na lista/detalhe/destaque do dashboard, com teste
+>   (`src/lib/vestidos/__tests__/fotos.test.ts`). Supera a nota de `## Jornada derivada`.
+> - **Agenda em formato de calendário** (✅): entregue como "Dia do atelier — Início + Calendário"
+>   (ver seção própria). Supera a nota de `## Jornada derivada`.
+> - **Leads/Interesses ativados** (✅): `interesses` está em `MODULOS` **e** `MODULOS_VISIVEIS`
+>   (`src/lib/permissoes/modulos.ts`), com gate enforçado (page + criar + editar) e páginas reais
+>   sob `noivas/[leadId]/interesses`; a nav já mostra "Noivas" sob `podeVerNoivas`. Supera as notas
+>   de `## Em uma frase` e `## Onde estamos no loop` ("quando Leads ganhar página, entra em
+>   `MODULOS_VISIVEIS`").
+> - **Atendimento: status compareceu/faltou** (✅): `AtendimentoSituacao` + `atendidoEm` +
+>   `AtendimentoDesfecho` no schema. Supera o fast-follow de `## Agendar atendimento`.
+> - **Orçamento como entidade** (✅ essencialmente): `model Orcamento` existe e `jornada.ts` deriva
+>   de `temOrcamento`/`temContrato`; os marcos manuais `orcamentoAbertoEm`/`contratoFechadoEm`
+>   viraram só **legado/compatibilidade**. Supera o fast-follow de `## Jornada derivada`.
+>
+> **Genuinamente em aberto:** suíte **E2E integrada** — `playwright` é devDependency, mas não há
+> `playwright.config`, script `test:e2e` nem pasta `e2e/`; só diagnósticos avulsos em
+> `scripts/repro/*.mjs`. Este é o próximo trabalho real de qualidade.
 
 ## DRE por categoria (2026-06-14) ✅ — Fatia 3 de 3 (financeiro completo)
 
