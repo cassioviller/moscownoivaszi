@@ -66,9 +66,15 @@ a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, *
   do Replit é não-interativo). 4 testes novos (constraint cabine/vendedora, cross-loja permitido,
   **corrida real via `Promise.all` → 1 ok / 1 indisponivel**). **Fora de escopo:** rebooking-após-FALTOU
   (a linha CONCLUIDO/FALTOU segue ocupando o slot, como hoje) e transação serializável (a constraint basta).
-- **B3** [refactor] **3 leituras divergentes** de atendimento: `listarAtendimentos` vs
-  `listarProximosAtendimentos` (atendimentos.ts) vs `atendimentosNoIntervalo` (calendario/dados.ts).
-  Unificar numa leitura parametrizada (situação/tipo/intervalo) — concentra a regra "o que conta".
+- **B3** [refactor] **3 leituras divergentes** ✅ (2026-06-15, spec/plano
+  `…/2026-06-15-b3-leitura-atendimentos-unificada*`): núcleo
+  `buscarAtendimentos(lojaId, { tipo?, situacoes?, desde?, ate?, ordem? })` em `atendimentos.ts`
+  (where dinâmico + include rico lead/cabine/vendedora) + consts exportadas `SITUACOES_ABERTAS`/
+  `SITUACOES_FECHADAS`. `listarProximosAtendimentos`, `listarAtendimentos` e
+  `atendimentosNoIntervalo` (calendario/dados.ts) viraram **wrappers finos** que preservam
+  assinaturas e tipos (`AtendimentoItem`/`AtendimentoFila`/`AtendimentoCalendario`) — zero mudança
+  de comportamento, a suíte existente passou sem edição de consumidor. `listarProvasAbertas` ficou
+  fora (tipo=PROVA + include pesado). Abre caminho p/ **F1/F2** (os filtros vão usar `FiltroAtendimentos`).
 - **F1/F2** [UX] busca + filtros (noiva · vendedora · situação) na fila e na semana — hoje **não
   existem** filtros na operação de atendimento.
 - **M1** [UX] clímax no "Concluir" (desfecho RESERVOU → encaminhar p/ criar reserva/contrato).
