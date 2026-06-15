@@ -80,6 +80,7 @@ model Loja {
   comissaoFechamentos  ComissaoFechamento[]
   saldosReferencia     SaldoReferencia[]
   registrosCobranca    RegistroCobranca[]
+  reservas             Reserva[]
 }
 
 model Perfil {
@@ -249,6 +250,7 @@ model Lead {
   loja         Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   interesse    LeadInteresse?
   bloqueios    BloqueioVestido[]
+  reservas     Reserva[]
   atendimentos Atendimento[]
   orcamentos   Orcamento[]
   contratos    Contrato[]
@@ -282,6 +284,28 @@ model LeadInteresseAtributo {
   @@id([leadInteresseId, atributoId])
 }
 
+enum ReservaStatus {
+  EM_MONTAGEM // a escolha ainda está sendo composta
+  CONFIRMADA // a escolha está fechada
+}
+
+// Cabeça da reserva — o compromisso da noiva: agrupa N vestidos (itens) de um casamento.
+// Cada item é um BloqueioVestido (RESERVA_CASAMENTO) com reservaId apontando para cá.
+// Migração aditiva: o motor segue lendo o item, não a cabeça.
+model Reserva {
+  id            String        @id @default(cuid())
+  lojaId        String
+  leadId        String
+  casamentoData DateTime
+  status        ReservaStatus @default(EM_MONTAGEM)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  loja  Loja              @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  lead  Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  itens BloqueioVestido[]
+}
+
 model BloqueioVestido {
   id                String       @id @default(cuid())
   lojaId            String
@@ -293,12 +317,14 @@ model BloqueioVestido {
   retiradaDataReal  DateTime?
   devolucaoDataReal DateTime?
   observacao        String?
+  reservaId         String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   loja    Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
   vestido Vestido @relation(fields: [vestidoId], references: [id], onDelete: Cascade)
   lead    Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  reserva Reserva? @relation(fields: [reservaId], references: [id], onDelete: Cascade)
   atendimentos Atendimento[]
   contratos Contrato[]
 }

@@ -32,6 +32,7 @@ export const TENANT_MODELS = [
   "Lead",
   "Atributo",
   "BloqueioVestido",
+  "Reserva",
   "RegraDisponibilidade",
   "PerfilOverrideLoja",
   "Ajuste",
