@@ -12,6 +12,8 @@ import {
 } from "@/lib/calendario/semana";
 import { atendimentosNoIntervalo, type AtendimentoCalendario } from "@/lib/calendario/dados";
 import { obterHorarioLoja } from "@/lib/atendimentos/cabines";
+import { listarEquipe } from "@/lib/admin/usuarios";
+import { RefinarAtendimentos } from "@/components/atendimentos/refinar";
 import type { AtendimentoSituacao } from "@/generated/prisma/client";
 
 const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -25,10 +27,30 @@ const COR_SITUACAO: Record<AtendimentoSituacao, string> = {
   FALTOU: "bg-papel-suave text-cinza-fumo line-through",
 };
 
-export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; refParam?: string }) {
+export async function AbaAtendimentos({
+  lojaId,
+  refParam,
+  filtros = {},
+}: {
+  lojaId: string;
+  refParam?: string;
+  filtros?: { q?: string; vendedora?: string; situacao?: string };
+}) {
   const hoje = hojeYMD();
   const inicioSemana = semanaDeRef(refParam, hoje);
   const dias = diasDaSemana(inicioSemana);
+
+  const SIT_VALIDAS: { value: AtendimentoSituacao; rotulo: string }[] = [
+    { value: "AGENDADO", rotulo: "Agendado" },
+    { value: "EM_ATENDIMENTO", rotulo: "Em atendimento" },
+    { value: "CONCLUIDO", rotulo: "Concluído" },
+    { value: "FALTOU", rotulo: "Faltou" },
+  ];
+  const situacao = SIT_VALIDAS.find((s) => s.value === filtros.situacao)?.value;
+  const buscaNoiva = filtros.q?.trim() || undefined;
+  const vendedoraId = filtros.vendedora || undefined;
+  const temFiltro = Boolean(buscaNoiva || vendedoraId || situacao);
+  const equipe = await listarEquipe(lojaId);
 
   const { abertura, fechamento } = await obterHorarioLoja(lojaId);
   const horas = Array.from({ length: Math.max(0, fechamento - abertura) }, (_, i) => abertura + i);
@@ -36,17 +58,40 @@ export async function AbaAtendimentos({ lojaId, refParam }: { lojaId: string; re
   const fim = new Date(dias[6].getTime());
   fim.setUTCDate(fim.getUTCDate() + 1); // exclusivo (fim do sábado)
 
-  const atendimentos = await atendimentosNoIntervalo(lojaId, inicioSemana, fim);
+  const atendimentos = await atendimentosNoIntervalo(lojaId, inicioSemana, fim, {
+    vendedoraId,
+    noivaBusca: buscaNoiva,
+    situacao,
+  });
   const porCelula = indexarPorCelula<AtendimentoCalendario>(atendimentos);
 
   const anterior = new Date(inicioSemana.getTime());
   anterior.setUTCDate(anterior.getUTCDate() - 7);
   const proxima = new Date(inicioSemana.getTime());
   proxima.setUTCDate(proxima.getUTCDate() + 7);
-  const link = (d: Date) => `/loja/${lojaId}/calendario?aba=atendimentos&ref=${refDaSemana(d)}`;
+  const filtroQS = [
+    buscaNoiva ? `q=${encodeURIComponent(buscaNoiva)}` : "",
+    vendedoraId ? `vendedora=${encodeURIComponent(vendedoraId)}` : "",
+    situacao ? `situacao=${encodeURIComponent(situacao)}` : "",
+  ]
+    .filter(Boolean)
+    .join("&");
+  const link = (d: Date) =>
+    `/loja/${lojaId}/calendario?aba=atendimentos&ref=${refDaSemana(d)}${filtroQS ? `&${filtroQS}` : ""}`;
 
   return (
     <div className="flex flex-col gap-4">
+      <RefinarAtendimentos
+        action={`/loja/${lojaId}/calendario`}
+        vendedoras={equipe.map((e) => ({ id: e.id, nome: e.nome }))}
+        situacoes={SIT_VALIDAS.map((s) => ({ value: s.value, rotulo: s.rotulo }))}
+        hidden={[
+          { name: "aba", value: "atendimentos" },
+          ...(refParam ? [{ name: "ref", value: refParam }] : []),
+        ]}
+        valores={{ q: buscaNoiva, vendedora: vendedoraId, situacao }}
+        temFiltro={temFiltro}
+      />
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
           <h2 className="font-display text-[18px] font-light text-tinta">
