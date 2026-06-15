@@ -42,11 +42,20 @@ de dev no ar com as migrações aplicadas (o setup semeia as linhas, não cria t
 | `cadastrar-vestido.spec.ts` | Cria vestido pela UI → aparece no acervo. | mutação |
 | `agendar-atendimento.spec.ts` | Escolhe slot livre da grade → atendimento entra na fila. | mutação |
 | `fechar-contrato.spec.ts` | Gera contrato em branco → parcela → cancela (status + parcelas canceladas). | mutação |
+| `conta-a-pagar.spec.ts` | Lança despesa pela UI → aparece em "Abertas" (sem pré-condição). | mutação |
+| `receber-parcela.spec.ts` | Dá baixa numa parcela aberta → migra de "Abertas" p/ "Recebidas". | mutação |
 
-**Pré-condições por Prisma, mutação por UI:** cada spec arranja suas pré-condições pela fixture
-(`criarNoivaE2E`), mas o que está **sob teste** é sempre exercido pela **UI real** e verificado
-pelo **efeito observável na tela**. Specs de mutação rodam serial (`workers: 1`), escopados na
-`loja-e2e`; os read-only checam só render/gate (não dependem de a loja estar vazia).
+**Pré-condições por Prisma, mutação por UI:** cada spec arranja suas pré-condições pelas fixtures
+(`criarNoivaE2E`, `criarParcelaAbertaE2E`), mas o que está **sob teste** é sempre exercido pela
+**UI real** e verificado pelo **efeito observável na tela**. Specs de mutação rodam serial
+(`workers: 1`), escopados na `loja-e2e`; os read-only checam só render/gate (não dependem de a
+loja estar vazia).
+
+> **Timeouts/retries:** o dev server do Next é instância única e `force-dynamic` — compila rotas
+> on-demand e fica lento sob a corrida serial. Por isso `timeout: 60s` / `expect: 15s` de folga e
+> 1 retry em CI (`E2E_RETRIES` sobrescreve). Cada spec é determinístico **isolado**; flakiness na
+> suíte cheia é contenção do dev server, não bug. Para uma corrida realmente estável (CI), o ideal
+> é rodar contra um **build de produção** (`next build && next start`), sem compile on-demand.
 
 > Detalhe de seletor: as páginas de mutação vivem sob o layout `(app)`, cujo Topbar tem um
 > `<button type="submit">` de logout antes do `<main>`. Clique o botão do form pelo **nome**

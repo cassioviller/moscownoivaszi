@@ -29,3 +29,15 @@ export function limparLojaE2E(): void {
 export function criarNoivaE2E(noivaNome: string): string {
   return e2eDb("criar-noiva", [noivaNome], true);
 }
+
+/**
+ * Pré-condição financeira: cria Lead + Contrato ATIVO + 1 Parcela PREVISTA (aberta).
+ * Retorna os ids criados.
+ */
+export function criarParcelaAbertaE2E(noivaNome: string): {
+  leadId: string;
+  contratoId: string;
+  parcelaId: string;
+} {
+  return JSON.parse(e2eDb("criar-parcela-aberta", [noivaNome], true));
+}

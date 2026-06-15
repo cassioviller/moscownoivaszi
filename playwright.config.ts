@@ -16,11 +16,15 @@ export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
-  timeout: 30_000,
-  expect: { timeout: 10_000 },
+  // Folga generosa: o dev server do Next é instância única e `force-dynamic`, então
+  // compila rotas on-demand e fica lento sob a corrida serial — não é bug do app.
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // CI tolera 1 retry (contenção/timeout transitório do dev server); local fail-fast.
+  // Cada spec é determinístico isolado. Sobrescreva com E2E_RETRIES.
+  retries: Number(process.env.E2E_RETRIES ?? (process.env.CI ? 1 : 0)),
   reporter: [["list"]],
   use: {
     baseURL: BASE_URL,

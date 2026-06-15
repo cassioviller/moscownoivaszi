@@ -70,6 +70,30 @@ async function criarNoiva(noivaNome: string): Promise<void> {
   process.stdout.write(lead.id);
 }
 
+/**
+ * Pré-condição do fluxo financeiro: cria Lead + Contrato ATIVO + 1 Parcela PREVISTA
+ * (aberta). Imprime JSON { leadId, contratoId, parcelaId }. vendedoraId = admin e2e.
+ */
+async function criarParcelaAberta(noivaNome: string): Promise<void> {
+  if (!noivaNome) throw new Error("criar-parcela-aberta exige um nome.");
+  const lead = await prisma.lead.create({ data: { lojaId: LOJA, noivaNome } });
+  const contrato = await prisma.contrato.create({
+    data: { lojaId: LOJA, leadId: lead.id, vendedoraId: ADMIN_ID, valorTotal: "1000.00" },
+  });
+  const parcela = await prisma.parcela.create({
+    data: {
+      lojaId: LOJA,
+      contratoId: contrato.id,
+      numero: 1,
+      valorPrevisto: "1000.00",
+      // Vence hoje: a lista de recebimentos filtra pelo MÊS corrente por padrão,
+      // então uma data fora da janela não apareceria em "Abertas".
+      vencimento: new Date(),
+    },
+  });
+  process.stdout.write(JSON.stringify({ leadId: lead.id, contratoId: contrato.id, parcelaId: parcela.id }));
+}
+
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
   switch (cmd) {
@@ -79,6 +103,8 @@ async function main(): Promise<void> {
       return teardown();
     case "criar-noiva":
       return criarNoiva(args[0]);
+    case "criar-parcela-aberta":
+      return criarParcelaAberta(args[0]);
     default:
       throw new Error(`Comando e2e-db desconhecido: ${cmd ?? "(vazio)"}`);
   }
