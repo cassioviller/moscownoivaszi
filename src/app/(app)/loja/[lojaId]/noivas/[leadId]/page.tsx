@@ -74,6 +74,7 @@ const AVISOS: Record<string, string> = {
   vendedora_invalida: "Você não está vinculada a esta loja como vendedora — não foi possível abrir o orçamento.",
   lead_invalido: "Noiva inválida.",
   atendimento_invalido: "Atendimento inválido.",
+  reservou_concluido: "Atendimento concluído. Agora reserve o vestido escolhido.",
 };
 
 // Contagem e urgência do casamento: helper puro compartilhado (mesmo limiar ≤14d
@@ -370,8 +371,9 @@ export default async function NoivaPage({
         </Bloco>
       )}
 
-      {/* Vestido reservado — largura total (tem o reservar inline) */}
+      {/* Vestido reservado — largura total (tem o reservar inline). id p/ a âncora #reserva (M1). */}
       {(reservas.length > 0 || podeReservar) && (
+        <section id="reserva" className="scroll-mt-24">
         <Bloco titulo="Vestido reservado">
           {reservas.length === 0 ? (
             <p className="text-[14px] text-grafite">Nenhum vestido reservado ainda.</p>
@@ -411,6 +413,7 @@ export default async function NoivaPage({
               <ReservaLivreInline leadId={leadId} reservar={reservarPelaNoivaAction} buscarLivres={buscarVestidosLivresAction} />
             ))}
         </Bloco>
+        </section>
       )}
 
       <footer className="border-t border-borda-suave pt-4">
