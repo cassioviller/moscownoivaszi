@@ -10,6 +10,8 @@ import {
   iniciarAtendimento,
   concluirAtendimento,
   marcarFalta,
+  buscarAtendimentos,
+  SITUACOES_FECHADAS,
 } from "@/lib/atendimentos/atendimentos";
 import { fatosDaNoiva } from "@/lib/leads/leads";
 import { estagioDaNoiva } from "@/lib/leads/jornada";
@@ -205,5 +207,43 @@ describe("atendimentos: constraint de slot (anti double-booking)", () => {
     const indisp = [a, b].filter((r) => !r.ok && r.motivo === "indisponivel").length;
     expect(oks).toBe(1);
     expect(indisp).toBe(1);
+  });
+});
+
+describe("buscarAtendimentos (núcleo parametrizado)", () => {
+  it("filtra por tipo, situação e intervalo [desde, ate); respeita a ordem", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const i = (ymd: string, h: number) => new Date(`${ymd}T${String(h).padStart(2, "0")}:00:00.000Z`);
+    const a1 = await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: i("2099-10-01", 9), tipo: "ATENDIMENTO", situacao: "CONCLUIDO", desfecho: "RESERVOU" } as never });
+    const a2 = await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: i("2099-10-01", 10), tipo: "ATENDIMENTO", situacao: "AGENDADO" } as never });
+    const vx = await db.vestido.create({ data: { codigo: "BX1", nome: `${MARK}vx`, precoBase: "1.00" } as never });
+    const bloqueio = await db.bloqueioVestido.create({ data: { vestidoId: vx.id, leadId: lead, tipo: "RESERVA_CASAMENTO" } as never });
+    await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: i("2099-10-01", 11), tipo: "PROVA", bloqueioId: bloqueio.id, situacao: "AGENDADO" } as never });
+
+    const desde = i("2099-10-01", 0), ate = i("2099-10-02", 0);
+
+    // tipo=ATENDIMENTO no intervalo → só a1 e a2 (PROVA fora)
+    const todos = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde, ate });
+    const ids = todos.map((r) => r.id);
+    expect(ids).toContain(a1.id);
+    expect(ids).toContain(a2.id);
+    expect(todos.every((r) => r.tipo === "ATENDIMENTO")).toBe(true);
+
+    // situacoes=FECHADAS → só a1 (CONCLUIDO)
+    const fechados = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde, ate, situacoes: SITUACOES_FECHADAS });
+    expect(fechados.map((r) => r.id)).toEqual([a1.id]);
+    expect(fechados[0].desfecho).toBe("RESERVOU");
+    expect(fechados[0].cabineNome).toBe(`${MARK}C1`);
+
+    // ordem desc → a2 (10h) antes de a1 (9h)
+    const desc = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde, ate, ordem: "desc" });
+    const idxA1 = desc.findIndex((r) => r.id === a1.id);
+    const idxA2 = desc.findIndex((r) => r.id === a2.id);
+    expect(idxA2).toBeLessThan(idxA1);
+
+    // intervalo meio-aberto: ate exclusivo
+    const aBorda = await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: ate, tipo: "ATENDIMENTO", situacao: "AGENDADO" } as never });
+    const dentro = await buscarAtendimentos(loja, { tipo: "ATENDIMENTO", desde, ate });
+    expect(dentro.map((r) => r.id)).not.toContain(aBorda.id);
   });
 });

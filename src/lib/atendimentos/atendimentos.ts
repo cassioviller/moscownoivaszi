@@ -8,6 +8,9 @@ import { obterHorarioLoja } from "./cabines";
 import { meiaNoiteUTC, hojeUTC } from "@/lib/tempo";
 import type { AtendimentoSituacao, AtendimentoDesfecho, AtendimentoTipo } from "@/generated/prisma/client";
 
+export const SITUACOES_ABERTAS: AtendimentoSituacao[] = ["AGENDADO", "EM_ATENDIMENTO"];
+export const SITUACOES_FECHADAS: AtendimentoSituacao[] = ["CONCLUIDO", "FALTOU"];
+
 function ehErroP2002(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
 }
@@ -115,6 +118,70 @@ export async function agendarAtendimento(
     if (ehErroP2002(e)) return { ok: false, motivo: "indisponivel" };
     throw e;
   }
+}
+
+export type FiltroAtendimentos = {
+  tipo?: AtendimentoTipo;
+  situacoes?: AtendimentoSituacao[];
+  desde?: Date; // inicio >= desde
+  ate?: Date; // inicio < ate
+  ordem?: "asc" | "desc";
+};
+
+export type AtendimentoLinha = {
+  id: string;
+  inicio: Date;
+  tipo: AtendimentoTipo;
+  situacao: AtendimentoSituacao;
+  desfecho: AtendimentoDesfecho | null;
+  atendidoEm: Date | null;
+  leadId: string;
+  noivaNome: string | null;
+  cabineNome: string;
+  vendedoraNome: string;
+};
+
+/**
+ * Leitura-núcleo de atendimentos da loja. Concentra a regra "o que conta":
+ * monta o where a partir do filtro (cada cláusula só entra quando presente),
+ * ordena por início e traz lead+cabine+vendedora. Os wrappers públicos
+ * (próximos/fila/intervalo) projetam a partir desta linha rica.
+ */
+export async function buscarAtendimentos(
+  lojaId: string,
+  filtro: FiltroAtendimentos = {},
+): Promise<AtendimentoLinha[]> {
+  const where: Record<string, unknown> = {};
+  if (filtro.tipo) where.tipo = filtro.tipo;
+  if (filtro.situacoes) where.situacao = { in: filtro.situacoes };
+  if (filtro.desde || filtro.ate) {
+    where.inicio = {
+      ...(filtro.desde ? { gte: filtro.desde } : {}),
+      ...(filtro.ate ? { lt: filtro.ate } : {}),
+    };
+  }
+  const rows = await tenantPrisma(prisma, lojaId).atendimento.findMany({
+    // where montado dinamicamente → cast no estilo da casa (o arquivo já usa `as never`).
+    where: where as never,
+    orderBy: { inicio: filtro.ordem ?? "asc" },
+    include: {
+      lead: { select: { noivaNome: true } },
+      cabine: { select: { nome: true } },
+      vendedora: { select: { nome: true } },
+    },
+  });
+  return rows.map((a) => ({
+    id: a.id,
+    inicio: a.inicio,
+    tipo: a.tipo,
+    situacao: a.situacao,
+    desfecho: a.desfecho,
+    atendidoEm: a.atendidoEm,
+    leadId: a.leadId,
+    noivaNome: a.lead?.noivaNome ?? null,
+    cabineNome: a.cabine.nome,
+    vendedoraNome: a.vendedora.nome,
+  }));
 }
 
 export type AtendimentoItem = {
