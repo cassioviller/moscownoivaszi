@@ -56,11 +56,16 @@ a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, *
   (`limite=6` + `.filter(pontos>0)`); texto livre (`algoAMais`/`naoQuerUsar`) não pontua. Não é
   bug — o link dá a saída para o acervo inteiro sem quebrar a curadoria.
 
-**Backlog priorizado (próximas fatias — NÃO feito ainda):**
-- **B1** [bug, alta] **double-booking**: `agendarAtendimento` faz SELECT (`horasOcupadas`) → CREATE
-  sem transação, e `model Atendimento` **não tem `@@unique`** (cabine/início). Fix: constraint
-  `@@unique([lojaId, cabineId, inicio])` (+ vendedora?) + tratar o erro de unique. Exige migração
-  → fatia própria. (`atendimentos.ts:99-106`).
+**Backlog priorizado (próximas fatias):**
+- **B1** [bug, alta] **double-booking** ✅ (2026-06-15, spec/plano `…/2026-06-15-b1-double-booking*`):
+  fechado por **duas** `@@unique` no `Atendimento` — `[cabineId, inicio]` e
+  `[lojaId, vendedoraId, inicio]` (o eixo de conflito é cabine **OU** vendedora, escopado por loja)
+  — mais tradução de `P2002` → `motivo: "indisponivel"` no `create` de `agendarAtendimento`
+  (padrão otimista; o pré-check `horasOcupadas` vira só fast-path/UX). Migração
+  `20260615120000_atendimento_unique_slot` (hand-authored + `migrate deploy`, pois o `migrate dev`
+  do Replit é não-interativo). 4 testes novos (constraint cabine/vendedora, cross-loja permitido,
+  **corrida real via `Promise.all` → 1 ok / 1 indisponivel**). **Fora de escopo:** rebooking-após-FALTOU
+  (a linha CONCLUIDO/FALTOU segue ocupando o slot, como hoje) e transação serializável (a constraint basta).
 - **B3** [refactor] **3 leituras divergentes** de atendimento: `listarAtendimentos` vs
   `listarProximosAtendimentos` (atendimentos.ts) vs `atendimentosNoIntervalo` (calendario/dados.ts).
   Unificar numa leitura parametrizada (situação/tipo/intervalo) — concentra a regra "o que conta".

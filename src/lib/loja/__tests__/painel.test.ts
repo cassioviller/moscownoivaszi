@@ -24,7 +24,7 @@ const emDias = (n: number) => new Date(hoje.getTime() + n * 86_400_000);
 // Cria uma reserva (BloqueioVestido RESERVA_CASAMENTO) com uma prova realizada
 // (Atendimento{tipo:PROVA, situacao:CONCLUIDO}) para o lead — é assim que a noiva
 // DERIVA o estágio "em_provas" (prova realizada = situacao EM_ATENDIMENTO/CONCLUIDO).
-async function comProvaRealizada(db: ReturnType<typeof tenantPrisma>, leadId: string, vestidoId: string) {
+async function comProvaRealizada(db: ReturnType<typeof tenantPrisma>, leadId: string, vestidoId: string, hora: number) {
   const b = await db.bloqueioVestido.create({
     data: { vestidoId, leadId, tipo: "RESERVA_CASAMENTO" } as never,
   });
@@ -35,7 +35,9 @@ async function comProvaRealizada(db: ReturnType<typeof tenantPrisma>, leadId: st
       vendedoraId: vendProva,
       tipo: "PROVA",
       bloqueioId: b.id,
-      inicio: hoje,
+      // hora distinta por prova: a mesma cabine/vendedora no mesmo instante agora colide
+      // com a @@unique de slot (anti double-booking). O painel só deriva "em_provas".
+      inicio: new Date(hoje.getTime() + hora * 3_600_000),
       situacao: "CONCLUIDO",
     } as never,
   });
@@ -94,9 +96,9 @@ beforeAll(async () => {
   const prov1 = await db.lead.create({ data: { noivaNome: `${MARK}prov1`, casamentoData: emDias(20) } as never });
   const prov2 = await db.lead.create({ data: { noivaNome: `${MARK}prov2`, casamentoData: emDias(14) } as never });
   const prov3 = await db.lead.create({ data: { noivaNome: `${MARK}prov3`, casamentoData: emDias(15) } as never });
-  await comProvaRealizada(db, prov1.id, vReserva.id);
-  await comProvaRealizada(db, prov2.id, vReserva.id);
-  await comProvaRealizada(db, prov3.id, vReserva.id);
+  await comProvaRealizada(db, prov1.id, vReserva.id, 9);
+  await comProvaRealizada(db, prov2.id, vReserva.id, 10);
+  await comProvaRealizada(db, prov3.id, vReserva.id, 11);
 
   const x1 = await db.lead.create({ data: { noivaNome: `${MARK}x1` } as never });
   await tenantPrisma(prisma, loja).lead.update({ where: { id: x1.id }, data: { perdidaEm: new Date() } });
