@@ -90,8 +90,10 @@ model BloqueioVestido {
    `leadId IS NOT NULL`, agrupado por **(`lojaId`, `leadId`, `casamentoData`)**, criar **uma**
    `Reserva` (`status = RESERVADA`, `casamentoData` do grupo) e setar `reservaId` nos bloqueios
    do grupo. Reservas existentes da mesma noiva+data **viram uma sacola multi-item** (o efeito
-   desejado). `RESERVA_CASAMENTO` com `leadId NULL` (anomalia) ganha cabeça 1-item própria, para
-   não ficar órfão. **Manutenção fica com `reservaId = NULL`.**
+   desejado). `RESERVA_CASAMENTO` com `leadId NULL` (anomalia — nenhuma esperada, pois
+   `reservarVestido` sempre seta `leadId`) **fica com `reservaId = NULL`** e é reportada pela
+   query de verificação (não recebe cabeça, porque `Reserva.leadId` é `NOT NULL`). **Manutenção
+   também fica com `reservaId = NULL`.**
 4. Aditiva e não-destrutiva (nenhuma coluna removida). Depois: `npx prisma generate`.
 
 ## 4. Camada de dados
