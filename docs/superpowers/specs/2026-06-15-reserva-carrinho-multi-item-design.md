@@ -1,64 +1,56 @@
-# Spec — Reserva: carrinho multi-item de vestidos (Fatia 1 do núcleo Seleção → Reserva)
+# Spec — Reserva multi-item de vestidos (Fatia 1 do núcleo Seleção → Reserva)
 
-> Data: 2026-06-15. Primeira fatia do núcleo **Seleção → Reserva** mapeado em
-> `docs/superpowers/research/2026-06-15-atendimento-selecao-reserva.md` (§3.6, fatia 1).
-> Objetivo: deixar a vendedora **reservar vários vestidos de uma vez** para a mesma noiva,
-> agrupados numa **sacola/reserva**, em vez de uma reserva por vez como hoje — **sem quebrar**
-> o motor de disponibilidade, as provas/ajustes, o contrato nem o livro de reservas.
+> Data: 2026-06-15 (revisado pós-grill `grill-with-docs`). Primeira fatia do núcleo
+> **Seleção → Reserva** (`docs/superpowers/research/2026-06-15-atendimento-selecao-reserva.md`, §3.6
+> fatia 1). Objetivo: a noiva pode reservar **vários vestidos de uma vez** para o seu casamento,
+> agrupados numa **Reserva**, em vez de uma reserva solta por vez — **sem quebrar** o motor de
+> disponibilidade, as provas/ajustes, o contrato nem o livro de reservas.
+>
+> Linguagem canônica em `CONTEXT.md` (**Reserva**, **Item da reserva**).
 
 ## 1. Problema
 
-Hoje a "reserva" de um vestido é **um `BloqueioVestido` (`tipo = RESERVA_CASAMENTO`)**, criado
-um por vez no perfil da noiva (`reservarPelaNoivaAction` → `reservarVestido`). Não existe a noção
-de "a noiva reservou estes 3 vestidos juntos": cada bloqueio é solto, o livro de reservas lista
-bloqueios soltos, e o desfecho M1 "RESERVOU" joga a vendedora no `#reserva` do perfil sem um
-lugar para montar uma seleção. O `Atendimento` termina em "RESERVOU" mas a reserva é firme,
-unitária e dispersa.
+Hoje "reserva" = **um `BloqueioVestido` (`tipo = RESERVA_CASAMENTO`)**, criado um por vez no perfil
+da noiva. Não existe a noção de "a noiva reservou estes 3 vestidos juntos": cada bloqueio é solto,
+o livro lista bloqueios soltos, e o desfecho M1 "RESERVOU" joga a vendedora no `#reserva` sem um
+lugar para compor a escolha.
 
 ## 2. Decisão central — migração **aditiva** (não renomear `BloqueioVestido`)
 
-O `BloqueioVestido` faz dupla função: (a) **reserva** de um vestido para um casamento, (b)
-**manutenção** de um vestido (sem noiva). Ele também é o **insumo do motor de disponibilidade**
-(lido **por vestido**, com `casamentoData` em cada linha) e a raiz de `Atendimento.bloqueioId`
-(prova de um vestido) e `Contrato.bloqueioVestidoId`.
+`BloqueioVestido` faz dupla função: (a) reserva de um vestido para um casamento, (b) manutenção.
+É também o **insumo do motor** (lido **por vestido**, com `casamentoData` em cada linha) e a raiz de
+`Atendimento.bloqueioId` e `Contrato.bloqueioVestidoId`. Por isso **não** renomeamos a tabela:
 
-Por isso **não** renomeamos a tabela. Em vez disso:
+- Criamos a **cabeça `Reserva`** (o compromisso: noiva + data + estado).
+- `BloqueioVestido` ganha **`reservaId String?`**. Cada `BloqueioVestido RESERVA_CASAMENTO` passa a
+  ser um **item** da reserva. Manutenção fica com `reservaId = null`.
 
-- Criamos uma **cabeça `Reserva`** (a sacola: noiva + data do casamento + status).
-- Damos ao `BloqueioVestido` um campo **`reservaId String?`** (FK opcional para `Reserva`).
-- Cada `BloqueioVestido` `tipo = RESERVA_CASAMENTO` passa a **pertencer a uma `Reserva`** (é o
-  "item" da reserva). Manutenção continua com `reservaId = null`.
-
-**Consequência (o ganho do design):** o motor, a `agenda`, as provas (`Atendimento.bloqueioId`),
-o contrato (`Contrato.bloqueioVestidoId`) e a jornada (`leads.ts`) **não mudam** — todos seguem
-apontando para o **item** (o vestido específico), que é o nível semanticamente correto. A novidade
-é só uma camada de **composição** por cima.
+**Ganho:** motor, `agenda`, provas (`Atendimento.bloqueioId`), contrato e jornada **não mudam** —
+seguem apontando para o **item** (o vestido), nível semanticamente correto. A novidade é só uma
+camada de **composição** por cima.
 
 ### Por que não as alternativas
-- **Renomear `BloqueioVestido → ReservaItem` + cabeça nova:** manutenção **não** é item de reserva;
-  renomear a tabela inteira mistura os dois papéis e força migrar ~70 referências + o motor.
-  Rejeitado.
+- **Renomear `BloqueioVestido → ItemDaReserva`:** manutenção não é item de reserva; renomear mistura
+  papéis e força migrar ~70 referências + o motor. Rejeitado.
 - **Mover `casamentoData` para a cabeça:** o motor lê `casamentoData` de cada `BloqueioVestido`.
-  Mover quebraria o motor ou exigiria join em todo lugar. Mantemos `casamentoData` **no item**
-  (fonte da verdade do motor); a cabeça também guarda `casamentoData` (a data da sacola, usada
-  para abrir/agrupar e para a UI), e os itens nascem com a mesma data.
+  Mantemos no item (fonte da verdade do motor); a cabeça também guarda `casamentoData` (data do
+  compromisso, usada para abrir/agrupar) e os itens nascem com a mesma data.
 
 ## 3. Modelo de dados
 
 ### 3.1 Novo `model Reserva` (cabeça) — entra em `TENANT_MODELS`
 ```prisma
 enum ReservaStatus {
-  SACOLA     // em montagem (carrinho aberto)
-  RESERVADA  // fechada/confirmada (firme)
-  CANCELADA  // cancelada (terminal)
+  EM_MONTAGEM // a escolha ainda está sendo composta
+  CONFIRMADA  // a escolha está fechada
 }
 
 model Reserva {
   id            String        @id @default(cuid())
   lojaId        String
   leadId        String
-  casamentoData DateTime      // data da sacola; itens nascem com a mesma data
-  status        ReservaStatus @default(SACOLA)
+  casamentoData DateTime
+  status        ReservaStatus @default(EM_MONTAGEM)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -67,139 +59,130 @@ model Reserva {
   itens BloqueioVestido[]
 }
 ```
-- `Lead` ganha back-relation `reservas Reserva[]`; `Loja` ganha `reservas Reserva[]`.
-- `Reserva` entra em `TENANT_MODELS` (`src/lib/tenant.ts`) — toda leitura/escrita via
-  `tenantPrisma`.
+- **Sem `CANCELADA`.** A regra do sistema para reserva é **apagar** (cancelar = remover o
+  bloqueio/cabeça; cascade libera as peças) — não há cancelamento-soft de reserva (só `Contrato`
+  tem distrato). Espelha `cancelarReserva`/`removerManutencao` atuais.
+- `Lead` ganha `reservas Reserva[]`; `Loja` ganha `reservas Reserva[]`.
 
 ### 3.2 `BloqueioVestido` ganha `reservaId`
 ```prisma
-model BloqueioVestido {
-  // ...campos atuais inalterados...
   reservaId String?
   reserva   Reserva? @relation(fields: [reservaId], references: [id], onDelete: Cascade)
-}
 ```
-- `onDelete: Cascade`: cancelar/apagar a cabeça remove os itens (que são bloqueios) — coerente
-  com "cancelar a reserva libera os vestidos". `reservaId` é **nullable** porque manutenção e
-  dados legados (até o backfill) não têm cabeça.
+- `onDelete: Cascade`: apagar a cabeça remove os itens (que são bloqueios) → libera os vestidos.
+  `reservaId` nullable (manutenção e legado pré-backfill).
 
-### 3.3 Migração (hand-authored + `migrate deploy`, padrão do Replit)
+### 3.3 Migração (hand-authored + `migrate deploy`)
 1. `CREATE TYPE "ReservaStatus"`; `CREATE TABLE "Reserva"`.
-2. `ALTER TABLE "BloqueioVestido" ADD COLUMN "reservaId" TEXT` + FK.
-3. **Backfill:** para cada grupo de `BloqueioVestido` com `tipo = 'RESERVA_CASAMENTO'` e
-   `leadId IS NOT NULL`, agrupado por **(`lojaId`, `leadId`, `casamentoData`)**, criar **uma**
-   `Reserva` (`status = RESERVADA`, `casamentoData` do grupo) e setar `reservaId` nos bloqueios
-   do grupo. Reservas existentes da mesma noiva+data **viram uma sacola multi-item** (o efeito
-   desejado). `RESERVA_CASAMENTO` com `leadId NULL` (anomalia — nenhuma esperada, pois
-   `reservarVestido` sempre seta `leadId`) **fica com `reservaId = NULL`** e é reportada pela
-   query de verificação (não recebe cabeça, porque `Reserva.leadId` é `NOT NULL`). **Manutenção
-   também fica com `reservaId = NULL`.**
-4. Aditiva e não-destrutiva (nenhuma coluna removida). Depois: `npx prisma generate`.
+2. `ALTER TABLE "BloqueioVestido" ADD COLUMN "reservaId"` + FK.
+3. **Backfill:** cada grupo de `BloqueioVestido RESERVA_CASAMENTO` com `leadId NOT NULL`, agrupado por
+   **(`lojaId`, `leadId`, `casamentoData`)**, vira **uma** `Reserva` (`status = CONFIRMADA`) e seus
+   bloqueios recebem `reservaId`. Reservas existentes da mesma noiva+data **viram uma reserva
+   multi-item**. `RESERVA_CASAMENTO` com `leadId NULL` (anomalia; nenhuma esperada — `reservarVestido`
+   sempre seta `leadId`) **fica com `reservaId = NULL`** (verificado pela query). Manutenção idem.
+4. Aditiva, não-destrutiva. Depois: `npx prisma generate`.
 
 ## 4. Camada de dados
 
-Operações da **cabeça** (a sacola/carrinho) ficam num módulo novo e focado
-**`src/lib/reservas/sacola.ts`** (`tenantPrisma` sempre). O **primitivo de item** continua sendo
-`reservarVestido`/`cancelarReserva` de `src/lib/disponibilidade/reservas.ts` (que já validam o
-motor) — `sacola.ts` os chama; a validação anti-double-booking **não muda**.
+A composição (a cabeça) fica num módulo novo **`src/lib/reservas/reservas.ts`** (`tenantPrisma`
+sempre). O **primitivo de item** continua em `src/lib/disponibilidade/reservas.ts` (`reservarVestido`,
+movimentação) — `reservas/reservas.ts` o chama; a validação anti-double-booking **não muda**.
 
-| Função (nova, em `sacola.ts`) | O que faz |
+| Função (nova, em `reservas/reservas.ts`) | O que faz |
 |---|---|
-| `abrirOuObterSacola(lojaId, leadId)` | Acha a `Reserva` aberta (`SACOLA`) da noiva para a `casamentoData` do lead, ou cria uma (`status=SACOLA`). Falha-fechada se o lead não tem `casamentoData` (`sem_data`). |
-| `adicionarItem(lojaId, reservaId, vestidoId)` | Garante reserva `SACOLA` da loja; chama `reservarVestido` (valida motor) **com `reservaId` setado no `BloqueioVestido`**; devolve `{ok}`/`{motivo}` (bubble de `indisponivel`/etc.). |
-| `removerItem(lojaId, reservaId, bloqueioId)` | Valida que o bloqueio é item dessa reserva `SACOLA`; chama `cancelarReserva`. Se a sacola ficar **sem itens**, apaga a cabeça vazia. |
-| `fecharReserva(lojaId, reservaId)` | `SACOLA → RESERVADA`. Rejeita se não é `SACOLA` (`transicao_invalida`) ou se tem **0 itens** (`sacola_vazia`). |
-| `cancelarReservaInteira(lojaId, reservaId)` | Apaga a cabeça (cascade remove os itens-bloqueios → libera os vestidos). |
-| `listarReservasDaNoiva(lojaId, leadId)` | Cabeças da noiva (`SACOLA`+`RESERVADA`) **com seus itens** (vestido + fases via motor já existente). Substitui o uso flat atual no perfil. |
-| `listarReservasDaLoja(lojaId, {passadas?})` | Livro de reservas agora por **cabeça** (uma linha por reserva, N vestidos), ordenado por casamento. |
-| `obterSacolaDetalhe(lojaId, reservaId)` | Cabeça + itens, para a vista de montagem. |
+| `abrirReserva(lojaId, leadId)` | Acha a reserva `EM_MONTAGEM` da noiva para a `casamentoData` do lead, ou cria. Falha-fechada `sem_data` se o lead não tem data; `lead_invalido` se não existe. |
+| `adicionarVestido(lojaId, reservaId, vestidoId)` | Exige reserva `EM_MONTAGEM` da loja; chama `reservarVestido` (valida motor) **com `reservaId`**; propaga `indisponivel`/etc. |
+| `removerVestido(lojaId, reservaId, bloqueioId)` | Valida que o bloqueio é item dessa reserva; chama `removerBloqueio`. Se a reserva ficar **sem itens**, apaga a cabeça `EM_MONTAGEM` vazia. |
+| `fecharReserva(lojaId, reservaId)` | `EM_MONTAGEM → CONFIRMADA`. Rejeita não-`EM_MONTAGEM` (`transicao_invalida`) / 0 itens (`reserva_vazia`). |
+| `cancelarReserva(lojaId, reservaId)` | Apaga a cabeça (cascade remove os itens → libera as peças). |
+| `listarReservasDaNoiva(lojaId, leadId)` | Reservas (`EM_MONTAGEM`+`CONFIRMADA`) da noiva **com itens** (vestidos). |
+| `listarReservasDaLoja(lojaId, {passadas?})` | Livro de reservas por **cabeça** (uma linha, N vestidos), por casamento. |
+| `obterReserva(lojaId, reservaId)` | Cabeça + itens. |
 
-**O que `reservarVestido` precisa ganhar:** um parâmetro opcional `reservaId` no input,
-carimbado no `create` do `BloqueioVestido`. Sem `reservaId` (chamadas legadas de
-manutenção/reserva-pelo-vestido) segue igual. Mudança mínima e retrocompatível.
+Tipos: **`Reserva`** (resumo: id, status, casamentoData, leadId, noivaNome, itens) e
+**`ItemDaReserva`** (bloqueioId, vestidoId, codigo, nome).
 
-**Leitura de item (provas/ajustes/movimentação) NÃO muda:** `obterReservaDetalhe(bloqueioId)` em
-`disponibilidade/reservas.ts` segue servindo o detalhe **por vestido**. A cabeça lista os itens e
-cada item linka para o seu `reservas/[bloqueioId]` (detalhe do item).
+**`reservarVestido` ganha** `reservaId?` opcional no input, carimbado no `create`. Sem `reservaId`
+(manutenção / reserva-pelo-vestido legada) segue igual.
+
+**Desambiguação da colisão com o código atual** (regras estudadas no grill):
+- O flat `listarReservasDaNoiva` de `disponibilidade/reservas.ts` é **por-vestido** e é consumido por
+  `contratos.ts` (casa o contrato pelo `vestidoId`) → **renomear para `listarVestidosReservadosDaNoiva`**
+  e atualizar `contratos.ts`. Não é órfão.
+- O flat `listarReservasDaLoja` de `disponibilidade/reservas.ts` (por-vestido) **fica órfão** depois
+  que o livro migra → **remover** (e o trecho de teste).
+- O primitivo de item `cancelarReserva(bloqueioId)` (que apaga **um** bloqueio) → **renomear para
+  `removerBloqueio`** e atualizar `vestidos/[vestidoId]/reserva-actions.ts`. Elimina o nome duplicado
+  (`cancelarReserva` passa a ser só a da cabeça).
+
+**Leitura de item NÃO muda:** `obterReservaDetalhe(bloqueioId)` (detalhe por vestido:
+provas/ajustes/movimentação) segue como está. A cabeça lista os itens; cada item linka para o seu
+`reservas/[bloqueioId]`.
 
 ## 5. Telas (escopo da fatia)
 
-A migração é additiva, mas três superfícies passam a ser **cabeça-cientes**:
+### 5.1 Perfil da noiva — `#reserva` (superfície principal; onde M1 "RESERVOU" cai)
+- A reserva `EM_MONTAGEM` (se houver) aparece como a escolha em montagem: vestidos (itens) com
+  **remover**; o form inline atual (`ReservaLivreInline` + `buscarVestidosLivresAction`) passa a
+  **adicionar vestido** (`abrirReserva` + `adicionarVestido`); botão **"Fechar a reserva"**
+  (`fecharReserva`).
+- Abaixo, as reservas **`CONFIRMADA`**, cada uma com seus vestidos linkando para o detalhe do item,
+  e **cancelar reserva** (`cancelarReserva`).
+- Microcopy na voz do ateliê: "Reserva", "em montagem" / "confirmada", "Fechar a reserva". Mensagens
+  `?ok=`/`?erro=`. M1 segue chegando em `#reserva`.
 
-### 5.1 Perfil da noiva — seção `#reserva` (superfície principal — onde M1 "RESERVOU" cai)
-`src/app/(app)/loja/[lojaId]/noivas/[leadId]/page.tsx` + `reserva-actions.ts`.
-- Mostra a **sacola aberta** (`SACOLA`, se houver) como um carrinho: lista de vestidos (itens),
-  cada um com **remover**; o form inline atual "Reservar vestido" (`ReservaLivreInline` +
-  `buscarVestidosLivresAction`) passa a **adicionar item à sacola** (`abrirOuObterSacola` +
-  `adicionarItem`); botão **"Fechar reserva"** (`fecharReserva`).
-- Abaixo, as **reservas fechadas** (`RESERVADA`) da noiva, cada uma com seus vestidos linkando
-  para o detalhe do item (`reservas/[bloqueioId]`), e **cancelar reserva**.
-- Mensagens flash reusam o padrão `?ok=`/`?erro=` atual. M1 segue chegando em `#reserva`.
+### 5.2 Livro de reservas
+Uma linha **por reserva (cabeça)** — noiva, data (bordô se ≤14d), **chips dos N vestidos**, estado
+(em montagem / confirmada). Mantém `?quando=passadas`. (Reservas em montagem **aparecem** — já seguram
+peça, logo são compromissos, pela regra do sistema.)
 
-### 5.2 Livro de reservas (lista)
-`src/app/(app)/loja/[lojaId]/reservas/page.tsx`: uma linha **por reserva (cabeça)** — noiva, data
-do casamento (bordô se ≤14d, via `contagem-casamento`), **chips dos N vestidos**, status
-(Sacola/Reservada). Mantém o filtro `?quando=passadas`.
-
-### 5.3 Detalhe do item (provas/ajustes/movimentação) — **mantém**
-`src/app/(app)/loja/[lojaId]/reservas/[bloqueioId]/`: praticamente inalterado (é o detalhe de **um
-vestido**: fases, movimentação, provas, ajustes). Único ajuste: um migalho "parte da reserva de
-{noiva}" linkando de volta à cabeça (perfil da noiva). **Não** vira `[reservaId]`.
+### 5.3 Detalhe do item — **mantém**
+`reservas/[bloqueioId]`: detalhe de **um vestido** (fases, movimentação, provas, ajustes). Único
+ajuste: migalho "parte da reserva de {noiva}" linkando ao perfil. **Não** vira `[reservaId]`.
 
 ## 6. Estados e regras
 
-- **Status:** `SACOLA → RESERVADA → CANCELADA`. Nova sacola nasce `SACOLA`; "Fechar" →
-  `RESERVADA`; "Cancelar reserva" apaga a cabeça (cascade).
-- **Bloqueio de inventário:** nesta fatia o item **bloqueia ao ser adicionado** (firme, como
-  hoje) — inclusive em `SACOLA`. Ou seja, a sacola **já segura** o vestido. **Desvio consciente**
-  do "sacola não bloqueia" da pesquisa (§1.4): o **HOLD que expira** e o **sinal** são a **Fatia 4**;
-  trazê-los agora exigiria o motor distinguir bloqueio firme de provisório — fora de escopo. O
-  cancelamento (item ou reserva) libera o vestido, igual hoje.
-- **Anti-double-booking:** **inalterado** — cada item nasce de `reservarVestido`, validado pelo
-  motor por sobreposição de janela. Nenhuma constraint nova.
-- **Uma sacola aberta por noiva+data:** `abrirOuObterSacola` é find-or-create; não há duas
-  `SACOLA` simultâneas para a mesma `(leadId, casamentoData)`.
-- **Sacola vazia:** remover o último item apaga a cabeça; `fecharReserva` rejeita sacola de 0 itens.
+- **Status:** `EM_MONTAGEM → CONFIRMADA`. Nova reserva nasce `EM_MONTAGEM`; "Fechar" → `CONFIRMADA`;
+  "Cancelar" apaga a cabeça (cascade).
+- **Bloqueio de inventário:** o item **bloqueia ao ser adicionado** (firme), inclusive em
+  `EM_MONTAGEM` — pela regra vigente (toda reserva segura a peça). **Desvio consciente** do "sacola não
+  bloqueia" da pesquisa: o HOLD que expira é a **Fatia 4**. Reservas em montagem abandonadas ficam
+  visíveis no livro (mitigação), e cancelar libera.
+- **Anti-double-booking:** **inalterado** — cada item nasce de `reservarVestido` (motor por janela).
+- **Uma reserva em montagem por noiva+data:** `abrirReserva` é find-or-create.
+- **Jornada:** **não muda.** `jornada.ts` não tem estágio "reservou"; o bloqueio só alimenta
+  `retirado`/`devolucao`/`em_provas`. O status da reserva não toca a jornada.
 
 ## 7. Tratamento de erro
+- `abrirReserva`: `sem_data` / `lead_invalido`.
+- `adicionarVestido`: `reserva_invalida` (não-`EM_MONTAGEM`/fora da loja) + propaga `indisponivel`
+  (com `conflitaComDatas`), `sem_data`, `vestido_invalido`, `lead_invalido` de `reservarVestido`.
+- `fecharReserva`: `transicao_invalida` / `reserva_vazia`.
+- `removerVestido`: `item_invalido`. Tudo falha-fechada via `tenantPrisma`.
 
-- `adicionarItem`: propaga `motivo` de `reservarVestido` (`indisponivel` com `conflitaComDatas`,
-  `sem_data`, `vestido_invalido`, `lead_invalido`) → a UI mostra o aviso atual.
-- `fecharReserva`: `transicao_invalida` (não-`SACOLA`) / `sacola_vazia`.
-- `removerItem`/`cancelarReservaInteira`: validam que a reserva/bloqueio é da loja (via
-  `tenantPrisma`) e que o bloqueio pertence à reserva (`item_invalido`). Falha-fechada.
+## 8. Testes (vitest, Prisma real)
+Novos em `src/lib/reservas/__tests__/reservas.test.ts`:
+1. `abrirReserva` find-or-create; `sem_data`.
+2. `adicionarVestido` grava `reservaId` **e** barra conflito (`indisponivel`); `reserva_invalida`.
+3. `removerVestido` remove; remover o último **apaga a cabeça vazia**; `item_invalido`.
+4. `fecharReserva`: `EM_MONTAGEM→CONFIRMADA`; rejeita não-montagem e vazia.
+5. `cancelarReserva`: cascade remove itens → vestidos voltam livres (provado pelo motor).
+6. `listarReservasDaNoiva`/`DaLoja`/`obterReserva` agrupam por cabeça.
+7. Backfill: bloqueios da mesma noiva+data viram **uma** cabeça `CONFIRMADA`; manutenção `reservaId=null`.
 
-## 8. Testes (vitest, Prisma real — padrão da casa)
+**Regressão verde sem edição de lógica:** `disponibilidade/__tests__/*` (com os testes ajustados aos
+renomes), `atelier`, `atendimentos`, **`contratos`** (consome `listarVestidosReservadosDaNoiva`).
+`tsc` limpo + suíte cheia = gate de cada commit.
 
-Novos, em `src/lib/reservas/__tests__/sacola.test.ts`:
-1. `abrirOuObterSacola` cria uma e reusa a mesma (find-or-create); `sem_data` quando lead sem data.
-2. `adicionarItem` cria `BloqueioVestido` com `reservaId` setado **e** bloqueia inventário (segundo
-   add do mesmo vestido/data conflita → `indisponivel`).
-3. `removerItem` remove o item; remover o último **apaga a cabeça vazia**.
-4. `fecharReserva`: `SACOLA→RESERVADA`; rejeita não-`SACOLA` e sacola vazia.
-5. `cancelarReservaInteira`: cascade remove os itens → vestidos voltam a ficar livres (provado pelo
-   motor).
-6. `listarReservasDaNoiva`/`DaLoja` agrupam por cabeça com os itens certos.
-7. **Backfill** (teste de migração lógica): bloqueios da mesma noiva+data viram **uma** cabeça
-   `RESERVADA`; manutenção fica `reservaId = null`.
-
-**Regressão (devem seguir verdes sem edição de lógica):** `disponibilidade/__tests__/{motor,
-reservas,agenda,movimentação}.test.ts`, `atelier/__tests__/atelier.test.ts`,
-`atendimentos/__tests__/atendimentos.test.ts`, `contratos/__tests__/contratos.test.ts`. O `tsc`
-limpo e a suíte cheia verde são gate de cada commit (CLAUDE.md).
-
-## 9. Fora de escopo (YAGNI — próximas fatias do núcleo)
-
-- **Acessórios** (véu, tiara, sapato) como item heterogêneo + **preço de pacote** → Fatia 2.
-- **Filtro por disponibilidade-na-data** na seleção + **favoritos/lista de prova** → Fatia 3.
-- **HOLD que expira** + **sinal/depósito** (a sacola que não bloqueia) → Fatia 4.
-- **Contrato apontar para a cabeça** `Reserva` (hoje aponta para o item `BloqueioVestido`; fica
-  assim — um contrato por vestido é coerente com o modelo atual de comissão/parcela).
-- Unificar o detalhe do item numa tela `[reservaId]` — mantém-se `[bloqueioId]`.
+## 9. Fora de escopo (próximas fatias)
+- **Contrato da reserva inteira + valor herdado do orçamento** → **Fatia 1.5** (spec/plano próprios +
+  ADR `docs/adr/0002-contrato-referencia-reserva-e-herda-valor-do-orcamento.md`). Depende desta fatia.
+- Acessórios + preço de pacote → Fatia 2.
+- Filtro por disponibilidade-na-data + favoritos/lista de prova → Fatia 3.
+- HOLD que expira + sinal/depósito → Fatia 4.
+- Detalhe unificado `[reservaId]` — mantém `[bloqueioId]`.
 
 ## 10. Direção visual (Concierge Atelier)
-
-A sacola é "a seleção da noiva", não um carrinho de e-commerce: vestidos como **peças** (chip com
-código + nome), bordô só no CTA "Fechar reserva" e na urgência ≤14d; linguagem humana ("Vestidos
-selecionados", "Fechar a reserva"), estado-zero gentil ("Nenhum vestido selecionado ainda"). Passar
-pela skill `atelier-design-review` antes de fechar a fatia.
+A reserva é "a escolha da noiva", não um carrinho de e-commerce: vestidos como **peças** (chip código +
+nome), bordô só no CTA "Fechar a reserva" e na urgência ≤14d; estado-zero gentil ("Nenhum vestido
+reservado ainda"). Sem a palavra "sacola". Passar pela `atelier-design-review` antes de fechar.

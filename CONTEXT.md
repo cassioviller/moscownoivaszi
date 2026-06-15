@@ -34,6 +34,27 @@ mostrada no Início. Ex.: prova sem confirmação, devolução atrasada e, para 
 financeiro, **contas vencidas** (a receber ou a pagar, ainda em aberto). Difere do
 *Dia do atelier*, que é sempre ancorado num dia.
 
+## Reserva
+
+O **compromisso da noiva** com as peças que ela escolheu para o seu casamento: o
+conjunto de vestidos guardados em nome dela para aquela data. Uma reserva reúne
+**um ou mais vestidos** — a noiva pode levar mais de uma peça (o vestido principal,
+o de festa, e adiante acessórios). É a unidade que o *livro de reservas* acompanha.
+
+Uma reserva vive em dois momentos:
+- **em montagem** — a noiva e a equipe ainda estão compondo a escolha, somando ou
+  tirando peças;
+- **confirmada** — a escolha está fechada.
+
+Cada peça guardada já segura o vestido na data (a peça sai do acervo para aquela
+janela), inclusive enquanto a reserva está em montagem.
+
+## Item da reserva
+
+Cada **vestido dentro de uma reserva** — uma peça do acervo guardada para a noiva,
+com sua própria movimentação (prova, retirada, devolução, higienização). Quando se
+fala "o vestido reservado", é um item. A reserva é o todo; o item é cada peça.
+
 ## Financeiro sensível
 
 Contas a receber (parcelas) e a pagar, com valores. São **dado sensível**: só
