@@ -41,7 +41,6 @@ export const editarContratoAction = acaoAutorizada("leads", "editar", async (sc,
     cpf: str(formData, "cpf"),
     vestidoDescricao: str(formData, "vestidoDescricao"),
     valorTotal: str(formData, "valorTotal"),
-    entrada: str(formData, "entrada"),
     formaPagamento: str(formData, "formaPagamento"),
     dataCasamento: str(formData, "dataCasamento"),
     dataRetirada: str(formData, "dataRetirada"),
@@ -54,6 +53,7 @@ export const editarContratoAction = acaoAutorizada("leads", "editar", async (sc,
 export const cancelarContratoAction = acaoAutorizada("leads", "editar", async (sc, formData) => {
   const lojaId = sc.loja.id;
   const id = str(formData, "contratoId");
-  const r = await cancelarContrato(lojaId, id);
+  const destinoPago = str(formData, "destinoPago") === "estornar" ? "estornar" : "manter";
+  const r = await cancelarContrato(lojaId, id, { destinoPago, motivo: str(formData, "motivo") });
   redirect(r.ok ? `${detalhe(lojaId, id)}?ok=cancelado` : `${detalhe(lojaId, id)}?erro=${r.motivo}`);
 });

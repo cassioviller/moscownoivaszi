@@ -9,9 +9,9 @@ import { getSessaoComLoja } from "@/lib/auth";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { obterContrato } from "@/lib/contratos/contratos";
 import { listarParcelasDoContrato } from "@/lib/financeiro/receber";
+import { FORMAS, ROTULO_FORMA, rotuloForma } from "@/lib/financeiro/forma";
 import { totalDoPlanoCentavos, planoDivergeDoTotal } from "@/lib/financeiro/plano";
 import { brl } from "@/lib/dinheiro";
-import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { editarContratoAction, cancelarContratoAction } from "../actions";
 import {
   gerarPlanoAction,
@@ -41,6 +41,7 @@ const AVISOS: Record<string, string> = {
   contrato_nao_ativo: "Contrato cancelado — sem movimentação de parcelas.",
   parcela_invalida: "Parcela inválida.",
   nao_pago: "Este recebimento não está pago — nada a estornar.",
+  forma_invalida: "Forma de pagamento inválida.",
 };
 
 const ymd = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
@@ -93,7 +94,7 @@ export default async function ContratoDetalhePage({
   const aviso = (ok && AVISOS[ok]) || (erro && AVISOS[erro]) || null;
   const podeMexer = podeEditar && c.editavel;
   const ymdFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
-  const valoresParcelas = parcelas.map((p) => p.valorPrevisto);
+  const valoresParcelas = parcelas.filter((p) => p.status !== "CANCELADA").map((p) => p.valorPrevisto);
   const totalPlano = totalDoPlanoCentavos(valoresParcelas);
   const planoDivergente = planoDivergeDoTotal(c.valorTotal, valoresParcelas);
 
@@ -144,9 +145,17 @@ export default async function ContratoDetalhePage({
             <h2 className={rotulo}>Valores e pagamento</h2>
             <div className="flex flex-wrap gap-3">
               <Campo name="valorTotal" label="Valor total" defaultValue={c.valorTotal} placeholder="0,00" />
-              <Campo name="entrada" label="Entrada / Sinal" defaultValue={c.entrada ?? ""} placeholder="0,00" />
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className={rotulo}>Forma de pagamento</span>
+                <select name="formaPagamento" defaultValue={c.formaPagamento ?? ""} className={campo} aria-label="Forma de pagamento">
+                  <option value="">—</option>
+                  {FORMAS.map((f) => (
+                    <option key={f} value={f}>{ROTULO_FORMA[f]}</option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <Campo name="formaPagamento" label="Forma de pagamento" defaultValue={c.formaPagamento ?? ""} placeholder="Ex.: 50% sinal + 2x" />
+            <p className="text-[12px] text-cinza-fumo">A entrada e as parcelas ficam no plano de pagamento abaixo.</p>
           </section>
           <section className="flex flex-col gap-3">
             <h2 className={rotulo}>Datas</h2>
@@ -170,8 +179,7 @@ export default async function ContratoDetalhePage({
           {c.cpf && <Linha rotulo="CPF" valor={c.cpf} />}
           {c.vestidoDescricao && <Linha rotulo="Vestido" valor={c.vestidoDescricao} />}
           <Linha rotulo="Valor total" valor={brl(c.valorTotal)} />
-          {c.entrada && <Linha rotulo="Entrada" valor={brl(c.entrada)} />}
-          {c.formaPagamento && <Linha rotulo="Pagamento" valor={c.formaPagamento} />}
+          {c.formaPagamento && <Linha rotulo="Pagamento" valor={rotuloForma(c.formaPagamento)} />}
           {c.observacoes && <Linha rotulo="Observações" valor={c.observacoes} />}
         </dl>
       )}
@@ -220,7 +228,13 @@ export default async function ContratoDetalhePage({
                     {p.descricao ?? "Parcela"}{" "}
                     <span className="text-[12px] text-cinza-fumo">
                       · vence {ymdFmt.format(p.vencimento)}
-                      {p.status === "PAGA" ? " · paga" : p.atrasada ? " · atrasada" : ""}
+                      {p.status === "CANCELADA"
+                        ? " · cancelada"
+                        : p.status === "PAGA"
+                          ? ` · paga${p.formaRecebimento ? ` (${rotuloForma(p.formaRecebimento)})` : ""}`
+                          : p.atrasada
+                            ? " · atrasada"
+                            : ""}
                     </span>
                   </span>
                   <span className={`shrink-0 font-display text-[14px] font-light tabular-nums ${p.atrasada ? "text-bordo" : "text-tinta"}`}>
@@ -233,7 +247,12 @@ export default async function ContratoDetalhePage({
                       <input type="hidden" name="parcelaId" value={p.id} />
                       <input type="hidden" name="voltar" value={voltar} />
                       <input name="valor" defaultValue={p.valorPrevisto} aria-label="Valor recebido" className={`${campo} w-24`} />
-                      <input name="forma" placeholder="Forma" aria-label="Forma" className={`${campo} w-28`} />
+                      <select name="forma" defaultValue="" aria-label="Forma de recebimento" className={`${campo} w-36`}>
+                        <option value="">Forma…</option>
+                        {FORMAS.map((f) => (
+                          <option key={f} value={f}>{ROTULO_FORMA[f]}</option>
+                        ))}
+                      </select>
                       <button type="submit" className={botaoSuave}>Receber</button>
                     </form>
                     <form action={removerParcelaAction}>
@@ -266,12 +285,21 @@ export default async function ContratoDetalhePage({
       </section>
 
       {podeEditar && c.status === "ATIVO" && (
-        <form action={cancelarContratoAction} className="border-t border-borda-suave pt-5">
-          <input type="hidden" name="contratoId" value={c.id} />
-          <BotaoConfirmar mensagem="Cancelar este contrato (distrato)?" ariaLabel="Cancelar contrato" className={botaoSuave}>
-            Cancelar contrato
-          </BotaoConfirmar>
-        </form>
+        <details className="border-t border-borda-suave pt-5">
+          <summary className="w-fit cursor-pointer text-[13px] text-bordo">Cancelar contrato</summary>
+          <form action={cancelarContratoAction} className="flex flex-col gap-3 pt-3">
+            <input type="hidden" name="contratoId" value={c.id} />
+            <p className="text-[13px] text-grafite">As parcelas em aberto serão anuladas. Sobre o que já foi recebido:</p>
+            <label className="flex items-center gap-2 text-[14px] text-tinta">
+              <input type="radio" name="destinoPago" value="manter" defaultChecked /> A noiva perdeu o sinal — mantém no caixa
+            </label>
+            <label className="flex items-center gap-2 text-[14px] text-tinta">
+              <input type="radio" name="destinoPago" value="estornar" /> Devolvi o valor — estorna do caixa
+            </label>
+            <input name="motivo" placeholder="Motivo (opcional)" aria-label="Motivo do cancelamento" className={campo} />
+            <button type="submit" className={`${botaoSuave} w-fit`}>Confirmar cancelamento</button>
+          </form>
+        </details>
       )}
     </main>
   );
