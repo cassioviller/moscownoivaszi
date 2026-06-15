@@ -14,7 +14,8 @@ import { listarAtendimentos, type AtendimentoFila } from "@/lib/atendimentos/ate
 import { listarEquipe } from "@/lib/admin/usuarios";
 import { RefinarAtendimentos } from "@/components/atendimentos/refinar";
 import type { AtendimentoSituacao, AtendimentoDesfecho } from "@/generated/prisma/client";
-import { iniciarAtendimentoAction, concluirAtendimentoAction, marcarFaltaAction } from "./actions";
+import { iniciarAtendimentoAction, concluirAtendimentoAction, marcarFaltaAction, reabrirAtendimentoAction } from "./actions";
+import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
 import { criarOrcamentoAction } from "../orcamentos/actions";
 import { hojeUTC } from "@/lib/tempo";
 
@@ -43,6 +44,7 @@ const AVISOS: Record<string, string> = {
   transicao_invalida: "Essa mudança não é possível agora.",
   atendimento_invalido: "Atendimento inválido.",
   desfecho_invalido: "Escolha como o atendimento terminou.",
+  reaberto: "Atendimento reaberto.",
 };
 
 
@@ -102,9 +104,9 @@ function Linha({
               </form>
               <form action={marcarFaltaAction}>
                 <input type="hidden" name="id" value={a.id} />
-                <button type="submit" className={botaoSuave}>
+                <BotaoConfirmar mensagem={`Registrar falta de ${a.noivaNome ?? "a noiva"}?`} className={botaoSuave}>
                   Marcou falta
-                </button>
+                </BotaoConfirmar>
               </form>
             </>
           )}
@@ -119,6 +121,7 @@ function Linha({
               </form>
               <form action={concluirAtendimentoAction} className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="id" value={a.id} />
+                <input type="hidden" name="leadId" value={a.leadId} />
                 <label className="flex items-center gap-2">
                   <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Desfecho</span>
                   <select name="desfecho" required defaultValue="" aria-label="Desfecho do atendimento" className={inputBase}>
@@ -132,11 +135,26 @@ function Linha({
                     ))}
                   </select>
                 </label>
-                <button type="submit" className={botaoPrincipal}>
+                <BotaoConfirmar mensagem={`Concluir o atendimento de ${a.noivaNome ?? "a noiva"}?`} className={botaoPrincipal}>
                   Concluir
+                </BotaoConfirmar>
+              </form>
+              <form action={reabrirAtendimentoAction}>
+                <input type="hidden" name="id" value={a.id} />
+                <button type="submit" className={botaoSuave}>
+                  Voltar
                 </button>
               </form>
             </>
+          )}
+
+          {podeEditar && (a.situacao === "CONCLUIDO" || a.situacao === "FALTOU") && (
+            <form action={reabrirAtendimentoAction}>
+              <input type="hidden" name="id" value={a.id} />
+              <button type="submit" className={botaoSuave}>
+                Reabrir
+              </button>
+            </form>
           )}
         </span>
       </div>
@@ -244,7 +262,7 @@ export default async function AtendimentosPage({
         ) : (
           <ul className={listaClasses}>
             {lista.map((a) => (
-              <Linha key={a.id} a={a} lojaId={lojaId} podeEditar={false} comData />
+              <Linha key={a.id} a={a} lojaId={lojaId} podeEditar={podeEditar} comData />
             ))}
           </ul>
         )
