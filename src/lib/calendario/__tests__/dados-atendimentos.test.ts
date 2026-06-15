@@ -39,4 +39,18 @@ describe("calendário ← atendimentos", () => {
     const marc = await marcadoresNoIntervalo(loja, dia("2026-09-12"), dia("2026-09-13"));
     expect(marc.some((m) => m.ymd === "2026-09-12" && m.tipo === "atendimento")).toBe(true);
   });
+
+  it("atendimentosNoIntervalo filtra por vendedoraId (F2); sem filtro traz todos", async () => {
+    const u2 = await prisma.usuario.create({ data: { nome: `${MARK}Vend2`, email: `${MARK}v2-${Date.now()}@x.local`, senhaHash: "x" } });
+    await prisma.usuarioLoja.create({ data: { usuarioId: u2.id, lojaId: loja, perfilId: "perfil-vendedora" } });
+    // outro atendimento no mesmo dia, vendedora u2 (cabine livre às 15h)
+    const r2 = await agendarAtendimento(loja, { leadId: lead, cabineId: cabine, vendedoraId: u2.id, dataYMD: "2026-09-12", hora: 15 });
+    if (!r2.ok) throw new Error(`setup falhou: ${r2.motivo}`);
+    const desde = dia("2026-09-12"), ate = dia("2026-09-13");
+    const soU2 = await atendimentosNoIntervalo(loja, desde, ate, { vendedoraId: u2.id });
+    expect(soU2.map((a) => a.id)).toContain(r2.atendimentoId);
+    expect(soU2.map((a) => a.id)).not.toContain(atendId);
+    const todos = await atendimentosNoIntervalo(loja, desde, ate);
+    expect(todos.map((a) => a.id)).toEqual(expect.arrayContaining([atendId, r2.atendimentoId]));
+  });
 });

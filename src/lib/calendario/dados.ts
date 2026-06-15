@@ -126,13 +126,21 @@ export type AtendimentoCalendario = {
   leadId: string;
 };
 
-/** Atendimentos da loja com início em [inicio, fim), por horário asc. */
+/** Atendimentos da loja com início em [inicio, fim), por horário asc. Filtro opcional (F2). */
 export async function atendimentosNoIntervalo(
   lojaId: string,
   inicio: Date,
   fim: Date,
+  filtro: { vendedoraId?: string; noivaBusca?: string; situacao?: AtendimentoSituacao } = {},
 ): Promise<AtendimentoCalendario[]> {
-  const rows = await buscarAtendimentos(lojaId, { tipo: "ATENDIMENTO", desde: inicio, ate: fim });
+  const rows = await buscarAtendimentos(lojaId, {
+    tipo: "ATENDIMENTO",
+    desde: inicio,
+    ate: fim,
+    vendedoraId: filtro.vendedoraId,
+    noivaBusca: filtro.noivaBusca,
+    situacoes: filtro.situacao ? [filtro.situacao] : undefined,
+  });
   return rows.map((a) => ({
     id: a.id,
     inicio: a.inicio,
