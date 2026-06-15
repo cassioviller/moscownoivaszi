@@ -94,9 +94,13 @@ a 1ª leva de melhorias já foi implementada e commitada na `main` (tsc limpo, *
   (EM_ATENDIMENTO) e "**Reabrir**" (CONCLUIDO/FALTOU no histórico, que agora recebe `podeEditar`
   real) — recuperação discreta em grafite, bordô só no Concluir. 5 testes de reabrir; revisado pela
   skill `atelier-design-review`.
-- **Vestidos V-b/V-c/V-d** (se quiser ir além do V-a): grupo recolhido "Outros do acervo" (inclui
-  sem match estruturado); indisponível com card esmaecido + tag (não só frase); `naoQuerUsar` como
-  alerta no card quando bate no recusado.
+- **Vestidos V-c/V-d** ✅ (2026-06-15, spec/plano `…/2026-06-15-vestidos-vc-vd-sugestoes*`):
+  em `VestidosSugeridos` — **V-c** card indisponível para a data dela esmaecido (`opacity-60`) +
+  tag "Indisponível na data" (substitui a frase do rodapé); **V-d** `conflitaComRecusa` (pura, em
+  `indicacao.ts`, **só exibição** — token ≥4 letras, não pontua nem ordena) marca "Pode bater no
+  que ela não quer." em rose-dust no card. 5 testes da pura; revisado pela `atelier-design-review`.
+  **V-b** ("Outros do acervo") **fora de escopo de propósito** — já coberto pelo link "Ver acervo
+  completo" (V-a); reabrir só se pedirem.
 
 > **Falso positivo registrado (não reabrir):** o uso de `prisma` cru em `atendimentos.ts:78`
 > (`usuarioLoja.findUnique` por chave composta `usuarioId_lojaId`) **não** vaza tenant — o `lojaId`
