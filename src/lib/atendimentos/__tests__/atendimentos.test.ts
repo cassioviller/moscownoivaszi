@@ -163,3 +163,47 @@ describe("atendimentos: ciclo de vida (atender)", () => {
     expect(estagioDaNoiva(fatos).atual).toBe("atendimento_agendado");
   });
 });
+
+describe("atendimentos: constraint de slot (anti double-booking)", () => {
+  const inicio = (ymd: string, h: number) => new Date(`${ymd}T${String(h).padStart(2, "0")}:00:00.000Z`);
+
+  it("constraint de cabine: dois atendimentos na mesma (cabine, inicio) → P2002", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const data = { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: inicio("2099-08-01", 10) };
+    await db.atendimento.create({ data: data as never });
+    await expect(db.atendimento.create({ data: data as never })).rejects.toMatchObject({ code: "P2002" });
+  });
+
+  it("constraint de vendedora: mesma (vendedora, inicio) em CABINE DIFERENTE → P2002", async () => {
+    const db = tenantPrisma(prisma, loja);
+    const cabine2 = (await db.cabine.create({ data: { nome: `${MARK}C2` } as never })).id;
+    const i = inicio("2099-08-02", 10);
+    await db.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: i } as never });
+    await expect(
+      db.atendimento.create({ data: { leadId: lead, cabineId: cabine2, vendedoraId: vend, inicio: i } as never }),
+    ).rejects.toMatchObject({ code: "P2002" });
+  });
+
+  it("cross-loja: mesma vendedora, mesmo inicio, LOJAS DIFERENTES → ambas inserem", async () => {
+    const i = inicio("2099-08-03", 10);
+    const db1 = tenantPrisma(prisma, loja);
+    await db1.atendimento.create({ data: { leadId: lead, cabineId: cabine, vendedoraId: vend, inicio: i } as never });
+
+    const loja2 = (await prisma.loja.create({ data: { nome: `${MARK}loja2` } })).id;
+    const db2 = tenantPrisma(prisma, loja2);
+    const lead2 = (await db2.lead.create({ data: { noivaNome: `${MARK}Cida` } as never })).id;
+    const cabine2 = (await db2.cabine.create({ data: { nome: `${MARK}C-l2` } as never })).id;
+    await expect(
+      db2.atendimento.create({ data: { leadId: lead2, cabineId: cabine2, vendedoraId: vend, inicio: i } as never }),
+    ).resolves.toBeTruthy();
+  });
+
+  it("corrida real: dois agendarAtendimento no mesmo slot via Promise.all → um ok, outro indisponivel", async () => {
+    const args = { leadId: lead, cabineId: cabine, vendedoraId: vend, dataYMD: "2099-08-04", hora: 10 };
+    const [a, b] = await Promise.all([agendarAtendimento(loja, args), agendarAtendimento(loja, args)]);
+    const oks = [a, b].filter((r) => r.ok).length;
+    const indisp = [a, b].filter((r) => !r.ok && r.motivo === "indisponivel").length;
+    expect(oks).toBe(1);
+    expect(indisp).toBe(1);
+  });
+});

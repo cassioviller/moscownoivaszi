@@ -8,6 +8,10 @@ import { obterHorarioLoja } from "./cabines";
 import { meiaNoiteUTC, hojeUTC } from "@/lib/tempo";
 import type { AtendimentoSituacao, AtendimentoDesfecho, AtendimentoTipo } from "@/generated/prisma/client";
 
+function ehErroP2002(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
+}
+
 // "YYYY-MM-DD" + hora → Date (wall-clock em UTC).
 function instante(dataYMD: string, hora: number): Date {
   return new Date(`${dataYMD}T${String(hora).padStart(2, "0")}:00:00.000Z`);
@@ -101,10 +105,16 @@ export async function agendarAtendimento(
   if (ocupadas.includes(hora)) return { ok: false, motivo: "indisponivel" };
 
   const obs = observacao?.trim();
-  const criado = await db.atendimento.create({
-    data: { leadId, cabineId, vendedoraId, tipo, bloqueioId, inicio: instante(dataYMD, hora), observacao: obs ? obs : null } as never,
-  });
-  return { ok: true, atendimentoId: criado.id };
+  try {
+    const criado = await db.atendimento.create({
+      data: { leadId, cabineId, vendedoraId, tipo, bloqueioId, inicio: instante(dataYMD, hora), observacao: obs ? obs : null } as never,
+    });
+    return { ok: true, atendimentoId: criado.id };
+  } catch (e) {
+    // Corrida perdeu para a constraint de slot (cabine OU vendedora já ocupada na hora).
+    if (ehErroP2002(e)) return { ok: false, motivo: "indisponivel" };
+    throw e;
+  }
 }
 
 export type AtendimentoItem = {
