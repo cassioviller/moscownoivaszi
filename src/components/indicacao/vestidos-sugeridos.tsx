@@ -1,4 +1,5 @@
 // src/components/indicacao/vestidos-sugeridos.tsx
+import Link from "next/link";
 import type { VestidoIndicado } from "@/lib/indicacao/indicacao";
 
 // Quando presente, liga a sugestão à ação de reservar (perfil da noiva): fecha
@@ -24,22 +25,35 @@ export function VestidosSugeridos({
   vestidos,
   naoQuerUsar,
   reserva,
+  acervoHref,
 }: {
   vestidos: VestidoIndicado[];
   naoQuerUsar?: string | null;
   reserva?: ReservaSugestao;
+  /** Quando presente, mostra "Ver acervo completo →": a curadoria é top-6 por afinidade. */
+  acervoHref?: string;
 }) {
   if (vestidos.length === 0) return null;
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-[19px] font-light tracking-tight text-tinta">
-          Vestidos para esta noiva
-        </h2>
-        <p className="text-[13px] text-cinza-fumo">
-          Sugeridos pela afinidade com os interesses registrados.
-        </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-display text-[19px] font-light tracking-tight text-tinta">
+            Vestidos para esta noiva
+          </h2>
+          <p className="text-[13px] text-cinza-fumo">
+            As seis de maior afinidade com os interesses registrados.
+          </p>
+        </div>
+        {acervoHref && (
+          <Link
+            href={acervoHref}
+            className="w-fit rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+          >
+            Ver acervo completo
+          </Link>
+        )}
       </div>
 
       {naoQuerUsar && (

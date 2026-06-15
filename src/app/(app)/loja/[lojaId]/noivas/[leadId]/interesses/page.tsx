@@ -74,7 +74,7 @@ export default async function InteressesPage({
         selecoes={selecoes}
       />
 
-      <VestidosSugeridos vestidos={sugeridos} naoQuerUsar={i?.naoQuerUsar} />
+      <VestidosSugeridos vestidos={sugeridos} naoQuerUsar={i?.naoQuerUsar} acervoHref={`/loja/${sc.loja.id}/vestidos`} />
     </main>
   );
 }

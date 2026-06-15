@@ -177,7 +177,13 @@ export default async function OrcamentoDetalhePage({
       {/* Vestidos indicados — escolher a peça e registrar o valor combinado */}
       {podeMexer && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Vestidos indicados</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Vestidos indicados</h2>
+            {/* Curadoria top-6 por afinidade; acervo inteiro a um clique (V-a). */}
+            <Link href={`/loja/${sc.loja.id}/vestidos`} className="w-fit rounded-sm text-[12px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo">
+              Ver acervo completo
+            </Link>
+          </div>
           {sugeridos.length === 0 ? (
             <p className="text-[14px] text-cinza-fumo">
               Sem vestidos indicados — registre os interesses da noiva para ver sugestões.{" "}
