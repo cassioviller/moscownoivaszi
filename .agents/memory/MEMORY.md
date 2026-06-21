@@ -1,0 +1,1 @@
+- [Moscow Noivas migration](moscow-noivas-migration.md) — Vite+React+Wouter+Express migration from Next.js; key gotchas and patterns

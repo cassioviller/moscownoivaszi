@@ -1,0 +1,268 @@
+// src/app/(app)/loja/[lojaId]/noivas/page.tsx
+import Link from "next/link";
+import { exigirAcesso } from "@/lib/server/acoes";
+import { AvisoFlash } from "@/components/ui/aviso-flash";
+import { podeNoModulo } from "@/lib/permissoes/modulos";
+import { listarNoivasComEstagio, type EstagioResumo } from "@/lib/leads/leads";
+import { ESTAGIOS, ROTULO_ESTAGIO, type EstagioChave } from "@/lib/leads/jornada";
+import { BotaoConfirmar } from "@/components/ui/botao-confirmar";
+import { marcarPerdidaAction } from "./[leadId]/jornada-actions";
+import { diasAteCasamento, rotuloContagem, casamentoUrgente } from "@/lib/leads/contagem-casamento";
+
+export const dynamic = "force-dynamic";
+
+// UTC: a data nasce em meia-noite UTC (leads.ts) — exibir em UTC evita off-by-one.
+const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+
+const AVISOS: Record<string, string> = {
+  "1": "Noiva adicionada.",
+  desativada: "Noiva desativada — fora da jornada ativa.",
+  reativada: "Noiva reativada.",
+};
+
+// Filtro por estado da jornada. "Ativas" = não encerrada (inclui em andamento e casamento);
+// "Concluídas" = devolvido; "Desativadas" = perdida. Padrão: Ativas (lista do dia a dia limpa).
+const FILTROS = ["ativas", "concluidas", "desativadas", "todas"] as const;
+type Filtro = (typeof FILTROS)[number];
+const ROTULO_FILTRO: Record<Filtro, string> = { ativas: "Ativas", concluidas: "Concluídas", desativadas: "Desativadas", todas: "Todas" };
+
+export default async function NoivasPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lojaId: string }>;
+  searchParams: Promise<{ ok?: string; filtro?: string; etapa?: string; busca?: string }>;
+}) {
+  const sc = await exigirAcesso("leads");
+
+  const { lojaId } = await params;
+  const sp = await searchParams;
+  // UMA leitura: noivas já com o estágio derivado (antes eram duas findMany).
+  const [noivas, podeCriar, podeEditar] = await Promise.all([
+    listarNoivasComEstagio(sc.loja.id),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+  ]);
+  const aviso = sp.ok ? (AVISOS[sp.ok] ?? null) : null;
+
+  // Classifica cada noiva pela jornada e conta por estado (para os chips).
+  const estadoDe = (e: EstagioResumo): "ativas" | "concluidas" | "desativadas" =>
+    e.encerrada === "Perdida" ? "desativadas" : e.encerrada === "Devolvido" ? "concluidas" : "ativas";
+  const contagem: Record<string, number> = { ativas: 0, concluidas: 0, desativadas: 0 };
+  for (const n of noivas) contagem[estadoDe(n.estagio)]++;
+  const filtro: Filtro = (FILTROS as readonly string[]).includes(sp.filtro ?? "") ? (sp.filtro as Filtro) : "ativas";
+  // Filtro fino por ETAPA da jornada (compõe com o estado). "" = todas as etapas.
+  const etapa: EstagioChave | "" = (ESTAGIOS as readonly string[]).includes(sp.etapa ?? "") ? (sp.etapa as EstagioChave) : "";
+  // Busca por nome (noiva ou noivo), sem acentuação-sensível-demais: simples includes.
+  const busca = (sp.busca ?? "").trim();
+  const buscaLower = busca.toLowerCase();
+  let visiveis = filtro === "todas" ? noivas : noivas.filter((n) => estadoDe(n.estagio) === filtro);
+  if (etapa) visiveis = visiveis.filter((n) => n.estagio.atual === etapa);
+  if (buscaLower) {
+    visiveis = visiveis.filter(
+      (n) => n.noivaNome.toLowerCase().includes(buscaLower) || (n.noivoNome?.toLowerCase().includes(buscaLower) ?? false),
+    );
+  }
+  const extra = `${etapa ? `&etapa=${etapa}` : ""}${busca ? `&busca=${encodeURIComponent(busca)}` : ""}`;
+  // Estado da lente atual (filtro/etapa/busca) p/ devolver lista→detalhe→voltar à mesma
+  // vista. Só o que difere do padrão entra na URL — lente padrão volta à lista crua.
+  const lente = new URLSearchParams();
+  if (filtro !== "ativas") lente.set("filtro", filtro);
+  if (etapa) lente.set("etapa", etapa);
+  if (busca) lente.set("busca", busca);
+  const queryLente = lente.toString();
+  const voltarLista = `/loja/${lojaId}/noivas${queryLente ? `?${queryLente}` : ""}`;
+
+  return (
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
+      <header className="flex items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Link href={`/loja/${lojaId}`} className="w-fit text-[13px] text-grafite transition-colors duration-150 hover:text-tinta">
+            ← {sc.loja.nome}
+          </Link>
+          <h1 className="font-display text-[26px] font-light tracking-tight text-tinta">Noivas</h1>
+          <p className="text-[14px] text-cinza-fumo">Cada noiva, sua jornada e o casamento à vista.</p>
+        </div>
+        {podeCriar && (
+          <Link
+            href={`/loja/${lojaId}/noivas/nova`}
+            className="inline-flex items-center justify-center rounded-md bg-bordo px-4 py-2.5 text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+          >
+            Adicionar noiva
+          </Link>
+        )}
+      </header>
+
+      {aviso && <AvisoFlash tom={sp.ok ? "ok" : "erro"}>{aviso}</AvisoFlash>}
+
+      {noivas.length === 0 ? (
+        <div className="flex flex-col items-center gap-5 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado px-6 py-16 text-center shadow-[var(--mn-shadow-soft)]">
+          <p className="font-display text-[22px] font-light tracking-tight text-tinta">O atelier aguarda a primeira noiva.</p>
+          <p className="max-w-md text-[14px] leading-relaxed text-cinza-fumo">
+            {podeCriar
+              ? "Cada história começa por um nome. Adicione a primeira noiva e acompanhe a jornada, prova a prova, até o grande dia."
+              : "Assim que a administração adicionar as noivas, a jornada de cada uma vai aparecer aqui."}
+          </p>
+          {podeCriar && (
+            <Link
+              href={`/loja/${lojaId}/noivas/nova`}
+              className="inline-flex items-center justify-center rounded-md bg-bordo px-4 py-2.5 text-[14px] font-medium tracking-[0.01em] text-papel transition-colors duration-150 ease-out hover:bg-bordo-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+            >
+              Adicionar a primeira noiva
+            </Link>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <nav className="flex flex-wrap gap-2">
+              {FILTROS.map((f) => {
+                const ativo = f === filtro;
+                const qtd = f === "todas" ? noivas.length : contagem[f];
+                const href = `/loja/${lojaId}/noivas?filtro=${f}${extra}`;
+                return (
+                  <Link
+                    key={f}
+                    href={href}
+                    className={[
+                      "inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] transition-colors duration-150",
+                      ativo
+                        ? "border-bordo bg-bordo/5 text-bordo"
+                        : "border-borda-suave bg-papel text-grafite hover:border-cinza-fumo hover:text-tinta",
+                    ].join(" ")}
+                  >
+                    {ROTULO_FILTRO[f]}
+                    {qtd > 0 ? ` · ${qtd}` : ""}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Busca por nome + filtro fino por etapa (GET, sem JS) — preservam o estado. */}
+            <form method="get" className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="filtro" value={filtro} />
+              <input
+                type="search"
+                name="busca"
+                defaultValue={busca}
+                placeholder="Buscar noiva…"
+                aria-label="Buscar noiva pelo nome"
+                className="min-h-9 w-40 rounded-md border border-borda bg-papel-elevado px-3 text-[13px] text-tinta placeholder:text-cinza-fumo focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              />
+              <label htmlFor="etapa" className="text-[12px] uppercase tracking-[0.14em] text-cinza-fumo">Etapa</label>
+              <select
+                id="etapa"
+                name="etapa"
+                defaultValue={etapa}
+                className="min-h-9 rounded-md border border-borda bg-papel-elevado px-2.5 text-[13px] text-tinta focus:border-tinta focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              >
+                <option value="">Todas</option>
+                {ESTAGIOS.map((e) => (
+                  <option key={e} value={e}>{ROTULO_ESTAGIO[e]}</option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="inline-flex min-h-9 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+              >
+                Filtrar
+              </button>
+            </form>
+          </div>
+
+          {visiveis.length === 0 ? (
+            <p className="text-[14px] text-cinza-fumo">Nenhuma noiva nesta lente no momento.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {visiveis.map((n) => {
+                const est = n.estagio;
+            // A jornada sai da ativa de dois jeitos: "Perdida" (desativada — negativo,
+            // reversível) e "Devolvido" (concluída — positivo, fim natural da jornada).
+            const encerrada = est.encerrada; // "Perdida" | "Devolvido" | null
+            const perdida = encerrada === "Perdida";
+            const concluida = encerrada === "Devolvido";
+            const badge = perdida ? "Desativada" : concluida ? "Concluída" : ROTULO_ESTAGIO[est.atual];
+            const badgeClasse = perdida
+              ? "border-borda text-cinza-fumo"
+              : concluida
+                ? "border-champagne/60 text-grafite"
+                : "border-champagne/60 text-bordo";
+            // Contagem regressiva do casamento — só na jornada viva e no futuro
+            // (não insiste no passado, nem em perdida/concluída). ≤14d pesa em bordô.
+            const dias = n.casamentoData ? diasAteCasamento(n.casamentoData) : null;
+            const mostrarContagem = dias !== null && dias >= 0 && !perdida && !concluida;
+            const urgente = mostrarContagem && casamentoUrgente(dias);
+            return (
+              <article
+                key={n.id}
+                className={`flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)] transition-shadow duration-200 hover:shadow-[var(--mn-shadow-hover)] ${perdida ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <h2 className="truncate text-[17px] font-light text-tinta">{n.noivaNome}</h2>
+                    {n.noivoNome && <span className="text-[12px] text-cinza-fumo">&amp; {n.noivoNome}</span>}
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${badgeClasse}`}>{badge}</span>
+                </div>
+
+                <dl className="flex flex-col gap-1 border-t border-borda-suave pt-3 text-[13px]">
+                  <div className="flex items-start justify-between gap-2">
+                    <dt className="text-cinza-fumo">Casamento</dt>
+                    <dd className="flex flex-col items-end gap-0.5">
+                      <span className="tabular-nums text-grafite">{n.casamentoData ? dataFmt.format(n.casamentoData) : "a definir"}</span>
+                      {mostrarContagem && (
+                        <span className={`text-[11px] ${urgente ? "text-bordo" : "text-cinza-fumo"}`}>{rotuloContagem(dias)}</span>
+                      )}
+                    </dd>
+                  </div>
+                  {n.whatsapp && (
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="text-cinza-fumo">WhatsApp</dt>
+                      <dd className="tabular-nums text-grafite">{n.whatsapp}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="flex items-center justify-between gap-3 border-t border-borda-suave pt-3">
+                  <Link
+                    href={`/loja/${lojaId}/noivas/${n.id}${queryLente ? `?de=${encodeURIComponent(queryLente)}` : ""}`}
+                    className="inline-flex min-h-9 items-center rounded-md border border-borda px-3 text-[13px] text-tinta transition-colors duration-150 hover:border-bordo hover:text-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                  >
+                    Detalhes
+                  </Link>
+                  {concluida ? (
+                    // Jornada finalizada com sucesso (devolução): nada a desativar.
+                    <span className="text-[12px] text-cinza-fumo">Jornada concluída</span>
+                  ) : podeEditar ? (
+                    <form action={marcarPerdidaAction}>
+                      <input type="hidden" name="leadId" value={n.id} />
+                      <input type="hidden" name="ligar" value={perdida ? "0" : "1"} />
+                      <input type="hidden" name="voltar" value={voltarLista} />
+                      {perdida ? (
+                        <button
+                          type="submit"
+                          className="inline-flex min-h-9 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-tinta hover:decoration-champagne focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                        >
+                          Reativar
+                        </button>
+                      ) : (
+                        <BotaoConfirmar
+                          mensagem={`Desativar ${n.noivaNome}? Ela sai da jornada ativa — você pode reativar depois.`}
+                          className="inline-flex min-h-9 items-center rounded-sm text-[13px] text-grafite underline decoration-borda underline-offset-4 transition-colors duration-150 hover:text-bordo hover:decoration-bordo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bordo"
+                        >
+                          Desativar
+                        </BotaoConfirmar>
+                      )}
+                    </form>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
+            </div>
+          )}
+        </>
+      )}
+    </main>
+  );
+}

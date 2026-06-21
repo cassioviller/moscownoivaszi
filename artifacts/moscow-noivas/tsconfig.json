@@ -1,0 +1,39 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules", "build", "dist", "**/*.test.ts",
+    "src/app/**/*",
+    "src/lib/**/*",
+    "src/components/Paginacao.tsx",
+    "src/components/EsqueletoTela.tsx",
+    "src/components/atendimentos/**/*",
+    "src/components/catalogo/**/*",
+    "src/components/dashboard/**/*",
+    "src/components/disponibilidade/**/*",
+    "src/components/indicacao/**/*",
+    "src/components/permissoes/**/*",
+    "src/components/layout/sidebar.tsx",
+    "src/components/layout/topbar.tsx",
+    "src/components/layout/mobile-nav.tsx"
+  ],
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "noEmit": true,
+    "jsx": "preserve",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "references": [
+    {
+      "path": "../../lib/api-client-react"
+    }
+  ]
+}

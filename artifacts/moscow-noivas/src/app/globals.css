@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* Tailwind v4: definir tokens direto no @theme com valores reais.
+   O @theme exporta automaticamente como CSS vars (--color-papel, etc.)
+   e habilita as utilities (bg-papel, text-tinta, border-borda, ...).
+   NUNCA usar @theme inline { --x: var(--x) } — causa loop no PostCSS. */
+@theme {
+  /* Neutros warm-tinted — DESIGN.md §2/§5 */
+  --color-papel:         oklch(98% 0.011 80);
+  --color-papel-elevado: oklch(99.3% 0.006 80);
+  --color-borda-suave:   oklch(92% 0.005 40);
+  --color-borda:         oklch(85% 0.005 40);
+  --color-cinza-fumo:    oklch(55% 0.006 40);
+  --color-grafite:       oklch(35% 0.008 40);
+  --color-tinta:         oklch(15% 0.01 40);
+
+  /* Único acento — Bordô Profundo (≤5% de qualquer tela) */
+  --color-bordo:         oklch(38% 0.08 25);
+  --color-bordo-hover:   oklch(33% 0.09 25);
+
+  /* Concierge Atelier — acentos quentes (DESIGN.md §5) */
+  --color-papel-suave:   oklch(95.5% 0.009 70);
+  --color-champagne:     oklch(73% 0.06 80);
+  --color-rose-dust:     oklch(79% 0.035 35);
+
+  /* Fontes — vars injetadas pelo Next.js no <html> */
+  --font-sans:    var(--font-geist-sans);
+  --font-mono:    var(--font-geist-mono);
+  --font-display: var(--font-display);
+}
+
+/* Estrutura — prefixo --mn-* fora do @theme para não remapear
+   o rounded-md / shadow-* padrão do Tailwind.
+   Consumir via valor arbitrário: rounded-[var(--mn-radius-lg)]. */
+:root {
+  --mn-radius-md:    14px;
+  --mn-radius-lg:    22px;
+  --mn-shadow-soft:  0 12px 40px rgba(70, 40, 28, 0.06);
+  --mn-shadow-hover: 0 16px 48px rgba(70, 40, 28, 0.10);
+}
+
+body {
+  background: var(--color-papel);
+  color: var(--color-tinta);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Inputs ≥16px evitam zoom-on-focus no Safari iOS (tablet no salão — PRODUCT.md) */
+input:not([type="radio"]):not([type="checkbox"]):not([type="submit"]),
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Respeitar prefers-reduced-motion — DESIGN.md */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
