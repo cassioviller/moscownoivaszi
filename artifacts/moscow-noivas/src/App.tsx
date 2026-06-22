@@ -73,6 +73,7 @@ function AuthGate() {
       <Route path="/">
         {() => {
           if (!usuario) return <Redirect to="/login" />;
+          if (usuario.isSuperAdmin) return <Redirect to="/admin" />;
           if (!lojaAtivaId) return <Redirect to="/selecionar-loja" />;
           return <Redirect to={`/loja/${lojaAtivaId}`} />;
         }}

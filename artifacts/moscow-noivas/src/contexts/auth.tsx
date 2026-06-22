@@ -22,7 +22,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (email: string, senha: string) => Promise<void>;
+  login: (email: string, senha: string) => Promise<Usuario>;
   logout: () => Promise<void>;
   selecionarLoja: (lojaId: string) => Promise<void>;
   recarregar: () => Promise<void>;
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { recarregar(); }, []);
 
-  async function login(email: string, senha: string) {
+  async function login(email: string, senha: string): Promise<Usuario> {
     const data = await api.post("/auth/login", { email, senha });
     setState({
       loading: false,
@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loja: null,
       lojaAtivaId: null,
     });
+    return data.usuario;
   }
 
   async function logout() {

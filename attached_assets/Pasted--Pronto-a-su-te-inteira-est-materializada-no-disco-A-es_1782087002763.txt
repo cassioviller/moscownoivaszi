@@ -1,0 +1,48 @@
+● Pronto — a suíte inteira está materializada no disco. A escrita de arquivos não depende do nix, então tudo isso já existe agora, sem precisar de node/git:
+
+  artifacts/moscow-noivas/
+  ├── playwright.config.ts              ✅
+  ├── vite.config.ts                    ✅ (proxy parametrizado)
+  ├── package.json                      ✅ (scripts test:e2e)
+  ├── .gitignore                        ✅
+  └── tests/
+      ├── setup/constants.ts            ✅
+      ├── setup/db.ts                   ✅
+      ├── setup/seed-e2e.ts             ✅
+      ├── global.setup.ts               ✅
+      ├── auth.spec.ts                  ✅
+      ├── smoke.spec.ts                 ✅
+      ├── admin.spec.ts                 ✅
+      ├── permissoes.spec.ts            ✅
+      ├── isolamento.spec.ts            ✅
+      ├── loja-fluxos.spec.ts           ✅
+      └── README.md                     ✅
+
+  Falta só rodar comandos (os passos que dependem de pnpm/pg_dump) e gerar o schema.sql. Nada de editar arquivos.
+
+  Cole isto no Shell do Replit
+
+  ▎ Se algum comando der Transport endpoint is not connected, clique Stop → Run no repl primeiro (remonta o nix), depois cole de novo.
+
+  cd /home/runner/workspace/artifacts/moscow-noivas
+  pnpm install
+  pnpm add -D @playwright/test pg bcryptjs @types/pg
+  pnpm exec playwright install chromium
+  pg_dump --schema-only --no-owner --no-privileges \
+    "postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" > tests/setup/schema.sql
+  pnpm test:e2e
+
+  O resultado esperado: o projeto setup recria o heliumdb_e2e, semeia, autentica os 5 papéis, e os specs rodam no Chromium. Relatório em playwright-report/, screenshots em test-results/. O primeiro teste do auth.spec.ts é a regressão do seu bug
+  (super-admin → /admin).
+
+  O que pode pintar de atrito (e o fix)
+
+  - playwright install reclamando de libs do sistema no nix → me avise; aponto o Playwright pro Chromium do nix via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH.
+  - pg_dump trouxe \connect → remova essas linhas do schema.sql (raríssimo em dump de 1 banco).
+
+  Em paralelo, aqui
+
+  Meu monitor (bvj3odhp1) continua armado: assim que node/pnpm/git voltarem neste container, eu commito tudo (fix + spec + plano + suíte) e rodo a suíte aqui também, te mandando os screenshots. Quem chegar primeiro — você no Shell ou o ambiente
+  reconectando — a gente consolida.
+
+  Manda o output do pnpm test:e2e (ou o print) que eu te ajudo a interpretar/ajustar qualquer vermelho. 🚀

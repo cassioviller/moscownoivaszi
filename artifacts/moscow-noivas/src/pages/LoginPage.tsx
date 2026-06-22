@@ -12,7 +12,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (usuario) {
-    if (lojaAtivaId) navigate(`/loja/${lojaAtivaId}`);
+    if (usuario.isSuperAdmin) navigate("/admin");
+    else if (lojaAtivaId) navigate(`/loja/${lojaAtivaId}`);
     else navigate("/selecionar-loja");
     return null;
   }
@@ -22,8 +23,8 @@ export default function LoginPage() {
     setErro("");
     setLoading(true);
     try {
-      await login(email, senha);
-      navigate("/selecionar-loja");
+      const u = await login(email, senha);
+      navigate(u.isSuperAdmin ? "/admin" : "/selecionar-loja");
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Erro ao fazer login");
     } finally {
