@@ -1,5 +1,7 @@
 # Estado atual — Moscow Noivas
 
+> 📍 **Mapa por módulo:** para entender o que cada módulo faz (telas, fluxos, lógica, dados, dependências, arestas) antes de mexer, veja **[`docs/estado-por-modulo.md`](./estado-por-modulo.md)** (referência por módulo, 2026-06-27). Este arquivo aqui é o **changelog cronológico** das fatias entregues.
+>
 > Snapshot de onde paramos. Atualizado em **2026-06-15**. Envelhece — confira os commits e os testes antes de confiar.
 >
 > **Sessão 2026-06-15 (fim):** backlog de atendimento ESGOTADO (B1/B3/F1-F2/M1-M2/V-c-V-d ✅,
