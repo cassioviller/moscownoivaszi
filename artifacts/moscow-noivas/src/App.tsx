@@ -10,6 +10,8 @@ import DashboardPage from "@/pages/loja/DashboardPage";
 import NoivasPage from "@/pages/loja/NoivasPage";
 import NoivaPerfilPage from "@/pages/loja/NoivaPerfilPage";
 import VestidosPage from "@/pages/loja/VestidosPage";
+import OrcamentosPage from "@/pages/loja/OrcamentosPage";
+import OrcamentoPage from "@/pages/loja/OrcamentoPage";
 import ContratosPage from "@/pages/loja/ContratosPage";
 import ContratoPage from "@/pages/loja/ContratoPage";
 import AtendimentosNovoPage from "@/pages/loja/AtendimentosNovoPage";
@@ -46,6 +48,8 @@ function AuthGate() {
                   <Route path="/noivas" component={NoivasPage} />
                   <Route path="/noivas/:leadId" component={NoivaPerfilPage} />
                   <Route path="/vestidos" component={VestidosPage} />
+                  <Route path="/orcamentos" component={OrcamentosPage} />
+                  <Route path="/orcamentos/:orcamentoId" component={OrcamentoPage} />
                   <Route path="/contratos" component={ContratosPage} />
                   <Route path="/contratos/:contratoId" component={ContratoPage} />
                   <Route path="/atendimentos/novo" component={AtendimentosNovoPage} />

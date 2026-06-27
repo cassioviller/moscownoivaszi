@@ -51,6 +51,7 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
       { href: loja("/noivas"), label: "Noivas" },
       { href: loja("/atendimentos/novo"), label: "Agendar" },
       { href: loja("/calendario"), label: "Calendário" },
+      { href: loja("/orcamentos"), label: "Orçamentos" },
       { href: loja("/contratos"), label: "Contratos" },
       { href: loja("/reservas"), label: "Reservas" },
     );
