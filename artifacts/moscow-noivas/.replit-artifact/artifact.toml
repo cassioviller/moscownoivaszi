@@ -15,7 +15,9 @@ paths = [ "/" ]
 localPort = 25188
 
 [services.development]
-run = "pnpm --filter @workspace/moscow-noivas run dev"
+# App real é o Next.js (Moscow Noivas) em /app — ver memória app-real-e-o-nextjs-legado.
+# O Vite (este pacote) foi aposentado; este comando agora sobe o Next na webview (25188).
+run = "bash -c 'cd app && npm run dev -- -p 25188 -H 0.0.0.0'"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/moscow-noivas", "run", "build" ]
