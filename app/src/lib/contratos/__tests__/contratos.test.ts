@@ -13,6 +13,7 @@ import {
   listarContratosDaLoja,
   listarContratosDaNoiva,
   dadosParaPdf,
+  fecharContratoDeOrcamento,
 } from "@/lib/contratos/contratos";
 import {
   gerarPlanoDePagamento,
@@ -228,5 +229,69 @@ describe("contratos: jornada e isolamento", () => {
     expect(await obterContrato(lojaOutra, r.contratoId)).toBeNull();
     expect((await listarContratosDaLoja(lojaOutra)).some((c) => c.id === r.contratoId)).toBe(false);
     expect((await listarContratosDaNoiva(loja, lead)).length).toBeGreaterThan(0);
+  });
+});
+
+describe("fecharContratoDeOrcamento (atômico)", () => {
+  it("aprova + cria contrato ATIVO + gera parcelas, num clique", async () => {
+    const r0 = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
+    if (!r0.ok) throw new Error("criar orçamento falhou");
+    await adicionarItem(loja, r0.orcamentoId, { tipo: "VESTIDO", vestidoId: vestido, descricao: "Vestido Aurora", valorUnitario: "2.000,00" });
+    await mudarStatus(loja, r0.orcamentoId, "ENVIADO");
+
+    const r = await fecharContratoDeOrcamento(loja, r0.orcamentoId, {
+      cpf: "123.456.789-00", formaPagamento: "PIX", entrada: "500,00", numParcelas: 3, primeiroVencimento: "2026-08-10",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+
+    const det = (await obterContrato(loja, r.contratoId))!;
+    expect(det.status).toBe("ATIVO");
+    expect(det.valorTotal).toBe("2000.00");
+    expect(det.orcamentoId).toBe(r0.orcamentoId);
+
+    const parcelas = await listarParcelasDoContrato(loja, r.contratoId);
+    expect(parcelas).toHaveLength(4); // entrada + 3
+    const soma = parcelas.reduce((s, p) => s + Math.round(Number(p.valorPrevisto) * 100), 0);
+    expect(soma).toBe(200_000);
+  });
+
+  it("NÃO cria comissão (fica para o fechamento por competência)", async () => {
+    const r0 = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
+    if (!r0.ok) throw new Error("criar orçamento falhou");
+    await adicionarItem(loja, r0.orcamentoId, { tipo: "VESTIDO", vestidoId: vestido, descricao: "X", valorUnitario: "1.000,00" });
+    const r = await fecharContratoDeOrcamento(loja, r0.orcamentoId, { numParcelas: 1, primeiroVencimento: "2026-08-10" });
+    expect(r.ok).toBe(true);
+    const comissoes = await prisma.contaPagar.findMany({ where: { lojaId: loja, tipo: "COMISSAO" } });
+    expect(comissoes).toHaveLength(0);
+  });
+
+  it("recusa orçamento sem itens, e já-com-contrato sem criar parcelas órfãs", async () => {
+    const vazio = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
+    if (!vazio.ok) throw new Error("falhou");
+    expect(await fecharContratoDeOrcamento(loja, vazio.orcamentoId, { numParcelas: 1, primeiroVencimento: "2026-08-10" }))
+      .toEqual({ ok: false, motivo: "orcamento_vazio" });
+
+    const r0 = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
+    if (!r0.ok) throw new Error("falhou");
+    await adicionarItem(loja, r0.orcamentoId, { tipo: "VESTIDO", vestidoId: vestido, descricao: "Y", valorUnitario: "1.000,00" });
+    const ok1 = await fecharContratoDeOrcamento(loja, r0.orcamentoId, { numParcelas: 2, primeiroVencimento: "2026-08-10" });
+    expect(ok1.ok).toBe(true);
+    if (!ok1.ok) return;
+    const antes = (await listarParcelasDoContrato(loja, ok1.contratoId)).length;
+    const dup = await fecharContratoDeOrcamento(loja, r0.orcamentoId, { numParcelas: 5, primeiroVencimento: "2026-09-10" });
+    expect(dup).toEqual({ ok: false, motivo: "ja_tem_contrato" });
+    const depois = (await listarParcelasDoContrato(loja, ok1.contratoId)).length;
+    expect(depois).toBe(antes);
+  });
+
+  it("avança a jornada da noiva para contrato_fechado (derivado)", async () => {
+    const noiva = (await tenantPrisma(prisma, loja).lead.create({ data: { noivaNome: `${MARK}Bia`, casamentoData: new Date("2026-11-11T00:00:00.000Z") } as never })).id;
+    const r0 = await criarOrcamento(loja, { leadId: noiva, vendedoraId: vend });
+    if (!r0.ok) throw new Error("falhou");
+    await adicionarItem(loja, r0.orcamentoId, { tipo: "VESTIDO", vestidoId: vestido, descricao: "Z", valorUnitario: "1.500,00" });
+    await fecharContratoDeOrcamento(loja, r0.orcamentoId, { numParcelas: 2, primeiroVencimento: "2026-08-10" });
+    const estagio = estagioDaNoiva((await fatosDaNoiva(loja, noiva))!);
+    expect(estagio.atual).toBe("contrato_fechado");
   });
 });

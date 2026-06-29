@@ -5,13 +5,14 @@
 // pelo util compartilhado. Decisão: docs/.../2026-06-03-s3-contratos-design.md.
 import { prisma } from "@/lib/db";
 import { tenantPrisma } from "@/lib/tenant";
-import { paraCentavos, deCentavos } from "@/lib/dinheiro";
+import { paraCentavos, deCentavos, decParaCentavos } from "@/lib/dinheiro";
 import { calcularTotais } from "@/lib/orcamentos/orcamentos";
 import { listarVestidosReservadosDaNoiva } from "@/lib/disponibilidade/reservas";
 import { parseDiaUTC } from "@/lib/disponibilidade/datas";
 import type { DadosContrato } from "@/lib/contratos/pdf";
 import { listarParcelasDoContrato } from "@/lib/financeiro/receber";
 import { formaValida, rotuloForma } from "@/lib/financeiro/forma";
+import { montarPlano } from "@/lib/financeiro/plano";
 import type { ContratoStatus, FormaPagamento } from "@/generated/prisma/client";
 
 // "YYYY-MM-DD" → DateTime meia-noite UTC; "" / null → null. Lança em data inválida.
@@ -105,6 +106,101 @@ export async function criarContratoDaNoiva(lojaId: string, leadId: string, vende
     } as never,
   });
   return { ok: true, contratoId: c.id };
+}
+
+export type ResultadoFechar =
+  | { ok: true; contratoId: string }
+  | {
+      ok: false;
+      motivo:
+        | "orcamento_invalido"
+        | "orcamento_vazio"
+        | "ja_tem_contrato"
+        | "num_invalido"
+        | "data_invalida"
+        | "entrada_maior"
+        | "valor_invalido"
+        | "forma_invalida";
+    };
+
+/**
+ * Fecha a venda num passo: aprova o orçamento + cria o contrato ATIVO + gera o plano de
+ * parcelas, tudo numa transação (rollback total em erro). NÃO cria comissão — o motor por
+ * faixas a deriva no fecharCompetencia (por Contrato.fechadoEm). Decisão: spec 2026-06-29.
+ */
+export async function fecharContratoDeOrcamento(
+  lojaId: string,
+  orcamentoId: string,
+  input: { cpf?: string; formaPagamento?: string; entrada?: string; numParcelas: number; primeiroVencimento: string },
+): Promise<ResultadoFechar> {
+  const db = tenantPrisma(prisma, lojaId);
+  const orc = await db.orcamento.findUnique({
+    where: { id: orcamentoId },
+    include: { itens: true, lead: { select: { casamentoData: true } }, contrato: { select: { id: true } } },
+  });
+  if (!orc) return { ok: false, motivo: "orcamento_invalido" };
+  if (orc.status === "RECUSADO") return { ok: false, motivo: "orcamento_invalido" };
+  if (orc.contrato) return { ok: false, motivo: "ja_tem_contrato" };
+  if (orc.itens.length === 0) return { ok: false, motivo: "orcamento_vazio" };
+
+  const forma = (input.formaPagamento ?? "").trim();
+  if (forma !== "" && !formaValida(forma)) return { ok: false, motivo: "forma_invalida" };
+
+  const totalStr = calcularTotais(orc.itens, orc.descontoTipo, orc.descontoValor).total;
+  const plano = montarPlano(decParaCentavos(totalStr), {
+    entrada: input.entrada,
+    numParcelas: input.numParcelas,
+    primeiroVencimento: input.primeiroVencimento,
+  });
+  if (!plano.ok) return plano;
+
+  const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO");
+  const reservas = await listarVestidosReservadosDaNoiva(lojaId, orc.leadId);
+  const reserva = itemVestido?.vestidoId
+    ? (reservas.find((r) => r.vestidoId === itemVestido.vestidoId) ?? null)
+    : reservas.length === 1
+      ? reservas[0]
+      : null;
+
+  try {
+    const contratoId = await prisma.$transaction(async (tx) => {
+      await tx.orcamento.updateMany({
+        where: { id: orcamentoId, lojaId, status: { in: ["RASCUNHO", "ENVIADO", "APROVADO"] } },
+        data: { status: "APROVADO", aprovadoEm: new Date() },
+      });
+      const c = await tx.contrato.create({
+        data: {
+          lojaId,
+          leadId: orc.leadId,
+          orcamentoId,
+          vendedoraId: orc.vendedoraId,
+          bloqueioVestidoId: reserva?.id ?? null,
+          status: "ATIVO",
+          cpf: input.cpf?.trim() || null,
+          valorTotal: totalStr,
+          vestidoDescricao: reserva ? `${reserva.codigo} · ${reserva.nome}` : (itemVestido?.descricao ?? null),
+          formaPagamento: forma === "" ? null : (forma as FormaPagamento),
+          dataCasamento: orc.lead.casamentoData ?? reserva?.casamentoData ?? null,
+          observacoes: orc.observacoes ?? null,
+        } as never,
+      });
+      await tx.parcela.createMany({
+        data: plano.linhas.map((l) => ({
+          lojaId,
+          contratoId: c.id,
+          numero: l.numero,
+          descricao: l.descricao,
+          valorPrevisto: deCentavos(l.valor),
+          vencimento: l.vencimento,
+        })) as never,
+      });
+      return c.id;
+    });
+    return { ok: true, contratoId };
+  } catch (e) {
+    if (ehErroP2002(e)) return { ok: false, motivo: "ja_tem_contrato" };
+    throw e;
+  }
 }
 
 export type ResultadoOp =
