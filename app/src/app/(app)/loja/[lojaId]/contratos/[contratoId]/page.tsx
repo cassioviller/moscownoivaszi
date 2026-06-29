@@ -24,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 const AVISOS: Record<string, string> = {
   salvo: "Contrato salvo.",
+  fechado: "Contrato fechado — parcelas geradas.",
   cancelado: "Contrato cancelado.",
   nao_ativo: "Contrato cancelado — não pode mais ser editado.",
   valor_invalido: "Valor inválido.",

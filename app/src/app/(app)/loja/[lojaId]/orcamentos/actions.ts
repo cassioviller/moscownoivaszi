@@ -15,6 +15,7 @@ import {
   definirDesconto,
   mudarStatus,
 } from "@/lib/orcamentos/orcamentos";
+import { fecharContratoDeOrcamento } from "@/lib/contratos/contratos";
 import { acaoAutorizada } from "@/lib/server/acoes";
 import { str } from "@/lib/server/form";
 import type { OrcamentoItemTipo, OrcamentoStatus, DescontoTipo } from "@/generated/prisma/client";
@@ -98,4 +99,18 @@ export const mudarStatusAction = acaoAutorizada("leads", "editar", async (sc, fo
   const id = str(formData, "orcamentoId");
   const r = await mudarStatus(lojaId, id, str(formData, "status") as OrcamentoStatus);
   redirect(r.ok ? `${detalhe(lojaId, id)}?ok=status` : `${detalhe(lojaId, id)}?erro=${r.motivo}`);
+});
+
+export const fecharContratoAction = acaoAutorizada("leads", "criar", async (sc, formData) => {
+  const lojaId = sc.loja.id;
+  const id = str(formData, "orcamentoId");
+  const r = await fecharContratoDeOrcamento(lojaId, id, {
+    cpf: str(formData, "cpf"),
+    formaPagamento: str(formData, "formaPagamento"),
+    entrada: str(formData, "entrada"),
+    numParcelas: Number(str(formData, "numParcelas") || "1"),
+    primeiroVencimento: str(formData, "primeiroVencimento"),
+  });
+  if (!r.ok) redirect(`${detalhe(lojaId, id)}?erro=${r.motivo}`);
+  redirect(`/loja/${lojaId}/contratos/${r.contratoId}?ok=fechado`);
 });

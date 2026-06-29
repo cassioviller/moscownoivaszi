@@ -18,8 +18,10 @@ import {
   editarItemAction,
   removerItemAction,
   mudarStatusAction,
+  fecharContratoAction,
 } from "../actions";
 import { gerarContratoDeOrcamentoAction } from "../../contratos/actions";
+import { FORMAS, ROTULO_FORMA } from "@/lib/financeiro/forma";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,10 @@ const AVISOS: Record<string, string> = {
   orcamento_invalido: "Orçamento inválido.",
   ja_tem_contrato: "Este orçamento já gerou um contrato.",
   nao_aprovado: "Aprove o orçamento antes de gerar o contrato.",
+  forma_invalida: "Forma de pagamento inválida.",
+  num_invalido: "Número de parcelas inválido (1 a 360).",
+  data_invalida: "Data de vencimento inválida.",
+  entrada_maior: "A entrada não pode ser maior que o total.",
 };
 
 const inputBase =
@@ -62,9 +68,10 @@ export default async function OrcamentoDetalhePage({
   const sc = await getSessaoComLoja();
   if (!sc) redirect("/login");
 
-  const [podeVer, podeEditar] = await Promise.all([
+  const [podeVer, podeEditar, podeCriar] = await Promise.all([
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "ver"),
     podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "editar"),
+    podeNoModulo(sc.usuario.id, sc.loja.id, "leads", "criar"),
   ]);
   if (!podeVer) redirect(`/loja/${sc.loja.id}`);
 
@@ -228,51 +235,99 @@ export default async function OrcamentoDetalhePage({
       )}
 
       {/* Ações de status / contrato — o ciclo do atendimento */}
-      {(orc.status === "APROVADO" || (podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO"))) && (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
-          {orc.status === "APROVADO" ? (
-            <>
-              <span className="text-[13px] text-grafite">Aprovado — pronto para virar contrato.</span>
-              {orc.contratoId ? (
-                <Link href={`/loja/${lojaId}/contratos/${orc.contratoId}`} className={botaoPrincipal}>Ver contrato</Link>
-              ) : (
-                podeEditar && (
-                  <form action={gerarContratoDeOrcamentoAction}>
-                    <input type="hidden" name="orcamentoId" value={orc.id} />
-                    <button type="submit" className={botaoPrincipal}>Gerar contrato</button>
-                  </form>
-                )
-              )}
-            </>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                {orc.status === "RASCUNHO" && (
-                  <form action={mudarStatusAction}>
-                    <input type="hidden" name="orcamentoId" value={orc.id} />
-                    <input type="hidden" name="status" value="ENVIADO" />
-                    <button type="submit" className={botaoSuave}>Marcar como enviado</button>
-                  </form>
-                )}
-                {orc.status === "ENVIADO" && (
-                  <form action={mudarStatusAction}>
-                    <input type="hidden" name="orcamentoId" value={orc.id} />
-                    <input type="hidden" name="status" value="RASCUNHO" />
-                    <button type="submit" className={botaoSuave}>Voltar para rascunho</button>
-                  </form>
-                )}
-                <form action={mudarStatusAction}>
-                  <input type="hidden" name="orcamentoId" value={orc.id} />
-                  <input type="hidden" name="status" value="RECUSADO" />
-                  <BotaoConfirmar mensagem="Marcar este orçamento como recusado?" className={botaoSuave}>Recusado</BotaoConfirmar>
-                </form>
-              </div>
-              <form action={mudarStatusAction}>
+      {(
+        orc.status === "APROVADO" ||
+        (podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO")) ||
+        (!orc.contratoId && orc.status !== "RECUSADO" && orc.itens.length > 0 && podeCriar)
+      ) && (
+        <section className="flex flex-col gap-4 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
+          {/* Painel "Fechar contrato" — aprova + gera contrato + plano num clique */}
+          {!orc.contratoId && orc.itens.length > 0 && podeCriar && (
+            <details className="w-full rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel p-5">
+              <summary className="cursor-pointer list-none font-display text-[18px] font-light text-tinta marker:content-['']">
+                Fechar contrato
+                <span className="ml-2 text-[12px] text-cinza-fumo">aprova, gera o contrato e o plano de parcelas</span>
+              </summary>
+              <form action={fecharContratoAction} className="mt-4 flex flex-wrap items-end gap-3">
                 <input type="hidden" name="orcamentoId" value={orc.id} />
-                <input type="hidden" name="status" value="APROVADO" />
-                <button type="submit" className={botaoPrincipal}>Aprovar</button>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">CPF (opcional)</span>
+                  <input name="cpf" defaultValue="" className={`${inputBase} w-44`} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Forma</span>
+                  <select name="formaPagamento" defaultValue="" className={`${inputBase} w-40`}>
+                    <option value="">—</option>
+                    {FORMAS.map((f) => (
+                      <option key={f} value={f}>{ROTULO_FORMA[f]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Entrada (opcional)</span>
+                  <input name="entrada" placeholder="0,00" className={`${inputBase} w-32`} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Nº parcelas</span>
+                  <input name="numParcelas" type="number" min={1} max={360} defaultValue={1} className={`${inputBase} w-24`} required />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">1º vencimento</span>
+                  <input name="primeiroVencimento" type="date" className={`${inputBase} w-44`} required />
+                </label>
+                <button type="submit" className={botaoPrincipal}>Fechar contrato</button>
               </form>
-            </>
+            </details>
+          )}
+
+          {/* Botões de status e contrato */}
+          {(orc.status === "APROVADO" || (podeEditar && (orc.status === "RASCUNHO" || orc.status === "ENVIADO"))) && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {orc.status === "APROVADO" ? (
+                <>
+                  <span className="text-[13px] text-grafite">Aprovado — pronto para virar contrato.</span>
+                  {orc.contratoId ? (
+                    <Link href={`/loja/${lojaId}/contratos/${orc.contratoId}`} className={botaoPrincipal}>Ver contrato</Link>
+                  ) : (
+                    podeEditar && !podeCriar && (
+                      <form action={gerarContratoDeOrcamentoAction}>
+                        <input type="hidden" name="orcamentoId" value={orc.id} />
+                        <button type="submit" className={botaoPrincipal}>Gerar contrato</button>
+                      </form>
+                    )
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    {orc.status === "RASCUNHO" && (
+                      <form action={mudarStatusAction}>
+                        <input type="hidden" name="orcamentoId" value={orc.id} />
+                        <input type="hidden" name="status" value="ENVIADO" />
+                        <button type="submit" className={botaoSuave}>Marcar como enviado</button>
+                      </form>
+                    )}
+                    {orc.status === "ENVIADO" && (
+                      <form action={mudarStatusAction}>
+                        <input type="hidden" name="orcamentoId" value={orc.id} />
+                        <input type="hidden" name="status" value="RASCUNHO" />
+                        <button type="submit" className={botaoSuave}>Voltar para rascunho</button>
+                      </form>
+                    )}
+                    <form action={mudarStatusAction}>
+                      <input type="hidden" name="orcamentoId" value={orc.id} />
+                      <input type="hidden" name="status" value="RECUSADO" />
+                      <BotaoConfirmar mensagem="Marcar este orçamento como recusado?" className={botaoSuave}>Recusado</BotaoConfirmar>
+                    </form>
+                  </div>
+                  <form action={mudarStatusAction}>
+                    <input type="hidden" name="orcamentoId" value={orc.id} />
+                    <input type="hidden" name="status" value="APROVADO" />
+                    <button type="submit" className={botaoPrincipal}>Aprovar</button>
+                  </form>
+                </>
+              )}
+            </div>
           )}
         </section>
       )}
