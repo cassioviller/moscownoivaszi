@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { totalDoPlanoCentavos, planoDivergeDoTotal } from "@/lib/financeiro/plano";
+import { totalDoPlanoCentavos, planoDivergeDoTotal, montarPlano } from "@/lib/financeiro/plano";
 
 describe("totalDoPlanoCentavos", () => {
   it("soma os valores em centavos", () => {
@@ -18,5 +18,45 @@ describe("planoDivergeDoTotal", () => {
   it("soma das parcelas difere do total → true", () => {
     expect(planoDivergeDoTotal("1000.00", ["400.00", "500.00"])).toBe(true);
     expect(planoDivergeDoTotal("1300.00", ["200.00", "400.00", "400.00"])).toBe(true);
+  });
+});
+
+describe("montarPlano", () => {
+  it("entrada + N parcelas somam o total; última absorve o resto", () => {
+    const r = montarPlano(100_00, { entrada: "40,00", numParcelas: 3, primeiroVencimento: "2026-07-10" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.linhas).toHaveLength(4); // entrada (0) + 3
+    expect(r.linhas[0]).toMatchObject({ numero: 0, descricao: "Entrada", valor: 40_00 });
+    const soma = r.linhas.reduce((s, l) => s + l.valor, 0);
+    expect(soma).toBe(100_00);
+    expect(r.linhas.slice(1).map((l) => l.valor)).toEqual([20_00, 20_00, 20_00]);
+  });
+
+  it("sem entrada: só N parcelas, última absorve o resto da divisão", () => {
+    const r = montarPlano(100_00, { numParcelas: 3, primeiroVencimento: "2026-07-10" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.linhas).toHaveLength(3);
+    expect(r.linhas.map((l) => l.valor)).toEqual([33_33, 33_33, 33_34]);
+    expect(r.linhas[0].numero).toBe(1);
+  });
+
+  it("vencimentos avançam de 30 em 30 dias a partir do primeiro", () => {
+    const r = montarPlano(90_00, { numParcelas: 2, primeiroVencimento: "2026-07-10" });
+    if (!r.ok) throw new Error("esperava ok");
+    expect(r.linhas[0].vencimento.toISOString().slice(0, 10)).toBe("2026-07-10");
+    expect(r.linhas[1].vencimento.toISOString().slice(0, 10)).toBe("2026-08-09");
+  });
+
+  it("rejeita nº de parcelas fora de 1..360", () => {
+    expect(montarPlano(100_00, { numParcelas: 0, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "num_invalido" });
+    expect(montarPlano(100_00, { numParcelas: 361, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "num_invalido" });
+  });
+
+  it("rejeita data impossível e entrada maior que o total e valor não-parseável", () => {
+    expect(montarPlano(100_00, { numParcelas: 2, primeiroVencimento: "2027-02-30" })).toEqual({ ok: false, motivo: "data_invalida" });
+    expect(montarPlano(100_00, { entrada: "200,00", numParcelas: 2, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "entrada_maior" });
+    expect(montarPlano(100_00, { entrada: "abc", numParcelas: 2, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "valor_invalido" });
   });
 });
