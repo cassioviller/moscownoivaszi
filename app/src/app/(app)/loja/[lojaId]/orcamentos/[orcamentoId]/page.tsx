@@ -144,6 +144,9 @@ export default async function OrcamentoDetalhePage({
                         <span className="text-[10px] uppercase tracking-[0.14em] text-cinza-fumo">orçado</span>
                         <span className="font-display text-[16px] font-light tabular-nums text-bordo">{brl(it.valorUnitario)}</span>
                       </span>
+                      {it.quantidade > 1 && (
+                        <span className="text-[11px] text-cinza-fumo">× {it.quantidade} = {brl(it.subtotal)}</span>
+                      )}
                     </div>
                   </>
                 );
@@ -162,6 +165,10 @@ export default async function OrcamentoDetalhePage({
                             <label className="flex flex-col gap-1">
                               <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor orçado</span>
                               <input name="valorUnitario" defaultValue={it.valorUnitario} aria-label="Valor orçado" className={`${inputBase} w-32`} />
+                            </label>
+                            <label className="flex flex-col gap-1">
+                              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Qtd</span>
+                              <input name="quantidade" type="number" min={1} defaultValue={it.quantidade} aria-label="Quantidade" className={`${inputBase} w-20`} />
                             </label>
                             <button type="submit" className={botaoSuave}>Salvar</button>
                           </form>
@@ -219,6 +226,30 @@ export default async function OrcamentoDetalhePage({
               Ver acervo completo
             </Link>
           </div>
+          <form action={adicionarItemAction} className="flex flex-wrap items-end gap-2 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel p-4">
+            <input type="hidden" name="orcamentoId" value={orc.id} />
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Tipo</span>
+              <select name="tipo" defaultValue="SERVICO" className={`${inputBase} w-36`}>
+                <option value="SERVICO">Serviço</option>
+                <option value="AJUSTE">Ajuste</option>
+                <option value="VESTIDO">Vestido avulso</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Descrição</span>
+              <input name="descricao" className={`${inputBase} w-52`} required />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor unitário</span>
+              <input name="valorUnitario" placeholder="0,00" className={`${inputBase} w-32`} required />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Qtd</span>
+              <input name="quantidade" type="number" min={1} defaultValue={1} className={`${inputBase} w-20`} />
+            </label>
+            <button type="submit" className={botaoSuave}>Adicionar</button>
+          </form>
           {sugeridos.length === 0 ? (
             <p className="text-[14px] text-cinza-fumo">
               Sem vestidos indicados — registre os interesses da noiva para ver sugestões.{" "}
