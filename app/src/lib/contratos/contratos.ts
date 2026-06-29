@@ -32,6 +32,20 @@ function ehErroP2002(e: unknown): boolean {
   return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
 }
 
+/** Casa a reserva da noiva pela peça do item VESTIDO; sem item-vestido, só anexa se houver UMA. */
+async function resolverReserva(
+  lojaId: string,
+  leadId: string,
+  itemVestido: { vestidoId: string | null } | undefined,
+) {
+  const reservas = await listarVestidosReservadosDaNoiva(lojaId, leadId);
+  return itemVestido?.vestidoId
+    ? (reservas.find((r) => r.vestidoId === itemVestido.vestidoId) ?? null)
+    : reservas.length === 1
+      ? reservas[0]
+      : null;
+}
+
 export type ResultadoCriar =
   | { ok: true; contratoId: string }
   | { ok: false; motivo: "orcamento_invalido" | "nao_aprovado" | "ja_tem_contrato" | "lead_invalido" | "vendedora_invalida" };
@@ -52,14 +66,7 @@ export async function criarContratoDeOrcamento(lojaId: string, orcamentoId: stri
 
   const total = calcularTotais(orc.itens, orc.descontoTipo, orc.descontoValor).total;
   const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO");
-  const reservas = await listarVestidosReservadosDaNoiva(lojaId, orc.leadId);
-  // Casa a reserva pelo VESTIDO do item do orçamento (a noiva pode ter várias reservas).
-  // Sem item-vestido identificável, só anexa se houver UMA reserva (senão fica ambíguo).
-  const reserva = itemVestido?.vestidoId
-    ? (reservas.find((r) => r.vestidoId === itemVestido.vestidoId) ?? null)
-    : reservas.length === 1
-      ? reservas[0]
-      : null;
+  const reserva = await resolverReserva(lojaId, orc.leadId, itemVestido);
 
   try {
     const c = await db.contrato.create({
@@ -155,19 +162,16 @@ export async function fecharContratoDeOrcamento(
   if (!plano.ok) return plano;
 
   const itemVestido = orc.itens.find((i) => i.tipo === "VESTIDO");
-  const reservas = await listarVestidosReservadosDaNoiva(lojaId, orc.leadId);
-  const reserva = itemVestido?.vestidoId
-    ? (reservas.find((r) => r.vestidoId === itemVestido.vestidoId) ?? null)
-    : reservas.length === 1
-      ? reservas[0]
-      : null;
+  const reserva = await resolverReserva(lojaId, orc.leadId, itemVestido);
 
+  const ORC_INDISPONIVEL = "__orc_indisponivel__";
   try {
     const contratoId = await prisma.$transaction(async (tx) => {
-      await tx.orcamento.updateMany({
+      const upd = await tx.orcamento.updateMany({
         where: { id: orcamentoId, lojaId, status: { in: ["RASCUNHO", "ENVIADO", "APROVADO"] } },
-        data: { status: "APROVADO", aprovadoEm: new Date() },
+        data: { status: "APROVADO", aprovadoEm: new Date() }, // reseta aprovadoEm p/ o momento do fechamento (intencional, spec 2026-06-29)
       });
+      if (upd.count === 0) throw new Error(ORC_INDISPONIVEL); // corrida: orçamento mudou/sumiu entre o pré-check e a tx → rollback
       const c = await tx.contrato.create({
         data: {
           lojaId,
@@ -198,6 +202,7 @@ export async function fecharContratoDeOrcamento(
     });
     return { ok: true, contratoId };
   } catch (e) {
+    if (e instanceof Error && e.message === ORC_INDISPONIVEL) return { ok: false, motivo: "orcamento_invalido" };
     if (ehErroP2002(e)) return { ok: false, motivo: "ja_tem_contrato" };
     throw e;
   }

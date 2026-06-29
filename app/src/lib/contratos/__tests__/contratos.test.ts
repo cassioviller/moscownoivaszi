@@ -285,6 +285,14 @@ describe("fecharContratoDeOrcamento (atômico)", () => {
     expect(depois).toBe(antes);
   });
 
+  it("recusa forma de pagamento inválida", async () => {
+    const r0 = await criarOrcamento(loja, { leadId: lead, vendedoraId: vend });
+    if (!r0.ok) throw new Error("falhou");
+    await adicionarItem(loja, r0.orcamentoId, { tipo: "VESTIDO", vestidoId: vestido, descricao: "F", valorUnitario: "1.000,00" });
+    const r = await fecharContratoDeOrcamento(loja, r0.orcamentoId, { formaPagamento: "BOLETO_FALSO", numParcelas: 1, primeiroVencimento: "2026-08-10" });
+    expect(r).toEqual({ ok: false, motivo: "forma_invalida" });
+  });
+
   it("avança a jornada da noiva para contrato_fechado (derivado)", async () => {
     const noiva = (await tenantPrisma(prisma, loja).lead.create({ data: { noivaNome: `${MARK}Bia`, casamentoData: new Date("2026-11-11T00:00:00.000Z") } as never })).id;
     const r0 = await criarOrcamento(loja, { leadId: noiva, vendedoraId: vend });
