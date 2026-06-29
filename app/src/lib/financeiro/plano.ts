@@ -51,7 +51,7 @@ export function montarPlano(totalC: number, input: PlanoInput): ResultadoMontarP
       return { ok: false, motivo: "valor_invalido" };
     }
   }
-  if (entradaC > totalC) return { ok: false, motivo: "entrada_maior" };
+  if (entradaC >= totalC) return { ok: false, motivo: "entrada_maior" };
 
   const restanteC = totalC - entradaC;
   const base = Math.floor(restanteC / n);
@@ -59,10 +59,10 @@ export function montarPlano(totalC: number, input: PlanoInput): ResultadoMontarP
 
   const linhas: LinhaPlano[] = [];
   if (entradaC > 0) linhas.push({ numero: 0, descricao: "Entrada", valor: entradaC, vencimento: venc0 });
-  const startMonth = entradaC > 0 ? 1 : 0;
+  const offsetInicial = entradaC > 0 ? 1 : 0;
   for (let i = 1; i <= n; i++) {
     const valor = base + (i === n ? resto : 0);
-    const vencimento = new Date(venc0.getTime() + (startMonth + (i - 1)) * periodicidade * DIA_MS);
+    const vencimento = new Date(venc0.getTime() + (offsetInicial + (i - 1)) * periodicidade * DIA_MS);
     linhas.push({ numero: i, descricao: `Parcela ${i}/${n}`, valor, vencimento });
   }
   return { ok: true, linhas };

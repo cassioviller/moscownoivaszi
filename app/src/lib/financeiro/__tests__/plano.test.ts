@@ -28,6 +28,7 @@ describe("montarPlano", () => {
     if (!r.ok) return;
     expect(r.linhas).toHaveLength(4); // entrada (0) + 3
     expect(r.linhas[0]).toMatchObject({ numero: 0, descricao: "Entrada", valor: 40_00 });
+    expect(r.linhas[0].vencimento.toISOString().slice(0, 10)).toBe("2026-07-10");
     const soma = r.linhas.reduce((s, l) => s + l.valor, 0);
     expect(soma).toBe(100_00);
     expect(r.linhas.slice(1).map((l) => l.valor)).toEqual([20_00, 20_00, 20_00]);
@@ -54,9 +55,36 @@ describe("montarPlano", () => {
     expect(montarPlano(100_00, { numParcelas: 361, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "num_invalido" });
   });
 
-  it("rejeita data impossível e entrada maior que o total e valor não-parseável", () => {
+  it("rejeita data impossível", () => {
     expect(montarPlano(100_00, { numParcelas: 2, primeiroVencimento: "2027-02-30" })).toEqual({ ok: false, motivo: "data_invalida" });
+  });
+
+  it("rejeita entrada maior ou igual ao total", () => {
     expect(montarPlano(100_00, { entrada: "200,00", numParcelas: 2, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "entrada_maior" });
+    expect(montarPlano(100_00, { entrada: "100,00", numParcelas: 2, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "entrada_maior" });
+  });
+
+  it("rejeita valor não-parseável", () => {
     expect(montarPlano(100_00, { entrada: "abc", numParcelas: 2, primeiroVencimento: "2026-07-10" })).toEqual({ ok: false, motivo: "valor_invalido" });
+  });
+
+  it("n=1: parcela única recebe o total", () => {
+    const r = montarPlano(100_00, { numParcelas: 1, primeiroVencimento: "2026-07-10" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.linhas).toHaveLength(1);
+    expect(r.linhas[0]).toMatchObject({ numero: 1, valor: 100_00 });
+    expect(r.linhas[0].vencimento.toISOString().slice(0, 10)).toBe("2026-07-10");
+  });
+
+  it("n=1 com entrada: entrada no dia 0, parcela única no dia 30", () => {
+    const r = montarPlano(100_00, { entrada: "30,00", numParcelas: 1, primeiroVencimento: "2026-07-10" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.linhas).toHaveLength(2);
+    expect(r.linhas[0]).toMatchObject({ numero: 0, descricao: "Entrada", valor: 30_00 });
+    expect(r.linhas[0].vencimento.toISOString().slice(0, 10)).toBe("2026-07-10");
+    expect(r.linhas[1]).toMatchObject({ numero: 1, valor: 70_00 });
+    expect(r.linhas[1].vencimento.toISOString().slice(0, 10)).toBe("2026-08-09");
   });
 });
