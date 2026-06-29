@@ -11,9 +11,8 @@ import { ehAtrasada } from "@/lib/financeiro/obrigacao";
 import { vencimentoNaJanela } from "@/lib/financeiro/intervalo";
 import { paginar } from "@/lib/paginacao";
 import { formaValida } from "@/lib/financeiro/forma";
+import { montarPlano } from "@/lib/financeiro/plano";
 import type { ParcelaStatus, FormaPagamento } from "@/generated/prisma/client";
-
-const DIA_MS = 86_400_000;
 
 // — Gerar plano —
 
@@ -35,46 +34,12 @@ export async function gerarPlanoDePagamento(
   if (contrato.status !== "ATIVO") return { ok: false, motivo: "nao_ativo" };
   if (contrato._count.parcelas > 0) return { ok: false, motivo: "ja_tem_plano" };
 
-  const n = Math.trunc(input.numParcelas);
-  if (!Number.isInteger(n) || n < 1 || n > 360) return { ok: false, motivo: "num_invalido" };
+  const plano = montarPlano(decParaCentavos(contrato.valorTotal), input);
+  if (!plano.ok) return plano; // motivos (num/data/entrada/valor) ⊂ ResultadoPlano
 
-  let venc0: Date;
-  try {
-    venc0 = diaParaData(input.primeiroVencimento);
-  } catch {
-    return { ok: false, motivo: "data_invalida" };
-  }
-  const periodicidade = Math.trunc(input.periodicidadeDias ?? 30);
-  if (periodicidade < 1 || periodicidade > 3650) return { ok: false, motivo: "num_invalido" };
-
-  const totalC = decParaCentavos(contrato.valorTotal);
-  let entradaC = 0;
-  if (input.entrada && input.entrada.trim() !== "") {
-    try {
-      entradaC = paraCentavos(input.entrada);
-    } catch {
-      return { ok: false, motivo: "valor_invalido" };
-    }
-  }
-  if (entradaC > totalC) return { ok: false, motivo: "entrada_maior" };
-
-  const restanteC = totalC - entradaC;
-  const base = Math.floor(restanteC / n);
-  const resto = restanteC - base * n; // a ÚLTIMA parcela absorve o resto (sem drift)
-
-  const linhas: { numero: number; descricao: string; valor: number; vencimento: Date }[] = [];
-  if (entradaC > 0) linhas.push({ numero: 0, descricao: "Entrada", valor: entradaC, vencimento: venc0 });
-  const startMonth = entradaC > 0 ? 1 : 0;
-  for (let i = 1; i <= n; i++) {
-    const valor = base + (i === n ? resto : 0);
-    const vencimento = new Date(venc0.getTime() + (startMonth + (i - 1)) * periodicidade * DIA_MS);
-    linhas.push({ numero: i, descricao: `Parcela ${i}/${n}`, valor, vencimento });
-  }
-
-  // createMany = inserção ATÔMICA (sem plano parcial se algo falhar no meio). O tenant
-  // guard carimba lojaId em cada linha.
+  // createMany = inserção ATÔMICA (sem plano parcial). O guard carimba lojaId em cada linha.
   await db.parcela.createMany({
-    data: linhas.map((l) => ({
+    data: plano.linhas.map((l) => ({
       contratoId,
       numero: l.numero,
       descricao: l.descricao,
