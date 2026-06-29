@@ -19,6 +19,7 @@ import {
   removerItemAction,
   mudarStatusAction,
   fecharContratoAction,
+  definirDescontoAction,
 } from "../actions";
 import { gerarContratoDeOrcamentoAction } from "../../contratos/actions";
 import { FORMAS, ROTULO_FORMA } from "@/lib/financeiro/forma";
@@ -178,6 +179,33 @@ export default async function OrcamentoDetalhePage({
                 );
               })}
           </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado p-5 shadow-[var(--mn-shadow-soft)]">
+        <h2 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Valores</h2>
+        <dl className="flex flex-col gap-1 text-[14px]">
+          <div className="flex justify-between"><dt className="text-cinza-fumo">Subtotal</dt><dd className="tabular-nums text-tinta">{brl(orc.totais.subtotal)}</dd></div>
+          <div className="flex justify-between"><dt className="text-cinza-fumo">Desconto</dt><dd className="tabular-nums text-tinta">− {brl(orc.totais.desconto)}</dd></div>
+          <div className="flex justify-between border-t border-borda-suave pt-1"><dt className="text-grafite">Total</dt><dd className="font-display text-[18px] font-light tabular-nums text-bordo">{brl(orc.totais.total)}</dd></div>
+        </dl>
+        {podeMexer && (
+          <form action={definirDescontoAction} className="flex flex-wrap items-end gap-3 border-t border-borda-suave pt-3">
+            <input type="hidden" name="orcamentoId" value={orc.id} />
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Desconto combinado</span>
+              <select name="tipo" defaultValue={orc.descontoTipo ?? ""} className={`${inputBase} w-40`}>
+                <option value="">Nenhum</option>
+                <option value="PERCENTUAL">Percentual (%)</option>
+                <option value="VALOR">Valor (R$)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-cinza-fumo">Valor</span>
+              <input name="valor" defaultValue={orc.descontoValor ?? ""} placeholder="0,00" className={`${inputBase} w-32`} />
+            </label>
+            <button type="submit" className={botaoSuave}>Aplicar desconto</button>
+          </form>
         )}
       </section>
 
