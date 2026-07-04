@@ -44,9 +44,15 @@ export default async function LojaLayout({
     mostrarTroca: mostrarTrocaLoja(lojas.length),
   };
 
+  const perfil = sc.usuario.isSuperAdmin
+    ? "Super admin"
+    : podeGerenciarEquipe
+      ? "Administração"
+      : "Equipe";
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar lojaId={lojaId} flags={flags} />
+      <Sidebar lojaId={lojaId} flags={flags} nome={sc.usuario.nome} perfil={perfil} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           lojaId={lojaId}
