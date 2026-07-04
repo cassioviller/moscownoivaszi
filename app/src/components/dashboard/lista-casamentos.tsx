@@ -1,52 +1,44 @@
-// Painel "Casamentos próximos" — dado real (Lead.casamentoData). Cada linha: o
-// monograma da noiva, o nome, a data e quanto falta. Datas formatadas em UTC DE
-// PROPÓSITO: casamentoData é data-só guardada à meia-noite UTC; formatar noutro
-// fuso causaria off-by-one.
+// Painel "Casamentos próximos" — dado real (Lead.casamentoData). Cada linha: um
+// datechip (dia grande + mês abreviado), o nome e quanto falta. Datas formatadas em
+// UTC DE PROPÓSITO: casamentoData é data-só guardada à meia-noite UTC; formatar
+// noutro fuso causaria off-by-one.
+import Link from "next/link";
 import type { CasamentoProximo } from "@/lib/loja/painel";
 
-const fmtData = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "UTC",
-  day: "2-digit",
-  month: "long",
-});
+const fmtDia = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit" });
+const fmtMes = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", month: "short" });
 
 function rotuloDias(dias: number): string {
-  if (dias <= 0) return "hoje";
-  if (dias === 1) return "amanhã";
-  return `em ${dias} dias`;
+  if (dias <= 0) return "é hoje";
+  if (dias === 1) return "falta 1 dia";
+  return `faltam ${dias} dias`;
 }
 
-// Iniciais da noiva (1ª e última palavra) — o monograma do atelier.
-function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return "—";
-  const primeira = partes[0][0];
-  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : "";
-  return (primeira + ultima).toUpperCase();
-}
-
-export function PainelCasamentos({ casamentos }: { casamentos: CasamentoProximo[] }) {
+export function PainelCasamentos({ lojaId, casamentos }: { lojaId: string; casamentos: CasamentoProximo[] }) {
   return (
-    <section className="flex flex-col gap-4 rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado px-6 py-6 shadow-[var(--mn-shadow-soft)]">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">Casamentos próximos</p>
-      <ul className="flex flex-col divide-y divide-borda-suave">
+    <section className="flex flex-col rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado shadow-[var(--mn-shadow-soft)]">
+      <div className="flex items-center justify-between gap-3 border-b border-borda-suave px-[18px] py-3">
+        <h2 className="font-display text-[16px] font-normal text-tinta">Casamentos próximos</h2>
+        <Link href={`/loja/${lojaId}/noivas`} className="text-[12px] font-semibold text-bordo transition hover:text-bordo-deep">
+          Ver todos
+        </Link>
+      </div>
+      <div className="flex flex-col">
         {casamentos.map((c) => (
-          <li key={c.id} className="flex items-center gap-3.5 py-3">
-            <span
-              aria-hidden
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-champagne/60
-                bg-papel-suave font-display text-[13px] tracking-[0.02em] text-grafite"
-            >
-              {iniciais(c.noivaNome)}
+          <div key={c.id} className="flex items-center gap-3 border-b border-borda-suave px-[18px] py-3 last:border-b-0">
+            <span className="flex w-[42px] shrink-0 flex-col items-center rounded-[10px] border border-borda-suave bg-papel-suave py-1">
+              <span className="text-[15px] font-bold leading-none tabular-nums text-tinta">{fmtDia.format(c.data)}</span>
+              <span className="text-[9px] uppercase tracking-[0.1em] text-cinza-fumo">
+                {fmtMes.format(c.data).replace(".", "")}
+              </span>
             </span>
-            <span className="flex flex-1 flex-col gap-0.5">
-              <span className="text-[14px] text-tinta">{c.noivaNome}</span>
-              <span className="text-[12px] text-cinza-fumo">{fmtData.format(c.data)}</span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-[13.5px] font-medium text-tinta">{c.noivaNome}</span>
+              <span className="text-[11.5px] text-cinza-fumo">{rotuloDias(c.diasRestantes)}</span>
             </span>
-            <span className="shrink-0 text-[12px] text-grafite">{rotuloDias(c.diasRestantes)}</span>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }

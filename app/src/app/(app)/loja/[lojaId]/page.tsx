@@ -55,12 +55,6 @@ export default async function DashboardLoja() {
       {/* Divisória atmosférica — champagne como linha institucional, não decoração */}
       <div aria-hidden className="h-px bg-champagne/40" />
 
-      {/* Hoje no atelier — o coração do dia (agenda + financeiro, este só com permissão) */}
-      <section className="flex flex-col gap-4">
-        <h2 className="font-display text-[18px] font-light text-tinta">Hoje no atelier</h2>
-        <DiaDoAtelier lojaId={sc.loja.id} dia={diaHoje} />
-      </section>
-
       {vencidas && <AvisoVencidas lojaId={sc.loja.id} vencidas={vencidas} />}
 
       {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3).
@@ -102,14 +96,28 @@ export default async function DashboardLoja() {
         </div>
       )}
 
-      {/* Atenções imediatas — só aparece quando há cuidado pendente; a ausência é a calma */}
-      {podeVerNoivas && painel.atencoes.length > 0 && (
-        <PainelAtencoes atencoes={painel.atencoes} />
-      )}
+      {/* Centro operacional — agenda de hoje, próximos casamentos e atenções lado a
+          lado (mockup .ops). A agenda é sempre exibida; casamentos/atenções só
+          aparecem quando há permissão e dado — gating preservado, sem inventar
+          estado vazio para eles aqui (se não há o quê mostrar, a coluna some). */}
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[1.35fr_1fr_1fr]">
+        <DiaDoAtelier
+          lojaId={sc.loja.id}
+          dia={diaHoje}
+          titulo="Hoje no atelier"
+          hrefDiaCompleto={`/loja/${sc.loja.id}/calendario?aba=mes&ref=${diaHoje.ymd.slice(0, 7)}&dia=${diaHoje.ymd}`}
+        />
+        {podeVerNoivas && painel.proximosCasamentos.length > 0 && (
+          <PainelCasamentos lojaId={sc.loja.id} casamentos={painel.proximosCasamentos} />
+        )}
+        {podeVerNoivas && painel.atencoes.length > 0 && (
+          <PainelAtencoes lojaId={sc.loja.id} atencoes={painel.atencoes} />
+        )}
+      </section>
 
-      {/* Centro de operação: jornada (coração) + casamentos próximos */}
+      {/* Jornada do atelier — a etapa viva de cada noiva (Task 11 pareia com o destaque) */}
       {podeVerNoivas ? (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5">
           {painel.jornada.length > 0 ? (
             <PainelJornada etapas={painel.jornada} href={noivasHref} />
           ) : (
@@ -117,15 +125,6 @@ export default async function DashboardLoja() {
               titulo="Jornada do atelier"
               mensagem="Quando uma noiva for recebida, a jornada dela aparece aqui — etapa por etapa, do primeiro encontro ao grande dia."
               acao={{ href: noivasHref, label: "Receber primeira noiva" }}
-            />
-          )}
-
-          {painel.proximosCasamentos.length > 0 ? (
-            <PainelCasamentos casamentos={painel.proximosCasamentos} />
-          ) : (
-            <PainelVazio
-              titulo="Casamentos próximos"
-              mensagem="Nenhum casamento marcado nos próximos dias. As datas confirmadas aparecem aqui, da mais próxima à mais distante."
             />
           )}
         </div>
