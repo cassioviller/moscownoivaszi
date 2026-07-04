@@ -5,7 +5,7 @@ import { carregarPainel } from "@/lib/loja/painel";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
 import { SaudacaoDia } from "@/components/dashboard/saudacao-dia";
 import { IndicadorDia } from "@/components/dashboard/indicador-dia";
-import { PainelJornada } from "@/components/dashboard/painel-jornada";
+import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { PainelCasamentos } from "@/components/dashboard/lista-casamentos";
 import { PainelAtencoes } from "@/components/dashboard/painel-atencoes";
 import { DestaqueAtelier } from "@/components/dashboard/destaque-atelier";
@@ -115,41 +115,45 @@ export default async function DashboardLoja() {
         )}
       </section>
 
-      {/* Jornada do atelier — a etapa viva de cada noiva (Task 11 pareia com o destaque) */}
-      {podeVerNoivas ? (
-        <div className="grid grid-cols-1 gap-5">
-          {painel.jornada.length > 0 ? (
-            <PainelJornada etapas={painel.jornada} href={noivasHref} />
+      {/* Jornada da noiva + destaque do atelier lado a lado (mockup .lower) — a
+          noiva ativa com casamento mais próximo ganha a linha do tempo; o vestido
+          em destaque (com foto) fecha a mesa do atelier (§8.6). */}
+      <section className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
+        {podeVerNoivas ? (
+          painel.destaqueJornada ? (
+            <PainelJornadaNoiva
+              passos={painel.destaqueJornada.passos}
+              encerrada={painel.destaqueJornada.encerrada}
+              noivaNome={painel.destaqueJornada.noivaNome}
+              casamentoData={painel.destaqueJornada.casamentoData}
+              diasRestantes={painel.destaqueJornada.diasRestantes}
+            />
           ) : (
             <PainelVazio
               titulo="Jornada do atelier"
               mensagem="Quando uma noiva for recebida, a jornada dela aparece aqui — etapa por etapa, do primeiro encontro ao grande dia."
               acao={{ href: noivasHref, label: "Receber primeira noiva" }}
             />
-          )}
-        </div>
-      ) : (
-        // Sem acesso a noivas: foco no acervo, sem expor dado de jornada.
-        <div className="grid grid-cols-1 gap-5">
-          {painel.vestidos > 0 ? (
-            <CardMetrica
-              rotulo="Acervo"
-              valor={painel.vestidos}
-              descricao={painel.vestidos === 1 ? "vestido no acervo" : "vestidos no acervo"}
-              acao={{ href: vestidosHref, label: "Ver acervo" }}
-            />
-          ) : (
-            <PainelVazio
-              titulo="Acervo"
-              mensagem="Nenhum vestido no acervo ainda."
-              acao={{ href: vestidosHref, label: "Cadastrar vestido" }}
-            />
-          )}
-        </div>
-      )}
+          )
+        ) : // Sem acesso a noivas: foco no acervo, sem expor dado de jornada.
+        painel.vestidos > 0 ? (
+          <CardMetrica
+            rotulo="Acervo"
+            valor={painel.vestidos}
+            descricao={painel.vestidos === 1 ? "vestido no acervo" : "vestidos no acervo"}
+            acao={{ href: vestidosHref, label: "Ver acervo" }}
+          />
+        ) : (
+          <PainelVazio
+            titulo="Acervo"
+            mensagem="Nenhum vestido no acervo ainda."
+            acao={{ href: vestidosHref, label: "Cadastrar vestido" }}
+          />
+        )}
 
-      {/* Destaque do atelier — vestido do acervo com foto; só quando há (§8.6) */}
-      {painel.destaque && <DestaqueAtelier lojaId={sc.loja.id} destaque={painel.destaque} />}
+        {/* Destaque do atelier — vestido do acervo com foto; só quando há (§8.6) */}
+        {painel.destaque && <DestaqueAtelier lojaId={sc.loja.id} destaque={painel.destaque} />}
+      </section>
     </div>
   );
 }

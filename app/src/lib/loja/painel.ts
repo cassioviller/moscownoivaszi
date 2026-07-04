@@ -50,7 +50,13 @@ export type Destaque = {
   categoria: string | null;
   versaoFoto: number; // updatedAt da foto 0 — cache-busting na URL
 };
-export type DestaqueJornada = { noivaNome: string; passos: PassoJornada[]; encerrada: string | null };
+export type DestaqueJornada = {
+  noivaNome: string;
+  passos: PassoJornada[];
+  encerrada: string | null;
+  casamentoData: Date | null;
+  diasRestantes: number | null;
+};
 export type PainelLoja = {
   noivasAtivas: number;
   vestidos: number;
@@ -161,7 +167,13 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const escolhida = escolherDestaque(candidatas, hoje);
   const linhaEscolhida = escolhida ? linhas.find((l) => l.id === escolhida.id) : undefined;
   const destaqueJornada: DestaqueJornada | null = linhaEscolhida
-    ? { noivaNome: linhaEscolhida.noivaNome, passos: linhaEscolhida.passos, encerrada: linhaEscolhida.encerrada }
+    ? {
+        noivaNome: linhaEscolhida.noivaNome,
+        passos: linhaEscolhida.passos,
+        encerrada: linhaEscolhida.encerrada,
+        casamentoData: linhaEscolhida.casamentoData,
+        diasRestantes: linhaEscolhida.casamentoData ? diasAteCasamento(linhaEscolhida.casamentoData, hojeMs) : null,
+      }
     : null;
 
   return {
