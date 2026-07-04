@@ -13,7 +13,6 @@ import {
   estagioDaNoiva,
   noivaAtiva,
   ROTULO_ESTAGIO,
-  ESTAGIOS,
   type EstagioChave,
   type PassoJornada,
 } from "@/lib/leads/jornada";
@@ -29,7 +28,6 @@ const ESTAGIOS_ATENCAO = new Set<EstagioChave>(["orcamento_aberto", "em_provas"]
 const JANELA_PROXIMOS_DIAS = 30; // contador "casamentos da semana/mês" do dashboard
 // A janela de atenção (≤14d) vem do helper canônico JANELA_URGENCIA_DIAS.
 
-export type EtapaJornada = { chave: EstagioChave; rotulo: string; total: number };
 export type CasamentoProximo = {
   id: string;
   noivaNome: string;
@@ -62,7 +60,6 @@ export type PainelLoja = {
   vestidos: number;
   emProvas: number;
   casamentosProximos: number; // dentro da janela (30 dias)
-  jornada: EtapaJornada[]; // etapas vivas com ao menos 1 noiva, em ordem
   proximosCasamentos: CasamentoProximo[]; // os 5 mais próximos
   atencoes: Atencao[]; // casamento ≤14 dias e ainda em provas/orçamento aberto
   destaque: Destaque | null; // vestido do acervo em destaque (com foto)
@@ -107,12 +104,11 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
   const ativas = linhas.filter((l) => noivaAtiva(l.atual, l.encerrada));
   const noivasAtivas = ativas.length;
 
+  // Mapa usado só para o microindicador "em provas" (o breakdown completo por
+  // estágio — antigo campo `jornada` — não tem mais consumidor: a jornada
+  // exibida no dashboard hoje é a de UMA noiva em destaque, não o agregado).
   const totalPorEstagio = new Map<EstagioChave, number>();
   for (const l of ativas) totalPorEstagio.set(l.atual, (totalPorEstagio.get(l.atual) ?? 0) + 1);
-  const jornada: EtapaJornada[] = ESTAGIOS.filter((c) => (totalPorEstagio.get(c) ?? 0) > 0).map(
-    (chave) => ({ chave, rotulo: ROTULO_ESTAGIO[chave], total: totalPorEstagio.get(chave) ?? 0 }),
-  );
-
   const emProvas = totalPorEstagio.get("em_provas") ?? 0;
 
   const futuros = linhas
@@ -181,7 +177,6 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     vestidos,
     emProvas,
     casamentosProximos,
-    jornada,
     proximosCasamentos,
     atencoes,
     destaque,

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getSessaoComLoja } from "@/lib/auth";
 import { carregarPainel } from "@/lib/loja/painel";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
-import { SaudacaoDia } from "@/components/dashboard/saudacao-dia";
 import { IndicadorDia } from "@/components/dashboard/indicador-dia";
 import { PainelJornadaNoiva } from "@/components/dashboard/painel-jornada-noiva";
 import { PainelCasamentos } from "@/components/dashboard/lista-casamentos";
@@ -32,29 +31,11 @@ export default async function DashboardLoja() {
     podeFinanceiro ? vencidasDaLoja(sc.loja.id, hojeUTC()) : Promise.resolve(null),
   ]);
 
-  const agora = new Date();
-  const fmt = (opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(agora);
-  const hora = Number(fmt({ hour: "numeric", hour12: false }));
-  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
-  const dataFormatada = fmt({ weekday: "long", day: "numeric", month: "long" });
-
   const vestidosHref = `/loja/${sc.loja.id}/vestidos`;
   const noivasHref = `/loja/${sc.loja.id}/noivas`;
-  const primeiroNome = sc.usuario.nome.split(" ")[0];
 
   return (
     <div className="mx-auto flex w-full max-w-[900px] flex-col gap-10 px-6 py-10">
-      <SaudacaoDia
-        saudacao={saudacao}
-        nome={primeiroNome}
-        dataFormatada={dataFormatada}
-        lojaNome={sc.loja.nome}
-      />
-
-      {/* Divisória atmosférica — champagne como linha institucional, não decoração */}
-      <div aria-hidden className="h-px bg-champagne/40" />
-
       {vencidas && <AvisoVencidas lojaId={sc.loja.id} vencidas={vencidas} />}
 
       {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3).

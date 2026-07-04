@@ -41,11 +41,30 @@ function PainelHead({ titulo, href }: { titulo: string; href?: string }) {
   );
 }
 
-function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Secao({
+  titulo,
+  aninhado,
+  children,
+}: {
+  titulo: string;
+  /** Quando true, o pai já é um card (uso no Início — DiaDoAtelier com `titulo`):
+   *  a seção vira só um grupo rotulado, sem sua própria caixa, para não repetir
+   *  borda+fundo do card externo ("caixa dentro de caixa"). No Calendário
+   *  (`AbaMes`, sem `titulo`), mantém a caixa própria — o chamador não desenha
+   *  card ao redor. */
+  aninhado?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-2 px-[18px]">
       <h3 className="text-[11px] uppercase tracking-[0.2em] text-cinza-fumo">{titulo}</h3>
-      <ul className="flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado">
+      <ul
+        className={
+          aninhado
+            ? "flex flex-col divide-y divide-borda-suave border-t border-borda-suave"
+            : "flex flex-col divide-y divide-borda-suave rounded-[var(--mn-radius-md)] border border-borda-suave bg-papel-elevado"
+        }
+      >
         {children}
       </ul>
     </section>
@@ -158,7 +177,7 @@ export function DiaDoAtelier({
       )}
 
       {dia.casamentos.length > 0 && (
-        <Secao titulo="Casamentos">
+        <Secao titulo="Casamentos" aninhado={Boolean(titulo)}>
           {dia.casamentos.map((c) => (
             <li key={c.bloqueioId} className="flex items-center gap-3.5 px-4 py-3">
               <Avatar nome={c.noivaNome ?? "Noiva"} tamanho="sm" />
@@ -174,7 +193,7 @@ export function DiaDoAtelier({
       )}
 
       {dia.aReceber.length > 0 && (
-        <Secao titulo="A receber">
+        <Secao titulo="A receber" aninhado={Boolean(titulo)}>
           {dia.aReceber.map((r) => (
             <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-3">
               <span className="min-w-0 truncate text-[14px] text-tinta">{r.noivaNome ?? "Noiva"}</span>
@@ -188,7 +207,7 @@ export function DiaDoAtelier({
       )}
 
       {dia.aPagar.length > 0 && (
-        <Secao titulo="A pagar">
+        <Secao titulo="A pagar" aninhado={Boolean(titulo)}>
           {dia.aPagar.map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3">
               <span className="min-w-0 truncate text-[14px] text-tinta">{c.descricao}</span>

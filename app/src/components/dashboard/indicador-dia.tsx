@@ -22,7 +22,9 @@ export function IndicadorDia({
   return (
     <div className="flex flex-col gap-3 rounded-[var(--mn-radius-lg)] border border-borda-suave bg-papel-elevado px-5 py-5 shadow-[var(--mn-shadow-soft)] transition hover:-translate-y-[2px] hover:shadow-[var(--mn-shadow-hover)]">
       {icone && (
-        <div className="grid h-9 w-9 place-items-center rounded-[var(--mn-radius-md)] bg-papel-suave text-bordo">
+        <div
+          className={`grid h-9 w-9 place-items-center rounded-[var(--mn-radius-md)] bg-papel-suave ${destacar ? "text-bordo" : "text-grafite"}`}
+        >
           {iconeNav(icone)}
         </div>
       )}

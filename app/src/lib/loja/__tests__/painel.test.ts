@@ -133,30 +133,6 @@ describe("carregarPainel — dashboard com estágio derivado", () => {
     expect(p.emProvas).toBe(3);
   });
 
-  it("noiva recém-criada cai em 'cadastrada' e aparece na jornada", async () => {
-    const p = await carregarPainel(loja);
-    const cadastrada = p.jornada.find((e) => e.chave === "cadastrada");
-    expect(cadastrada).toEqual({ chave: "cadastrada", rotulo: "Cadastrada", total: 3 });
-  });
-
-  it("noiva perdida NÃO conta em noivasAtivas nem aparece na jornada", async () => {
-    const p = await carregarPainel(loja);
-    // Nenhuma das 8 ativas é perdida; soma das jornadas == noivasAtivas.
-    const soma = p.jornada.reduce((s, e) => s + e.total, 0);
-    expect(soma).toBe(p.noivasAtivas);
-    expect(soma).toBe(8);
-  });
-
-  it("jornada lista só estágios vivos com noivas, na ordem do acompanhamento", async () => {
-    const p = await carregarPainel(loja);
-    expect(p.jornada).toEqual([
-      { chave: "cadastrada", rotulo: "Cadastrada", total: 3 },
-      { chave: "interesses", rotulo: "Interesses preenchidos", total: 1 },
-      { chave: "orcamento_aberto", rotulo: "Orçamento aberto", total: 1 },
-      { chave: "em_provas", rotulo: "Em provas", total: 3 },
-    ]);
-  });
-
   it("casamentos: conta os de 30 dias e lista os futuros ordenados (passado fora)", async () => {
     const p = await carregarPainel(loja);
     expect(p.casamentosProximos).toBe(5); // 7,10,14,15,20 (40d fora da janela)
@@ -187,7 +163,6 @@ describe("carregarPainel — dashboard com estágio derivado", () => {
       vestidos: 0,
       emProvas: 0,
       casamentosProximos: 0,
-      jornada: [],
       proximosCasamentos: [],
       atencoes: [],
       destaque: null,

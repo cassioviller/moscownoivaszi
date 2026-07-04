@@ -24,9 +24,8 @@ export function Topbar({
   // deixada pronta para quando o recurso de notificações existir.
   notificacoes?: number;
 }) {
-  // Saudação humana calculada no fuso do salão — mesma derivação usada hoje em
-  // page.tsx (SaudacaoDia). Duplicação transitória: a Task 13 remove a
-  // SaudacaoDia do corpo da página quando este Topbar assumir a recepção.
+  // Saudação humana calculada no fuso do salão — única fonte de recepção
+  // (o antigo SaudacaoDia no corpo da página foi removido na Task 13).
   const agora = new Date();
   const fmt = (opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(agora);
