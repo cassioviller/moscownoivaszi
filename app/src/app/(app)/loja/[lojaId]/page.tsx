@@ -1,4 +1,5 @@
 // src/app/(app)/loja/[lojaId]/page.tsx
+import Link from "next/link";
 import { getSessaoComLoja } from "@/lib/auth";
 import { carregarPainel } from "@/lib/loja/painel";
 import { podeNoModulo } from "@/lib/permissoes/modulos";
@@ -15,6 +16,7 @@ import { vencidasDaLoja } from "@/lib/financeiro/vencidas";
 import { hojeYMD, hojeUTC } from "@/lib/tempo";
 import { DiaDoAtelier } from "@/components/dashboard/dia-do-atelier";
 import { AvisoVencidas } from "@/components/dashboard/aviso-vencidas";
+import { iconeNav } from "@/components/layout/icones-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -64,24 +66,39 @@ export default async function DashboardLoja() {
       {/* Indicadores do dia — números grandes, leitura em segundos (DESIGN §8.3).
           Strip voltado à operação da noiva; sem leads.ver, o foco vai pro acervo abaixo. */}
       {podeVerNoivas && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <IndicadorDia rotulo="Noivas" valor={painel.noivasAtivas} descricao="em acompanhamento" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+          <IndicadorDia
+            rotulo="Noivas"
+            valor={painel.noivasAtivas}
+            descricao="em acompanhamento"
+            icone="noivas"
+          />
           <IndicadorDia
             rotulo="Acervo"
             valor={painel.vestidos}
             descricao={painel.vestidos === 1 ? "vestido" : "vestidos"}
+            icone="acervo"
           />
           <IndicadorDia
             rotulo="Casamentos"
             valor={painel.casamentosProximos}
             descricao="nos próximos 30 dias"
+            icone="casamentos"
           />
           <IndicadorDia
             rotulo="Em provas"
             valor={painel.emProvas}
             descricao="ajustes em andamento"
             atencao
+            icone="ajustes"
           />
+          <Link
+            href={`/loja/${sc.loja.id}/calendario`}
+            className="col-span-2 flex flex-col items-center justify-center gap-2 rounded-[var(--mn-radius-lg)] border border-bordo bg-[rgba(122,24,54,0.03)] px-5 py-5 text-center text-bordo transition hover:-translate-y-[2px] hover:bg-[rgba(122,24,54,0.06)] hover:shadow-[var(--mn-shadow-hover)] lg:col-span-1"
+          >
+            {iconeNav("agenda")}
+            <span className="max-w-[11ch] text-[13px] font-semibold">Ver agenda completa</span>
+          </Link>
         </div>
       )}
 
