@@ -26,6 +26,7 @@ export type NavFlags = {
 export type NavItem = {
   href: string;
   label: string;
+  icone: string; // chave em ICONES_NAV (icones-nav.tsx)
   /** match exato (ex.: "Início" não deve acender em sub-rotas) */
   exact?: boolean;
 };
@@ -48,37 +49,37 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
   const atelie: NavItem[] = [];
   if (flags.podeVerNoivas) {
     atelie.push(
-      { href: loja("/noivas"), label: "Noivas" },
-      { href: loja("/atendimentos/novo"), label: "Agendar" },
-      { href: loja("/calendario"), label: "Calendário" },
-      { href: loja("/contratos"), label: "Contratos" },
-      { href: loja("/reservas"), label: "Reservas" },
+      { href: loja("/noivas"), label: "Noivas", icone: "noivas" },
+      { href: loja("/atendimentos/novo"), label: "Agendar", icone: "atendimentos" },
+      { href: loja("/calendario"), label: "Calendário", icone: "agenda" },
+      { href: loja("/contratos"), label: "Contratos", icone: "contratos" },
+      { href: loja("/reservas"), label: "Reservas", icone: "reservas" },
     );
   }
   // Provas e Ajustes são operação de atelier: visíveis a quem vê noivas OU à costureira
   // (gate próprio). Espelha o guard da página /provas (leads:ver OU ajustes:ver).
   if (flags.podeVerNoivas || flags.podeVerAjustes) {
-    atelie.push({ href: loja("/provas"), label: "Provas" });
+    atelie.push({ href: loja("/provas"), label: "Provas", icone: "provas" });
   }
   if (flags.podeVerAjustes) {
-    atelie.push({ href: loja("/ajustes"), label: "Ajustes" });
+    atelie.push({ href: loja("/ajustes"), label: "Ajustes", icone: "ajustes" });
   }
 
   // ACERVO — Vestidos sempre; Catálogo só com gestão do catálogo.
-  const acervo: NavItem[] = [{ href: loja("/vestidos"), label: "Vestidos" }];
+  const acervo: NavItem[] = [{ href: loja("/vestidos"), label: "Vestidos", icone: "acervo" }];
   if (flags.podeVerCatalogo) {
-    acervo.push({ href: loja("/catalogo"), label: "Catálogo" });
+    acervo.push({ href: loja("/catalogo"), label: "Catálogo", icone: "acervo" });
   }
 
   // FINANCEIRO — módulo próprio (dado sensível): receber, pagar, comissões e fluxo de caixa.
   const financeiro: NavItem[] = [];
   if (flags.podeVerFinanceiro) {
     financeiro.push(
-      { href: loja("/financeiro/receber"), label: "Contas a receber" },
-      { href: loja("/financeiro/pagar"), label: "Contas a pagar" },
-      { href: loja("/financeiro/comissoes"), label: "Comissões" },
+      { href: loja("/financeiro/receber"), label: "Contas a receber", icone: "financeiro" },
+      { href: loja("/financeiro/pagar"), label: "Contas a pagar", icone: "financeiro" },
+      { href: loja("/financeiro/comissoes"), label: "Comissões", icone: "financeiro" },
       // Fluxo de caixa é a raiz /financeiro; exact p/ não acender em /receber e /pagar.
-      { href: loja("/financeiro"), label: "Fluxo de caixa", exact: true },
+      { href: loja("/financeiro"), label: "Fluxo de caixa", icone: "financeiro", exact: true },
     );
   }
 
@@ -86,19 +87,19 @@ export function navSections(lojaId: string, flags: NavFlags): NavSection[] {
   const gestao: NavItem[] = [];
   if (flags.podeGerenciarEquipe) {
     gestao.push(
-      { href: "/equipe", label: "Equipe" },
-      { href: loja("/permissoes"), label: "Permissões" },
+      { href: "/equipe", label: "Equipe", icone: "equipe" },
+      { href: loja("/permissoes"), label: "Permissões", icone: "permissoes" },
     );
   }
   if (flags.isSuperAdmin) {
-    gestao.push({ href: "/admin", label: "Administração" });
+    gestao.push({ href: "/admin", label: "Administração", icone: "admin" });
   }
   if (flags.mostrarTroca) {
-    gestao.push({ href: "/selecionar-loja", label: "Trocar loja" });
+    gestao.push({ href: "/selecionar-loja", label: "Trocar loja", icone: "troca" });
   }
 
   const sections: NavSection[] = [
-    { titulo: null, itens: [{ href: `/loja/${lojaId}`, label: "Início", exact: true }] },
+    { titulo: null, itens: [{ href: `/loja/${lojaId}`, label: "Início", icone: "painel", exact: true }] },
     { titulo: "Ateliê", itens: atelie },
     { titulo: "Acervo", itens: acervo },
     { titulo: "Financeiro", itens: financeiro },
