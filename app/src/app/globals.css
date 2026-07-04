@@ -16,6 +16,7 @@
 
   /* Único acento — Bordô Profundo (≤5% de qualquer tela) */
   --color-bordo:         oklch(38% 0.08 25);
+  --color-bordo-deep:    oklch(30% 0.09 25);
   --color-bordo-hover:   oklch(33% 0.09 25);
 
   /* Concierge Atelier — acentos quentes (DESIGN.md §5) */
