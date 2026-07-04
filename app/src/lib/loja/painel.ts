@@ -15,8 +15,10 @@ import {
   ROTULO_ESTAGIO,
   ESTAGIOS,
   type EstagioChave,
+  type PassoJornada,
 } from "@/lib/leads/jornada";
 import { fatosDeLead, INCLUDE_JORNADA } from "@/lib/leads/leads";
+import { escolherDestaque, type CandidataDestaque } from "@/lib/leads/jornada-destaque";
 import { hojeUTC } from "@/lib/tempo";
 import { diasAteCasamento, JANELA_URGENCIA_DIAS } from "@/lib/leads/contagem-casamento";
 
@@ -48,6 +50,7 @@ export type Destaque = {
   categoria: string | null;
   versaoFoto: number; // updatedAt da foto 0 — cache-busting na URL
 };
+export type DestaqueJornada = { noivaNome: string; passos: PassoJornada[]; encerrada: string | null };
 export type PainelLoja = {
   noivasAtivas: number;
   vestidos: number;
@@ -57,6 +60,7 @@ export type PainelLoja = {
   proximosCasamentos: CasamentoProximo[]; // os 5 mais próximos
   atencoes: Atencao[]; // casamento ≤14 dias e ainda em provas/orçamento aberto
   destaque: Destaque | null; // vestido do acervo em destaque (com foto)
+  destaqueJornada: DestaqueJornada | null; // noiva ativa com casamento mais próximo, p/ linha do tempo
 };
 
 export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
@@ -86,11 +90,12 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
     casamentoData: Date | null;
     atual: EstagioChave;
     encerrada: string | null;
+    passos: PassoJornada[];
   };
   const linhas: Linha[] = leads.map((l) => {
     // Mesma derivação da jornada da noiva (fonte única em leads.ts) — sem cópia.
-    const { atual, encerrada } = estagioDaNoiva(fatosDeLead(l, hoje));
-    return { id: l.id, noivaNome: l.noivaNome, casamentoData: l.casamentoData, atual, encerrada };
+    const { atual, encerrada, passos } = estagioDaNoiva(fatosDeLead(l, hoje));
+    return { id: l.id, noivaNome: l.noivaNome, casamentoData: l.casamentoData, atual, encerrada, passos };
   });
 
   const ativas = linhas.filter((l) => noivaAtiva(l.atual, l.encerrada));
@@ -144,5 +149,30 @@ export async function carregarPainel(lojaId: string): Promise<PainelLoja> {
       }
     : null;
 
-  return { noivasAtivas, vestidos, emProvas, casamentosProximos, jornada, proximosCasamentos, atencoes, destaque };
+  // Noiva em destaque na linha do tempo: a ATIVA com casamento futuro mais
+  // próximo (a mais urgente). Os passos vêm da MESMA derivação acima (linhas),
+  // sem recalcular a jornada.
+  const candidatas: CandidataDestaque[] = linhas.map((l) => ({
+    id: l.id,
+    noivaNome: l.noivaNome,
+    casamentoData: l.casamentoData,
+    ativa: noivaAtiva(l.atual, l.encerrada),
+  }));
+  const escolhida = escolherDestaque(candidatas, hoje);
+  const linhaEscolhida = escolhida ? linhas.find((l) => l.id === escolhida.id) : undefined;
+  const destaqueJornada: DestaqueJornada | null = linhaEscolhida
+    ? { noivaNome: linhaEscolhida.noivaNome, passos: linhaEscolhida.passos, encerrada: linhaEscolhida.encerrada }
+    : null;
+
+  return {
+    noivasAtivas,
+    vestidos,
+    emProvas,
+    casamentosProximos,
+    jornada,
+    proximosCasamentos,
+    atencoes,
+    destaque,
+    destaqueJornada,
+  };
 }
