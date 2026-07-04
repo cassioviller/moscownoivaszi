@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navSections, isActive, type NavFlags } from "./nav-items";
+import { iconeNav } from "./icones-nav";
 
 export function MobileNav({ lojaId, flags }: { lojaId: string; flags: NavFlags }) {
   const [open, setOpen] = useState(false);
@@ -120,12 +121,13 @@ export function MobileNav({ lojaId, flags }: { lojaId: string; flags: NavFlags }
                         href={item.href}
                         aria-current={active ? "page" : undefined}
                         className={[
-                          "flex min-h-[44px] items-center rounded-[var(--mn-radius-md)] px-3 text-[15px] transition-colors duration-150 ease-out",
+                          "flex min-h-[44px] items-center gap-3 rounded-[var(--mn-radius-md)] px-3 text-[15px] transition-colors duration-150 ease-out",
                           active
                             ? "font-medium text-bordo"
                             : "text-grafite hover:bg-rose-dust/20 hover:text-tinta",
                         ].join(" ")}
                       >
+                        {iconeNav(item.icone)}
                         {item.label}
                       </Link>
                     );
