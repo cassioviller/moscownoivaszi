@@ -3,13 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Moscow Noivas API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: admin
+  - name: equipe
+  - name: catalogo
+  - name: vestidos
+  - name: leads
+  - name: agenda
+  - name: reservas
+  - name: orcamentos
+  - name: contratos
+  - name: financeiro
+  - name: comissao
+  - name: dashboard
 paths:
   /healthz:
     get:
@@ -24,7 +36,1580 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ───────────────────────── Auth ─────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sessao"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      responses:
+        "204":
+          description: Logged out
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      responses:
+        "200":
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sessao"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/selecionar-loja:
+    post:
+      operationId: selecionarLoja
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelecionarLojaInput"
+      responses:
+        "200":
+          description: Loja selecionada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sessao"
+
+  # ───────────────────────── Admin ─────────────────────────
+  /admin/lojas:
+    get:
+      operationId: listLojas
+      tags: [admin]
+      responses:
+        "200":
+          description: List of lojas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loja"
+    post:
+      operationId: createLoja
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LojaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loja"
+  /admin/lojas/{lojaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    patch:
+      operationId: updateLoja
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LojaUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loja"
+    delete:
+      operationId: deleteLoja
+      tags: [admin]
+      responses:
+        "204":
+          description: Deleted
+  /admin/perfis:
+    get:
+      operationId: listPerfis
+      tags: [admin]
+      responses:
+        "200":
+          description: List of perfis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Perfil"
+    post:
+      operationId: createPerfil
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PerfilInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Perfil"
+  /admin/perfis/{perfilId}:
+    parameters:
+      - name: perfilId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updatePerfil
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PerfilUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Perfil"
+    delete:
+      operationId: deletePerfil
+      tags: [admin]
+      responses:
+        "204":
+          description: Deleted
+  /admin/usuarios:
+    get:
+      operationId: listUsuarios
+      tags: [admin]
+      responses:
+        "200":
+          description: List of usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Usuario"
+    post:
+      operationId: createUsuario
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+  /admin/usuarios/{usuarioId}:
+    parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateUsuario
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+    delete:
+      operationId: deleteUsuario
+      tags: [admin]
+      responses:
+        "204":
+          description: Deleted
+  /admin/lojas/{lojaId}/overrides:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listPerfilOverrides
+      tags: [admin]
+      responses:
+        "200":
+          description: List of overrides
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerfilOverrideLoja"
+    put:
+      operationId: setPerfilOverride
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PerfilOverrideInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerfilOverrideLoja"
+
+  # ───────────────────────── Equipe ─────────────────────────
+  /lojas/{lojaId}/equipe:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listEquipe
+      tags: [equipe]
+      responses:
+        "200":
+          description: Equipe da loja
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MembroEquipe"
+    post:
+      operationId: addMembroEquipe
+      tags: [equipe]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembroEquipeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembroEquipe"
+  /lojas/{lojaId}/equipe/{usuarioId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateMembroEquipe
+      tags: [equipe]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembroEquipeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembroEquipe"
+    delete:
+      operationId: removeMembroEquipe
+      tags: [equipe]
+      responses:
+        "204":
+          description: Removed
+
+  # ───────────────────────── Catálogo (Atributos) ─────────────────────────
+  /lojas/{lojaId}/atributos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAtributos
+      tags: [catalogo]
+      responses:
+        "200":
+          description: List of atributos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Atributo"
+    post:
+      operationId: createAtributo
+      tags: [catalogo]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtributoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atributo"
+  /lojas/{lojaId}/atributos/{atributoId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: atributoId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateAtributo
+      tags: [catalogo]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtributoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atributo"
+    delete:
+      operationId: deleteAtributo
+      tags: [catalogo]
+      responses:
+        "204":
+          description: Deleted
+  /atributos/{atributoId}/opcoes:
+    parameters:
+      - name: atributoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: createAtributoOpcao
+      tags: [catalogo]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtributoOpcaoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AtributoOpcao"
+  /atributos/opcoes/{opcaoId}:
+    parameters:
+      - name: opcaoId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateAtributoOpcao
+      tags: [catalogo]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtributoOpcaoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AtributoOpcao"
+    delete:
+      operationId: deleteAtributoOpcao
+      tags: [catalogo]
+      responses:
+        "204":
+          description: Deleted
+
+  # ───────────────────────── Vestidos ─────────────────────────
+  /lojas/{lojaId}/vestidos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listVestidos
+      tags: [vestidos]
+      responses:
+        "200":
+          description: List of vestidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vestido"
+    post:
+      operationId: createVestido
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VestidoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vestido"
+  /lojas/{lojaId}/vestidos/{vestidoId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: vestidoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getVestido
+      tags: [vestidos]
+      responses:
+        "200":
+          description: Vestido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vestido"
+    patch:
+      operationId: updateVestido
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VestidoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vestido"
+    delete:
+      operationId: deleteVestido
+      tags: [vestidos]
+      responses:
+        "204":
+          description: Deleted
+  /vestidos/{vestidoId}/fotos/{ordem}:
+    parameters:
+      - name: vestidoId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: ordem
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      operationId: setVestidoFoto
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VestidoFotoInput"
+      responses:
+        "200":
+          description: Foto salva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VestidoFoto"
+    delete:
+      operationId: deleteVestidoFoto
+      tags: [vestidos]
+      responses:
+        "204":
+          description: Deleted
+
+  # ───────────────────────── Leads / Noivas ─────────────────────────
+  /lojas/{lojaId}/leads:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listLeads
+      tags: [leads]
+      responses:
+        "200":
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+    post:
+      operationId: createLead
+      tags: [leads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+  /lojas/{lojaId}/leads/{leadId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: leadId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getLead
+      tags: [leads]
+      responses:
+        "200":
+          description: Lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      responses:
+        "204":
+          description: Deleted
+  /leads/{leadId}/interesse:
+    parameters:
+      - name: leadId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      operationId: setLeadInteresse
+      tags: [leads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInteresseInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadInteresse"
+  /leads/{leadId}/cobrancas:
+    parameters:
+      - name: leadId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listRegistrosCobranca
+      tags: [leads]
+      responses:
+        "200":
+          description: List of registros
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RegistroCobranca"
+    post:
+      operationId: createRegistroCobranca
+      tags: [leads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistroCobrancaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistroCobranca"
+
+  # ───────────────────────── Agenda (Cabines / Atendimentos) ─────────────────────────
+  /lojas/{lojaId}/cabines:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listCabines
+      tags: [agenda]
+      responses:
+        "200":
+          description: List of cabines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Cabine"
+    post:
+      operationId: createCabine
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CabineInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cabine"
+  /cabines/{cabineId}:
+    parameters:
+      - name: cabineId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateCabine
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CabineUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cabine"
+    delete:
+      operationId: deleteCabine
+      tags: [agenda]
+      responses:
+        "204":
+          description: Deleted
+  /lojas/{lojaId}/atendimentos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAtendimentos
+      tags: [agenda]
+      responses:
+        "200":
+          description: List of atendimentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Atendimento"
+    post:
+      operationId: createAtendimento
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtendimentoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atendimento"
+  /atendimentos/{atendimentoId}:
+    parameters:
+      - name: atendimentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateAtendimento
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtendimentoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atendimento"
+    delete:
+      operationId: deleteAtendimento
+      tags: [agenda]
+      responses:
+        "204":
+          description: Deleted
+  /atendimentos/{atendimentoId}/ajustes:
+    parameters:
+      - name: atendimentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listAjustes
+      tags: [agenda]
+      responses:
+        "200":
+          description: List of ajustes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ajuste"
+    post:
+      operationId: createAjuste
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjusteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ajuste"
+  /ajustes/{ajusteId}:
+    parameters:
+      - name: ajusteId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateAjuste
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjusteUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ajuste"
+  /lojas/{lojaId}/disponibilidade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getDisponibilidade
+      tags: [agenda]
+      responses:
+        "200":
+          description: Regra de disponibilidade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegraDisponibilidade"
+    put:
+      operationId: setDisponibilidade
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegraDisponibilidadeInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegraDisponibilidade"
+
+  # ───────────────────────── Reservas / Bloqueios ─────────────────────────
+  /lojas/{lojaId}/reservas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listReservas
+      tags: [reservas]
+      responses:
+        "200":
+          description: List of reservas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reserva"
+    post:
+      operationId: createReserva
+      tags: [reservas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reserva"
+  /reservas/{reservaId}:
+    parameters:
+      - name: reservaId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getReserva
+      tags: [reservas]
+      responses:
+        "200":
+          description: Reserva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reserva"
+    patch:
+      operationId: updateReserva
+      tags: [reservas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservaUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reserva"
+    delete:
+      operationId: deleteReserva
+      tags: [reservas]
+      responses:
+        "204":
+          description: Deleted
+  /lojas/{lojaId}/bloqueios:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listBloqueios
+      tags: [reservas]
+      responses:
+        "200":
+          description: List of bloqueios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BloqueioVestido"
+    post:
+      operationId: createBloqueio
+      tags: [reservas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BloqueioVestidoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueioVestido"
+  /bloqueios/{bloqueioId}:
+    parameters:
+      - name: bloqueioId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateBloqueio
+      tags: [reservas]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BloqueioVestidoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueioVestido"
+    delete:
+      operationId: deleteBloqueio
+      tags: [reservas]
+      responses:
+        "204":
+          description: Deleted
+
+  # ───────────────────────── Orçamentos ─────────────────────────
+  /lojas/{lojaId}/orcamentos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listOrcamentos
+      tags: [orcamentos]
+      responses:
+        "200":
+          description: List of orcamentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Orcamento"
+    post:
+      operationId: createOrcamento
+      tags: [orcamentos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrcamentoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orcamento"
+  /orcamentos/{orcamentoId}:
+    parameters:
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getOrcamento
+      tags: [orcamentos]
+      responses:
+        "200":
+          description: Orcamento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orcamento"
+    patch:
+      operationId: updateOrcamento
+      tags: [orcamentos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrcamentoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orcamento"
+    delete:
+      operationId: deleteOrcamento
+      tags: [orcamentos]
+      responses:
+        "204":
+          description: Deleted
+  /orcamentos/{orcamentoId}/itens:
+    parameters:
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: addOrcamentoItem
+      tags: [orcamentos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrcamentoItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrcamentoItem"
+  /orcamentos/itens/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: removeOrcamentoItem
+      tags: [orcamentos]
+      responses:
+        "204":
+          description: Removed
+  /orcamentos/{orcamentoId}/aprovar:
+    parameters:
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: aprovarOrcamento
+      tags: [orcamentos]
+      responses:
+        "200":
+          description: Aprovado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orcamento"
+  /orcamentos/{orcamentoId}/recusar:
+    parameters:
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: recusarOrcamento
+      tags: [orcamentos]
+      responses:
+        "200":
+          description: Recusado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orcamento"
+
+  # ───────────────────────── Contratos ─────────────────────────
+  /lojas/{lojaId}/contratos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listContratos
+      tags: [contratos]
+      responses:
+        "200":
+          description: List of contratos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contrato"
+    post:
+      operationId: createContrato
+      tags: [contratos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContratoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contrato"
+  /contratos/{contratoId}:
+    parameters:
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getContrato
+      tags: [contratos]
+      responses:
+        "200":
+          description: Contrato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contrato"
+    patch:
+      operationId: updateContrato
+      tags: [contratos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContratoUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contrato"
+  /contratos/{contratoId}/cancelar:
+    parameters:
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: cancelarContrato
+      tags: [contratos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelarContratoInput"
+      responses:
+        "200":
+          description: Cancelado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contrato"
+
+  # ───────────────────────── Financeiro ─────────────────────────
+  /lojas/{lojaId}/parcelas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listParcelas
+      tags: [financeiro]
+      responses:
+        "200":
+          description: List of parcelas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Parcela"
+  /parcelas/{parcelaId}/receber:
+    parameters:
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: receberParcela
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceberParcelaInput"
+      responses:
+        "200":
+          description: Recebida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+  /lojas/{lojaId}/contas-pagar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listContasPagar
+      tags: [financeiro]
+      responses:
+        "200":
+          description: List of contas a pagar
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContaPagar"
+    post:
+      operationId: createContaPagar
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContaPagarInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContaPagar"
+  /contas-pagar/{contaPagarId}:
+    parameters:
+      - name: contaPagarId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: deleteContaPagar
+      tags: [financeiro]
+      responses:
+        "204":
+          description: Deleted
+  /contas-pagar/{contaPagarId}/pagar:
+    parameters:
+      - name: contaPagarId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: pagarContaPagar
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PagarContaInput"
+      responses:
+        "200":
+          description: Paga
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContaPagar"
+  /lojas/{lojaId}/salarios-recorrentes:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listSalariosRecorrentes
+      tags: [financeiro]
+      responses:
+        "200":
+          description: List of salarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SalarioRecorrente"
+    post:
+      operationId: createSalarioRecorrente
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalarioRecorrenteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalarioRecorrente"
+  /salarios-recorrentes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateSalarioRecorrente
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalarioRecorrenteUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalarioRecorrente"
+    delete:
+      operationId: deleteSalarioRecorrente
+      tags: [financeiro]
+      responses:
+        "204":
+          description: Deleted
+  /lojas/{lojaId}/saldo-referencia:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listSaldoReferencia
+      tags: [financeiro]
+      responses:
+        "200":
+          description: List of saldos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SaldoReferencia"
+    post:
+      operationId: createSaldoReferencia
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaldoReferenciaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaldoReferencia"
+
+  # ───────────────────────── Comissão ─────────────────────────
+  /lojas/{lojaId}/comissao-regras:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listComissaoRegras
+      tags: [comissao]
+      responses:
+        "200":
+          description: List of regras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComissaoRegra"
+    post:
+      operationId: createComissaoRegra
+      tags: [comissao]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComissaoRegraInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComissaoRegra"
+  /comissao-regras/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateComissaoRegra
+      tags: [comissao]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComissaoRegraUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComissaoRegra"
+    delete:
+      operationId: deleteComissaoRegra
+      tags: [comissao]
+      responses:
+        "204":
+          description: Deleted
+  /lojas/{lojaId}/comissao-fechamentos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listComissaoFechamentos
+      tags: [comissao]
+      responses:
+        "200":
+          description: List of fechamentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComissaoFechamento"
+    post:
+      operationId: gerarComissaoFechamento
+      tags: [comissao]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GerarComissaoFechamentoInput"
+      responses:
+        "201":
+          description: Gerado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComissaoFechamento"
+
+  # ───────────────────────── Dashboard ─────────────────────────
+  /lojas/{lojaId}/dashboard:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
+  parameters:
+    LojaIdParam:
+      name: lojaId
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +1618,852 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
 
+    # ── Auth ──
+    LoginInput:
+      type: object
+      required: [email, senha]
+      properties:
+        email: { type: string, format: email }
+        senha: { type: string, minLength: 1 }
+    SelecionarLojaInput:
+      type: object
+      required: [lojaId]
+      properties:
+        lojaId: { type: string }
+    Sessao:
+      type: object
+      required: [usuario]
+      properties:
+        usuario:
+          $ref: "#/components/schemas/Usuario"
+        lojaAtivaId:
+          type: ["string", "null"]
+        lojas:
+          type: array
+          items:
+            $ref: "#/components/schemas/LojaComPerfil"
+
+    LojaComPerfil:
+      allOf:
+        - $ref: "#/components/schemas/Loja"
+        - type: object
+          properties:
+            perfilId: { type: string }
+            perfilNome: { type: string }
+
+    # ── Loja / Perfil / Usuario ──
+    Loja:
+      type: object
+      required: [id, nome, ativo, createdAt]
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        cnpj: { type: ["string", "null"] }
+        endereco: { type: ["string", "null"] }
+        telefone: { type: ["string", "null"] }
+        ativo: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    LojaInput:
+      type: object
+      required: [nome]
+      properties:
+        nome: { type: string, minLength: 1 }
+        cnpj: { type: string }
+        endereco: { type: string }
+        telefone: { type: string }
+    LojaUpdate:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        cnpj: { type: string }
+        endereco: { type: string }
+        telefone: { type: string }
+        ativo: { type: boolean }
+
+    Perfil:
+      type: object
+      required: [id, nome, acessosModulos]
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        acessosModulos:
+          type: object
+          additionalProperties: { type: boolean }
+    PerfilInput:
+      type: object
+      required: [nome, acessosModulos]
+      properties:
+        nome: { type: string, minLength: 1 }
+        acessosModulos:
+          type: object
+          additionalProperties: { type: boolean }
+    PerfilUpdate:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        acessosModulos:
+          type: object
+          additionalProperties: { type: boolean }
+
+    PerfilOverrideLoja:
+      type: object
+      required: [lojaId, perfilId, acessosModulos]
+      properties:
+        lojaId: { type: string }
+        perfilId: { type: string }
+        acessosModulos:
+          type: object
+          additionalProperties: { type: boolean }
+    PerfilOverrideInput:
+      type: object
+      required: [perfilId, acessosModulos]
+      properties:
+        perfilId: { type: string }
+        acessosModulos:
+          type: object
+          additionalProperties: { type: boolean }
+
+    Usuario:
+      type: object
+      required: [id, nome, email, ativo, isSuperAdmin]
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        email: { type: string, format: email }
+        ativo: { type: boolean }
+        isSuperAdmin: { type: boolean }
+    UsuarioInput:
+      type: object
+      required: [nome, email, senha]
+      properties:
+        nome: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        senha: { type: string, minLength: 6 }
+        isSuperAdmin: { type: boolean }
+    UsuarioUpdate:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        senha: { type: string, minLength: 6 }
+        ativo: { type: boolean }
+        isSuperAdmin: { type: boolean }
+
+    MembroEquipe:
+      type: object
+      required: [usuarioId, lojaId, perfilId, nome, email, perfilNome]
+      properties:
+        usuarioId: { type: string }
+        lojaId: { type: string }
+        perfilId: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        perfilNome: { type: string }
+        ativo: { type: boolean }
+    MembroEquipeInput:
+      type: object
+      required: [nome, email, senha, perfilId]
+      properties:
+        nome: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        senha: { type: string, minLength: 6 }
+        perfilId: { type: string }
+    MembroEquipeUpdate:
+      type: object
+      properties:
+        nome: { type: string }
+        perfilId: { type: string }
+        ativo: { type: boolean }
+
+    # ── Catálogo ──
+    Atributo:
+      type: object
+      required: [id, lojaId, nome, tipo, ordem, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        nome: { type: string }
+        tipo: { type: string, enum: [OPCAO_UNICA, ESCALA] }
+        ordem: { type: integer }
+        ativo: { type: boolean }
+        opcoes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AtributoOpcao"
+    AtributoInput:
+      type: object
+      required: [nome, tipo]
+      properties:
+        nome: { type: string, minLength: 1 }
+        tipo: { type: string, enum: [OPCAO_UNICA, ESCALA] }
+        ordem: { type: integer }
+    AtributoUpdate:
+      type: object
+      properties:
+        nome: { type: string }
+        ordem: { type: integer }
+        ativo: { type: boolean }
+    AtributoOpcao:
+      type: object
+      required: [id, atributoId, valor, ordem, ativo]
+      properties:
+        id: { type: string }
+        atributoId: { type: string }
+        valor: { type: string }
+        ordem: { type: integer }
+        ativo: { type: boolean }
+    AtributoOpcaoInput:
+      type: object
+      required: [valor]
+      properties:
+        valor: { type: string, minLength: 1 }
+        ordem: { type: integer }
+    AtributoOpcaoUpdate:
+      type: object
+      properties:
+        valor: { type: string }
+        ordem: { type: integer }
+        ativo: { type: boolean }
+
+    # ── Vestidos ──
+    Vestido:
+      type: object
+      required: [id, lojaId, codigo, nome, precoBase, status, createdAt]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        codigo: { type: string }
+        nome: { type: string }
+        precoBase: { type: number }
+        tamanho: { type: ["string", "null"] }
+        cor: { type: ["string", "null"] }
+        categoria: { type: ["string", "null"] }
+        status: { type: string }
+        observacoes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        atributos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VestidoAtributo"
+        fotos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VestidoFotoMeta"
+    VestidoAtributo:
+      type: object
+      required: [atributoId, opcaoId]
+      properties:
+        atributoId: { type: string }
+        opcaoId: { type: string }
+    VestidoFotoMeta:
+      type: object
+      required: [ordem, mime, largura, altura]
+      properties:
+        ordem: { type: integer }
+        mime: { type: string }
+        largura: { type: integer }
+        altura: { type: integer }
+    VestidoFoto:
+      type: object
+      required: [ordem, mime, largura, altura, base64]
+      properties:
+        ordem: { type: integer }
+        mime: { type: string }
+        largura: { type: integer }
+        altura: { type: integer }
+        base64: { type: string }
+    VestidoFotoInput:
+      type: object
+      required: [mime, largura, altura, base64]
+      properties:
+        mime: { type: string }
+        largura: { type: integer }
+        altura: { type: integer }
+        base64: { type: string }
+    VestidoInput:
+      type: object
+      required: [codigo, nome, precoBase]
+      properties:
+        codigo: { type: string, minLength: 1 }
+        nome: { type: string, minLength: 1 }
+        precoBase: { type: number }
+        tamanho: { type: string }
+        cor: { type: string }
+        categoria: { type: string }
+        observacoes: { type: string }
+        atributos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VestidoAtributo"
+    VestidoUpdate:
+      type: object
+      properties:
+        codigo: { type: string }
+        nome: { type: string }
+        precoBase: { type: number }
+        tamanho: { type: string }
+        cor: { type: string }
+        categoria: { type: string }
+        status: { type: string }
+        observacoes: { type: string }
+        atributos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VestidoAtributo"
+
+    # ── Leads ──
+    Lead:
+      type: object
+      required: [id, lojaId, etapa, noivaNome, origem, createdAt]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        etapa:
+          type: string
+          enum: [NOVO, INTERESSES_PREENCHIDOS, ATENDIMENTO_AGENDADO, EM_ATENDIMENTO, ORCAMENTO_ABERTO, CONTRATO_FECHADO, EM_PROVAS, RETIRADO, CASAMENTO_REALIZADO, DEVOLVIDO, PERDIDO]
+        noivaNome: { type: string }
+        noivoNome: { type: ["string", "null"] }
+        cerimonialista: { type: ["string", "null"] }
+        whatsapp: { type: ["string", "null"] }
+        casamentoData: { type: ["string", "null"], format: date-time }
+        casamentoHorario: { type: ["string", "null"] }
+        casamentoLocal: { type: ["string", "null"] }
+        origem: { type: string, enum: [LOJA, WHATSAPP] }
+        createdAt: { type: string, format: date-time }
+        interesse:
+          $ref: "#/components/schemas/LeadInteresse"
+    LeadInput:
+      type: object
+      required: [noivaNome]
+      properties:
+        noivaNome: { type: string, minLength: 1 }
+        noivoNome: { type: string }
+        cerimonialista: { type: string }
+        whatsapp: { type: string }
+        casamentoData: { type: string, format: date-time }
+        casamentoHorario: { type: string }
+        casamentoLocal: { type: string }
+        origem: { type: string, enum: [LOJA, WHATSAPP] }
+    LeadUpdate:
+      type: object
+      properties:
+        etapa:
+          type: string
+          enum: [NOVO, INTERESSES_PREENCHIDOS, ATENDIMENTO_AGENDADO, EM_ATENDIMENTO, ORCAMENTO_ABERTO, CONTRATO_FECHADO, EM_PROVAS, RETIRADO, CASAMENTO_REALIZADO, DEVOLVIDO, PERDIDO]
+        noivaNome: { type: string }
+        noivoNome: { type: string }
+        cerimonialista: { type: string }
+        whatsapp: { type: string }
+        casamentoData: { type: string, format: date-time }
+        casamentoHorario: { type: string }
+        casamentoLocal: { type: string }
+    LeadInteresse:
+      type: object
+      required: [leadId]
+      properties:
+        leadId: { type: string }
+        algoAMais: { type: ["string", "null"] }
+        naoQuerUsar: { type: ["string", "null"] }
+        tetoOrcamento: { type: ["number", "null"] }
+        atributos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VestidoAtributo"
+    LeadInteresseInput:
+      type: object
+      properties:
+        algoAMais: { type: string }
+        naoQuerUsar: { type: string }
+        tetoOrcamento: { type: number }
+        atributos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VestidoAtributo"
+    RegistroCobranca:
+      type: object
+      required: [id, leadId, data, canal]
+      properties:
+        id: { type: string }
+        leadId: { type: string }
+        data: { type: string, format: date-time }
+        canal: { type: string, enum: [WHATSAPP, TELEFONE, PRESENCIAL, OUTRO] }
+        observacao: { type: ["string", "null"] }
+    RegistroCobrancaInput:
+      type: object
+      required: [data, canal]
+      properties:
+        data: { type: string, format: date-time }
+        canal: { type: string, enum: [WHATSAPP, TELEFONE, PRESENCIAL, OUTRO] }
+        observacao: { type: string }
+
+    # ── Agenda ──
+    Cabine:
+      type: object
+      required: [id, lojaId, nome, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        nome: { type: string }
+        ativo: { type: boolean }
+    CabineInput:
+      type: object
+      required: [nome]
+      properties:
+        nome: { type: string, minLength: 1 }
+    CabineUpdate:
+      type: object
+      properties:
+        nome: { type: string }
+        ativo: { type: boolean }
+    Atendimento:
+      type: object
+      required: [id, lojaId, leadId, cabineId, vendedoraId, tipo, inicio, situacao]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        leadId: { type: string }
+        cabineId: { type: string }
+        vendedoraId: { type: string }
+        tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
+        bloqueioId: { type: ["string", "null"] }
+        inicio: { type: string, format: date-time }
+        situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
+        desfecho: { type: ["string", "null"], enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU, null] }
+        observacao: { type: ["string", "null"] }
+    AtendimentoInput:
+      type: object
+      required: [leadId, cabineId, vendedoraId, inicio]
+      properties:
+        leadId: { type: string }
+        cabineId: { type: string }
+        vendedoraId: { type: string }
+        tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
+        bloqueioId: { type: string }
+        inicio: { type: string, format: date-time }
+        observacao: { type: string }
+    AtendimentoUpdate:
+      type: object
+      properties:
+        cabineId: { type: string }
+        vendedoraId: { type: string }
+        inicio: { type: string, format: date-time }
+        situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
+        desfecho: { type: string, enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU] }
+        observacao: { type: string }
+    Ajuste:
+      type: object
+      required: [id, lojaId, atendimentoId, descricao, status]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        atendimentoId: { type: string }
+        descricao: { type: string }
+        status: { type: string, enum: [PENDENTE, FEITO] }
+    AjusteInput:
+      type: object
+      required: [descricao]
+      properties:
+        descricao: { type: string, minLength: 1 }
+    AjusteUpdate:
+      type: object
+      properties:
+        descricao: { type: string }
+        status: { type: string, enum: [PENDENTE, FEITO] }
+    RegraDisponibilidade:
+      type: object
+      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora]
+      properties:
+        lojaId: { type: string }
+        provaDiasAntes: { type: integer }
+        provaDuracao: { type: integer }
+        usoDiasAntes: { type: integer }
+        usoDiasDepois: { type: integer }
+        lavagemDiasDepois: { type: integer }
+        atendimentoAberturaHora: { type: integer }
+        atendimentoFechamentoHora: { type: integer }
+    RegraDisponibilidadeInput:
+      type: object
+      properties:
+        provaDiasAntes: { type: integer }
+        provaDuracao: { type: integer }
+        usoDiasAntes: { type: integer }
+        usoDiasDepois: { type: integer }
+        lavagemDiasDepois: { type: integer }
+        atendimentoAberturaHora: { type: integer }
+        atendimentoFechamentoHora: { type: integer }
+
+    # ── Reservas ──
+    Reserva:
+      type: object
+      required: [id, lojaId, leadId, casamentoData, status]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        leadId: { type: string }
+        casamentoData: { type: string, format: date-time }
+        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA] }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/BloqueioVestido"
+    ReservaInput:
+      type: object
+      required: [leadId, casamentoData]
+      properties:
+        leadId: { type: string }
+        casamentoData: { type: string, format: date-time }
+    ReservaUpdate:
+      type: object
+      properties:
+        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA] }
+        casamentoData: { type: string, format: date-time }
+    BloqueioVestido:
+      type: object
+      required: [id, lojaId, vestidoId, tipo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        vestidoId: { type: string }
+        leadId: { type: ["string", "null"] }
+        tipo: { type: string, enum: [RESERVA_CASAMENTO, MANUTENCAO] }
+        casamentoData: { type: ["string", "null"], format: date-time }
+        provaDataReal: { type: ["string", "null"], format: date-time }
+        retiradaDataReal: { type: ["string", "null"], format: date-time }
+        devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        observacao: { type: ["string", "null"] }
+        reservaId: { type: ["string", "null"] }
+    BloqueioVestidoInput:
+      type: object
+      required: [vestidoId, tipo]
+      properties:
+        vestidoId: { type: string }
+        leadId: { type: string }
+        tipo: { type: string, enum: [RESERVA_CASAMENTO, MANUTENCAO] }
+        casamentoData: { type: string, format: date-time }
+        observacao: { type: string }
+        reservaId: { type: string }
+    BloqueioVestidoUpdate:
+      type: object
+      properties:
+        provaDataReal: { type: string, format: date-time }
+        retiradaDataReal: { type: string, format: date-time }
+        devolucaoDataReal: { type: string, format: date-time }
+        observacao: { type: string }
+
+    # ── Orçamentos ──
+    Orcamento:
+      type: object
+      required: [id, lojaId, leadId, vendedoraId, status, createdAt]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        leadId: { type: string }
+        atendimentoId: { type: ["string", "null"] }
+        vendedoraId: { type: string }
+        status: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
+        descontoTipo: { type: ["string", "null"], enum: [PERCENTUAL, VALOR, null] }
+        descontoValor: { type: ["number", "null"] }
+        validade: { type: ["string", "null"], format: date-time }
+        observacoes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrcamentoItem"
+    OrcamentoInput:
+      type: object
+      required: [leadId, vendedoraId]
+      properties:
+        leadId: { type: string }
+        atendimentoId: { type: string }
+        vendedoraId: { type: string }
+        descontoTipo: { type: string, enum: [PERCENTUAL, VALOR] }
+        descontoValor: { type: number }
+        validade: { type: string, format: date-time }
+        observacoes: { type: string }
+    OrcamentoUpdate:
+      type: object
+      properties:
+        descontoTipo: { type: string, enum: [PERCENTUAL, VALOR] }
+        descontoValor: { type: number }
+        validade: { type: string, format: date-time }
+        observacoes: { type: string }
+        status: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
+    OrcamentoItem:
+      type: object
+      required: [id, orcamentoId, tipo, descricao, valorUnitario, quantidade]
+      properties:
+        id: { type: string }
+        orcamentoId: { type: string }
+        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        vestidoId: { type: ["string", "null"] }
+        descricao: { type: string }
+        valorUnitario: { type: number }
+        quantidade: { type: integer }
+    OrcamentoItemInput:
+      type: object
+      required: [tipo, descricao, valorUnitario]
+      properties:
+        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        vestidoId: { type: string }
+        descricao: { type: string, minLength: 1 }
+        valorUnitario: { type: number }
+        quantidade: { type: integer }
+
+    # ── Contratos ──
+    Contrato:
+      type: object
+      required: [id, lojaId, leadId, vendedoraId, status, valorTotal, fechadoEm]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        leadId: { type: string }
+        orcamentoId: { type: ["string", "null"] }
+        bloqueioVestidoId: { type: ["string", "null"] }
+        vendedoraId: { type: string }
+        status: { type: string, enum: [ATIVO, CANCELADO] }
+        cpf: { type: ["string", "null"] }
+        vestidoDescricao: { type: ["string", "null"] }
+        valorTotal: { type: number }
+        formaPagamento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+        canceladoMotivo: { type: ["string", "null"] }
+        dataCasamento: { type: ["string", "null"], format: date-time }
+        dataRetirada: { type: ["string", "null"], format: date-time }
+        dataDevolucao: { type: ["string", "null"], format: date-time }
+        observacoes: { type: ["string", "null"] }
+        fechadoEm: { type: string, format: date-time }
+        parcelas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Parcela"
+    ContratoInput:
+      type: object
+      required: [leadId, vendedoraId, valorTotal]
+      properties:
+        leadId: { type: string }
+        orcamentoId: { type: string }
+        bloqueioVestidoId: { type: string }
+        vendedoraId: { type: string }
+        cpf: { type: string }
+        vestidoDescricao: { type: string }
+        valorTotal: { type: number }
+        formaPagamento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
+        dataCasamento: { type: string, format: date-time }
+        dataRetirada: { type: string, format: date-time }
+        dataDevolucao: { type: string, format: date-time }
+        observacoes: { type: string }
+        parcelas:
+          type: array
+          items:
+            type: object
+            required: [numero, valorPrevisto, vencimento]
+            properties:
+              numero: { type: integer }
+              descricao: { type: string }
+              valorPrevisto: { type: number }
+              vencimento: { type: string, format: date-time }
+    ContratoUpdate:
+      type: object
+      properties:
+        cpf: { type: string }
+        vestidoDescricao: { type: string }
+        formaPagamento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
+        dataCasamento: { type: string, format: date-time }
+        dataRetirada: { type: string, format: date-time }
+        dataDevolucao: { type: string, format: date-time }
+        observacoes: { type: string }
+    CancelarContratoInput:
+      type: object
+      required: [motivo]
+      properties:
+        motivo: { type: string, minLength: 1 }
+
+    # ── Financeiro ──
+    Parcela:
+      type: object
+      required: [id, lojaId, contratoId, numero, valorPrevisto, vencimento, status]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        contratoId: { type: string }
+        numero: { type: integer }
+        descricao: { type: ["string", "null"] }
+        valorPrevisto: { type: number }
+        vencimento: { type: string, format: date-time }
+        status: { type: string, enum: [PREVISTA, PAGA, CANCELADA] }
+        valorRecebido: { type: ["number", "null"] }
+        recebidoEm: { type: ["string", "null"], format: date-time }
+        formaRecebimento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+    ReceberParcelaInput:
+      type: object
+      required: [valorRecebido, recebidoEm]
+      properties:
+        valorRecebido: { type: number }
+        recebidoEm: { type: string, format: date-time }
+        formaRecebimento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
+    ContaPagar:
+      type: object
+      required: [id, lojaId, tipo, descricao, valorPrevisto, vencimento, status]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO] }
+        colaboradorId: { type: ["string", "null"] }
+        competencia: { type: ["string", "null"] }
+        descricao: { type: string }
+        categoria: { type: ["string", "null"] }
+        fornecedor: { type: ["string", "null"] }
+        valorPrevisto: { type: number }
+        vencimento: { type: string, format: date-time }
+        status: { type: string, enum: [PREVISTA, PAGA] }
+    ContaPagarInput:
+      type: object
+      required: [tipo, descricao, valorPrevisto, vencimento]
+      properties:
+        tipo: { type: string, enum: [DESPESA, FORNECEDOR, SALARIO, COMISSAO] }
+        colaboradorId: { type: string }
+        competencia: { type: string }
+        descricao: { type: string, minLength: 1 }
+        categoria: { type: string }
+        fornecedor: { type: string }
+        valorPrevisto: { type: number }
+        vencimento: { type: string, format: date-time }
+    PagarContaInput:
+      type: object
+      required: [data, valorPago]
+      properties:
+        data: { type: string, format: date-time }
+        valorPago: { type: number }
+        forma: { type: string }
+        observacoes: { type: string }
+    SalarioRecorrente:
+      type: object
+      required: [id, lojaId, colaboradorId, valorBase, diaVencimento, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        colaboradorId: { type: string }
+        valorBase: { type: number }
+        diaVencimento: { type: integer }
+        ativo: { type: boolean }
+    SalarioRecorrenteInput:
+      type: object
+      required: [colaboradorId, valorBase, diaVencimento]
+      properties:
+        colaboradorId: { type: string }
+        valorBase: { type: number }
+        diaVencimento: { type: integer }
+    SalarioRecorrenteUpdate:
+      type: object
+      properties:
+        valorBase: { type: number }
+        diaVencimento: { type: integer }
+        ativo: { type: boolean }
+    SaldoReferencia:
+      type: object
+      required: [id, lojaId, dataReferencia, valor]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        dataReferencia: { type: string, format: date-time }
+        valor: { type: number }
+    SaldoReferenciaInput:
+      type: object
+      required: [dataReferencia, valor]
+      properties:
+        dataReferencia: { type: string, format: date-time }
+        valor: { type: number }
+
+    # ── Comissão ──
+    ComissaoRegra:
+      type: object
+      required: [id, lojaId, vendedoraId, vigenciaInicio, bonusAcumulaFaixas, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        vendedoraId: { type: string }
+        vigenciaInicio: { type: string, format: date-time }
+        bonusAcumulaFaixas: { type: boolean }
+        ativo: { type: boolean }
+        faixas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComissaoFaixa"
+    ComissaoRegraInput:
+      type: object
+      required: [vendedoraId, vigenciaInicio, faixas]
+      properties:
+        vendedoraId: { type: string }
+        vigenciaInicio: { type: string, format: date-time }
+        bonusAcumulaFaixas: { type: boolean }
+        faixas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComissaoFaixaInput"
+    ComissaoRegraUpdate:
+      type: object
+      properties:
+        ativo: { type: boolean }
+        bonusAcumulaFaixas: { type: boolean }
+        faixas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComissaoFaixaInput"
+    ComissaoFaixa:
+      type: object
+      required: [id, regraId, minAcumulado]
+      properties:
+        id: { type: string }
+        regraId: { type: string }
+        minAcumulado: { type: number }
+        maxAcumulado: { type: ["number", "null"] }
+        percentual: { type: ["number", "null"] }
+        bonusFixo: { type: ["number", "null"] }
+    ComissaoFaixaInput:
+      type: object
+      required: [minAcumulado]
+      properties:
+        minAcumulado: { type: number }
+        maxAcumulado: { type: number }
+        percentual: { type: number }
+        bonusFixo: { type: number }
+    ComissaoFechamento:
+      type: object
+      required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal, fechadoEm]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        vendedoraId: { type: string }
+        competencia: { type: string }
+        totalVendas: { type: number }
+        percentualAplicado: { type: ["number", "null"] }
+        valorComissao: { type: number }
+        valorBonus: { type: number }
+        valorTotal: { type: number }
+        contaPagarId: { type: ["string", "null"] }
+        fechadoEm: { type: string, format: date-time }
+    GerarComissaoFechamentoInput:
+      type: object
+      required: [competencia]
+      properties:
+        competencia: { type: string }
+
+    # ── Dashboard ──
+    DashboardSummary:
+      type: object
+      required: [totalLeadsAtivos, totalVestidosAtivos, totalOrcamentosAbertos, totalContratosAtivos, receberProximos30Dias, pagarProximos30Dias]
+      properties:
+        totalLeadsAtivos: { type: integer }
+        totalVestidosAtivos: { type: integer }
+        totalOrcamentosAbertos: { type: integer }
+        totalContratosAtivos: { type: integer }
+        receberProximos30Dias: { type: number }
+        pagarProximos30Dias: { type: number }
+        atendimentosHoje: { type: integer }

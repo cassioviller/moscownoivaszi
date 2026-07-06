@@ -1,0 +1,244 @@
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useListVestidos, getListVestidosQueryKey, useCreateVestido } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Link } from "wouter";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Plus, Image as ImageIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const novoVestidoSchema = z.object({
+  codigo: z.string().min(1, { message: "Código é obrigatório" }),
+  nome: z.string().min(1, { message: "Nome é obrigatório" }),
+  precoBase: z.coerce.number({ invalid_type_error: "Informe um preço válido" }).nonnegative({ message: "Preço deve ser positivo" }),
+  tamanho: z.string().optional(),
+  cor: z.string().optional(),
+  categoria: z.string().optional(),
+  observacoes: z.string().optional(),
+});
+
+type NovoVestidoValues = z.infer<typeof novoVestidoSchema>;
+
+export default function Vestidos() {
+  const { activeLojaId } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const { data: vestidos, isLoading } = useListVestidos(activeLojaId!, { query: { queryKey: getListVestidosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const createVestido = useCreateVestido();
+
+  const form = useForm<NovoVestidoValues>({
+    resolver: zodResolver(novoVestidoSchema),
+    defaultValues: {
+      codigo: "",
+      nome: "",
+      precoBase: 0,
+      tamanho: "",
+      cor: "",
+      categoria: "",
+      observacoes: "",
+    },
+  });
+
+  async function onSubmit(values: NovoVestidoValues) {
+    try {
+      await createVestido.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          codigo: values.codigo,
+          nome: values.nome,
+          precoBase: values.precoBase,
+          tamanho: values.tamanho || undefined,
+          cor: values.cor || undefined,
+          categoria: values.categoria || undefined,
+          observacoes: values.observacoes || undefined,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) });
+      toast({ title: "Vestido cadastrado com sucesso" });
+      form.reset();
+      setOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao cadastrar vestido",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-serif">Catálogo de Vestidos</h1>
+        <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) form.reset(); }}>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Vestido
+          </Button>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo Vestido</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="codigo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Código</FormLabel>
+                        <FormControl>
+                          <Input placeholder="VST-001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="precoBase"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preço Base</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="0,00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="nome"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome do vestido" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="tamanho"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tamanho</FormLabel>
+                        <FormControl>
+                          <Input placeholder="M" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="cor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cor</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Branco" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="categoria"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categoria</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Princesa" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="observacoes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Observações adicionais" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? "Salvando..." : "Salvar"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => <Card key={i} className="h-64 animate-pulse" />)}
+        </div>
+      ) : vestidos?.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
+          Nenhum vestido cadastrado no catálogo.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {vestidos?.map(vestido => (
+            <Link key={vestido.id} href={`/vestidos/${vestido.id}`}>
+              <Card className="hover-elevate cursor-pointer overflow-hidden group">
+                <div className="aspect-[3/4] bg-muted flex items-center justify-center relative">
+                  {vestido.fotos && vestido.fotos.length > 0 ? (
+                    <div className="absolute inset-0 bg-primary/10"></div> // Placeholder for image
+                  ) : (
+                    <ImageIcon className="h-10 w-10 text-muted-foreground opacity-50" />
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm shadow-sm">{vestido.status}</Badge>
+                  </div>
+                </div>
+                <CardContent className="p-4">
+                  <div className="font-mono text-xs text-muted-foreground mb-1">{vestido.codigo}</div>
+                  <h3 className="font-medium truncate">{vestido.nome}</h3>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="font-semibold text-primary">R$ {vestido.precoBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-muted-foreground">Tam: {vestido.tamanho || '-'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

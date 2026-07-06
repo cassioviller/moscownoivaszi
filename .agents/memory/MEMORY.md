@@ -1,0 +1,1 @@
+- [Drizzle decimal columns default to string type](drizzle-decimal-string-mode.md) — must set `mode: "number"` on every decimal()/numeric() column or zod number schemas crash at runtime.
