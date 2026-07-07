@@ -66,6 +66,11 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Proxy /api → api-server apenas quando E2E_API_PROXY está definido
+    // (usado pelos testes Playwright). Sem efeito no run normal do Replit.
+    ...(process.env.E2E_API_PROXY
+      ? { proxy: { "/api": { target: process.env.E2E_API_PROXY, changeOrigin: false } } }
+      : {}),
   },
   preview: {
     port,
