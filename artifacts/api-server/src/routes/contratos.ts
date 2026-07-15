@@ -14,6 +14,9 @@ import { eq, and, isNull } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { avancarEtapaLead } from "../lib/estados";
 import {
+  EstornarParcelaResponse,
+  GerarPlanoParcelasBody,
+  GerarPlanoParcelasResponse,
   ListContratosResponse,
   CreateContratoBody,
   CreateContratoResponse,
@@ -304,13 +307,30 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
       })
       .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
 
-    // Cancela apenas as parcelas ainda PREVISTAS — as PAGAS ficam como estão.
+    // Parcelas PREVISTAS sempre são canceladas.
     await tx.update(parcelasTable)
       .set({ status: "CANCELADA" })
       .where(and(
         eq(parcelasTable.contratoId, contrato.id),
         eq(parcelasTable.status, "PREVISTA"),
       ));
+
+    // Sobre as PAGAS decide o destinoPago: "manter" (default — noiva perdeu
+    // o sinal, valor fica no caixa) ou "estornar" (valor devolvido — viram
+    // CANCELADA com os campos de recebimento zerados, saindo da receita).
+    if (parsed.data.destinoPago === "estornar") {
+      await tx.update(parcelasTable)
+        .set({
+          status: "CANCELADA",
+          valorRecebido: null,
+          recebidoEm: null,
+          formaRecebimento: null,
+        })
+        .where(and(
+          eq(parcelasTable.contratoId, contrato.id),
+          eq(parcelasTable.status, "PAGA"),
+        ));
+    }
 
     // Libera o vestido: soft-cancela o bloqueio vinculado (se houver).
     if (contrato.bloqueioVestidoId) {
@@ -371,6 +391,135 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
     .where(eq(parcelasTable.id, existente.id))
     .returning();
   res.json(ReceberParcelaResponse.parse(parcela));
+});
+
+// Estorno avulso: PAGA volta a PREVISTA (volta a ser cobrável), zerando os
+// campos de recebimento. Distinto do estorno em massa do cancelamento com
+// destinoPago=estornar, que marca as pagas como CANCELADA.
+router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Promise<void> => {
+  const { lojaId, parcelaId } = req.params;
+
+  const [existente] = await db.select().from(parcelasTable)
+    .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
+  if (!existente) {
+    res.status(404).json({ error: "Parcela not found" });
+    return;
+  }
+  if (existente.status !== "PAGA") {
+    res.status(422).json({ error: "PARCELA_NAO_PAGA", detalhe: "Só parcelas pagas podem ser estornadas" });
+    return;
+  }
+
+  const [parcela] = await db.update(parcelasTable)
+    .set({
+      status: "PREVISTA",
+      valorRecebido: null,
+      recebidoEm: null,
+      formaRecebimento: null,
+    })
+    .where(eq(parcelasTable.id, existente.id))
+    .returning();
+  res.json(EstornarParcelaResponse.parse(parcela));
+});
+
+router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<void> => {
+  const { lojaId, parcelaId } = req.params;
+
+  const [existente] = await db.select().from(parcelasTable)
+    .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
+  if (!existente) {
+    res.status(404).json({ error: "Parcela not found" });
+    return;
+  }
+  if (existente.status !== "PREVISTA") {
+    res.status(422).json({ error: "PARCELA_NAO_PREVISTA", detalhe: "Só parcelas previstas podem ser removidas" });
+    return;
+  }
+  const [contrato] = await db.select({ status: contratosTable.status }).from(contratosTable)
+    .where(eq(contratosTable.id, existente.contratoId));
+  if (!contrato || contrato.status !== "ATIVO") {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
+
+  await db.delete(parcelasTable).where(eq(parcelasTable.id, existente.id));
+  res.status(204).send();
+});
+
+const DIA_MS = 86_400_000;
+
+// Gera o plano de pagamento de um contrato sem parcelas. Cálculo em centavos;
+// a última parcela absorve o resto da divisão (sem drift de arredondamento).
+// Entrada (se > 0) vira a linha `numero 0` no primeiro vencimento e as N
+// parcelas começam um período depois.
+router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (req, res): Promise<void> => {
+  const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+  const parsed = GerarPlanoParcelasBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+    with: { parcelas: true },
+  });
+  if (!contrato) {
+    res.status(404).json({ error: "Contrato not found" });
+    return;
+  }
+  if (contrato.status !== "ATIVO") {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
+  if (contrato.parcelas.length > 0) {
+    res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui parcelas" });
+    return;
+  }
+
+  const totalCentavos = Math.round(Number(contrato.valorTotal) * 100);
+  const entradaCentavos = Math.round((parsed.data.entrada ?? 0) * 100);
+  if (entradaCentavos > totalCentavos) {
+    res.status(422).json({ error: "ENTRADA_MAIOR", detalhe: "Entrada maior que o valor total do contrato" });
+    return;
+  }
+
+  const n = parsed.data.numParcelas;
+  const periodicidadeDias = parsed.data.periodicidadeDias ?? 30;
+  const venc0 = new Date(parsed.data.primeiroVencimento);
+  const restante = totalCentavos - entradaCentavos;
+  const base = Math.floor(restante / n);
+
+  const linhas: (typeof parcelasTable.$inferInsert)[] = [];
+  if (entradaCentavos > 0) {
+    linhas.push({
+      id: randomUUID(),
+      lojaId,
+      contratoId: contrato.id,
+      numero: 0,
+      descricao: "Entrada",
+      valorPrevisto: entradaCentavos / 100,
+      vencimento: venc0,
+    });
+  }
+  const offsetInicial = entradaCentavos > 0 ? 1 : 0;
+  for (let i = 0; i < n; i++) {
+    const valor = i === n - 1 ? restante - base * (n - 1) : base;
+    linhas.push({
+      id: randomUUID(),
+      lojaId,
+      contratoId: contrato.id,
+      numero: i + 1,
+      descricao: `Parcela ${i + 1}/${n}`,
+      valorPrevisto: valor / 100,
+      vencimento: new Date(venc0.getTime() + (i + offsetInicial) * periodicidadeDias * DIA_MS),
+    });
+  }
+
+  // createMany atômico: sem plano parcial.
+  const criadas = await db.insert(parcelasTable).values(linhas).returning();
+  criadas.sort((a, b) => a.numero - b.numero);
+  res.status(201).json(GerarPlanoParcelasResponse.parse(criadas));
 });
 
 export default router;

@@ -8,7 +8,9 @@
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
 import type { ContratoItem } from './contratoItem';
 import type { ContratoStatus } from './contratoStatus';
+import type { Lead } from './lead';
 import type { Parcela } from './parcela';
+import type { Usuario } from './usuario';
 
 export interface Contrato {
   id: string;
@@ -42,4 +44,6 @@ export interface Contrato {
   fechadoEm: Date;
   parcelas?: Parcela[];
   itens?: ContratoItem[];
+  lead?: Lead;
+  vendedora?: Usuario;
 }

@@ -7,6 +7,12 @@
  */
 
 export * from './ajuste';
+export * from './ajusteAtendimento';
+export * from './ajusteAtendimentoSituacao';
+export * from './ajusteAtendimentoTipo';
+export * from './ajusteChecklistItem';
+export * from './ajusteChecklistItemInput';
+export * from './ajusteChecklistItemUpdate';
 export * from './ajusteInput';
 export * from './ajusteStatus';
 export * from './ajusteUpdate';
@@ -37,6 +43,7 @@ export * from './cabine';
 export * from './cabineInput';
 export * from './cabineUpdate';
 export * from './cancelarContratoInput';
+export * from './cancelarContratoInputDestinoPago';
 export * from './checkDisponibilidadeVestidosParams';
 export * from './comissaoFaixa';
 export * from './comissaoFaixaInput';
@@ -68,6 +75,7 @@ export * from './disponibilidadeVestidosItensItem';
 export * from './disponibilidadeVestidosItensItemStatus';
 export * from './errorResponse';
 export * from './gerarComissaoFechamentoInput';
+export * from './gerarPlanoInput';
 export * from './healthStatus';
 export * from './lead';
 export * from './leadEtapa';

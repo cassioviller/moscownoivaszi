@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BloqueioVestido } from './bloqueioVestido';
+import type { Lead } from './lead';
 import type { ReservaStatus } from './reservaStatus';
 
 export interface Reserva {
@@ -14,5 +15,6 @@ export interface Reserva {
   leadId: string;
   casamentoData: Date;
   status: ReservaStatus;
-  itens?: BloqueioVestido[];
+  bloqueios?: BloqueioVestido[];
+  lead?: Lead;
 }

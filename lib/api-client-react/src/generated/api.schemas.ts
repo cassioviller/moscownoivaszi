@@ -495,6 +495,103 @@ export const AtendimentoDesfecho = {
   NAO_SERVIU: 'NAO_SERVIU',
 } as const;
 
+export type BloqueioVestidoTipo = typeof BloqueioVestidoTipo[keyof typeof BloqueioVestidoTipo];
+
+
+export const BloqueioVestidoTipo = {
+  RESERVA_CASAMENTO: 'RESERVA_CASAMENTO',
+  MANUTENCAO: 'MANUTENCAO',
+} as const;
+
+export interface BloqueioVestido {
+  id: string;
+  lojaId: string;
+  vestidoId: string;
+  /** @nullable */
+  leadId?: string | null;
+  tipo: BloqueioVestidoTipo;
+  /** @nullable */
+  casamentoData?: string | null;
+  /** @nullable */
+  provaDataReal?: string | null;
+  /** @nullable */
+  retiradaDataReal?: string | null;
+  /** @nullable */
+  devolucaoDataReal?: string | null;
+  /** @nullable */
+  inicio?: string | null;
+  /** @nullable */
+  fim?: string | null;
+  /** @nullable */
+  canceladoEm?: string | null;
+  /** @nullable */
+  observacao?: string | null;
+  /** @nullable */
+  reservaId?: string | null;
+  /** @nullable */
+  ocupacaoInicio?: string | null;
+  /** @nullable */
+  ocupacaoFim?: string | null;
+  vestido?: Vestido;
+  lead?: Lead | null;
+}
+
+export type AjusteStatus = typeof AjusteStatus[keyof typeof AjusteStatus];
+
+
+export const AjusteStatus = {
+  PENDENTE: 'PENDENTE',
+  FEITO: 'FEITO',
+} as const;
+
+export interface AjusteChecklistItem {
+  id: string;
+  ajusteId: string;
+  descricao: string;
+  feito: boolean;
+  ordem: number;
+}
+
+export type AjusteAtendimentoTipo = typeof AjusteAtendimentoTipo[keyof typeof AjusteAtendimentoTipo];
+
+
+export const AjusteAtendimentoTipo = {
+  ATENDIMENTO: 'ATENDIMENTO',
+  PROVA: 'PROVA',
+} as const;
+
+export type AjusteAtendimentoSituacao = typeof AjusteAtendimentoSituacao[keyof typeof AjusteAtendimentoSituacao];
+
+
+export const AjusteAtendimentoSituacao = {
+  AGENDADO: 'AGENDADO',
+  EM_ATENDIMENTO: 'EM_ATENDIMENTO',
+  CONCLUIDO: 'CONCLUIDO',
+  FALTOU: 'FALTOU',
+} as const;
+
+export interface AjusteAtendimento {
+  id: string;
+  leadId: string;
+  tipo: AjusteAtendimentoTipo;
+  /** @nullable */
+  bloqueioId?: string | null;
+  inicio: string;
+  situacao: AjusteAtendimentoSituacao;
+  lead?: Lead;
+  bloqueio?: BloqueioVestido | null;
+}
+
+export interface Ajuste {
+  id: string;
+  lojaId: string;
+  atendimentoId: string;
+  descricao: string;
+  status: AjusteStatus;
+  checklist?: AjusteChecklistItem[];
+  atendimento?: AjusteAtendimento;
+}
+
 export interface Atendimento {
   id: string;
   lojaId: string;
@@ -505,11 +602,18 @@ export interface Atendimento {
   /** @nullable */
   bloqueioId?: string | null;
   inicio: string;
+  /** @nullable */
+  atendidoEm?: string | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;
   /** @nullable */
   observacao?: string | null;
+  lead?: Lead;
+  cabine?: Cabine;
+  vendedora?: Usuario;
+  bloqueio?: BloqueioVestido | null;
+  ajustes?: Ajuste[];
 }
 
 export type AtendimentoInputTipo = typeof AtendimentoInputTipo[keyof typeof AtendimentoInputTipo];
@@ -558,20 +662,17 @@ export interface AtendimentoUpdate {
   observacao?: string;
 }
 
-export type AjusteStatus = typeof AjusteStatus[keyof typeof AjusteStatus];
-
-
-export const AjusteStatus = {
-  PENDENTE: 'PENDENTE',
-  FEITO: 'FEITO',
-} as const;
-
-export interface Ajuste {
-  id: string;
-  lojaId: string;
-  atendimentoId: string;
+export interface AjusteChecklistItemInput {
+  /** @minLength 1 */
   descricao: string;
-  status: AjusteStatus;
+  ordem?: number;
+}
+
+export interface AjusteChecklistItemUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  feito?: boolean;
+  ordem?: number;
 }
 
 export interface AjusteInput {
@@ -624,48 +725,14 @@ export const ReservaStatus = {
   CANCELADA: 'CANCELADA',
 } as const;
 
-export type BloqueioVestidoTipo = typeof BloqueioVestidoTipo[keyof typeof BloqueioVestidoTipo];
-
-
-export const BloqueioVestidoTipo = {
-  RESERVA_CASAMENTO: 'RESERVA_CASAMENTO',
-  MANUTENCAO: 'MANUTENCAO',
-} as const;
-
-export interface BloqueioVestido {
-  id: string;
-  lojaId: string;
-  vestidoId: string;
-  /** @nullable */
-  leadId?: string | null;
-  tipo: BloqueioVestidoTipo;
-  /** @nullable */
-  casamentoData?: string | null;
-  /** @nullable */
-  provaDataReal?: string | null;
-  /** @nullable */
-  retiradaDataReal?: string | null;
-  /** @nullable */
-  devolucaoDataReal?: string | null;
-  /** @nullable */
-  inicio?: string | null;
-  /** @nullable */
-  fim?: string | null;
-  /** @nullable */
-  canceladoEm?: string | null;
-  /** @nullable */
-  observacao?: string | null;
-  /** @nullable */
-  reservaId?: string | null;
-}
-
 export interface Reserva {
   id: string;
   lojaId: string;
   leadId: string;
   casamentoData: string;
   status: ReservaStatus;
-  itens?: BloqueioVestido[];
+  bloqueios?: BloqueioVestido[];
+  lead?: Lead;
 }
 
 export interface ReservaInput {
@@ -1036,6 +1103,8 @@ export interface Contrato {
   fechadoEm: string;
   parcelas?: Parcela[];
   itens?: ContratoItem[];
+  lead?: Lead;
+  vendedora?: Usuario;
 }
 
 export type ContratoInputFormaPagamento = typeof ContratoInputFormaPagamento[keyof typeof ContratoInputFormaPagamento];
@@ -1097,9 +1166,34 @@ export interface ContratoUpdate {
   observacoes?: string;
 }
 
+export type CancelarContratoInputDestinoPago = typeof CancelarContratoInputDestinoPago[keyof typeof CancelarContratoInputDestinoPago];
+
+
+export const CancelarContratoInputDestinoPago = {
+  manter: 'manter',
+  estornar: 'estornar',
+} as const;
+
 export interface CancelarContratoInput {
   /** @minLength 1 */
   motivo: string;
+  destinoPago?: CancelarContratoInputDestinoPago;
+}
+
+export interface GerarPlanoInput {
+  /** @minimum 0 */
+  entrada?: number;
+  /**
+     * @minimum 1
+     * @maximum 360
+     */
+  numParcelas: number;
+  primeiroVencimento: string;
+  /**
+     * @minimum 1
+     * @maximum 3650
+     */
+  periodicidadeDias?: number;
 }
 
 export type ReceberParcelaInputFormaRecebimento = typeof ReceberParcelaInputFormaRecebimento[keyof typeof ReceberParcelaInputFormaRecebimento];

@@ -5,6 +5,8 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AjusteAtendimento } from './ajusteAtendimento';
+import type { AjusteChecklistItem } from './ajusteChecklistItem';
 import type { AjusteStatus } from './ajusteStatus';
 
 export interface Ajuste {
@@ -13,4 +15,6 @@ export interface Ajuste {
   atendimentoId: string;
   descricao: string;
   status: AjusteStatus;
+  checklist?: AjusteChecklistItem[];
+  atendimento?: AjusteAtendimento;
 }

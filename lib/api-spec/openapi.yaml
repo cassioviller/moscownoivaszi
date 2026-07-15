@@ -940,6 +940,66 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ajuste"
+    delete:
+      operationId: deleteAjuste
+      tags: [agenda]
+      responses:
+        "204":
+          description: Removed
+  /lojas/{lojaId}/ajustes/{ajusteId}/checklist:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: ajusteId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: addChecklistItem
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjusteChecklistItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjusteChecklistItem"
+  /lojas/{lojaId}/ajustes/checklist/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateChecklistItem
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjusteChecklistItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjusteChecklistItem"
+    delete:
+      operationId: removeChecklistItem
+      tags: [agenda]
+      responses:
+        "204":
+          description: Removed
   /lojas/{lojaId}/disponibilidade/regras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -1388,6 +1448,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Parcela"
+  /lojas/{lojaId}/parcelas/{parcelaId}/estornar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: estornarParcela
+      tags: [financeiro]
+      responses:
+        "200":
+          description: Estornada (PAGA volta a PREVISTA, campos de recebimento zerados)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+  /lojas/{lojaId}/parcelas/{parcelaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: removeParcela
+      tags: [financeiro]
+      responses:
+        "204":
+          description: Removida (apenas PREVISTA de contrato ATIVO)
+  /lojas/{lojaId}/contratos/{contratoId}/parcelas/gerar-plano:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: gerarPlanoParcelas
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GerarPlanoInput"
+      responses:
+        "201":
+          description: Plano gerado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Parcela"
   /lojas/{lojaId}/financeiro/contas-pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -2118,9 +2236,26 @@ components:
         tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
         bloqueioId: { type: ["string", "null"] }
         inicio: { type: string, format: date-time }
+        atendidoEm: { type: ["string", "null"], format: date-time }
         situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
         desfecho: { type: ["string", "null"], enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU, null] }
         observacao: { type: ["string", "null"] }
+        # Relações (sempre presentes nos GET; telas de fila/agenda precisam
+        # de noiva, cabine, vendedora e — nas provas — vestido via bloqueio).
+        lead:
+          $ref: "#/components/schemas/Lead"
+        cabine:
+          $ref: "#/components/schemas/Cabine"
+        vendedora:
+          $ref: "#/components/schemas/Usuario"
+        bloqueio:
+          anyOf:
+            - $ref: "#/components/schemas/BloqueioVestido"
+            - type: "null"
+        ajustes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ajuste"
     AtendimentoInput:
       type: object
       required: [leadId, cabineId, vendedoraId, inicio]
@@ -2150,6 +2285,52 @@ components:
         atendimentoId: { type: string }
         descricao: { type: string }
         status: { type: string, enum: [PENDENTE, FEITO] }
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/AjusteChecklistItem"
+        # Contexto relacional da fila da costureira (ajuste → atendimento →
+        # bloqueio → noiva/vestido/casamento). Schema próprio (sem `ajustes`)
+        # para não ciclar com Atendimento.
+        atendimento:
+          $ref: "#/components/schemas/AjusteAtendimento"
+    AjusteAtendimento:
+      type: object
+      required: [id, leadId, tipo, inicio, situacao]
+      properties:
+        id: { type: string }
+        leadId: { type: string }
+        tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
+        bloqueioId: { type: ["string", "null"] }
+        inicio: { type: string, format: date-time }
+        situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
+        lead:
+          $ref: "#/components/schemas/Lead"
+        bloqueio:
+          anyOf:
+            - $ref: "#/components/schemas/BloqueioVestido"
+            - type: "null"
+    AjusteChecklistItem:
+      type: object
+      required: [id, ajusteId, descricao, feito, ordem]
+      properties:
+        id: { type: string }
+        ajusteId: { type: string }
+        descricao: { type: string }
+        feito: { type: boolean }
+        ordem: { type: integer }
+    AjusteChecklistItemInput:
+      type: object
+      required: [descricao]
+      properties:
+        descricao: { type: string, minLength: 1 }
+        ordem: { type: integer }
+    AjusteChecklistItemUpdate:
+      type: object
+      properties:
+        descricao: { type: string, minLength: 1 }
+        feito: { type: boolean }
+        ordem: { type: integer }
     AjusteInput:
       type: object
       required: [atendimentoId, descricao]
@@ -2194,10 +2375,14 @@ components:
         leadId: { type: string }
         casamentoData: { type: string, format: date-time }
         status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA, CONCLUIDA, CANCELADA] }
-        itens:
+        # Nome casa com a relation Drizzle (`bloqueios`); o antigo `itens`
+        # nunca chegou ao cliente (mismatch relation×schema descartava tudo).
+        bloqueios:
           type: array
           items:
             $ref: "#/components/schemas/BloqueioVestido"
+        lead:
+          $ref: "#/components/schemas/Lead"
     ReservaInput:
       type: object
       required: [leadId, casamentoData]
@@ -2227,6 +2412,15 @@ components:
         canceladoEm: { type: ["string", "null"], format: date-time }
         observacao: { type: ["string", "null"] }
         reservaId: { type: ["string", "null"] }
+        ocupacaoInicio: { type: ["string", "null"], format: date-time }
+        ocupacaoFim: { type: ["string", "null"], format: date-time }
+        vestido:
+          $ref: "#/components/schemas/Vestido"
+        # Manutenção não tem noiva — lead é null nesses bloqueios.
+        lead:
+          anyOf:
+            - $ref: "#/components/schemas/Lead"
+            - type: "null"
     BloqueioVestidoInput:
       type: object
       required: [vestidoId, tipo]
@@ -2378,6 +2572,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ContratoItem"
+        lead:
+          $ref: "#/components/schemas/Lead"
+        vendedora:
+          $ref: "#/components/schemas/Usuario"
     ContratoItem:
       type: object
       required: [id, lojaId, contratoId, tipo, descricao, valorUnitario, quantidade]
@@ -2431,6 +2629,18 @@ components:
       required: [motivo]
       properties:
         motivo: { type: string, minLength: 1 }
+        # O que fazer com parcelas já PAGAS: "manter" (noiva perdeu o sinal —
+        # ficam PAGAS no caixa, default) ou "estornar" (valor devolvido —
+        # viram CANCELADA com campos de recebimento zerados).
+        destinoPago: { type: string, enum: [manter, estornar] }
+    GerarPlanoInput:
+      type: object
+      required: [numParcelas, primeiroVencimento]
+      properties:
+        entrada: { type: number, minimum: 0 }
+        numParcelas: { type: integer, minimum: 1, maximum: 360 }
+        primeiroVencimento: { type: string, format: date-time }
+        periodicidadeDias: { type: integer, minimum: 1, maximum: 3650 }
 
     # ── Financeiro ──
     Parcela:

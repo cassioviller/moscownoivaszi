@@ -5,8 +5,10 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CancelarContratoInputDestinoPago } from './cancelarContratoInputDestinoPago';
 
 export interface CancelarContratoInput {
   /** @minLength 1 */
   motivo: string;
+  destinoPago?: CancelarContratoInputDestinoPago;
 }

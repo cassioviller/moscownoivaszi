@@ -44,7 +44,8 @@ router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
     where: eq(reservasTable.lojaId, lojaId),
     with: {
       lead: true,
-      bloqueios: true,
+      // Vestido aninhado: o livro de reservas exibe "codigo · nome".
+      bloqueios: { with: { vestido: true } },
     },
     orderBy: reservasTable.casamentoData,
   });
@@ -67,7 +68,7 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
 
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
-    with: { lead: true, bloqueios: true }
+    with: { lead: true, bloqueios: { with: { vestido: true } } }
   });
   res.status(201).json(CreateReservaResponse.parse(fullReserva));
 });
@@ -174,7 +175,7 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
 
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
-    with: { lead: true, bloqueios: true }
+    with: { lead: true, bloqueios: { with: { vestido: true } } }
   });
   res.json(UpdateReservaResponse.parse(fullReserva));
 });
@@ -188,7 +189,11 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
 // Bloqueios
 router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const bloqueios = await db.select().from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.lojaId, lojaId));
+  // Joins: telas de reservas/provas exibem vestido "codigo · nome" e a noiva.
+  const bloqueios = await db.query.bloqueioVestidosTable.findMany({
+    where: eq(bloqueioVestidosTable.lojaId, lojaId),
+    with: { vestido: true, lead: true },
+  });
   res.json(ListBloqueiosResponse.parse(bloqueios));
 });
 
