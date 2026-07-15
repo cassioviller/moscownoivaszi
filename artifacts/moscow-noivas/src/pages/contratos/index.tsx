@@ -6,7 +6,7 @@ import {
   useListLeads,
   getListLeadsQueryKey,
 } from "@workspace/api-client-react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "@/lib/router-compat";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

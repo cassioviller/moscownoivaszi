@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useParams } from "react-router";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { 
@@ -40,8 +40,10 @@ function moduloLiberado(acesso: unknown): boolean {
 }
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const { pathname } = useLocation();
+  const { lojaId } = useParams();
   const { logout, user, acessosModulos } = useAuth();
+  const base = `/loja/${lojaId}`;
 
   // Sem mapa de acessos (superadmin/sem loja) → mostra tudo.
   const itensVisiveis = navItems.filter(
@@ -51,7 +53,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 border-r bg-sidebar flex flex-col h-screen overflow-y-auto">
       <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-3 group">
+        <Link to={`${base}/dashboard`} className="flex items-center gap-3 group">
           <div className="h-10 w-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-serif text-xl font-bold shadow-sm group-hover:scale-105 transition-transform">
             M
           </div>
@@ -60,7 +62,7 @@ export function Sidebar() {
       </div>
 
       <div className="px-4 pb-4">
-        <Link href="/selecionar-loja" className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground text-sm font-medium hover:bg-sidebar-accent transition-colors border border-sidebar-border">
+        <Link to="/selecionar-loja" className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground text-sm font-medium hover:bg-sidebar-accent transition-colors border border-sidebar-border">
           <Store className="h-4 w-4" />
           <span>Trocar de Loja</span>
         </Link>
@@ -68,11 +70,11 @@ export function Sidebar() {
 
       <nav className="flex-1 px-4 space-y-1">
         {itensVisiveis.map((item) => {
-          const isActive = location.startsWith(item.href);
+          const isActive = pathname.startsWith(`${base}${item.href}`);
           return (
             <Link
               key={item.href}
-              href={item.href}
+              to={`${base}${item.href}`}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200",
                 isActive 

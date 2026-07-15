@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useGetLead, getGetLeadQueryKey } from "@workspace/api-client-react";
-import { useRoute } from "wouter";
+import { useRoute } from "@/lib/router-compat";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 

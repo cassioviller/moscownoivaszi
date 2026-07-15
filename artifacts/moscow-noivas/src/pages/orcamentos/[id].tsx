@@ -14,7 +14,7 @@ import {
   getListLeadsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation } from "@/lib/router-compat";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";

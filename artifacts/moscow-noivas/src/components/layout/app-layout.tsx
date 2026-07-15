@@ -1,14 +1,24 @@
-import { ReactNode } from "react";
+import { useEffect } from "react";
+import { Navigate, Outlet, useParams } from "react-router";
 import { Sidebar } from "./sidebar";
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { useStoreStore } from "@/lib/store";
 
-interface AppLayoutProps {
-  children: ReactNode;
-}
+/**
+ * Layout das rotas /loja/:lojaId/…: valida a sessão, sincroniza a loja da URL
+ * com o store persistido (fonte de verdade das páginas ainda não portadas) e
+ * renderiza o chrome (sidebar + área de conteúdo) com um <Outlet/> aninhado.
+ */
+export function AppLayout() {
+  const { lojaId } = useParams();
+  const { user, isLoading } = useAuth();
+  const { activeLojaId, setActiveLojaId } = useStoreStore();
 
-export function AppLayout({ children }: AppLayoutProps) {
-  const { user, isLoading, activeLojaId } = useAuth();
+  useEffect(() => {
+    if (lojaId && lojaId !== activeLojaId) {
+      setActiveLojaId(lojaId);
+    }
+  }, [lojaId, activeLojaId, setActiveLojaId]);
 
   if (isLoading) {
     return (
@@ -21,11 +31,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (!activeLojaId && window.location.pathname !== "/selecionar-loja") {
-    return <Redirect to="/selecionar-loja" />;
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -33,7 +39,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-muted/20">
         <div className="container mx-auto p-6 max-w-6xl">
-          {children}
+          <Outlet />
         </div>
       </main>
     </div>

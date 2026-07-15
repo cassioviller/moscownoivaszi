@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ const loginSchema = z.object({
 
 export default function Login() {
   const { login } = useAuth();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -30,9 +30,9 @@ export default function Login() {
     try {
       const session = await login({ data: values });
       if (session.lojaAtivaId) {
-        setLocation("/dashboard");
+        navigate(`/loja/${session.lojaAtivaId}/dashboard`);
       } else {
-        setLocation("/selecionar-loja");
+        navigate("/selecionar-loja");
       }
     } catch (error: any) {
       toast({

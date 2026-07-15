@@ -10,7 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
+import { Link } from "@/lib/router-compat";
 import { format } from "date-fns";
 import { Calendar, Users, FileText, CheckCircle2, TrendingUp, Clock } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";

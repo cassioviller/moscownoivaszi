@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSelecionarLoja, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStoreStore } from "@/lib/store";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ export default function SelecionarLoja() {
   const { setActiveLojaId } = useStoreStore();
   const queryClient = useQueryClient();
   const selecionarLoja = useSelecionarLoja();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [busca, setBusca] = useState("");
 
@@ -50,7 +50,7 @@ export default function SelecionarLoja() {
       // usuária para cá (A1). Atualiza o store na hora e refaz a sessão.
       setActiveLojaId(lojaId);
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setLocation("/dashboard");
+      navigate(`/loja/${lojaId}/dashboard`);
     } catch (error: any) {
       toast({
         title: "Erro ao selecionar loja",

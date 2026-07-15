@@ -13,7 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useSearchParams } from "wouter";
+import { Link, useSearchParams } from "@/lib/router-compat";
 import { format } from "date-fns";
 import { ptBR } from "react-day-picker/locale";
 import { Card, CardContent } from "@/components/ui/card";

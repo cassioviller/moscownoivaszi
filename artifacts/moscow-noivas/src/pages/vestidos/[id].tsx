@@ -12,7 +12,7 @@ import {
   getGetVestidoFotoUrl,
 } from "@workspace/api-client-react";
 import type { BloqueioVestido, Lead } from "@workspace/api-client-react";
-import { useRoute } from "wouter";
+import { useRoute } from "@/lib/router-compat";
 import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
