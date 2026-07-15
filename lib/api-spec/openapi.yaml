@@ -1198,6 +1198,22 @@ paths:
         required: true
         schema:
           type: string
+    patch:
+      operationId: updateOrcamentoItem
+      tags: [orcamentos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrcamentoItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrcamentoItem"
     delete:
       operationId: removeOrcamentoItem
       tags: [orcamentos]
@@ -2324,6 +2340,12 @@ components:
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
         quantidade: { type: integer }
+    OrcamentoItemUpdate:
+      type: object
+      properties:
+        descricao: { type: string, minLength: 1 }
+        valorUnitario: { type: number }
+        quantidade: { type: integer, minimum: 1 }
 
     # ── Contratos ──
     Contrato:

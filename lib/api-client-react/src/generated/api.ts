@@ -72,6 +72,7 @@ import type {
   OrcamentoInput,
   OrcamentoItem,
   OrcamentoItemInput,
+  OrcamentoItemUpdate,
   OrcamentoUpdate,
   PagarContaInput,
   Parcela,
@@ -5171,6 +5172,73 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getAddOrcamentoItemMutationOptions(options));
+    }
+
+export const getUpdateOrcamentoItemUrl = (lojaId: string,
+    itemId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/orcamentos/itens/${itemId}`
+}
+
+export const updateOrcamentoItem = async (lojaId: string,
+    itemId: string,
+    orcamentoItemUpdate: OrcamentoItemUpdate, options?: RequestInit): Promise<OrcamentoItem> => {
+
+  return customFetch<OrcamentoItem>(getUpdateOrcamentoItemUrl(lojaId,itemId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(orcamentoItemUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateOrcamentoItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrcamentoItem>>, TError,{lojaId: string;itemId: string;data: BodyType<OrcamentoItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrcamentoItem>>, TError,{lojaId: string;itemId: string;data: BodyType<OrcamentoItemUpdate>}, TContext> => {
+
+const mutationKey = ['updateOrcamentoItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrcamentoItem>>, {lojaId: string;itemId: string;data: BodyType<OrcamentoItemUpdate>}> = (props) => {
+          const {lojaId,itemId,data} = props ?? {};
+
+          return  updateOrcamentoItem(lojaId,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrcamentoItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrcamentoItem>>>
+    export type UpdateOrcamentoItemMutationBody = BodyType<OrcamentoItemUpdate>
+    export type UpdateOrcamentoItemMutationError = ErrorType<unknown>
+
+    export const useUpdateOrcamentoItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrcamentoItem>>, TError,{lojaId: string;itemId: string;data: BodyType<OrcamentoItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrcamentoItem>>,
+        TError,
+        {lojaId: string;itemId: string;data: BodyType<OrcamentoItemUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOrcamentoItemMutationOptions(options));
     }
 
 export const getRemoveOrcamentoItemUrl = (lojaId: string,

@@ -1601,6 +1601,32 @@ export const AddOrcamentoItemResponse = zod.object({
 })
 
 
+export const UpdateOrcamentoItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+
+
+
+
+export const UpdateOrcamentoItemBody = zod.object({
+  "descricao": zod.string().min(1).optional(),
+  "valorUnitario": zod.number().optional(),
+  "quantidade": zod.number().min(1).optional()
+})
+
+export const UpdateOrcamentoItemResponse = zod.object({
+  "id": zod.string(),
+  "orcamentoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})
+
+
 export const RemoveOrcamentoItemParams = zod.object({
   "lojaId": zod.coerce.string(),
   "itemId": zod.coerce.string()

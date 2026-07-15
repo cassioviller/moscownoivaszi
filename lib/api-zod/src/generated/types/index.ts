@@ -94,6 +94,7 @@ export * from './orcamentoItem';
 export * from './orcamentoItemInput';
 export * from './orcamentoItemInputTipo';
 export * from './orcamentoItemTipo';
+export * from './orcamentoItemUpdate';
 export * from './orcamentoStatus';
 export * from './orcamentoUpdate';
 export * from './orcamentoUpdateDescontoTipo';

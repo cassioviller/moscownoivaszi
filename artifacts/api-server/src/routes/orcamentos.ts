@@ -11,6 +11,8 @@ import {
   DeleteOrcamentoResponse,
   AddOrcamentoItemBody,
   AddOrcamentoItemResponse,
+  UpdateOrcamentoItemBody,
+  UpdateOrcamentoItemResponse,
   RemoveOrcamentoItemResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
@@ -170,6 +172,27 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
   } as any).returning();
 
   res.status(201).json(AddOrcamentoItemResponse.parse(item));
+});
+
+router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const itemId = req.params.itemId as string;
+  const parsed = UpdateOrcamentoItemBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [item] = await db.update(orcamentoItensTable)
+    .set(parsed.data)
+    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
+    .returning();
+  if (!item) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+
+  res.json(UpdateOrcamentoItemResponse.parse(item));
 });
 
 router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {

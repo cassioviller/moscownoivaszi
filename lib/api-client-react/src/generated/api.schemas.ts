@@ -908,6 +908,14 @@ export interface OrcamentoItemInput {
   quantidade?: number;
 }
 
+export interface OrcamentoItemUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  valorUnitario?: number;
+  /** @minimum 1 */
+  quantidade?: number;
+}
+
 export type ContratoStatus = typeof ContratoStatus[keyof typeof ContratoStatus];
 
 
