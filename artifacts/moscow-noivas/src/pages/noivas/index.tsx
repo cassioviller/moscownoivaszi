@@ -1,0 +1,202 @@
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { useListLeads, getListLeadsQueryKey, LeadEtapa } from "@workspace/api-client-react";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, AlertCircle, Search } from "lucide-react";
+import { etapaLabel } from "@/lib/formatos";
+import {
+  dataCurtaFmt,
+  diasAteCasamento,
+  rotuloContagem,
+  casamentoUrgente,
+  podeLeads,
+} from "./helpers";
+
+const TODAS_ETAPAS = "TODAS";
+
+/**
+ * Lista de noivas em cards (porte da /noivas do feat/orcamentos). O "estágio
+ * derivado" do orcamentos degrada para a etapa do funil do Lead do main;
+ * filtros por busca e etapa são client-side.
+ */
+export default function Noivas() {
+  const { lojaId } = useParams();
+  const { activeLojaId, acessosModulos } = useAuth();
+  const [busca, setBusca] = useState("");
+  const [etapa, setEtapa] = useState<string>(TODAS_ETAPAS);
+
+  const { data: noivas, isLoading, isError, error, refetch } = useListLeads(activeLojaId!, {
+    query: {
+      queryKey: getListLeadsQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+    },
+  });
+
+  // TODO Onda 4: distinguir ver/criar/editar — hoje o gate é flat por módulo.
+  const podeCriar = podeLeads(acessosModulos);
+
+  const visiveis = useMemo(() => {
+    const buscaLower = busca.trim().toLowerCase();
+    let lista = noivas ?? [];
+    if (etapa !== TODAS_ETAPAS) lista = lista.filter((n) => n.etapa === etapa);
+    if (buscaLower) {
+      lista = lista.filter(
+        (n) =>
+          n.noivaNome.toLowerCase().includes(buscaLower) ||
+          (n.noivoNome?.toLowerCase().includes(buscaLower) ?? false),
+      );
+    }
+    return lista;
+  }, [noivas, busca, etapa]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-serif">Noivas</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Cada noiva, sua jornada e o casamento à vista.
+          </p>
+        </div>
+        {podeCriar && (
+          <Button asChild data-testid="button-adicionar-noiva">
+            <Link to={`/loja/${lojaId}/noivas/nova`}>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar noiva
+            </Link>
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar noiva…"
+            aria-label="Buscar noiva pelo nome"
+            className="w-56 pl-9"
+            data-testid="input-busca-noiva"
+          />
+        </div>
+        <Select value={etapa} onValueChange={setEtapa}>
+          <SelectTrigger className="w-56" aria-label="Filtrar por etapa" data-testid="select-filtro-etapa">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS_ETAPAS}>Todas as etapas</SelectItem>
+            {Object.values(LeadEtapa).map((e) => (
+              <SelectItem key={e} value={e}>
+                {etapaLabel(e)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isError ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro ao carregar as noivas</AlertTitle>
+          <AlertDescription className="flex items-center gap-3">
+            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse h-40" />
+          ))}
+        </div>
+      ) : (noivas?.length ?? 0) === 0 ? (
+        <div className="flex flex-col items-center gap-4 rounded-lg border bg-card px-6 py-16 text-center">
+          <p className="text-lg font-serif">O atelier aguarda a primeira noiva.</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {podeCriar
+              ? "Cada história começa por um nome. Adicione a primeira noiva e acompanhe a jornada, prova a prova, até o grande dia."
+              : "Assim que a administração adicionar as noivas, a jornada de cada uma vai aparecer aqui."}
+          </p>
+          {podeCriar && (
+            <Button asChild>
+              <Link to={`/loja/${lojaId}/noivas/nova`}>Adicionar a primeira noiva</Link>
+            </Button>
+          )}
+        </div>
+      ) : visiveis.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhuma noiva nesta lente no momento.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visiveis.map((n) => {
+            const perdida = n.etapa === "PERDIDO";
+            const concluida = n.etapa === "DEVOLVIDO";
+            const dias = n.casamentoData ? diasAteCasamento(n.casamentoData) : null;
+            const mostrarContagem = dias !== null && dias >= 0 && !perdida && !concluida;
+            const urgente = dias !== null && mostrarContagem && casamentoUrgente(dias);
+            return (
+              <Card key={n.id} className={perdida ? "opacity-60" : undefined} data-testid={`card-noiva-${n.id}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate">{n.noivaNome}</span>
+                      {n.noivoNome && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          &amp; {n.noivoNome}
+                        </span>
+                      )}
+                    </span>
+                    <Badge variant={perdida ? "outline" : "secondary"} className="shrink-0">
+                      {etapaLabel(n.etapa)}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm text-muted-foreground">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span>Casamento</span>
+                    <span className="text-right">
+                      <span className="tabular-nums text-foreground">
+                        {n.casamentoData ? dataCurtaFmt.format(new Date(n.casamentoData)) : "a definir"}
+                      </span>
+                      {mostrarContagem && (
+                        <span className={`block text-xs ${urgente ? "text-destructive" : ""}`}>
+                          {rotuloContagem(dias!)}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {n.whatsapp && (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span>WhatsApp</span>
+                      <span className="tabular-nums text-foreground">{n.whatsapp}</span>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Button asChild variant="outline" size="sm" data-testid={`link-detalhes-${n.id}`}>
+                    <Link to={`/loja/${lojaId}/noivas/${n.id}`}>Detalhes</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

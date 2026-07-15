@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useLocation } from "@/lib/router-compat";
+import { Link, useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,21 @@ const STATUS_LABELS: Record<string, string> = {
   RECUSADO: "Recusado",
 };
 
+const FILTROS: { chave: string; rotulo: string }[] = [
+  { chave: "todos", rotulo: "Todos" },
+  { chave: "RASCUNHO", rotulo: "Rascunhos" },
+  { chave: "ENVIADO", rotulo: "Enviados" },
+  { chave: "APROVADO", rotulo: "Aprovados" },
+  { chave: "RECUSADO", rotulo: "Recusados" },
+];
+
+/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
+function moduloLiberado(acesso: unknown): boolean {
+  if (acesso === true) return true;
+  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
+  return false;
+}
+
 const novoOrcamentoSchema = z.object({
   leadId: z.string().min(1, "Escolha a noiva"),
   validade: z.string().optional(),
@@ -52,21 +67,31 @@ const novoOrcamentoSchema = z.object({
 type NovoOrcamentoValues = z.infer<typeof novoOrcamentoSchema>;
 
 export default function Orcamentos() {
-  const { activeLojaId, user } = useAuth();
+  const { activeLojaId, user, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [filtro, setFiltro] = useState("todos");
 
   const { data: orcamentos, isLoading, isError, refetch } = useListOrcamentos(activeLojaId!, { query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const leads = useListLeads(activeLojaId!, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createOrcamento = useCreateOrcamento();
+
+  // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
+  // TODO Onda 4: distinguir ver/criar (o orcamentos usava leads:editar para criar).
+  const podeCriar = !acessosModulos || moduloLiberado(acessosModulos["leads"]);
 
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();
     for (const lead of leads.data ?? []) mapa.set(lead.id, lead.noivaNome);
     return mapa;
   }, [leads.data]);
+
+  const filtrados = useMemo(
+    () => (filtro === "todos" ? orcamentos : orcamentos?.filter((o) => o.status === filtro)),
+    [orcamentos, filtro],
+  );
 
   const form = useForm<NovoOrcamentoValues>({
     resolver: zodResolver(novoOrcamentoSchema),
@@ -88,7 +113,7 @@ export default function Orcamentos() {
       toast({ title: "Orçamento criado", description: "Adicione os itens." });
       form.reset();
       setOpen(false);
-      setLocation(`/orcamentos/${criado.id}`);
+      navigate(`/loja/${activeLojaId}/orcamentos/${criado.id}`);
     } catch (err) {
       toast({
         title: "Erro ao criar orçamento",
@@ -102,10 +127,26 @@ export default function Orcamentos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif">Orçamentos</h1>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Orçamento
-        </Button>
+        {podeCriar && (
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Orçamento
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {FILTROS.map((f) => (
+          <Button
+            key={f.chave}
+            variant={filtro === f.chave ? "default" : "outline"}
+            size="sm"
+            className="rounded-full"
+            onClick={() => setFiltro(f.chave)}
+          >
+            {f.rotulo}
+          </Button>
+        ))}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -190,11 +231,15 @@ export default function Orcamentos() {
           </Alert>
         ) : isLoading ? (
           [1, 2, 3].map(i => <Card key={i} className="h-24 animate-pulse" />)
-        ) : orcamentos?.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">Nenhum orçamento encontrado.</div>
+        ) : filtrados?.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
+            {filtro === "todos"
+              ? "Nenhum orçamento encontrado."
+              : `Nenhum orçamento ${STATUS_LABELS[filtro]?.toLowerCase() ?? ""} encontrado.`}
+          </div>
         ) : (
-          orcamentos?.map(orcamento => (
-            <Link key={orcamento.id} href={`/orcamentos/${orcamento.id}`}>
+          filtrados?.map(orcamento => (
+            <Link key={orcamento.id} to={`/loja/${activeLojaId}/orcamentos/${orcamento.id}`}>
               <Card className="hover-elevate cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-4">

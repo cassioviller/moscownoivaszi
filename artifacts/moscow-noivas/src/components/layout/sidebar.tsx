@@ -13,7 +13,9 @@ import {
   UsersRound, 
   Settings,
   LogOut,
-  Store
+  Store,
+  BookOpen,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,14 +23,18 @@ import { Button } from "@/components/ui/button";
 // visível (dashboard, configurações).
 const navItems: { icon: typeof LayoutDashboard; label: string; href: string; modulo?: string }[] = [
   { icon: LayoutDashboard, label: "Visão Geral", href: "/dashboard" },
+  { icon: Users, label: "Noivas", href: "/noivas", modulo: "leads" },
   { icon: Users, label: "Leads", href: "/leads", modulo: "leads" },
   { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
   { icon: Shirt, label: "Vestidos", href: "/vestidos", modulo: "vestidos" },
+  // Catálogo (atributos de vestidos) é gateado no backend pelo módulo vestidos.
+  { icon: BookOpen, label: "Catálogo", href: "/catalogo", modulo: "vestidos" },
   { icon: FileText, label: "Orçamentos", href: "/orcamentos", modulo: "leads" },
   { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "leads" },
   { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro", modulo: "financeiro" },
   { icon: Percent, label: "Comissões", href: "/comissoes", modulo: "comissao" },
   { icon: UsersRound, label: "Equipe", href: "/equipe", modulo: "admin" },
+  { icon: ShieldCheck, label: "Permissões", href: "/permissoes", modulo: "admin" },
   { icon: Settings, label: "Configurações", href: "/configuracoes" },
 ];
 

@@ -41,7 +41,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
+import { Plus, ClipboardPlus, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const novoVestidoSchema = z.object({
@@ -252,6 +252,16 @@ export default function Vestidos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif">Catálogo de Vestidos</h1>
+        <div className="flex items-center gap-2">
+          {/* Cadastro completo (com características do catálogo) na página dedicada;
+              o dialog continua como atalho rápido. Link (role=link) não colide com o
+              botão "Novo Vestido" (role=button) exercitado pelo E2E. */}
+          <Button variant="outline" asChild>
+            <Link href="/vestidos/novo">
+              <ClipboardPlus className="h-4 w-4 mr-2" />
+              Novo vestido (completo)
+            </Link>
+          </Button>
         <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) form.reset(); }}>
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -367,6 +377,7 @@ export default function Vestidos() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

@@ -7,12 +7,14 @@ import {
   getListBloqueiosQueryKey,
   useListLeads,
   getListLeadsQueryKey,
+  useListAtributos,
+  getListAtributosQueryKey,
   useCheckDisponibilidadeVestidos,
   getCheckDisponibilidadeVestidosQueryKey,
   getGetVestidoFotoUrl,
 } from "@workspace/api-client-react";
-import type { BloqueioVestido, Lead } from "@workspace/api-client-react";
-import { useRoute } from "@/lib/router-compat";
+import type { Atributo, BloqueioVestido, Lead, VestidoAtributo } from "@workspace/api-client-react";
+import { Link, useParams } from "react-router";
 import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +22,28 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, Image as ImageIcon } from "lucide-react";
+import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
+
+/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
+function moduloLiberado(acesso: unknown): boolean {
+  if (acesso === true) return true;
+  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
+  return false;
+}
+
+/** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
+function rotularSelecoes(
+  catalogo: Atributo[],
+  selecoes: VestidoAtributo[],
+): { nome: string; valor: string }[] {
+  const rotulos: { nome: string; valor: string }[] = [];
+  for (const sel of selecoes) {
+    const atributo = catalogo.find((a) => a.id === sel.atributoId);
+    const opcao = atributo?.opcoes?.find((o) => o.id === sel.opcaoId);
+    if (atributo && opcao) rotulos.push({ nome: atributo.nome, valor: opcao.valor });
+  }
+  return rotulos;
+}
 
 /**
  * Período exibido de um bloqueio.
@@ -66,9 +89,11 @@ function bloqueioFuturoOuAberto(b: BloqueioVestido, hoje: Date): boolean {
 }
 
 export default function VestidoDetail() {
-  const { activeLojaId } = useAuth();
-  const [, params] = useRoute("/vestidos/:id");
-  const id = params?.id;
+  const { activeLojaId, acessosModulos } = useAuth();
+  const { lojaId, id } = useParams();
+
+  // TODO Onda 4: o orcamentos distinguia "editar" dentro de "vestidos"; hoje o gate é flat por módulo.
+  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["vestidos"]);
 
   const {
     data: vestido,
@@ -87,6 +112,11 @@ export default function VestidoDetail() {
   });
   const leadsQuery = useListLeads(activeLojaId!, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+
+  // Catálogo de atributos para rotular as características do vestido.
+  const catalogoQuery = useListAtributos(activeLojaId!, {
+    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   // "Estado atual" do vestido: consulta batch de disponibilidade com a data de
@@ -141,6 +171,11 @@ export default function VestidoDetail() {
 
   if (!vestido) return <div>Vestido não encontrado.</div>;
 
+  // Características do acervo (atributos do catálogo) em linguagem legível.
+  const caracteristicas = rotularSelecoes(catalogoQuery.data ?? [], vestido.atributos ?? []);
+  const reservasFuturas = proximosBloqueios.filter((b) => b.tipo === "RESERVA_CASAMENTO");
+  const editarHref = `/loja/${lojaId}/vestidos/${id}/editar`;
+
   function renderBadgeHoje() {
     if (disponibilidadeHoje.isLoading) return <Skeleton className="h-6 w-28 rounded-full" />;
     if (!itemHoje || itemHoje.status === "INATIVO") return null;
@@ -177,6 +212,14 @@ export default function VestidoDetail() {
             <Badge variant="secondary" className="text-sm px-3 py-1">Ativo</Badge>
           ) : (
             <Badge variant="outline" className="text-sm px-3 py-1">Inativo</Badge>
+          )}
+          {podeEditar && (
+            <Button variant="outline" asChild>
+              <Link to={editarHref}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar vestido
+              </Link>
+            </Button>
           )}
         </div>
       </div>
@@ -226,6 +269,36 @@ export default function VestidoDetail() {
               </div>
             </div>
 
+            {/* Características do acervo — usadas para indicar o vestido às noivas. */}
+            {caracteristicas.length > 0 ? (
+              <div>
+                <p className="text-muted-foreground text-sm">Características</p>
+                <ul className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1.5">
+                  {caracteristicas.map((c) => (
+                    <li
+                      key={c.nome}
+                      className="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground"
+                    >
+                      {c.nome}: <span className="text-foreground">{c.valor}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              podeEditar && (
+                <div>
+                  <p className="text-muted-foreground text-sm">Características</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Ainda não preenchidas.{" "}
+                    <Link to={editarHref} className="underline underline-offset-4 hover:text-foreground">
+                      Complete
+                    </Link>{" "}
+                    para melhorar as indicações de vestido.
+                  </p>
+                </div>
+              )
+            )}
+
             {vestido.observacoes && (
               <div>
                 <p className="text-muted-foreground text-sm">Observações</p>
@@ -236,8 +309,16 @@ export default function VestidoDetail() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Próximos bloqueios</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Disponibilidade</CardTitle>
+            {/* Selo de leitura instantânea: livre vs reservada (reservas futuras/abertas). */}
+            {!bloqueiosQuery.isLoading && !bloqueiosQuery.isError && (
+              reservasFuturas.length === 0 ? (
+                <Badge variant="secondary">Livre</Badge>
+              ) : (
+                <Badge variant="outline">Reservada</Badge>
+              )
+            )}
           </CardHeader>
           <CardContent>
             {bloqueiosQuery.isError ? (
@@ -262,7 +343,9 @@ export default function VestidoDetail() {
                 ))}
               </div>
             ) : proximosBloqueios.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum bloqueio futuro.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Sem reservas ou manutenções futuras. Esta peça está livre.
+              </p>
             ) : (
               <ul className="space-y-4">
                 {proximosBloqueios.map((bloqueio) => {

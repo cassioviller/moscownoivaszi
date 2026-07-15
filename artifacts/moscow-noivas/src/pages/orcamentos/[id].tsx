@@ -3,18 +3,22 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useGetOrcamento,
   getGetOrcamentoQueryKey,
+  getListOrcamentosQueryKey,
   useAddOrcamentoItem,
+  useUpdateOrcamentoItem,
   useRemoveOrcamentoItem,
   useAprovarOrcamento,
   useRecusarOrcamento,
   useUpdateOrcamento,
   useCreateContrato,
+  useListContratos,
   getListContratosQueryKey,
   useListLeads,
   getListLeadsQueryKey,
+  type OrcamentoItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "@/lib/router-compat";
+import { Link, useNavigate, useParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,6 +36,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,7 +54,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Trash2, AlertCircle, ScrollText } from "lucide-react";
+import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO } from "@/lib/formatos";
 
@@ -55,6 +70,20 @@ const novoItemSchema = z.object({
 });
 type NovoItemValues = z.infer<typeof novoItemSchema>;
 
+const editarItemSchema = z.object({
+  descricao: z.string().min(1, "Descrição obrigatória"),
+  valorUnitario: z.string().min(1, "Valor obrigatório"),
+  quantidade: z.string(),
+});
+type EditarItemValues = z.infer<typeof editarItemSchema>;
+
+/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
+function moduloLiberado(acesso: unknown): boolean {
+  if (acesso === true) return true;
+  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
+  return false;
+}
+
 const gerarContratoSchema = z.object({
   cpf: z.string().optional(),
   formaPagamento: z.string().optional(),
@@ -68,13 +97,13 @@ type GerarContratoValues = z.infer<typeof gerarContratoSchema>;
 const FORMAS = ["PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "DINHEIRO", "BOLETO", "TRANSFERENCIA", "OUTRO"] as const;
 
 export default function OrcamentoDetail() {
-  const { activeLojaId, user } = useAuth();
+  const { activeLojaId, user, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/orcamentos/:id");
-  const id = params?.id;
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [contratoOpen, setContratoOpen] = useState(false);
+  const [itemEmEdicao, setItemEmEdicao] = useState<OrcamentoItem | null>(null);
 
   const { data: orcamento, isLoading, isError, refetch } = useGetOrcamento(activeLojaId!, id!, {
     query: { queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id }
@@ -82,17 +111,35 @@ export default function OrcamentoDetail() {
   const leads = useListLeads(activeLojaId!, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
+  // O GetOrcamento não expõe o contrato gerado; buscamos na lista de contratos
+  // (client-side, só quando APROVADO) para alternar Gerar/Ver contrato.
+  const contratos = useListContratos(activeLojaId!, {
+    query: {
+      queryKey: getListContratosQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && orcamento?.status === "APROVADO",
+    },
+  });
 
   const addItem = useAddOrcamentoItem();
+  const updateItem = useUpdateOrcamentoItem();
   const removeItem = useRemoveOrcamentoItem();
   const aprovar = useAprovarOrcamento();
   const recusar = useRecusarOrcamento();
   const atualizar = useUpdateOrcamento();
   const createContrato = useCreateContrato();
 
+  // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
+  // TODO Onda 4: distinguir ver/editar (o orcamentos usava leads:editar para mutar).
+  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["leads"]);
+
   const lead = useMemo(
     () => leads.data?.find((l) => l.id === orcamento?.leadId),
     [leads.data, orcamento?.leadId],
+  );
+
+  const contratoExistente = useMemo(
+    () => contratos.data?.find((c) => c.orcamentoId === orcamento?.id),
+    [contratos.data, orcamento?.id],
   );
 
   const totais = useMemo(() => {
@@ -109,6 +156,11 @@ export default function OrcamentoDetail() {
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
     defaultValues: { tipo: "VESTIDO", descricao: "", valorUnitario: "", quantidade: "1" },
+  });
+
+  const editarItemForm = useForm<EditarItemValues>({
+    resolver: zodResolver(editarItemSchema),
+    defaultValues: { descricao: "", valorUnitario: "", quantidade: "1" },
   });
 
   const contratoForm = useForm<GerarContratoValues>({
@@ -135,8 +187,11 @@ export default function OrcamentoDetail() {
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
   if (!orcamento) return <div>Orçamento não encontrado.</div>;
 
-  const editavel = orcamento.status === "RASCUNHO" || orcamento.status === "ENVIADO";
+  // Editável só em RASCUNHO/ENVIADO (aprovado é a base do contrato; recusado é read-only).
+  const statusEditavel = orcamento.status === "RASCUNHO" || orcamento.status === "ENVIADO";
+  const editavel = statusEditavel && podeEditar;
   const invalidar = () => queryClient.invalidateQueries({ queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!) });
+  const invalidarLista = () => queryClient.invalidateQueries({ queryKey: getListOrcamentosQueryKey(activeLojaId!) });
 
   const onAddItem = async (values: NovoItemValues) => {
     const valorUnitario = Number(values.valorUnitario);
@@ -155,6 +210,41 @@ export default function OrcamentoDetail() {
       itemForm.reset({ tipo: values.tipo, descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
       toast({ title: "Erro ao adicionar item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    }
+  };
+
+  const abrirEdicaoItem = (item: OrcamentoItem) => {
+    editarItemForm.reset({
+      descricao: item.descricao,
+      valorUnitario: String(item.valorUnitario),
+      quantidade: String(item.quantidade),
+    });
+    setItemEmEdicao(item);
+  };
+
+  const onEditarItem = async (values: EditarItemValues) => {
+    if (!itemEmEdicao) return;
+    const valorUnitario = Number(values.valorUnitario);
+    const quantidade = Math.trunc(Number(values.quantidade) || 1);
+    if (!Number.isFinite(valorUnitario) || valorUnitario <= 0) {
+      toast({ title: "Valor unitário inválido", variant: "destructive" });
+      return;
+    }
+    if (quantidade < 1) {
+      toast({ title: "Quantidade inválida", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateItem.mutateAsync({
+        lojaId: activeLojaId!,
+        itemId: itemEmEdicao.id,
+        data: { descricao: values.descricao, valorUnitario, quantidade },
+      });
+      await invalidar();
+      toast({ title: "Item atualizado" });
+      setItemEmEdicao(null);
+    } catch (err) {
+      toast({ title: "Erro ao atualizar item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
     }
   };
 
@@ -186,10 +276,20 @@ export default function OrcamentoDetail() {
     }
   };
 
+  const onMudarStatus = async (status: "ENVIADO" | "RASCUNHO") => {
+    try {
+      await atualizar.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id!, data: { status } });
+      await Promise.all([invalidar(), invalidarLista()]);
+      toast({ title: status === "ENVIADO" ? "Orçamento marcado como enviado" : "Orçamento voltou para rascunho" });
+    } catch (err) {
+      toast({ title: "Erro ao mudar o status", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    }
+  };
+
   const onAprovar = async () => {
     try {
       await aprovar.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id! });
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Orçamento aprovado" });
     } catch (err) {
       toast({ title: "Erro ao aprovar", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
@@ -199,7 +299,7 @@ export default function OrcamentoDetail() {
   const onRecusar = async () => {
     try {
       await recusar.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id! });
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Orçamento recusado" });
     } catch (err) {
       toast({ title: "Erro ao recusar", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
@@ -261,7 +361,7 @@ export default function OrcamentoDetail() {
       await queryClient.invalidateQueries({ queryKey: getListContratosQueryKey(activeLojaId!) });
       toast({ title: "Contrato gerado" });
       setContratoOpen(false);
-      setLocation(`/contratos/${contrato.id}`);
+      navigate(`/loja/${activeLojaId}/contratos/${contrato.id}`);
     } catch (err) {
       toast({
         title: "Erro ao gerar contrato",
@@ -278,23 +378,78 @@ export default function OrcamentoDetail() {
           <h1 className="text-3xl font-serif">Orçamento — {lead?.noivaNome ?? "Noiva"}</h1>
           <p className="text-sm text-muted-foreground">Criado em {format(new Date(orcamento.createdAt), "dd/MM/yyyy")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge className="text-sm px-3 py-1">{orcamento.status}</Badge>
           {editavel && (
             <>
-              <Button variant="outline" size="sm" onClick={onRecusar} disabled={recusar.isPending}>
-                Recusar
-              </Button>
-              <Button size="sm" onClick={onAprovar} disabled={aprovar.isPending}>
-                Aprovar
-              </Button>
+              {orcamento.status === "RASCUNHO" && (
+                <Button variant="outline" size="sm" onClick={() => onMudarStatus("ENVIADO")} disabled={atualizar.isPending}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Marcar como enviado
+                </Button>
+              )}
+              {orcamento.status === "ENVIADO" && (
+                <Button variant="outline" size="sm" onClick={() => onMudarStatus("RASCUNHO")} disabled={atualizar.isPending}>
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Voltar para rascunho
+                </Button>
+              )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={recusar.isPending}>
+                    Recusar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Recusar este orçamento?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      O orçamento deixa de ser editável e fica registrado como recusado.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={onRecusar}>Recusar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" disabled={aprovar.isPending}>
+                    Aprovar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Aprovar este orçamento?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Aprovado, o orçamento vira a base do contrato e deixa de ser editável.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={onAprovar}>Aprovar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           )}
           {orcamento.status === "APROVADO" && (
-            <Button size="sm" onClick={() => setContratoOpen(true)}>
-              <ScrollText className="h-4 w-4 mr-2" />
-              Gerar contrato
-            </Button>
+            contratoExistente ? (
+              <Button size="sm" asChild>
+                <Link to={`/loja/${activeLojaId}/contratos/${contratoExistente.id}`}>
+                  <ScrollText className="h-4 w-4 mr-2" />
+                  Ver contrato
+                </Link>
+              </Button>
+            ) : (
+              podeEditar && !contratos.isLoading && (
+                <Button size="sm" onClick={() => setContratoOpen(true)}>
+                  <ScrollText className="h-4 w-4 mr-2" />
+                  Gerar contrato
+                </Button>
+              )
+            )
           )}
         </div>
       </div>
@@ -315,15 +470,25 @@ export default function OrcamentoDetail() {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">R$ {brl(item.quantidade * item.valorUnitario)}</span>
                     {editavel && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remover item"
-                        disabled={removeItem.isPending}
-                        onClick={() => onRemoveItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Editar item"
+                          onClick={() => abrirEdicaoItem(item)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remover item"
+                          disabled={removeItem.isPending}
+                          onClick={() => onRemoveItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </li>
@@ -437,6 +602,71 @@ export default function OrcamentoDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* GAP Onda 3+: "Vestidos indicados" do orcamentos (curadoria por afinidade via
+          indicarVestidos, com valor padrão × orçado por item) — sem endpoint de indicação
+          no client gerado; itens entram pelo formulário manual acima. */}
+
+      <Dialog open={!!itemEmEdicao} onOpenChange={(aberto) => { if (!aberto) setItemEmEdicao(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar item</DialogTitle>
+          </DialogHeader>
+          <Form {...editarItemForm}>
+            <form onSubmit={editarItemForm.handleSubmit(onEditarItem)} className="space-y-4">
+              <FormField
+                control={editarItemForm.control}
+                name="descricao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editarItemForm.control}
+                  name="valorUnitario"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor unitário (R$)</FormLabel>
+                      <FormControl>
+                        <Input inputMode="decimal" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editarItemForm.control}
+                  name="quantidade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade</FormLabel>
+                      <FormControl>
+                        <Input inputMode="numeric" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setItemEmEdicao(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateItem.isPending}>
+                  {updateItem.isPending ? "Salvando…" : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={contratoOpen} onOpenChange={setContratoOpen}>
         <DialogContent>

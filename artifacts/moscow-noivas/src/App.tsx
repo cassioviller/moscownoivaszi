@@ -16,11 +16,24 @@ import LeadDetail from "@/pages/leads/[id]";
 import Agenda from "@/pages/agenda";
 import Vestidos from "@/pages/vestidos";
 import VestidoDetail from "@/pages/vestidos/[id]";
+import NovoVestido from "@/pages/vestidos/novo";
+import EditarVestido from "@/pages/vestidos/[id]/editar";
 import Orcamentos from "@/pages/orcamentos";
 import OrcamentoDetail from "@/pages/orcamentos/[id]";
 import Contratos from "@/pages/contratos";
 import ContratoDetail from "@/pages/contratos/[id]";
 import Financeiro from "@/pages/financeiro";
+import Catalogo from "@/pages/catalogo";
+import Noivas from "@/pages/noivas";
+import NovaNoiva from "@/pages/noivas/nova";
+import NoivaDetalhe from "@/pages/noivas/[leadId]";
+import EditarNoiva from "@/pages/noivas/[leadId]/editar";
+import InteressesNoiva from "@/pages/noivas/[leadId]/interesses";
+import NovoAtributo from "@/pages/catalogo/novo";
+import EditarAtributo from "@/pages/catalogo/[atributoId]/editar";
+import Permissoes from "@/pages/permissoes";
+import AdminConsole from "@/pages/admin";
+import AdminPerfis from "@/pages/admin/perfis";
 import Comissoes from "@/pages/comissoes";
 import Equipe from "@/pages/equipe";
 import Configuracoes from "@/pages/configuracoes";
@@ -80,19 +93,33 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="leads" element={<Leads />} />
               <Route path="leads/:id" element={<LeadDetail />} />
+              <Route path="noivas" element={<Noivas />} />
+              <Route path="noivas/nova" element={<NovaNoiva />} />
+              <Route path="noivas/:leadId" element={<NoivaDetalhe />} />
+              <Route path="noivas/:leadId/editar" element={<EditarNoiva />} />
+              <Route path="noivas/:leadId/interesses" element={<InteressesNoiva />} />
               <Route path="agenda" element={<Agenda />} />
               <Route path="vestidos" element={<Vestidos />} />
+              <Route path="vestidos/novo" element={<NovoVestido />} />
               <Route path="vestidos/:id" element={<VestidoDetail />} />
+              <Route path="vestidos/:id/editar" element={<EditarVestido />} />
               <Route path="orcamentos" element={<Orcamentos />} />
               <Route path="orcamentos/:id" element={<OrcamentoDetail />} />
               <Route path="contratos" element={<Contratos />} />
               <Route path="contratos/:id" element={<ContratoDetail />} />
+              <Route path="catalogo" element={<Catalogo />} />
+              <Route path="catalogo/novo" element={<NovoAtributo />} />
+              <Route path="catalogo/:atributoId/editar" element={<EditarAtributo />} />
               <Route path="financeiro" element={<Financeiro />} />
               <Route path="comissoes" element={<Comissoes />} />
               <Route path="equipe" element={<Equipe />} />
+              <Route path="permissoes" element={<Permissoes />} />
               <Route path="configuracoes" element={<Configuracoes />} />
               <Route path="*" element={<NotFound />} />
             </Route>
+            {/* Console superadmin: fora do AppLayout de loja; traz o próprio shell/gate. */}
+            <Route path="/admin" element={<AdminConsole />} />
+            <Route path="/admin/perfis" element={<AdminPerfis />} />
             <Route path="*" element={<LegacyRedirect />} />
           </Routes>
         </BrowserRouter>
