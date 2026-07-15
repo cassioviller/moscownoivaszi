@@ -23,6 +23,11 @@ export interface SelecionarLojaInput {
   lojaId: string;
 }
 
+/**
+ * @nullable
+ */
+export type SessaoAcessosModulos = { [key: string]: unknown } | null;
+
 export interface Usuario {
   id: string;
   nome: string;
@@ -53,6 +58,8 @@ export interface Sessao {
   usuario: Usuario;
   /** @nullable */
   lojaAtivaId?: string | null;
+  /** @nullable */
+  acessosModulos?: SessaoAcessosModulos;
   lojas?: LojaComPerfil[];
 }
 
@@ -340,6 +347,12 @@ export interface Lead {
   casamentoHorario?: string | null;
   /** @nullable */
   casamentoLocal?: string | null;
+  /** @nullable */
+  orcamentoAbertoEm?: string | null;
+  /** @nullable */
+  contratoFechadoEm?: string | null;
+  /** @nullable */
+  perdidaEm?: string | null;
   origem: LeadOrigem;
   createdAt: string;
   interesse?: LeadInteresse;
@@ -562,6 +575,7 @@ export interface Ajuste {
 }
 
 export interface AjusteInput {
+  atendimentoId: string;
   /** @minLength 1 */
   descricao: string;
 }
@@ -606,6 +620,8 @@ export type ReservaStatus = typeof ReservaStatus[keyof typeof ReservaStatus];
 export const ReservaStatus = {
   EM_MONTAGEM: 'EM_MONTAGEM',
   CONFIRMADA: 'CONFIRMADA',
+  CONCLUIDA: 'CONCLUIDA',
+  CANCELADA: 'CANCELADA',
 } as const;
 
 export type BloqueioVestidoTipo = typeof BloqueioVestidoTipo[keyof typeof BloqueioVestidoTipo];
@@ -632,6 +648,12 @@ export interface BloqueioVestido {
   /** @nullable */
   devolucaoDataReal?: string | null;
   /** @nullable */
+  inicio?: string | null;
+  /** @nullable */
+  fim?: string | null;
+  /** @nullable */
+  canceladoEm?: string | null;
+  /** @nullable */
   observacao?: string | null;
   /** @nullable */
   reservaId?: string | null;
@@ -657,6 +679,8 @@ export type ReservaUpdateStatus = typeof ReservaUpdateStatus[keyof typeof Reserv
 export const ReservaUpdateStatus = {
   EM_MONTAGEM: 'EM_MONTAGEM',
   CONFIRMADA: 'CONFIRMADA',
+  CONCLUIDA: 'CONCLUIDA',
+  CANCELADA: 'CANCELADA',
 } as const;
 
 export interface ReservaUpdate {
@@ -677,6 +701,8 @@ export interface BloqueioVestidoInput {
   leadId?: string;
   tipo: BloqueioVestidoInputTipo;
   casamentoData?: string;
+  inicio?: string;
+  fim?: string;
   observacao?: string;
   reservaId?: string;
 }
@@ -685,7 +711,78 @@ export interface BloqueioVestidoUpdate {
   provaDataReal?: string;
   retiradaDataReal?: string;
   devolucaoDataReal?: string;
+  inicio?: string;
+  fim?: string;
   observacao?: string;
+}
+
+export type ConflitoBloqueioTipo = typeof ConflitoBloqueioTipo[keyof typeof ConflitoBloqueioTipo];
+
+
+export const ConflitoBloqueioTipo = {
+  RESERVA_CASAMENTO: 'RESERVA_CASAMENTO',
+  MANUTENCAO: 'MANUTENCAO',
+} as const;
+
+export type ConflitoBloqueioMotivo = typeof ConflitoBloqueioMotivo[keyof typeof ConflitoBloqueioMotivo];
+
+
+export const ConflitoBloqueioMotivo = {
+  USO: 'USO',
+  LAVAGEM: 'LAVAGEM',
+  PROVA: 'PROVA',
+  MANUTENCAO: 'MANUTENCAO',
+  ATRASO_DEVOLUCAO: 'ATRASO_DEVOLUCAO',
+} as const;
+
+/**
+ * Item de conflito de disponibilidade (mesmo shape nos 409 e no batch)
+ */
+export interface ConflitoBloqueio {
+  bloqueioId: string;
+  tipo: ConflitoBloqueioTipo;
+  motivo: ConflitoBloqueioMotivo;
+  /** Dia local inclusivo YYYY-MM-DD */
+  inicio: string;
+  /**
+     * Dia local inclusivo YYYY-MM-DD; null = janela aberta
+     * @nullable
+     */
+  fim: string | null;
+  /** @nullable */
+  leadId: string | null;
+  /** @nullable */
+  reservaId: string | null;
+  /** @nullable */
+  noivaNome: string | null;
+}
+
+export type DisponibilidadeVestidosItensItemStatus = typeof DisponibilidadeVestidosItensItemStatus[keyof typeof DisponibilidadeVestidosItensItemStatus];
+
+
+export const DisponibilidadeVestidosItensItemStatus = {
+  DISPONIVEL: 'DISPONIVEL',
+  RESERVADO: 'RESERVADO',
+  MANUTENCAO: 'MANUTENCAO',
+  INATIVO: 'INATIVO',
+} as const;
+
+export type DisponibilidadeVestidosItensItem = {
+  vestidoId: string;
+  disponivel: boolean;
+  status: DisponibilidadeVestidosItensItemStatus;
+  /**
+     * Frase pronta em pt-BR (datas dd/MM)
+     * @nullable
+     */
+  motivo: string | null;
+  conflito: ConflitoBloqueio | null;
+};
+
+export interface DisponibilidadeVestidos {
+  /** Dia local YYYY-MM-DD consultado */
+  data: string;
+  itens: DisponibilidadeVestidosItensItem[];
 }
 
 export type OrcamentoStatus = typeof OrcamentoStatus[keyof typeof OrcamentoStatus];
@@ -878,6 +975,27 @@ export interface Parcela {
   formaRecebimento?: ParcelaFormaRecebimento;
 }
 
+export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItemTipo];
+
+
+export const ContratoItemTipo = {
+  VESTIDO: 'VESTIDO',
+  SERVICO: 'SERVICO',
+  AJUSTE: 'AJUSTE',
+} as const;
+
+export interface ContratoItem {
+  id: string;
+  lojaId: string;
+  contratoId: string;
+  tipo: ContratoItemTipo;
+  /** @nullable */
+  vestidoId?: string | null;
+  descricao: string;
+  valorUnitario: number;
+  quantidade: number;
+}
+
 export interface Contrato {
   id: string;
   lojaId: string;
@@ -898,6 +1016,8 @@ export interface Contrato {
   /** @nullable */
   canceladoMotivo?: string | null;
   /** @nullable */
+  canceladoEm?: string | null;
+  /** @nullable */
   dataCasamento?: string | null;
   /** @nullable */
   dataRetirada?: string | null;
@@ -907,6 +1027,7 @@ export interface Contrato {
   observacoes?: string | null;
   fechadoEm: string;
   parcelas?: Parcela[];
+  itens?: ContratoItem[];
 }
 
 export type ContratoInputFormaPagamento = typeof ContratoInputFormaPagamento[keyof typeof ContratoInputFormaPagamento];
@@ -1060,20 +1181,20 @@ export interface PagarContaInput {
 export interface SalarioRecorrente {
   id: string;
   lojaId: string;
-  colaboradorId: string;
-  valorBase: number;
+  usuarioId: string;
+  valor: number;
   diaVencimento: number;
   ativo: boolean;
 }
 
 export interface SalarioRecorrenteInput {
-  colaboradorId: string;
-  valorBase: number;
+  usuarioId: string;
+  valor: number;
   diaVencimento: number;
 }
 
 export interface SalarioRecorrenteUpdate {
-  valorBase?: number;
+  valor?: number;
   diaVencimento?: number;
   ativo?: boolean;
 }
@@ -1081,74 +1202,66 @@ export interface SalarioRecorrenteUpdate {
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
-  dataReferencia: string;
+  /** Competência YYYY-MM */
+  competencia: string;
   valor: number;
 }
 
 export interface SaldoReferenciaInput {
-  dataReferencia: string;
+  /** @pattern ^\d{4}-\d{2}$ */
+  competencia: string;
   valor: number;
-}
-
-export interface ComissaoFaixa {
-  id: string;
-  regraId: string;
-  minAcumulado: number;
-  /** @nullable */
-  maxAcumulado?: number | null;
-  /** @nullable */
-  percentual?: number | null;
-  /** @nullable */
-  bonusFixo?: number | null;
 }
 
 export interface ComissaoRegra {
   id: string;
   lojaId: string;
-  vendedoraId: string;
-  vigenciaInicio: string;
-  bonusAcumulaFaixas: boolean;
-  ativo: boolean;
-  faixas?: ComissaoFaixa[];
-}
-
-export interface ComissaoFaixaInput {
-  minAcumulado: number;
-  maxAcumulado?: number;
-  percentual?: number;
-  bonusFixo?: number;
+  usuarioId: string;
+  /** @nullable */
+  regraGlobal?: string | null;
 }
 
 export interface ComissaoRegraInput {
-  vendedoraId: string;
-  vigenciaInicio: string;
-  bonusAcumulaFaixas?: boolean;
-  faixas: ComissaoFaixaInput[];
+  usuarioId: string;
+  regraGlobal?: string;
 }
 
 export interface ComissaoRegraUpdate {
-  ativo?: boolean;
-  bonusAcumulaFaixas?: boolean;
-  faixas?: ComissaoFaixaInput[];
+  regraGlobal?: string;
+}
+
+export interface ComissaoFaixa {
+  id: string;
+  lojaId: string;
+  minimoVenda: number;
+  percentual: number;
+}
+
+export interface ComissaoFaixaInput {
+  /** @minimum 0 */
+  minimoVenda: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  percentual: number;
 }
 
 export interface ComissaoFechamento {
   id: string;
   lojaId: string;
-  vendedoraId: string;
+  usuarioId: string;
+  /** Competência YYYY-MM */
   competencia: string;
   totalVendas: number;
-  /** @nullable */
-  percentualAplicado?: number | null;
-  valorComissao: number;
-  valorBonus: number;
-  valorTotal: number;
+  comissaoValor: number;
   /** @nullable */
   contaPagarId?: string | null;
-  fechadoEm: string;
+  createdAt?: string;
 }
 
 export interface GerarComissaoFechamentoInput {
+  /** @pattern ^\d{4}-\d{2}$ */
   competencia: string;
 }
 
@@ -1161,4 +1274,12 @@ export interface DashboardSummary {
   pagarProximos30Dias: number;
   atendimentosHoje?: number;
 }
+
+export type CheckDisponibilidadeVestidosParams = {
+/**
+ * Data do casamento candidata (dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+data: string;
+};
 

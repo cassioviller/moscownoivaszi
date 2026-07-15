@@ -10,5 +10,7 @@ export interface BloqueioVestidoUpdate {
   provaDataReal?: Date;
   retiradaDataReal?: Date;
   devolucaoDataReal?: Date;
+  inicio?: Date;
+  fim?: Date;
   observacao?: string;
 }

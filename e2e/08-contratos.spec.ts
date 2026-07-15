@@ -47,14 +47,15 @@ test.describe("Contratos", () => {
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
     test.skip(!estado.contratoId, "sem contrato seedado");
-    // O que o cliente gerado chama:
-    const urlFrontend = await request.get(`${API_URL}/api/contratos/${estado.contratoId}`);
+    // O que o cliente gerado chama agora (getGetContratoUrl → escopado por loja;
+    // C2 reconciliado: /api/lojas/{lojaId}/contratos/{id}).
+    const urlFrontend = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos/${estado.contratoId}`);
     // O que o servidor realmente expõe:
     const urlServidor = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos/${estado.contratoId}`);
 
     expect(
       urlFrontend.status(),
-      `Frontend chama /api/contratos/{id} → ${urlFrontend.status()}; servidor expõe /api/lojas/{lojaId}/contratos/{id} → ${urlServidor.status()}. As duas deveriam coincidir.`,
+      `Frontend chama /api/lojas/{lojaId}/contratos/{id} → ${urlFrontend.status()}; servidor expõe /api/lojas/{lojaId}/contratos/{id} → ${urlServidor.status()}. As duas deveriam coincidir.`,
     ).toBe(urlServidor.status());
   });
 });

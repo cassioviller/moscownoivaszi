@@ -9,15 +9,12 @@
 export interface ComissaoFechamento {
   id: string;
   lojaId: string;
-  vendedoraId: string;
+  usuarioId: string;
+  /** Competência YYYY-MM */
   competencia: string;
   totalVendas: number;
-  /** @nullable */
-  percentualAplicado?: number | null;
-  valorComissao: number;
-  valorBonus: number;
-  valorTotal: number;
+  comissaoValor: number;
   /** @nullable */
   contaPagarId?: string | null;
-  fechadoEm: Date;
+  createdAt?: Date;
 }

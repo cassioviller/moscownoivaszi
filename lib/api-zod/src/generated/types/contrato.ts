@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
+import type { ContratoItem } from './contratoItem';
 import type { ContratoStatus } from './contratoStatus';
 import type { Parcela } from './parcela';
 
@@ -29,6 +30,8 @@ export interface Contrato {
   /** @nullable */
   canceladoMotivo?: string | null;
   /** @nullable */
+  canceladoEm?: Date | null;
+  /** @nullable */
   dataCasamento?: Date | null;
   /** @nullable */
   dataRetirada?: Date | null;
@@ -38,4 +41,5 @@ export interface Contrato {
   observacoes?: string | null;
   fechadoEm: Date;
   parcelas?: Parcela[];
+  itens?: ContratoItem[];
 }

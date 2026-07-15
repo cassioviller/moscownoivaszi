@@ -5,10 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { ComissaoFaixaInput } from './comissaoFaixaInput';
 
 export interface ComissaoRegraUpdate {
-  ativo?: boolean;
-  bonusAcumulaFaixas?: boolean;
-  faixas?: ComissaoFaixaInput[];
+  regraGlobal?: string;
 }

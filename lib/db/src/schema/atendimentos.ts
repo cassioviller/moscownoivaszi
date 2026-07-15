@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, unique, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable, cabinesTable } from "./loja";
@@ -38,6 +38,17 @@ export const bloqueioVestidosTable = pgTable("bloqueio_vestidos", {
   provaDataReal: timestamp("prova_data_real", { withTimezone: true }),
   retiradaDataReal: timestamp("retirada_data_real", { withTimezone: true }),
   devolucaoDataReal: timestamp("devolucao_data_real", { withTimezone: true }),
+  // Manutenção: janela [inicio, fim]; fim null = sem prazo definido.
+  inicio: timestamp("inicio", { withTimezone: true }),
+  fim: timestamp("fim", { withTimezone: true }),
+  // Soft-cancel do bloqueio (a constraint EXCLUDE do banco só enxerga esta coluna,
+  // não o status da reserva vinculada).
+  canceladoEm: timestamp("cancelado_em", { withTimezone: true }),
+  // Envelope FÍSICO materializado (dias locais America/Sao_Paulo, inclusivos),
+  // calculado pelo serviço de disponibilidade em todo INSERT/UPDATE.
+  // ocupacaoFim null = janela aberta (retirada sem devolução).
+  ocupacaoInicio: date("ocupacao_inicio"),
+  ocupacaoFim: date("ocupacao_fim"),
   observacao: text("observacao"),
   reservaId: text("reserva_id").references(() => reservasTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

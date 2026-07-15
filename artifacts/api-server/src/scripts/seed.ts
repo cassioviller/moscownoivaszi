@@ -50,6 +50,7 @@ async function seed() {
 
   // 3. Usuarios
   const superAdminId = randomUUID();
+  const vendedoraId = randomUUID();
   await db.insert(usuariosTable).values([
     {
       id: superAdminId,
@@ -59,7 +60,7 @@ async function seed() {
       isSuperAdmin: true,
     },
     {
-      id: randomUUID(),
+      id: vendedoraId,
       nome: "Vendedora Maria",
       email: "maria@moscownoivas.com",
       senhaHash: adminSenhaHash,
@@ -67,12 +68,19 @@ async function seed() {
     }
   ]);
 
-  // Link super admin to loja
-  await db.insert(usuariosLojasTable).values({
-    usuarioId: superAdminId,
-    lojaId: lojaId,
-    perfilId: adminPerfilId,
-  });
+  // Link super admin e vendedora à loja
+  await db.insert(usuariosLojasTable).values([
+    {
+      usuarioId: superAdminId,
+      lojaId: lojaId,
+      perfilId: adminPerfilId,
+    },
+    {
+      usuarioId: vendedoraId,
+      lojaId: lojaId,
+      perfilId: vendedoraPerfilId,
+    },
+  ]);
 
   // 4. Vestidos
   await db.insert(vestidosTable).values([

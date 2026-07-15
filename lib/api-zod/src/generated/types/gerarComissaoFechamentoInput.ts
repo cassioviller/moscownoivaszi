@@ -7,5 +7,6 @@
  */
 
 export interface GerarComissaoFechamentoInput {
+  /** @pattern ^\d{4}-\d{2}$ */
   competencia: string;
 }

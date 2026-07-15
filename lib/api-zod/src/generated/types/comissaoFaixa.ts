@@ -8,12 +8,7 @@
 
 export interface ComissaoFaixa {
   id: string;
-  regraId: string;
-  minAcumulado: number;
-  /** @nullable */
-  maxAcumulado?: number | null;
-  /** @nullable */
-  percentual?: number | null;
-  /** @nullable */
-  bonusFixo?: number | null;
+  lojaId: string;
+  minimoVenda: number;
+  percentual: number;
 }

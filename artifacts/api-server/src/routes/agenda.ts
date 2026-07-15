@@ -25,12 +25,16 @@ import {
   SetDisponibilidadeBody,
   SetDisponibilidadeResponse
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/cabines", requireModulo("agenda"));
+router.use("/lojas/:lojaId/atendimentos", requireModulo("agenda"));
+router.use("/lojas/:lojaId/ajustes", requireModulo("agenda"));
+router.use("/lojas/:lojaId/disponibilidade", requireModulo("agenda"));
 
 // Cabines
 router.get("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
@@ -54,7 +58,7 @@ router.post("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
   res.status(201).json(CreateCabineResponse.parse(cabine));
 });
 
-router.patch("/cabines/:cabineId", async (req, res): Promise<void> => {
+router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = UpdateCabineParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -67,7 +71,7 @@ router.patch("/cabines/:cabineId", async (req, res): Promise<void> => {
   }
   const [cabine] = await db.update(cabinesTable)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(cabinesTable.id, params.data.cabineId))
+    .where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)))
     .returning();
   if (!cabine) {
     res.status(404).json({ error: "Cabine not found" });
@@ -76,13 +80,13 @@ router.patch("/cabines/:cabineId", async (req, res): Promise<void> => {
   res.json(UpdateCabineResponse.parse(cabine));
 });
 
-router.delete("/cabines/:cabineId", async (req, res): Promise<void> => {
+router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = DeleteCabineParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  await db.delete(cabinesTable).where(eq(cabinesTable.id, params.data.cabineId));
+  await db.delete(cabinesTable).where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)));
   res.status(204).send();
 });
 

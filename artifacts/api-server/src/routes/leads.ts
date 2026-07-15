@@ -14,12 +14,26 @@ import {
   CreateRegistroCobrancaBody,
   CreateRegistroCobrancaResponse
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
+import { transicaoLeadValida, type LeadEtapa } from "../lib/estados";
 
 const router: IRouter = Router();
 
+/** Carimba o marco temporal da etapa (só se ainda não preenchido). */
+function carimboEtapa(
+  etapa: LeadEtapa,
+  atual: { orcamentoAbertoEm: Date | null; contratoFechadoEm: Date | null; perdidaEm: Date | null },
+): Partial<{ orcamentoAbertoEm: Date; contratoFechadoEm: Date; perdidaEm: Date }> {
+  const agora = new Date();
+  if (etapa === "ORCAMENTO_ABERTO" && !atual.orcamentoAbertoEm) return { orcamentoAbertoEm: agora };
+  if (etapa === "CONTRATO_FECHADO" && !atual.contratoFechadoEm) return { contratoFechadoEm: agora };
+  if (etapa === "PERDIDO" && !atual.perdidaEm) return { perdidaEm: agora };
+  return {};
+}
+
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/leads", requireModulo("leads"));
 
 router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -84,8 +98,27 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     return;
   }
 
+  const existente = await db.query.leadsTable.findFirst({
+    where: and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)),
+  });
+  if (!existente) {
+    res.status(404).json({ error: "Lead not found" });
+    return;
+  }
+
+  // Mudança de etapa só por transição válida da máquina de estados.
+  if (parsed.data.etapa && !transicaoLeadValida(existente.etapa, parsed.data.etapa)) {
+    res.status(422).json({
+      error: "TRANSICAO_INVALIDA",
+      detalhe: `Lead não pode ir de ${existente.etapa} para ${parsed.data.etapa}`,
+    });
+    return;
+  }
+
+  const carimbo = parsed.data.etapa ? carimboEtapa(parsed.data.etapa, existente) : {};
+
   const [lead] = await db.update(leadsTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, ...carimbo, updatedAt: new Date() })
     .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)))
     .returning();
 
@@ -108,11 +141,20 @@ router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> =>
   res.status(204).send();
 });
 
-router.put("/leads/:leadId/interesse", async (req, res): Promise<void> => {
+router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const leadId = req.params.leadId as string;
   const parsed = SetLeadInteresseBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const lead = await db.query.leadsTable.findFirst({
+    where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
+  });
+  if (!lead) {
+    res.status(404).json({ error: "Lead not found" });
     return;
   }
 
@@ -153,15 +195,24 @@ router.put("/leads/:leadId/interesse", async (req, res): Promise<void> => {
   res.json(SetLeadInteresseResponse.parse(fullInteresse));
 });
 
-router.get("/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
+router.get("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const leadId = req.params.leadId as string;
+  const lead = await db.query.leadsTable.findFirst({
+    where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
+  });
+  if (!lead) {
+    res.status(404).json({ error: "Lead not found" });
+    return;
+  }
   const cobrancas = await db.select().from(registrosCobrancaTable)
-    .where(eq(registrosCobrancaTable.leadId, leadId))
+    .where(and(eq(registrosCobrancaTable.leadId, leadId), eq(registrosCobrancaTable.lojaId, lojaId)))
     .orderBy(registrosCobrancaTable.contatoData);
   res.json(ListRegistrosCobrancaResponse.parse(cobrancas));
 });
 
-router.post("/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const leadId = req.params.leadId as string;
   const parsed = CreateRegistroCobrancaBody.safeParse(req.body);
   if (!parsed.success) {
@@ -169,8 +220,9 @@ router.post("/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
     return;
   }
 
-  // Find lead to get lojaId
-  const lead = await db.query.leadsTable.findFirst({ where: eq(leadsTable.id, leadId) });
+  const lead = await db.query.leadsTable.findFirst({
+    where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
+  });
   if (!lead) {
     res.status(404).json({ error: "Lead not found" });
     return;

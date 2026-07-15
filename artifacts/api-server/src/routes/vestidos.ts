@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, vestidosTable, vestidoFotosTable, vestidoAtributosTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { 
+import {
   ListVestidosResponse,
   CreateVestidoBody,
   CreateVestidoResponse,
@@ -9,14 +9,29 @@ import {
   UpdateVestidoBody,
   UpdateVestidoResponse,
   SetVestidoFotoBody,
-  SetVestidoFotoResponse
+  SetVestidoFotoResponse,
+  CheckDisponibilidadeVestidosQueryParams,
+  CheckDisponibilidadeVestidosResponse
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
+import {
+  buscarRegra,
+  buscarBloqueiosAtivos,
+  janelasDoBloqueio,
+  conflitos,
+  detalharConflitos,
+  diaLocal,
+  type BloqueioJanelasInput,
+  type BloqueioAtivoComContexto,
+  type ConflitoDetalhe,
+  type Janela,
+} from "../lib/disponibilidade";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/vestidos", requireModulo("vestidos"));
 
 router.get("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -76,6 +91,110 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
   });
 
   res.status(201).json(CreateVestidoResponse.parse(vestido));
+});
+
+// ── Disponibilidade em lote ──
+// ATENÇÃO de roteamento: esta rota PRECISA vir antes de
+// /lojas/:lojaId/vestidos/:vestidoId, senão "disponibilidade" casa como id.
+
+function ddMM(dia: string): string {
+  return `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
+}
+
+function fraseMotivo(conflito: ConflitoDetalhe): string {
+  const periodo = conflito.fim
+    ? `${ddMM(conflito.inicio)}–${ddMM(conflito.fim)}`
+    : `a partir de ${ddMM(conflito.inicio)}`;
+  if (conflito.tipo === "MANUTENCAO") {
+    return `Em manutenção ${periodo}`;
+  }
+  return conflito.noivaNome
+    ? `Reservado ${periodo} — noiva ${conflito.noivaNome}`
+    : `Reservado ${periodo}`;
+}
+
+router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsedQuery = CheckDisponibilidadeVestidosQueryParams.safeParse(req.query);
+  if (!parsedQuery.success) {
+    res.status(400).json({ error: "Parâmetro 'data' inválido (esperado YYYY-MM-DD)" });
+    return;
+  }
+  const { data } = parsedQuery.data;
+
+  const hojeDia = diaLocal(new Date());
+
+  // 3 queries fixas — nunca N+1 (bloqueios de TODOS os vestidos em 1 query,
+  // com noivaNome do lead via JOIN).
+  const [vestidos, regra, ativos] = await Promise.all([
+    db.select({ id: vestidosTable.id, status: vestidosTable.status })
+      .from(vestidosTable)
+      .where(eq(vestidosTable.lojaId, lojaId))
+      .orderBy(vestidosTable.nome),
+    buscarRegra(lojaId),
+    buscarBloqueiosAtivos({ lojaId }),
+  ]);
+
+  // "Se eu criar uma RESERVA_CASAMENTO com casamentoData = data, quais
+  // vestidos conflitam?" — meio-dia São Paulo (fuso fixo -03:00).
+  const candidato: BloqueioJanelasInput = {
+    id: "__candidato__",
+    tipo: "RESERVA_CASAMENTO",
+    casamentoData: new Date(`${data}T12:00:00-03:00`),
+    provaDataReal: null,
+    retiradaDataReal: null,
+    devolucaoDataReal: null,
+    inicio: null,
+    fim: null,
+  };
+  const janelasCandidato = janelasDoBloqueio(candidato, regra, hojeDia);
+
+  const porVestido = new Map<
+    string,
+    { janelas: Janela[]; contexto: Map<string, BloqueioAtivoComContexto> }
+  >();
+  for (const ativo of ativos) {
+    let grupo = porVestido.get(ativo.bloqueio.vestidoId);
+    if (!grupo) {
+      grupo = { janelas: [], contexto: new Map() };
+      porVestido.set(ativo.bloqueio.vestidoId, grupo);
+    }
+    grupo.janelas.push(...janelasDoBloqueio(ativo.bloqueio, regra, hojeDia));
+    grupo.contexto.set(ativo.bloqueio.id, ativo);
+  }
+
+  const itens = vestidos.map((vestido) => {
+    if (vestido.status !== "ativo") {
+      return {
+        vestidoId: vestido.id,
+        disponivel: false,
+        status: "INATIVO" as const,
+        motivo: "Vestido inativo",
+        conflito: null,
+      };
+    }
+    const grupo = porVestido.get(vestido.id);
+    const pares = grupo ? conflitos(janelasCandidato, grupo.janelas) : [];
+    if (!grupo || pares.length === 0) {
+      return {
+        vestidoId: vestido.id,
+        disponivel: true,
+        status: "DISPONIVEL" as const,
+        motivo: null,
+        conflito: null,
+      };
+    }
+    const [principal] = detalharConflitos(pares, grupo.contexto);
+    return {
+      vestidoId: vestido.id,
+      disponivel: false,
+      status: principal.tipo === "MANUTENCAO" ? ("MANUTENCAO" as const) : ("RESERVADO" as const),
+      motivo: fraseMotivo(principal),
+      conflito: principal,
+    };
+  });
+
+  res.json(CheckDisponibilidadeVestidosResponse.parse({ data, itens }));
 });
 
 router.get("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void> => {
@@ -154,12 +273,53 @@ router.delete("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<vo
   res.status(204).send();
 });
 
-router.put("/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
-  const { vestidoId, ordem: ordemStr } = req.params;
+// Serve o bytea da foto como imagem binária (consumido por <img src>).
+// Escopo de loja garantido pelo JOIN com o vestido (404 se a foto for de
+// outra loja). Cache com ETag por updatedAt para revalidação barata.
+router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
+  const { lojaId, vestidoId, ordem: ordemStr } = req.params;
+  const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
+  if (Number.isNaN(ordem)) {
+    res.status(400).json({ error: "Ordem inválida" });
+    return;
+  }
+
+  const foto = await db.query.vestidoFotosTable.findFirst({
+    where: and(eq(vestidoFotosTable.vestidoId, vestidoId as string), eq(vestidoFotosTable.ordem, ordem)),
+    with: { vestido: { columns: { lojaId: true } } },
+  });
+
+  if (!foto || foto.vestido.lojaId !== lojaId) {
+    res.status(404).json({ error: "Foto not found" });
+    return;
+  }
+
+  const etag = `"${vestidoId}-${ordem}-${foto.updatedAt.getTime()}"`;
+  if (req.headers["if-none-match"] === etag) {
+    res.status(304).end();
+    return;
+  }
+
+  res.setHeader("Content-Type", foto.mime);
+  res.setHeader("Cache-Control", "private, max-age=60, must-revalidate");
+  res.setHeader("ETag", etag);
+  res.send(foto.bytes);
+});
+
+router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
+  const { lojaId, vestidoId, ordem: ordemStr } = req.params;
   const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
   const parsed = SetVestidoFotoBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const vestido = await db.query.vestidosTable.findFirst({
+    where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
+  });
+  if (!vestido) {
+    res.status(404).json({ error: "Vestido not found" });
     return;
   }
 
@@ -196,9 +356,16 @@ router.put("/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> 
   }));
 });
 
-router.delete("/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
-  const { vestidoId, ordem: ordemStr } = req.params;
+router.delete("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
+  const { lojaId, vestidoId, ordem: ordemStr } = req.params;
   const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
+  const vestido = await db.query.vestidosTable.findFirst({
+    where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
+  });
+  if (!vestido) {
+    res.status(404).json({ error: "Vestido not found" });
+    return;
+  }
   await db.delete(vestidoFotosTable).where(and(eq(vestidoFotosTable.vestidoId, vestidoId as string), eq(vestidoFotosTable.ordem, ordem)));
   res.status(204).send();
 });

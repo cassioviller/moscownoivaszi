@@ -1,11 +1,23 @@
+import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useGetDashboard, getGetDashboardQueryKey } from "@workspace/api-client-react";
+import {
+  useGetDashboard,
+  getGetDashboardQueryKey,
+  useListLeads,
+  getListLeadsQueryKey,
+  useListAtendimentos,
+  getListAtendimentosQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Users, FileText, CheckCircle2, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
+import { format } from "date-fns";
+import { Calendar, Users, FileText, CheckCircle2, TrendingUp, Clock } from "lucide-react";
+import { etapaLabel } from "@/lib/formatos";
 
 export default function Dashboard() {
   const { activeLojaId } = useAuth();
-  
+
   // Only fetch if we have a lojaId
   const { data: dashboard, isLoading } = useGetDashboard(activeLojaId!, {
     query: {
@@ -13,6 +25,35 @@ export default function Dashboard() {
       enabled: !!activeLojaId,
     }
   });
+
+  const leadsQuery = useListLeads(activeLojaId!, {
+    query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const atendimentosQuery = useListAtendimentos(activeLojaId!, {
+    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+
+  // Os cinco leads mais recentes (por data de criação).
+  const leadsRecentes = useMemo(() => {
+    return [...(leadsQuery.data ?? [])]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+  }, [leadsQuery.data]);
+
+  // Atendimentos futuros, ordenados pelo horário mais próximo.
+  const proximosAtendimentos = useMemo(() => {
+    const agora = Date.now();
+    return [...(atendimentosQuery.data ?? [])]
+      .filter((a) => new Date(a.inicio).getTime() >= agora)
+      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())
+      .slice(0, 5);
+  }, [atendimentosQuery.data]);
+
+  const nomePorLead = useMemo(() => {
+    const mapa = new Map<string, string>();
+    for (const lead of leadsQuery.data ?? []) mapa.set(lead.id, lead.noivaNome);
+    return mapa;
+  }, [leadsQuery.data]);
 
   if (isLoading) {
     return (
@@ -50,7 +91,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">Ativos</p>
           </CardContent>
         </Card>
-        
+
         <Card className="hover-elevate">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos Hoje</CardTitle>
@@ -94,9 +135,39 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground text-center py-8">
-              A agenda está vazia para os próximos dias.
-            </div>
+            {atendimentosQuery.isError ? (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                Não foi possível carregar a agenda.
+              </div>
+            ) : atendimentosQuery.isLoading ? (
+              <div className="animate-pulse space-y-3">
+                {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted rounded-md" />)}
+              </div>
+            ) : proximosAtendimentos.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                A agenda está vazia para os próximos dias.
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {proximosAtendimentos.map((atendimento) => (
+                  <li key={atendimento.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {nomePorLead.get(atendimento.leadId) ?? "Noiva"} — {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(atendimento.inicio), "dd/MM 'às' HH:mm")}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 
@@ -108,9 +179,41 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground text-center py-8">
-              Nenhum lead novo recentemente.
-            </div>
+            {leadsQuery.isError ? (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                Não foi possível carregar os leads.
+              </div>
+            ) : leadsQuery.isLoading ? (
+              <div className="animate-pulse space-y-3">
+                {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted rounded-md" />)}
+              </div>
+            ) : leadsRecentes.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                Nenhum lead novo recentemente.
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {leadsRecentes.map((lead) => (
+                  <li key={lead.id}>
+                    <Link href={`/leads/${lead.id}`}>
+                      <div className="flex items-center justify-between hover-elevate rounded-md px-2 py-1 -mx-2 cursor-pointer">
+                        <div>
+                          <p className="text-sm font-medium">{lead.noivaNome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {lead.casamentoData
+                              ? new Date(lead.casamentoData).toLocaleDateString("pt-BR")
+                              : "Data não informada"}
+                          </p>
+                        </div>
+                        <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"}>
+                          {etapaLabel(lead.etapa)}
+                        </Badge>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>

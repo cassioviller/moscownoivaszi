@@ -31,13 +31,25 @@ export function useAuth() {
     setLocation("/login");
   };
 
+  // null/undefined = superadmin ou sem loja ativa → sem restrição de módulos.
+  const acessosModulos = (session?.acessosModulos ?? null) as Record<string, unknown> | null;
+
+  // O store persistido (zustand) só é sincronizado pelo useEffect acima, que roda
+  // um render APÓS o getMe resolver. Se a sessão já tem loja ativa no servidor
+  // (ex.: usuária retornando com cookie válido e localStorage vazio), esse atraso
+  // fazia o AppLayout redirecionar para /selecionar-loja antes do sync. Preferir o
+  // store quando definido (mantém a troca de loja imediata) e cair para o valor da
+  // sessão resolve a corrida sem esperar o efeito.
+  const activeLojaIdResolvido = activeLojaId ?? session?.lojaAtivaId ?? null;
+
   return {
     user,
     session,
+    acessosModulos,
     isLoading,
     error,
     login: loginMutation.mutateAsync,
     logout,
-    activeLojaId,
+    activeLojaId: activeLojaIdResolvido,
   };
 }

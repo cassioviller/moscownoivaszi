@@ -12,6 +12,8 @@ export interface BloqueioVestidoInput {
   leadId?: string;
   tipo: BloqueioVestidoInputTipo;
   casamentoData?: Date;
+  inicio?: Date;
+  fim?: Date;
   observacao?: string;
   reservaId?: string;
 }

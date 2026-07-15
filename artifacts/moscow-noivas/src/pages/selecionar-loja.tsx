@@ -1,19 +1,63 @@
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useListLojas, useSelecionarLoja } from "@workspace/api-client-react";
+import { useSelecionarLoja, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useStoreStore } from "@/lib/store";
 import { useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Store } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Building2, Search, SearchX, Store } from "lucide-react";
+
+/** Normaliza texto para comparação case/acento-insensível. */
+function normalizar(texto: string): string {
+  return texto
+    .toLocaleLowerCase("pt-BR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 
 export default function SelecionarLoja() {
-  const { user, activeLojaId } = useAuth();
-  const { data: lojas, isLoading } = useListLojas();
+  // As lojas vêm da sessão (/auth/me): é exatamente o que o usuário pode acessar.
+  // A rota /admin/lojas é exclusiva de superadmin e não serve à seleção da vendedora.
+  const { user, activeLojaId, session, isLoading } = useAuth();
+  const lojas = session?.lojas;
+  const { setActiveLojaId } = useStoreStore();
+  const queryClient = useQueryClient();
   const selecionarLoja = useSelecionarLoja();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [busca, setBusca] = useState("");
+
+  const buscaAtiva = busca.trim().length > 0;
+
+  const lojasFiltradas = useMemo(() => {
+    if (!lojas) return [];
+    if (!buscaAtiva) return lojas;
+    const termo = normalizar(busca.trim());
+    return lojas.filter((loja) => {
+      const nome = normalizar(loja.nome ?? "");
+      const endereco = normalizar(loja.endereco ?? "");
+      return nome.includes(termo) || endereco.includes(termo);
+    });
+  }, [lojas, busca, buscaAtiva]);
 
   const handleSelect = async (lojaId: string) => {
-    await selecionarLoja.mutateAsync({ data: { lojaId } });
-    setLocation("/dashboard");
+    try {
+      await selecionarLoja.mutateAsync({ data: { lojaId } });
+      // Sem isto o AppLayout lê o activeLojaId stale do getMe e devolve a
+      // usuária para cá (A1). Atualiza o store na hora e refaz a sessão.
+      setActiveLojaId(lojaId);
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setLocation("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao selecionar loja",
+        description: error?.message || "Não foi possível entrar na loja. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -27,6 +71,8 @@ export default function SelecionarLoja() {
     );
   }
 
+  const temLojas = (lojas?.length ?? 0) > 0;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-3xl space-y-8">
@@ -35,10 +81,36 @@ export default function SelecionarLoja() {
           <p className="text-muted-foreground">Selecione a loja em que deseja operar</p>
         </div>
 
+        {temLojas && (
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                placeholder="Buscar loja por nome ou endereço..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="pl-9"
+                aria-label="Buscar loja por nome ou endereço"
+                data-testid="input-busca-loja"
+              />
+            </div>
+            {buscaAtiva && (
+              <p className="text-sm text-muted-foreground" data-testid="text-contagem-busca">
+                {lojasFiltradas.length === 0
+                  ? "Nenhum resultado"
+                  : lojasFiltradas.length === 1
+                    ? "1 loja encontrada"
+                    : `${lojasFiltradas.length} lojas encontradas`}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {lojas?.map((loja) => (
-            <Card 
-              key={loja.id} 
+          {lojasFiltradas.map((loja) => (
+            <Card
+              key={loja.id}
               className={`hover-elevate cursor-pointer transition-colors border-2 ${activeLojaId === loja.id ? 'border-primary' : 'border-transparent'}`}
               onClick={() => handleSelect(loja.id)}
             >
@@ -52,8 +124,8 @@ export default function SelecionarLoja() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Button 
-                  variant={activeLojaId === loja.id ? "default" : "outline"} 
+                <Button
+                  variant={activeLojaId === loja.id ? "default" : "outline"}
                   className="w-full"
                 >
                   {selecionarLoja.isPending ? "Selecionando..." : activeLojaId === loja.id ? "Continuar na loja atual" : "Entrar nesta loja"}
@@ -61,8 +133,24 @@ export default function SelecionarLoja() {
               </CardContent>
             </Card>
           ))}
-          
-          {lojas?.length === 0 && (
+
+          {temLojas && buscaAtiva && lojasFiltradas.length === 0 && (
+            <div
+              className="col-span-full text-center p-12 border rounded-lg bg-card"
+              data-testid="empty-busca-loja"
+            >
+              <SearchX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">Nenhuma loja corresponde à busca</h3>
+              <p className="text-muted-foreground">
+                Ajuste o termo digitado ou limpe a busca para ver todas as lojas.
+              </p>
+              <Button variant="outline" className="mt-4" onClick={() => setBusca("")}>
+                Limpar busca
+              </Button>
+            </div>
+          )}
+
+          {!temLojas && (
             <div className="col-span-full text-center p-12 border rounded-lg bg-card">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">Nenhuma loja encontrada</h3>

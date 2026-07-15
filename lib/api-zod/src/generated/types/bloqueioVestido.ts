@@ -23,6 +23,12 @@ export interface BloqueioVestido {
   /** @nullable */
   devolucaoDataReal?: Date | null;
   /** @nullable */
+  inicio?: Date | null;
+  /** @nullable */
+  fim?: Date | null;
+  /** @nullable */
+  canceladoEm?: Date | null;
+  /** @nullable */
   observacao?: string | null;
   /** @nullable */
   reservaId?: string | null;

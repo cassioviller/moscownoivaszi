@@ -1,17 +1,20 @@
-import { pgTable, text, timestamp, decimal, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
 import { leadsTable } from "./leads";
 import { orcamentosTable } from "./orcamentos";
 import { bloqueioVestidosTable } from "./atendimentos";
+import { vestidosTable } from "./vestidos";
 import { usuariosTable } from "./usuarios";
-import { contratoStatusEnum, formaPagamentoEnum } from "./common/enums";
+import { contratoStatusEnum, formaPagamentoEnum, orcamentoItemTipoEnum } from "./common/enums";
 
 export const contratosTable = pgTable("contratos", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  leadId: text("lead_id").notNull().references(() => leadsTable.id, { onDelete: "cascade" }),
+  // restrict: apagar um lead NÃO pode levar junto contratos e parcelas pagas
+  // (histórico financeiro). Lead com contrato → o DELETE falha com 23503→409.
+  leadId: text("lead_id").notNull().references(() => leadsTable.id, { onDelete: "restrict" }),
   orcamentoId: text("orcamento_id").unique().references(() => orcamentosTable.id, { onDelete: "set null" }),
   bloqueioVestidoId: text("bloqueio_vestido_id").references(() => bloqueioVestidosTable.id, { onDelete: "set null" }),
   vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
@@ -21,6 +24,7 @@ export const contratosTable = pgTable("contratos", {
   valorTotal: decimal("valor_total", { precision: 10, scale: 2, mode: "number" }).notNull(),
   formaPagamento: formaPagamentoEnum("forma_pagamento"),
   canceladoMotivo: text("cancelado_motivo"),
+  canceladoEm: timestamp("cancelado_em", { withTimezone: true }),
   dataCasamento: timestamp("data_casamento", { withTimezone: true }),
   dataRetirada: timestamp("data_retirada", { withTimezone: true }),
   dataDevolucao: timestamp("data_devolucao", { withTimezone: true }),
@@ -34,3 +38,23 @@ export const contratosTable = pgTable("contratos", {
 export const insertContratoSchema = createInsertSchema(contratosTable).omit({ createdAt: true, updatedAt: true });
 export type InsertContrato = z.infer<typeof insertContratoSchema>;
 export type Contrato = typeof contratosTable.$inferSelect;
+
+// Snapshot dos itens do orçamento no momento do fechamento do contrato.
+// Preserva o que foi vendido mesmo que o orçamento seja editado/apagado depois
+// (orcamentoId no contrato é `set null`). vestidoId é referência frouxa
+// (set null) — a descrição em texto é o registro autoritativo.
+export const contratoItensTable = pgTable("contrato_itens", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  contratoId: text("contrato_id").notNull().references(() => contratosTable.id, { onDelete: "cascade" }),
+  tipo: orcamentoItemTipoEnum("tipo").notNull(),
+  vestidoId: text("vestido_id").references(() => vestidosTable.id, { onDelete: "set null" }),
+  descricao: text("descricao").notNull(),
+  valorUnitario: decimal("valor_unitario", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  quantidade: integer("quantidade").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertContratoItemSchema = createInsertSchema(contratoItensTable).omit({ createdAt: true });
+export type InsertContratoItem = z.infer<typeof insertContratoItemSchema>;
+export type ContratoItem = typeof contratoItensTable.$inferSelect;

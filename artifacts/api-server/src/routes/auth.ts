@@ -8,13 +8,14 @@ import {
   SelecionarLojaBody, 
   SelecionarLojaResponse 
 } from "@workspace/api-zod";
-import { 
-  compararSenha, 
-  criarSessao, 
-  buscarSessao, 
-  buscarLojasUsuario, 
+import {
+  compararSenha,
+  criarSessao,
+  buscarSessao,
+  buscarLojasUsuario,
   buscarLoja,
-  COOKIE_NOME 
+  getPermissoes,
+  COOKIE_NOME
 } from "../lib/auth";
 import { requireSessao } from "../middlewares/auth";
 
@@ -70,10 +71,14 @@ router.get("/auth/me", requireSessao, async (req, res): Promise<void> => {
   const usuario = req.usuario!;
   const sessao = req.sessao!;
   const lojas = await buscarLojasUsuario(usuario.id, usuario.isSuperAdmin);
+  const acessosModulos = sessao.lojaAtivaId
+    ? await getPermissoes(usuario.id, sessao.lojaAtivaId, usuario.isSuperAdmin)
+    : null;
 
   res.json(GetMeResponse.parse({
     usuario,
     lojaAtivaId: sessao.lojaAtivaId,
+    acessosModulos,
     lojas,
   }));
 });
@@ -109,10 +114,12 @@ router.post("/auth/selecionar-loja", requireSessao, async (req, res): Promise<vo
 
   const updatedSessao = await buscarSessao(sessao.id);
   const lojas = await buscarLojasUsuario(usuario.id, usuario.isSuperAdmin);
+  const acessosModulos = await getPermissoes(usuario.id, lojaId, usuario.isSuperAdmin);
 
   res.json(SelecionarLojaResponse.parse({
     usuario,
     lojaAtivaId: updatedSessao?.sessao.lojaAtivaId,
+    acessosModulos,
     lojas,
   }));
 });

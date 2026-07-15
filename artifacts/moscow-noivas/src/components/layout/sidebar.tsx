@@ -17,22 +17,36 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+// `modulo` espelha o gate de backend (requireModulo). Item sem módulo é sempre
+// visível (dashboard, configurações).
+const navItems: { icon: typeof LayoutDashboard; label: string; href: string; modulo?: string }[] = [
   { icon: LayoutDashboard, label: "Visão Geral", href: "/dashboard" },
-  { icon: Users, label: "Leads", href: "/leads" },
-  { icon: Calendar, label: "Agenda", href: "/agenda" },
-  { icon: Shirt, label: "Vestidos", href: "/vestidos" },
-  { icon: FileText, label: "Orçamentos", href: "/orcamentos" },
-  { icon: ScrollText, label: "Contratos", href: "/contratos" },
-  { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro" },
-  { icon: Percent, label: "Comissões", href: "/comissoes" },
-  { icon: UsersRound, label: "Equipe", href: "/equipe" },
+  { icon: Users, label: "Leads", href: "/leads", modulo: "leads" },
+  { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
+  { icon: Shirt, label: "Vestidos", href: "/vestidos", modulo: "vestidos" },
+  { icon: FileText, label: "Orçamentos", href: "/orcamentos", modulo: "leads" },
+  { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "leads" },
+  { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro", modulo: "financeiro" },
+  { icon: Percent, label: "Comissões", href: "/comissoes", modulo: "comissao" },
+  { icon: UsersRound, label: "Equipe", href: "/equipe", modulo: "admin" },
   { icon: Settings, label: "Configurações", href: "/configuracoes" },
 ];
 
+/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true. */
+function moduloLiberado(acesso: unknown): boolean {
+  if (acesso === true) return true;
+  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
+  return false;
+}
+
 export function Sidebar() {
   const [location] = useLocation();
-  const { logout, user } = useAuth();
+  const { logout, user, acessosModulos } = useAuth();
+
+  // Sem mapa de acessos (superadmin/sem loja) → mostra tudo.
+  const itensVisiveis = navItems.filter(
+    (item) => !item.modulo || !acessosModulos || moduloLiberado(acessosModulos[item.modulo]),
+  );
 
   return (
     <aside className="w-64 border-r bg-sidebar flex flex-col h-screen overflow-y-auto">
@@ -53,7 +67,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-4 space-y-1">
-        {navItems.map((item) => {
+        {itensVisiveis.map((item) => {
           const isActive = location.startsWith(item.href);
           return (
             <Link

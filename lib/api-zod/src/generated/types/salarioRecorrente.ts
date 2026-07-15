@@ -9,8 +9,8 @@
 export interface SalarioRecorrente {
   id: string;
   lojaId: string;
-  colaboradorId: string;
-  valorBase: number;
+  usuarioId: string;
+  valor: number;
   diaVencimento: number;
   ativo: boolean;
 }

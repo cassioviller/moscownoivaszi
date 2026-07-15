@@ -30,6 +30,6 @@ test.describe("Leads", () => {
 
     await page.getByLabel(/noiva/i).fill("Noiva Criada Pelo E2E");
     await page.getByRole("dialog").getByRole("button", { name: /Cadastrar|Salvar/ }).click();
-    await expect(page.getByText("Noiva Criada Pelo E2E")).toBeVisible();
+    await expect(page.getByText("Noiva Criada Pelo E2E").first()).toBeVisible();
   });
 });

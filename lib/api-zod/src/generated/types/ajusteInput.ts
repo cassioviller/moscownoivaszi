@@ -7,6 +7,7 @@
  */
 
 export interface AjusteInput {
+  atendimentoId: string;
   /** @minLength 1 */
   descricao: string;
 }

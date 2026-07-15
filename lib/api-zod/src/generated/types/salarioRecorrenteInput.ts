@@ -7,7 +7,7 @@
  */
 
 export interface SalarioRecorrenteInput {
-  colaboradorId: string;
-  valorBase: number;
+  usuarioId: string;
+  valor: number;
   diaVencimento: number;
 }

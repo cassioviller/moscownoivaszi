@@ -7,8 +7,11 @@
  */
 
 export interface ComissaoFaixaInput {
-  minAcumulado: number;
-  maxAcumulado?: number;
-  percentual?: number;
-  bonusFixo?: number;
+  /** @minimum 0 */
+  minimoVenda: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  percentual: number;
 }

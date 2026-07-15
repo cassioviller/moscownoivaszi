@@ -1,10 +1,16 @@
 import { Router, type IRouter } from "express";
-import { db, parcelasTable, contasPagarTable, salariosRecorrentesTable, saldosReferenciaTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { 
-  ReceberParcelaBody,
-  ReceberParcelaResponse,
-  PagarContaPagarBody as PagarPagarContaBody,
+import {
+  db,
+  parcelasTable,
+  contasPagarTable,
+  pagamentosTable,
+  pagamentoItensTable,
+  salariosRecorrentesTable,
+  saldosReferenciaTable,
+} from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import {
+  PagarContaPagarBody,
   PagarContaPagarResponse,
   CreateSalarioRecorrenteBody,
   UpdateSalarioRecorrenteBody,
@@ -19,12 +25,14 @@ import {
   ListSaldoReferenciaResponse,
   CreateSaldoReferenciaResponse
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/financeiro", requireModulo("financeiro"));
+router.use("/lojas/:lojaId/contas-pagar", requireModulo("financeiro"));
 
 router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -47,8 +55,7 @@ router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<
     id: randomUUID(),
     lojaId,
     ...parsed.data,
-    vencimento: new Date(parsed.data.vencimento),
-  } as any).returning();
+  }).returning();
   res.status(201).json(CreateContaPagarResponse.parse(conta));
 });
 
@@ -58,29 +65,55 @@ router.get("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<v
   res.json(ListContasPagarResponse.parse(contas));
 });
 
-router.post("/contas-pagar/:contaId/pagar", async (req, res): Promise<void> => {
+// Pagamento auditável: valor, data e forma persistem em pagamentos +
+// pagamento_itens (contaPagarId é UNIQUE — cinto de segurança contra pagamento
+// duplo no nível do banco); a conta só muda de status.
+router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const contaId = req.params.contaId as string;
-  const parsed = PagarPagarContaBody.safeParse(req.body);
+  const parsed = PagarContaPagarBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
-  const [conta] = await db.update(contasPagarTable)
-    .set({ 
-      status: "PAGA", 
-      pagamentoEfetuadoEm: new Date(),
-      valorPago: parsed.data.valorPago,
-      updatedAt: new Date() 
-    } as any)
-    .where(eq(contasPagarTable.id, contaId))
-    .returning();
-
+  const [conta] = await db.select().from(contasPagarTable)
+    .where(and(eq(contasPagarTable.id, contaId), eq(contasPagarTable.lojaId, lojaId)));
   if (!conta) {
     res.status(404).json({ error: "Conta not found" });
     return;
   }
-  res.json(PagarContaPagarResponse.parse(conta));
+  if (conta.status === "PAGA") {
+    res.status(409).json({ error: "CONTA_JA_PAGA", detalhe: "Esta conta já foi paga" });
+    return;
+  }
+
+  const contaPaga = await db.transaction(async (tx) => {
+    const pagamentoId = randomUUID();
+    await tx.insert(pagamentosTable).values({
+      id: pagamentoId,
+      lojaId,
+      colaboradorId: conta.colaboradorId,
+      data: parsed.data.data,
+      valorPago: parsed.data.valorPago,
+      forma: parsed.data.forma ?? null,
+      observacoes: parsed.data.observacoes ?? null,
+    });
+    await tx.insert(pagamentoItensTable).values({
+      id: randomUUID(),
+      lojaId,
+      pagamentoId,
+      contaPagarId: conta.id,
+      valor: parsed.data.valorPago,
+    });
+    const [atualizada] = await tx.update(contasPagarTable)
+      .set({ status: "PAGA" })
+      .where(eq(contasPagarTable.id, conta.id))
+      .returning();
+    return atualizada;
+  });
+
+  res.json(PagarContaPagarResponse.parse(contaPaga));
 });
 
 router.get("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): Promise<void> => {
@@ -99,28 +132,25 @@ router.post("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): 
   const [salario] = await db.insert(salariosRecorrentesTable).values({
     id: randomUUID(),
     lojaId,
-    ...parsed.data,
-    // @ts-ignore
-    valorMensal: parsed.data.valorMensal.toString(),
-  } as any).returning();
+    usuarioId: parsed.data.usuarioId,
+    valor: parsed.data.valor,
+    diaVencimento: parsed.data.diaVencimento,
+  }).returning();
   res.status(201).json(CreateSalarioRecorrenteResponse.parse(salario));
 });
 
-router.patch("/financeiro/salarios-recorrentes/:salarioId", async (req, res): Promise<void> => {
+router.patch("/lojas/:lojaId/financeiro/salarios-recorrentes/:salarioId", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const salarioId = req.params.salarioId as string;
   const parsed = UpdateSalarioRecorrenteBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  
-  const updateData = { ...parsed.data, updatedAt: new Date() };
-  // @ts-ignore
-  if (updateData.valorMensal) updateData.valorMensal = updateData.valorMensal.toString();
 
   const [salario] = await db.update(salariosRecorrentesTable)
-    .set(updateData as any)
-    .where(eq(salariosRecorrentesTable.id, salarioId))
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(and(eq(salariosRecorrentesTable.id, salarioId), eq(salariosRecorrentesTable.lojaId, lojaId)))
     .returning();
   if (!salario) {
     res.status(404).json({ error: "Salario not found" });
@@ -146,13 +176,12 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
     .values({
       id: randomUUID(),
       lojaId,
-      ...parsed.data,
-    } as any)
+      competencia: parsed.data.competencia,
+      valor: parsed.data.valor,
+    })
     .onConflictDoUpdate({
       target: [saldosReferenciaTable.lojaId, saldosReferenciaTable.competencia],
-      set: { 
-        valor: parsed.data.valor,
-      } as any,
+      set: { valor: parsed.data.valor },
     })
     .returning();
   res.json(CreateSaldoReferenciaResponse.parse(saldo));

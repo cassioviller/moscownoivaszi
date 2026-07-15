@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, reservasTable, bloqueioVestidosTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
-import { 
+import { db, reservasTable, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
+import {
   ListReservasResponse,
   CreateReservaBody,
   CreateReservaResponse,
@@ -13,12 +13,29 @@ import {
   UpdateBloqueioBody,
   UpdateBloqueioResponse
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
+import {
+  verificarDisponibilidade,
+  ocupacaoFisica,
+  buscarRegra,
+  type BloqueioJanelasInput,
+  type ConflitoDetalhe,
+} from "../lib/disponibilidade";
+import { transicaoReservaValida } from "../lib/estados";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/reservas", requireModulo("vestidos"));
+router.use("/lojas/:lojaId/bloqueios", requireModulo("vestidos"));
+
+/** Erro interno para abortar a transação com rollback e responder 409. */
+class ConflitoDisponibilidadeError extends Error {
+  constructor(public readonly conflitos: ConflitoDetalhe[]) {
+    super("VESTIDO_INDISPONIVEL");
+  }
+}
 
 // Reservas
 router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
@@ -44,10 +61,10 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const [reserva] = await db.insert(reservasTable).values({
     id: randomUUID(),
     lojaId,
-    // @ts-ignore
-    ...parsed.data,
+    leadId: parsed.data.leadId,
+    casamentoData: parsed.data.casamentoData,
   }).returning();
-  
+
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
     with: { lead: true, bloqueios: true }
@@ -56,23 +73,105 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
 });
 
 router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<void> => {
-  const { lojaId, reservaId } = req.params;
+  const { lojaId, reservaId } = req.params as { lojaId: string; reservaId: string };
   const parsed = UpdateReservaBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  
-  const updateData = { ...parsed.data, updatedAt: new Date() };
+  const dados = parsed.data;
 
-  const [reserva] = await db.update(reservasTable)
-    .set(updateData as any)
-    .where(and(eq(reservasTable.id, reservaId as string), eq(reservasTable.lojaId, lojaId as string)))
-    .returning();
+  const [reserva] = await db.select().from(reservasTable)
+    .where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)));
   if (!reserva) {
     res.status(404).json({ error: "Reserva not found" });
     return;
   }
+
+  // Mudança de status só por caminho válido da máquina de estados.
+  if (dados.status && !transicaoReservaValida(reserva.status, dados.status)) {
+    res.status(422).json({
+      error: "TRANSICAO_INVALIDA",
+      detalhe: `Reserva não pode ir de ${reserva.status} para ${dados.status}`,
+    });
+    return;
+  }
+
+  const hoje = new Date();
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(reservasTable)
+        .set({
+          status: dados.status,
+          casamentoData: dados.casamentoData,
+          updatedAt: new Date(),
+        })
+        .where(eq(reservasTable.id, reserva.id));
+
+      if (dados.status === "CANCELADA") {
+        // A constraint EXCLUDE do banco não enxerga o status da reserva —
+        // soft-cancela os bloqueios vinculados para liberar os vestidos.
+        await tx.update(bloqueioVestidosTable)
+          .set({ canceladoEm: new Date(), updatedAt: new Date() })
+          .where(and(
+            eq(bloqueioVestidosTable.reservaId, reserva.id),
+            isNull(bloqueioVestidosTable.canceladoEm),
+          ));
+        return;
+      }
+
+      if (dados.casamentoData === undefined) return;
+
+      // Reserva é a fonte da verdade da data operacional → propaga a nova
+      // data a todos os bloqueios vinculados, revalidando cada um.
+      const vinculados = await tx.select().from(bloqueioVestidosTable)
+        .where(and(
+          eq(bloqueioVestidosTable.reservaId, reserva.id),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ));
+
+      for (const bloqueio of vinculados) {
+        const candidato: BloqueioJanelasInput = {
+          id: bloqueio.id,
+          tipo: bloqueio.tipo,
+          casamentoData: dados.casamentoData,
+          provaDataReal: bloqueio.provaDataReal,
+          retiradaDataReal: bloqueio.retiradaDataReal,
+          devolucaoDataReal: bloqueio.devolucaoDataReal,
+          inicio: bloqueio.inicio,
+          fim: bloqueio.fim,
+        };
+        const resultado = await verificarDisponibilidade({
+          lojaId,
+          vestidoId: bloqueio.vestidoId,
+          candidato,
+          ignorarBloqueioId: bloqueio.id,
+          hoje,
+          executor: tx,
+        });
+        if (!resultado.disponivel) {
+          throw new ConflitoDisponibilidadeError(resultado.conflitos);
+        }
+        const ocupacao = ocupacaoFisica(candidato, resultado.regra);
+        await tx.update(bloqueioVestidosTable)
+          .set({
+            casamentoData: dados.casamentoData,
+            ocupacaoInicio: ocupacao?.inicio ?? null,
+            ocupacaoFim: ocupacao?.fim ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(bloqueioVestidosTable.id, bloqueio.id));
+      }
+    });
+  } catch (err) {
+    if (err instanceof ConflitoDisponibilidadeError) {
+      res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: err.conflitos });
+      return;
+    }
+    throw err;
+  }
+
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
     with: { lead: true, bloqueios: true }
@@ -100,33 +199,134 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [bloqueio] = await db.insert(bloqueioVestidosTable).values({
-    id: randomUUID(),
+  const dados = parsed.data;
+
+  const [vestido] = await db.select({ id: vestidosTable.id }).from(vestidosTable)
+    .where(and(eq(vestidosTable.id, dados.vestidoId), eq(vestidosTable.lojaId, lojaId)));
+  if (!vestido) {
+    res.status(404).json({ error: "Vestido not found" });
+    return;
+  }
+
+  if (dados.tipo === "RESERVA_CASAMENTO" && !dados.casamentoData) {
+    res.status(400).json({ error: "casamentoData é obrigatória para bloqueio RESERVA_CASAMENTO" });
+    return;
+  }
+  if (dados.tipo === "MANUTENCAO" && !dados.inicio) {
+    res.status(400).json({ error: "inicio é obrigatório para bloqueio MANUTENCAO" });
+    return;
+  }
+
+  const id = randomUUID();
+  const candidato: BloqueioJanelasInput = {
+    id,
+    tipo: dados.tipo,
+    casamentoData: dados.casamentoData ?? null,
+    provaDataReal: null,
+    retiradaDataReal: null,
+    devolucaoDataReal: null,
+    inicio: dados.inicio ?? null,
+    fim: dados.fim ?? null,
+  };
+
+  const resultado = await verificarDisponibilidade({
     lojaId,
-    // @ts-ignore
-    ...parsed.data,
-  } as any).returning();
+    vestidoId: dados.vestidoId,
+    candidato,
+    hoje: new Date(),
+  });
+  if (!resultado.disponivel) {
+    res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
+    return;
+  }
+
+  const ocupacao = ocupacaoFisica(candidato, resultado.regra);
+
+  const [bloqueio] = await db.insert(bloqueioVestidosTable).values({
+    id,
+    lojaId,
+    vestidoId: dados.vestidoId,
+    leadId: dados.leadId ?? null,
+    tipo: dados.tipo,
+    casamentoData: dados.casamentoData ?? null,
+    inicio: dados.inicio ?? null,
+    fim: dados.fim ?? null,
+    observacao: dados.observacao ?? null,
+    reservaId: dados.reservaId ?? null,
+    ocupacaoInicio: ocupacao?.inicio ?? null,
+    ocupacaoFim: ocupacao?.fim ?? null,
+  }).returning();
   res.status(201).json(CreateBloqueioResponse.parse(bloqueio));
 });
 
 router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {
-  const { lojaId, bloqueioId } = req.params;
+  const { lojaId, bloqueioId } = req.params as { lojaId: string; bloqueioId: string };
   const parsed = UpdateBloqueioBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  
-  const updateData = { ...parsed.data, updatedAt: new Date() };
+  const dados = parsed.data;
 
-  const [bloqueio] = await db.update(bloqueioVestidosTable)
-    .set(updateData as any)
-    .where(and(eq(bloqueioVestidosTable.id, bloqueioId as string), eq(bloqueioVestidosTable.lojaId, lojaId as string)))
-    .returning();
-  if (!bloqueio) {
+  const [existente] = await db.select().from(bloqueioVestidosTable)
+    .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)));
+  if (!existente) {
     res.status(404).json({ error: "Bloqueio not found" });
     return;
   }
+
+  const candidato: BloqueioJanelasInput = {
+    id: existente.id,
+    tipo: existente.tipo,
+    casamentoData: existente.casamentoData,
+    provaDataReal: dados.provaDataReal ?? existente.provaDataReal,
+    retiradaDataReal: dados.retiradaDataReal ?? existente.retiradaDataReal,
+    devolucaoDataReal: dados.devolucaoDataReal ?? existente.devolucaoDataReal,
+    inicio: dados.inicio ?? existente.inicio,
+    fim: dados.fim ?? existente.fim,
+  };
+
+  const mudouJanelas =
+    dados.provaDataReal !== undefined ||
+    dados.retiradaDataReal !== undefined ||
+    dados.devolucaoDataReal !== undefined ||
+    dados.inicio !== undefined ||
+    dados.fim !== undefined;
+
+  let regra;
+  if (mudouJanelas) {
+    const resultado = await verificarDisponibilidade({
+      lojaId,
+      vestidoId: existente.vestidoId,
+      candidato,
+      ignorarBloqueioId: existente.id,
+      hoje: new Date(),
+    });
+    if (!resultado.disponivel) {
+      res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
+      return;
+    }
+    regra = resultado.regra;
+  } else {
+    regra = await buscarRegra(lojaId);
+  }
+
+  const ocupacao = ocupacaoFisica(candidato, regra);
+
+  const [bloqueio] = await db.update(bloqueioVestidosTable)
+    .set({
+      provaDataReal: dados.provaDataReal,
+      retiradaDataReal: dados.retiradaDataReal,
+      devolucaoDataReal: dados.devolucaoDataReal,
+      inicio: dados.inicio,
+      fim: dados.fim,
+      observacao: dados.observacao,
+      ocupacaoInicio: ocupacao?.inicio ?? null,
+      ocupacaoFim: ocupacao?.fim ?? null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+    .returning();
   res.json(UpdateBloqueioResponse.parse(bloqueio));
 });
 

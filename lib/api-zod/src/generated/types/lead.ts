@@ -26,6 +26,12 @@ export interface Lead {
   casamentoHorario?: string | null;
   /** @nullable */
   casamentoLocal?: string | null;
+  /** @nullable */
+  orcamentoAbertoEm?: Date | null;
+  /** @nullable */
+  contratoFechadoEm?: Date | null;
+  /** @nullable */
+  perdidaEm?: Date | null;
   origem: LeadOrigem;
   createdAt: Date;
   interesse?: LeadInteresse;

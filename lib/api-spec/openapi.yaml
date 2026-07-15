@@ -431,8 +431,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /atributos/{atributoId}/opcoes:
+  /lojas/{lojaId}/atributos/{atributoId}/opcoes:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: atributoId
         in: path
         required: true
@@ -454,8 +455,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AtributoOpcao"
-  /atributos/opcoes/{opcaoId}:
+  /lojas/{lojaId}/atributos/opcoes/{opcaoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: opcaoId
         in: path
         required: true
@@ -516,6 +518,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vestido"
+  /lojas/{lojaId}/vestidos/disponibilidade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: checkDisponibilidadeVestidos
+      tags: [vestidos]
+      summary: Disponibilidade de todos os vestidos da loja para uma data de casamento
+      parameters:
+        - name: data
+          in: query
+          required: true
+          description: Data do casamento candidata (dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Disponibilidade por vestido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisponibilidadeVestidos"
   /lojas/{lojaId}/vestidos/{vestidoId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -556,8 +580,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /vestidos/{vestidoId}/fotos/{ordem}:
+  /lojas/{lojaId}/vestidos/{vestidoId}/fotos/{ordem}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: vestidoId
         in: path
         required: true
@@ -568,6 +593,19 @@ paths:
         required: true
         schema:
           type: integer
+    get:
+      operationId: getVestidoFoto
+      tags: [vestidos]
+      responses:
+        "200":
+          description: Imagem da foto (binário)
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Foto não encontrada
     put:
       operationId: setVestidoFoto
       tags: [vestidos]
@@ -663,8 +701,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /leads/{leadId}/interesse:
+  /lojas/{lojaId}/leads/{leadId}/interesse:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: leadId
         in: path
         required: true
@@ -686,8 +725,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LeadInteresse"
-  /leads/{leadId}/cobrancas:
+  /lojas/{lojaId}/leads/{leadId}/cobrancas:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: leadId
         in: path
         required: true
@@ -754,8 +794,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Cabine"
-  /cabines/{cabineId}:
+  /lojas/{lojaId}/cabines/{cabineId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: cabineId
         in: path
         required: true
@@ -814,8 +855,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Atendimento"
-  /atendimentos/{atendimentoId}:
+  /lojas/{lojaId}/atendimentos/{atendimentoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: atendimentoId
         in: path
         required: true
@@ -843,13 +885,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /atendimentos/{atendimentoId}/ajustes:
+  /lojas/{lojaId}/ajustes:
     parameters:
-      - name: atendimentoId
-        in: path
-        required: true
-        schema:
-          type: string
+      - $ref: "#/components/parameters/LojaIdParam"
     get:
       operationId: listAjustes
       tags: [agenda]
@@ -878,8 +916,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ajuste"
-  /ajustes/{ajusteId}:
+  /lojas/{lojaId}/ajustes/{ajusteId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: ajusteId
         in: path
         required: true
@@ -901,7 +940,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ajuste"
-  /lojas/{lojaId}/disponibilidade:
+  /lojas/{lojaId}/disponibilidade/regras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -963,23 +1002,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Reserva"
-  /reservas/{reservaId}:
+  /lojas/{lojaId}/reservas/{reservaId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: reservaId
         in: path
         required: true
         schema:
           type: string
-    get:
-      operationId: getReserva
-      tags: [reservas]
-      responses:
-        "200":
-          description: Reserva
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Reserva"
     patch:
       operationId: updateReserva
       tags: [reservas]
@@ -1033,8 +1063,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BloqueioVestido"
-  /bloqueios/{bloqueioId}:
+  /lojas/{lojaId}/bloqueios/{bloqueioId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: bloqueioId
         in: path
         required: true
@@ -1095,8 +1126,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
-  /orcamentos/{orcamentoId}:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1134,8 +1166,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /orcamentos/{orcamentoId}/itens:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/itens:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1157,8 +1190,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrcamentoItem"
-  /orcamentos/itens/{itemId}:
+  /lojas/{lojaId}/orcamentos/itens/{itemId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: itemId
         in: path
         required: true
@@ -1170,8 +1204,9 @@ paths:
       responses:
         "204":
           description: Removed
-  /orcamentos/{orcamentoId}/aprovar:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/aprovar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1187,8 +1222,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
-  /orcamentos/{orcamentoId}/recusar:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/recusar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1237,8 +1273,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contrato"
-  /contratos/{contratoId}:
+  /lojas/{lojaId}/contratos/{contratoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: contratoId
         in: path
         required: true
@@ -1270,8 +1307,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contrato"
-  /contratos/{contratoId}/cancelar:
+  /lojas/{lojaId}/contratos/{contratoId}/cancelar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: contratoId
         in: path
         required: true
@@ -1295,7 +1333,7 @@ paths:
                 $ref: "#/components/schemas/Contrato"
 
   # ───────────────────────── Financeiro ─────────────────────────
-  /lojas/{lojaId}/parcelas:
+  /lojas/{lojaId}/financeiro/parcelas:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1310,8 +1348,9 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Parcela"
-  /parcelas/{parcelaId}/receber:
+  /lojas/{lojaId}/parcelas/{parcelaId}/receber:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: parcelaId
         in: path
         required: true
@@ -1333,7 +1372,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Parcela"
-  /lojas/{lojaId}/contas-pagar:
+  /lojas/{lojaId}/financeiro/contas-pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1364,22 +1403,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContaPagar"
-  /contas-pagar/{contaPagarId}:
+  /lojas/{lojaId}/contas-pagar/{contaId}/pagar:
     parameters:
-      - name: contaPagarId
-        in: path
-        required: true
-        schema:
-          type: string
-    delete:
-      operationId: deleteContaPagar
-      tags: [financeiro]
-      responses:
-        "204":
-          description: Deleted
-  /contas-pagar/{contaPagarId}/pagar:
-    parameters:
-      - name: contaPagarId
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contaId
         in: path
         required: true
         schema:
@@ -1400,7 +1427,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContaPagar"
-  /lojas/{lojaId}/salarios-recorrentes:
+  /lojas/{lojaId}/financeiro/salarios-recorrentes:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1431,9 +1458,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SalarioRecorrente"
-  /salarios-recorrentes/{id}:
+  /lojas/{lojaId}/financeiro/salarios-recorrentes/{salarioId}:
     parameters:
-      - name: id
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: salarioId
         in: path
         required: true
         schema:
@@ -1454,13 +1482,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SalarioRecorrente"
-    delete:
-      operationId: deleteSalarioRecorrente
-      tags: [financeiro]
-      responses:
-        "204":
-          description: Deleted
-  /lojas/{lojaId}/saldo-referencia:
+  /lojas/{lojaId}/financeiro/saldos-referencia:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1493,7 +1515,7 @@ paths:
                 $ref: "#/components/schemas/SaldoReferencia"
 
   # ───────────────────────── Comissão ─────────────────────────
-  /lojas/{lojaId}/comissao-regras:
+  /lojas/{lojaId}/comissao/regras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1524,9 +1546,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComissaoRegra"
-  /comissao-regras/{id}:
+  /lojas/{lojaId}/comissao/regras/{regraId}:
     parameters:
-      - name: id
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: regraId
         in: path
         required: true
         schema:
@@ -1547,13 +1570,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComissaoRegra"
+  /lojas/{lojaId}/comissao/faixas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listComissaoFaixas
+      tags: [comissao]
+      responses:
+        "200":
+          description: Faixas de comissão da loja (ordenadas por minimoVenda)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComissaoFaixa"
+    post:
+      operationId: createComissaoFaixa
+      tags: [comissao]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComissaoFaixaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComissaoFaixa"
+  /lojas/{lojaId}/comissao/faixas/{faixaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: faixaId
+        in: path
+        required: true
+        schema:
+          type: string
     delete:
-      operationId: deleteComissaoRegra
+      operationId: deleteComissaoFaixa
       tags: [comissao]
       responses:
         "204":
           description: Deleted
-  /lojas/{lojaId}/comissao-fechamentos:
+  /lojas/{lojaId}/comissao/fechamentos:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1645,6 +1707,9 @@ components:
           $ref: "#/components/schemas/Usuario"
         lojaAtivaId:
           type: ["string", "null"]
+        acessosModulos:
+          type: ["object", "null"]
+          additionalProperties: true
         lojas:
           type: array
           items:
@@ -1935,6 +2000,9 @@ components:
         casamentoData: { type: ["string", "null"], format: date-time }
         casamentoHorario: { type: ["string", "null"] }
         casamentoLocal: { type: ["string", "null"] }
+        orcamentoAbertoEm: { type: ["string", "null"], format: date-time }
+        contratoFechadoEm: { type: ["string", "null"], format: date-time }
+        perdidaEm: { type: ["string", "null"], format: date-time }
         origem: { type: string, enum: [LOJA, WHATSAPP] }
         createdAt: { type: string, format: date-time }
         interesse:
@@ -2068,8 +2136,9 @@ components:
         status: { type: string, enum: [PENDENTE, FEITO] }
     AjusteInput:
       type: object
-      required: [descricao]
+      required: [atendimentoId, descricao]
       properties:
+        atendimentoId: { type: string }
         descricao: { type: string, minLength: 1 }
     AjusteUpdate:
       type: object
@@ -2108,7 +2177,7 @@ components:
         lojaId: { type: string }
         leadId: { type: string }
         casamentoData: { type: string, format: date-time }
-        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA] }
+        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA, CONCLUIDA, CANCELADA] }
         itens:
           type: array
           items:
@@ -2122,7 +2191,7 @@ components:
     ReservaUpdate:
       type: object
       properties:
-        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA] }
+        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA, CONCLUIDA, CANCELADA] }
         casamentoData: { type: string, format: date-time }
     BloqueioVestido:
       type: object
@@ -2137,6 +2206,9 @@ components:
         provaDataReal: { type: ["string", "null"], format: date-time }
         retiradaDataReal: { type: ["string", "null"], format: date-time }
         devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        inicio: { type: ["string", "null"], format: date-time }
+        fim: { type: ["string", "null"], format: date-time }
+        canceladoEm: { type: ["string", "null"], format: date-time }
         observacao: { type: ["string", "null"] }
         reservaId: { type: ["string", "null"] }
     BloqueioVestidoInput:
@@ -2147,6 +2219,8 @@ components:
         leadId: { type: string }
         tipo: { type: string, enum: [RESERVA_CASAMENTO, MANUTENCAO] }
         casamentoData: { type: string, format: date-time }
+        inicio: { type: string, format: date-time }
+        fim: { type: string, format: date-time }
         observacao: { type: string }
         reservaId: { type: string }
     BloqueioVestidoUpdate:
@@ -2155,7 +2229,41 @@ components:
         provaDataReal: { type: string, format: date-time }
         retiradaDataReal: { type: string, format: date-time }
         devolucaoDataReal: { type: string, format: date-time }
+        inicio: { type: string, format: date-time }
+        fim: { type: string, format: date-time }
         observacao: { type: string }
+    ConflitoBloqueio:
+      type: object
+      description: Item de conflito de disponibilidade (mesmo shape nos 409 e no batch)
+      required: [bloqueioId, tipo, motivo, inicio, fim, leadId, reservaId, noivaNome]
+      properties:
+        bloqueioId: { type: string }
+        tipo: { type: string, enum: [RESERVA_CASAMENTO, MANUTENCAO] }
+        motivo: { type: string, enum: [USO, LAVAGEM, PROVA, MANUTENCAO, ATRASO_DEVOLUCAO] }
+        inicio: { type: string, description: "Dia local inclusivo YYYY-MM-DD" }
+        fim: { type: ["string", "null"], description: "Dia local inclusivo YYYY-MM-DD; null = janela aberta" }
+        leadId: { type: ["string", "null"] }
+        reservaId: { type: ["string", "null"] }
+        noivaNome: { type: ["string", "null"] }
+    DisponibilidadeVestidos:
+      type: object
+      required: [data, itens]
+      properties:
+        data: { type: string, description: "Dia local YYYY-MM-DD consultado" }
+        itens:
+          type: array
+          items:
+            type: object
+            required: [vestidoId, disponivel, status, motivo, conflito]
+            properties:
+              vestidoId: { type: string }
+              disponivel: { type: boolean }
+              status: { type: string, enum: [DISPONIVEL, RESERVADO, MANUTENCAO, INATIVO] }
+              motivo: { type: ["string", "null"], description: "Frase pronta em pt-BR (datas dd/MM)" }
+              conflito:
+                anyOf:
+                  - $ref: "#/components/schemas/ConflitoBloqueio"
+                  - type: "null"
 
     # ── Orçamentos ──
     Orcamento:
@@ -2234,6 +2342,7 @@ components:
         valorTotal: { type: number }
         formaPagamento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
         canceladoMotivo: { type: ["string", "null"] }
+        canceladoEm: { type: ["string", "null"], format: date-time }
         dataCasamento: { type: ["string", "null"], format: date-time }
         dataRetirada: { type: ["string", "null"], format: date-time }
         dataDevolucao: { type: ["string", "null"], format: date-time }
@@ -2243,6 +2352,22 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Parcela"
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContratoItem"
+    ContratoItem:
+      type: object
+      required: [id, lojaId, contratoId, tipo, descricao, valorUnitario, quantidade]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        contratoId: { type: string }
+        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        vestidoId: { type: ["string", "null"] }
+        descricao: { type: string }
+        valorUnitario: { type: number }
+        quantidade: { type: integer }
     ContratoInput:
       type: object
       required: [leadId, vendedoraId, valorTotal]
@@ -2345,115 +2470,94 @@ components:
         observacoes: { type: string }
     SalarioRecorrente:
       type: object
-      required: [id, lojaId, colaboradorId, valorBase, diaVencimento, ativo]
+      required: [id, lojaId, usuarioId, valor, diaVencimento, ativo]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        colaboradorId: { type: string }
-        valorBase: { type: number }
+        usuarioId: { type: string }
+        valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
     SalarioRecorrenteInput:
       type: object
-      required: [colaboradorId, valorBase, diaVencimento]
+      required: [usuarioId, valor, diaVencimento]
       properties:
-        colaboradorId: { type: string }
-        valorBase: { type: number }
+        usuarioId: { type: string }
+        valor: { type: number }
         diaVencimento: { type: integer }
     SalarioRecorrenteUpdate:
       type: object
       properties:
-        valorBase: { type: number }
+        valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
     SaldoReferencia:
       type: object
-      required: [id, lojaId, dataReferencia, valor]
+      required: [id, lojaId, competencia, valor]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        dataReferencia: { type: string, format: date-time }
+        competencia: { type: string, description: "Competência YYYY-MM" }
         valor: { type: number }
     SaldoReferenciaInput:
       type: object
-      required: [dataReferencia, valor]
+      required: [competencia, valor]
       properties:
-        dataReferencia: { type: string, format: date-time }
+        competencia: { type: string, pattern: "^\\d{4}-\\d{2}$" }
         valor: { type: number }
 
     # ── Comissão ──
+    # Regra do produto: percentual sobre o TOTAL — a maior faixa atingida
+    # (minimoVenda <= total) define o % aplicado ao total inteiro.
     ComissaoRegra:
       type: object
-      required: [id, lojaId, vendedoraId, vigenciaInicio, bonusAcumulaFaixas, ativo]
+      required: [id, lojaId, usuarioId]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        vendedoraId: { type: string }
-        vigenciaInicio: { type: string, format: date-time }
-        bonusAcumulaFaixas: { type: boolean }
-        ativo: { type: boolean }
-        faixas:
-          type: array
-          items:
-            $ref: "#/components/schemas/ComissaoFaixa"
+        usuarioId: { type: string }
+        regraGlobal: { type: ["string", "null"] }
     ComissaoRegraInput:
       type: object
-      required: [vendedoraId, vigenciaInicio, faixas]
+      required: [usuarioId]
       properties:
-        vendedoraId: { type: string }
-        vigenciaInicio: { type: string, format: date-time }
-        bonusAcumulaFaixas: { type: boolean }
-        faixas:
-          type: array
-          items:
-            $ref: "#/components/schemas/ComissaoFaixaInput"
+        usuarioId: { type: string }
+        regraGlobal: { type: string }
     ComissaoRegraUpdate:
       type: object
       properties:
-        ativo: { type: boolean }
-        bonusAcumulaFaixas: { type: boolean }
-        faixas:
-          type: array
-          items:
-            $ref: "#/components/schemas/ComissaoFaixaInput"
+        regraGlobal: { type: string }
     ComissaoFaixa:
       type: object
-      required: [id, regraId, minAcumulado]
-      properties:
-        id: { type: string }
-        regraId: { type: string }
-        minAcumulado: { type: number }
-        maxAcumulado: { type: ["number", "null"] }
-        percentual: { type: ["number", "null"] }
-        bonusFixo: { type: ["number", "null"] }
-    ComissaoFaixaInput:
-      type: object
-      required: [minAcumulado]
-      properties:
-        minAcumulado: { type: number }
-        maxAcumulado: { type: number }
-        percentual: { type: number }
-        bonusFixo: { type: number }
-    ComissaoFechamento:
-      type: object
-      required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal, fechadoEm]
+      required: [id, lojaId, minimoVenda, percentual]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        vendedoraId: { type: string }
-        competencia: { type: string }
+        minimoVenda: { type: number }
+        percentual: { type: number }
+    ComissaoFaixaInput:
+      type: object
+      required: [minimoVenda, percentual]
+      properties:
+        minimoVenda: { type: number, minimum: 0 }
+        percentual: { type: number, minimum: 0, maximum: 100 }
+    ComissaoFechamento:
+      type: object
+      required: [id, lojaId, usuarioId, competencia, totalVendas, comissaoValor]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        usuarioId: { type: string }
+        competencia: { type: string, description: "Competência YYYY-MM" }
         totalVendas: { type: number }
-        percentualAplicado: { type: ["number", "null"] }
-        valorComissao: { type: number }
-        valorBonus: { type: number }
-        valorTotal: { type: number }
+        comissaoValor: { type: number }
         contaPagarId: { type: ["string", "null"] }
-        fechadoEm: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
     GerarComissaoFechamentoInput:
       type: object
       required: [competencia]
       properties:
-        competencia: { type: string }
+        competencia: { type: string, pattern: "^\\d{4}-\\d{2}$" }
 
     # ── Dashboard ──
     DashboardSummary:

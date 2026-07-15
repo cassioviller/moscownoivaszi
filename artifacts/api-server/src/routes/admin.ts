@@ -35,8 +35,9 @@ import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
 
-router.use(requireSessao);
-router.use(requireSuperAdmin);
+// Escopado ao path /admin: este router é montado sem prefixo junto aos demais,
+// então um use() sem path aplicaria superadmin à API inteira.
+router.use("/admin", requireSessao, requireSuperAdmin);
 
 // Lojas
 router.get("/admin/lojas", async (_req, res): Promise<void> => {

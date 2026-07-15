@@ -28,6 +28,8 @@ export const ajusteStatusEnum = pgEnum("ajuste_status", ["PENDENTE", "FEITO"]);
 export const reservaStatusEnum = pgEnum("reserva_status", [
   "EM_MONTAGEM",
   "CONFIRMADA",
+  "CONCLUIDA",
+  "CANCELADA",
 ]);
 
 export const atendimentoTipoEnum = pgEnum("atendimento_tipo", [

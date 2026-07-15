@@ -9,6 +9,7 @@
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
-  dataReferencia: Date;
+  /** Competência YYYY-MM */
+  competencia: string;
   valor: number;
 }

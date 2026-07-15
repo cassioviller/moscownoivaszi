@@ -7,7 +7,7 @@
  */
 
 export interface SalarioRecorrenteUpdate {
-  valorBase?: number;
+  valor?: number;
   diaVencimento?: number;
   ativo?: boolean;
 }
