@@ -1,5 +1,10 @@
 # Plano — Adoção do branch `fix/auditoria-sistema-noivas` no `main`
 
+> ✅ **CONCLUÍDO (2026-07-15)** — adoção executada, verificada e publicada.
+> Commit `2141e96` em `origin/main`. Meta de aceite batida: `typecheck` verde,
+> 113/113 testes de API (vitest), 39/39 E2E (Playwright), achados A1–A13 todos
+> resolvidos. Fase 0 (fundação) e Fase 1 (verificação) completas.
+
 > Decisão (2026-07-15): adotar a solução completa e testada do branch de fix.
 > Estratégia escolhida pelo usuário: **"adotar o branch de fix"** — trazer
 > backend + schema + cliente + frontend do fix, migrar o banco, e descartar o
