@@ -107,7 +107,7 @@ Portar: **Catálogo, Vestidos, Leads/Noivas, Orçamentos, Auth, Equipe**.
 Fechar junto os GAP-ENDPOINT triviais: `PATCH /orcamentos/itens/{id}`, derivações de
 GET-by-id. Sem migração de banco.
 
-### Onda 2 — Enriquecimento relacional + sub-recursos
+### Onda 2 — Enriquecimento relacional + sub-recursos ✅ (backend 973af4c, telas 883882b)
 Adicionar params `with`/include em `GET atendimentos|ajustes|bloqueios`; checklist
 CRUD; listagens de provas/reservas; detalhe de contrato (cancelar `destinoPago`,
 plano de parcelas, estornos). Portar: **Agenda/Atendimentos/Ajustes/Provas/Reservas
