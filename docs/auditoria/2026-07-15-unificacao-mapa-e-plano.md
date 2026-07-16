@@ -247,9 +247,16 @@ não conhece, então `undefined`, então negava para todo mundo em silêncio. Um
 gate que sempre fecha não protege: só esconde a tela. De quebra, `moduloLiberado`
 saiu de 8 cópias para uma.
 
+**O salário-base ganhou CRUD.** A folha lia os salários mas não deixava
+defini-los: o ciclo só fechava indo ao banco. Definir, editar e ativar/desativar
+agora vivem ao lado da geração que os consome. Desativar em vez de excluir — o
+salário já virou conta em competências passadas, e apagá-lo deixaria essas
+contas sem a origem que explica de onde vieram. Quem já tem salário sai da lista
+de "definir": o caminho é Editar, senão dois salários da mesma pessoa gerariam
+duas contas na mesma folha.
+
 ### O que segue em aberto (consciente)
 
-- Salário-base só-leitura na folha; os hooks de escrita já existem.
 - Histórico/registro de cobrança inline (`listRegistrosCobranca` é por lead —
   exigiria N requests; cabe atrás de um accordion por noiva, com query lazy).
 - Arquivar os 3 branches superados (Onda 0): seguem em `origin`

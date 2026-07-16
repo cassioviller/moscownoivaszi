@@ -24,6 +24,9 @@ import {
   getListEquipeQueryKey,
   useGerarFolha,
   useEnviarContabilidade,
+  useCreateSalarioRecorrente,
+  useUpdateSalarioRecorrente,
+  type SalarioRecorrente,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router";
@@ -32,7 +35,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { podeNoModulo } from "@/lib/permissoes";
 import { brl } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import {
@@ -41,7 +60,7 @@ import {
   diaLocal,
   instanteNoIntervalo,
 } from "@/lib/financeiro/datas";
-import { reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { ErroListagem, ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
 
 const MENSAGENS_ERRO: Record<string, string> = {
@@ -50,7 +69,7 @@ const MENSAGENS_ERRO: Record<string, string> = {
 };
 
 export default function Folha() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const caminho = useCaminhoDaLoja();
@@ -78,6 +97,113 @@ export default function Folha() {
 
   const gerarFolha = useGerarFolha();
   const enviarContabilidade = useEnviarContabilidade();
+  const criarSalario = useCreateSalarioRecorrente();
+  const atualizarSalario = useUpdateSalarioRecorrente();
+
+  // Definir salário é escrita no financeiro; o servidor recusa de qualquer
+  // jeito, isto só evita oferecer o que vai ser negado.
+  const podeEditar = podeNoModulo(acessosModulos, "financeiro", "editar");
+
+  const [novoUsuarioId, setNovoUsuarioId] = useState("");
+  const [novoValor, setNovoValor] = useState("");
+  const [novoDia, setNovoDia] = useState("5");
+  const [editando, setEditando] = useState<SalarioRecorrente | null>(null);
+  const [editValor, setEditValor] = useState("");
+  const [editDia, setEditDia] = useState("");
+
+  const invalidarSalarios = () =>
+    queryClient.invalidateQueries({ queryKey: getListSalariosRecorrentesQueryKey(activeLojaId!) });
+
+  /**
+   * Lê valor e dia do teclado. Vazio e lixo são coisas diferentes: `parseValor`
+   * devolve null para "não digitou" e NaN para "digitou errado" — e o dia tem
+   * que caber no mês, senão `vencimentoDaFolha` grampeia calado.
+   */
+  function lerSalario(valorTexto: string, diaTexto: string): { valor: number; dia: number } | null {
+    const valor = parseValor(valorTexto);
+    if (valor === null || Number.isNaN(valor) || valor <= 0) {
+      toast({ title: "Valor do salário inválido", variant: "destructive" });
+      return null;
+    }
+    const dia = Number(diaTexto);
+    if (!Number.isInteger(dia) || dia < 1 || dia > 31) {
+      toast({ title: "O dia de vencimento vai de 1 a 31", variant: "destructive" });
+      return null;
+    }
+    return { valor, dia };
+  }
+
+  async function onCriarSalario() {
+    if (!novoUsuarioId) {
+      toast({ title: "Escolha a colaboradora", variant: "destructive" });
+      return;
+    }
+    const lido = lerSalario(novoValor, novoDia);
+    if (!lido) return;
+    try {
+      await criarSalario.mutateAsync({
+        lojaId: activeLojaId!,
+        data: { usuarioId: novoUsuarioId, valor: lido.valor, diaVencimento: lido.dia },
+      });
+      await invalidarSalarios();
+      setNovoUsuarioId("");
+      setNovoValor("");
+      setNovoDia("5");
+      toast({ title: "Salário definido" });
+    } catch (err) {
+      toast({
+        title: "Erro ao definir o salário",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
+
+  function abrirEdicao(s: SalarioRecorrente) {
+    setEditValor(s.valor.toFixed(2).replace(".", ","));
+    setEditDia(String(s.diaVencimento));
+    setEditando(s);
+  }
+
+  async function onSalvarEdicao() {
+    if (!editando) return;
+    const lido = lerSalario(editValor, editDia);
+    if (!lido) return;
+    try {
+      await atualizarSalario.mutateAsync({
+        lojaId: activeLojaId!,
+        salarioId: editando.id,
+        data: { valor: lido.valor, diaVencimento: lido.dia },
+      });
+      await invalidarSalarios();
+      setEditando(null);
+      toast({ title: "Salário atualizado" });
+    } catch (err) {
+      toast({
+        title: "Erro ao atualizar",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function alternarAtivo(s: SalarioRecorrente) {
+    try {
+      await atualizarSalario.mutateAsync({
+        lojaId: activeLojaId!,
+        salarioId: s.id,
+        data: { ativo: !s.ativo },
+      });
+      await invalidarSalarios();
+      toast({ title: s.ativo ? "Salário desativado" : "Salário reativado" });
+    } catch (err) {
+      toast({
+        title: "Erro ao alterar",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
 
   const atualizarParams = (patch: Record<string, string>) => {
     const proximo = new URLSearchParams(searchParams);
@@ -93,6 +219,14 @@ export default function Folha() {
     for (const membro of equipe.data ?? []) mapa.set(membro.usuarioId, membro.nome);
     return mapa;
   }, [equipe.data]);
+
+  // Quem já tem salário sai da lista de "definir": o caminho para mudar o dela
+  // é Editar, não lançar um segundo — dois salários para a mesma pessoa gerariam
+  // duas contas na mesma folha.
+  const semSalario = useMemo(() => {
+    const comSalario = new Set((salarios.data ?? []).map((s) => s.usuarioId));
+    return (equipe.data ?? []).filter((m) => !comSalario.has(m.usuarioId));
+  }, [equipe.data, salarios.data]);
 
   const contasDaFolha = useMemo(
     () =>
@@ -282,7 +416,7 @@ export default function Folha() {
           ) : (
             <ul className="divide-y">
               {salarios.data?.map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-3 py-2">
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate">
                       {nomePorUsuario.get(s.usuarioId) ?? "Colaboradora"}
@@ -292,13 +426,119 @@ export default function Folha() {
                       {s.ativo ? "" : " · inativo"}
                     </span>
                   </div>
-                  <span className="shrink-0 tabular-nums">R$ {brl(s.valor)}</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="tabular-nums">R$ {brl(s.valor)}</span>
+                    {podeEditar && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => abrirEdicao(s)}>
+                          Editar
+                        </Button>
+                        {/* Desativar, não excluir: o salário já virou conta em
+                            competências passadas, e apagá-lo deixaria essas
+                            contas sem a origem que explica de onde vieram. */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={atualizarSalario.isPending}
+                          onClick={() => alternarAtivo(s)}
+                        >
+                          {s.ativo ? "Desativar" : "Reativar"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+
+          {podeEditar && (
+            <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground">Colaboradora</Label>
+                <Select value={novoUsuarioId} onValueChange={setNovoUsuarioId}>
+                  <SelectTrigger className="w-52">
+                    <SelectValue placeholder="Escolha" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {semSalario.map((m) => (
+                      <SelectItem key={m.usuarioId} value={m.usuarioId}>
+                        {m.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                <Input
+                  className="w-32"
+                  inputMode="decimal"
+                  value={novoValor}
+                  onChange={(e) => setNovoValor(e.target.value)}
+                  placeholder="2.500,00"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground">Vence dia</Label>
+                <Input
+                  className="w-20"
+                  inputMode="numeric"
+                  value={novoDia}
+                  onChange={(e) => setNovoDia(e.target.value)}
+                  placeholder="5"
+                />
+              </div>
+              <Button size="sm" onClick={onCriarSalario} disabled={criarSalario.isPending}>
+                {criarSalario.isPending ? "Salvando…" : "Definir salário"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editando} onOpenChange={(aberto) => !aberto && setEditando(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Salário-base
+              {editando ? ` — ${nomePorUsuario.get(editando.usuarioId) ?? "Colaboradora"}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Vale das próximas folhas em diante. As competências já geradas não mudam — a conta
+              lançada é o que foi combinado naquele mês.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="editValor">Valor (R$)</Label>
+              <Input
+                id="editValor"
+                inputMode="decimal"
+                value={editValor}
+                onChange={(e) => setEditValor(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="editDia">Vence dia</Label>
+              <Input
+                id="editDia"
+                inputMode="numeric"
+                value={editDia}
+                onChange={(e) => setEditDia(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditando(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={onSalvarEdicao} disabled={atualizarSalario.isPending}>
+              {atualizarSalario.isPending ? "Salvando…" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* — Contabilidade: baixar (só lê) e marcar (escreve) são dois cliques
           separados de propósito — dá para conferir o arquivo antes de mandar. — */}
