@@ -18,9 +18,9 @@ import {
   dataCurtaFmt,
   diasAteCasamento,
   casamentoUrgente,
-  moduloLiberado,
-} from "../noivas/helpers";
+  } from "../noivas/helpers";
 import { prazoCasamento } from "../reservas/helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /**
  * Ajustes — a fila da costureira (porte da /ajustes do feat/orcamentos): os
@@ -42,10 +42,7 @@ export default function Ajustes() {
     },
   });
   const updateAjuste = useUpdateAjuste();
-
-  // TODO Onda 4: distinguir ver/editar — hoje o gate é flat por módulo
-  // (backend gateia ajustes no módulo "agenda"; o orcamentos usava ajustes:editar).
-  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["agenda"]);
+  const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const pendentes = useMemo(() => {
     const lista = (ajustes ?? []).filter((a): a is Ajuste => a.status === "PENDENTE");

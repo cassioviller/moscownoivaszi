@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { podeLeads } from "../helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /**
  * Interesses da noiva (porte da /noivas/[leadId]/interesses): atributos do
@@ -41,8 +41,7 @@ export default function InteressesNoiva() {
     query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
-  // TODO Onda 4: nível-ação (ver/criar/editar de interesses) — gate flat por módulo.
-  const podeSalvar = podeLeads(acessosModulos);
+  const podeSalvar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const carregando = lead.isLoading || catalogo.isLoading;
   const falhou = lead.isError || catalogo.isError;

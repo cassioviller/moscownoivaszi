@@ -16,7 +16,6 @@ import {
   useRemoveMembroEquipe,
   type MembroEquipe,
 } from "@workspace/api-client-react";
-import { moduloLiberado } from "@/components/permissoes/matriz-permissoes";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +54,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { podeNoModulo } from "@/lib/permissoes";
 
 const novoMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -81,8 +81,7 @@ export default function Equipe() {
   const [removendo, setRemovendo] = useState<MembroEquipe | null>(null);
 
   // Gate flat por módulo (padrão do sidebar): sem mapa (superadmin) → liberado.
-  // TODO Onda 4: distinguir ver/criar/editar quando o modelo deixar de ser flat.
-  const podeGerir = !acessosModulos || moduloLiberado(acessosModulos["admin"]);
+  const podeGerir = podeNoModulo(acessosModulos, "admin", "editar");
 
   const { data: equipe, isLoading: loadingEquipe } = useListEquipe(activeLojaId!, {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },

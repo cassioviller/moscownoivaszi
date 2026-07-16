@@ -22,6 +22,7 @@ import {
   Bookmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { moduloLiberado } from "@/lib/permissoes";
 
 // `modulo` espelha o gate de backend (requireModulo). Item sem módulo é sempre
 // visível (dashboard, configurações).
@@ -48,12 +49,6 @@ const navItems: { icon: typeof LayoutDashboard; label: string; href: string; mod
 ];
 
 /** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true. */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
-
 export function Sidebar() {
   const { pathname } = useLocation();
   const { lojaId } = useParams();

@@ -36,15 +36,6 @@ const ACOES_ROTULOS: Record<Acao, string> = {
 
 const NADA: AcoesModulo = { ver: false, criar: false, editar: false };
 
-/** Um módulo aparece liberado se pode ao menos uma ação. Mesmo gate do sidebar. */
-export function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") {
-    return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  }
-  return false;
-}
-
 /** Rótulos e ordem dos módulos conhecidos (espelha o gate do backend/sidebar). */
 export const MODULOS_ROTULOS: Record<string, string> = {
   leads: "Leads",

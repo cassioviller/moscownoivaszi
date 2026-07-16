@@ -13,7 +13,8 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
 import { NoivaForm, type NoivaFormValues } from "../noiva-form";
-import { isoParaDia, podeLeads } from "../helpers";
+import { isoParaDia } from "../helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /** Editar dados da noiva (porte da /noivas/[leadId]/editar) — volta ao perfil. */
 export default function EditarNoiva() {
@@ -30,9 +31,7 @@ export default function EditarNoiva() {
     },
   });
   const updateLead = useUpdateLead();
-
-  // TODO Onda 4: nível-ação "editar" — hoje o gate é flat por módulo.
-  const podeEditar = podeLeads(acessosModulos);
+  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const onSubmit = async (values: NoivaFormValues) => {
     try {

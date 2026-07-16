@@ -22,13 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, AlertCircle, Image as ImageIcon, Trash2, Upload } from "lucide-react";
 import { VestidoForm, type VestidoFormValues } from "../vestido-form";
-
-/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
+import { podeNoModulo } from "@/lib/permissoes";
 
 /** Lê o arquivo escolhido e monta o payload JSON do endpoint de foto (base64 + dimensões). */
 async function arquivoParaFotoInput(file: File): Promise<VestidoFotoInput> {
@@ -179,8 +173,7 @@ export default function EditarVestido() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // TODO Onda 4: o orcamentos distinguia "editar" dentro de "vestidos"; hoje o gate é flat por módulo.
-  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["vestidos"]);
+  const podeEditar = podeNoModulo(acessosModulos, "vestidos", "editar");
 
   const {
     data: vestido,

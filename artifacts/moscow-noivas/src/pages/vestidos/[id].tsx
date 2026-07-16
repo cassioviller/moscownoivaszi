@@ -23,13 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
-
-/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
+import { podeNoModulo } from "@/lib/permissoes";
 
 /** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
 function rotularSelecoes(
@@ -91,9 +85,7 @@ function bloqueioFuturoOuAberto(b: BloqueioVestido, hoje: Date): boolean {
 export default function VestidoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
   const { lojaId, id } = useParams();
-
-  // TODO Onda 4: o orcamentos distinguia "editar" dentro de "vestidos"; hoje o gate é flat por módulo.
-  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["vestidos"]);
+  const podeEditar = podeNoModulo(acessosModulos, "vestidos", "editar");
 
   const {
     data: vestido,

@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { moduloLiberado } from "../noivas/helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
@@ -40,8 +40,9 @@ export default function ConfigAtendimentos() {
   const updateCabine = useUpdateCabine();
   const setDisponibilidade = useSetDisponibilidade();
 
-  // TODO Onda 4: distinguir ver/editar — hoje o gate é flat por módulo (config).
-  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["config"]);
+  // Cabines e disponibilidade são gateadas por `agenda` no backend — era
+  // `config`, um módulo que o servidor não conhece: negava para todo mundo.
+  const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const [nomeCabine, setNomeCabine] = useState("");
   const [abertura, setAbertura] = useState("");

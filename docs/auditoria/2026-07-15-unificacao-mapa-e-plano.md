@@ -225,9 +225,35 @@ Todas as telas das Ondas 3–5 têm smoke de montagem + zero erro de API
 para ver na tela têm prova própria: a folha é idempotente (rodar 2x gera 0), o
 export não carimba, o PDF sai com `%PDF-`/`%%EOF` de verdade.
 
-O plano está **concluído**. O que ficou consciente e documentado, por onda:
-salário-base só-leitura (Onda 5), histórico de cobrança inline, gate de
-permissão por ação no cliente, e o estorno de quem parou de vender.
+O plano está **concluído**.
+
+### Depois do plano — duas pendências fechadas
+
+**O estorno de quem parou de vender.** O preview listava as vendedoras a partir
+das VENDAS do mês, então quem parou de vender sumia levando o estorno junto — a
+loja nunca saberia que aquele dinheiro não voltou. Agora a lista é a união de
+"quem vendeu" com "quem deve estorno"; quem cancelou de um mês que nunca fechou
+não entra (a comissão jamais foi paga, não há o que estornar). A tela distingue
+"abatido" de "esperando" — chamar de abatido o que não teve de que abater é
+falso.
+
+**O gate por ação no cliente.** Os `podeCriar`/`podeEditar` das telas checavam o
+módulo inteiro: uma vendedora com `vestidos:{ver}` via o botão de criar e tomava
+403. Agora existe `src/lib/permissoes.ts`, espelho do gate do servidor (10
+testes), e os ~17 gates perguntam pela AÇÃO. No caminho apareceram dois bugs de
+módulo errado: `atendimentos` checava `leads` quando o backend gateia por
+`agenda`, e as telas de config perguntavam por `config` — módulo que o servidor
+não conhece, então `undefined`, então negava para todo mundo em silêncio. Um
+gate que sempre fecha não protege: só esconde a tela. De quebra, `moduloLiberado`
+saiu de 8 cópias para uma.
+
+### O que segue em aberto (consciente)
+
+- Salário-base só-leitura na folha; os hooks de escrita já existem.
+- Histórico/registro de cobrança inline (`listRegistrosCobranca` é por lead —
+  exigiria N requests; cabe atrás de um accordion por noiva, com query lazy).
+- Arquivar os 3 branches superados (Onda 0): seguem em `origin`
+  (`conserto-provas-ajustes`, `dia-do-atelier`, `jornada-derivada`).
 
 ---
 

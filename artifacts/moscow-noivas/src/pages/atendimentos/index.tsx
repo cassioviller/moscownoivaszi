@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle, CalendarDays, Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { podeLeads } from "../noivas/helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 const TODAS = "TODAS";
 
@@ -91,8 +91,8 @@ export default function Atendimentos() {
   });
   const updateAtendimento = useUpdateAtendimento();
 
-  // TODO Onda 4: distinguir ver/editar — hoje o gate é flat por módulo (leads).
-  const podeEditar = podeLeads(acessosModulos);
+  // Atendimento é do módulo `agenda` no backend, não `leads`.
+  const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   // Situações válidas DESTA vista (abertas na fila, fechadas no histórico).
   const opcoesSituacao = historico

@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/select";
 import { Plus, AlertCircle, Search } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   dataCurtaFmt,
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
-  podeLeads,
-} from "./helpers";
+  } from "./helpers";
 
 const TODAS_ETAPAS = "TODAS";
 
@@ -43,9 +43,7 @@ export default function Noivas() {
       enabled: !!activeLojaId,
     },
   });
-
-  // TODO Onda 4: distinguir ver/criar/editar — hoje o gate é flat por módulo.
-  const podeCriar = podeLeads(acessosModulos);
+  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
   const visiveis = useMemo(() => {
     const buscaLower = busca.trim().toLowerCase();

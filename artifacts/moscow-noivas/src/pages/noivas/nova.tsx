@@ -7,7 +7,7 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
 import { NoivaForm, type NoivaFormValues } from "./noiva-form";
-import { podeLeads } from "./helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /** Adicionar noiva (porte da /noivas/nova) — ao criar, navega ao perfil. */
 export default function NovaNoiva() {
@@ -18,8 +18,7 @@ export default function NovaNoiva() {
   const navigate = useNavigate();
   const createLead = useCreateLead();
 
-  // TODO Onda 4: nível-ação "criar" — hoje o gate é flat por módulo.
-  const podeCriar = podeLeads(acessosModulos);
+  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
   const onSubmit = async (values: NoivaFormValues) => {
     try {

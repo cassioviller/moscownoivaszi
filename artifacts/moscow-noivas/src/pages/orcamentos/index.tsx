@@ -35,6 +35,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Plus, FileText, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
+import { podeNoModulo } from "@/lib/permissoes";
 
 const STATUS_LABELS: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -50,13 +51,6 @@ const FILTROS: { chave: string; rotulo: string }[] = [
   { chave: "APROVADO", rotulo: "Aprovados" },
   { chave: "RECUSADO", rotulo: "Recusados" },
 ];
-
-/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
 
 const novoOrcamentoSchema = z.object({
   leadId: z.string().min(1, "Escolha a noiva"),
@@ -79,8 +73,7 @@ export default function Orcamentos() {
   const createOrcamento = useCreateOrcamento();
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
-  // TODO Onda 4: distinguir ver/criar (o orcamentos usava leads:editar para criar).
-  const podeCriar = !acessosModulos || moduloLiberado(acessosModulos["leads"]);
+  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();

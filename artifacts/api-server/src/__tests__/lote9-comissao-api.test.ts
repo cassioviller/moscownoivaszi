@@ -420,6 +420,79 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
     }
   });
 
+  it("vendedora que PAROU de vender ainda aparece com o estorno pendente", async () => {
+    // O buraco: o preview listava as vendedoras a partir das VENDAS do mês, e
+    // quem parou de vender sumia levando o estorno junto — a loja nunca saberia
+    // que aquele dinheiro não voltou.
+    const outra = await criarFixture();
+    try {
+      const ag = await loginComLoja(outra.superAdminEmail, outra.lojaId);
+      await ag.post(`/api/lojas/${outra.lojaId}/comissao/regras`).send({
+        vendedoraId: outra.vendedoraId,
+        vigenciaInicio: dia("2020-01-01").toISOString(),
+        faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual: 10 }],
+      }).expect(201);
+
+      const lead = await criarLead(outra);
+      const contrato = await criarContrato(outra, {
+        leadId: lead.id,
+        valorTotal: 10000,
+        fechadoEm: dia("2025-06-10"),
+      });
+      await ag
+        .post(`/api/lojas/${outra.lojaId}/comissao/fechamentos`)
+        .send({ competencia: "2025-06" })
+        .expect(201);
+
+      await ag
+        .post(`/api/lojas/${outra.lojaId}/contratos/${contrato.id}/cancelar`)
+        .send({ motivo: "Desistência" })
+        .expect(200);
+
+      // Julho: nenhuma venda dela. Antes, a lista vinha vazia.
+      const julho = await ag
+        .get(`/api/lojas/${outra.lojaId}/comissao/preview`)
+        .query({ competencia: "2025-07" })
+        .expect(200);
+      expect(julho.body).toHaveLength(1);
+      expect(julho.body[0].vendedoraId).toBe(outra.vendedoraId);
+      expect(julho.body[0].estornoPendente).toBe(10000);
+      expect(julho.body[0].totalVendas).toBe(0);
+      expect(julho.body[0].valorTotal).toBe(0);
+    } finally {
+      await limparFixture(outra);
+    }
+  });
+
+  it("cancelamento de mês NUNCA fechado não vira estorno visível", async () => {
+    // Ela entra como candidata (cancelou e não reconciliou), mas a comissão
+    // daquele mês jamais foi paga: não há o que estornar, e mostrá-la zerada
+    // seria ruído.
+    const outra = await criarFixture();
+    try {
+      const ag = await loginComLoja(outra.superAdminEmail, outra.lojaId);
+      const lead = await criarLead(outra);
+      const contrato = await criarContrato(outra, {
+        leadId: lead.id,
+        valorTotal: 8000,
+        fechadoEm: dia("2025-06-10"),
+      });
+      // Cancela SEM nunca ter fechado junho.
+      await ag
+        .post(`/api/lojas/${outra.lojaId}/contratos/${contrato.id}/cancelar`)
+        .send({ motivo: "Desistência" })
+        .expect(200);
+
+      const julho = await ag
+        .get(`/api/lojas/${outra.lojaId}/comissao/preview`)
+        .query({ competencia: "2025-07" })
+        .expect(200);
+      expect(julho.body).toEqual([]);
+    } finally {
+      await limparFixture(outra);
+    }
+  });
+
   it("competência corrente não fecha — o mês ainda pode vender", async () => {
     const agora = new Date();
     const corrente = `${agora.getUTCFullYear()}-${String(agora.getUTCMonth() + 1).padStart(2, "0")}`;

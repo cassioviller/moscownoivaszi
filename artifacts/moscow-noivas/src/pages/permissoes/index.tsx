@@ -11,12 +11,12 @@ import {
 } from "@workspace/api-client-react";
 import {
   MatrizPermissoes,
-  moduloLiberado,
   ehPerfilAdmin,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /**
  * Permissões por perfil na loja ativa: matriz FLAT (um boolean por módulo).
@@ -28,8 +28,7 @@ export default function Permissoes() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Gate flat por módulo (padrão do sidebar): sem mapa (superadmin) → liberado.
-  const podeGerir = !acessosModulos || moduloLiberado(acessosModulos["admin"]);
+  const podeGerir = podeNoModulo(acessosModulos, "admin", "editar");
 
   const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
     query: { queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId && podeGerir },

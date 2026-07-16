@@ -6,13 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle } from "lucide-react";
-
-/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
+import { podeNoModulo } from "@/lib/permissoes";
 
 function tipoLabel(tipo: string): string {
   return tipo === "ESCALA" ? "escala" : "opção única";
@@ -25,7 +19,7 @@ export default function Catalogo() {
   // No main o backend gateia /atributos pelo módulo "vestidos" (catalogo.ts).
   // TODO Onda 4: o orcamentos distinguia ver/criar/editar dentro de "config";
   // hoje o gate é flat por módulo.
-  const podeGerir = !acessosModulos || moduloLiberado(acessosModulos["vestidos"]);
+  const podeGerir = podeNoModulo(acessosModulos, "vestidos", "editar");
 
   const { data: atributos, isLoading, isError, error, refetch } = useListAtributos(activeLojaId!, {
     query: {

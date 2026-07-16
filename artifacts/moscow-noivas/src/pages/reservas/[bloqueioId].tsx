@@ -36,8 +36,9 @@ import {
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
-import { dataCurtaFmt, isoParaDia, moduloLiberado } from "../noivas/helpers";
+import { dataCurtaFmt, isoParaDia } from "../noivas/helpers";
 import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -79,12 +80,8 @@ export default function ReservaDetalhe() {
         .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime()),
     [atendimentos.data, bloqueioId],
   );
-
-  // TODO Onda 4: nível-ação (ver/criar/editar) — hoje o gate é flat por módulo.
-  // Backend: bloqueios sob "vestidos" (orcamentos: leads:editar OU ajustes:editar);
-  // ajustes/checklist sob "agenda" (orcamentos: ajustes:criar/editar).
-  const podeMovimentar = !acessosModulos || moduloLiberado(acessosModulos["vestidos"]);
-  const podeAjustes = !acessosModulos || moduloLiberado(acessosModulos["agenda"]);
+  const podeMovimentar = podeNoModulo(acessosModulos, "vestidos", "editar");
+  const podeAjustes = podeNoModulo(acessosModulos, "agenda", "ver");
 
   // Formularios locais: data da retirada/devolução, novo ajuste por prova,
   // novo item de checklist por ajuste, ajuste aguardando confirmação de remoção.

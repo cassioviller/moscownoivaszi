@@ -57,6 +57,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO } from "@/lib/formatos";
+import { podeNoModulo } from "@/lib/permissoes";
 
 function round2(v: number): number {
   return Math.round(v * 100) / 100;
@@ -76,13 +77,6 @@ const editarItemSchema = z.object({
   quantidade: z.string(),
 });
 type EditarItemValues = z.infer<typeof editarItemSchema>;
-
-/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
 
 const gerarContratoSchema = z.object({
   cpf: z.string().optional(),
@@ -129,8 +123,7 @@ export default function OrcamentoDetail() {
   const createContrato = useCreateContrato();
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
-  // TODO Onda 4: distinguir ver/editar (o orcamentos usava leads:editar para mutar).
-  const podeEditar = !acessosModulos || moduloLiberado(acessosModulos["leads"]);
+  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const lead = useMemo(
     () => leads.data?.find((l) => l.id === orcamento?.leadId),

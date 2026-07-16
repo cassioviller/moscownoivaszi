@@ -51,7 +51,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { podeLeads, moduloLiberado, dataCurtaFmt } from "../noivas/helpers";
+import { dataCurtaFmt } from "../noivas/helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 const agendarSchema = z
   .object({
@@ -125,9 +126,11 @@ export default function NovoAtendimento() {
   const createAtendimento = useCreateAtendimento();
   const deleteAtendimento = useDeleteAtendimento();
 
-  // TODO Onda 4: distinguir ver/criar — hoje o gate é flat por módulo.
-  const podeCriar = podeLeads(acessosModulos);
-  const podeVerConfig = !acessosModulos || moduloLiberado(acessosModulos["config"]);
+  // Agendar é do módulo `agenda` no backend, não `leads`; e a config de
+  // cabines é gateada por `agenda` também — era `config`, que o servidor não
+  // conhece e por isso negava para todo mundo.
+  const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
+  const podeVerConfig = podeNoModulo(acessosModulos, "agenda", "ver");
 
   const form = useForm<AgendarValues>({
     resolver: zodResolver(agendarSchema),

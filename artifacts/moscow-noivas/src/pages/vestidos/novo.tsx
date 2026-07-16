@@ -14,13 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { VestidoForm, type VestidoFormValues } from "./vestido-form";
-
-/** Um módulo é liberado se `true` ou se tem ao menos um sub-acesso true (padrão do sidebar). */
-function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  return false;
-}
+import { podeNoModulo } from "@/lib/permissoes";
 
 /** Cadastro completo de vestido (com características do catálogo) — portado de vestidos/novo do orcamentos. */
 export default function NovoVestido() {
@@ -30,8 +24,7 @@ export default function NovoVestido() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // TODO Onda 4: o orcamentos distinguia "criar" dentro de "vestidos"; hoje o gate é flat por módulo.
-  const podeCriar = !acessosModulos || moduloLiberado(acessosModulos["vestidos"]);
+  const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
 
   const catalogoQuery = useListAtributos(activeLojaId!, {
     query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },

@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Plus, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { etapaLabel } from "@/lib/formatos";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   dataLongaFmt,
   diasAteCasamento,
@@ -25,8 +26,7 @@ import {
   casamentoUrgente,
   moedaFmt,
   whatsappDigits,
-  podeLeads,
-} from "../helpers";
+  } from "../helpers";
 
 const ROTULO_ORIGEM: Record<string, string> = { LOJA: "Loja", WHATSAPP: "WhatsApp" };
 const STATUS_ORCAMENTO: Record<string, string> = {
@@ -83,8 +83,7 @@ export default function NoivaDetalhe() {
     [contratos.data, leadId],
   );
 
-  // TODO Onda 4: distinguir ver/criar/editar — hoje o gate é flat por módulo.
-  const podeEditar = podeLeads(acessosModulos);
+  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const novoOrcamento = async () => {
     try {

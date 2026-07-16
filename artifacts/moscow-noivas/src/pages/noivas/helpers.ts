@@ -59,20 +59,7 @@ export function whatsappDigits(whatsapp: string | null | undefined): string | nu
   return digits.length > 0 ? digits : null;
 }
 
-/**
- * Gate por módulo (padrão do sidebar): liberado se `true` ou objeto com algum
- * sub-acesso true. `acessosModulos` null/undefined = sem restrição (superadmin).
- * TODO Onda 4: nível-ação (ver/criar/editar) — hoje o modelo é flat por módulo.
- */
-export function moduloLiberado(acesso: unknown): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") {
-    return Object.values(acesso as Record<string, unknown>).some(Boolean);
-  }
-  return false;
-}
-
-/** Módulo "leads" liberado para o usuário atual (noivas usa a chave de leads). */
-export function podeLeads(acessosModulos: Record<string, unknown> | null): boolean {
-  return !acessosModulos || moduloLiberado(acessosModulos["leads"]);
-}
+// O gate de permissão vive em `@/lib/permissoes` — `podeNoModulo(acessos,
+// modulo, acao)`. `podeLeads` e a cópia local de `moduloLiberado` saíram daqui:
+// o modelo deixou de ser plano, e um gate que só sabia responder "entra ou não
+// entra" oferecia botões que o servidor recusava.

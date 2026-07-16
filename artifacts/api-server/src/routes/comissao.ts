@@ -240,6 +240,28 @@ async function estornosPendentes(
   return mapa;
 }
 
+/**
+ * Quem TALVEZ tenha estorno pendente — candidatas, não veredito.
+ *
+ * O preview lista as vendedoras a partir das vendas do mês, e quem parou de
+ * vender sumiria da tela levando o estorno junto: a loja nunca saberia que
+ * aquele dinheiro não voltou. Aqui a busca é pelo cancelamento, sem passar
+ * pelas vendas. Quem decide de fato é `estornosPendentes` (só conta o que veio
+ * de competência anterior JÁ fechada) — este conjunto só garante que ela seja
+ * perguntada.
+ */
+async function candidatasComEstorno(cliente: Cliente, lojaId: string): Promise<string[]> {
+  const linhas = await cliente
+    .selectDistinct({ vendedoraId: contratosTable.vendedoraId })
+    .from(contratosTable)
+    .where(and(
+      eq(contratosTable.lojaId, lojaId),
+      eq(contratosTable.status, "CANCELADO"),
+      isNull(contratosTable.comissaoEstornadaEm),
+    ));
+  return linhas.map((l) => l.vendedoraId);
+}
+
 /** Acumulado bruto por vendedora: contratos ATIVO fechados na competência. */
 async function vendasDaCompetencia(cliente: Cliente, lojaId: string, competencia: string) {
   const { inicio, fim } = limitesCompetencia(competencia);
@@ -388,12 +410,19 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
   }
   const { competencia } = q.data;
 
-  const vendas = await vendasDaCompetencia(db, lojaId, competencia);
-  if (vendas.size === 0) {
+  // Quem vendeu no mês MAIS quem deve estorno: uma vendedora que parou de
+  // vender ainda precisa aparecer, senão o estorno dela some da tela e carrega
+  // para sempre sem ninguém saber.
+  const [vendas, candidatas] = await Promise.all([
+    vendasDaCompetencia(db, lojaId, competencia),
+    candidatasComEstorno(db, lojaId),
+  ]);
+  const vendedoraIds = [...new Set([...vendas.keys(), ...candidatas])];
+  if (vendedoraIds.length === 0) {
     res.json(PreviewComissaoResponse.parse([]));
     return;
   }
-  const vendedoraIds = [...vendas.keys()];
+
   const [nomes, estornos, regras] = await Promise.all([
     db.select({ id: usuariosTable.id, nome: usuariosTable.nome })
       .from(usuariosTable)
@@ -422,8 +451,12 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
       faltaProximoDegrau: degrau ? real(degrau.faltam) : null,
     };
   });
-  linhas.sort((a, b) => b.valorTotal - a.valorTotal);
-  res.json(PreviewComissaoResponse.parse(linhas));
+  // Candidata sem estorno qualificado (cancelou, mas de um mês que nunca
+  // fechou — a comissão nunca chegou a ser paga) não tem o que mostrar: entrou
+  // na pergunta, não na resposta.
+  const visiveis = linhas.filter((l) => vendas.has(l.vendedoraId) || l.estornoPendente > 0);
+  visiveis.sort((a, b) => b.valorTotal - a.valorTotal || b.estornoPendente - a.estornoPendente);
+  res.json(PreviewComissaoResponse.parse(visiveis));
 });
 
 // ── Fechamentos ──

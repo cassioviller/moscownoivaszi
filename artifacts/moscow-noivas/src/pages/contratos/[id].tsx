@@ -53,7 +53,7 @@ import { brl, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, rotuloForma, estaAtrasada } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { centavos, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { podeLeads } from "../noivas/helpers";
+import { podeNoModulo } from "@/lib/permissoes";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   JA_TEM_PLANO: "Este contrato já tem um plano de pagamento.",
@@ -131,9 +131,7 @@ export default function ContratoDetail() {
   const receber = useReceberParcela();
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
-
-  // TODO Onda 4: distinguir leads:ver × leads:editar quando permissões por ação chegarem.
-  const podeEditar = podeLeads(acessosModulos);
+  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const parcelas = useMemo(
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),

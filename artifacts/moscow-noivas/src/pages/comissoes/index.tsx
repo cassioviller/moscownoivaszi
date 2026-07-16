@@ -273,20 +273,31 @@ export default function Comissoes() {
             <p className="text-sm text-muted-foreground">Nenhuma venda nesta competência.</p>
           ) : (
             <ul className="divide-y">
-              {preview.data?.map((linha) => (
+              {preview.data?.map((linha) => {
+                // Sem venda no mês, ela só está aqui pelo estorno: dizer
+                // "vendeu R$ 0,00 · sem faixa atingida" seria ruído, e chamar o
+                // estorno de "abatido" seria falso — não houve de que abater.
+                const soEstorno = linha.totalVendas === 0 && !!linha.estornoPendente;
+                return (
                 <li key={linha.vendedoraId} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="font-medium">{linha.vendedoraNome ?? "Vendedora"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Vendeu R$ {brl(linha.totalVendas)}
-                      {linha.percentualAplicado !== null && linha.percentualAplicado !== undefined
-                        ? ` · ${linha.percentualAplicado}%`
-                        : " · sem faixa atingida"}
-                      {!!linha.valorBonus && ` · bônus R$ ${brl(linha.valorBonus)}`}
-                    </p>
+                    {soEstorno ? (
+                      <p className="text-xs text-muted-foreground">Sem vendas nesta competência</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Vendeu R$ {brl(linha.totalVendas)}
+                        {linha.percentualAplicado !== null && linha.percentualAplicado !== undefined
+                          ? ` · ${linha.percentualAplicado}%`
+                          : " · sem faixa atingida"}
+                        {!!linha.valorBonus && ` · bônus R$ ${brl(linha.valorBonus)}`}
+                      </p>
+                    )}
                     {!!linha.estornoPendente && (
                       <p className="text-xs text-destructive">
-                        R$ {brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)
+                        {soEstorno
+                          ? `R$ ${brl(linha.estornoPendente)} de estorno esperando — segue pendente até ela voltar a vender`
+                          : `R$ ${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
                       </p>
                     )}
                     {linha.faltaProximoDegrau !== null && linha.faltaProximoDegrau !== undefined && (
@@ -299,7 +310,8 @@ export default function Comissoes() {
                     R$ {brl(linha.valorTotal)}
                   </span>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </CardContent>
