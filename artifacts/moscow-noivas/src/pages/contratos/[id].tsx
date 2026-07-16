@@ -50,19 +50,10 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO } from "@/lib/formatos";
+import { ROTULO_FORMA, rotuloForma, estaAtrasada } from "@/lib/financeiro/forma";
+import { hojeLocal } from "@/lib/financeiro/datas";
+import { centavos, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { podeLeads } from "../noivas/helpers";
-
-// Tipado pelo enum gerado: se o backend mudar as formas, o openapi regenera e
-// este mapa passa a falhar no typecheck em vez de virar 422 em produção.
-const ROTULO_FORMA: Record<ReceberParcelaInputFormaRecebimento, string> = {
-  PIX: "Pix",
-  CARTAO_CREDITO: "Cartão de crédito",
-  CARTAO_DEBITO: "Cartão de débito",
-  DINHEIRO: "Dinheiro",
-  BOLETO: "Boleto",
-  TRANSFERENCIA: "Transferência",
-  OUTRO: "Outro",
-};
 
 const MENSAGENS_ERRO: Record<string, string> = {
   JA_TEM_PLANO: "Este contrato já tem um plano de pagamento.",
@@ -104,9 +95,6 @@ function parseValor(texto: string): number | null {
   const n = Number(normalizado);
   return Number.isFinite(n) ? n : Number.NaN;
 }
-
-/** Dia de negócio de hoje (America/Sao_Paulo) — as parcelas vencem em dia-calendário. */
-const ymdHoje = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
 export default function ContratoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -151,18 +139,15 @@ export default function ContratoDetail() {
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),
     [contrato?.parcelas],
   );
-  const hoje = ymdHoje();
-  const atrasada = (p: Parcela) => p.status === "PREVISTA" && p.vencimento.slice(0, 10) < hoje;
+  const hoje = hojeLocal();
+  const atrasada = (p: Parcela) => estaAtrasada(p, hoje);
 
   const totalPlanoCentavos = useMemo(
-    () =>
-      parcelas
-        .filter((p) => p.status !== "CANCELADA")
-        .reduce((soma, p) => soma + Math.round(p.valorPrevisto * 100), 0),
+    () => somaCentavos(parcelas.filter((p) => p.status !== "CANCELADA"), (p) => p.valorPrevisto),
     [parcelas],
   );
   const planoDivergente =
-    parcelas.length > 0 && contrato != null && totalPlanoCentavos !== Math.round(contrato.valorTotal * 100);
+    parcelas.length > 0 && contrato != null && totalPlanoCentavos !== centavos(contrato.valorTotal);
 
   const invalidarParcelas = () =>
     Promise.all([
@@ -324,7 +309,7 @@ export default function ContratoDetail() {
   const statusParcela = (p: Parcela) => {
     if (p.status === "CANCELADA") return { rotulo: "Cancelada", variante: "outline" as const };
     if (p.status === "PAGA") {
-      const forma = p.formaRecebimento ? ` (${ROTULO_FORMA[p.formaRecebimento] ?? p.formaRecebimento})` : "";
+      const forma = p.formaRecebimento ? ` (${rotuloForma(p.formaRecebimento)})` : "";
       return { rotulo: `Paga${forma}`, variante: "default" as const };
     }
     if (atrasada(p)) return { rotulo: "Atrasada", variante: "destructive" as const };
@@ -389,7 +374,7 @@ export default function ContratoDetail() {
             <div>
               <span className="text-muted-foreground text-sm">Forma de Pagamento Base</span>
               <p className="font-medium">
-                {contrato.formaPagamento ? ROTULO_FORMA[contrato.formaPagamento] ?? contrato.formaPagamento : "Não definida"}
+                {rotuloForma(contrato.formaPagamento) ?? "Não definida"}
               </p>
             </div>
             {contrato.cpf && (
@@ -479,7 +464,7 @@ export default function ContratoDetail() {
                 <div className="flex justify-between items-center pt-1">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">Total do plano</span>
                   <span className={`font-semibold text-sm ${planoDivergente ? "text-destructive" : ""}`}>
-                    R$ {brl(totalPlanoCentavos / 100)}
+                    R$ {brl(reais(totalPlanoCentavos))}
                   </span>
                 </div>
                 {planoDivergente && (

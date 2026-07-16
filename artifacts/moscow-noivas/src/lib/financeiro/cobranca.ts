@@ -1,0 +1,130 @@
+import type { Parcela } from "@workspace/api-client-react";
+import { centavos, reais } from "./dinheiro";
+import { diaDeNegocio, diasEntre, hojeLocal } from "./datas";
+
+/**
+ * Cobrança/inadimplência: aging por faixa de atraso, agrupado por noiva.
+ * `vencimento` é data de negócio; o atraso conta em dias-calendário contra
+ * hoje no fuso da loja (não em horas — uma parcela não vence "às 14h").
+ */
+
+export type Faixa = "ate30" | "d31a60" | "mais60";
+
+export const ROTULO_FAIXA: Record<Faixa, string> = {
+  ate30: "Até 30 dias",
+  d31a60: "31 a 60 dias",
+  mais60: "Mais de 60 dias",
+};
+
+/** Classifica dias de atraso (≥1) em faixa. Vencendo hoje (0) não é atraso. */
+export function faixaDeAtraso(diasDeAtraso: number): Faixa {
+  if (diasDeAtraso <= 30) return "ate30";
+  if (diasDeAtraso <= 60) return "d31a60";
+  return "mais60";
+}
+
+/**
+ * Deep-link wa.me. Prefixa o DDI 55 só se o número for nacional (10–11
+ * dígitos) e mantém quando já vem com DDI (12–13 começando em 55); qualquer
+ * outro tamanho é implausível e vira null em vez de um link quebrado.
+ */
+export function linkWhatsApp(whatsapp: string | null | undefined, mensagem: string): string | null {
+  if (!whatsapp) return null;
+  let digitos = whatsapp.replace(/\D/g, "");
+  if (digitos.length === 10 || digitos.length === 11) {
+    digitos = `55${digitos}`;
+  } else if (!(digitos.length >= 12 && digitos.length <= 13 && digitos.startsWith("55"))) {
+    return null;
+  }
+  return `https://wa.me/${digitos}?text=${encodeURIComponent(mensagem)}`;
+}
+
+export type NoivaInadimplente = {
+  leadId: string;
+  noivaNome: string | null;
+  whatsapp: string | null;
+  contratoId: string;
+  totalVencido: number;
+  qtdParcelas: number;
+  diasMaisAntigo: number;
+  faixaMaisAntiga: Faixa;
+};
+export type FaixaResumo = { total: number; qtdNoivas: number };
+export type Aging = {
+  faixas: Record<Faixa, FaixaResumo>;
+  /** Mais atrasada primeiro — a fila de quem ligar antes. */
+  noivas: NoivaInadimplente[];
+};
+
+/** Dados que a parcela precisa carregar para virar linha de cobrança. */
+export type ParcelaComNoiva = Parcela & {
+  contrato?: {
+    leadId?: string;
+    lead?: { noivaNome?: string; whatsapp?: string | null } | null;
+  } | null;
+};
+
+/** Parcelas PREVISTAS já vencidas, por faixa de atraso e por noiva. */
+export function agingDeParcelas(
+  parcelas: readonly ParcelaComNoiva[],
+  hoje: string = hojeLocal(),
+): Aging {
+  const faixaTotC: Record<Faixa, number> = { ate30: 0, d31a60: 0, mais60: 0 };
+  const faixaNoivas: Record<Faixa, Set<string>> = { ate30: new Set(), d31a60: new Set(), mais60: new Set() };
+  const porNoiva = new Map<
+    string,
+    { noivaNome: string | null; whatsapp: string | null; contratoId: string; totalC: number; qtd: number; vencMaisAntigo: string }
+  >();
+
+  for (const p of parcelas) {
+    if (p.status !== "PREVISTA") continue;
+    const venc = diaDeNegocio(p.vencimento);
+    const dias = diasEntre(venc, hoje);
+    if (dias < 1) continue; // vence hoje ou no futuro: não é atraso
+
+    const leadId = p.contrato?.leadId;
+    if (!leadId) continue; // sem noiva não há quem cobrar
+    const f = faixaDeAtraso(dias);
+    const valorC = centavos(p.valorPrevisto);
+    faixaTotC[f] += valorC;
+    faixaNoivas[f].add(leadId);
+
+    let n = porNoiva.get(leadId);
+    if (!n) {
+      n = {
+        noivaNome: p.contrato?.lead?.noivaNome ?? null,
+        whatsapp: p.contrato?.lead?.whatsapp ?? null,
+        contratoId: p.contratoId,
+        totalC: 0,
+        qtd: 0,
+        vencMaisAntigo: venc,
+      };
+      porNoiva.set(leadId, n);
+    }
+    n.totalC += valorC;
+    n.qtd += 1;
+    if (venc < n.vencMaisAntigo) n.vencMaisAntigo = venc;
+  }
+
+  const noivas: NoivaInadimplente[] = [...porNoiva.entries()]
+    .map(([leadId, n]) => {
+      const diasMaisAntigo = diasEntre(n.vencMaisAntigo, hoje);
+      return {
+        leadId,
+        noivaNome: n.noivaNome,
+        whatsapp: n.whatsapp,
+        contratoId: n.contratoId,
+        totalVencido: reais(n.totalC),
+        qtdParcelas: n.qtd,
+        diasMaisAntigo,
+        faixaMaisAntiga: faixaDeAtraso(diasMaisAntigo),
+      };
+    })
+    .sort((a, b) => b.diasMaisAntigo - a.diasMaisAntigo);
+
+  const resumo = (f: Faixa): FaixaResumo => ({ total: reais(faixaTotC[f]), qtdNoivas: faixaNoivas[f].size });
+  return {
+    faixas: { ate30: resumo("ate30"), d31a60: resumo("d31a60"), mais60: resumo("mais60") },
+    noivas,
+  };
+}
