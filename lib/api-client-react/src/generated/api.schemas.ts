@@ -1280,6 +1280,42 @@ export interface PagarContaInput {
   observacoes?: string;
 }
 
+export interface PagamentoInput {
+  data: string;
+  /** @minItems 1 */
+  contaIds: string[];
+  /** @minimum 0 */
+  valorPago?: number;
+  forma?: string;
+  observacoes?: string;
+}
+
+export interface PagamentoItem {
+  id: string;
+  lojaId: string;
+  pagamentoId: string;
+  contaPagarId: string;
+  valor: number;
+  contaPagar?: ContaPagar;
+}
+
+export interface Pagamento {
+  id: string;
+  lojaId: string;
+  /** @nullable */
+  colaboradorId?: string | null;
+  data: string;
+  valorPago: number;
+  /** @nullable */
+  forma?: string | null;
+  /** @nullable */
+  observacoes?: string | null;
+  /** @nullable */
+  enviadoContabilidadeEm?: string | null;
+  colaborador?: Usuario | null;
+  itens?: PagamentoItem[];
+}
+
 export interface SalarioRecorrente {
   id: string;
   lojaId: string;
@@ -1383,5 +1419,19 @@ export type CheckDisponibilidadeVestidosParams = {
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 data: string;
+};
+
+export type ListPagamentosParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+colaboradorId?: string;
 };
 

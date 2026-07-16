@@ -121,6 +121,15 @@ export function diaLocal(d: Date): string {
   return formatadorDiaLocal.format(d);
 }
 
+/**
+ * Instante em que o dia local "YYYY-MM-DD" começa em São Paulo — o inverso de
+ * `diaLocal`. Offset fixo -03:00: o Brasil não tem DST desde 2019, e é aqui que
+ * essa premissa mora (fronteira de dia para filtros sobre timestamptz).
+ */
+export function inicioDoDia(dia: string): Date {
+  return new Date(`${dia}T00:00:00-03:00`);
+}
+
 const MS_POR_DIA = 86_400_000;
 
 /**

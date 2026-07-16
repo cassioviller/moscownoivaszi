@@ -65,6 +65,7 @@ import type {
   LeadInteresse,
   LeadInteresseInput,
   LeadUpdate,
+  ListPagamentosParams,
   LoginInput,
   Loja,
   LojaInput,
@@ -78,6 +79,8 @@ import type {
   OrcamentoItemInput,
   OrcamentoItemUpdate,
   OrcamentoUpdate,
+  Pagamento,
+  PagamentoInput,
   PagarContaInput,
   Parcela,
   Perfil,
@@ -6528,6 +6531,79 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateContaPagarMutationOptions(options));
     }
 
+export const getRemoveContaPagarUrl = (lojaId: string,
+    contaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contas-pagar/${contaId}`
+}
+
+/**
+ * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
+ * @summary Remove uma conta a pagar ainda PREVISTA
+ */
+export const removeContaPagar = async (lojaId: string,
+    contaId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveContaPagarUrl(lojaId,contaId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveContaPagarMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeContaPagar>>, TError,{lojaId: string;contaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeContaPagar>>, TError,{lojaId: string;contaId: string}, TContext> => {
+
+const mutationKey = ['removeContaPagar'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeContaPagar>>, {lojaId: string;contaId: string}> = (props) => {
+          const {lojaId,contaId} = props ?? {};
+
+          return  removeContaPagar(lojaId,contaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveContaPagarMutationResult = NonNullable<Awaited<ReturnType<typeof removeContaPagar>>>
+
+    export type RemoveContaPagarMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove uma conta a pagar ainda PREVISTA
+ */
+export const useRemoveContaPagar = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeContaPagar>>, TError,{lojaId: string;contaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeContaPagar>>,
+        TError,
+        {lojaId: string;contaId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveContaPagarMutationOptions(options));
+    }
+
 export const getPagarContaPagarUrl = (lojaId: string,
     contaId: string,) => {
 
@@ -6593,6 +6669,238 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getPagarContaPagarMutationOptions(options));
+    }
+
+export const getListPagamentosUrl = (lojaId: string,
+    params?: ListPagamentosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/pagamentos?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/pagamentos`
+}
+
+/**
+ * @summary Caixa realizado — saídas efetivamente pagas
+ */
+export const listPagamentos = async (lojaId: string,
+    params?: ListPagamentosParams, options?: RequestInit): Promise<Pagamento[]> => {
+
+  return customFetch<Pagamento[]>(getListPagamentosUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPagamentosQueryKey = (lojaId: string,
+    params?: ListPagamentosParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/pagamentos`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPagamentosQueryOptions = <TData = Awaited<ReturnType<typeof listPagamentos>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ListPagamentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPagamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPagamentosQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPagamentos>>> = ({ signal }) => listPagamentos(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPagamentos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPagamentosQueryResult = NonNullable<Awaited<ReturnType<typeof listPagamentos>>>
+export type ListPagamentosQueryError = ErrorType<void>
+
+
+/**
+ * @summary Caixa realizado — saídas efetivamente pagas
+ */
+
+export function useListPagamentos<TData = Awaited<ReturnType<typeof listPagamentos>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ListPagamentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPagamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPagamentosQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePagamentoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/pagamentos`
+}
+
+/**
+ * @summary Uma saída de caixa que quita uma ou mais contas
+ */
+export const createPagamento = async (lojaId: string,
+    pagamentoInput: PagamentoInput, options?: RequestInit): Promise<Pagamento> => {
+
+  return customFetch<Pagamento>(getCreatePagamentoUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pagamentoInput)
+  }
+);}
+
+
+
+
+export const getCreatePagamentoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPagamento>>, TError,{lojaId: string;data: BodyType<PagamentoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPagamento>>, TError,{lojaId: string;data: BodyType<PagamentoInput>}, TContext> => {
+
+const mutationKey = ['createPagamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPagamento>>, {lojaId: string;data: BodyType<PagamentoInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  createPagamento(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePagamentoMutationResult = NonNullable<Awaited<ReturnType<typeof createPagamento>>>
+    export type CreatePagamentoMutationBody = BodyType<PagamentoInput>
+    export type CreatePagamentoMutationError = ErrorType<void>
+
+    /**
+ * @summary Uma saída de caixa que quita uma ou mais contas
+ */
+export const useCreatePagamento = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPagamento>>, TError,{lojaId: string;data: BodyType<PagamentoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPagamento>>,
+        TError,
+        {lojaId: string;data: BodyType<PagamentoInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePagamentoMutationOptions(options));
+    }
+
+export const getEstornarPagamentoUrl = (lojaId: string,
+    pagamentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/pagamentos/${pagamentoId}/estornar`
+}
+
+/**
+ * @summary Desfaz a saída de caixa e devolve as contas para PREVISTA
+ */
+export const estornarPagamento = async (lojaId: string,
+    pagamentoId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getEstornarPagamentoUrl(lojaId,pagamentoId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getEstornarPagamentoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof estornarPagamento>>, TError,{lojaId: string;pagamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof estornarPagamento>>, TError,{lojaId: string;pagamentoId: string}, TContext> => {
+
+const mutationKey = ['estornarPagamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof estornarPagamento>>, {lojaId: string;pagamentoId: string}> = (props) => {
+          const {lojaId,pagamentoId} = props ?? {};
+
+          return  estornarPagamento(lojaId,pagamentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EstornarPagamentoMutationResult = NonNullable<Awaited<ReturnType<typeof estornarPagamento>>>
+
+    export type EstornarPagamentoMutationError = ErrorType<void>
+
+    /**
+ * @summary Desfaz a saída de caixa e devolve as contas para PREVISTA
+ */
+export const useEstornarPagamento = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof estornarPagamento>>, TError,{lojaId: string;pagamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof estornarPagamento>>,
+        TError,
+        {lojaId: string;pagamentoId: string},
+        TContext
+      > => {
+      return useMutation(getEstornarPagamentoMutationOptions(options));
     }
 
 export const getListSalariosRecorrentesUrl = (lojaId: string,) => {

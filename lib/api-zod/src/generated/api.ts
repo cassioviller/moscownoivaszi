@@ -3776,6 +3776,18 @@ export const CreateContaPagarResponse = zod.object({
 })
 
 
+/**
+ * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
+ * @summary Remove uma conta a pagar ainda PREVISTA
+ */
+export const RemoveContaPagarParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contaId": zod.coerce.string()
+})
+
+export const RemoveContaPagarResponse = zod.void()
+
+
 export const PagarContaPagarParams = zod.object({
   "lojaId": zod.coerce.string(),
   "contaId": zod.coerce.string()
@@ -3801,6 +3813,133 @@ export const PagarContaPagarResponse = zod.object({
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA'])
 })
+
+
+/**
+ * @summary Caixa realizado — saídas efetivamente pagas
+ */
+export const ListPagamentosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const listPagamentosQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listPagamentosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListPagamentosQueryParams = zod.object({
+  "de": zod.coerce.string().regex(listPagamentosQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(listPagamentosQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "colaboradorId": zod.coerce.string().optional()
+})
+
+export const ListPagamentosResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "colaboradorId": zod.string().nullish(),
+  "data": zod.coerce.date(),
+  "valorPago": zod.number(),
+  "forma": zod.string().nullish(),
+  "observacoes": zod.string().nullish(),
+  "enviadoContabilidadeEm": zod.coerce.date().nullish(),
+  "colaborador": zod.union([zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean()
+}),zod.null()]).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "pagamentoId": zod.string(),
+  "contaPagarId": zod.string(),
+  "valor": zod.number(),
+  "contaPagar": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "colaboradorId": zod.string().nullish(),
+  "competencia": zod.string().nullish(),
+  "descricao": zod.string(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PAGA'])
+}).optional()
+})).optional()
+})
+export const ListPagamentosResponse = zod.array(ListPagamentosResponseItem)
+
+
+/**
+ * @summary Uma saída de caixa que quita uma ou mais contas
+ */
+export const CreatePagamentoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+export const createPagamentoBodyValorPagoMin = 0;
+
+
+
+export const CreatePagamentoBody = zod.object({
+  "data": zod.coerce.date(),
+  "contaIds": zod.array(zod.string()).min(1),
+  "valorPago": zod.number().min(createPagamentoBodyValorPagoMin).optional(),
+  "forma": zod.string().optional(),
+  "observacoes": zod.string().optional()
+})
+
+export const CreatePagamentoResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "colaboradorId": zod.string().nullish(),
+  "data": zod.coerce.date(),
+  "valorPago": zod.number(),
+  "forma": zod.string().nullish(),
+  "observacoes": zod.string().nullish(),
+  "enviadoContabilidadeEm": zod.coerce.date().nullish(),
+  "colaborador": zod.union([zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean()
+}),zod.null()]).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "pagamentoId": zod.string(),
+  "contaPagarId": zod.string(),
+  "valor": zod.number(),
+  "contaPagar": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "colaboradorId": zod.string().nullish(),
+  "competencia": zod.string().nullish(),
+  "descricao": zod.string(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PAGA'])
+}).optional()
+})).optional()
+})
+
+
+/**
+ * @summary Desfaz a saída de caixa e devolve as contas para PREVISTA
+ */
+export const EstornarPagamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "pagamentoId": zod.coerce.string()
+})
+
+export const EstornarPagamentoResponse = zod.void()
 
 
 export const ListSalariosRecorrentesParams = zod.object({

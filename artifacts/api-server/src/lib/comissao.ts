@@ -58,6 +58,8 @@ export function calcularComissao(params: {
 }
 
 // ── Competência (America/Sao_Paulo, offset fixo -03:00 — sem DST desde 2019) ──
+// Este módulo é puro de propósito (unit sem banco), então não importa o
+// inicioDoDia de disponibilidade.ts, que arrasta os tipos de db junto.
 
 /** Início (inclusivo) e fim (exclusivo) da competência "YYYY-MM". */
 export function limitesCompetencia(competencia: string): { inicio: Date; fim: Date } {
