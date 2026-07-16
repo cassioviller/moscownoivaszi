@@ -29,7 +29,12 @@ import Orcamentos from "@/pages/orcamentos";
 import OrcamentoDetail from "@/pages/orcamentos/[id]";
 import Contratos from "@/pages/contratos";
 import ContratoDetail from "@/pages/contratos/[id]";
-import Financeiro from "@/pages/financeiro";
+import FluxoCaixa from "@/pages/financeiro/fluxo";
+import DRE from "@/pages/financeiro/dre";
+import Projecao from "@/pages/financeiro/projecao";
+import Cobranca from "@/pages/financeiro/cobranca";
+import Receber from "@/pages/financeiro/receber";
+import Pagar from "@/pages/financeiro/pagar";
 import Catalogo from "@/pages/catalogo";
 import Noivas from "@/pages/noivas";
 import NovaNoiva from "@/pages/noivas/nova";
@@ -124,7 +129,14 @@ function App() {
               <Route path="catalogo" element={<Catalogo />} />
               <Route path="catalogo/novo" element={<NovoAtributo />} />
               <Route path="catalogo/:atributoId/editar" element={<EditarAtributo />} />
-              <Route path="financeiro" element={<Financeiro />} />
+              {/* O fluxo de caixa É o hub do financeiro: as demais telas são o
+                  recorte (dre/projecao) ou a ação (receber/pagar/cobranca). */}
+              <Route path="financeiro" element={<FluxoCaixa />} />
+              <Route path="financeiro/dre" element={<DRE />} />
+              <Route path="financeiro/projecao" element={<Projecao />} />
+              <Route path="financeiro/cobranca" element={<Cobranca />} />
+              <Route path="financeiro/receber" element={<Receber />} />
+              <Route path="financeiro/pagar" element={<Pagar />} />
               <Route path="comissoes" element={<Comissoes />} />
               <Route path="equipe" element={<Equipe />} />
               <Route path="permissoes" element={<Permissoes />} />

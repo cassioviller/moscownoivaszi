@@ -22,3 +22,27 @@ export function reais(cents: number): number {
 export function somaCentavos<T>(itens: readonly T[], valorDe: (item: T) => number | null | undefined): number {
   return itens.reduce((total, item) => total + centavos(valorDe(item) ?? 0), 0);
 }
+
+/**
+ * Lê reais como o usuário os escreve — a outra borda, a do teclado.
+ *
+ * Vazio é `null` (não digitou) e lixo é `NaN` (digitou errado): quem chama
+ * precisa distinguir "deixou em branco" de "escreveu bobagem". "1.234,56" e
+ * "1234.56" são a mesma quantia; "1.234" são mil duzentos e trinta e quatro,
+ * não um e pouco — ponto de milhar é o padrão pt-BR, e ler isso errado por
+ * mil vezes é o tipo de engano que só aparece no fechamento.
+ */
+export function parseValor(texto: string): number | null {
+  const t = texto.trim();
+  if (!t) return null;
+  let normalizado: string;
+  if (t.includes(",")) {
+    normalizado = t.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
+    normalizado = t.replace(/\./g, "");
+  } else {
+    normalizado = t;
+  }
+  const n = Number(normalizado);
+  return Number.isFinite(n) ? n : Number.NaN;
+}

@@ -113,11 +113,28 @@ CRUD; listagens de provas/reservas; detalhe de contrato (cancelar `destinoPago`,
 plano de parcelas, estornos). Portar: **Agenda/Atendimentos/Ajustes/Provas/Reservas
 + Contratos** (menos PDF). Sem migração.
 
-### Onda 3 — `GET pagamentos` + financeiro realizado
+### Onda 3 — `GET pagamentos` + financeiro realizado ✅ (backend c60c847, núcleo 71334f3, telas)
 Expor pagamentos (filtro intervalo/colaborador). Destrava e porta: **fluxo, DRE,
 projeção (curva), cobrança, receber, pagar** — a maioria vira agregação-cliente.
 Fechar estornos/DELETE/multi-conta. Sem migração (só leitura + rotas sobre schema
 existente).
+
+`/financeiro` passou a ser o **fluxo de caixa** (o hub, leitura pura), com as
+demais como recorte (`dre`, `projecao`) ou ação (`receber`, `pagar`, `cobranca`);
+o `index.tsx` de placeholder saiu. Agregação toda no núcleo testado de
+`src/lib/financeiro` (82 testes), telas só resolvem intervalo, buscam e desenham.
+E2E: 39 → 58.
+
+Dívidas conhecidas, deliberadas:
+- **Folha** — `financeiro/pagar` mostra os salários recorrentes só para leitura,
+  para a capacidade não sumir da interface; gerar folha/histórico/XLSX é Onda 5.
+- **Projeção** — ancora no saldo da *competência* mais recente aplicável, não no
+  dia: é o GAP-SCHEMA nº 5, que a Onda 4 resolve trocando a coluna.
+- **Cobrança** — sem o histórico/registro de cobrança inline:
+  `listRegistrosCobranca` é por lead e exigiria N requests; cabe atrás de um
+  accordion por noiva (query lazy) numa onda futura.
+- **Gate de permissão por ação** (`financeiro:ver/editar`) não existe no cliente
+  em nenhuma tela — a sidebar filtra por módulo e o backend gateia. É a Onda 4.
 
 ### Onda 4 — GAP-SCHEMA (migração de banco)
 - `saldos_referencia`: competência→data (ancora a projeção).

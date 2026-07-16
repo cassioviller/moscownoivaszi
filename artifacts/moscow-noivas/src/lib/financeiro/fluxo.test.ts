@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Parcela, Pagamento } from "@workspace/api-client-react";
-import { movimentos, resumoCaixa, tendenciaCaixa } from "./fluxo";
+import type { Parcela, Pagamento, ContaPagar } from "@workspace/api-client-react";
+import { horizonteAberto, movimentos, resumoCaixa, tendenciaCaixa } from "./fluxo";
 
 const INTERVALO_MARCO = { iniYMD: "2027-03-01", fimYMD: "2027-03-31" };
 
@@ -127,5 +127,59 @@ describe("tendenciaCaixa", () => {
   it("limita a janela a 24 meses", () => {
     expect(tendenciaCaixa([], [], { meses: 99, ate: "2027-03" })).toHaveLength(24);
     expect(tendenciaCaixa([], [], { meses: 0, ate: "2027-03" })).toHaveLength(1);
+  });
+});
+
+describe("horizonteAberto", () => {
+  const HOJE = "2027-03-15";
+  const vence = (dia: string) => new Date(`${dia}T12:00:00-03:00`).toISOString();
+  const conta = (over: Partial<ContaPagar> = {}): ContaPagar =>
+    ({
+      id: "cp1",
+      lojaId: "loja",
+      descricao: "Aluguel",
+      valorPrevisto: 500,
+      vencimento: vence("2027-03-20"),
+      status: "PREVISTA",
+      tipo: "DESPESA",
+      ...over,
+    }) as ContaPagar;
+
+  it("soma o que segue previsto, dos dois lados", () => {
+    const h = horizonteAberto(
+      [parcela({ status: "PREVISTA", valorPrevisto: 1000, vencimento: vence("2027-03-20") })],
+      [conta()],
+      HOJE,
+    );
+    expect(h).toEqual({ aReceber: 1000, aReceberAtraso: 0, aPagar: 500, aPagarAtraso: 0 });
+  });
+
+  it("o que já virou caixa sai do horizonte — previsto e realizado nunca se somam", () => {
+    const h = horizonteAberto(
+      [parcela({ status: "PAGA", valorPrevisto: 1000 }), parcela({ id: "p2", status: "CANCELADA", valorPrevisto: 700 })],
+      [conta({ status: "PAGA" })],
+      HOJE,
+    );
+    expect(h).toEqual({ aReceber: 0, aReceberAtraso: 0, aPagar: 0, aPagarAtraso: 0 });
+  });
+
+  it("atraso é subconjunto do aberto: vencido conta nos dois, a vencer só no aberto", () => {
+    const h = horizonteAberto(
+      [
+        parcela({ id: "atrasada", status: "PREVISTA", valorPrevisto: 300, vencimento: vence("2027-03-10") }),
+        parcela({ id: "futura", status: "PREVISTA", valorPrevisto: 200, vencimento: vence("2027-03-30") }),
+      ],
+      [
+        conta({ id: "atrasada", valorPrevisto: 80, vencimento: vence("2027-03-01") }),
+        conta({ id: "hoje", valorPrevisto: 20, vencimento: vence(HOJE) }),
+      ],
+      HOJE,
+    );
+    // Vencer hoje ainda não é atraso — o dia inteiro é do devedor.
+    expect(h).toEqual({ aReceber: 500, aReceberAtraso: 300, aPagar: 100, aPagarAtraso: 80 });
+  });
+
+  it("sem nada em aberto devolve zero, não NaN", () => {
+    expect(horizonteAberto([], [], HOJE)).toEqual({ aReceber: 0, aReceberAtraso: 0, aPagar: 0, aPagarAtraso: 0 });
   });
 });

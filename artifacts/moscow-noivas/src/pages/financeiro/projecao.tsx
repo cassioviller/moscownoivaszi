@@ -1,0 +1,310 @@
+import { useMemo } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  useListParcelas,
+  getListParcelasQueryKey,
+  useListContasPagar,
+  getListContasPagarQueryKey,
+  useListSaldoReferencia,
+  getListSaldoReferenciaQueryKey,
+  type SaldoReferencia,
+} from "@workspace/api-client-react";
+import { Link, useSearchParams } from "react-router";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErroListagem, useCaminhoDaLoja } from "./helpers";
+import { brl } from "@/lib/formatos";
+import { competenciaAtual, hojeLocal } from "@/lib/financeiro/datas";
+import {
+  projetarCaixa,
+  normalizarHorizonte,
+  HORIZONTES,
+  type LinhaCurva,
+} from "@/lib/financeiro/projecao";
+
+const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
+const diaLongo = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", timeZone: "UTC" });
+
+/** Formata um dia YYYY-MM-DD sem deixar o fuso empurrar a data. */
+function formatarDia(dia: string, fmt: Intl.DateTimeFormat): string {
+  return fmt.format(new Date(`${dia}T12:00:00Z`));
+}
+
+
+/**
+ * Âncora de saldo: o saldo de referência mais recente que já vale hoje.
+ * Competências futuras são ignoradas — não são o caixa de agora. Sem âncora,
+ * a projeção parte de 0 e a curva mostra só a FORMA do período, não o nível.
+ */
+function ancoraDeSaldo(saldos: readonly SaldoReferencia[] | undefined): SaldoReferencia | null {
+  const atual = competenciaAtual();
+  const aplicaveis = (saldos ?? []).filter((s) => s.competencia <= atual);
+  if (aplicaveis.length === 0) return null;
+  return aplicaveis.reduce((maisRecente, s) =>
+    s.competencia > maisRecente.competencia ? s : maisRecente,
+  );
+}
+
+export default function Projecao() {
+  const naLoja = useCaminhoDaLoja();
+  const { activeLojaId } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const horizonteDias = normalizarHorizonte(searchParams.get("h"));
+
+  const parcelas = useListParcelas(activeLojaId!, {
+    query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const contasPagar = useListContasPagar(activeLojaId!, {
+    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const saldos = useListSaldoReferencia(activeLojaId!, {
+    query: { queryKey: getListSaldoReferenciaQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+
+  const ancora = useMemo(() => ancoraDeSaldo(saldos.data), [saldos.data]);
+  const semAncora = ancora === null;
+
+  const projecao = useMemo(
+    () =>
+      projetarCaixa(parcelas.data ?? [], contasPagar.data ?? [], {
+        saldoInicial: ancora?.valor ?? 0,
+        horizonteDias,
+      }),
+    [parcelas.data, contasPagar.data, ancora, horizonteDias],
+  );
+
+  function trocarHorizonte(h: number) {
+    const proximo = new URLSearchParams(searchParams);
+    proximo.set("h", String(h));
+    setSearchParams(proximo, { replace: true });
+  }
+
+  const isLoading = parcelas.isLoading || contasPagar.isLoading || saldos.isLoading;
+  const isError = parcelas.isError || contasPagar.isError || saldos.isError;
+
+  function recarregar() {
+    if (parcelas.isError) parcelas.refetch();
+    if (contasPagar.isError) contasPagar.refetch();
+    if (saldos.isError) saldos.refetch();
+  }
+
+  const { curva, emAtraso } = projecao;
+  const temAtraso = emAtraso.aReceber !== 0 || emAtraso.aPagar !== 0;
+
+  const seletor = (
+    <div className="flex gap-1" role="group" aria-label="Horizonte da projeção">
+      {HORIZONTES.map((h) => (
+        <Button
+          key={h}
+          size="sm"
+          variant={horizonteDias === h ? "default" : "ghost"}
+          aria-pressed={horizonteDias === h}
+          onClick={() => trocarHorizonte(h)}
+        >
+          {h}d
+        </Button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <header className="space-y-1.5">
+        <Link to={naLoja("/financeiro")} className="text-sm text-muted-foreground hover:text-foreground">
+          ← Fluxo de caixa
+        </Link>
+        <h1 className="text-3xl font-serif">Projeção de caixa</h1>
+        <p className="text-sm text-muted-foreground">
+          Projeção do que está previsto — não é caixa realizado.
+        </p>
+      </header>
+
+      {isError && (
+        <ErroListagem
+          mensagem="Falha ao buscar os dados da projeção."
+          onRetry={recarregar}
+        />
+      )}
+
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Saldo de partida</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {semAncora ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum saldo de referência registrado. A curva parte de{" "}
+                  <span className="tabular-nums">R$ 0,00</span> — ela mostra a forma do período, não
+                  o nível do caixa.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-3xl font-serif tabular-nums">R$ {brl(ancora.valor)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    saldo de referência da competência {ancora.competencia}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {temAtraso && (
+            <Card className="border-destructive/40">
+              <CardHeader>
+                <CardTitle className="text-destructive text-sm uppercase tracking-widest">
+                  Em atraso · fora da curva
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Vencidos em aberto não entram na projeção: já deviam ter acontecido e cairiam na
+                  data errada, inflando a curva com dinheiro que não veio.
+                </p>
+                <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm">
+                  {emAtraso.aReceber !== 0 && (
+                    <span>
+                      <span className="font-semibold text-primary tabular-nums">
+                        R$ {brl(emAtraso.aReceber)}
+                      </span>{" "}
+                      a receber
+                    </span>
+                  )}
+                  {emAtraso.aPagar !== 0 && (
+                    <span>
+                      <span className="font-semibold text-destructive tabular-nums">
+                        R$ {brl(emAtraso.aPagar)}
+                      </span>{" "}
+                      a pagar
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+              <CardTitle>Curva projetada · {horizonteDias} dias</CardTitle>
+              {seletor}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm">
+                {curva.diaNegativo ? (
+                  <>
+                    Caixa fica{" "}
+                    <span className="font-semibold text-destructive">
+                      negativo em {formatarDia(curva.diaNegativo, diaLongo)}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>Caixa positivo em todo o horizonte.</>
+                )}{" "}
+                Menor saldo:{" "}
+                <span className="font-semibold tabular-nums">R$ {brl(curva.menorSaldo.valor)}</span>
+                {curva.menorSaldo.dia ? (
+                  <> em {formatarDia(curva.menorSaldo.dia, diaFmt)}</>
+                ) : (
+                  <> (hoje, {formatarDia(hojeLocal(), diaFmt)})</>
+                )}
+                .
+              </p>
+
+              {curva.linhas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nada previsto neste horizonte.</p>
+              ) : (
+                <CurvaLista
+                  linhas={curva.linhas}
+                  diaNegativo={curva.diaNegativo}
+                  diaMenor={curva.menorSaldo.dia}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Barras em CSS: cada linha vira uma faixa proporcional ao saldo, com o zero
+ * fixo no meio quando há saldo negativo — a queda abaixo da linha é o ponto.
+ */
+function CurvaLista({
+  linhas,
+  diaNegativo,
+  diaMenor,
+}: {
+  linhas: readonly LinhaCurva[];
+  diaNegativo: string | null;
+  diaMenor: string | null;
+}) {
+  const maxAbs = Math.max(...linhas.map((l) => Math.abs(l.saldoApos)), 1);
+
+  return (
+    <ul className="divide-y rounded-md border">
+      {linhas.map((l) => {
+        const negativo = l.saldoApos < 0;
+        const ehPrimeiroNegativo = l.dia === diaNegativo;
+        const ehMenor = l.dia === diaMenor;
+        const largura = (Math.abs(l.saldoApos) / maxAbs) * 100;
+
+        return (
+          <li
+            key={l.dia}
+            className={`px-4 py-2.5 ${ehPrimeiroNegativo || ehMenor ? "bg-muted/50" : ""}`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm">
+                  {formatarDia(l.dia, diaFmt)}
+                  {ehPrimeiroNegativo && (
+                    <span className="ml-2 text-[11px] uppercase tracking-widest text-destructive">
+                      1º dia negativo
+                    </span>
+                  )}
+                  {ehMenor && (
+                    <span className="ml-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+                      menor saldo
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {l.entradas !== 0 && <span className="text-primary">+R$ {brl(l.entradas)} </span>}
+                  {l.saidas !== 0 && <span className="text-destructive">−R$ {brl(l.saidas)}</span>}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 text-sm font-medium tabular-nums ${negativo ? "text-destructive" : ""}`}
+              >
+                R$ {brl(l.saldoApos)}
+              </span>
+            </div>
+            <div className="mt-1.5 flex h-1.5" aria-hidden="true">
+              <div className="flex w-1/2 justify-end">
+                {negativo && (
+                  <div className="h-full rounded-l-sm bg-destructive" style={{ width: `${largura}%` }} />
+                )}
+              </div>
+              <div className="flex w-1/2">
+                {!negativo && (
+                  <div className="h-full rounded-r-sm bg-primary/60" style={{ width: `${largura}%` }} />
+                )}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

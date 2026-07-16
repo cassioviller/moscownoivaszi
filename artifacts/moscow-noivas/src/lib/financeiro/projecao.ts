@@ -54,7 +54,7 @@ export function montarCurva(saldoInicialC: number, eventos: readonly EventoDia[]
   return { linhas, menorSaldo: { dia: menorDia, valor: reais(menorC) }, diaNegativo };
 }
 
-const HORIZONTES = [30, 60, 90] as const;
+export const HORIZONTES = [30, 60, 90] as const;
 export type Horizonte = (typeof HORIZONTES)[number];
 
 /** Normaliza o horizonte vindo da URL para 30/60/90 (default 90). */

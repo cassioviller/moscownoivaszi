@@ -1,6 +1,7 @@
-import type { Parcela, Pagamento } from "@workspace/api-client-react";
+import type { Parcela, Pagamento, ContaPagar } from "@workspace/api-client-react";
 import { centavos, reais } from "./dinheiro";
-import { diaLocal, ultimasCompetencias, type Intervalo, instanteNoIntervalo } from "./datas";
+import { diaLocal, hojeLocal, ultimasCompetencias, type Intervalo, instanteNoIntervalo } from "./datas";
+import { vencidas } from "./forma";
 
 /**
  * Fluxo de caixa — o dinheiro que DE FATO se moveu, nunca o previsto.
@@ -33,6 +34,18 @@ export type Movimento = {
 };
 
 export type PontoTendencia = { competencia: string; entradas: number; saidas: number; saldo: number };
+
+/**
+ * O previsto que ainda não virou caixa. Vive fora do ResumoCaixa de propósito:
+ * somar horizonte com realizado é contar dinheiro que não chegou.
+ */
+export type HorizonteAberto = {
+  /** Reais. */
+  aReceber: number;
+  aReceberAtraso: number;
+  aPagar: number;
+  aPagarAtraso: number;
+};
 
 /** Parcelas efetivamente recebidas dentro do intervalo. */
 export function entradasDoIntervalo(parcelas: readonly Parcela[], intervalo: Intervalo): Parcela[] {
@@ -104,6 +117,28 @@ export function movimentos(
   return [...entradas, ...saidas].sort(
     (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
   );
+}
+
+/**
+ * O que está em aberto, pelo VENCIMENTO — previsão, não caixa. O atraso é o
+ * subconjunto já vencido, então `aReceberAtraso <= aReceber` sempre.
+ */
+export function horizonteAberto(
+  parcelas: readonly Parcela[],
+  contas: readonly ContaPagar[],
+  hoje: string = hojeLocal(),
+): HorizonteAberto {
+  return {
+    aReceber: reais(abertoEmCentavos(parcelas)),
+    aReceberAtraso: vencidas(parcelas, hoje).total,
+    aPagar: reais(abertoEmCentavos(contas)),
+    aPagarAtraso: vencidas(contas, hoje).total,
+  };
+}
+
+/** Soma do que segue PREVISTO — pago ou cancelado já saiu do horizonte. */
+function abertoEmCentavos(itens: readonly { status: string; valorPrevisto: number }[]): number {
+  return itens.reduce((s, i) => (i.status === "PREVISTA" ? s + centavos(i.valorPrevisto) : s), 0);
 }
 
 /**
