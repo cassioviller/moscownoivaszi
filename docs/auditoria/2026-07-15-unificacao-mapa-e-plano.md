@@ -208,9 +208,26 @@ Dois desvios conscientes da fonte:
 Pendência: o salário-base está só-leitura na tela da folha (a fonte tinha CRUD).
 Os hooks `useCreate/UpdateSalarioRecorrente` já existem.
 
-### Onda 6 — Verificação
+### Onda 6 — Verificação ✅
 Estender a suíte (113 API + 39 E2E) cobrindo os novos endpoints e as telas portadas.
 Meta: typecheck verde, testes de API verdes, E2E cobrindo os módulos unificados.
+
+**Batida.** Da linha de base da adoção até aqui:
+
+| | Antes | Agora |
+|---|---|---|
+| Testes de API | 113 | **227** |
+| Lógica pura (frontend) | 0 | **93** |
+| E2E | 39 | **65** |
+
+Todas as telas das Ondas 3–5 têm smoke de montagem + zero erro de API
+(`14-onda3-financeiro`, `15-onda5-pdf-e-folha`), e os invariantes que não dão
+para ver na tela têm prova própria: a folha é idempotente (rodar 2x gera 0), o
+export não carimba, o PDF sai com `%PDF-`/`%%EOF` de verdade.
+
+O plano está **concluído**. O que ficou consciente e documentado, por onda:
+salário-base só-leitura (Onda 5), histórico de cobrança inline, gate de
+permissão por ação no cliente, e o estorno de quem parou de vender.
 
 ---
 
