@@ -5992,6 +5992,82 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUpdateContratoMutationOptions(options));
     }
 
+export const getGetContratoPdfUrl = (lojaId: string,
+    contratoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/pdf`
+}
+
+export const getContratoPdf = async (lojaId: string,
+    contratoId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetContratoPdfUrl(lojaId,contratoId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetContratoPdfQueryKey = (lojaId: string,
+    contratoId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/contratos/${contratoId}/pdf`
+    ] as const;
+    }
+
+
+export const getGetContratoPdfQueryOptions = <TData = Awaited<ReturnType<typeof getContratoPdf>>, TError = ErrorType<unknown>>(lojaId: string,
+    contratoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getContratoPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetContratoPdfQueryKey(lojaId,contratoId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getContratoPdf>>> = ({ signal }) => getContratoPdf(lojaId,contratoId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && contratoId !== null && contratoId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getContratoPdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetContratoPdfQueryResult = NonNullable<Awaited<ReturnType<typeof getContratoPdf>>>
+export type GetContratoPdfQueryError = ErrorType<unknown>
+
+
+
+export function useGetContratoPdf<TData = Awaited<ReturnType<typeof getContratoPdf>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    contratoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getContratoPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetContratoPdfQueryOptions(lojaId,contratoId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCancelarContratoUrl = (lojaId: string,
     contratoId: string,) => {
 

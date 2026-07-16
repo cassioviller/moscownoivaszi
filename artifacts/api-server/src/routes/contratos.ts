@@ -13,6 +13,7 @@ import {
 import { eq, and, isNull } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { avancarEtapaLead } from "../lib/estados";
+import { gerarContratoPdf } from "../lib/contrato-pdf";
 import {
   EstornarParcelaResponse,
   GerarPlanoParcelasBody,
@@ -253,6 +254,97 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
     return;
   }
   res.json(GetContratoResponse.parse(contrato));
+});
+
+// Rótulos PT-BR das formas de pagamento — o documento é lido pela noiva, não
+// pela máquina, então o enum cru (CARTAO_CREDITO) não pode vazar para o papel.
+const ROTULO_FORMA: Record<string, string> = {
+  PIX: "Pix",
+  CARTAO_CREDITO: "Cartão de crédito",
+  CARTAO_DEBITO: "Cartão de débito",
+  DINHEIRO: "Dinheiro",
+  BOLETO: "Boleto",
+  TRANSFERENCIA: "Transferência",
+  OUTRO: "Outro",
+};
+const rotuloForma = (f: string | null | undefined) => (f ? (ROTULO_FORMA[f] ?? f) : undefined);
+
+// UTC no formato de data: vencimento/casamento são dias civis gravados à
+// meia-noite UTC; formatar no fuso local jogaria o dia para trás.
+const dataBR = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const brl = (v: number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Nome de arquivo seguro: só ASCII, pois o header Content-Disposition não
+// carrega acento sem codificação extra.
+function slug(s: string): string {
+  return (
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "noiva"
+  );
+}
+
+// PDF do contrato. Escopado por loja (contrato de outra loja → 404) e gerado na
+// hora a partir do estado atual — nada é persistido.
+router.get("/lojas/:lojaId/contratos/:contratoId/pdf", async (req, res): Promise<void> => {
+  const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+    with: { loja: true, lead: true, parcelas: true, itens: true },
+  });
+  if (!contrato) {
+    res.status(404).json({ error: "Contrato not found" });
+    return;
+  }
+
+  // Canceladas não entram no documento: o papel mostra o que a noiva deve.
+  const parcelas = [...contrato.parcelas]
+    .filter((p) => p.status !== "CANCELADA")
+    .sort((a, b) => a.numero - b.numero)
+    .map((p) => ({
+      // O NÚMERO manda sobre a descrição: quem cria o contrato grava um genérico
+      // "Parcela 0", mas entrada é definida por numero 0 (mesma regra da tela).
+      descricao: p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`,
+      valor: brl(p.valorPrevisto),
+      vencimento: dataBR.format(p.vencimento),
+      forma: rotuloForma(p.formaRecebimento),
+    }));
+
+  const pdf = gerarContratoPdf({
+    lojaNome: contrato.loja.nome,
+    noivaNome: contrato.lead?.noivaNome ?? "",
+    // O CPF do contrato manda: é o que foi conferido no fechamento.
+    cpf: contrato.cpf ?? undefined,
+    whatsapp: contrato.lead?.whatsapp ?? undefined,
+    vestido: contrato.vestidoDescricao ?? undefined,
+    itens: contrato.itens.map((it) => ({
+      descricao: `${it.quantidade}x ${it.descricao}`,
+      // Centavos inteiros na multiplicação: 3 × 0.1 em reais viraria 0.30000000000000004.
+      valor: brl((it.quantidade * Math.round(it.valorUnitario * 100)) / 100),
+    })),
+    valorTotal: brl(contrato.valorTotal),
+    formaPagamento: rotuloForma(contrato.formaPagamento),
+    parcelas,
+    dataCasamento: contrato.dataCasamento ? dataBR.format(contrato.dataCasamento) : undefined,
+    dataRetirada: contrato.dataRetirada ? dataBR.format(contrato.dataRetirada) : undefined,
+    dataDevolucao: contrato.dataDevolucao ? dataBR.format(contrato.dataDevolucao) : undefined,
+    dataContrato: dataBR.format(contrato.fechadoEm),
+    observacao: contrato.observacoes ?? undefined,
+  });
+
+  res.status(200)
+    .type("application/pdf")
+    .setHeader("Content-Disposition", `inline; filename="contrato-${slug(contrato.lead?.noivaNome ?? "")}.pdf"`);
+  res.send(Buffer.from(pdf));
 });
 
 router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<void> => {

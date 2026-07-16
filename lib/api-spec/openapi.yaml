@@ -1383,6 +1383,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contrato"
+  /lojas/{lojaId}/contratos/{contratoId}/pdf:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getContratoPdf
+      tags: [contratos]
+      responses:
+        "200":
+          description: Contrato em PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
   /lojas/{lojaId}/contratos/{contratoId}/cancelar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

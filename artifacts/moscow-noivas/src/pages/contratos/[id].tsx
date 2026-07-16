@@ -336,7 +336,13 @@ export default function ContratoDetail() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* GAP Onda 4: baixar contrato em PDF — sem endpoint no client gerado. */}
+          {/* Âncora crua, e não o client gerado: o PDF é um download do navegador
+              (cookie de sessão vai junto), sem passar pelo react-query. */}
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/lojas/${lojaId}/contratos/${contrato.id}/pdf`} target="_blank" rel="noreferrer">
+              Baixar PDF
+            </a>
+          </Button>
           {contrato.orcamentoId && (
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/loja/${lojaId}/orcamentos/${contrato.orcamentoId}`}>Ver orçamento de origem</Link>

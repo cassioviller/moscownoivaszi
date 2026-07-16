@@ -3553,6 +3553,14 @@ export const UpdateContratoResponse = zod.object({
 })
 
 
+export const GetContratoPdfParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+export const GetContratoPdfResponse = zod.unknown()
+
+
 export const CancelarContratoParams = zod.object({
   "lojaId": zod.coerce.string(),
   "contratoId": zod.coerce.string()
