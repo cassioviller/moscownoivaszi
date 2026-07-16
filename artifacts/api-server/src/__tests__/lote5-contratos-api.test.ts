@@ -139,7 +139,7 @@ describe("Lote 5 — Contratos íntegros", () => {
     expect(res.body.error).toBe("LEAD_INVALIDO");
   });
 
-  it("cancela em transação: parcelas previstas canceladas, paga intacta, vestido liberado e estorno marcado", async () => {
+  it("cancela em transação: parcelas previstas canceladas, paga intacta, vestido liberado e estorno pendente", async () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const lead = await criarLead(f);
     const vestido = await criarVestido(f);
@@ -183,7 +183,13 @@ describe("Lote 5 — Contratos íntegros", () => {
     expect(cancelado.body.canceladoEm).toBeTruthy();
 
     const [contratoDb] = await db.select().from(contratosTable).where(eq(contratosTable.id, contratoId));
-    expect(contratoDb.comissaoEstornadaEm).not.toBeNull();
+    // `comissaoEstornadaEm` marca quando o estorno foi RECONCILIADO num
+    // fechamento — não quando o contrato caiu (isso é o canceladoEm). Cancelar
+    // o deixa NULL de propósito: é assim que o estorno §6.4 fica PENDENTE para
+    // o próximo fechamento abater. Preenchê-lo aqui faria a comissão já paga
+    // sobre esta venda nunca voltar.
+    expect(contratoDb.canceladoEm).not.toBeNull();
+    expect(contratoDb.comissaoEstornadaEm).toBeNull();
 
     const parcelas = await db.select().from(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
     const paga = parcelas.find((p) => p.numero === 0);

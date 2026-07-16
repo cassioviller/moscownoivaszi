@@ -1,59 +1,145 @@
 /**
- * Cálculo de comissão por faixas — funções puras (testáveis sem banco).
+ * Motor de comissão — puro, testável sem banco.
  *
- * Regra do produto (decidida em 2026-07-07): PERCENTUAL SOBRE O TOTAL — a
- * maior faixa atingida (minimoVenda <= total) define o percentual aplicado ao
- * total INTEIRO (não é progressivo por faixa).
+ * Duas decisões de produto moram aqui, e as duas são contraintuitivas:
  *
- * Estornos: a venda conta na competência do fechadoEm, salvo se o contrato foi
- * cancelado ainda dentro da mesma competência (nunca gera comissão). Contrato
- * fechado numa competência anterior e cancelado nesta subtrai o valor aqui
- * (estorno na competência do cancelamento).
+ * 1. **RETROATIVO.** A faixa do acumulado FINAL rege o mês inteiro. Vendeu
+ *    80 mil e a faixa dos 80 mil paga 6%? Os 80 mil inteiros pagam 6% — não é
+ *    progressivo por degrau como imposto de renda. Bater a faixa vale a pena
+ *    até o último dia do mês, que é exatamente o incentivo pretendido.
+ *
+ * 2. **Buraco é zero, não a faixa de baixo.** Se nenhuma faixa contém o
+ *    acumulado (ex.: abaixo do primeiro patamar), não há comissão. Buracos são
+ *    permitidos de propósito — "abaixo de 20 mil não comissiona" se escreve
+ *    simplesmente não criando faixa ali.
+ *
+ * Tudo em CENTAVOS INTEIROS; percentual é número (5 = 5%). O acumulado pode
+ * chegar negativo pelo estorno §6.4 (cancelamento de mês já fechado) — nesse
+ * caso não há comissão nem bônus, e o excedente é problema de quem chama.
  */
 
-export interface FaixaComissao {
-  minimoVenda: number;
-  percentual: number;
+export type FaixaCalc = {
+  /** Centavos. Borda inferior INCLUSIVA. */
+  minAcumulado: number;
+  /** Centavos. Borda superior EXCLUSIVA; null = topo aberto. */
+  maxAcumulado: number | null;
+  /** % (5 = 5%). null/0 = faixa que só paga bônus. */
+  percentual: number | null;
+  /** Centavos. null/0 = faixa que só paga percentual. */
+  bonusFixo: number | null;
+};
+
+export type ResultadoComissao = {
+  /** Índice na lista ORDENADA; null se nenhuma faixa pegou. */
+  faixaIndex: number | null;
+  percentualAplicado: number | null;
+  /** Centavos. */
+  valorComissao: number;
+  valorBonus: number;
+  /** Centavos. = comissão + bônus, nunca negativo. */
+  valorTotal: number;
+};
+
+const ZERO: ResultadoComissao = {
+  faixaIndex: null,
+  percentualAplicado: null,
+  valorComissao: 0,
+  valorBonus: 0,
+  valorTotal: 0,
+};
+
+export function ordenarFaixas(faixas: readonly FaixaCalc[]): FaixaCalc[] {
+  return [...faixas].sort((a, b) => a.minAcumulado - b.minAcumulado);
 }
 
-export interface ResultadoComissao {
-  totalVendas: number;
-  percentualAplicado: number;
-  comissaoValor: number;
+/**
+ * Aplica as faixas sobre o acumulado.
+ *
+ * `bonusAcumulaFaixas` decide o bônus: ligado, soma o bônus de TODA faixa já
+ * atingida (os degraus se somam); desligado, só o da faixa final vale.
+ */
+export function calcularComissao(
+  totalVendas: number,
+  faixas: readonly FaixaCalc[],
+  bonusAcumulaFaixas: boolean,
+): ResultadoComissao {
+  if (totalVendas <= 0) return ZERO;
+
+  const ord = ordenarFaixas(faixas);
+  const idx = ord.findIndex(
+    (f) => totalVendas >= f.minAcumulado && (f.maxAcumulado === null || totalVendas < f.maxAcumulado),
+  );
+  if (idx === -1) return ZERO; // buraco: nenhuma faixa contém o acumulado
+
+  const faixaFinal = ord[idx];
+  const pct = faixaFinal.percentual ?? null;
+  const valorComissao = pct ? Math.round((totalVendas * pct) / 100) : 0;
+
+  const atingidas = bonusAcumulaFaixas ? ord.filter((f) => f.minAcumulado <= totalVendas) : [faixaFinal];
+  const valorBonus = atingidas.reduce((s, f) => s + (f.bonusFixo ?? 0), 0);
+
+  return {
+    faixaIndex: idx,
+    percentualAplicado: pct,
+    valorComissao,
+    valorBonus,
+    valorTotal: Math.max(0, valorComissao + valorBonus),
+  };
 }
 
-/** Percentual da maior faixa atingida; 0 se nenhuma faixa alcançada. */
-export function percentualParaTotal(total: number, faixas: FaixaComissao[]): number {
-  let percentual = 0;
-  let melhorMinimo = -Infinity;
-  for (const faixa of faixas) {
-    if (total >= faixa.minimoVenda && faixa.minimoVenda > melhorMinimo) {
-      melhorMinimo = faixa.minimoVenda;
-      percentual = faixa.percentual;
+export type MotivoFaixasInvalidas =
+  | "sem_faixas"
+  | "min_negativo"
+  | "intervalo_invalido"
+  | "faixa_vazia"
+  | "valor_negativo"
+  | "aberta_no_meio"
+  | "sobreposicao";
+
+export type ResultadoValidacao = { ok: true } | { ok: false; motivo: MotivoFaixasInvalidas };
+
+/**
+ * Faixas coerentes: ao menos uma; min ≥ 0; max > min (ou aberta); cada faixa
+ * paga percentual OU bônus (senão não é faixa, é enfeite); sem sobreposição; só
+ * a do topo pode ser aberta.
+ *
+ * BURACOS SÃO VÁLIDOS: um intervalo sem faixa significa "não comissiona aqui".
+ * Sobreposição, não — duas faixas contendo o mesmo acumulado tornam a comissão
+ * ambígua, e ambiguidade em dinheiro de vendedora vira discussão no fim do mês.
+ */
+export function validarFaixas(faixas: readonly FaixaCalc[]): ResultadoValidacao {
+  if (faixas.length === 0) return { ok: false, motivo: "sem_faixas" };
+  const ord = ordenarFaixas(faixas);
+
+  for (let i = 0; i < ord.length; i++) {
+    const f = ord[i];
+    if (!(f.minAcumulado >= 0)) return { ok: false, motivo: "min_negativo" };
+    if (f.maxAcumulado !== null && !(f.maxAcumulado > f.minAcumulado)) {
+      return { ok: false, motivo: "intervalo_invalido" };
+    }
+    if ((f.percentual ?? 0) < 0 || (f.bonusFixo ?? 0) < 0) return { ok: false, motivo: "valor_negativo" };
+    if ((f.percentual ?? 0) <= 0 && (f.bonusFixo ?? 0) <= 0) return { ok: false, motivo: "faixa_vazia" };
+    if (f.maxAcumulado === null && i !== ord.length - 1) return { ok: false, motivo: "aberta_no_meio" };
+    if (i > 0) {
+      const anterior = ord[i - 1];
+      if (anterior.maxAcumulado === null) return { ok: false, motivo: "aberta_no_meio" };
+      if (f.minAcumulado < anterior.maxAcumulado) return { ok: false, motivo: "sobreposicao" };
     }
   }
-  return percentual;
+  return { ok: true };
 }
 
-/** Arredonda para centavos (evita dízimas de ponto flutuante). */
-function centavos(valor: number): number {
-  return Math.round(valor * 100) / 100;
-}
-
-export function calcularComissao(params: {
-  vendasBrutas: number;
-  estornos: number;
-  faixas: FaixaComissao[];
-}): ResultadoComissao {
-  const totalVendas = centavos(params.vendasBrutas - params.estornos);
-  if (totalVendas <= 0) {
-    return { totalVendas, percentualAplicado: 0, comissaoValor: 0 };
-  }
-  const percentualAplicado = percentualParaTotal(totalVendas, params.faixas);
+/** O degrau seguinte e o quanto falta para alcançá-lo. null se já está no topo. */
+export function proximoDegrau(
+  totalVendas: number,
+  faixas: readonly FaixaCalc[],
+): { faltam: number; percentual: number | null; bonusFixo: number | null } | null {
+  const acima = ordenarFaixas(faixas).find((f) => f.minAcumulado > totalVendas);
+  if (!acima) return null;
   return {
-    totalVendas,
-    percentualAplicado,
-    comissaoValor: centavos((totalVendas * percentualAplicado) / 100),
+    faltam: acima.minAcumulado - totalVendas,
+    percentual: acima.percentual ?? null,
+    bonusFixo: acima.bonusFixo ?? null,
   };
 }
 
@@ -71,6 +157,17 @@ export function limitesCompetencia(competencia: string): { inicio: Date; fim: Da
     inicio: new Date(`${ano}-${pad(mes)}-01T00:00:00-03:00`),
     fim: new Date(`${proximoAno}-${pad(proximoMes)}-01T00:00:00-03:00`),
   };
+}
+
+export function competenciaValida(competencia: string): boolean {
+  if (!/^\d{4}-\d{2}$/.test(competencia)) return false;
+  const mes = Number(competencia.slice(5, 7));
+  return mes >= 1 && mes <= 12;
+}
+
+/** A competência de um instante, no fuso da loja. */
+export function competenciaDe(instante: Date): string {
+  return new Date(instante.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 7);
 }
 
 /** Vencimento da conta de comissão: dia 5 do mês seguinte à competência. */

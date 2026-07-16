@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ComissaoRegraUpdate {
-  ativo?: boolean;
-  bonusAcumulaFaixas?: boolean;
-}
+export type PreviewComissaoParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia: string;
+};

@@ -1802,57 +1802,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComissaoRegra"
-  /lojas/{lojaId}/comissao/faixas:
+    delete:
+      operationId: deleteComissaoRegra
+      tags: [comissao]
+      responses:
+        "204":
+          description: Deleted (as faixas vão junto)
+  # As faixas não têm rotas próprias: elas só existem dentro de uma regra, e
+  # editá-las uma a uma deixaria a escada inválida no meio do caminho
+  # (sobreposta, com buraco). A regra inteira é substituída de uma vez.
+  /lojas/{lojaId}/comissao/preview:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
-      operationId: listComissaoFaixas
+      operationId: previewComissao
       tags: [comissao]
+      parameters:
+        - name: competencia
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
       responses:
         "200":
-          description: Faixas de comissão da loja (ordenadas por minimoVenda)
+          description: "Ranking ao vivo: o que seria pago se a competência fechasse agora"
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ComissaoFaixa"
-    post:
-      operationId: createComissaoFaixa
-      tags: [comissao]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ComissaoFaixaInput"
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ComissaoFaixa"
-  /lojas/{lojaId}/comissao/faixas/{faixaId}:
-    parameters:
-      - $ref: "#/components/parameters/LojaIdParam"
-      - name: faixaId
-        in: path
-        required: true
-        schema:
-          type: string
-    delete:
-      operationId: deleteComissaoFaixa
-      tags: [comissao]
-      responses:
-        "204":
-          description: Deleted
+                  $ref: "#/components/schemas/ComissaoPreviewLinha"
   /lojas/{lojaId}/comissao/fechamentos:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
       operationId: listComissaoFechamentos
       tags: [comissao]
+      # No `get`, não no path: o POST recebe a competência no corpo, e um param
+      # no nível do path vazaria para ele.
+      parameters:
+        - name: competencia
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
       responses:
         "200":
           description: List of fechamentos
@@ -2902,57 +2897,105 @@ components:
         valor: { type: number }
 
     # ── Comissão ──
-    # Regra do produto: percentual sobre o TOTAL — a maior faixa atingida
-    # (minimoVenda <= total) define o % aplicado ao total inteiro.
+    # Regra do produto: a faixa do acumulado FINAL rege o mês inteiro
+    # (RETROATIVO — não é progressivo por degrau). Buraco entre faixas = sem
+    # comissão ali, de propósito. A regra é por VENDEDORA e versionada por
+    # `vigenciaInicio`: fechar um mês antigo usa a regra que valia nele.
+    ComissaoFaixa:
+      type: object
+      required: [id, minAcumulado]
+      properties:
+        id: { type: string }
+        minAcumulado: { type: number, description: "Borda inferior INCLUSIVA" }
+        maxAcumulado:
+          type: ["number", "null"]
+          description: "Borda superior EXCLUSIVA; null = topo aberto"
+        percentual: { type: ["number", "null"], description: "5 = 5%" }
+        bonusFixo: { type: ["number", "null"] }
+    ComissaoFaixaInput:
+      type: object
+      required: [minAcumulado]
+      properties:
+        minAcumulado: { type: number, minimum: 0 }
+        maxAcumulado: { type: ["number", "null"], minimum: 0 }
+        percentual: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        bonusFixo: { type: ["number", "null"], minimum: 0 }
     ComissaoRegra:
       type: object
-      required: [id, lojaId, usuarioId]
+      required: [id, lojaId, vendedoraId, vigenciaInicio, bonusAcumulaFaixas, ativo, faixas]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        usuarioId: { type: string }
-        regraGlobal: { type: ["string", "null"] }
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
+        vigenciaInicio: { type: string, format: date-time }
+        bonusAcumulaFaixas:
+          type: boolean
+          description: "Ligado: os bônus dos degraus vencidos se somam"
+        ativo: { type: boolean }
+        faixas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComissaoFaixa"
     ComissaoRegraInput:
       type: object
-      required: [usuarioId]
+      required: [vendedoraId, faixas]
       properties:
-        usuarioId: { type: string }
-        regraGlobal: { type: string }
+        vendedoraId: { type: string }
+        vigenciaInicio:
+          type: string
+          format: date-time
+          description: "Omitido = vale a partir de hoje"
+        bonusAcumulaFaixas: { type: boolean }
+        faixas:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ComissaoFaixaInput"
     ComissaoRegraUpdate:
       type: object
       properties:
-        regraGlobal: { type: string }
-    ComissaoFaixa:
-      type: object
-      required: [id, lojaId, minimoVenda, percentual]
-      properties:
-        id: { type: string }
-        lojaId: { type: string }
-        minimoVenda: { type: number }
-        percentual: { type: number }
-    ComissaoFaixaInput:
-      type: object
-      required: [minimoVenda, percentual]
-      properties:
-        minimoVenda: { type: number, minimum: 0 }
-        percentual: { type: number, minimum: 0, maximum: 100 }
+        ativo: { type: boolean }
+        bonusAcumulaFaixas: { type: boolean }
+
     ComissaoFechamento:
       type: object
-      required: [id, lojaId, usuarioId, competencia, totalVendas, comissaoValor]
+      required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        usuarioId: { type: string }
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
         competencia: { type: string, description: "Competência YYYY-MM" }
-        totalVendas: { type: number }
-        comissaoValor: { type: number }
+        totalVendas: { type: number, description: "Base líquida, já com o estorno abatido" }
+        percentualAplicado: { type: ["number", "null"] }
+        valorComissao: { type: number }
+        valorBonus: { type: number }
+        valorTotal: { type: number, description: "comissão + bônus; é este que vira ContaPagar" }
         contaPagarId: { type: ["string", "null"] }
-        createdAt: { type: string, format: date-time }
+        fechadoEm: { type: string, format: date-time }
     GerarComissaoFechamentoInput:
       type: object
       required: [competencia]
       properties:
         competencia: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+
+    # Ranking ao vivo da competência — o que SERIA pago se fechasse agora.
+    ComissaoPreviewLinha:
+      type: object
+      required: [vendedoraId, totalVendas, estornoPendente, valorComissao, valorBonus, valorTotal]
+      properties:
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
+        totalVendas: { type: number }
+        estornoPendente:
+          type: number
+          description: "Cancelados de meses já fechados, ainda não reconciliados"
+        percentualAplicado: { type: ["number", "null"] }
+        valorComissao: { type: number }
+        valorBonus: { type: number }
+        valorTotal: { type: number }
+        faltaProximoDegrau: { type: ["number", "null"] }
 
     # ── Dashboard ──
     DashboardSummary:

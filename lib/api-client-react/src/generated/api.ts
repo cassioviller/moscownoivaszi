@@ -43,9 +43,8 @@ import type {
   CabineUpdate,
   CancelarContratoInput,
   CheckDisponibilidadeVestidosParams,
-  ComissaoFaixa,
-  ComissaoFaixaInput,
   ComissaoFechamento,
+  ComissaoPreviewLinha,
   ComissaoRegra,
   ComissaoRegraInput,
   ComissaoRegraUpdate,
@@ -65,6 +64,7 @@ import type {
   LeadInteresse,
   LeadInteresseInput,
   LeadUpdate,
+  ListComissaoFechamentosParams,
   ListPagamentosParams,
   LoginInput,
   Loja,
@@ -88,6 +88,7 @@ import type {
   PerfilOverrideInput,
   PerfilOverrideLoja,
   PerfilUpdate,
+  PreviewComissaoParams,
   ReceberParcelaInput,
   RegistroCobranca,
   RegistroCobrancaInput,
@@ -7445,17 +7446,92 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUpdateComissaoRegraMutationOptions(options));
     }
 
-export const getListComissaoFaixasUrl = (lojaId: string,) => {
+export const getDeleteComissaoRegraUrl = (lojaId: string,
+    regraId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/comissao/faixas`
+  return `/api/lojas/${lojaId}/comissao/regras/${regraId}`
 }
 
-export const listComissaoFaixas = async (lojaId: string, options?: RequestInit): Promise<ComissaoFaixa[]> => {
+export const deleteComissaoRegra = async (lojaId: string,
+    regraId: string, options?: RequestInit): Promise<void> => {
 
-  return customFetch<ComissaoFaixa[]>(getListComissaoFaixasUrl(lojaId),
+  return customFetch<void>(getDeleteComissaoRegraUrl(lojaId,regraId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteComissaoRegraMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComissaoRegra>>, TError,{lojaId: string;regraId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteComissaoRegra>>, TError,{lojaId: string;regraId: string}, TContext> => {
+
+const mutationKey = ['deleteComissaoRegra'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteComissaoRegra>>, {lojaId: string;regraId: string}> = (props) => {
+          const {lojaId,regraId} = props ?? {};
+
+          return  deleteComissaoRegra(lojaId,regraId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteComissaoRegraMutationResult = NonNullable<Awaited<ReturnType<typeof deleteComissaoRegra>>>
+
+    export type DeleteComissaoRegraMutationError = ErrorType<unknown>
+
+    export const useDeleteComissaoRegra = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComissaoRegra>>, TError,{lojaId: string;regraId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteComissaoRegra>>,
+        TError,
+        {lojaId: string;regraId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteComissaoRegraMutationOptions(options));
+    }
+
+export const getPreviewComissaoUrl = (lojaId: string,
+    params: PreviewComissaoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/comissao/preview?${stringifiedParams}` : `/api/lojas/${lojaId}/comissao/preview`
+}
+
+export const previewComissao = async (lojaId: string,
+    params: PreviewComissaoParams, options?: RequestInit): Promise<ComissaoPreviewLinha[]> => {
+
+  return customFetch<ComissaoPreviewLinha[]>(getPreviewComissaoUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -7468,42 +7544,45 @@ export const listComissaoFaixas = async (lojaId: string, options?: RequestInit):
 
 
 
-export const getListComissaoFaixasQueryKey = (lojaId: string,) => {
+export const getPreviewComissaoQueryKey = (lojaId: string,
+    params?: PreviewComissaoParams,) => {
     return [
-    `/api/lojas/${lojaId}/comissao/faixas`
+    `/api/lojas/${lojaId}/comissao/preview`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListComissaoFaixasQueryOptions = <TData = Awaited<ReturnType<typeof listComissaoFaixas>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComissaoFaixas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getPreviewComissaoQueryOptions = <TData = Awaited<ReturnType<typeof previewComissao>>, TError = ErrorType<unknown>>(lojaId: string,
+    params: PreviewComissaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListComissaoFaixasQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getPreviewComissaoQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComissaoFaixas>>> = ({ signal }) => listComissaoFaixas(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewComissao>>> = ({ signal }) => previewComissao(lojaId,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listComissaoFaixas>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewComissao>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type ListComissaoFaixasQueryResult = NonNullable<Awaited<ReturnType<typeof listComissaoFaixas>>>
-export type ListComissaoFaixasQueryError = ErrorType<unknown>
+export type PreviewComissaoQueryResult = NonNullable<Awaited<ReturnType<typeof previewComissao>>>
+export type PreviewComissaoQueryError = ErrorType<unknown>
 
 
 
-export function useListComissaoFaixas<TData = Awaited<ReturnType<typeof listComissaoFaixas>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComissaoFaixas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function usePreviewComissao<TData = Awaited<ReturnType<typeof previewComissao>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params: PreviewComissaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListComissaoFaixasQueryOptions(lojaId,options)
+  const queryOptions = getPreviewComissaoQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -7516,148 +7595,26 @@ export function useListComissaoFaixas<TData = Awaited<ReturnType<typeof listComi
 
 
 
-export const getCreateComissaoFaixaUrl = (lojaId: string,) => {
+export const getListComissaoFechamentosUrl = (lojaId: string,
+    params?: ListComissaoFechamentosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
-
-
-  return `/api/lojas/${lojaId}/comissao/faixas`
-}
-
-export const createComissaoFaixa = async (lojaId: string,
-    comissaoFaixaInput: ComissaoFaixaInput, options?: RequestInit): Promise<ComissaoFaixa> => {
-
-  return customFetch<ComissaoFaixa>(getCreateComissaoFaixaUrl(lojaId),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(comissaoFaixaInput)
-  }
-);}
-
-
-
-
-export const getCreateComissaoFaixaMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createComissaoFaixa>>, TError,{lojaId: string;data: BodyType<ComissaoFaixaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createComissaoFaixa>>, TError,{lojaId: string;data: BodyType<ComissaoFaixaInput>}, TContext> => {
-
-const mutationKey = ['createComissaoFaixa'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createComissaoFaixa>>, {lojaId: string;data: BodyType<ComissaoFaixaInput>}> = (props) => {
-          const {lojaId,data} = props ?? {};
-
-          return  createComissaoFaixa(lojaId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateComissaoFaixaMutationResult = NonNullable<Awaited<ReturnType<typeof createComissaoFaixa>>>
-    export type CreateComissaoFaixaMutationBody = BodyType<ComissaoFaixaInput>
-    export type CreateComissaoFaixaMutationError = ErrorType<unknown>
-
-    export const useCreateComissaoFaixa = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createComissaoFaixa>>, TError,{lojaId: string;data: BodyType<ComissaoFaixaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createComissaoFaixa>>,
-        TError,
-        {lojaId: string;data: BodyType<ComissaoFaixaInput>},
-        TContext
-      > => {
-      return useMutation(getCreateComissaoFaixaMutationOptions(options));
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
     }
+  });
 
-export const getDeleteComissaoFaixaUrl = (lojaId: string,
-    faixaId: string,) => {
+  const stringifiedParams = normalizedParams.toString();
 
-
-
-
-  return `/api/lojas/${lojaId}/comissao/faixas/${faixaId}`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/comissao/fechamentos?${stringifiedParams}` : `/api/lojas/${lojaId}/comissao/fechamentos`
 }
 
-export const deleteComissaoFaixa = async (lojaId: string,
-    faixaId: string, options?: RequestInit): Promise<void> => {
+export const listComissaoFechamentos = async (lojaId: string,
+    params?: ListComissaoFechamentosParams, options?: RequestInit): Promise<ComissaoFechamento[]> => {
 
-  return customFetch<void>(getDeleteComissaoFaixaUrl(lojaId,faixaId),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-);}
-
-
-
-
-export const getDeleteComissaoFaixaMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComissaoFaixa>>, TError,{lojaId: string;faixaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteComissaoFaixa>>, TError,{lojaId: string;faixaId: string}, TContext> => {
-
-const mutationKey = ['deleteComissaoFaixa'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteComissaoFaixa>>, {lojaId: string;faixaId: string}> = (props) => {
-          const {lojaId,faixaId} = props ?? {};
-
-          return  deleteComissaoFaixa(lojaId,faixaId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteComissaoFaixaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteComissaoFaixa>>>
-
-    export type DeleteComissaoFaixaMutationError = ErrorType<unknown>
-
-    export const useDeleteComissaoFaixa = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComissaoFaixa>>, TError,{lojaId: string;faixaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof deleteComissaoFaixa>>,
-        TError,
-        {lojaId: string;faixaId: string},
-        TContext
-      > => {
-      return useMutation(getDeleteComissaoFaixaMutationOptions(options));
-    }
-
-export const getListComissaoFechamentosUrl = (lojaId: string,) => {
-
-
-
-
-  return `/api/lojas/${lojaId}/comissao/fechamentos`
-}
-
-export const listComissaoFechamentos = async (lojaId: string, options?: RequestInit): Promise<ComissaoFechamento[]> => {
-
-  return customFetch<ComissaoFechamento[]>(getListComissaoFechamentosUrl(lojaId),
+  return customFetch<ComissaoFechamento[]>(getListComissaoFechamentosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -7670,23 +7627,25 @@ export const listComissaoFechamentos = async (lojaId: string, options?: RequestI
 
 
 
-export const getListComissaoFechamentosQueryKey = (lojaId: string,) => {
+export const getListComissaoFechamentosQueryKey = (lojaId: string,
+    params?: ListComissaoFechamentosParams,) => {
     return [
-    `/api/lojas/${lojaId}/comissao/fechamentos`
+    `/api/lojas/${lojaId}/comissao/fechamentos`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListComissaoFechamentosQueryOptions = <TData = Awaited<ReturnType<typeof listComissaoFechamentos>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComissaoFechamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListComissaoFechamentosQueryOptions = <TData = Awaited<ReturnType<typeof listComissaoFechamentos>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListComissaoFechamentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComissaoFechamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListComissaoFechamentosQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListComissaoFechamentosQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComissaoFechamentos>>> = ({ signal }) => listComissaoFechamentos(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComissaoFechamentos>>> = ({ signal }) => listComissaoFechamentos(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -7701,11 +7660,12 @@ export type ListComissaoFechamentosQueryError = ErrorType<unknown>
 
 
 export function useListComissaoFechamentos<TData = Awaited<ReturnType<typeof listComissaoFechamentos>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComissaoFechamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListComissaoFechamentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComissaoFechamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListComissaoFechamentosQueryOptions(lojaId,options)
+  const queryOptions = getListComissaoFechamentosQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

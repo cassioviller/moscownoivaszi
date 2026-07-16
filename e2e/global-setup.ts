@@ -17,6 +17,8 @@ import {
   orcamentoItensTable,
   contratosTable,
   bloqueioVestidosTable,
+  comissaoRegrasTable,
+  comissaoFaixasTable,
 } from "../lib/db/src/index";
 
 /** Dia local (America/Sao_Paulo) no formato YYYY-MM-DD das colunas de ocupação. */
@@ -105,6 +107,38 @@ export default async function globalSetup() {
   await db.insert(regraDisponibilidadeTable)
     .values({ id: "e2e-regra-disp", lojaId: loja.id, provaDiasAntes: 14, usoDiasAntes: 3, usoDiasDepois: 2, lavagemDiasDepois: 7 })
     .onConflictDoNothing();
+
+  // Escada de comissão da admin — alvo da tela de comissões. Vigência bem no
+  // passado para valer em qualquer competência que o teste olhe. As faixas são
+  // aninhadas na regra: elas não existem fora dela.
+  const [regraComissao] = await db.select().from(comissaoRegrasTable).where(eq(comissaoRegrasTable.id, "e2e-comissao-regra-1"));
+  await garantir(regraComissao, async () => {
+    await db.insert(comissaoRegrasTable).values({
+      id: "e2e-comissao-regra-1",
+      lojaId: loja.id,
+      vendedoraId: admin.id,
+      vigenciaInicio: new Date("2020-01-01T12:00:00-03:00"),
+      bonusAcumulaFaixas: false,
+    });
+    await db.insert(comissaoFaixasTable).values([
+      {
+        id: "e2e-comissao-faixa-1",
+        lojaId: loja.id,
+        regraId: "e2e-comissao-regra-1",
+        minAcumulado: 0,
+        maxAcumulado: 10000,
+        percentual: 5,
+      },
+      {
+        id: "e2e-comissao-faixa-2",
+        lojaId: loja.id,
+        regraId: "e2e-comissao-regra-1",
+        minAcumulado: 10000,
+        maxAcumulado: null,
+        percentual: 8,
+      },
+    ]);
+  });
 
   // Orçamento com item — alvo do teste de detalhe.
   const [orcamento] = await db.select().from(orcamentosTable).where(eq(orcamentosTable.id, "e2e-orcamento-1"));

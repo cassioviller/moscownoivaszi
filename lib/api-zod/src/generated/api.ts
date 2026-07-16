@@ -4067,8 +4067,18 @@ export const ListComissaoRegrasParams = zod.object({
 export const ListComissaoRegrasResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
-  "regraGlobal": zod.string().nullish()
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "vigenciaInicio": zod.coerce.date(),
+  "bonusAcumulaFaixas": zod.boolean().describe('Ligado: os bônus dos degraus vencidos se somam'),
+  "ativo": zod.boolean(),
+  "faixas": zod.array(zod.object({
+  "id": zod.string(),
+  "minAcumulado": zod.number().describe('Borda inferior INCLUSIVA'),
+  "maxAcumulado": zod.number().nullish().describe('Borda superior EXCLUSIVA; null = topo aberto'),
+  "percentual": zod.number().nullish().describe('5 = 5%'),
+  "bonusFixo": zod.number().nullish()
+}))
 })
 export const ListComissaoRegrasResponse = zod.array(ListComissaoRegrasResponseItem)
 
@@ -4077,16 +4087,45 @@ export const CreateComissaoRegraParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createComissaoRegraBodyFaixasItemMinAcumuladoMin = 0;
+
+export const createComissaoRegraBodyFaixasItemMaxAcumuladoMin = 0;
+
+export const createComissaoRegraBodyFaixasItemPercentualMin = 0;
+export const createComissaoRegraBodyFaixasItemPercentualMax = 100;
+
+export const createComissaoRegraBodyFaixasItemBonusFixoMin = 0;
+
+
+
+
 export const CreateComissaoRegraBody = zod.object({
-  "usuarioId": zod.string(),
-  "regraGlobal": zod.string().optional()
+  "vendedoraId": zod.string(),
+  "vigenciaInicio": zod.coerce.date().optional().describe('Omitido = vale a partir de hoje'),
+  "bonusAcumulaFaixas": zod.boolean().optional(),
+  "faixas": zod.array(zod.object({
+  "minAcumulado": zod.number().min(createComissaoRegraBodyFaixasItemMinAcumuladoMin),
+  "maxAcumulado": zod.number().min(createComissaoRegraBodyFaixasItemMaxAcumuladoMin).nullish(),
+  "percentual": zod.number().min(createComissaoRegraBodyFaixasItemPercentualMin).max(createComissaoRegraBodyFaixasItemPercentualMax).nullish(),
+  "bonusFixo": zod.number().min(createComissaoRegraBodyFaixasItemBonusFixoMin).nullish()
+})).min(1)
 })
 
 export const CreateComissaoRegraResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
-  "regraGlobal": zod.string().nullish()
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "vigenciaInicio": zod.coerce.date(),
+  "bonusAcumulaFaixas": zod.boolean().describe('Ligado: os bônus dos degraus vencidos se somam'),
+  "ativo": zod.boolean(),
+  "faixas": zod.array(zod.object({
+  "id": zod.string(),
+  "minAcumulado": zod.number().describe('Borda inferior INCLUSIVA'),
+  "maxAcumulado": zod.number().nullish().describe('Borda superior EXCLUSIVA; null = topo aberto'),
+  "percentual": zod.number().nullish().describe('5 = 5%'),
+  "bonusFixo": zod.number().nullish()
+}))
 })
 
 
@@ -4096,75 +4135,85 @@ export const UpdateComissaoRegraParams = zod.object({
 })
 
 export const UpdateComissaoRegraBody = zod.object({
-  "regraGlobal": zod.string().optional()
+  "ativo": zod.boolean().optional(),
+  "bonusAcumulaFaixas": zod.boolean().optional()
 })
 
 export const UpdateComissaoRegraResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
-  "regraGlobal": zod.string().nullish()
-})
-
-
-export const ListComissaoFaixasParams = zod.object({
-  "lojaId": zod.coerce.string()
-})
-
-export const ListComissaoFaixasResponseItem = zod.object({
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "vigenciaInicio": zod.coerce.date(),
+  "bonusAcumulaFaixas": zod.boolean().describe('Ligado: os bônus dos degraus vencidos se somam'),
+  "ativo": zod.boolean(),
+  "faixas": zod.array(zod.object({
   "id": zod.string(),
-  "lojaId": zod.string(),
-  "minimoVenda": zod.number(),
-  "percentual": zod.number()
-})
-export const ListComissaoFaixasResponse = zod.array(ListComissaoFaixasResponseItem)
-
-
-export const CreateComissaoFaixaParams = zod.object({
-  "lojaId": zod.coerce.string()
-})
-
-export const createComissaoFaixaBodyMinimoVendaMin = 0;
-
-export const createComissaoFaixaBodyPercentualMin = 0;
-export const createComissaoFaixaBodyPercentualMax = 100;
-
-
-
-export const CreateComissaoFaixaBody = zod.object({
-  "minimoVenda": zod.number().min(createComissaoFaixaBodyMinimoVendaMin),
-  "percentual": zod.number().min(createComissaoFaixaBodyPercentualMin).max(createComissaoFaixaBodyPercentualMax)
-})
-
-export const CreateComissaoFaixaResponse = zod.object({
-  "id": zod.string(),
-  "lojaId": zod.string(),
-  "minimoVenda": zod.number(),
-  "percentual": zod.number()
+  "minAcumulado": zod.number().describe('Borda inferior INCLUSIVA'),
+  "maxAcumulado": zod.number().nullish().describe('Borda superior EXCLUSIVA; null = topo aberto'),
+  "percentual": zod.number().nullish().describe('5 = 5%'),
+  "bonusFixo": zod.number().nullish()
+}))
 })
 
 
-export const DeleteComissaoFaixaParams = zod.object({
+export const DeleteComissaoRegraParams = zod.object({
   "lojaId": zod.coerce.string(),
-  "faixaId": zod.coerce.string()
+  "regraId": zod.coerce.string()
 })
 
-export const DeleteComissaoFaixaResponse = zod.void()
+export const DeleteComissaoRegraResponse = zod.void()
+
+
+export const PreviewComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const previewComissaoQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const PreviewComissaoQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(previewComissaoQueryCompetenciaRegExp)
+})
+
+export const PreviewComissaoResponseItem = zod.object({
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "totalVendas": zod.number(),
+  "estornoPendente": zod.number().describe('Cancelados de meses já fechados, ainda não reconciliados'),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number(),
+  "faltaProximoDegrau": zod.number().nullish()
+})
+export const PreviewComissaoResponse = zod.array(PreviewComissaoResponseItem)
 
 
 export const ListComissaoFechamentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const listComissaoFechamentosQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const ListComissaoFechamentosQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(listComissaoFechamentosQueryCompetenciaRegExp).optional()
+})
+
 export const ListComissaoFechamentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
   "competencia": zod.string().describe('Competência YYYY-MM'),
-  "totalVendas": zod.number(),
-  "comissaoValor": zod.number(),
+  "totalVendas": zod.number().describe('Base líquida, já com o estorno abatido'),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number().describe('comissão + bônus; é este que vira ContaPagar'),
   "contaPagarId": zod.string().nullish(),
-  "createdAt": zod.coerce.date().optional()
+  "fechadoEm": zod.coerce.date().optional()
 })
 export const ListComissaoFechamentosResponse = zod.array(ListComissaoFechamentosResponseItem)
 
@@ -4183,12 +4232,16 @@ export const GerarComissaoFechamentoBody = zod.object({
 export const GerarComissaoFechamentoResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
   "competencia": zod.string().describe('Competência YYYY-MM'),
-  "totalVendas": zod.number(),
-  "comissaoValor": zod.number(),
+  "totalVendas": zod.number().describe('Base líquida, já com o estorno abatido'),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number().describe('comissão + bônus; é este que vira ContaPagar'),
   "contaPagarId": zod.string().nullish(),
-  "createdAt": zod.coerce.date().optional()
+  "fechadoEm": zod.coerce.date().optional()
 })
 export const GerarComissaoFechamentoResponse = zod.array(GerarComissaoFechamentoResponseItem)
 

@@ -1351,56 +1351,112 @@ export interface SaldoReferenciaInput {
   valor: number;
 }
 
-export interface ComissaoRegra {
-  id: string;
-  lojaId: string;
-  usuarioId: string;
-  /** @nullable */
-  regraGlobal?: string | null;
-}
-
-export interface ComissaoRegraInput {
-  usuarioId: string;
-  regraGlobal?: string;
-}
-
-export interface ComissaoRegraUpdate {
-  regraGlobal?: string;
-}
-
 export interface ComissaoFaixa {
   id: string;
-  lojaId: string;
-  minimoVenda: number;
-  percentual: number;
+  /** Borda inferior INCLUSIVA */
+  minAcumulado: number;
+  /**
+     * Borda superior EXCLUSIVA; null = topo aberto
+     * @nullable
+     */
+  maxAcumulado?: number | null;
+  /**
+     * 5 = 5%
+     * @nullable
+     */
+  percentual?: number | null;
+  /** @nullable */
+  bonusFixo?: number | null;
 }
 
 export interface ComissaoFaixaInput {
   /** @minimum 0 */
-  minimoVenda: number;
+  minAcumulado: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  maxAcumulado?: number | null;
   /**
      * @minimum 0
      * @maximum 100
+     * @nullable
      */
-  percentual: number;
+  percentual?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  bonusFixo?: number | null;
+}
+
+export interface ComissaoRegra {
+  id: string;
+  lojaId: string;
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  vigenciaInicio: string;
+  /** Ligado: os bônus dos degraus vencidos se somam */
+  bonusAcumulaFaixas: boolean;
+  ativo: boolean;
+  faixas: ComissaoFaixa[];
+}
+
+export interface ComissaoRegraInput {
+  vendedoraId: string;
+  /** Omitido = vale a partir de hoje */
+  vigenciaInicio?: string;
+  bonusAcumulaFaixas?: boolean;
+  /** @minItems 1 */
+  faixas: ComissaoFaixaInput[];
+}
+
+export interface ComissaoRegraUpdate {
+  ativo?: boolean;
+  bonusAcumulaFaixas?: boolean;
 }
 
 export interface ComissaoFechamento {
   id: string;
   lojaId: string;
-  usuarioId: string;
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
   /** Competência YYYY-MM */
   competencia: string;
+  /** Base líquida, já com o estorno abatido */
   totalVendas: number;
-  comissaoValor: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  /** comissão + bônus; é este que vira ContaPagar */
+  valorTotal: number;
   /** @nullable */
   contaPagarId?: string | null;
-  createdAt?: string;
+  fechadoEm?: string;
 }
 
 export interface GerarComissaoFechamentoInput {
   /** @pattern ^\d{4}-\d{2}$ */
   competencia: string;
+}
+
+export interface ComissaoPreviewLinha {
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  totalVendas: number;
+  /** Cancelados de meses já fechados, ainda não reconciliados */
+  estornoPendente: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  valorTotal: number;
+  /** @nullable */
+  faltaProximoDegrau?: number | null;
 }
 
 export interface DashboardSummary {
@@ -1433,5 +1489,19 @@ de?: string;
  */
 ate?: string;
 colaboradorId?: string;
+};
+
+export type PreviewComissaoParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia: string;
+};
+
+export type ListComissaoFechamentosParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia?: string;
 };
 

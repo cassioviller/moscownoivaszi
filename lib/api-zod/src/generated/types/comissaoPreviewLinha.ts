@@ -6,23 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ComissaoFechamento {
-  id: string;
-  lojaId: string;
+export interface ComissaoPreviewLinha {
   vendedoraId: string;
   /** @nullable */
   vendedoraNome?: string | null;
-  /** Competência YYYY-MM */
-  competencia: string;
-  /** Base líquida, já com o estorno abatido */
   totalVendas: number;
+  /** Cancelados de meses já fechados, ainda não reconciliados */
+  estornoPendente: number;
   /** @nullable */
   percentualAplicado?: number | null;
   valorComissao: number;
   valorBonus: number;
-  /** comissão + bônus; é este que vira ContaPagar */
   valorTotal: number;
   /** @nullable */
-  contaPagarId?: string | null;
-  fechadoEm?: Date;
+  faltaProximoDegrau?: number | null;
 }

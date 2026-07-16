@@ -5,11 +5,17 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ComissaoFaixa } from './comissaoFaixa';
 
 export interface ComissaoRegra {
   id: string;
   lojaId: string;
-  usuarioId: string;
+  vendedoraId: string;
   /** @nullable */
-  regraGlobal?: string | null;
+  vendedoraNome?: string | null;
+  vigenciaInicio: Date;
+  /** Ligado: os bônus dos degraus vencidos se somam */
+  bonusAcumulaFaixas: boolean;
+  ativo: boolean;
+  faixas: ComissaoFaixa[];
 }

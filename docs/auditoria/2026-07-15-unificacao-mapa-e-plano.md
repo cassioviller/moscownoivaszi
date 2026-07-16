@@ -136,11 +136,29 @@ Dívidas conhecidas, deliberadas:
 - **Gate de permissão por ação** (`financeiro:ver/editar`) não existe no cliente
   em nenhuma tela — a sidebar filtra por módulo e o backend gateia. É a Onda 4.
 
-### Onda 4 — GAP-SCHEMA (migração de banco)
+### Onda 4 — GAP-SCHEMA (migração de banco) ✅
 - ✅ `saldos_referencia`: competência→data (ancora a projeção).
-- **Comissão**: remodelar regras/faixas por-vendedora + campos de fechamento + motor.
+- ✅ **Comissão**: regras/faixas por-vendedora + campos de fechamento + motor.
 - ✅ **RBAC nível-ação**: `acessosModulos` record<bool> → record<{ver,criar,editar}>.
 Cada migração aplicada via `pnpm --filter @workspace/db run push` no banco de dev.
+
+**Comissão (feito).** Regra por VENDEDORA e versionada por `vigenciaInicio`: fechar
+um mês antigo usa a regra que valia nele. Faixas aninhadas na regra (sem rotas
+próprias — editá-las uma a uma deixaria a escada inválida no meio do caminho);
+a regra é substituída inteira e validada de uma vez. Duas decisões de produto que
+o motor fixa em teste: a faixa do acumulado FINAL rege o mês (RETROATIVO, não é
+progressivo por degrau), e buraco entre faixas é zero, não a faixa de baixo.
+
+`comissaoEstornadaEm` **mudou de significado**: era gravado no cancelamento
+(duplicando `canceladoEm`), agora marca quando o estorno foi RECONCILIADO num
+fechamento — NULL = pendente. É o que permite o estorno §6.4 *carregar* quando o
+mês não o absorve inteiro, em vez de a diferença sumir sem ninguém pagar.
+
+Buracos conhecidos, herdados do orcamentos:
+- Vendedora com estorno pendente e **sem vendas** no mês não aparece no preview
+  nem no fechamento: o estorno carrega indefinidamente, invisível.
+- O preview de um período menor que o mês cairia numa faixa menor (o acumulado é
+  menor) — por isso o preview é sempre por competência inteira.
 
 **Saldos (feito).** `competencia` (YYYY-MM) → `dataReferencia` (dia), `unique(loja,
 dataReferencia)`. A tabela estava vazia, então nada foi migrado. A peça que faltava

@@ -3,4 +3,9 @@ export * from "./generated/types";
 // Colisão de nomes entre o schema zod (generated/api) e o tipo de query
 // params (generated/types) — o re-export explícito desambigua a favor do
 // schema zod, que é o que o servidor consome para validar.
-export { CheckDisponibilidadeVestidosParams, ListPagamentosParams } from "./generated/api";
+export {
+  CheckDisponibilidadeVestidosParams,
+  ListPagamentosParams,
+  ListComissaoFechamentosParams,
+  PreviewComissaoParams,
+} from "./generated/api";

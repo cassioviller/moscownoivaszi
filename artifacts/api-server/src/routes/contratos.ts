@@ -297,12 +297,16 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
 
   const agora = new Date();
   await db.transaction(async (tx) => {
+    // `comissaoEstornadaEm` NÃO é gravado aqui: ele marca quando o estorno foi
+    // RECONCILIADO num fechamento, e não quando o contrato caiu (isso é o
+    // `canceladoEm`). Deixá-lo nulo é o que mantém o estorno §6.4 pendente para
+    // o próximo fechamento abater; preenchê-lo agora faria a comissão já paga
+    // sobre esta venda nunca voltar.
     await tx.update(contratosTable)
       .set({
         status: "CANCELADO",
         canceladoEm: agora,
         canceladoMotivo: parsed.data.motivo,
-        comissaoEstornadaEm: agora,
         updatedAt: agora,
       })
       .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
