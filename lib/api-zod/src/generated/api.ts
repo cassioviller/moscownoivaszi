@@ -4068,6 +4068,80 @@ export const CreateSaldoReferenciaResponse = zod.object({
 })
 
 
+/**
+ * Idempotente: cada salário recorrente ativo vira NO MÁXIMO uma conta a pagar SALARIO por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
+ * @summary Gera a folha da competência a partir dos salários recorrentes ativos
+ */
+export const GerarFolhaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const gerarFolhaBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GerarFolhaBody = zod.object({
+  "competencia": zod.string().regex(gerarFolhaBodyCompetenciaRegExp)
+})
+
+export const GerarFolhaResponse = zod.object({
+  "geradas": zod.number(),
+  "contas": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "colaboradorId": zod.string().nullish(),
+  "competencia": zod.string().nullish(),
+  "descricao": zod.string(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PAGA'])
+}))
+})
+
+
+/**
+ * SÓ LÊ. Marcar os pagamentos como enviados é o POST …/financeiro/contabilidade/enviar — um GET precisa ser seguro (refresh/prefetch do navegador não pode escrever).
+ * @summary CSV dos itens pagos no período, para a contabilidade
+ */
+export const ExportarFolhaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarFolhaQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarFolhaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarFolhaQueryParams = zod.object({
+  "de": zod.coerce.string().regex(exportarFolhaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarFolhaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarFolhaResponse = zod.unknown()
+
+
+/**
+ * @summary Carimba enviadoContabilidadeEm nos pagamentos do intervalo
+ */
+export const EnviarContabilidadeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const enviarContabilidadeBodyDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const enviarContabilidadeBodyAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const EnviarContabilidadeBody = zod.object({
+  "de": zod.string().regex(enviarContabilidadeBodyDeRegExp),
+  "ate": zod.string().regex(enviarContabilidadeBodyAteRegExp)
+})
+
+export const EnviarContabilidadeResponse = zod.object({
+  "marcados": zod.number()
+})
+
+
 export const ListComissaoRegrasParams = zod.object({
   "lojaId": zod.coerce.string()
 })

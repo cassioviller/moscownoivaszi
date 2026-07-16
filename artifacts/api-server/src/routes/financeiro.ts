@@ -8,7 +8,7 @@ import {
   salariosRecorrentesTable,
   saldosReferenciaTable,
 } from "@workspace/db";
-import { eq, and, inArray, gte, lt, desc } from "drizzle-orm";
+import { eq, and, inArray, gte, lt, desc, isNull } from "drizzle-orm";
 import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
@@ -27,10 +27,21 @@ import {
   CreateSalarioRecorrenteResponse,
   UpdateSalarioRecorrenteResponse,
   ListSaldoReferenciaResponse,
-  CreateSaldoReferenciaResponse
+  CreateSaldoReferenciaResponse,
+  GerarFolhaBody,
+  GerarFolhaResponse,
+  ExportarFolhaQueryParams,
+  EnviarContabilidadeBody,
+  EnviarContabilidadeResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
+import {
+  competenciaValida,
+  montarContasDaFolha,
+  montarCsvContabilidade,
+  type ItemContabil,
+} from "../lib/folha";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -349,6 +360,141 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
     })
     .returning();
   res.json(CreateSaldoReferenciaResponse.parse(saldo));
+});
+
+// ───────────────────────── Folha / contabilidade ─────────────────────────
+
+/**
+ * Gera a folha da competência: cada salário recorrente ATIVO vira uma conta a
+ * pagar SALARIO. IDEMPOTENTE — o que já tem conta naquela competência é
+ * pulado (regra no núcleo puro, ../lib/folha.ts), então rodar de novo devolve
+ * `geradas: 0` em vez de dobrar o salário de alguém. Isso não é só higiene:
+ * é o que permite reexecutar sem medo depois de um erro de rede.
+ */
+router.post("/lojas/:lojaId/financeiro/folha", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = GerarFolhaBody.safeParse(req.body);
+  if (!parsed.success || !competenciaValida(parsed.data.competencia)) {
+    res.status(400).json({ error: "COMPETENCIA_INVALIDA", detalhe: "Use AAAA-MM" });
+    return;
+  }
+  const { competencia } = parsed.data;
+
+  const [salarios, jaFeitas] = await Promise.all([
+    db.select().from(salariosRecorrentesTable).where(eq(salariosRecorrentesTable.lojaId, lojaId)),
+    db.select().from(contasPagarTable).where(and(
+      eq(contasPagarTable.lojaId, lojaId),
+      eq(contasPagarTable.tipo, "SALARIO"),
+      eq(contasPagarTable.competencia, competencia),
+    )),
+  ]);
+
+  const aCriar = montarContasDaFolha(competencia, salarios, jaFeitas);
+  if (aCriar.length === 0) {
+    res.json(GerarFolhaResponse.parse({ geradas: 0, contas: [] }));
+    return;
+  }
+
+  const contas = await db.insert(contasPagarTable)
+    .values(aCriar.map((c) => ({ id: randomUUID(), lojaId, ...c })))
+    .returning();
+  res.json(GerarFolhaResponse.parse({ geradas: contas.length, contas }));
+});
+
+/** Os itens pagos no intervalo, achatados para o extrato contábil. */
+async function itensContabeis(lojaId: string, de: string, ate: string): Promise<ItemContabil[]> {
+  const pagamentos = await db.query.pagamentosTable.findMany({
+    where: and(
+      eq(pagamentosTable.lojaId, lojaId),
+      gte(pagamentosTable.data, inicioDoDia(de)),
+      lt(pagamentosTable.data, inicioDoDia(addDias(ate, 1))),
+    ),
+    with: { itens: { with: { contaPagar: { with: { colaborador: true } } } } },
+    orderBy: pagamentosTable.data,
+  });
+  // Uma linha por ITEM, não por pagamento: é o item que carrega a conta, a
+  // competência e a fatia rateada — o pagamento inteiro pode quitar N contas.
+  return pagamentos.flatMap((p) =>
+    p.itens.map((i) => ({
+      dataPagamento: p.data,
+      colaborador: i.contaPagar.colaborador?.nome ?? null,
+      descricao: i.contaPagar.descricao,
+      competencia: i.contaPagar.competencia,
+      valor: i.valor,
+      forma: p.forma,
+    })),
+  );
+}
+
+/**
+ * Export CSV do período. SÓ LÊ — de propósito.
+ *
+ * A rota da origem era um GET que ESCREVIA: baixava a planilha e, no mesmo
+ * request, carimbava `enviadoContabilidadeEm` nos pagamentos. Um GET tem que
+ * ser SEGURO: o navegador dá refresh, prefetch e retry sozinho, e qualquer um
+ * deles remarcaria o envio (ou pior, reescreveria o carimbo). Pior ainda, era
+ * impossível só CONFERIR o arquivo antes de mandar — olhar já era enviar.
+ *
+ * Por isso a operação foi partida em duas: aqui se BAIXA (idempotente, seguro,
+ * repetível) e no POST …/contabilidade/enviar se MARCA (explícito, uma
+ * decisão do usuário). O gate também fica honesto: GET→ver, POST→criar.
+ */
+router.get("/lojas/:lojaId/financeiro/folha/exportar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = ExportarFolhaQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  // Sem intervalo, o mês corrente — o período que a contabilidade fecha.
+  const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const de = parsed.data.de ?? `${hoje.slice(0, 7)}-01`;
+  const ate = parsed.data.ate ?? hoje;
+  if (de > ate) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+
+  const csv = montarCsvContabilidade(await itensContabeis(lojaId, de, ate));
+  res
+    .status(200)
+    .type("text/csv; charset=utf-8")
+    .setHeader("Content-Disposition", `attachment; filename="contabilidade-${de}-a-${ate}.csv"`);
+  // BOM: sem ele o Excel lê UTF-8 como latin-1 e "Salário" vira "SalÃ¡rio".
+  res.send("﻿" + csv);
+});
+
+/**
+ * Marca os pagamentos do intervalo como enviados à contabilidade. É POST
+ * porque ESCREVE (ver o porquê da separação no GET …/folha/exportar acima).
+ *
+ * Só carimba quem ainda não tem carimbo: remarcar não sobrescreve a data do
+ * envio original — a data em que a contabilidade recebeu aquele pagamento é
+ * um fato, não um estado que se atualiza.
+ */
+router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = EnviarContabilidadeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  const { de, ate } = parsed.data;
+  if (de > ate) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+
+  const marcados = await db.update(pagamentosTable)
+    .set({ enviadoContabilidadeEm: new Date() })
+    .where(and(
+      eq(pagamentosTable.lojaId, lojaId),
+      gte(pagamentosTable.data, inicioDoDia(de)),
+      lt(pagamentosTable.data, inicioDoDia(addDias(ate, 1))),
+      isNull(pagamentosTable.enviadoContabilidadeEm),
+    ))
+    .returning({ id: pagamentosTable.id });
+  res.json(EnviarContabilidadeResponse.parse({ marcados: marcados.length }));
 });
 
 export default router;

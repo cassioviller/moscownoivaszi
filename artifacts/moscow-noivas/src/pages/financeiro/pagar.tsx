@@ -10,6 +10,10 @@
  * `listContasPagar` não devolve o pagamento que quitou a conta, então o
  * `pagamentoId` vem de `listPagamentos` (sem intervalo: a saída pode ter data
  * fora da janela de vencimentos exibida) via seus `itens[].contaPagarId`.
+ *
+ * As contas SALARIO aparecem aqui como qualquer outra, mas nascem na tela
+ * irmã (financeiro/folha): é lá que o salário-base vira folha da competência
+ * e que o período fecha com a contabilidade.
  */
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,14 +28,12 @@ import {
   useRemoveContaPagar,
   useListEquipe,
   getListEquipeQueryKey,
-  useListSalariosRecorrentes,
-  getListSalariosRecorrentesQueryKey,
   type ContaPagar,
   type ContaPagarTipo,
   type ContaPagarInputTipo,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router";
+import { useSearchParams, Link } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +73,7 @@ import { brl, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, mensagemApi } from "./helpers";
+import { ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   CONTA_JA_PAGA: "Conta já paga — estorne o pagamento antes.",
@@ -103,6 +105,7 @@ export default function Pagar() {
   const { activeLojaId } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const caminho = useCaminhoDaLoja();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filtro = (FILTROS.find((f) => f.chave === searchParams.get("filtro"))?.chave ??
@@ -139,10 +142,6 @@ export default function Pagar() {
   const equipe = useListEquipe(activeLojaId!, {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
-  const salarios = useListSalariosRecorrentes(activeLojaId!, {
-    query: { queryKey: getListSalariosRecorrentesQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-
   const criarPagamento = useCreatePagamento();
   const estornarPagamento = useEstornarPagamento();
   const criarConta = useCreateContaPagar();
@@ -410,9 +409,16 @@ export default function Pagar() {
             O que sai do caixa: despesas, fornecedores e a folha do atelier.
           </p>
         </div>
-        <Button variant="outline" onClick={() => setNovaOpen(true)}>
-          Lançar despesa
-        </Button>
+        <div className="flex gap-2">
+          {/* Salário-base e geração da folha vivem na tela irmã: aqui é a
+              carteira inteira; lá, o recorte mensal do atelier. */}
+          <Button variant="outline" asChild>
+            <Link to={caminho("/financeiro/folha")}>Folha do mês</Link>
+          </Button>
+          <Button variant="outline" onClick={() => setNovaOpen(true)}>
+            Lançar despesa
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -594,34 +600,6 @@ export default function Pagar() {
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* — Folha: os salários recorrentes que originam as contas SALARIO. Leitura
-          pura por ora — gerar a folha, o histórico por colaborador e o export
-          são a Onda 5. Vive aqui para que o valor combinado com cada pessoa não
-          fique invisível na aplicação até lá. — */}
-      {(salarios.data?.length ?? 0) > 0 && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div>
-              <p className="font-medium">Salários recorrentes</p>
-              <p className="text-xs text-muted-foreground">
-                O combinado com cada colaboradora, por mês. Ainda não é conta a pagar: vira uma
-                quando a folha do mês é gerada.
-              </p>
-            </div>
-            <ul className="divide-y">
-              {salarios.data?.map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-3 py-2">
-                  <span className="truncate">
-                    {nomePorUsuario.get(s.usuarioId) ?? "Colaboradora"}
-                  </span>
-                  <span className="shrink-0 tabular-nums">R$ {brl(s.valor)}</span>
-                </li>
-              ))}
-            </ul>
           </CardContent>
         </Card>
       )}

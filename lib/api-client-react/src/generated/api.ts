@@ -55,7 +55,12 @@ import type {
   ContratoUpdate,
   DashboardSummary,
   DisponibilidadeVestidos,
+  EnviarContabilidadeInput,
+  EnviarContabilidadeResultado,
   ErrorResponse,
+  ExportarFolhaParams,
+  FolhaGerada,
+  FolhaInput,
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
   HealthStatus,
@@ -7317,6 +7322,239 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateSaldoReferenciaMutationOptions(options));
+    }
+
+export const getGerarFolhaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/folha`
+}
+
+/**
+ * Idempotente: cada salário recorrente ativo vira NO MÁXIMO uma conta a pagar SALARIO por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
+ * @summary Gera a folha da competência a partir dos salários recorrentes ativos
+ */
+export const gerarFolha = async (lojaId: string,
+    folhaInput: FolhaInput, options?: RequestInit): Promise<FolhaGerada> => {
+
+  return customFetch<FolhaGerada>(getGerarFolhaUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(folhaInput)
+  }
+);}
+
+
+
+
+export const getGerarFolhaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gerarFolha>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof gerarFolha>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext> => {
+
+const mutationKey = ['gerarFolha'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gerarFolha>>, {lojaId: string;data: BodyType<FolhaInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  gerarFolha(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GerarFolhaMutationResult = NonNullable<Awaited<ReturnType<typeof gerarFolha>>>
+    export type GerarFolhaMutationBody = BodyType<FolhaInput>
+    export type GerarFolhaMutationError = ErrorType<void>
+
+    /**
+ * @summary Gera a folha da competência a partir dos salários recorrentes ativos
+ */
+export const useGerarFolha = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gerarFolha>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof gerarFolha>>,
+        TError,
+        {lojaId: string;data: BodyType<FolhaInput>},
+        TContext
+      > => {
+      return useMutation(getGerarFolhaMutationOptions(options));
+    }
+
+export const getExportarFolhaUrl = (lojaId: string,
+    params?: ExportarFolhaParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/folha/exportar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/folha/exportar`
+}
+
+/**
+ * SÓ LÊ. Marcar os pagamentos como enviados é o POST …/financeiro/contabilidade/enviar — um GET precisa ser seguro (refresh/prefetch do navegador não pode escrever).
+ * @summary CSV dos itens pagos no período, para a contabilidade
+ */
+export const exportarFolha = async (lojaId: string,
+    params?: ExportarFolhaParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportarFolhaUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarFolhaQueryKey = (lojaId: string,
+    params?: ExportarFolhaParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/folha/exportar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportarFolhaQueryOptions = <TData = Awaited<ReturnType<typeof exportarFolha>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ExportarFolhaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarFolha>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarFolhaQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarFolha>>> = ({ signal }) => exportarFolha(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarFolha>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarFolhaQueryResult = NonNullable<Awaited<ReturnType<typeof exportarFolha>>>
+export type ExportarFolhaQueryError = ErrorType<void>
+
+
+/**
+ * @summary CSV dos itens pagos no período, para a contabilidade
+ */
+
+export function useExportarFolha<TData = Awaited<ReturnType<typeof exportarFolha>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ExportarFolhaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarFolha>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarFolhaQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEnviarContabilidadeUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/contabilidade/enviar`
+}
+
+/**
+ * @summary Carimba enviadoContabilidadeEm nos pagamentos do intervalo
+ */
+export const enviarContabilidade = async (lojaId: string,
+    enviarContabilidadeInput: EnviarContabilidadeInput, options?: RequestInit): Promise<EnviarContabilidadeResultado> => {
+
+  return customFetch<EnviarContabilidadeResultado>(getEnviarContabilidadeUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(enviarContabilidadeInput)
+  }
+);}
+
+
+
+
+export const getEnviarContabilidadeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enviarContabilidade>>, TError,{lojaId: string;data: BodyType<EnviarContabilidadeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enviarContabilidade>>, TError,{lojaId: string;data: BodyType<EnviarContabilidadeInput>}, TContext> => {
+
+const mutationKey = ['enviarContabilidade'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enviarContabilidade>>, {lojaId: string;data: BodyType<EnviarContabilidadeInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  enviarContabilidade(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnviarContabilidadeMutationResult = NonNullable<Awaited<ReturnType<typeof enviarContabilidade>>>
+    export type EnviarContabilidadeMutationBody = BodyType<EnviarContabilidadeInput>
+    export type EnviarContabilidadeMutationError = ErrorType<void>
+
+    /**
+ * @summary Carimba enviadoContabilidadeEm nos pagamentos do intervalo
+ */
+export const useEnviarContabilidade = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enviarContabilidade>>, TError,{lojaId: string;data: BodyType<EnviarContabilidadeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enviarContabilidade>>,
+        TError,
+        {lojaId: string;data: BodyType<EnviarContabilidadeInput>},
+        TContext
+      > => {
+      return useMutation(getEnviarContabilidadeMutationOptions(options));
     }
 
 export const getListComissaoRegrasUrl = (lojaId: string,) => {

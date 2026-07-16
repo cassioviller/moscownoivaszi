@@ -6,6 +6,7 @@ export * from "./generated/types";
 export {
   CheckDisponibilidadeVestidosParams,
   ListPagamentosParams,
+  ExportarFolhaParams,
   ListComissaoFechamentosParams,
   PreviewComissaoParams,
 } from "./generated/api";

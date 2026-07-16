@@ -178,10 +178,35 @@ e as linhas se normalizam sozinhas na próxima escrita.
 > tem TTY aqui: aplique o DDL equivalente por `psql` e rode o push depois para
 > confirmar que o schema bate ("Changes applied", sem prompt).
 
-### Onda 5 — GAP-NOVO
-- **PDF de contrato** (gerador + endpoint).
-- **Folha**: geração idempotente + histórico de pagamentos + flag contabilidade +
-  export XLSX. Portar as telas `financeiro/pagar/folha[/exportar]`.
+### Onda 5 — GAP-NOVO ✅
+- ✅ **PDF de contrato** (gerador + endpoint).
+- ✅ **Folha**: geração idempotente + flag contabilidade + export.
+
+**PDF (feito).** Gerador de PDF 1.4 cru, SEM biblioteca — qualidade deliberada da
+fonte: puro, testável, sem dependência para auditar. `GET /contratos/{id}/pdf`
+numa leitura só, escopada por loja. Parcelas CANCELADAS ficam fora do documento.
+
+**Folha (feita).** Sem migração: o schema já tinha `salarioRecorrenteId`,
+`diaVencimento`, `ativo` e `enviadoContabilidadeEm`. Idempotência decidida em
+função pura (`montarContasDaFolha`): um salário só vira conta se não houver
+`SALARIO` da competência com o mesmo `salarioRecorrenteId` **ou** o mesmo
+colaborador — a união é deliberada, porque errar para "não gerou" é recuperável
+e pagar duas vezes só aparece no extrato. O vencimento é grampeado ao último dia
+do mês (dia 31 em fevereiro viraria 03/03 calado).
+
+Dois desvios conscientes da fonte:
+- **CSV, não XLSX.** Nenhuma lib de planilha existe aqui e um `.xlsx` real exige
+  container zip; o precedente do repo é evitar dependência (o PDF é escrito à
+  mão). A contabilidade importa CSV e o Excel abre — com BOM, senão "Salário"
+  vira "SalÃ¡rio".
+- **Export ≠ marcação.** A fonte baixava e carimbava no mesmo GET. GET tem que
+  ser seguro: refresh/prefetch/retry remarcariam o período, e conferir o arquivo
+  antes de mandar era impossível (olhar já era enviar). O GET só lê; marcar é
+  `POST /financeiro/contabilidade/enviar`, e só carimba quem ainda não tem
+  carimbo — a data em que a contabilidade recebeu é um fato, não um estado.
+
+Pendência: o salário-base está só-leitura na tela da folha (a fonte tinha CRUD).
+Os hooks `useCreate/UpdateSalarioRecorrente` já existem.
 
 ### Onda 6 — Verificação
 Estender a suíte (113 API + 39 E2E) cobrindo os novos endpoints e as telas portadas.

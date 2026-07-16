@@ -1765,6 +1765,91 @@ paths:
               schema:
                 $ref: "#/components/schemas/SaldoReferencia"
 
+  # ───────────────────────── Folha / contabilidade ─────────────────────────
+  /lojas/{lojaId}/financeiro/folha:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: gerarFolha
+      tags: [financeiro]
+      summary: Gera a folha da competência a partir dos salários recorrentes ativos
+      description: >
+        Idempotente: cada salário recorrente ativo vira NO MÁXIMO uma conta a
+        pagar SALARIO por competência. Reexecutar responde `geradas: 0` —
+        é o que torna seguro clicar de novo depois de um erro de rede.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolhaInput"
+      responses:
+        "200":
+          description: Folha gerada (geradas pode ser 0 numa reexecução)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolhaGerada"
+        "400":
+          description: Competência inválida (COMPETENCIA_INVALIDA)
+  /lojas/{lojaId}/financeiro/folha/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarFolha
+      tags: [financeiro]
+      summary: CSV dos itens pagos no período, para a contabilidade
+      description: >
+        SÓ LÊ. Marcar os pagamentos como enviados é o POST
+        …/financeiro/contabilidade/enviar — um GET precisa ser seguro
+        (refresh/prefetch do navegador não pode escrever).
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Intervalo inválido (INTERVALO_INVALIDO)
+  /lojas/{lojaId}/financeiro/contabilidade/enviar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: enviarContabilidade
+      tags: [financeiro]
+      summary: Carimba enviadoContabilidadeEm nos pagamentos do intervalo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnviarContabilidadeInput"
+      responses:
+        "200":
+          description: Marcados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnviarContabilidadeResultado"
+        "400":
+          description: Intervalo inválido (INTERVALO_INVALIDO)
+
   # ───────────────────────── Comissão ─────────────────────────
   /lojas/{lojaId}/comissao/regras:
     parameters:
@@ -2895,6 +2980,33 @@ components:
         valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
+    FolhaInput:
+      type: object
+      required: [competencia]
+      properties:
+        competencia: { type: string, pattern: '^\d{4}-\d{2}$' }
+    # `geradas` é 0 numa reexecução — o sinal de que a folha daquela
+    # competência já existe, não um erro.
+    FolhaGerada:
+      type: object
+      required: [geradas, contas]
+      properties:
+        geradas: { type: integer }
+        contas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContaPagar"
+    EnviarContabilidadeInput:
+      type: object
+      required: [de, ate]
+      properties:
+        de: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        ate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+    EnviarContabilidadeResultado:
+      type: object
+      required: [marcados]
+      properties:
+        marcados: { type: integer }
     # O saldo conferido num DIA — a âncora da projeção. Chavear por competência
     # não respondia "quanto tem em caixa hoje?"; a data responde.
     SaldoReferencia:

@@ -1338,6 +1338,27 @@ export interface SalarioRecorrenteUpdate {
   ativo?: boolean;
 }
 
+export interface FolhaInput {
+  /** @pattern ^\d{4}-\d{2}$ */
+  competencia: string;
+}
+
+export interface FolhaGerada {
+  geradas: number;
+  contas: ContaPagar[];
+}
+
+export interface EnviarContabilidadeInput {
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  de: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  ate: string;
+}
+
+export interface EnviarContabilidadeResultado {
+  marcados: number;
+}
+
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
@@ -1489,6 +1510,19 @@ de?: string;
  */
 ate?: string;
 colaboradorId?: string;
+};
+
+export type ExportarFolhaParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
 };
 
 export type PreviewComissaoParams = {
