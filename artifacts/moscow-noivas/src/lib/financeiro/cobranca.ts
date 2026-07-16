@@ -39,6 +39,36 @@ export function linkWhatsApp(whatsapp: string | null | undefined, mensagem: stri
   return `https://wa.me/${digitos}?text=${encodeURIComponent(mensagem)}`;
 }
 
+// ── Registro de contato (o histórico por noiva) ──
+
+export const CANAIS = ["WHATSAPP", "TELEFONE", "PRESENCIAL", "OUTRO"] as const;
+export type Canal = (typeof CANAIS)[number];
+
+export const ROTULO_CANAL: Record<Canal, string> = {
+  WHATSAPP: "WhatsApp",
+  TELEFONE: "Telefone",
+  PRESENCIAL: "Presencial",
+  OUTRO: "Outro",
+};
+
+const formatadorContato = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * `data` do registro é um INSTANTE — o momento em que se falou com a noiva.
+ * A hora importa aqui ("liguei hoje de manhã"), então mostramos dia E hora no
+ * fuso da loja; lido em UTC, um contato das 21h apareceria no dia seguinte.
+ */
+export function rotuloContato(instante: Date | string): string {
+  return formatadorContato.format(new Date(instante)).replace(", ", " às ");
+}
+
 export type NoivaInadimplente = {
   leadId: string;
   noivaNome: string | null;

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -6,18 +6,38 @@ import {
   getListParcelasQueryKey,
   useListContratos,
   getListContratosQueryKey,
+  useListRegistrosCobranca,
+  getListRegistrosCobrancaQueryKey,
+  useCreateRegistroCobranca,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { ErroListagem, useCaminhoDaLoja } from "./helpers";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ChevronDown } from "lucide-react";
 import { brl } from "@/lib/formatos";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   agingDeParcelas,
   linkWhatsApp,
+  rotuloContato,
+  CANAIS,
+  ROTULO_CANAL,
   ROTULO_FAIXA,
+  type Canal,
   type Faixa,
   type NoivaInadimplente,
   type ParcelaComNoiva,
@@ -41,42 +61,194 @@ const msgPadrao = (nome: string | null) =>
   `Olá ${nome ?? ""}! Aqui é do atelier. Passando com carinho para lembrar de uma parcela em aberto. Qualquer dúvida, estou à disposição.`;
 
 
+/**
+ * O histórico de contato de UMA noiva.
+ *
+ * `listRegistrosCobranca` é por lead: buscar o de todo mundo de uma vez seria
+ * uma request por noiva na fila inteira, quase toda jogada fora (o normal é
+ * abrir uma). Por isso a query é LAZY — só dispara depois do primeiro clique,
+ * e o `enabled` a mantém desligada até lá.
+ */
+function HistoricoNoiva({ leadId, aberto }: { leadId: string; aberto: boolean }) {
+  const { activeLojaId, acessosModulos } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // O endpoint é gateado por `requireModulo("leads")` — a tela é de financeiro,
+  // mas quem manda é o módulo do BACKEND. Perguntar por "financeiro" aqui
+  // negaria para quem pode registrar e liberaria para quem não pode.
+  const podeRegistrar = podeNoModulo(acessosModulos, "leads", "criar");
+
+  const [canal, setCanal] = useState<Canal>("WHATSAPP");
+  const [observacao, setObservacao] = useState("");
+
+  const registros = useListRegistrosCobranca(activeLojaId!, leadId, {
+    query: {
+      queryKey: getListRegistrosCobrancaQueryKey(activeLojaId!, leadId),
+      enabled: !!activeLojaId && aberto,
+    },
+  });
+
+  const criar = useCreateRegistroCobranca({
+    mutation: {
+      onSuccess: () => {
+        setObservacao("");
+        queryClient.invalidateQueries({
+          queryKey: getListRegistrosCobrancaQueryKey(activeLojaId!, leadId),
+        });
+        toast({ title: "Contato registrado" });
+      },
+      onError: () => toast({ title: "Não foi possível registrar o contato", variant: "destructive" }),
+    },
+  });
+
+  function registrar() {
+    criar.mutate({
+      lojaId: activeLojaId!,
+      leadId,
+      // O contato é AGORA: o instante é do relógio, não de um campo de data —
+      // pedir a data de algo que acabou de acontecer só cria chance de erro.
+      data: {
+        data: new Date().toISOString(),
+        canal,
+        ...(observacao.trim() ? { observacao: observacao.trim() } : {}),
+      },
+    });
+  }
+
+  if (registros.isError) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Falha ao buscar o histórico.{" "}
+        <button className="underline" onClick={() => registros.refetch()}>
+          Tentar de novo
+        </button>
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {registros.isPending ? (
+        <Skeleton className="h-16 rounded-md" />
+      ) : registros.data && registros.data.length > 0 ? (
+        <ul className="space-y-2">
+          {registros.data.map((r) => (
+            <li key={r.id} className="rounded-md border-l-2 border-muted pl-3 text-sm">
+              <p className="text-xs text-muted-foreground">
+                {rotuloContato(r.data)} · {ROTULO_CANAL[r.canal as Canal] ?? r.canal}
+              </p>
+              {r.observacao ? <p className="mt-0.5">{r.observacao}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">Nenhum contato registrado ainda.</p>
+      )}
+
+      {podeRegistrar ? (
+        <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+          <div className="space-y-1">
+            <Label htmlFor={`canal-${leadId}`} className="text-xs">
+              Canal
+            </Label>
+            <Select value={canal} onValueChange={(v) => setCanal(v as Canal)}>
+              <SelectTrigger id={`canal-${leadId}`} className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CANAIS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {ROTULO_CANAL[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-48 flex-1 space-y-1">
+            <Label htmlFor={`obs-${leadId}`} className="text-xs">
+              O que ficou combinado
+            </Label>
+            <Input
+              id={`obs-${leadId}`}
+              value={observacao}
+              placeholder="Opcional — ex.: vai pagar dia 15"
+              onChange={(e) => setObservacao(e.target.value)}
+            />
+          </div>
+          <Button size="sm" onClick={registrar} disabled={criar.isPending}>
+            {criar.isPending ? "Registrando…" : "Registrar contato"}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function LinhaNoiva({ noiva }: { noiva: NoivaInadimplente }) {
   const naLoja = useCaminhoDaLoja();
   const wa = linkWhatsApp(noiva.whatsapp, msgPadrao(noiva.noivaNome));
   const critico = noiva.faixaMaisAntiga === "mais60";
 
+  /**
+   * `aberto` sobrevive ao fechar: uma vez buscado, o histórico fica no cache do
+   * TanStack e reabrir não paga request de novo.
+   */
+  const [aberto, setAberto] = useState(false);
+  const [jaAbriu, setJaAbriu] = useState(false);
+
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
-      <div className="min-w-0 space-y-1">
-        <p className="font-medium truncate">{noiva.noivaNome ?? "Noiva"}</p>
-        <p className="text-xs text-muted-foreground">
-          {noiva.qtdParcelas} parcela{noiva.qtdParcelas === 1 ? "" : "s"} · há {noiva.diasMaisAntigo} dia
-          {noiva.diasMaisAntigo === 1 ? "" : "s"} · {ROTULO_FAIXA[noiva.faixaMaisAntiga]}
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span
-          className={`font-semibold tabular-nums whitespace-nowrap ${critico ? "text-destructive" : ""}`}
-        >
-          R$ {brl(noiva.totalVencido)}
-        </span>
-        <Button asChild variant="outline" size="sm">
-          <Link to={naLoja(`/contratos/${noiva.contratoId}`)}>Contrato</Link>
-        </Button>
-        {wa ? (
-          <Button asChild variant="outline" size="sm">
-            <a href={wa} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="mr-1 h-4 w-4" />
-              WhatsApp
-            </a>
-          </Button>
-        ) : (
-          <Badge variant="secondary" title="Sem WhatsApp válido no cadastro">
-            Sem WhatsApp
-          </Badge>
-        )}
-      </div>
+    <li className="rounded-lg border p-4">
+      <Collapsible
+        open={aberto}
+        onOpenChange={(v) => {
+          setAberto(v);
+          if (v) setJaAbriu(true);
+        }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium truncate">{noiva.noivaNome ?? "Noiva"}</p>
+            <p className="text-xs text-muted-foreground">
+              {noiva.qtdParcelas} parcela{noiva.qtdParcelas === 1 ? "" : "s"} · há {noiva.diasMaisAntigo} dia
+              {noiva.diasMaisAntigo === 1 ? "" : "s"} · {ROTULO_FAIXA[noiva.faixaMaisAntiga]}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span
+              className={`font-semibold tabular-nums whitespace-nowrap ${critico ? "text-destructive" : ""}`}
+            >
+              R$ {brl(noiva.totalVencido)}
+            </span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm">
+                Histórico
+                <ChevronDown
+                  className={`ml-1 h-4 w-4 transition-transform ${aberto ? "rotate-180" : ""}`}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <Button asChild variant="outline" size="sm">
+              <Link to={naLoja(`/contratos/${noiva.contratoId}`)}>Contrato</Link>
+            </Button>
+            {wa ? (
+              <Button asChild variant="outline" size="sm">
+                <a href={wa} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="mr-1 h-4 w-4" />
+                  WhatsApp
+                </a>
+              </Button>
+            ) : (
+              <Badge variant="secondary" title="Sem WhatsApp válido no cadastro">
+                Sem WhatsApp
+              </Badge>
+            )}
+          </div>
+        </div>
+        <CollapsibleContent className="pt-4">
+          {jaAbriu ? <HistoricoNoiva leadId={noiva.leadId} aberto={aberto} /> : null}
+        </CollapsibleContent>
+      </Collapsible>
     </li>
   );
 }

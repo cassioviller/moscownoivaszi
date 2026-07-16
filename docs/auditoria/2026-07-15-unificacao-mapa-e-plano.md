@@ -216,9 +216,9 @@ Meta: typecheck verde, testes de API verdes, E2E cobrindo os módulos unificados
 
 | | Antes | Agora |
 |---|---|---|
-| Testes de API | 113 | **227** |
-| Lógica pura (frontend) | 0 | **93** |
-| E2E | 39 | **65** |
+| Testes de API | 113 | **235** |
+| Lógica pura (frontend) | 0 | **105** |
+| E2E | 39 | **67** |
 
 Todas as telas das Ondas 3–5 têm smoke de montagem + zero erro de API
 (`14-onda3-financeiro`, `15-onda5-pdf-e-folha`), e os invariantes que não dão
@@ -255,12 +255,38 @@ contas sem a origem que explica de onde vieram. Quem já tem salário sai da lis
 de "definir": o caminho é Editar, senão dois salários da mesma pessoa gerariam
 duas contas na mesma folha.
 
+**O histórico de cobrança, e o 500 que ele escondia.** Estava listado como
+"falta a UI". Não era: o par `GET/POST /leads/{id}/cobrancas` **nunca
+funcionou**. O contrato expõe o campo como `data`, a coluna é `contatoData`, e
+a rota fazia `parse()` na linha crua do banco — toda leitura com registro e todo
+POST davam 500. O que segurava a porta era um `// @ts-ignore` sobre o spread do
+insert: sem ele o compilador teria apontado o campo inexistente no dia em que
+foi escrito. Nenhum dos 227 testes tocava o par, então o defeito esperou pela
+primeira tela que o consumisse.
+
+A tradução foi para a ROTA (uma função só, usada na leitura e na escrita): o
+`openapi.yaml` continua a fonte da verdade da API e a coluna continua a do
+banco — nenhum dos dois se curva ao outro. O histórico passou a ler do mais
+recente para o mais antigo; o último contato é o que decide se vale ligar hoje.
+
+Na tela, a query é lazy (só dispara ao abrir o accordion — buscar a fila toda
+seria uma request por noiva, quase toda jogada fora) e o gate pergunta por
+`leads`, não por `financeiro`: a tela é do financeiro, mas quem gateia o
+endpoint é `requireModulo("leads")` — é a regra 1 do `permissoes.ts`, e o
+módulo errado aqui negaria para quem pode e liberaria para quem não pode.
+`data` é INSTANTE: formatado no fuso da loja, senão um contato às 21h30 aparece
+no dia seguinte (há teste para as 21h30).
+
 ### O que segue em aberto (consciente)
 
-- Histórico/registro de cobrança inline (`listRegistrosCobranca` é por lead —
-  exigiria N requests; cabe atrás de um accordion por noiva, com query lazy).
 - Arquivar os 3 branches superados (Onda 0): seguem em `origin`
-  (`conserto-provas-ajustes`, `dia-do-atelier`, `jornada-derivada`).
+  (`conserto-provas-ajustes`, `dia-do-atelier`, `jornada-derivada`), com 38, 232
+  e 47 commits fora do `main`. **Bloqueado por credencial**: o git deste
+  ambiente não autentica no `origin` ("Password authentication is not
+  supported"), e arquivar exige tag + delete remotos.
+- `registros_cobranca.vendedorId` existe no banco e ninguém o preenche: o
+  histórico diz quando e por qual canal, mas não quem falou. Expor exige mexer
+  no contrato — vale quando alguém precisar da resposta.
 
 ---
 

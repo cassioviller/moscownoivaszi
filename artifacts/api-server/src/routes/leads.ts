@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { 
   ListLeadsResponse,
   CreateLeadBody,
@@ -195,6 +195,22 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
   res.json(SetLeadInteresseResponse.parse(fullInteresse));
 });
 
+/**
+ * A coluna é `contatoData`; o contrato expõe `data`. Traduzir é obrigação da
+ * rota — o spread cru da linha do banco não tem `data` e o `parse` estourava
+ * (500 em toda leitura com registro). Uma função só, usada na leitura e na
+ * escrita, para os dois lados não divergirem de novo.
+ */
+function paraContrato(linha: typeof registrosCobrancaTable.$inferSelect) {
+  return {
+    id: linha.id,
+    leadId: linha.leadId,
+    data: linha.contatoData,
+    canal: linha.canal,
+    observacao: linha.observacao,
+  };
+}
+
 router.get("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const leadId = req.params.leadId as string;
@@ -205,10 +221,12 @@ router.get("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<v
     res.status(404).json({ error: "Lead not found" });
     return;
   }
+  // Histórico lê do mais recente para o mais antigo: o último contato é o que
+  // decide se vale ligar de novo hoje.
   const cobrancas = await db.select().from(registrosCobrancaTable)
     .where(and(eq(registrosCobrancaTable.leadId, leadId), eq(registrosCobrancaTable.lojaId, lojaId)))
-    .orderBy(registrosCobrancaTable.contatoData);
-  res.json(ListRegistrosCobrancaResponse.parse(cobrancas));
+    .orderBy(desc(registrosCobrancaTable.contatoData));
+  res.json(ListRegistrosCobrancaResponse.parse(cobrancas.map(paraContrato)));
 });
 
 router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
@@ -228,15 +246,16 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
     return;
   }
 
-    const [cobranca] = await db.insert(registrosCobrancaTable).values({
+  const [cobranca] = await db.insert(registrosCobrancaTable).values({
     id: randomUUID(),
     lojaId: lead.lojaId,
     leadId,
-    // @ts-ignore
-    ...parsed.data,
+    contatoData: parsed.data.data,
+    canal: parsed.data.canal,
+    observacao: parsed.data.observacao ?? null,
   }).returning();
 
-  res.status(201).json(CreateRegistroCobrancaResponse.parse(cobranca));
+  res.status(201).json(CreateRegistroCobrancaResponse.parse(paraContrato(cobranca!)));
 });
 
 export default router;

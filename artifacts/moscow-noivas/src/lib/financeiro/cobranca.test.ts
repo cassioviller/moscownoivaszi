@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { agingDeParcelas, faixaDeAtraso, linkWhatsApp, type ParcelaComNoiva } from "./cobranca";
+import {
+  agingDeParcelas,
+  faixaDeAtraso,
+  linkWhatsApp,
+  rotuloContato,
+  type ParcelaComNoiva,
+} from "./cobranca";
 
 const HOJE = "2027-07-16";
 
@@ -102,5 +108,16 @@ describe("agingDeParcelas", () => {
     const aging = agingDeParcelas([], HOJE);
     expect(aging.faixas.ate30).toEqual({ total: 0, qtdNoivas: 0 });
     expect(aging.noivas).toEqual([]);
+  });
+});
+
+describe("rotuloContato", () => {
+  it("mostra dia e hora do contato no fuso da loja", () => {
+    expect(rotuloContato("2026-06-20T12:00:00.000Z")).toBe("20/06/2026 às 09:00");
+  });
+
+  it("contato das 21h fica no dia em que aconteceu, não no seguinte", () => {
+    // 21h30 em SP já é o dia seguinte em UTC. Lido cru, escorregaria um dia.
+    expect(rotuloContato("2026-06-21T00:30:00.000Z")).toBe("20/06/2026 às 21:30");
   });
 });
