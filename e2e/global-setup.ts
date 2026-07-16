@@ -16,7 +16,13 @@ import {
   orcamentosTable,
   orcamentoItensTable,
   contratosTable,
+  bloqueioVestidosTable,
 } from "../lib/db/src/index";
+
+/** Dia local (America/Sao_Paulo) no formato YYYY-MM-DD das colunas de ocupação. */
+function diaLocal(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
+}
 
 /**
  * Setup de dados E2E — idempotente (IDs fixos "e2e-*"; roda quantas vezes
@@ -121,6 +127,27 @@ export default async function globalSetup() {
     });
   });
 
+  // Reserva de casamento — alvo das telas de reservas/provas (Onda 2). A data é
+  // sempre futura (90 dias) para cair na lente "próximas" da /reservas. O
+  // envelope de ocupação é gravado à mão: o serviço de disponibilidade só roda
+  // nas rotas, e a constraint EXCLUDE do banco lê estas colunas.
+  const [bloqueio] = await db.select().from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, "e2e-bloqueio-1"));
+  await garantir(bloqueio, () => {
+    const casamento = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    const retirada = new Date(casamento.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const devolucao = new Date(casamento.getTime() + 2 * 24 * 60 * 60 * 1000);
+    return db.insert(bloqueioVestidosTable).values({
+      id: "e2e-bloqueio-1",
+      lojaId: loja.id,
+      vestidoId: "e2e-vestido-1",
+      leadId: "e2e-lead-1",
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: casamento,
+      ocupacaoInicio: diaLocal(retirada),
+      ocupacaoFim: diaLocal(devolucao),
+    });
+  });
+
   const [contrato] = await db.select().from(contratosTable).where(eq(contratosTable.lojaId, loja.id)).limit(1);
 
   // 3. Estado compartilhado com os specs.
@@ -135,6 +162,7 @@ export default async function globalSetup() {
     orcamentoId: "e2e-orcamento-1",
     contratoId: contrato?.id ?? null,
     cabineId: "e2e-cabine-1",
+    bloqueioId: "e2e-bloqueio-1",
   };
   mkdirSync(path.join(__dirname, ".auth"), { recursive: true });
   writeFileSync(path.join(__dirname, ".state.json"), JSON.stringify(state, null, 2));

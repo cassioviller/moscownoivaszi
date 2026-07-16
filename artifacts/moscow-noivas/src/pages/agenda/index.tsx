@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAtendimentos,
@@ -117,10 +118,17 @@ export default function Agenda() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif">Agenda</h1>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agendamento
-        </Button>
+        <div className="flex items-center gap-2">
+          {activeLojaId && (
+            <Button asChild variant="ghost">
+              <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
+            </Button>
+          )}
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agendamento
+          </Button>
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

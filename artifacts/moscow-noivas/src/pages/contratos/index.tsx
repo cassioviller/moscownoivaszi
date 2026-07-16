@@ -1,12 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListContratos,
   getListContratosQueryKey,
-  useListLeads,
-  getListLeadsQueryKey,
+  type ContratoStatus,
 } from "@workspace/api-client-react";
-import { Link, useLocation } from "@/lib/router-compat";
+import { Link, useNavigate, useParams } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,27 +13,49 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, ScrollText, AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
 
+const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
+  { chave: "todos", rotulo: "Todos" },
+  { chave: "ATIVO", rotulo: "Ativos", status: "ATIVO" },
+  { chave: "CANCELADO", rotulo: "Cancelados", status: "CANCELADO" },
+];
+
 export default function Contratos() {
   const { activeLojaId } = useAuth();
-  const [, setLocation] = useLocation();
+  const { lojaId: lojaIdParam } = useParams();
+  const lojaId = lojaIdParam ?? activeLojaId;
+  const navigate = useNavigate();
+  const [filtro, setFiltro] = useState<string>("todos");
   const { data: contratos, isLoading, isError, refetch } = useListContratos(activeLojaId!, { query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const leads = useListLeads(activeLojaId!, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
 
-  const nomePorLead = useMemo(() => {
-    const mapa = new Map<string, string>();
-    for (const lead of leads.data ?? []) mapa.set(lead.id, lead.noivaNome);
-    return mapa;
-  }, [leads.data]);
+  const filtroAtivo = FILTROS.find((f) => f.chave === filtro) ?? FILTROS[0];
+  const lista = useMemo(
+    () => (contratos ?? []).filter((c) => !filtroAtivo.status || c.status === filtroAtivo.status),
+    [contratos, filtroAtivo.status],
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif">Contratos</h1>
         {/* Contrato nasce de um orçamento APROVADO — o botão leva ao funil certo. */}
-        <Button onClick={() => setLocation("/orcamentos")}>
+        <Button onClick={() => navigate(`/loja/${lojaId}/orcamentos`)}>
           <Plus className="h-4 w-4 mr-2" />
           Novo contrato (via orçamento)
         </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {FILTROS.map((f) => (
+          <Button
+            key={f.chave}
+            size="sm"
+            variant={f.chave === filtroAtivo.chave ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => setFiltro(f.chave)}
+          >
+            {f.rotulo}
+          </Button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -51,13 +72,15 @@ export default function Contratos() {
           </Alert>
         ) : isLoading ? (
           [1, 2, 3].map(i => <Card key={i} className="h-24 animate-pulse" />)
-        ) : contratos?.length === 0 ? (
+        ) : lista.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
-            Nenhum contrato encontrado. Aprove um orçamento e gere o contrato a partir dele.
+            {filtroAtivo.status
+              ? "Nenhum contrato com este status."
+              : "Nenhum contrato encontrado. Aprove um orçamento e gere o contrato a partir dele."}
           </div>
         ) : (
-          contratos?.map(contrato => (
-            <Link key={contrato.id} href={`/contratos/${contrato.id}`}>
+          lista.map(contrato => (
+            <Link key={contrato.id} to={`/loja/${lojaId}/contratos/${contrato.id}`}>
               <Card className="hover-elevate cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -65,10 +88,12 @@ export default function Contratos() {
                       <ScrollText className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium">{nomePorLead.get(contrato.leadId) ?? `Contrato #${contrato.id.slice(0, 6)}`}</div>
+                      <div className={`font-medium ${contrato.status === "CANCELADO" ? "text-muted-foreground line-through" : ""}`}>
+                        {contrato.lead?.noivaNome ?? `Contrato #${contrato.id.slice(0, 6)}`}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         Contrato #{contrato.id.slice(0, 6)} • Fechado em {new Date(contrato.fechadoEm).toLocaleDateString("pt-BR")}
-                        {contrato.dataCasamento && ` • Casamento ${new Date(contrato.dataCasamento).toLocaleDateString("pt-BR")}`}
+                        {contrato.dataCasamento && ` • Casamento ${new Date(contrato.dataCasamento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}`}
                       </div>
                     </div>
                   </div>

@@ -1,0 +1,540 @@
+import { useMemo, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  useListAtendimentos,
+  getListAtendimentosQueryKey,
+  useCreateAtendimento,
+  useDeleteAtendimento,
+  useListCabines,
+  getListCabinesQueryKey,
+  useListLeads,
+  getListLeadsQueryKey,
+  useListEquipe,
+  getListEquipeQueryKey,
+  useListBloqueios,
+  getListBloqueiosQueryKey,
+  useGetDisponibilidade,
+  getGetDisponibilidadeQueryKey,
+  type Atendimento,
+} from "@workspace/api-client-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { podeLeads, moduloLiberado, dataCurtaFmt } from "../noivas/helpers";
+
+const agendarSchema = z
+  .object({
+    tipo: z.enum(["ATENDIMENTO", "PROVA"]),
+    leadId: z.string().min(1, "Escolha a noiva"),
+    bloqueioId: z.string().optional(),
+    cabineId: z.string().min(1, "Escolha a cabine"),
+    vendedoraId: z.string().min(1, "Escolha a vendedora"),
+    data: z.string().min(1, "Informe a data"),
+    hora: z.string().min(1, "Informe a hora"),
+    observacao: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.tipo === "PROVA" && !values.bloqueioId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["bloqueioId"],
+        message: "Escolha o vestido reservado para a prova.",
+      });
+    }
+  });
+
+type AgendarValues = z.infer<typeof agendarSchema>;
+
+const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * Agendar atendimento/prova (porte da /atendimentos/novo do feat/orcamentos).
+ * Marca o horário na grade; o ato de atender fica na fila (/atendimentos).
+ */
+export default function NovoAtendimento() {
+  const { lojaId } = useParams();
+  const { activeLojaId, acessosModulos } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const [cancelando, setCancelando] = useState<Atendimento | null>(null);
+
+  // Deep-link do detalhe da reserva ("Agendar prova"): ?noiva=&tipo=PROVA&reserva=
+  // pré-preenche o formulário. `tipo` só aceita os valores do schema.
+  const tipoParam = searchParams.get("tipo");
+  const prefill = {
+    tipo: tipoParam === "PROVA" || tipoParam === "ATENDIMENTO" ? tipoParam : "ATENDIMENTO",
+    leadId: searchParams.get("noiva") ?? "",
+    bloqueioId: searchParams.get("reserva") ?? "",
+  } as const;
+
+  const leads = useListLeads(activeLojaId!, {
+    query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const equipe = useListEquipe(activeLojaId!, {
+    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const cabines = useListCabines(activeLojaId!, {
+    query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const bloqueios = useListBloqueios(activeLojaId!, {
+    query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const atendimentos = useListAtendimentos(activeLojaId!, {
+    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const disponibilidade = useGetDisponibilidade(activeLojaId!, {
+    query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const createAtendimento = useCreateAtendimento();
+  const deleteAtendimento = useDeleteAtendimento();
+
+  // TODO Onda 4: distinguir ver/criar — hoje o gate é flat por módulo.
+  const podeCriar = podeLeads(acessosModulos);
+  const podeVerConfig = !acessosModulos || moduloLiberado(acessosModulos["config"]);
+
+  const form = useForm<AgendarValues>({
+    resolver: zodResolver(agendarSchema),
+    defaultValues: {
+      tipo: prefill.tipo,
+      leadId: prefill.leadId,
+      bloqueioId: prefill.bloqueioId,
+      cabineId: "",
+      vendedoraId: "",
+      data: "",
+      hora: "",
+      observacao: "",
+    },
+  });
+  const tipo = form.watch("tipo");
+  const leadId = form.watch("leadId");
+
+  // Noivas agendáveis: fora da etapa PERDIDO (equivalente às "noivas ativas" do orcamentos).
+  const noivas = useMemo(
+    () => (leads.data ?? []).filter((l) => l.etapa !== "PERDIDO"),
+    [leads.data],
+  );
+
+  const cabinesAtivas = useMemo(
+    () => (cabines.data ?? []).filter((c) => c.ativo),
+    [cabines.data],
+  );
+
+  // Reservas de casamento da noiva (picker quando Tipo=Prova) — o bloqueio já
+  // vem com o vestido aninhado (codigo/nome) do GET /bloqueios.
+  const reservasDaNoiva = useMemo(
+    () =>
+      (bloqueios.data ?? []).filter(
+        (b) => b.leadId === leadId && b.tipo === "RESERVA_CASAMENTO" && !b.canceladoEm,
+      ),
+    [bloqueios.data, leadId],
+  );
+
+  const proximos = useMemo(() => {
+    const agora = Date.now();
+    return (atendimentos.data ?? [])
+      .filter((a) => a.situacao === "AGENDADO" && new Date(a.inicio).getTime() >= agora)
+      .sort((x, y) => new Date(x.inicio).getTime() - new Date(y.inicio).getTime())
+      .slice(0, 10);
+  }, [atendimentos.data]);
+
+  const regra = disponibilidade.data;
+
+  const onSubmit = async (values: AgendarValues) => {
+    // GAP Onda 3: a grade de horários livres (gradeDoDia/slots do orcamentos)
+    // não tem endpoint no client gerado — usamos input de hora simples e
+    // validamos apenas contra o horário de funcionamento da loja.
+    const hora = Number(values.hora.split(":")[0]);
+    if (
+      regra &&
+      (hora < regra.atendimentoAberturaHora || hora >= regra.atendimentoFechamentoHora)
+    ) {
+      form.setError("hora", {
+        message: `Horário fora do funcionamento da loja (${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h).`,
+      });
+      return;
+    }
+    try {
+      await createAtendimento.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          leadId: values.leadId,
+          cabineId: values.cabineId,
+          vendedoraId: values.vendedoraId,
+          tipo: values.tipo,
+          bloqueioId: values.tipo === "PROVA" ? values.bloqueioId || undefined : undefined,
+          inicio: new Date(`${values.data}T${values.hora}`).toISOString(),
+          observacao: values.observacao || undefined,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
+      toast({ title: "Atendimento agendado" });
+      form.reset();
+    } catch (err) {
+      toast({
+        title: "Erro ao agendar",
+        description:
+          err instanceof Error ? err.message : "Verifique conflito de horário e tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onCancelar = async () => {
+    if (!cancelando) return;
+    try {
+      await deleteAtendimento.mutateAsync({ lojaId: activeLojaId!, atendimentoId: cancelando.id });
+      await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
+      toast({ title: "Atendimento cancelado" });
+    } catch (err) {
+      toast({
+        title: "Erro ao cancelar",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelando(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <Link
+            to={`/loja/${lojaId}/atendimentos`}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Atendimentos
+          </Link>
+          <h1 className="text-3xl font-serif mt-1">Agendar</h1>
+        </div>
+        {podeVerConfig && (
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/loja/${lojaId}/atendimentos/config`}>Cabines &amp; horário</Link>
+          </Button>
+        )}
+      </div>
+
+      {!podeCriar ? (
+        <p className="text-sm text-muted-foreground">Você não tem permissão para agendar.</p>
+      ) : !cabines.isLoading && cabinesAtivas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Cadastre ao menos uma cabine em{" "}
+          <Link to={`/loja/${lojaId}/atendimentos/config`} className="underline underline-offset-4">
+            Cabines &amp; horário
+          </Link>{" "}
+          para agendar.
+        </p>
+      ) : (
+        <Card className="max-w-2xl">
+          <CardContent className="pt-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="tipo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo</FormLabel>
+                      <div className="flex gap-2">
+                        {(["ATENDIMENTO", "PROVA"] as const).map((t) => (
+                          <Button
+                            key={t}
+                            type="button"
+                            size="sm"
+                            variant={field.value === t ? "default" : "outline"}
+                            aria-pressed={field.value === t}
+                            onClick={() => {
+                              field.onChange(t);
+                              if (t === "ATENDIMENTO") form.setValue("bloqueioId", "");
+                            }}
+                          >
+                            {t === "ATENDIMENTO" ? "Atendimento" : "Prova"}
+                          </Button>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="leadId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Noiva *</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v);
+                          form.setValue("bloqueioId", "");
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger aria-label="Noiva">
+                            <SelectValue placeholder="Selecione a noiva…" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {noivas.map((n) => (
+                            <SelectItem key={n.id} value={n.id}>
+                              {n.noivaNome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {tipo === "PROVA" && (
+                  <FormField
+                    control={form.control}
+                    name="bloqueioId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reserva / vestido *</FormLabel>
+                        {!leadId ? (
+                          <p className="text-sm text-muted-foreground">
+                            Escolha a noiva para listar as reservas.
+                          </p>
+                        ) : bloqueios.isLoading ? (
+                          <p className="text-sm text-muted-foreground">Carregando reservas…</p>
+                        ) : reservasDaNoiva.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Esta noiva não tem reserva de casamento. Crie a reserva antes de
+                            agendar a prova.
+                          </p>
+                        ) : (
+                          <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger aria-label="Reserva">
+                                <SelectValue placeholder="Selecione o vestido reservado…" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {reservasDaNoiva.map((r) => (
+                                <SelectItem key={r.id} value={r.id}>
+                                  Vestido {r.vestido?.codigo ?? "?"} · {r.vestido?.nome ?? "sem nome"}
+                                  {r.casamentoData
+                                    ? ` — casamento ${dataCurtaFmt.format(new Date(r.casamentoData))}`
+                                    : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cabineId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cabine *</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger aria-label="Cabine">
+                              <SelectValue placeholder="Selecione…" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {cabinesAtivas.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="vendedoraId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vendedora *</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger aria-label="Vendedora">
+                              <SelectValue placeholder="Selecione…" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(equipe.data ?? [])
+                              .filter((m) => m.ativo !== false)
+                              .map((m) => (
+                                <SelectItem key={m.usuarioId} value={m.usuarioId}>
+                                  {m.nome}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="data"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data *</FormLabel>
+                        <FormControl>
+                          <Input type="date" aria-label="Data" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="hora"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora *</FormLabel>
+                        <FormControl>
+                          <Input type="time" aria-label="Hora" {...field} />
+                        </FormControl>
+                        {regra && (
+                          <p className="text-xs text-muted-foreground">
+                            Funcionamento: {regra.atendimentoAberturaHora}h às{" "}
+                            {regra.atendimentoFechamentoHora}h.
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="observacao"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observação (opcional)</FormLabel>
+                      <FormControl>
+                        <Input aria-label="Observação" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" disabled={createAtendimento.isPending}>
+                  {createAtendimento.isPending ? "Agendando…" : "Agendar"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-base">Próximos atendimentos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {proximos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum atendimento agendado.</p>
+          ) : (
+            <ul className="divide-y">
+              {proximos.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-4 py-3">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-medium">
+                      {a.lead?.noivaNome ?? "Noiva"}
+                      {a.tipo === "PROVA" ? " — Prova" : ""}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {dataHoraFmt.format(new Date(a.inicio))} · {a.cabine?.nome ?? "Cabine"} ·{" "}
+                      {a.vendedora?.nome ?? "Vendedora"}
+                    </span>
+                  </div>
+                  {podeCriar && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Cancelar atendimento"
+                      disabled={deleteAtendimento.isPending}
+                      onClick={() => setCancelando(a)}
+                    >
+                      Cancelar
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={!!cancelando} onOpenChange={(aberto) => !aberto && setCancelando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancelar o atendimento de {cancelando?.lead?.noivaNome ?? "noiva"}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={onCancelar} disabled={deleteAtendimento.isPending}>
+              {deleteAtendimento.isPending ? "Cancelando…" : "Cancelar atendimento"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

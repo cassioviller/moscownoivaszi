@@ -15,7 +15,11 @@ import {
   LogOut,
   Store,
   BookOpen,
-  ShieldCheck
+  ShieldCheck,
+  CalendarCheck,
+  Sparkles,
+  Scissors,
+  Bookmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +30,11 @@ const navItems: { icon: typeof LayoutDashboard; label: string; href: string; mod
   { icon: Users, label: "Noivas", href: "/noivas", modulo: "leads" },
   { icon: Users, label: "Leads", href: "/leads", modulo: "leads" },
   { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
+  { icon: CalendarCheck, label: "Atendimentos", href: "/atendimentos", modulo: "agenda" },
+  { icon: Sparkles, label: "Provas", href: "/provas", modulo: "agenda" },
+  { icon: Scissors, label: "Ajustes", href: "/ajustes", modulo: "agenda" },
+  // Reservas lê bloqueios de vestido: o backend gateia por vestidos, não agenda.
+  { icon: Bookmark, label: "Reservas", href: "/reservas", modulo: "vestidos" },
   { icon: Shirt, label: "Vestidos", href: "/vestidos", modulo: "vestidos" },
   // Catálogo (atributos de vestidos) é gateado no backend pelo módulo vestidos.
   { icon: BookOpen, label: "Catálogo", href: "/catalogo", modulo: "vestidos" },

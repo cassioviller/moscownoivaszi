@@ -14,6 +14,13 @@ import Dashboard from "@/pages/dashboard";
 import Leads from "@/pages/leads";
 import LeadDetail from "@/pages/leads/[id]";
 import Agenda from "@/pages/agenda";
+import Atendimentos from "@/pages/atendimentos";
+import NovoAtendimento from "@/pages/atendimentos/novo";
+import ConfigAtendimentos from "@/pages/atendimentos/config";
+import Ajustes from "@/pages/ajustes";
+import Provas from "@/pages/provas";
+import Reservas from "@/pages/reservas";
+import ReservaDetalhe from "@/pages/reservas/[bloqueioId]";
 import Vestidos from "@/pages/vestidos";
 import VestidoDetail from "@/pages/vestidos/[id]";
 import NovoVestido from "@/pages/vestidos/novo";
@@ -99,6 +106,13 @@ function App() {
               <Route path="noivas/:leadId/editar" element={<EditarNoiva />} />
               <Route path="noivas/:leadId/interesses" element={<InteressesNoiva />} />
               <Route path="agenda" element={<Agenda />} />
+              <Route path="atendimentos" element={<Atendimentos />} />
+              <Route path="atendimentos/novo" element={<NovoAtendimento />} />
+              <Route path="atendimentos/config" element={<ConfigAtendimentos />} />
+              <Route path="ajustes" element={<Ajustes />} />
+              <Route path="provas" element={<Provas />} />
+              <Route path="reservas" element={<Reservas />} />
+              <Route path="reservas/:bloqueioId" element={<ReservaDetalhe />} />
               <Route path="vestidos" element={<Vestidos />} />
               <Route path="vestidos/novo" element={<NovoVestido />} />
               <Route path="vestidos/:id" element={<VestidoDetail />} />
