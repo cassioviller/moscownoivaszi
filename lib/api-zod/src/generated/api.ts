@@ -176,7 +176,11 @@ export const DeleteLojaResponse = zod.void()
 export const ListPerfisResponseItem = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 export const ListPerfisResponse = zod.array(ListPerfisResponseItem)
 
@@ -186,13 +190,21 @@ export const ListPerfisResponse = zod.array(ListPerfisResponseItem)
 
 export const CreatePerfilBody = zod.object({
   "nome": zod.string().min(1),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 export const CreatePerfilResponse = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 
@@ -205,13 +217,21 @@ export const UpdatePerfilParams = zod.object({
 
 export const UpdatePerfilBody = zod.object({
   "nome": zod.string().min(1).optional(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean()).optional()
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).optional().describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 export const UpdatePerfilResponse = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 
@@ -293,7 +313,11 @@ export const ListPerfilOverridesParams = zod.object({
 export const ListPerfilOverridesResponseItem = zod.object({
   "lojaId": zod.string(),
   "perfilId": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 export const ListPerfilOverridesResponse = zod.array(ListPerfilOverridesResponseItem)
 
@@ -304,13 +328,21 @@ export const SetPerfilOverrideParams = zod.object({
 
 export const SetPerfilOverrideBody = zod.object({
   "perfilId": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 export const SetPerfilOverrideResponse = zod.object({
   "lojaId": zod.string(),
   "perfilId": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 
@@ -4005,7 +4037,7 @@ export const ListSaldoReferenciaParams = zod.object({
 export const ListSaldoReferenciaResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "competencia": zod.string().describe('Competência YYYY-MM'),
+  "dataReferencia": zod.coerce.date().describe('Instante do dia conferido (meio-dia local America\/Sao_Paulo)'),
   "valor": zod.number()
 })
 export const ListSaldoReferenciaResponse = zod.array(ListSaldoReferenciaResponseItem)
@@ -4015,18 +4047,15 @@ export const CreateSaldoReferenciaParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const createSaldoReferenciaBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
-
-
 export const CreateSaldoReferenciaBody = zod.object({
-  "competencia": zod.string().regex(createSaldoReferenciaBodyCompetenciaRegExp),
+  "dataReferencia": zod.coerce.date(),
   "valor": zod.number()
 })
 
 export const CreateSaldoReferenciaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "competencia": zod.string().describe('Competência YYYY-MM'),
+  "dataReferencia": zod.coerce.date().describe('Instante do dia conferido (meio-dia local America\/Sao_Paulo)'),
   "valor": zod.number()
 })
 

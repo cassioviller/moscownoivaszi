@@ -5,10 +5,10 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { PerfilOverrideLojaAcessosModulos } from './perfilOverrideLojaAcessosModulos';
+import type { AcessosModulos } from './acessosModulos';
 
 export interface PerfilOverrideLoja {
   lojaId: string;
   perfilId: string;
-  acessosModulos: PerfilOverrideLojaAcessosModulos;
+  acessosModulos: AcessosModulos;
 }

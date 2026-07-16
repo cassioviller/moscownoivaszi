@@ -5,12 +5,12 @@ import {
   useListPerfis,
   getListPerfisQueryKey,
   useUpdatePerfil,
+  type AcessosModulos,
 } from "@workspace/api-client-react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import {
   MatrizPermissoes,
   ehPerfilAdmin,
-  type AcessosFlat,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
 
@@ -24,7 +24,7 @@ export default function AdminPerfis() {
   });
   const updatePerfil = useUpdatePerfil();
 
-  const salvar = async (perfilId: string, acessos: AcessosFlat) => {
+  const salvar = async (perfilId: string, acessos: AcessosModulos) => {
     try {
       await updatePerfil.mutateAsync({ perfilId, data: { acessosModulos: acessos } });
       await queryClient.invalidateQueries({ queryKey: getListPerfisQueryKey() });
@@ -75,7 +75,7 @@ export default function AdminPerfis() {
                   // key com assinatura → remonta a matriz quando o servidor devolve novos valores
                   key={`${perfil.id}-${JSON.stringify(perfil.acessosModulos)}`}
                   perfilNome={perfil.nome}
-                  valores={perfil.acessosModulos as AcessosFlat}
+                  valores={perfil.acessosModulos as AcessosModulos}
                   modo={readonly ? "readonly" : "editavel"}
                   salvando={updatePerfil.isPending}
                   onSalvar={(acessos) => salvar(perfil.id, acessos)}

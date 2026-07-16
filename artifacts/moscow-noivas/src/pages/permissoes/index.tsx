@@ -7,12 +7,12 @@ import {
   useListPerfilOverrides,
   getListPerfilOverridesQueryKey,
   useSetPerfilOverride,
+  type AcessosModulos,
 } from "@workspace/api-client-react";
 import {
   MatrizPermissoes,
   moduloLiberado,
   ehPerfilAdmin,
-  type AcessosFlat,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -46,7 +46,7 @@ export default function Permissoes() {
 
   const setOverride = useSetPerfilOverride();
 
-  const salvar = async (perfilId: string, acessos: AcessosFlat) => {
+  const salvar = async (perfilId: string, acessos: AcessosModulos) => {
     try {
       await setOverride.mutateAsync({
         lojaId: activeLojaId!,
@@ -103,7 +103,7 @@ export default function Permissoes() {
           {perfis?.map((perfil) => {
             const override = overrides?.find((o) => o.perfilId === perfil.id) ?? null;
             const efetivo = (override?.acessosModulos ??
-              perfil.acessosModulos) as AcessosFlat;
+              perfil.acessosModulos) as AcessosModulos;
             const readonly = ehPerfilAdmin(perfil);
             return (
               <MatrizPermissoes

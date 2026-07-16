@@ -9,7 +9,7 @@
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
-  /** Competência YYYY-MM */
-  competencia: string;
+  /** Instante do dia conferido (meio-dia local America/Sao_Paulo) */
+  dataReferencia: Date;
   valor: number;
 }

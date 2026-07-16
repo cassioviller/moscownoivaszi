@@ -7,7 +7,6 @@
  */
 
 export interface SaldoReferenciaInput {
-  /** @pattern ^\d{4}-\d{2}$ */
-  competencia: string;
+  dataReferencia: Date;
   valor: number;
 }

@@ -1,12 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { buscarSessao, buscarLoja, getPermissoes, COOKIE_NOME } from "../lib/auth";
-
-/** Um módulo é liberado se marcado `true` ou se tem ao menos um sub-acesso true. */
-function moduloLiberado(acesso: boolean | Record<string, boolean> | undefined): boolean {
-  if (acesso === true) return true;
-  if (acesso && typeof acesso === "object") return Object.values(acesso).some(Boolean);
-  return false;
-}
+import { acaoDoMetodo, podeNoModulo, type Acao } from "../lib/permissoes";
 
 export async function requireSessao(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies[COOKIE_NOME];
@@ -66,10 +60,14 @@ export async function requireSuperAdmin(req: Request, res: Response, next: NextF
 }
 
 /**
- * Exige que o perfil do usuário na loja ativa tenha acesso ao módulo.
+ * Exige que o perfil do usuário na loja ativa possa a AÇÃO neste módulo.
  * Deve ser montado DEPOIS de requireSessaoComLoja. Superadmin sempre passa.
+ *
+ * Sem `acao`, ela vem do método HTTP (GET→ver, POST→criar, resto→editar), que é
+ * o certo para rotas REST. Passe explicitamente quando a rota mentir sobre o
+ * que faz — um POST que só consulta pede `"ver"`, não `"criar"`.
  */
-export function requireModulo(modulo: string) {
+export function requireModulo(modulo: string, acao?: Acao) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const usuario = req.usuario;
     const lojaId = req.sessao?.lojaAtivaId;
@@ -81,9 +79,10 @@ export function requireModulo(modulo: string) {
       next();
       return;
     }
+    const exigida = acao ?? acaoDoMetodo(req.method);
     const permissoes = await getPermissoes(usuario.id, lojaId, false);
-    if (!permissoes || !moduloLiberado(permissoes[modulo] as boolean | Record<string, boolean> | undefined)) {
-      res.status(403).json({ error: "ACESSO_NEGADO_MODULO", modulo });
+    if (!permissoes || !podeNoModulo(permissoes, modulo, exigida)) {
+      res.status(403).json({ error: "ACESSO_NEGADO_MODULO", modulo, acao: exigida });
       return;
     }
     next();

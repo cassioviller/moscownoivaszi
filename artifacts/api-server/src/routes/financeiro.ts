@@ -335,15 +335,16 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  // Conferir de novo o mesmo dia é corrigir o número, não empilhar outro saldo.
   const [saldo] = await db.insert(saldosReferenciaTable)
     .values({
       id: randomUUID(),
       lojaId,
-      competencia: parsed.data.competencia,
+      dataReferencia: new Date(parsed.data.dataReferencia),
       valor: parsed.data.valor,
     })
     .onConflictDoUpdate({
-      target: [saldosReferenciaTable.lojaId, saldosReferenciaTable.competencia],
+      target: [saldosReferenciaTable.lojaId, saldosReferenciaTable.dataReferencia],
       set: { valor: parsed.data.valor },
     })
     .returning();

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './acessosModulos';
+export * from './acoesModulo';
 export * from './ajuste';
 export * from './ajusteAtendimento';
 export * from './ajusteAtendimentoSituacao';
@@ -116,15 +118,10 @@ export * from './parcela';
 export * from './parcelaFormaRecebimento';
 export * from './parcelaStatus';
 export * from './perfil';
-export * from './perfilAcessosModulos';
 export * from './perfilInput';
-export * from './perfilInputAcessosModulos';
 export * from './perfilOverrideInput';
-export * from './perfilOverrideInputAcessosModulos';
 export * from './perfilOverrideLoja';
-export * from './perfilOverrideLojaAcessosModulos';
 export * from './perfilUpdate';
-export * from './perfilUpdateAcessosModulos';
 export * from './receberParcelaInput';
 export * from './receberParcelaInputFormaRecebimento';
 export * from './registroCobranca';

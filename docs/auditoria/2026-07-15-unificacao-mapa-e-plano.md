@@ -137,12 +137,28 @@ Dívidas conhecidas, deliberadas:
   em nenhuma tela — a sidebar filtra por módulo e o backend gateia. É a Onda 4.
 
 ### Onda 4 — GAP-SCHEMA (migração de banco)
-- `saldos_referencia`: competência→data (ancora a projeção).
+- ✅ `saldos_referencia`: competência→data (ancora a projeção).
 - **Comissão**: remodelar regras/faixas por-vendedora + campos de fechamento + motor.
-- **RBAC nível-ação**: `acessosModulos` record<bool> → record<{ver,criar,editar}>;
-  ajustar Zod inputs + middleware. Destrava fidelidade de **Permissões/Perfis** e o
-  gate `podeNoModulo('financeiro','ver')` da Equipe.
+- ✅ **RBAC nível-ação**: `acessosModulos` record<bool> → record<{ver,criar,editar}>.
 Cada migração aplicada via `pnpm --filter @workspace/db run push` no banco de dev.
+
+**Saldos (feito).** `competencia` (YYYY-MM) → `dataReferencia` (dia), `unique(loja,
+dataReferencia)`. A tabela estava vazia, então nada foi migrado. A peça que faltava
+não era a coluna: `valor` é o saldo no **início** do dia ancorado, e o saldo de hoje
+é âncora **+ realizado desde ela** (`lib/financeiro/saldo.ts`, 11 testes). Sem esse
+rolamento a curva inteira nasce no nível errado.
+
+**RBAC (feito).** Duas invariantes, testadas: o shape vem do **código** (fail-closed
+— chave desconhecida descartada, ausente = false) e `criar || editar ⇒ ver`. O guard
+deriva a ação do método HTTP (GET→ver, POST→criar, resto→editar); passe a ação
+explícita quando a rota mentir sobre o que faz. **Sem migração de dados**: `true`
+valia o módulo inteiro e é traduzido na leitura e na escrita, então um perfil gravado
+antes não é trancado para fora (o `/auth/me` passa com a linha plana ainda no banco)
+e as linhas se normalizam sozinhas na próxima escrita.
+
+> `drizzle-kit push` pede confirmação **interativa** ao dropar/renomear coluna e não
+> tem TTY aqui: aplique o DDL equivalente por `psql` e rode o push depois para
+> confirmar que o schema bate ("Changes applied", sem prompt).
 
 ### Onda 5 — GAP-NOVO
 - **PDF de contrato** (gerador + endpoint).

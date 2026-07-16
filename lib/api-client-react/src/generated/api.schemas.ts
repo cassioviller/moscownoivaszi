@@ -80,43 +80,44 @@ export interface LojaUpdate {
   ativo?: boolean;
 }
 
-export type PerfilAcessosModulos = {[key: string]: boolean};
+export interface AcoesModulo {
+  ver: boolean;
+  criar: boolean;
+  editar: boolean;
+}
+
+/**
+ * Módulo → ações. Chave desconhecida é descartada pelo servidor.
+ */
+export interface AcessosModulos {[key: string]: AcoesModulo}
 
 export interface Perfil {
   id: string;
   nome: string;
-  acessosModulos: PerfilAcessosModulos;
+  acessosModulos: AcessosModulos;
 }
-
-export type PerfilInputAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilInput {
   /** @minLength 1 */
   nome: string;
-  acessosModulos: PerfilInputAcessosModulos;
+  acessosModulos: AcessosModulos;
 }
-
-export type PerfilUpdateAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilUpdate {
   /** @minLength 1 */
   nome?: string;
-  acessosModulos?: PerfilUpdateAcessosModulos;
+  acessosModulos?: AcessosModulos;
 }
-
-export type PerfilOverrideLojaAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilOverrideLoja {
   lojaId: string;
   perfilId: string;
-  acessosModulos: PerfilOverrideLojaAcessosModulos;
+  acessosModulos: AcessosModulos;
 }
-
-export type PerfilOverrideInputAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilOverrideInput {
   perfilId: string;
-  acessosModulos: PerfilOverrideInputAcessosModulos;
+  acessosModulos: AcessosModulos;
 }
 
 export interface UsuarioInput {
@@ -1340,14 +1341,13 @@ export interface SalarioRecorrenteUpdate {
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
-  /** Competência YYYY-MM */
-  competencia: string;
+  /** Instante do dia conferido (meio-dia local America/Sao_Paulo) */
+  dataReferencia: string;
   valor: number;
 }
 
 export interface SaldoReferenciaInput {
-  /** @pattern ^\d{4}-\d{2}$ */
-  competencia: string;
+  dataReferencia: string;
   valor: number;
 }
 

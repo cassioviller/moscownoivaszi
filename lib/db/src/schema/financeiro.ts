@@ -90,17 +90,28 @@ export const insertSalarioRecorrenteSchema = createInsertSchema(salariosRecorren
 export type InsertSalarioRecorrente = z.infer<typeof insertSalarioRecorrenteSchema>;
 export type SalarioRecorrente = typeof salariosRecorrentesTable.$inferSelect;
 
+/**
+ * O saldo de caixa conferido num DIA — a âncora da projeção.
+ *
+ * Era chaveado por competência (YYYY-MM), o que não responde à pergunta que a
+ * projeção faz: "quanto tem em caixa HOJE?". Um saldo de julho não diz de qual
+ * dia de julho ele é, e a curva partia de um nível que já embutia (ou não) os
+ * movimentos do mês. `dataReferencia` é um instante ancorado ao meio-dia local
+ * do dia conferido — mesma convenção de `vencimento`.
+ */
 export const saldosReferenciaTable = pgTable("saldos_referencia", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  competencia: text("competencia").notNull(), // "YYYY-MM"
+  dataReferencia: timestamp("data_referencia", { withTimezone: true }).notNull(),
   valor: decimal("valor", { precision: 10, scale: 2, mode: "number" }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
-  unq: unique().on(t.lojaId, t.competencia),
+  // Um saldo por dia: conferir duas vezes o mesmo dia é corrigir, não empilhar.
+  unq: unique().on(t.lojaId, t.dataReferencia),
 }));
 
-export const insertSaldoReferenciaSchema = createInsertSchema(saldosReferenciaTable).omit({ createdAt: true });
+export const insertSaldoReferenciaSchema = createInsertSchema(saldosReferenciaTable).omit({ createdAt: true, updatedAt: true });
 export type InsertSaldoReferencia = z.infer<typeof insertSaldoReferenciaSchema>;
 export type SaldoReferencia = typeof saldosReferenciaTable.$inferSelect;
 

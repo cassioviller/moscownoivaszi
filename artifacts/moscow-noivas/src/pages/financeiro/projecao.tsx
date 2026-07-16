@@ -7,7 +7,8 @@ import {
   getListContasPagarQueryKey,
   useListSaldoReferencia,
   getListSaldoReferenciaQueryKey,
-  type SaldoReferencia,
+  useListPagamentos,
+  getListPagamentosQueryKey,
 } from "@workspace/api-client-react";
 import { Link, useSearchParams } from "react-router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,13 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErroListagem, useCaminhoDaLoja } from "./helpers";
 import { brl } from "@/lib/formatos";
-import { competenciaAtual, hojeLocal } from "@/lib/financeiro/datas";
+import { diaLocal, hojeLocal } from "@/lib/financeiro/datas";
 import {
   projetarCaixa,
   normalizarHorizonte,
   HORIZONTES,
   type LinhaCurva,
 } from "@/lib/financeiro/projecao";
+import { ancoraAtiva, saldoDeHoje } from "@/lib/financeiro/saldo";
 
 const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
 const diaLongo = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", timeZone: "UTC" });
@@ -32,19 +34,6 @@ function formatarDia(dia: string, fmt: Intl.DateTimeFormat): string {
 }
 
 
-/**
- * Âncora de saldo: o saldo de referência mais recente que já vale hoje.
- * Competências futuras são ignoradas — não são o caixa de agora. Sem âncora,
- * a projeção parte de 0 e a curva mostra só a FORMA do período, não o nível.
- */
-function ancoraDeSaldo(saldos: readonly SaldoReferencia[] | undefined): SaldoReferencia | null {
-  const atual = competenciaAtual();
-  const aplicaveis = (saldos ?? []).filter((s) => s.competencia <= atual);
-  if (aplicaveis.length === 0) return null;
-  return aplicaveis.reduce((maisRecente, s) =>
-    s.competencia > maisRecente.competencia ? s : maisRecente,
-  );
-}
 
 export default function Projecao() {
   const naLoja = useCaminhoDaLoja();
@@ -63,16 +52,39 @@ export default function Projecao() {
     query: { queryKey: getListSaldoReferenciaQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
-  const ancora = useMemo(() => ancoraDeSaldo(saldos.data), [saldos.data]);
-  const semAncora = ancora === null;
+  const hoje = hojeLocal();
+  const ancora = useMemo(() => ancoraAtiva(saldos.data, hoje), [saldos.data, hoje]);
+  const ancoraDia = ancora ? diaLocal(ancora.dataReferencia) : null;
+
+  // Query dependente: só o realizado ENTRE a âncora e hoje interessa, e a
+  // janela só existe depois que a âncora chega.
+  const janela = ancoraDia ? { de: ancoraDia, ate: hoje } : undefined;
+  const pagamentos = useListPagamentos(activeLojaId!, janela, {
+    query: {
+      queryKey: getListPagamentosQueryKey(activeLojaId!, janela),
+      enabled: !!activeLojaId && !!ancoraDia,
+    },
+  });
+
+  /**
+   * A curva parte do saldo de HOJE, não da âncora crua: entre "em 14/07 tinha
+   * 8 mil" e agora o caixa andou, e ignorar isso nasce a curva inteira no nível
+   * errado. Sem âncora não há nível — a curva mostra só a forma, partindo de 0.
+   */
+  const saldo = useMemo(
+    () => saldoDeHoje(saldos.data, parcelas.data ?? [], pagamentos.data ?? [], hoje),
+    [saldos.data, parcelas.data, pagamentos.data, hoje],
+  );
+  const semAncora = saldo === null;
 
   const projecao = useMemo(
     () =>
       projetarCaixa(parcelas.data ?? [], contasPagar.data ?? [], {
-        saldoInicial: ancora?.valor ?? 0,
+        saldoInicial: saldo?.valor ?? 0,
         horizonteDias,
+        hoje,
       }),
-    [parcelas.data, contasPagar.data, ancora, horizonteDias],
+    [parcelas.data, contasPagar.data, saldo, horizonteDias, hoje],
   );
 
   function trocarHorizonte(h: number) {
@@ -81,13 +93,18 @@ export default function Projecao() {
     setSearchParams(proximo, { replace: true });
   }
 
-  const isLoading = parcelas.isLoading || contasPagar.isLoading || saldos.isLoading;
-  const isError = parcelas.isError || contasPagar.isError || saldos.isError;
+  // `pagamentos` entra aqui: sem ele o saldo de hoje volta a ser a âncora crua,
+  // e a curva inteira nasceria no nível errado — em silêncio. Enquanto não há
+  // âncora a query fica desabilitada, e desabilitada não é carregando.
+  const isLoading =
+    parcelas.isLoading || contasPagar.isLoading || saldos.isLoading || pagamentos.isLoading;
+  const isError = parcelas.isError || contasPagar.isError || saldos.isError || pagamentos.isError;
 
   function recarregar() {
     if (parcelas.isError) parcelas.refetch();
     if (contasPagar.isError) contasPagar.refetch();
     if (saldos.isError) saldos.refetch();
+    if (pagamentos.isError) pagamentos.refetch();
   }
 
   const { curva, emAtraso } = projecao;
@@ -148,9 +165,23 @@ export default function Projecao() {
                 </p>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-3xl font-serif tabular-nums">R$ {brl(ancora.valor)}</p>
+                  <p className="text-3xl font-serif tabular-nums">R$ {brl(saldo.valor)}</p>
+                  {/* Mostra a conta, não só o resultado: o número de hoje é uma
+                      inferência a partir do último dia conferido, e quem lê
+                      precisa saber de quando vem a certeza. */}
                   <p className="text-xs text-muted-foreground">
-                    saldo de referência da competência {ancora.competencia}
+                    saldo de hoje — conferido em{" "}
+                    {formatarDia(saldo.ancoraDia, diaFmt)}
+                    {saldo.movimentoDesdeAncora !== 0 && (
+                      <>
+                        {" "}
+                        e {saldo.movimentoDesdeAncora > 0 ? "somado de" : "descontado de"}{" "}
+                        <span className="tabular-nums">
+                          R$ {brl(Math.abs(saldo.movimentoDesdeAncora))}
+                        </span>{" "}
+                        que o caixa andou desde então
+                      </>
+                    )}
                   </p>
                 </div>
               )}

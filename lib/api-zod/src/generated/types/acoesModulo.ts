@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PerfilOverrideLojaAcessosModulos = {[key: string]: boolean};
+export interface AcoesModulo {
+  ver: boolean;
+  criar: boolean;
+  editar: boolean;
+}

@@ -87,18 +87,40 @@ describe("Lote 8 — financeiro auditável", () => {
     expect(lista.body.some((s: { id: string }) => s.id === criado.body.id)).toBe(true);
   });
 
-  it("saldo de referência persiste por competência (upsert)", async () => {
+  it("saldo de referência persiste por dia (upsert)", async () => {
+    // Conferir o caixa duas vezes no mesmo dia é corrigir o número, não
+    // empilhar um segundo saldo — a projeção não saberia qual dos dois usar.
     const agent = await loginComLoja(f.superAdminEmail, f.lojaId);
+    const dia = "2027-01-15T12:00:00.000-03:00";
     await agent
       .post(`/api/lojas/${f.lojaId}/financeiro/saldos-referencia`)
-      .send({ competencia: "2027-01", valor: 10000 })
+      .send({ dataReferencia: dia, valor: 10000 })
       .expect(200);
     const atualizado = await agent
       .post(`/api/lojas/${f.lojaId}/financeiro/saldos-referencia`)
-      .send({ competencia: "2027-01", valor: 12500 })
+      .send({ dataReferencia: dia, valor: 12500 })
       .expect(200);
     expect(atualizado.body.valor).toBe(12500);
-    expect(atualizado.body.competencia).toBe("2027-01");
+    expect(new Date(atualizado.body.dataReferencia).toISOString()).toBe(new Date(dia).toISOString());
+
+    const lista = await agent.get(`/api/lojas/${f.lojaId}/financeiro/saldos-referencia`).expect(200);
+    expect(lista.body.filter((s: { valor: number }) => s.valor === 12500)).toHaveLength(1);
+  });
+
+  it("saldos de dias diferentes coexistem — é um histórico de âncoras", async () => {
+    const agent = await loginComLoja(f.superAdminEmail, f.lojaId);
+    for (const [dia, valor] of [
+      ["2027-02-01T12:00:00.000-03:00", 500],
+      ["2027-02-02T12:00:00.000-03:00", 800],
+    ] as const) {
+      await agent
+        .post(`/api/lojas/${f.lojaId}/financeiro/saldos-referencia`)
+        .send({ dataReferencia: dia, valor })
+        .expect(200);
+    }
+    const lista = await agent.get(`/api/lojas/${f.lojaId}/financeiro/saldos-referencia`).expect(200);
+    const valores = lista.body.map((s: { valor: number }) => s.valor);
+    expect(valores).toEqual(expect.arrayContaining([500, 800]));
   });
 
   it("receber parcela persiste valor/data e re-receber → 409", async () => {

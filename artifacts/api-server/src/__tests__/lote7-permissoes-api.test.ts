@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db, perfisTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   criarFixture,
   criarVestido,
@@ -53,11 +55,63 @@ describe("Lote 7 — escopo de loja + permissões por módulo", () => {
     await agent.get(`/api/lojas/${f.lojaId}/rota-que-nao-existe`).expect(404);
   });
 
-  it("/auth/me expõe os acessos de módulo da loja ativa", async () => {
+  it("/auth/me expõe os acessos por módulo × ação da loja ativa", async () => {
+    // O `/me` alimenta o menu e os gates do frontend; ele tem que enxergar
+    // exatamente as mesmas permissões que o guard das rotas aplica — por isso
+    // sai normalizado, e nunca no formato plano antigo.
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const me = await agent.get("/api/auth/me").expect(200);
-    expect(me.body.acessosModulos.leads).toBe(true);
-    expect(me.body.acessosModulos.financeiro).not.toBe(true);
+    expect(me.body.acessosModulos.leads).toEqual({ ver: true, criar: true, editar: true });
+    expect(me.body.acessosModulos.financeiro).toEqual({ ver: false, criar: false, editar: false });
+  });
+
+  // ── Gate por AÇÃO ──
+  // A pergunta que o modelo plano não sabia responder: "vê, mas não mexe".
+  it("perfil com apenas `ver` lê o módulo mas não escreve nele", async () => {
+    const somenteLeitura = await criarFixture();
+    try {
+      await db
+        .update(perfisTable)
+        .set({ acessosModulos: { leads: { ver: true, criar: false, editar: false } } })
+        .where(eq(perfisTable.id, somenteLeitura.perfilId));
+
+      const agent = await loginComLoja(somenteLeitura.vendedoraEmail, somenteLeitura.lojaId);
+
+      await agent.get(`/api/lojas/${somenteLeitura.lojaId}/leads`).expect(200);
+
+      const res = await agent
+        .post(`/api/lojas/${somenteLeitura.lojaId}/leads`)
+        .send({ noivaNome: "Não deveria entrar" })
+        .expect(403);
+      expect(res.body.error).toBe("ACESSO_NEGADO_MODULO");
+      expect(res.body.acao).toBe("criar");
+    } finally {
+      await limparFixture(somenteLeitura);
+    }
+  });
+
+  it("perfil com `criar` cria — e a ação vem do método HTTP", async () => {
+    const podeCriar = await criarFixture();
+    try {
+      await db
+        .update(perfisTable)
+        .set({ acessosModulos: { leads: { ver: true, criar: true, editar: false } } })
+        .where(eq(perfisTable.id, podeCriar.perfilId));
+
+      const agent = await loginComLoja(podeCriar.vendedoraEmail, podeCriar.lojaId);
+      const criado = await agent
+        .post(`/api/lojas/${podeCriar.lojaId}/leads`)
+        .send({ noivaNome: "Entra" })
+        .expect(201);
+
+      // Criar não é editar: o PATCH ainda bate na porta fechada.
+      await agent
+        .patch(`/api/lojas/${podeCriar.lojaId}/leads/${criado.body.id}`)
+        .send({ noivaNome: "Alterado" })
+        .expect(403);
+    } finally {
+      await limparFixture(podeCriar);
+    }
   });
 
   it("recurso de outra loja não é acessível (escopo multi-tenant)", async () => {

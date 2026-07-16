@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { db, usuariosTable, sessoesTable, lojasTable, usuariosLojasTable, perfisTable, perfilOverridesLojasTable } from "@workspace/db";
+import { resolverAcessosEfetivos } from "./permissoes";
 import { eq, and, gt } from "drizzle-orm";
 
 export const SESSAO_TTL_MS = 8 * 60 * 60 * 1000;
@@ -72,6 +73,16 @@ export async function buscarLojasUsuario(usuarioId: string, isSuperAdmin: boolea
   return rows;
 }
 
+/**
+ * Os acessos efetivos do usuário na loja, já normalizados para MÓDULO × AÇÃO.
+ *
+ * Normaliza aqui, na fonte: é o mesmo dado que alimenta o guard das rotas e o
+ * `/me` do frontend, e os dois precisam enxergar exatamente as mesmas
+ * permissões. Traduzir em cada consumidor é como as duas visões divergem.
+ *
+ * Superadmin devolve `null` — ele não tem perfil, tem bypass. `null` significa
+ * "sem restrição", e por isso não pode ser confundido com "sem acesso".
+ */
 export async function getPermissoes(usuarioId: string, lojaId: string, isSuperAdmin: boolean) {
   if (isSuperAdmin) return null; // Bypass
 
@@ -93,5 +104,7 @@ export async function getPermissoes(usuarioId: string, lojaId: string, isSuperAd
     .from(perfilOverridesLojasTable)
     .where(and(eq(perfilOverridesLojasTable.lojaId, lojaId), eq(perfilOverridesLojasTable.perfilId, vinculo.perfilId)));
 
-  return (override?.acessosModulos || vinculo.acessosModulos) as Record<string, boolean | Record<string, boolean>>;
+  // Havendo override, ele SUBSTITUI o template — não se mistura. Um override
+  // meio-aplicado seria impossível de auditar depois ("de onde veio o acesso?").
+  return resolverAcessosEfetivos(vinculo.acessosModulos, override?.acessosModulos ?? null);
 }

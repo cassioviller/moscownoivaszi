@@ -31,6 +31,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessao, requireSuperAdmin } from "../middlewares/auth";
 import { hashSenha } from "../lib/auth";
+import { normalizarAcessos } from "../lib/permissoes";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -91,9 +92,18 @@ router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
 });
 
 // Perfis
+//
+// `acessosModulos` é normalizado na ESCRITA e na LEITURA. Na escrita, para o
+// banco não guardar shape inventado; na leitura, para uma linha gravada antes
+// do modelo por ação sair daqui já traduzida — quem consome nunca vê o formato
+// plano antigo, e a resposta bate com o contrato.
 router.get("/admin/perfis", async (_req, res): Promise<void> => {
   const perfis = await db.select().from(perfisTable).orderBy(perfisTable.nome);
-  res.json(ListPerfisResponse.parse(perfis));
+  res.json(
+    ListPerfisResponse.parse(
+      perfis.map((p) => ({ ...p, acessosModulos: normalizarAcessos(p.acessosModulos) })),
+    ),
+  );
 });
 
 router.post("/admin/perfis", async (req, res): Promise<void> => {
@@ -105,6 +115,7 @@ router.post("/admin/perfis", async (req, res): Promise<void> => {
   const [perfil] = await db.insert(perfisTable).values({
     id: randomUUID(),
     ...parsed.data,
+    acessosModulos: normalizarAcessos(parsed.data.acessosModulos),
   }).returning();
   res.status(201).json(CreatePerfilResponse.parse(perfil));
 });
@@ -121,14 +132,23 @@ router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
     return;
   }
   const [perfil] = await db.update(perfisTable)
-    .set(parsed.data)
+    .set({
+      ...parsed.data,
+      // PATCH parcial: só normaliza o que veio. `undefined` não vira {} zerado,
+      // que trancaria o perfil para fora ao renomeá-lo.
+      ...(parsed.data.acessosModulos !== undefined
+        ? { acessosModulos: normalizarAcessos(parsed.data.acessosModulos) }
+        : {}),
+    })
     .where(eq(perfisTable.id, params.data.perfilId))
     .returning();
   if (!perfil) {
     res.status(404).json({ error: "Perfil not found" });
     return;
   }
-  res.json(UpdatePerfilResponse.parse(perfil));
+  res.json(
+    UpdatePerfilResponse.parse({ ...perfil, acessosModulos: normalizarAcessos(perfil.acessosModulos) }),
+  );
 });
 
 router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
@@ -211,7 +231,11 @@ router.get("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
     return;
   }
   const overrides = await db.select().from(perfilOverridesLojasTable).where(eq(perfilOverridesLojasTable.lojaId, params.data.lojaId));
-  res.json(ListPerfilOverridesResponse.parse(overrides));
+  res.json(
+    ListPerfilOverridesResponse.parse(
+      overrides.map((o) => ({ ...o, acessosModulos: normalizarAcessos(o.acessosModulos) })),
+    ),
+  );
 });
 
 router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => {
@@ -226,19 +250,22 @@ router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
     return;
   }
 
+  const acessos = normalizarAcessos(parsed.data.acessosModulos);
   const [override] = await db.insert(perfilOverridesLojasTable)
     .values({
       lojaId: params.data.lojaId,
       perfilId: parsed.data.perfilId,
-      acessosModulos: parsed.data.acessosModulos,
+      acessosModulos: acessos,
     })
     .onConflictDoUpdate({
       target: [perfilOverridesLojasTable.lojaId, perfilOverridesLojasTable.perfilId],
-      set: { acessosModulos: parsed.data.acessosModulos, updatedAt: new Date() },
+      set: { acessosModulos: acessos, updatedAt: new Date() },
     })
     .returning();
 
-  res.json(SetPerfilOverrideResponse.parse(override));
+  res.json(
+    SetPerfilOverrideResponse.parse({ ...override, acessosModulos: normalizarAcessos(override.acessosModulos) }),
+  );
 });
 
 export default router;
