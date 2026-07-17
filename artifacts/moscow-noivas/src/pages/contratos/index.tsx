@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, ScrollText, AlertCircle } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import { brl, statusContratoLabel } from "@/lib/formatos";
 
 const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -99,7 +99,7 @@ export default function Contratos() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="font-semibold">R$ {brl(contrato.valorTotal)}</div>
-                    <Badge variant={contrato.status === 'ATIVO' ? 'default' : 'destructive'}>{contrato.status}</Badge>
+                    <Badge variant={contrato.status === 'ATIVO' ? 'default' : 'destructive'}>{statusContratoLabel(contrato.status)}</Badge>
                   </div>
                 </CardContent>
               </Card>

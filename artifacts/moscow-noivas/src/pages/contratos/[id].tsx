@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl, diaParaISO, statusContratoLabel } from "@/lib/formatos";
 import { ROTULO_FORMA, rotuloForma, estaAtrasada } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { centavos, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
@@ -166,7 +166,18 @@ export default function ContratoDetail() {
     );
   }
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
-  if (!contrato) return <div>Contrato não encontrado.</div>;
+  if (!contrato) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Contrato não encontrado — pode ter sido removido, ou o link veio errado.
+        </p>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/loja/${lojaId}/contratos`}>Voltar aos contratos</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const contratoAtivo = contrato.status === "ATIVO";
   const podeMexer = podeEditar && contratoAtivo;
@@ -347,7 +358,7 @@ export default function ContratoDetail() {
             </Button>
           )}
           <Badge variant={contratoAtivo ? 'default' : 'destructive'} className="text-sm px-3 py-1">
-            {contrato.status}
+            {statusContratoLabel(contrato.status)}
           </Badge>
           {podeMexer && (
             <Button variant="outline" size="sm" onClick={() => setCancelarOpen(true)}>

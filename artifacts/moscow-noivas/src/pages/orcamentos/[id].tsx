@@ -56,7 +56,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl, diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 
 function round2(v: number): number {
@@ -98,6 +98,7 @@ export default function OrcamentoDetail() {
   const { id } = useParams<{ id: string }>();
   const [contratoOpen, setContratoOpen] = useState(false);
   const [itemEmEdicao, setItemEmEdicao] = useState<OrcamentoItem | null>(null);
+  const [itemRemover, setItemRemover] = useState<OrcamentoItem | null>(null);
 
   const { data: orcamento, isLoading, isError, refetch } = useGetOrcamento(activeLojaId!, id!, {
     query: { queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id }
@@ -178,7 +179,18 @@ export default function OrcamentoDetail() {
     );
   }
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
-  if (!orcamento) return <div>Orçamento não encontrado.</div>;
+  if (!orcamento) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Orçamento não encontrado — pode ter sido removido, ou o link veio errado.
+        </p>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/loja/${activeLojaId}/orcamentos`}>Voltar aos orçamentos</Link>
+        </Button>
+      </div>
+    );
+  }
 
   // Editável só em RASCUNHO/ENVIADO (aprovado é a base do contrato; recusado é read-only).
   const statusEditavel = orcamento.status === "RASCUNHO" || orcamento.status === "ENVIADO";
@@ -372,7 +384,7 @@ export default function OrcamentoDetail() {
           <p className="text-sm text-muted-foreground">Criado em {format(new Date(orcamento.createdAt), "dd/MM/yyyy")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className="text-sm px-3 py-1">{orcamento.status}</Badge>
+          <Badge className="text-sm px-3 py-1">{statusOrcamentoLabel(orcamento.status)}</Badge>
           {editavel && (
             <>
               {orcamento.status === "RASCUNHO" && (
@@ -477,7 +489,7 @@ export default function OrcamentoDetail() {
                           size="icon"
                           aria-label="Remover item"
                           disabled={removeItem.isPending}
-                          onClick={() => onRemoveItem(item.id)}
+                          onClick={() => setItemRemover(item)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -771,6 +783,29 @@ export default function OrcamentoDetail() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!itemRemover} onOpenChange={(aberto) => !aberto && setItemRemover(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover este item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {itemRemover?.descricao} sai do orçamento e o total é recalculado. Não dá para
+              desfazer — se foi engano, o item precisa ser lançado de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (itemRemover) onRemoveItem(itemRemover.id);
+                setItemRemover(null);
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

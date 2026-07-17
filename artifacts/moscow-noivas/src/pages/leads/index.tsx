@@ -29,7 +29,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { etapaLabel, diaParaISO } from "@/lib/formatos";
+import { dataDia, etapaLabel, diaParaISO } from "@/lib/formatos";
 
 const novoLeadSchema = z.object({
   noivaNome: z.string().min(1, "Nome da noiva é obrigatório"),
@@ -225,7 +225,7 @@ export default function Leads() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Data: {lead.casamentoData ? new Date(lead.casamentoData).toLocaleDateString("pt-BR") : "Não informada"}
+                    Data: {lead.casamentoData ? dataDia(lead.casamentoData) : "Não informada"}
                   </p>
                   {lead.whatsapp && (
                     <p className="text-sm text-muted-foreground mt-1">

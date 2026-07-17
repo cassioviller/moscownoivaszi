@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Settings2, Users } from "lucide-react";
+import { tipoAtributoLabel } from "@/lib/formatos";
 
 export default function Configuracoes() {
   const { activeLojaId, user } = useAuth();
@@ -44,7 +45,7 @@ export default function Configuracoes() {
                       <li key={attr.id} className="flex justify-between items-center border-b pb-2">
                         <div>
                           <span className="font-medium">{attr.nome}</span>
-                          <span className="text-xs text-muted-foreground ml-2">({attr.tipo})</span>
+                          <span className="text-xs text-muted-foreground ml-2">({tipoAtributoLabel(attr.tipo)})</span>
                         </div>
                         <Badge variant={attr.ativo ? "default" : "secondary"}>{attr.ativo ? 'Ativo' : 'Inativo'}</Badge>
                       </li>

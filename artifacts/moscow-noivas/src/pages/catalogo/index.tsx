@@ -7,10 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-
-function tipoLabel(tipo: string): string {
-  return tipo === "ESCALA" ? "escala" : "opção única";
-}
+import { tipoAtributoLabel } from "@/lib/formatos";
 
 export default function Catalogo() {
   const { lojaId } = useParams();
@@ -89,7 +86,7 @@ export default function Catalogo() {
                     <span className="flex flex-col gap-0.5 min-w-0">
                       <span className="flex items-baseline gap-2">
                         <span className="text-sm font-medium">{a.nome}</span>
-                        <span className="text-xs text-muted-foreground">{tipoLabel(a.tipo)}</span>
+                        <span className="text-xs text-muted-foreground">{tipoAtributoLabel(a.tipo)}</span>
                         {!a.ativo && (
                           <Badge variant="outline" className="text-xs">
                             inativo

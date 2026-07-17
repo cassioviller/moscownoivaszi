@@ -34,15 +34,8 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, FileText, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { diaParaISO } from "@/lib/formatos";
+import { diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
-
-const STATUS_LABELS: Record<string, string> = {
-  RASCUNHO: "Rascunho",
-  ENVIADO: "Enviado",
-  APROVADO: "Aprovado",
-  RECUSADO: "Recusado",
-};
 
 const FILTROS: { chave: string; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -228,7 +221,7 @@ export default function Orcamentos() {
           <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
             {filtro === "todos"
               ? "Nenhum orçamento encontrado."
-              : `Nenhum orçamento ${STATUS_LABELS[filtro]?.toLowerCase() ?? ""} encontrado.`}
+              : `Nenhum orçamento ${statusOrcamentoLabel(filtro).toLowerCase()} encontrado.`}
           </div>
         ) : (
           filtrados?.map(orcamento => (
@@ -245,7 +238,7 @@ export default function Orcamentos() {
                     </div>
                   </div>
                   <Badge variant={orcamento.status === "APROVADO" ? "default" : orcamento.status === "RECUSADO" ? "outline" : "secondary"}>
-                    {STATUS_LABELS[orcamento.status] ?? orcamento.status}
+                    {statusOrcamentoLabel(orcamento.status)}
                   </Badge>
                 </CardContent>
               </Card>

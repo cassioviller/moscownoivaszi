@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "@/lib/router-compat";
 import { format } from "date-fns";
 import { Calendar, Users, FileText, CheckCircle2, TrendingUp, Clock } from "lucide-react";
-import { etapaLabel } from "@/lib/formatos";
+import { dataDia, etapaLabel } from "@/lib/formatos";
 
 export default function Dashboard() {
   const { activeLojaId } = useAuth();
@@ -200,9 +200,7 @@ export default function Dashboard() {
                         <div>
                           <p className="text-sm font-medium">{lead.noivaNome}</p>
                           <p className="text-xs text-muted-foreground">
-                            {lead.casamentoData
-                              ? new Date(lead.casamentoData).toLocaleDateString("pt-BR")
-                              : "Data não informada"}
+                            {lead.casamentoData ? dataDia(lead.casamentoData) : "Data não informada"}
                           </p>
                         </div>
                         <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"}>

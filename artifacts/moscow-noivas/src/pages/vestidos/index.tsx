@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
+import { brl } from "@/lib/formatos";
 import {
   useListVestidos,
   getListVestidosQueryKey,
@@ -521,7 +522,7 @@ export default function Vestidos() {
                   <div className="font-mono text-xs text-muted-foreground mb-1">{vestido.codigo}</div>
                   <h3 className="font-medium truncate">{vestido.nome}</h3>
                   <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="font-semibold text-primary">R$ {vestido.precoBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="font-semibold text-primary">R$ {brl(vestido.precoBase)}</span>
                     <span className="text-muted-foreground">Tam: {vestido.tamanho || '-'}</span>
                   </div>
                 </CardContent>

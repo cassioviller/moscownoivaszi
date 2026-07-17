@@ -18,6 +18,50 @@ export function etapaLabel(etapa: string): string {
   return ETAPA_LABELS[etapa] ?? etapa;
 }
 
+// Status em linguagem de gente. Fallback devolve o valor cru: um status novo
+// no backend aparece feio, mas aparece — nunca some.
+const STATUS_ORCAMENTO_LABELS: Record<string, string> = {
+  RASCUNHO: "Rascunho",
+  ENVIADO: "Enviado",
+  APROVADO: "Aprovado",
+  RECUSADO: "Recusado",
+};
+
+export function statusOrcamentoLabel(status: string): string {
+  return STATUS_ORCAMENTO_LABELS[status] ?? status;
+}
+
+const STATUS_CONTRATO_LABELS: Record<string, string> = {
+  ATIVO: "Ativo",
+  CANCELADO: "Cancelado",
+};
+
+export function statusContratoLabel(status: string): string {
+  return STATUS_CONTRATO_LABELS[status] ?? status;
+}
+
+const TIPO_ATRIBUTO_LABELS: Record<string, string> = {
+  ESCALA: "escala",
+  OPCAO_UNICA: "opção única",
+};
+
+export function tipoAtributoLabel(tipo: string): string {
+  return TIPO_ATRIBUTO_LABELS[tipo] ?? tipo;
+}
+
+const dataDiaFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
+
+/**
+ * Formata uma data de NEGÓCIO (casamento, vencimento) sem deixar o fuso
+ * empurrar o dia: `toLocaleDateString("pt-BR")` sem timeZone lê meia-noite UTC
+ * no fuso local e mostra a véspera. Date-only ("2026-11-20") é normalizado ao
+ * meio-dia UTC antes de formatar.
+ */
+export function dataDia(iso: string): string {
+  const soDia = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  return dataDiaFmt.format(new Date(soDia ? `${iso}T12:00:00Z` : iso));
+}
+
 export function brl(valor: number): string {
   // maximumFractionDigits é obrigatório: sem ele, um valor com >2 casas (rateio
   // de parcela, base de desconto) renderiza "R$ 1.234,567" numa tela de dinheiro.

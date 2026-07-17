@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
+import { brl } from "@/lib/formatos";
 
 /** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
 function rotularSelecoes(
@@ -161,7 +162,18 @@ export default function VestidoDetail() {
     );
   }
 
-  if (!vestido) return <div>Vestido não encontrado.</div>;
+  if (!vestido) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Vestido não encontrado — pode ter saído do acervo, ou o link veio errado.
+        </p>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/loja/${lojaId}/vestidos`}>Voltar ao acervo</Link>
+        </Button>
+      </div>
+    );
+  }
 
   // Características do acervo (atributos do catálogo) em linguagem legível.
   const caracteristicas = rotularSelecoes(catalogoQuery.data ?? [], vestido.atributos ?? []);
@@ -245,7 +257,7 @@ export default function VestidoDetail() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Preço Base</p>
-                <p className="font-medium text-lg">R$ {vestido.precoBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p className="font-medium text-lg">R$ {brl(vestido.precoBase)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Categoria</p>
