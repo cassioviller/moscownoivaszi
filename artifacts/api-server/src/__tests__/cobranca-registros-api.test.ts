@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { db, leadsTable } from "@workspace/db";
+import { db, leadsTable, usuariosTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { criarFixture, fecharPool, limparFixture, loginComLoja, type Fixture } from "./helpers";
 
@@ -45,6 +46,8 @@ describe("Registros de cobrança (API)", () => {
       data,
       canal: "WHATSAPP",
       observacao: "Falei com a noiva, vai pagar dia 15.",
+      // Quem falou vem da sessão de quem chamou.
+      vendedorNome: expect.stringContaining("Super Admin Teste"),
     });
     // O contrato exige `id`: sem ele o cliente não consegue chavear a lista.
     expect(typeof res.body.id).toBe("string");
@@ -77,6 +80,41 @@ describe("Registros de cobrança (API)", () => {
       .send({ data: "2026-02-01T12:00:00.000Z", canal: "OUTRO" })
       .expect(201);
     expect(res.body.observacao).toBeNull();
+  });
+
+  it("o autor vem da sessão: o cliente não escolhe quem falou com a noiva", async () => {
+    // A vendedora tenta atribuir o contato ao superadmin. O corpo é ignorado —
+    // quem registrou é fato de quem está logado, não do que o cliente declara.
+    const daVendedora = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const res = await daVendedora
+      .post(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas`)
+      .send({ data: "2026-05-01T12:00:00.000Z", canal: "TELEFONE", vendedorId: f.superAdminId })
+      .expect(201);
+
+    expect(res.body.vendedorNome).toContain("Vendedora Teste");
+    expect(res.body.vendedorNome).not.toContain("Super Admin");
+  });
+
+  it("o histórico sobrevive à saída da colaboradora: sem autor, mas com o fato", async () => {
+    // `vendedorId` é ON DELETE SET NULL — apagar quem ligou não pode apagar que
+    // a ligação existiu.
+    const efemera = await criarFixture();
+    const agente = await loginComLoja(efemera.vendedoraEmail, efemera.lojaId);
+    const leadDela = randomUUID();
+    await db.insert(leadsTable).values({ id: leadDela, lojaId: efemera.lojaId, noivaNome: "Noiva X" });
+    await agente
+      .post(`/api/lojas/${efemera.lojaId}/leads/${leadDela}/cobrancas`)
+      .send({ data: "2026-04-01T12:00:00.000Z", canal: "PRESENCIAL", observacao: "passou na loja" })
+      .expect(201);
+
+    const admin = await loginComLoja(efemera.superAdminEmail, efemera.lojaId);
+    await db.delete(usuariosTable).where(eq(usuariosTable.id, efemera.vendedoraId));
+
+    const res = await admin.get(`/api/lojas/${efemera.lojaId}/leads/${leadDela}/cobrancas`).expect(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0]).toMatchObject({ observacao: "passou na loja", vendedorNome: null });
+
+    await limparFixture(efemera);
   });
 
   it("canal fora do contrato é 400, não uma linha suja no banco", async () => {

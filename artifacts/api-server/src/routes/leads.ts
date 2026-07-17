@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable } from "@workspace/db";
+import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { 
   ListLeadsResponse,
@@ -201,13 +201,17 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
  * (500 em toda leitura com registro). Uma função só, usada na leitura e na
  * escrita, para os dois lados não divergirem de novo.
  */
-function paraContrato(linha: typeof registrosCobrancaTable.$inferSelect) {
+function paraContrato(
+  linha: typeof registrosCobrancaTable.$inferSelect,
+  vendedorNome: string | null,
+) {
   return {
     id: linha.id,
     leadId: linha.leadId,
     data: linha.contatoData,
     canal: linha.canal,
     observacao: linha.observacao,
+    vendedorNome,
   };
 }
 
@@ -222,11 +226,19 @@ router.get("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<v
     return;
   }
   // Histórico lê do mais recente para o mais antigo: o último contato é o que
-  // decide se vale ligar de novo hoje.
-  const cobrancas = await db.select().from(registrosCobrancaTable)
+  // decide se vale ligar de novo hoje. O join é LEFT porque `vendedorId` é
+  // ON DELETE SET NULL — quem saiu da equipe não pode sumir com o registro.
+  const cobrancas = await db
+    .select({ registro: registrosCobrancaTable, vendedorNome: usuariosTable.nome })
+    .from(registrosCobrancaTable)
+    .leftJoin(usuariosTable, eq(usuariosTable.id, registrosCobrancaTable.vendedorId))
     .where(and(eq(registrosCobrancaTable.leadId, leadId), eq(registrosCobrancaTable.lojaId, lojaId)))
     .orderBy(desc(registrosCobrancaTable.contatoData));
-  res.json(ListRegistrosCobrancaResponse.parse(cobrancas.map(paraContrato)));
+  res.json(
+    ListRegistrosCobrancaResponse.parse(
+      cobrancas.map((l) => paraContrato(l.registro, l.vendedorNome)),
+    ),
+  );
 });
 
 router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<void> => {
@@ -246,6 +258,10 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
     return;
   }
 
+  // Quem registrou vem da SESSÃO, nunca do corpo: aceitar um `vendedorId` do
+  // cliente deixaria atribuir a ligação a outra pessoa.
+  const vendedor = req.usuario!;
+
   const [cobranca] = await db.insert(registrosCobrancaTable).values({
     id: randomUUID(),
     lojaId: lead.lojaId,
@@ -253,9 +269,12 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
     contatoData: parsed.data.data,
     canal: parsed.data.canal,
     observacao: parsed.data.observacao ?? null,
+    vendedorId: vendedor.id,
   }).returning();
 
-  res.status(201).json(CreateRegistroCobrancaResponse.parse(paraContrato(cobranca!)));
+  res.status(201).json(
+    CreateRegistroCobrancaResponse.parse(paraContrato(cobranca!, vendedor.nome)),
+  );
 });
 
 export default router;

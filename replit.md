@@ -65,6 +65,12 @@ rode o codegen.
   `recebidoEm`/`pagamento.data` são INSTANTES, e o dia deles só existe num fuso:
   lidos em UTC, todo movimento das 21h à meia-noite cai no dia seguinte e o
   caixa do dia fecha errado. Ver `artifacts/moscow-noivas/src/lib/financeiro/datas.ts`.
+- **Autoria vem da SESSÃO, não do corpo da request.** Quem registrou um contato
+  de cobrança sai de `req.usuario`, e `RegistroCobrancaInput` não aceita
+  `vendedorId` de propósito — um cliente que declara o próprio autor pode
+  atribuir a ação a outra pessoa. Mesma lógica de sempre: a autoridade é o
+  servidor. Corolário: campos de autoria são ON DELETE SET NULL, porque perder
+  quem fez é recuperável e perder o registro do que aconteceu não é.
 - **Permissão é MÓDULO × AÇÃO** (`{leads: {ver, criar, editar}}`), com o shape
   vindo do CÓDIGO e nunca do banco (`api-server/src/lib/permissoes.ts`): chave
   desconhecida é descartada, ausente é `false`. O guard deriva a ação do método

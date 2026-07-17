@@ -431,6 +431,8 @@ export interface RegistroCobranca {
   canal: RegistroCobrancaCanal;
   /** @nullable */
   observacao?: string | null;
+  /** @nullable */
+  vendedorNome?: string | null;
 }
 
 export type RegistroCobrancaInputCanal = typeof RegistroCobrancaInputCanal[keyof typeof RegistroCobrancaInputCanal];

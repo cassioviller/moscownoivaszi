@@ -137,6 +137,10 @@ function HistoricoNoiva({ leadId, aberto }: { leadId: string; aberto: boolean })
             <li key={r.id} className="rounded-md border-l-2 border-muted pl-3 text-sm">
               <p className="text-xs text-muted-foreground">
                 {rotuloContato(r.data)} · {ROTULO_CANAL[r.canal as Canal] ?? r.canal}
+                {/* Sem autor = colaboradora que saiu da equipe. O contato
+                    aconteceu de qualquer forma; omitir é mais honesto do que
+                    inventar um "—" que parece dado faltando. */}
+                {r.vendedorNome ? ` · ${r.vendedorNome}` : ""}
               </p>
               {r.observacao ? <p className="mt-0.5">{r.observacao}</p> : null}
             </li>

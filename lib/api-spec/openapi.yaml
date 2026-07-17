@@ -2406,6 +2406,12 @@ components:
         data: { type: string, format: date-time }
         canal: { type: string, enum: [WHATSAPP, TELEFONE, PRESENCIAL, OUTRO] }
         observacao: { type: ["string", "null"] }
+        # Quem falou com a noiva. Nulo quando a colaboradora saiu da equipe (a
+        # coluna é ON DELETE SET NULL): o contato aconteceu de qualquer forma, e
+        # perder o autor é melhor do que perder o registro.
+        vendedorNome: { type: ["string", "null"] }
+    # `vendedorId` NÃO entra aqui: quem registrou o contato é fato da SESSÃO, não
+    # algo que o cliente declara — senão dá para atribuir a ligação a outra pessoa.
     RegistroCobrancaInput:
       type: object
       required: [data, canal]

@@ -997,7 +997,8 @@ export const ListRegistrosCobrancaResponseItem = zod.object({
   "leadId": zod.string(),
   "data": zod.coerce.date(),
   "canal": zod.enum(['WHATSAPP', 'TELEFONE', 'PRESENCIAL', 'OUTRO']),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "vendedorNome": zod.string().nullish()
 })
 export const ListRegistrosCobrancaResponse = zod.array(ListRegistrosCobrancaResponseItem)
 
@@ -1018,7 +1019,8 @@ export const CreateRegistroCobrancaResponse = zod.object({
   "leadId": zod.string(),
   "data": zod.coerce.date(),
   "canal": zod.enum(['WHATSAPP', 'TELEFONE', 'PRESENCIAL', 'OUTRO']),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "vendedorNome": zod.string().nullish()
 })
 
 

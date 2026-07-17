@@ -14,4 +14,6 @@ export interface RegistroCobranca {
   canal: RegistroCobrancaCanal;
   /** @nullable */
   observacao?: string | null;
+  /** @nullable */
+  vendedorNome?: string | null;
 }

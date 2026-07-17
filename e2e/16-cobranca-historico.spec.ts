@@ -53,7 +53,17 @@ test.describe("Cobrança — histórico por noiva", () => {
 
   test("abrir o histórico busca só o da noiva aberta, e o contato registrado aparece", async ({
     page,
+    request,
   }) => {
+    // Quem a tela vai creditar pelo contato: o usuário da sessão, não um nome
+    // fixo no teste.
+    await request.post(`${API_URL}/api/auth/login`, {
+      data: { email: estado.adminEmail, senha: estado.senha },
+    });
+    const me = await request.get(`${API_URL}/api/auth/me`);
+    const { nome: meuNome } = (await me.json()).usuario as { nome: string };
+    expect(meuNome, "o /auth/me deveria dizer quem sou").toBeTruthy();
+
     const chamadas: string[] = [];
     page.on("request", (r) => {
       const url = new URL(r.url());
@@ -94,6 +104,8 @@ test.describe("Cobrança — histórico por noiva", () => {
     await expect(registros).toHaveCount(antes + 1);
     // Recém-registrado = mais recente: o histórico lê do topo para o passado.
     await expect(registros.first()).toContainText(recado);
+    // E diz QUEM falou — o autor vem da sessão de quem está logado.
+    await expect(registros.first()).toContainText(meuNome);
     expect(falhas, `Chamadas de API falharam: ${falhas.join(", ")}`).toEqual([]);
   });
 

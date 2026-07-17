@@ -216,7 +216,7 @@ Meta: typecheck verde, testes de API verdes, E2E cobrindo os módulos unificados
 
 | | Antes | Agora |
 |---|---|---|
-| Testes de API | 113 | **235** |
+| Testes de API | 113 | **237** |
 | Lógica pura (frontend) | 0 | **105** |
 | E2E | 39 | **67** |
 
@@ -277,16 +277,30 @@ módulo errado aqui negaria para quem pode e liberaria para quem não pode.
 `data` é INSTANTE: formatado no fuso da loja, senão um contato às 21h30 aparece
 no dia seguinte (há teste para as 21h30).
 
+**Quem falou com a noiva.** `vendedorId` existia no banco e ninguém o
+preenchia: o histórico dizia quando e por qual canal, mas não quem — e "já
+ligaram pra ela?" sem "quem ligou" não fecha a conversa. O contrato ganhou
+`vendedorNome` (só o nome: é o que a tela precisa; expor o id sem uso seria
+especulação).
+
+Duas decisões:
+- **O autor vem da SESSÃO, nunca do corpo.** `RegistroCobrancaInput` não aceita
+  `vendedorId` de propósito: quem registrou é fato de quem está logado, e
+  deixar o cliente declarar permitiria atribuir a ligação a outra pessoa. Há
+  teste: a vendedora manda `vendedorId` do superadmin no corpo e o registro sai
+  no nome dela.
+- **Sem autor ≠ sem registro.** A coluna é ON DELETE SET NULL: quando a
+  colaboradora sai da equipe, `vendedorNome` vira nulo e o contato permanece —
+  perder o autor é recuperável, perder o fato de que se ligou não é. A tela
+  omite o nome em vez de desenhar um "—" que parece dado faltando.
+
 ### O que segue em aberto (consciente)
 
-- Arquivar os 3 branches superados (Onda 0): seguem em `origin`
-  (`conserto-provas-ajustes`, `dia-do-atelier`, `jornada-derivada`), com 38, 232
-  e 47 commits fora do `main`. **Bloqueado por credencial**: o git deste
-  ambiente não autentica no `origin` ("Password authentication is not
-  supported"), e arquivar exige tag + delete remotos.
-- `registros_cobranca.vendedorId` existe no banco e ninguém o preenche: o
-  histórico diz quando e por qual canal, mas não quem falou. Expor exige mexer
-  no contrato — vale quando alguém precisar da resposta.
+- Arquivar os 3 branches superados (Onda 0). As tags `archive/feat-*` **já
+  existem em `origin` e cobrem exatamente as cabeças** — os 317 commits estão
+  preservados e apagar os branches não perde nada. Falta só o
+  `git push origin --delete` dos três, que o classificador de permissão do
+  harness bloqueia: é um comando do usuário.
 
 ---
 
