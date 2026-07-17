@@ -69,9 +69,48 @@ Cada um com teste que falhava antes do conserto. API 237 → **253**.
   a linha "Subtotal/Desconto" que reconcilia. Prova: PDF sai com 4.000 − 1.000 =
   3.000; total que não bate é 422. (`lote5-contratos-api` +2, `contrato-pdf-api` +1)
 
-### Segue para os IMPORTANTES
+### IMPORTANTES — 13 fechados, 1 deferido, 1 coberto
 
-A faixa crítica está fechada. Os 15 importantes seguem por módulo — com destaque
-para I1 (o `.parse()` na saída como 500 silencioso, que é a raiz que torna esta
+Executados em sequência, mesmo método. API 253 → **273**, frontend 105 → **109**.
+
+- ✅ **I1** — `classificarErro` marca o ZodError de saída com log próprio
+  (`RESPOSTA_FORA_DO_CONTRATO`), sem virar 500 mudo. (`erros-unit`, 5)
+- ✅ **I2** — `acaoDoRequest`: POST em `/cancelar` e `/estornar` exige `editar`,
+  não `criar`. Perfil criar-only agora 403. (`permissoes` +2, `lote7` +1)
+- ✅ **I3** — `QueryCache`/`MutationCache` derrubam a sessão em 401 de query de
+  negócio (expiração), IGNORANDO o 401 do próprio getMe (senão trava o login —
+  bug meu, pego pelo E2E). (`auth-erro`, 4)
+- ✅ **I4** — `compararSenhaConstante` roda bcrypt sempre (dummy quando não há
+  usuário): o tempo não denuncia e-mail cadastrado. (`login-timing-unit`, 3)
+- ✅ **I5** — coberto por C6 (parcelas) e C7 (itens − desconto por orçamento).
+- ✅ **I6** — `unique(contratoId, numero)`: gerar-plano concorrente é [201, 409].
+- ✅ **I7** — `contratoAtivo()` barra receber/estornar em contrato cancelado.
+- ✅ **I8** — `pgErrorCode` caminha a cadeia; fechar comissão concorrente é 409,
+  não 500. (`lote9` +1)
+- ✅ **I9** — regra sem vigência explícita (o caso da tela) nasce no 1º dia do
+  mês seguinte, sem reprecificar retroativamente o mês corrente. (`lote9` +1)
+- ⏸️ **I10** — DEFERIDO: estorno de vendedora sem venda é decisão de política
+  contábil (baixa automática esconderia erro/fraude). Carregar é o seguro; o
+  conserto é uma ação explícita de baixa, que precisa de sinal do produto.
+- ✅ **I11b** — `saldo_referencia` ancorado ao meio-dia SP: o upsert por dia
+  corrige em vez de empilhar. (`cobertura-i15`, 1) — **I11a (formulário de
+  conferir saldo na tela) fica em aberto**: é net-new, e sem ele a projeção
+  parte de zero.
+- ✅ **I12** — join morto de `GET /parcelas` removido. Paginação e expor `lead`
+  no schema (para a cobrança não rebuscar contratos) ficam como follow-up de
+  performance.
+- ✅ **I13** — "Novo Lead/Agendamento/Vestido" gateados por `podeNoModulo(criar)`.
+- ✅ **I14** — `@ts-ignore`/`as any` removidos em agenda, orçamento e lead (o de
+  orçamento revelou um override morto). vestidos/admin ficam de follow-up
+  (transformações que pedem tipo próprio).
+- ✅ **I15** — cobertura de recusar orçamento e regra de disponibilidade.
+
+**Segue em aberto (consciente):** I10 (política de baixa de estorno), I11a
+(formulário de saldo), a paginação do I12, a autoria-por-sessão do orçamento
+(gêmea do vendedorId da cobrança), e a limpeza de casts em vestidos/admin.
+
+### Notas dos importantes
+
+Destaque para I1 (o `.parse()` na saída como 500 silencioso, que é a raiz que torna esta
 classe de bug invisível) e I5 (validar `valorTotal` também no contrato manual,
 sem orçamento — o caminho por orçamento já ficou coberto por C7).
