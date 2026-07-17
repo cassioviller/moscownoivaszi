@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
+import { deveDeslogar } from "@/lib/auth-erro";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -51,7 +53,21 @@ import Comissoes from "@/pages/comissoes";
 import Equipe from "@/pages/equipe";
 import Configuracoes from "@/pages/configuracoes";
 
-const queryClient = new QueryClient();
+/**
+ * Sessão que expira no meio do uso: qualquer query/mutation passa a 401. Em vez
+ * de deixar a tela quebrada com dados velhos, zeramos o `getMe` no cache — o
+ * `user` vira null e os guards (RequireAuth / o layout da loja) redirecionam
+ * para /login pela própria rota, sem reload. Só 401 desloga; 403 é "sem
+ * permissão para isto", não "sessão morta". Ver lib/auth-erro.ts.
+ */
+let queryClient: QueryClient;
+const derrubarSessao = (error: unknown) => {
+  if (deveDeslogar(error)) queryClient.setQueryData(getGetMeQueryKey(), null);
+};
+queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: derrubarSessao }),
+  mutationCache: new MutationCache({ onError: derrubarSessao }),
+});
 
 function TelaCarregando() {
   return (
