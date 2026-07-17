@@ -47,7 +47,9 @@ export function ResumoCard({
     <Card className="min-w-[9rem] flex-1">
       <CardContent className="pt-6">
         <p className="text-xs text-muted-foreground">{rotulo}</p>
-        <p className={`text-2xl font-serif tabular-nums ${destaque ? "text-destructive" : ""}`}>
+        {/* Destaque só fica vermelho quando HÁ o quê alarmar (valor > 0). "Em
+            atraso: R$ 0,00" é a boa notícia — vermelho ali seria alarme falso. */}
+        <p className={`text-2xl font-serif tabular-nums ${destaque && valor > 0 ? "text-destructive" : ""}`}>
           R$ {brl(valor)}
         </p>
       </CardContent>

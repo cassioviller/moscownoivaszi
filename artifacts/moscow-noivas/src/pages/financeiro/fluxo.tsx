@@ -255,7 +255,7 @@ export default function FluxoCaixa() {
                 <CardDescription>Entradas</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold tabular-nums text-primary">
+                <p className="text-2xl font-semibold tabular-nums text-positivo">
                   R$ {brl(resumo.entradas)}
                 </p>
               </CardContent>
@@ -277,7 +277,7 @@ export default function FluxoCaixa() {
               <CardContent>
                 <p
                   className={`text-2xl font-semibold tabular-nums ${
-                    saldoNegativo ? "text-destructive" : "text-primary"
+                    saldoNegativo ? "text-destructive" : "text-positivo"
                   }`}
                 >
                   R$ {brl(resumo.saldo)}
@@ -407,7 +407,7 @@ export default function FluxoCaixa() {
                         </div>
                         <span
                           className={`shrink-0 tabular-nums ${
-                            entrada ? "text-primary" : "text-destructive"
+                            entrada ? "text-positivo" : "text-destructive"
                           }`}
                         >
                           {entrada ? "+" : "−"} R$ {brl(m.valor)}

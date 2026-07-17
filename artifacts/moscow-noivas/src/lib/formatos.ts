@@ -19,7 +19,9 @@ export function etapaLabel(etapa: string): string {
 }
 
 export function brl(valor: number): string {
-  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  // maximumFractionDigits é obrigatório: sem ele, um valor com >2 casas (rateio
+  // de parcela, base de desconto) renderiza "R$ 1.234,567" numa tela de dinheiro.
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /**

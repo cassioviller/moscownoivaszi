@@ -203,7 +203,7 @@ export default function Projecao() {
                 <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm">
                   {emAtraso.aReceber !== 0 && (
                     <span>
-                      <span className="font-semibold text-primary tabular-nums">
+                      <span className="font-semibold text-positivo tabular-nums">
                         R$ {brl(emAtraso.aReceber)}
                       </span>{" "}
                       a receber
@@ -311,7 +311,7 @@ function CurvaLista({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {l.entradas !== 0 && <span className="text-primary">+R$ {brl(l.entradas)} </span>}
+                  {l.entradas !== 0 && <span className="text-positivo">+R$ {brl(l.entradas)} </span>}
                   {l.saidas !== 0 && <span className="text-destructive">−R$ {brl(l.saidas)}</span>}
                 </p>
               </div>

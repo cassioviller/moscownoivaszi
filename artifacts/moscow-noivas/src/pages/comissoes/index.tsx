@@ -32,6 +32,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl } from "@/lib/formatos";
@@ -120,6 +131,16 @@ export default function Comissoes() {
   const removerRegra = useDeleteComissaoRegra();
   const gerarFechamento = useGerarComissaoFechamento();
 
+  // Resumo do que o fechamento vai LANÇAR em contas a pagar — o número que dá
+  // confiança antes de uma ação irreversível.
+  const resumoFechamento = useMemo(() => {
+    const linhas = (preview.data ?? []).filter((l) => l.valorTotal > 0);
+    return { qtd: linhas.length, total: linhas.reduce((soma, l) => soma + l.valorTotal, 0) };
+  }, [preview.data]);
+
+  // Regra em vias de ser apagada (abre a confirmação nomeando a vendedora).
+  const [regraRemovendo, setRegraRemovendo] = useState<{ id: string; nome: string } | null>(null);
+
   const [vendedoraId, setVendedoraId] = useState("");
   const [bonusAcumula, setBonusAcumula] = useState(false);
   const [faixas, setFaixas] = useState<FaixaForm[]>([{ ...FAIXA_VAZIA }]);
@@ -180,10 +201,12 @@ export default function Comissoes() {
     }
   }
 
-  async function onRemoverRegra(regraId: string) {
+  async function onRemoverRegra() {
+    if (!regraRemovendo) return;
     try {
-      await removerRegra.mutateAsync({ lojaId: activeLojaId!, regraId });
+      await removerRegra.mutateAsync({ lojaId: activeLojaId!, regraId: regraRemovendo.id });
       await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
+      setRegraRemovendo(null);
       toast({ title: "Regra removida" });
     } catch (err) {
       toast({
@@ -250,9 +273,30 @@ export default function Comissoes() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={onGerarFechamento} disabled={gerarFechamento.isPending || jaFechada}>
-          {gerarFechamento.isPending ? "Fechando…" : "Fechar competência"}
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button disabled={gerarFechamento.isPending || jaFechada}>
+              {gerarFechamento.isPending ? "Fechando…" : "Fechar competência"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Fechar {rotuloCompetencia(competencia)}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {resumoFechamento.qtd === 0
+                  ? "Nenhuma comissão a lançar nesta competência — o fechamento apenas trava o mês."
+                  : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando R$ ${brl(resumoFechamento.total)}.`}
+                {" "}O mês fica fechado e a ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={onGerarFechamento} disabled={gerarFechamento.isPending}>
+                {gerarFechamento.isPending ? "Fechando…" : "Fechar competência"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {jaFechada && <Badge variant="secondary">Já fechada</Badge>}
       </div>
 
@@ -388,7 +432,12 @@ export default function Comissoes() {
                       size="icon"
                       aria-label={`Remover regra de ${regra.vendedoraNome ?? "vendedora"}`}
                       disabled={removerRegra.isPending}
-                      onClick={() => onRemoverRegra(regra.id)}
+                      onClick={() =>
+                        setRegraRemovendo({
+                          id: regra.id,
+                          nome: regra.vendedoraNome ?? nomePorUsuario.get(regra.vendedoraId) ?? "vendedora",
+                        })
+                      }
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -507,6 +556,24 @@ export default function Comissoes() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!regraRemovendo} onOpenChange={(aberto) => !aberto && setRegraRemovendo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover a escada de {regraRemovendo?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sem regra, esta vendedora não comissiona nos próximos fechamentos. Os
+              fechamentos já feitos não mudam. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemoverRegra} disabled={removerRegra.isPending}>
+              {removerRegra.isPending ? "Removendo…" : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

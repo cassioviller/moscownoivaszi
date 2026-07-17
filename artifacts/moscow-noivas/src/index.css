@@ -40,6 +40,10 @@
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-destructive-border: var(--destructive-border);
 
+  /* Valor positivo (dinheiro que ENTRA). Separado de --primary (marca/CTA): sem
+     ele, entrada rosa e saída vermelha eram dois avermelhados quase iguais. */
+  --color-positivo: hsl(var(--positivo));
+
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
   --color-chart-3: hsl(var(--chart-3));
@@ -144,6 +148,9 @@
   --destructive: 0 50% 60%;
   --destructive-foreground: 0 0% 100%;
 
+  /* Verde sálvia, sóbrio para casar com a paleta quente — não um verde neon. */
+  --positivo: 150 38% 36%;
+
   --chart-1: 350 25% 65%;
   --chart-2: 40 30% 75%;
   --chart-3: 20 20% 60%;
@@ -221,6 +228,9 @@
 
   --destructive: 0 40% 50%;
   --destructive-foreground: 0 0% 100%;
+
+  /* Mais claro no fundo escuro para manter o contraste legível. */
+  --positivo: 150 34% 60%;
 
   --chart-1: 350 25% 60%;
   --chart-2: 40 20% 65%;
