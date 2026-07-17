@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db, contratosTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   criarBloqueio,
   criarContrato,
@@ -185,6 +187,52 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
     expect(estornada.body.valorRecebido).toBeNull();
     expect(estornada.body.recebidoEm).toBeNull();
     expect(estornada.body.formaRecebimento).toBeNull();
+  });
+
+  it("gerar-plano concorrente não dobra o plano (I6)", async () => {
+    const lead = await criarLead(f);
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 900, fechadoEm: dataFutura(-10) });
+    const body = { numParcelas: 3, primeiroVencimento: dataFutura(10).toISOString() };
+
+    // Dois POSTs ao mesmo tempo: antes, ambos liam "sem parcelas" e inseriam.
+    // A unique (contrato, numero) faz o segundo colidir → 409.
+    const [r1, r2] = await Promise.all([
+      agent.post(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas/gerar-plano`).send(body),
+      agent.post(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas/gerar-plano`).send(body),
+    ]);
+    expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+
+    // O plano ficou com 3 parcelas, não 6 (detalhe do contrato é módulo leads).
+    const detalhe = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}`).expect(200);
+    expect(detalhe.body.parcelas).toHaveLength(3);
+  });
+
+  it("contrato cancelado bloqueia receber e estornar de parcela (I7)", async () => {
+    const lead = await criarLead(f);
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 500, fechadoEm: dataFutura(-10) });
+    const plano = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas/gerar-plano`)
+      .send({ numParcelas: 2, primeiroVencimento: dataFutura(10).toISOString() })
+      .expect(201);
+    const p0 = plano.body[0];
+    const p1 = plano.body[1];
+
+    // Recebe a p0 (fica PAGA) e cancela o contrato direto no banco (isola o fix
+    // da semântica do cancelamento).
+    await agent
+      .post(`/api/lojas/${f.lojaId}/parcelas/${p0.id}/receber`)
+      .send({ valorRecebido: 250, recebidoEm: dataFutura(11).toISOString(), formaRecebimento: "PIX" })
+      .expect(200);
+    await db.update(contratosTable).set({ status: "CANCELADO" }).where(eq(contratosTable.id, contrato.id));
+
+    // Estornar ressuscitaria uma cobrança de contrato morto; receber, idem.
+    const est = await agent.post(`/api/lojas/${f.lojaId}/parcelas/${p0.id}/estornar`).expect(422);
+    expect(est.body.error).toBe("CONTRATO_NAO_ATIVO");
+    const rec = await agent
+      .post(`/api/lojas/${f.lojaId}/parcelas/${p1.id}/receber`)
+      .send({ valorRecebido: 250, recebidoEm: dataFutura(11).toISOString(), formaRecebimento: "PIX" })
+      .expect(422);
+    expect(rec.body.error).toBe("CONTRATO_NAO_ATIVO");
   });
 
   it("remover parcela: só PREVISTA (PAGA → 422); some da listagem", async () => {

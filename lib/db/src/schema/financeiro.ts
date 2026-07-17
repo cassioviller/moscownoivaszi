@@ -21,7 +21,12 @@ export const parcelasTable = pgTable("parcelas", {
   recebidoEm: timestamp("recebido_em", { withTimezone: true }),
   formaRecebimento: formaPagamentoEnum("forma_recebimento"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // gerar-plano checa "já tem parcela?" e insere, sem rede: dois POSTs
+  // simultâneos passam ambos e dobram o plano. Um contrato não tem dois números
+  // iguais — o segundo insert do número 0 colide e vira 409.
+  numeroUnico: unique().on(t.contratoId, t.numero),
+}));
 
 export const insertParcelaSchema = createInsertSchema(parcelasTable).omit({ createdAt: true });
 export type InsertParcela = z.infer<typeof insertParcelaSchema>;

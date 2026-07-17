@@ -59,6 +59,13 @@ type ItemSnapshot = Pick<
   "tipo" | "vestidoId" | "descricao" | "valorUnitario" | "quantidade"
 >;
 
+/** True se o contrato existe, é da loja e está ATIVO. */
+async function contratoAtivo(contratoId: string, lojaId: string): Promise<boolean> {
+  const [c] = await db.select({ status: contratosTable.status }).from(contratosTable)
+    .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
+  return c?.status === "ATIVO";
+}
+
 router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const contratos = await db.query.contratosTable.findMany({
@@ -521,6 +528,10 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
     res.status(422).json({ error: "PARCELA_CANCELADA", detalhe: "Parcela cancelada não pode ser recebida" });
     return;
   }
+  if (!(await contratoAtivo(existente.contratoId, lojaId as string))) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
 
   const [parcela] = await db.update(parcelasTable)
     .set({
@@ -548,6 +559,13 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
   }
   if (existente.status !== "PAGA") {
     res.status(422).json({ error: "PARCELA_NAO_PAGA", detalhe: "Só parcelas pagas podem ser estornadas" });
+    return;
+  }
+  // Estornar devolve a parcela a PREVISTA (cobrável). Num contrato cancelado
+  // isso ressuscitaria uma cobrança de um contrato morto — a receita/DRE leem
+  // PREVISTA. Só contrato ativo pode ter parcela mexida.
+  if (!(await contratoAtivo(existente.contratoId, lojaId as string))) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
     return;
   }
 
