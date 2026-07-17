@@ -59,17 +59,15 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
   
-  const insertData = { ...parsed.data };
-  // @ts-ignore
-  if (insertData.validade) insertData.validade = new Date(insertData.validade);
-
+  // `validade` já vem como Date (zod coerce). O `vendedoraId` vem do CORPO (o
+  // `as any` de antes escondia um override de sessão que o spread já
+  // sobrescrevia — código morto). Passar a autoria a vir da sessão é mudança de
+  // comportamento (como foi o vendedorId da cobrança), fica para um passo próprio.
   const [orcamento] = await db.insert(orcamentosTable).values({
     id: randomUUID(),
     lojaId,
-    // @ts-ignore
-    vendedoraId: req.usuario!.id,
-    ...insertData,
-  } as any).returning();
+    ...parsed.data,
+  }).returning();
 
   // Abrir um orçamento avança o funil do lead (evento de negócio).
   await marcarOrcamentoAberto(lojaId, orcamento.leadId);
@@ -169,7 +167,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
     lojaId: orcamento.lojaId,
     orcamentoId,
     ...parsed.data,
-  } as any).returning();
+  }).returning();
 
   res.status(201).json(AddOrcamentoItemResponse.parse(item));
 });

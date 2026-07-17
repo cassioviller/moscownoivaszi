@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import { useListLeads, getListLeadsQueryKey, useCreateLead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -41,7 +42,8 @@ const novoLeadSchema = z.object({
 type NovoLeadValues = z.infer<typeof novoLeadSchema>;
 
 export default function Leads() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -90,10 +92,12 @@ export default function Leads() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif">Leads</h1>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Lead
-        </Button>
+        {podeCriar && (
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Lead
+          </Button>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

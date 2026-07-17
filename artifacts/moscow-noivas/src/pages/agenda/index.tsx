@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
@@ -58,7 +59,8 @@ const SITUACAO_LABELS: Record<string, string> = {
 };
 
 export default function Agenda() {
-  const { activeLojaId, user } = useAuth();
+  const { activeLojaId, user, acessosModulos } = useAuth();
+  const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -124,10 +126,12 @@ export default function Agenda() {
               <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
             </Button>
           )}
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Agendamento
-          </Button>
+          {podeCriar && (
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Agendamento
+            </Button>
+          )}
         </div>
       </div>
 

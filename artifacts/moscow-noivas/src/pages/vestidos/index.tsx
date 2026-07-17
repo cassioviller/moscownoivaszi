@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListVestidos,
   getListVestidosQueryKey,
@@ -114,7 +115,8 @@ function BadgeDisponibilidade({ item }: { item: DisponibilidadeVestidosItensItem
 }
 
 export default function Vestidos() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -256,17 +258,21 @@ export default function Vestidos() {
           {/* Cadastro completo (com características do catálogo) na página dedicada;
               o dialog continua como atalho rápido. Link (role=link) não colide com o
               botão "Novo Vestido" (role=button) exercitado pelo E2E. */}
-          <Button variant="outline" asChild>
-            <Link href="/vestidos/novo">
-              <ClipboardPlus className="h-4 w-4 mr-2" />
-              Novo vestido (completo)
-            </Link>
-          </Button>
+          {podeCriar && (
+            <Button variant="outline" asChild>
+              <Link href="/vestidos/novo">
+                <ClipboardPlus className="h-4 w-4 mr-2" />
+                Novo vestido (completo)
+              </Link>
+            </Button>
+          )}
         <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) form.reset(); }}>
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Vestido
-          </Button>
+          {podeCriar && (
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Vestido
+            </Button>
+          )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Novo Vestido</DialogTitle>

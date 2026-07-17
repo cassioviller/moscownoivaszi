@@ -46,15 +46,27 @@ import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
 
+/**
+ * Meio-dia de São Paulo do dia LOCAL de um instante. Âncora de data de negócio:
+ * o dia UTC do resultado já é o dia certo, e é o mesmo instante para qualquer
+ * hora do mesmo dia local — o que faz o dedup por (loja, dia) funcionar.
+ */
+function ancorarMeioDiaSP(instante: Date | string): Date {
+  const diaLocal = new Date(new Date(instante).getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
+  return new Date(`${diaLocal}T12:00:00-03:00`);
+}
+
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/financeiro", requireModulo("financeiro"));
 router.use("/lojas/:lojaId/contas-pagar", requireModulo("financeiro"));
 
 router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  // Sem o `with` do contrato/lead: o schema Parcela não tem esse aninhado, então
+  // o `.parse` abaixo o descartava — era um join pago à toa a cada chamada. A
+  // tela de cobrança já busca os contratos e junta por contratoId.
   const parcelas = await db.query.parcelasTable.findMany({
     where: eq(parcelasTable.lojaId, lojaId),
-    with: { contrato: { with: { lead: true } } },
     orderBy: parcelasTable.vencimento,
   });
   res.json(ListParcelasResponse.parse(parcelas));
@@ -363,11 +375,16 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
     return;
   }
   // Conferir de novo o mesmo dia é corrigir o número, não empilhar outro saldo.
+  // Ancora ao MEIO-DIA SP do dia local: a leitura (saldo.ts) usa dia local SP,
+  // então a escrita tem que casar. Gravar o instante cru fazia duas conferências
+  // do mesmo dia (instantes diferentes) NÃO conflitarem — viravam duas âncoras
+  // em vez de uma correção; e um `2026-07-14` cru (meia-noite UTC) escorregava
+  // um dia para trás na leitura.
   const [saldo] = await db.insert(saldosReferenciaTable)
     .values({
       id: randomUUID(),
       lojaId,
-      dataReferencia: new Date(parsed.data.dataReferencia),
+      dataReferencia: ancorarMeioDiaSP(parsed.data.dataReferencia),
       valor: parsed.data.valor,
     })
     .onConflictDoUpdate({

@@ -158,19 +158,17 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
     return;
   }
 
-  const { atributos, ...interesseData } = parsed.data;
-  
-  const insertData = { ...interesseData };
+  const { atributos, ...insertData } = parsed.data;
 
   const [interesse] = await db.insert(leadInteressesTable)
     .values({
       id: randomUUID(),
       leadId,
       ...insertData,
-    } as any)
+    })
     .onConflictDoUpdate({
       target: leadInteressesTable.leadId,
-      set: { ...insertData, updatedAt: new Date() } as any,
+      set: { ...insertData, updatedAt: new Date() },
     })
     .returning();
 

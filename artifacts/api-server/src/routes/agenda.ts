@@ -210,13 +210,12 @@ router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
     return;
   }
   
-  // @ts-ignore
   const { atendimentoId, ...ajusteData } = parsed.data;
 
   const [ajuste] = await db.insert(ajustesTable).values({
     id: randomUUID(),
     lojaId,
-    atendimentoId: (atendimentoId as string),
+    atendimentoId,
     ...ajusteData,
   }).returning();
   const fullAjuste = await db.query.ajustesTable.findFirst({
