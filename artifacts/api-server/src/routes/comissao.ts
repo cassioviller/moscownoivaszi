@@ -10,6 +10,7 @@ import {
   usuariosLojasTable,
 } from "@workspace/db";
 import { eq, and, gte, lt, lte, inArray, isNull, desc } from "drizzle-orm";
+import { ehViolacaoUnica } from "../lib/erros";
 import {
   ListComissaoRegrasResponse,
   CreateComissaoRegraBody,
@@ -318,7 +319,14 @@ router.post("/lojas/:lojaId/comissao/regras", async (req, res): Promise<void> =>
     return;
   }
 
-  const vigenciaInicio = parsed.data.vigenciaInicio ? new Date(parsed.data.vigenciaInicio) : new Date();
+  // Sem vigência explícita (o caso da TELA, que não a envia), a regra vale do
+  // PRÓXIMO mês — não de "agora". O default `new Date()` fazia toda escada
+  // criada pela tela reprecificar RETROATIVAMENTE o mês corrente, porque a
+  // comissão é retroativa por faixa. Quem quer valer para um mês passado manda
+  // a vigência explícita (e assume a reprecificação daquele mês).
+  const vigenciaInicio = parsed.data.vigenciaInicio
+    ? new Date(parsed.data.vigenciaInicio)
+    : limitesCompetencia(competenciaDe(new Date())).fim;
 
   const regraId = await db.transaction(async (tx) => {
     const [existente] = await tx
@@ -515,7 +523,25 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
   // Tudo que decide quanto pagar é lido DENTRO da transação, no mesmo instante
   // das escritas: vendas, estorno e regra. `null` distingue "não havia venda"
   // (422) de "todas já fechadas" (409) — os dois devolvem lista vazia.
-  const criados = await db.transaction(async (tx) => {
+  let criados: Awaited<ReturnType<typeof fecharTransacao>>;
+  try {
+    criados = await fecharTransacao();
+  } catch (err) {
+    // Dois fechamentos simultâneos: a unique(loja,vendedora,competencia) protege
+    // o dinheiro (a 2ª transação faz rollback), mas a violação vinha embrulhada
+    // e escapava como 500. Aqui vira o 409 idempotente pretendido.
+    if (ehViolacaoUnica(err)) {
+      res.status(409).json({
+        error: "COMPETENCIA_JA_FECHADA",
+        detalhe: `Fechamento de ${competencia} já estava em curso`,
+      });
+      return;
+    }
+    throw err;
+  }
+
+  async function fecharTransacao() {
+   return db.transaction(async (tx) => {
     const vendas = await vendasDaCompetencia(tx, lojaId, competencia);
     if (vendas.size === 0) return null;
     const vendedoraIds = [...vendas.keys()];
@@ -598,7 +624,8 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
       saida.push({ ...fechamento, vendedoraNome: nomePorId.get(vendedoraId) ?? null });
     }
     return saida;
-  });
+   });
+  }
 
   if (criados === null) {
     res.status(422).json({ error: "SEM_MOVIMENTO", detalhe: `Nenhuma venda em ${competencia}` });

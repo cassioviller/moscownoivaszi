@@ -17,10 +17,25 @@ export type Classificacao = {
   logMsg: string;
 };
 
-function pgErrorCode(err: unknown): string | undefined {
-  const e = err as { code?: unknown; cause?: { code?: unknown } };
-  const code = e?.cause?.code ?? e?.code;
-  return typeof code === "string" ? code : undefined;
+/**
+ * Código de erro do Postgres, caminhando a cadeia de `cause` inteira: o driver
+ * e o ORM embrulham o erro, e numa transação o código fica DOIS ou mais níveis
+ * abaixo. Ler só um nível (o que havia) deixava um 23505 de transação escapar
+ * para o 500 genérico em vez do 409.
+ */
+export function pgErrorCode(err: unknown): string | undefined {
+  let atual: unknown = err;
+  for (let i = 0; i < 8 && atual && typeof atual === "object"; i++) {
+    const code = (atual as { code?: unknown }).code;
+    if (typeof code === "string" && code) return code;
+    atual = (atual as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+/** True se o erro (em qualquer nível da cadeia) é violação de unicidade. */
+export function ehViolacaoUnica(err: unknown): boolean {
+  return pgErrorCode(err) === "23505";
 }
 
 /** Duck-typing em vez de `instanceof`: há dois zod no build (zod e zod/v4). */

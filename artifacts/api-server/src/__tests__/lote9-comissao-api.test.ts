@@ -190,6 +190,48 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
     expect(conta.vencimento.toISOString()).toBe("2025-04-05T15:00:00.000Z");
   });
 
+  it("regra sem vigência explícita vale do próximo mês, não retroage (I9)", async () => {
+    // A tela não envia vigenciaInicio. Antes, o default era "agora" e a escada
+    // reprecificava o mês corrente. Agora nasce no 1º dia do mês seguinte.
+    const nova = await criarFixture();
+    try {
+      const ag = await loginComLoja(nova.superAdminEmail, nova.lojaId);
+      const res = await ag
+        .post(`/api/lojas/${nova.lojaId}/comissao/regras`)
+        .send({ vendedoraId: nova.vendedoraId, faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual: 5 }] })
+        .expect(201);
+
+      const vig = new Date(res.body.vigenciaInicio);
+      // É um primeiro-dia-de-mês e está no futuro (não pega o mês corrente).
+      expect(vig.getTime()).toBeGreaterThan(Date.now());
+      expect(vig.toISOString().slice(8, 10)).toBe("01");
+    } finally {
+      await limparFixture(nova);
+    }
+  });
+
+  it("fechar concorrente devolve 409, não 500, e paga uma vez só (I8)", async () => {
+    const lead = await criarLead(f);
+    await criarContrato(f, { leadId: lead.id, valorTotal: 6000, fechadoEm: dia("2025-12-10") });
+
+    // Dois fechamentos ao mesmo tempo: a unique protege o dinheiro (2ª faz
+    // rollback), mas a violação vinha embrulhada e escapava como 500.
+    const [r1, r2] = await Promise.all([
+      agent.post(`/api/lojas/${f.lojaId}/comissao/fechamentos`).send({ competencia: "2025-12" }),
+      agent.post(`/api/lojas/${f.lojaId}/comissao/fechamentos`).send({ competencia: "2025-12" }),
+    ]);
+    expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    const oResultado409 = r1.status === 409 ? r1 : r2;
+    expect(oResultado409.body.error).toBe("COMPETENCIA_JA_FECHADA");
+
+    // Uma conta de comissão só — ninguém foi pago em dobro.
+    const contas = await db
+      .select()
+      .from(contasPagarTable)
+      .where(and(eq(contasPagarTable.lojaId, f.lojaId), eq(contasPagarTable.competencia, "2025-12")));
+    expect(contas).toHaveLength(1);
+  });
+
   it("refechar a competência é idempotente: 409 e nada é regravado", async () => {
     const res = await agent
       .post(`/api/lojas/${f.lojaId}/comissao/fechamentos`)
