@@ -109,6 +109,40 @@ Executados em sequência, mesmo método. API 253 → **273**, frontend 105 → *
 (formulário de saldo), a paginação do I12, a autoria-por-sessão do orçamento
 (gêmea do vendedorId da cobrança), e a limpeza de casts em vestidos/admin.
 
+### Fecho do backlog consciente (2026-07-17)
+
+Tudo acima fechado, exceto I10 (segue aguardando sinal do produto):
+
+- ✅ **I11a** — "Conferir saldo" na projeção (gate `criar` no financeiro):
+  data limitada a hoje, valor pt-BR, reconferir corrige (upsert). Dia futuro é
+  recusado; zero e negativo passam. (`validarConferencia`, frontend +6; E2E +1)
+- ✅ **I12 follow-up** — `Parcela` ganha `contrato.leadId/lead` e a lista
+  ganha `de`/`ate` por vencimento (dia local, inclusivo — padrão do GET
+  /pagamentos; offset não faz sentido em telas agregadas). A cobrança parou de
+  rebuscar todos os contratos; receber recorta no servidor; fluxo/DRE/projeção
+  seguem sem janela de propósito. (API +3)
+- ✅ **Autoria do orçamento** — vendedoraId sai do corpo e nasce da sessão;
+  forjar autoria de outra pessoa é ignorado. (API +2)
+- ✅ **Casts** — os dois `as any` de vestidos eram mortos; no seed, um
+  escondia insert de comissão no formato pré-escada (quebrado em runtime) —
+  corrigido para regra + degrau. Zero casts fora de teste no produto.
+
+### Menores — segunda varredura (A8–A10 → D1–D8)
+
+A lista original dos 10 menores viveu só na conversa; uma re-varredura achou
+as sobras. Fechados (commit `9efcfeb`): **D1** status cru (RASCUNHO/ATIVO/
+OPCAO_UNICA) → labels centralizados; **D2** preço de vestido fora do `brl()`;
+**D3** data de casamento sem timeZone UTC (off-by-one) → `dataDia()`; **D4**
+remover item de orçamento sem confirmação → AlertDialog; **D5** "não
+encontrado" sem caminho de volta em orçamento/contrato/vestido.
+
+Ficam como dívida baixa, conscientes: **D6** telas admin/equipe/configurações
+sem estado de erro; **D7** textos em inglês em `components/ui/` não conectados
+a nenhuma página; **D8** chaves de módulo cruas na lista de acessos do perfil.
+
+Placar final: API **278**, frontend **123**, E2E **68**, typecheck verde nas
+três camadas.
+
 ### Notas dos importantes
 
 Destaque para I1 (o `.parse()` na saída como 500 silencioso, que é a raiz que torna esta
