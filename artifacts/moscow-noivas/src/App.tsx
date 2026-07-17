@@ -61,12 +61,18 @@ import Configuracoes from "@/pages/configuracoes";
  * permissão para isto", não "sessão morta". Ver lib/auth-erro.ts.
  */
 let queryClient: QueryClient;
-const derrubarSessao = (error: unknown) => {
+// O 401 do PRÓPRIO getMe é a sondagem normal de "não logado" (tela de login,
+// bootstrap) e já é tratado pelos guards — mexer no cache dele aqui derruba o
+// fluxo pós-login (o guard veria user=null em cache e voltaria para /login).
+// Só um 401 de OUTRA query/mutation é sessão que expirou no meio do uso.
+const chaveGetMe = JSON.stringify(getGetMeQueryKey());
+const derrubarSessao = (error: unknown, chave?: readonly unknown[]) => {
+  if (chave && JSON.stringify(chave) === chaveGetMe) return;
   if (deveDeslogar(error)) queryClient.setQueryData(getGetMeQueryKey(), null);
 };
 queryClient = new QueryClient({
-  queryCache: new QueryCache({ onError: derrubarSessao }),
-  mutationCache: new MutationCache({ onError: derrubarSessao }),
+  queryCache: new QueryCache({ onError: (error, query) => derrubarSessao(error, query.queryKey) }),
+  mutationCache: new MutationCache({ onError: (error) => derrubarSessao(error) }),
 });
 
 function TelaCarregando() {
