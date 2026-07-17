@@ -72,7 +72,7 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
       id: vestidoId,
       lojaId,
       ...insertData,
-    } as any);
+    });
 
     if (atributos && atributos.length > 0) {
       await tx.insert(vestidoAtributosTable).values(
@@ -236,7 +236,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
   await db.transaction(async (tx) => {
     if (Object.keys(vestidoData).length > 0) {
       await tx.update(vestidosTable)
-        .set(updateData as any)
+        .set(updateData)
         .where(and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)));
     }
 
