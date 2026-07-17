@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, decimal, integer, unique, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, unique, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -41,7 +42,16 @@ export const contasPagarTable = pgTable("contas_pagar", {
   salarioRecorrenteId: text("salario_recorrente_id"), // rastro da geração de folha (será ref dps se necessário)
   origemComissaoFechamentoId: text("origem_comissao_fechamento_id"), // rastro da comissão (será ref dps)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // A idempotência da folha não pode depender só do check-then-insert da rota:
+  // dois POSTs simultâneos leem "nada feito" e ambos inserem, pagando todo mundo
+  // em dobro. Este é o backstop no banco — um salário recorrente rende no máximo
+  // UMA conta por competência+loja. Parcial (só SALARIO) porque contas avulsas e
+  // de comissão não têm salario_recorrente_id.
+  folhaUnica: uniqueIndex("contas_pagar_salario_unico")
+    .on(t.lojaId, t.competencia, t.salarioRecorrenteId)
+    .where(sql`${t.tipo} = 'SALARIO'`),
+}));
 
 export const insertContaPagarSchema = createInsertSchema(contasPagarTable).omit({ createdAt: true });
 export type InsertContaPagar = z.infer<typeof insertContaPagarSchema>;
@@ -84,7 +94,15 @@ export const salariosRecorrentesTable = pgTable("salarios_recorrentes", {
   ativo: boolean("ativo").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // Dois salários ATIVOS para a mesma pessoa geram duas contas na mesma folha
+  // (o dedup do núcleo só olha o que já foi feito, não o lote). Um usuário tem
+  // no máximo um salário ativo por loja; desativar libera cadastrar outro sem
+  // apagar o histórico. Parcial em `ativo` para o inativo não trancar.
+  salarioAtivoUnico: uniqueIndex("salarios_recorrentes_ativo_unico")
+    .on(t.lojaId, t.usuarioId)
+    .where(sql`${t.ativo} = true`),
+}));
 
 export const insertSalarioRecorrenteSchema = createInsertSchema(salariosRecorrentesTable).omit({ createdAt: true, updatedAt: true });
 export type InsertSalarioRecorrente = z.infer<typeof insertSalarioRecorrenteSchema>;

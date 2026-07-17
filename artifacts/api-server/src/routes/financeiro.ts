@@ -8,7 +8,7 @@ import {
   salariosRecorrentesTable,
   saldosReferenciaTable,
 } from "@workspace/db";
-import { eq, and, inArray, gte, lt, desc, isNull } from "drizzle-orm";
+import { eq, and, inArray, gte, lt, desc, isNull, sql } from "drizzle-orm";
 import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
@@ -303,6 +303,22 @@ router.post("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): 
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  // Um salário ativo por pessoa: dois gerariam duas contas na mesma folha. O
+  // índice parcial (salarios_recorrentes_ativo_unico) é o backstop; aqui damos
+  // o 409 legível em vez de deixar a violação virar 500. Para trocar o valor, é
+  // editar o existente (ou desativá-lo e criar outro), não empilhar.
+  const jaAtivo = await db.select({ id: salariosRecorrentesTable.id })
+    .from(salariosRecorrentesTable)
+    .where(and(
+      eq(salariosRecorrentesTable.lojaId, lojaId),
+      eq(salariosRecorrentesTable.usuarioId, parsed.data.usuarioId),
+      eq(salariosRecorrentesTable.ativo, true),
+    ));
+  if (jaAtivo.length > 0) {
+    res.status(409).json({ error: "SALARIO_ATIVO_EXISTE", detalhe: "Este colaborador já tem salário ativo — edite o existente." });
+    return;
+  }
+
   const [salario] = await db.insert(salariosRecorrentesTable).values({
     id: randomUUID(),
     lojaId,
@@ -395,8 +411,17 @@ router.post("/lojas/:lojaId/financeiro/folha", async (req, res): Promise<void> =
     return;
   }
 
+  // O check-then-insert acima decide O QUE gerar; o índice único parcial
+  // (contas_pagar_salario_unico) é a rede sob concorrência. `onConflictDoNothing`
+  // faz o POST perdedor de uma corrida inserir nada e reportar `geradas: 0`, em
+  // vez de estourar — e `returning()` só devolve o que ENTROU de fato.
   const contas = await db.insert(contasPagarTable)
     .values(aCriar.map((c) => ({ id: randomUUID(), lojaId, ...c })))
+    .onConflictDoNothing({
+      target: [contasPagarTable.lojaId, contasPagarTable.competencia, contasPagarTable.salarioRecorrenteId],
+      // O índice é PARCIAL — o Postgres só o casa se o predicado for repetido aqui.
+      where: sql`${contasPagarTable.tipo} = 'SALARIO'`,
+    })
     .returning();
   res.json(GerarFolhaResponse.parse({ geradas: contas.length, contas }));
 });

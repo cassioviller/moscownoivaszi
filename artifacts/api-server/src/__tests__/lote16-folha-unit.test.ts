@@ -123,6 +123,21 @@ describe("Lote 16 — folha (núcleo puro)", () => {
       expect(escaparCsv("linha 1\nlinha 2")).toBe('"linha 1\nlinha 2"');
       expect(escaparCsv("linha 1\r\nlinha 2")).toBe('"linha 1\r\nlinha 2"');
     });
+
+    it("neutraliza fórmula: nome que abre com = vira texto", () => {
+      // Sem o apóstrofo, o Excel da contabilidade executaria isto ao abrir.
+      expect(escaparCsv("=cmd|'/c calc'!A1")).toBe("'=cmd|'/c calc'!A1");
+      expect(escaparCsv("@SUM(A1)")).toBe("'@SUM(A1)");
+      expect(escaparCsv("+55 11 99999")).toBe("'+55 11 99999");
+    });
+
+    it("payload que abre com - vira texto, mas número negativo é preservado", () => {
+      // O ataque abre com `-` mas não é número: neutraliza.
+      expect(escaparCsv("-2+3+cmd|'/c calc'!A1")).toBe("'-2+3+cmd|'/c calc'!A1");
+      // Valor negativo legítimo (coluna Valor) passa intacto — importação numérica.
+      expect(escaparCsv("-50.00")).toBe("-50.00");
+      expect(escaparCsv("1234.56")).toBe("1234.56");
+    });
   });
 
   describe("montarCsvContabilidade", () => {

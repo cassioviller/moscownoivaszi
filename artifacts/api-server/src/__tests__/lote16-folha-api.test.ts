@@ -64,6 +64,30 @@ describe("Lote 16 — folha de pagamento (API)", () => {
       .expect(400);
   });
 
+  it("dois POSTs simultâneos NÃO pagam o salário duas vezes", async () => {
+    // O bug: check-then-insert sem rede no banco. Dois cliques concorrentes
+    // leem "nada feito" e ambos inserem. O índice único parcial impede.
+    const comp = "2029-08";
+    const [r1, r2] = await Promise.all([
+      agent.post(`/api/lojas/${f.lojaId}/financeiro/folha`).send({ competencia: comp }),
+      agent.post(`/api/lojas/${f.lojaId}/financeiro/folha`).send({ competencia: comp }),
+    ]);
+    expect([r1.status, r2.status]).toEqual([200, 200]);
+    // Exatamente um dos dois gerou a conta; o outro reportou 0. Nunca os dois.
+    const geradas = [r1.body.geradas, r2.body.geradas].sort();
+    expect(geradas).toEqual([0, 1]);
+
+    const contas = await agent.get(`/api/lojas/${f.lojaId}/financeiro/contas-pagar`).expect(200);
+    expect(contas.body.filter((c: any) => c.competencia === comp)).toHaveLength(1);
+  });
+
+  it("colaborador com salário ativo não ganha um segundo — 409", async () => {
+    await agent
+      .post(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes`)
+      .send({ usuarioId: f.vendedoraId, valor: 4000, diaVencimento: 10 })
+      .expect(409);
+  });
+
   it("o export sai como CSV e o GET NÃO marca nada", async () => {
     // Paga a conta da folha para haver um item no extrato.
     const contas = await agent.get(`/api/lojas/${f.lojaId}/financeiro/contas-pagar`).expect(200);
