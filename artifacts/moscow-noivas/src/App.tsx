@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { deveDeslogar } from "@/lib/auth-erro";
 import { Toaster } from "@/components/ui/toaster";
@@ -111,6 +112,9 @@ function LegacyRedirect() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      {/* attribute="class" liga a paleta .dark do index.css; defaultTheme
+          "system" respeita a preferência do SO até o usuário escolher. */}
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Routes>
@@ -177,6 +181,7 @@ function App() {
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
