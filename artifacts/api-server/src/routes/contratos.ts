@@ -39,8 +39,20 @@ router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/contratos", requireModulo("leads"));
 router.use("/lojas/:lojaId/parcelas", requireModulo("leads"));
 
-/** Tolerância de centavos ao comparar soma de parcelas com o valor total. */
-const TOLERANCIA_CENTAVOS = 0.01;
+/** Dinheiro soma em CENTAVOS inteiros — reais é float e não fecha na soma. */
+const cent = (reais: number) => Math.round(reais * 100);
+const reais = (centavos: number) => centavos / 100;
+
+/**
+ * Líquido em centavos a partir do bruto e do desconto do orçamento, calculado
+ * EXATAMENTE como o frontend (`orcamentos/[id].tsx`) — senão um contrato válido
+ * seria recusado por um centavo de arredondamento divergente.
+ */
+function liquidoEmCentavos(brutoC: number, tipo: string | null, valor: number | null): number {
+  if (!tipo || !valor) return brutoC;
+  if (tipo === "PERCENTUAL") return Math.round((brutoC * (100 - valor)) / 100);
+  return Math.max(0, brutoC - cent(valor)); // VALOR
+}
 
 type ItemSnapshot = Pick<
   InsertContratoItem,
@@ -97,6 +109,8 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // 3. Orçamento (se informado): da loja, do mesmo lead, APROVADO, ainda não
   // vinculado a outro contrato. Seus itens viram snapshot do contrato.
   let itensSnapshot: ItemSnapshot[] = [];
+  let descontoTipo: "PERCENTUAL" | "VALOR" | null = null;
+  let descontoValor: number | null = null;
   if (contratoData.orcamentoId) {
     const orcamento = await db.query.orcamentosTable.findFirst({
       where: and(eq(orcamentosTable.id, contratoData.orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
@@ -128,15 +142,35 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       valorUnitario: it.valorUnitario,
       quantidade: it.quantidade,
     }));
+
+    // Congela o desconto do orçamento e VALIDA o valorTotal contra os itens: o
+    // líquido derivado (itens − desconto, em centavos) tem que bater exatamente
+    // com o total informado. Sem isto, um total digitado errado — ou o desconto
+    // que se perdia no snapshot — passava batido e virava a base de comissão,
+    // parcelas e PDF, com a soma dos itens sem fechar com o total.
+    descontoTipo = orcamento.descontoTipo;
+    descontoValor = orcamento.descontoValor;
+    const brutoC = itens.reduce((acc, it) => acc + cent(it.valorUnitario) * it.quantidade, 0);
+    const liquidoC = liquidoEmCentavos(brutoC, orcamento.descontoTipo, orcamento.descontoValor);
+    if (liquidoC !== cent(contratoData.valorTotal)) {
+      res.status(422).json({
+        error: "VALOR_TOTAL_NAO_BATE",
+        detalhe: `Itens menos desconto (${reais(liquidoC)}) difere do valor total (${contratoData.valorTotal})`,
+      });
+      return;
+    }
   }
 
-  // 4. Se houver parcelas, a soma precisa bater com o valorTotal.
+  // 4. Se houver parcelas, a soma precisa bater com o valorTotal. Em CENTAVOS
+  // inteiros, com igualdade EXATA — a regra de ouro do repo. Somar os reais em
+  // float e comparar com tolerância (o que estava aqui) aceita um plano com um
+  // centavo de folga e recusa um plano válido por erro de ponto flutuante.
   if (parcelasInput && parcelasInput.length > 0) {
-    const soma = parcelasInput.reduce((acc, p) => acc + p.valorPrevisto, 0);
-    if (Math.abs(soma - contratoData.valorTotal) > TOLERANCIA_CENTAVOS) {
+    const somaC = parcelasInput.reduce((acc, p) => acc + cent(p.valorPrevisto), 0);
+    if (somaC !== cent(contratoData.valorTotal)) {
       res.status(422).json({
         error: "PARCELAS_NAO_BATEM",
-        detalhe: `Soma das parcelas (${soma}) difere do valor total (${contratoData.valorTotal})`,
+        detalhe: `Soma das parcelas (${reais(somaC)}) difere do valor total (${contratoData.valorTotal})`,
       });
       return;
     }
@@ -186,6 +220,8 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       cpf: contratoData.cpf ?? null,
       vestidoDescricao: contratoData.vestidoDescricao ?? null,
       valorTotal: contratoData.valorTotal,
+      descontoTipo,
+      descontoValor,
       formaPagamento: contratoData.formaPagamento ?? null,
       dataCasamento: contratoData.dataCasamento ?? null,
       dataRetirada: contratoData.dataRetirada ?? null,
@@ -331,6 +367,15 @@ router.get("/lojas/:lojaId/contratos/:contratoId/pdf", async (req, res): Promise
       // Centavos inteiros na multiplicação: 3 × 0.1 em reais viraria 0.30000000000000004.
       valor: brl((it.quantidade * Math.round(it.valorUnitario * 100)) / 100),
     })),
+    // Com desconto, o subtotal (bruto) e o abatimento explicam por que a soma
+    // dos itens não é o total. O abatimento é bruto − total: reconcilia sempre.
+    ...(() => {
+      if (!contrato.descontoTipo) return {};
+      const brutoC = contrato.itens.reduce((acc, it) => acc + Math.round(it.valorUnitario * 100) * it.quantidade, 0);
+      const abatimentoC = brutoC - Math.round(contrato.valorTotal * 100);
+      const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
+      return { subtotal: brl(brutoC / 100), desconto: `−${brl(abatimentoC / 100)}${rotulo}` };
+    })(),
     valorTotal: brl(contrato.valorTotal),
     formaPagamento: rotuloForma(contrato.formaPagamento),
     parcelas,

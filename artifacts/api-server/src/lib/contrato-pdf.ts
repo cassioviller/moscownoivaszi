@@ -12,6 +12,11 @@ export type DadosContrato = {
   // Snapshot dos itens contratados; o valor já vem formatado (a formatação de
   // moeda é responsabilidade de quem monta os dados, não do desenhista).
   itens?: { descricao: string; valor: string }[];
+  // Subtotal (soma bruta dos itens) e desconto só aparecem quando há desconto —
+  // aí o valorTotal é o líquido e a linha explica por que itens ≠ total. Já
+  // formatados por quem monta os dados.
+  subtotal?: string;
+  desconto?: string;
   valorTotal?: string;
   formaPagamento?: string;
   // Plano de pagamento (entrada = parcela nº 0). Fonte única da entrada.
@@ -79,6 +84,10 @@ function montarLinhas(d: DadosContrato): Linha[] {
   vazio();
 
   add("VALORES E PAGAMENTO", 12);
+  if (d.desconto) {
+    dado("Subtotal", d.subtotal);
+    dado("Desconto", d.desconto);
+  }
   dado("Valor total", d.valorTotal);
   dado("Forma de pagamento", d.formaPagamento);
   if (d.parcelas && d.parcelas.length > 0) {

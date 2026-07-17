@@ -997,6 +997,17 @@ export const ContratoStatus = {
 /**
  * @nullable
  */
+export type ContratoDescontoTipo = typeof ContratoDescontoTipo[keyof typeof ContratoDescontoTipo] | null;
+
+
+export const ContratoDescontoTipo = {
+  PERCENTUAL: 'PERCENTUAL',
+  VALOR: 'VALOR',
+} as const;
+
+/**
+ * @nullable
+ */
 export type ContratoFormaPagamento = typeof ContratoFormaPagamento[keyof typeof ContratoFormaPagamento] | null;
 
 
@@ -1089,6 +1100,10 @@ export interface Contrato {
   /** @nullable */
   vestidoDescricao?: string | null;
   valorTotal: number;
+  /** @nullable */
+  descontoTipo?: ContratoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
   /** @nullable */
   formaPagamento?: ContratoFormaPagamento;
   /** @nullable */

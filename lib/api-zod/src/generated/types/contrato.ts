@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ContratoDescontoTipo } from './contratoDescontoTipo';
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
 import type { ContratoItem } from './contratoItem';
 import type { ContratoStatus } from './contratoStatus';
@@ -27,6 +28,10 @@ export interface Contrato {
   /** @nullable */
   vestidoDescricao?: string | null;
   valorTotal: number;
+  /** @nullable */
+  descontoTipo?: ContratoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
   /** @nullable */
   formaPagamento?: ContratoFormaPagamento;
   /** @nullable */

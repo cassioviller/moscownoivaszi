@@ -2771,6 +2771,10 @@ components:
         cpf: { type: ["string", "null"] }
         vestidoDescricao: { type: ["string", "null"] }
         valorTotal: { type: number }
+        # Desconto congelado do orçamento. valorTotal é o líquido; estes dão a
+        # proveniência e permitem a linha "Desconto" reconciliar itens × total.
+        descontoTipo: { type: ["string", "null"], enum: [PERCENTUAL, VALOR, null] }
+        descontoValor: { type: ["number", "null"] }
         formaPagamento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
         canceladoMotivo: { type: ["string", "null"] }
         canceladoEm: { type: ["string", "null"], format: date-time }

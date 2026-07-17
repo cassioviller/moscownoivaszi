@@ -1,0 +1,77 @@
+# Plano — correção dos achados críticos da auditoria de 2026-07-16
+
+> Diagnóstico completo (7 críticos, 15 importantes, 10 menores) verificado linha a
+> linha em `main`. Este plano cobre a faixa **CRÍTICA** — risco agora. Os
+> importantes seguem depois, por módulo.
+
+Método, o mesmo que fechou o bug de cobrança: **provar o defeito com um teste que
+falha antes**, corrigir, ver o teste passar, rodar a suíte inteira. Nada entra sem
+regressão que trave a volta.
+
+## Ordem de ataque
+
+Escolhida por risco × custo: segurança barata primeiro, dinheiro sob concorrência
+depois, integridade que a noiva vê por último.
+
+| # | Achado | Arquivo âncora | Conserto recomendado |
+|---|---|---|---|
+| C1 | Equipe sem gate de módulo → auto-promoção a admin | `routes/equipe.ts:21` | `requireModulo("admin")` no router, como os demais |
+| C5 | CSV da contabilidade: injeção de fórmula | `lib/folha.ts:130` | prefixar `'` quando o campo abre com `= + - @ tab` |
+| C3 | Folha duplica salário sob concorrência | `schema/financeiro.ts:29` | unique parcial + `onConflictDoNothing` |
+| C4 | Dois salários ativos → dobro | `routes/financeiro.ts:299` | unique parcial `WHERE ativo` + checagem no POST |
+| C2 | Vazamento entre lojas por FK forjada | `routes/agenda.ts`,`reservas.ts` | validar cada FK contra `lojaId` antes do insert |
+| C6 | Contrato soma parcelas em float | `routes/contratos.ts:134` | somar em centavos inteiros, igualdade exata |
+| C7 | Snapshot do contrato perde o desconto | `routes/contratos.ts:124` | congelar o desconto no snapshot; itens − desconto = total |
+
+C3 e C4 caem na mesma migração de schema (dois uniques em tabelas de folha), então
+vão juntos. C2 toca três rotas com o mesmo padrão. C6/C7 são o mesmo fluxo de
+criação de contrato — um PR só.
+
+## Regras que valem para todos
+
+- **Migração de schema sem TTY**: `drizzle-kit push` trava ao pedir confirmação;
+  aplicar o DDL por `psql` numa transação com guarda, depois `push` para conferir
+  ("Changes applied", sem prompt). Vale para C3/C4.
+- **Contrato é a fonte da verdade**: se um conserto muda a resposta da API, editar
+  `openapi.yaml`, rodar o codegen e `tsc --build` antes de tocar as rotas.
+- **Cada crítico ganha teste de API** que falha antes do conserto — em especial os
+  de concorrência (`Promise.all([post, post])`) e o de segurança (perfil sem
+  módulo tentando a ação).
+
+## Meta de aceite
+
+Por crítico: teste-prova vermelho → verde. No fim: typecheck verde, suíte de API
+verde, E2E verde. Doc de auditoria atualizado marcando cada crítico como fechado.
+
+---
+
+## Execução — todos os 7 críticos fechados (2026-07-16)
+
+Cada um com teste que falhava antes do conserto. API 237 → **253**.
+
+- ✅ **C1** — `requireModulo("admin")` no router de equipe. Prova: a vendedora
+  criava membro (201), se auto-promovia (200) e removia colega (204); agora 403
+  nas três. (`equipe-gate-api.test.ts`, 4 testes)
+- ✅ **C5** — `escaparCsv` prefixa apóstrofo em campo que abre com `= + - @ tab`;
+  número negativo legítimo (coluna Valor) é preservado. (`lote16-folha-unit`, +2)
+- ✅ **C3+C4** — índices únicos parciais em `contas_pagar`
+  (`WHERE tipo='SALARIO'`) e `salarios_recorrentes` (`WHERE ativo`), via psql +
+  push. Geração com `onConflictDoNothing`; POST de salário dá 409. Prova: dois
+  POSTs simultâneos geram `[0, 1]`, uma conta só no banco. (`lote16-folha-api`, +2)
+- ✅ **C2** — `escopo-loja.ts`: lead/cabine/vendedora/reserva validados contra a
+  loja antes do insert em atendimentos, reservas e bloqueios. FK de outra loja =
+  404. (`escopo-loja-api.test.ts`, 6 testes)
+- ✅ **C6** — soma de parcelas em CENTAVOS inteiros com igualdade exata; a
+  `TOLERANCIA_CENTAVOS` de 0,01 saiu.
+- ✅ **C7** — desconto do orçamento CONGELADO no contrato (schema +
+  `descontoTipo`/`descontoValor` no contrato OpenAPI). O `valorTotal` é validado
+  contra itens − desconto (fecha I5 na entrada por orçamento). Tela e PDF ganham
+  a linha "Subtotal/Desconto" que reconcilia. Prova: PDF sai com 4.000 − 1.000 =
+  3.000; total que não bate é 422. (`lote5-contratos-api` +2, `contrato-pdf-api` +1)
+
+### Segue para os IMPORTANTES
+
+A faixa crítica está fechada. Os 15 importantes seguem por módulo — com destaque
+para I1 (o `.parse()` na saída como 500 silencioso, que é a raiz que torna esta
+classe de bug invisível) e I5 (validar `valorTotal` também no contrato manual,
+sem orçamento — o caminho por orçamento já ficou coberto por C7).

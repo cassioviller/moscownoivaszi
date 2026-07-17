@@ -63,6 +63,7 @@ export * from './contaPagarInputTipo';
 export * from './contaPagarStatus';
 export * from './contaPagarTipo';
 export * from './contrato';
+export * from './contratoDescontoTipo';
 export * from './contratoFormaPagamento';
 export * from './contratoInput';
 export * from './contratoInputFormaPagamento';

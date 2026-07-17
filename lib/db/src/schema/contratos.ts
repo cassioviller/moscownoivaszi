@@ -7,7 +7,7 @@ import { orcamentosTable } from "./orcamentos";
 import { bloqueioVestidosTable } from "./atendimentos";
 import { vestidosTable } from "./vestidos";
 import { usuariosTable } from "./usuarios";
-import { contratoStatusEnum, formaPagamentoEnum, orcamentoItemTipoEnum } from "./common/enums";
+import { contratoStatusEnum, formaPagamentoEnum, orcamentoItemTipoEnum, descontoTipoEnum } from "./common/enums";
 
 export const contratosTable = pgTable("contratos", {
   id: text("id").primaryKey(),
@@ -22,6 +22,12 @@ export const contratosTable = pgTable("contratos", {
   cpf: text("cpf"),
   vestidoDescricao: text("vestido_descricao"),
   valorTotal: decimal("valor_total", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  // Desconto CONGELADO do orçamento no fecho. Sem isto, o snapshot guarda os
+  // itens brutos mas o valorTotal é líquido — soma dos itens ≠ total, e a noiva
+  // vê um contrato que não fecha. `valorTotal` continua o líquido; estes dois
+  // dão a proveniência ("foi 10%") e permitem desenhar a linha "Desconto".
+  descontoTipo: descontoTipoEnum("desconto_tipo"),
+  descontoValor: decimal("desconto_valor", { precision: 10, scale: 2, mode: "number" }),
   formaPagamento: formaPagamentoEnum("forma_pagamento"),
   canceladoMotivo: text("cancelado_motivo"),
   canceladoEm: timestamp("cancelado_em", { withTimezone: true }),

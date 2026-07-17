@@ -404,6 +404,26 @@ export default function ContratoDetail() {
                     </li>
                   ))}
                 </ul>
+                {/* Com desconto, itens (bruto) ≠ valor total (líquido). A linha
+                    fecha a conta: subtotal − desconto = total. O abatimento é
+                    bruto − total, então reconcilia sempre. */}
+                {contrato.descontoTipo && (() => {
+                  const brutoC = contrato.itens!.reduce((a, it) => a + centavos(it.valorUnitario) * it.quantidade, 0);
+                  const abatimentoC = brutoC - centavos(contrato.valorTotal);
+                  const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
+                  return (
+                    <div className="mt-2 space-y-1 border-t pt-2 text-sm">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Subtotal</span>
+                        <span>R$ {brl(reais(brutoC))}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Desconto{rotulo}</span>
+                        <span>− R$ {brl(reais(abatimentoC))}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </CardContent>

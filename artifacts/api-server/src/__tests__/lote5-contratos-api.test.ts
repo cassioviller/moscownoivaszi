@@ -72,6 +72,49 @@ describe("Lote 5 — Contratos íntegros", () => {
     expect(descricoes).toEqual(["Barra", "Vestido Sereia"]);
   });
 
+  it("com desconto: congela o desconto e o valorTotal líquido bate com itens − desconto (201)", async () => {
+    const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const lead = await criarLead(f);
+    // Bruto 3200; 10% → líquido 2880. O desconto se perdia no snapshot: o
+    // contrato guardava itens brutos (3200) mas valorTotal líquido (2880), e a
+    // soma dos itens não fechava com o total na tela e no PDF.
+    const orcamento = await criarOrcamento(f, {
+      leadId: lead.id,
+      status: "APROVADO",
+      descontoTipo: "PERCENTUAL",
+      descontoValor: 10,
+    });
+    await criarOrcamentoItem(f, { orcamentoId: orcamento.id, descricao: "Vestido", valorUnitario: 3000 });
+    await criarOrcamentoItem(f, { orcamentoId: orcamento.id, tipo: "AJUSTE", descricao: "Barra", valorUnitario: 200 });
+
+    const criado = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send(corpoContrato(f, lead.id, { orcamentoId: orcamento.id, valorTotal: 2880 }))
+      .expect(201);
+
+    const detalhe = await agent.get(`/api/lojas/${f.lojaId}/contratos/${criado.body.id}`).expect(200);
+    // O desconto ficou congelado no contrato — a linha "Desconto" reconcilia.
+    expect(detalhe.body).toMatchObject({ descontoTipo: "PERCENTUAL", descontoValor: 10, valorTotal: 2880 });
+  });
+
+  it("com desconto: valorTotal que não bate com itens − desconto é 422", async () => {
+    const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const lead = await criarLead(f);
+    const orcamento = await criarOrcamento(f, {
+      leadId: lead.id,
+      status: "APROVADO",
+      descontoTipo: "VALOR",
+      descontoValor: 300,
+    });
+    await criarOrcamentoItem(f, { orcamentoId: orcamento.id, descricao: "Vestido", valorUnitario: 3000 });
+
+    // Bruto 3000 − 300 = 2700. Mandar 2880 (o líquido de outro desconto) é erro.
+    await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send(corpoContrato(f, lead.id, { orcamentoId: orcamento.id, valorTotal: 2880 }))
+      .expect(422);
+  });
+
   it("recusa quando a soma das parcelas difere do valor total (422)", async () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const lead = await criarLead(f);

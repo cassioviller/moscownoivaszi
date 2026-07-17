@@ -165,7 +165,13 @@ export async function criarRegraDisponibilidade(
 
 export async function criarOrcamento(
   f: Fixture,
-  params: { leadId: string; status?: Orcamento["status"]; vendedoraId?: string },
+  params: {
+    leadId: string;
+    status?: Orcamento["status"];
+    vendedoraId?: string;
+    descontoTipo?: "PERCENTUAL" | "VALOR";
+    descontoValor?: number;
+  },
 ): Promise<Orcamento> {
   const status = params.status ?? "APROVADO";
   const [orcamento] = await db
@@ -176,6 +182,8 @@ export async function criarOrcamento(
       leadId: params.leadId,
       vendedoraId: params.vendedoraId ?? f.vendedoraId,
       status,
+      descontoTipo: params.descontoTipo ?? null,
+      descontoValor: params.descontoValor ?? null,
       aprovadoEm: status === "APROVADO" ? new Date() : null,
     })
     .returning();
