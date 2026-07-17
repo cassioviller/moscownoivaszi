@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListParcelas,
@@ -9,13 +9,27 @@ import {
   getListSaldoReferenciaQueryKey,
   useListPagamentos,
   getListPagamentosQueryKey,
+  useCreateSaldoReferencia,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErroListagem, useCaminhoDaLoja } from "./helpers";
-import { brl } from "@/lib/formatos";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { ErroListagem, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { podeNoModulo } from "@/lib/permissoes";
+import { brl, diaParaISO } from "@/lib/formatos";
 import { diaLocal, hojeLocal } from "@/lib/financeiro/datas";
 import {
   projetarCaixa,
@@ -23,7 +37,7 @@ import {
   HORIZONTES,
   type LinhaCurva,
 } from "@/lib/financeiro/projecao";
-import { ancoraAtiva, saldoDeHoje } from "@/lib/financeiro/saldo";
+import { ancoraAtiva, saldoDeHoje, validarConferencia } from "@/lib/financeiro/saldo";
 
 const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
 const diaLongo = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", timeZone: "UTC" });
@@ -37,10 +51,18 @@ function formatarDia(dia: string, fmt: Intl.DateTimeFormat): string {
 
 export default function Projecao() {
   const naLoja = useCaminhoDaLoja();
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const horizonteDias = normalizarHorizonte(searchParams.get("h"));
+  const podeConferir = podeNoModulo(acessosModulos, "financeiro", "criar");
+
+  const [conferirOpen, setConferirOpen] = useState(false);
+  const [diaConferido, setDiaConferido] = useState(hojeLocal());
+  const [valorConferido, setValorConferido] = useState("");
+  const criarSaldo = useCreateSaldoReferencia();
 
   const parcelas = useListParcelas(activeLojaId!, {
     query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
@@ -86,6 +108,35 @@ export default function Projecao() {
       }),
     [parcelas.data, contasPagar.data, saldo, horizonteDias, hoje],
   );
+
+  async function onConferir() {
+    const conferencia = validarConferencia(diaConferido, valorConferido, hoje);
+    if (!conferencia.ok) {
+      toast({ title: conferencia.erro, variant: "destructive" });
+      return;
+    }
+    try {
+      await criarSaldo.mutateAsync({
+        lojaId: activeLojaId!,
+        data: { dataReferencia: diaParaISO(diaConferido), valor: conferencia.valor },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListSaldoReferenciaQueryKey(activeLojaId!),
+      });
+      toast({
+        title: "Saldo conferido",
+        description: `R$ ${brl(conferencia.valor)} no início de ${formatarDia(diaConferido, diaLongo)}.`,
+      });
+      setConferirOpen(false);
+      setValorConferido("");
+    } catch (err) {
+      toast({
+        title: "Erro ao registrar o saldo",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  }
 
   function trocarHorizonte(h: number) {
     const proximo = new URLSearchParams(searchParams);
@@ -153,8 +204,20 @@ export default function Projecao() {
       ) : (
         <>
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
               <CardTitle>Saldo de partida</CardTitle>
+              {podeConferir && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setDiaConferido(hoje);
+                    setConferirOpen(true);
+                  }}
+                >
+                  Conferir saldo
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {semAncora ? (
@@ -162,6 +225,9 @@ export default function Projecao() {
                   Nenhum saldo de referência registrado. A curva parte de{" "}
                   <span className="tabular-nums">R$ 0,00</span> — ela mostra a forma do período, não
                   o nível do caixa.
+                  {podeConferir && (
+                    <> Confira o caixa e registre o saldo para ancorar a curva no nível real.</>
+                  )}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -263,6 +329,48 @@ export default function Projecao() {
           </Card>
         </>
       )}
+
+      <Dialog open={conferirOpen} onOpenChange={setConferirOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conferir saldo do caixa</DialogTitle>
+            <DialogDescription>
+              O valor é o saldo real no início do dia conferido. Conferir o mesmo dia de novo
+              corrige o número registrado — não empilha outro saldo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="dia-conferido">Dia conferido</Label>
+              <Input
+                id="dia-conferido"
+                type="date"
+                max={hoje}
+                value={diaConferido}
+                onChange={(e) => setDiaConferido(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="valor-conferido">Saldo no início do dia</Label>
+              <Input
+                id="valor-conferido"
+                inputMode="decimal"
+                value={valorConferido}
+                onChange={(e) => setValorConferido(e.target.value)}
+                placeholder="0,00"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConferirOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={onConferir} disabled={criarSaldo.isPending}>
+              {criarSaldo.isPending ? "Registrando…" : "Registrar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

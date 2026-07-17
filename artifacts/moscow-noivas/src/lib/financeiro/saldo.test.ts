@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Parcela, Pagamento, SaldoReferencia } from "@workspace/api-client-react";
-import { ancoraAtiva, saldoDeHoje } from "./saldo";
+import { ancoraAtiva, saldoDeHoje, validarConferencia } from "./saldo";
 
 const HOJE = "2027-03-15";
 const meioDia = (dia: string) => new Date(`${dia}T12:00:00-03:00`).toISOString();
@@ -94,5 +94,34 @@ describe("saldoDeHoje", () => {
 
   it("sem âncora é null, não zero — zero é um número, 'não sei' não é", () => {
     expect(saldoDeHoje([], [recebida("2027-03-12", 500)], [], HOJE)).toBeNull();
+  });
+});
+
+describe("validarConferencia", () => {
+  it("aceita hoje com valor em pt-BR", () => {
+    expect(validarConferencia(HOJE, "1.234,56", HOJE)).toEqual({ ok: true, valor: 1234.56 });
+  });
+
+  it("aceita dia passado", () => {
+    expect(validarConferencia("2027-03-10", "100", HOJE)).toEqual({ ok: true, valor: 100 });
+  });
+
+  it("recusa dia futuro — ninguém conferiu o caixa de amanhã", () => {
+    const r = validarConferencia("2027-03-16", "100", HOJE);
+    expect(r.ok).toBe(false);
+  });
+
+  it("recusa dia vazio", () => {
+    expect(validarConferencia("", "100", HOJE).ok).toBe(false);
+  });
+
+  it("recusa valor vazio ou ilegível", () => {
+    expect(validarConferencia(HOJE, "", HOJE).ok).toBe(false);
+    expect(validarConferencia(HOJE, "abc", HOJE).ok).toBe(false);
+  });
+
+  it("zero e negativo são saldos legítimos — o caixa não é obrigado a fechar no azul", () => {
+    expect(validarConferencia(HOJE, "0", HOJE)).toEqual({ ok: true, valor: 0 });
+    expect(validarConferencia(HOJE, "-350,00", HOJE)).toEqual({ ok: true, valor: -350 });
   });
 });

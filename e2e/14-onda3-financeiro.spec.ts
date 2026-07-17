@@ -56,3 +56,24 @@ test("o hub navega para o recorte e para a ação", async ({ page }) => {
   await page.getByRole("link", { name: /Resultado do mês/ }).click();
   await expect(page.getByRole("heading", { name: "Resultado do mês" })).toBeVisible();
 });
+
+/**
+ * I11a — a âncora da projeção nasce na tela: conferir o caixa registra o
+ * saldo de referência e o card de partida passa a mostrar o nível real.
+ * Reconferir o mesmo dia corrige o número (upsert), então o teste é
+ * idempotente por construção.
+ */
+test("conferir o saldo ancora a projeção no nível real", async ({ page }) => {
+  await page.goto("/financeiro/projecao");
+  await expect(page.getByRole("heading", { name: "Projeção de caixa" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Conferir saldo" }).click();
+  await page.locator("#valor-conferido").fill("8.000,00");
+  await page.getByRole("button", { name: "Registrar" }).click();
+
+  // O card de partida sai do "sem âncora" e mostra o saldo rolado de hoje,
+  // com a proveniência ("conferido em") que sustenta o número.
+  const card = page.locator("text=Saldo de partida").locator("..").locator("..");
+  await expect(page.getByText(/conferido em/)).toBeVisible();
+  await expect(card.getByText(/^R\$/).first()).toBeVisible();
+});

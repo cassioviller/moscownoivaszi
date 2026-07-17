@@ -1,5 +1,5 @@
 import type { Parcela, Pagamento, SaldoReferencia } from "@workspace/api-client-react";
-import { centavos, reais } from "./dinheiro";
+import { centavos, parseValor, reais } from "./dinheiro";
 import { diaLocal, hojeLocal, type Intervalo } from "./datas";
 import { resumoCaixa } from "./fluxo";
 
@@ -14,6 +14,27 @@ import { resumoCaixa } from "./fluxo";
  * Convenção: `valor` é o saldo no INÍCIO de `dataReferencia`, então o realizado
  * a somar é o intervalo [dataReferencia, hoje] — inclusive nas duas pontas.
  */
+
+export type Conferencia = { ok: true; valor: number } | { ok: false; erro: string };
+
+/**
+ * Valida o formulário de conferência de saldo. Dia futuro é recusado —
+ * conferir é registrar um fato, e o caixa de amanhã ainda não existe. Zero e
+ * negativo passam: o caixa não é obrigado a fechar no azul.
+ */
+export function validarConferencia(
+  dia: string,
+  valorTexto: string,
+  hoje: string = hojeLocal(),
+): Conferencia {
+  if (!dia) return { ok: false, erro: "Informe o dia da conferência." };
+  if (dia > hoje) return { ok: false, erro: "O dia conferido não pode estar no futuro." };
+  const valor = parseValor(valorTexto);
+  if (valor === null || Number.isNaN(valor)) {
+    return { ok: false, erro: "Informe o valor conferido — use vírgula para os centavos." };
+  }
+  return { ok: true, valor };
+}
 
 /** A âncora ativa: o saldo conferido mais recente que não está no futuro. */
 export function ancoraAtiva(
