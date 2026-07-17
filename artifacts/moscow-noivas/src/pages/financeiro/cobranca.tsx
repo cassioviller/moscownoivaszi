@@ -4,8 +4,6 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useListParcelas,
   getListParcelasQueryKey,
-  useListContratos,
-  getListContratosQueryKey,
   useListRegistrosCobranca,
   getListRegistrosCobrancaQueryKey,
   useCreateRegistroCobranca,
@@ -40,7 +38,6 @@ import {
   type Canal,
   type Faixa,
   type NoivaInadimplente,
-  type ParcelaComNoiva,
 } from "@/lib/financeiro/cobranca";
 
 /**
@@ -265,45 +262,18 @@ export default function Cobranca() {
   const faixaParam = searchParams.get("faixa");
   const faixaAtiva: Faixa | null = ehFaixa(faixaParam) ? faixaParam : null;
 
-  const parcelas = useListParcelas(activeLojaId!, {
+  // A parcela já carrega a noiva (`contrato.leadId/lead` no GET) — o join por
+  // contratoId que vivia aqui, rebuscando TODOS os contratos, morreu com ele.
+  // Parcela órfã de contrato vem com `contrato` nulo e o próprio
+  // `agingDeParcelas` a descarta (não há quem cobrar).
+  const parcelas = useListParcelas(activeLojaId!, undefined, {
     query: {
       queryKey: getListParcelasQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },
   });
 
-  const contratos = useListContratos(activeLojaId!, {
-    query: {
-      queryKey: getListContratosQueryKey(activeLojaId!),
-      enabled: !!activeLojaId,
-    },
-  });
-
-  /**
-   * A parcela não carrega a noiva; o contrato sim (`GET /contratos` já vem com
-   * `lead` embutido). Juntamos por `contratoId` para formar o `ParcelaComNoiva`
-   * que o núcleo espera — parcela órfã de contrato fica sem `leadId` e o
-   * próprio `agingDeParcelas` a descarta (não há quem cobrar).
-   */
-  const parcelasComNoiva = useMemo<ParcelaComNoiva[]>(() => {
-    const porContrato = new Map((contratos.data ?? []).map((c) => [c.id, c]));
-    return (parcelas.data ?? []).map((p) => {
-      const contrato = porContrato.get(p.contratoId);
-      return {
-        ...p,
-        contrato: contrato
-          ? {
-              leadId: contrato.leadId,
-              lead: contrato.lead
-                ? { noivaNome: contrato.lead.noivaNome, whatsapp: contrato.lead.whatsapp ?? null }
-                : null,
-            }
-          : null,
-      };
-    });
-  }, [parcelas.data, contratos.data]);
-
-  const aging = useMemo(() => agingDeParcelas(parcelasComNoiva), [parcelasComNoiva]);
+  const aging = useMemo(() => agingDeParcelas(parcelas.data ?? []), [parcelas.data]);
 
   const noivasVisiveis = useMemo(
     () => (faixaAtiva ? aging.noivas.filter((n) => n.faixaMaisAntiga === faixaAtiva) : aging.noivas),
@@ -323,8 +293,8 @@ export default function Cobranca() {
     );
   }
 
-  const carregando = parcelas.isPending || contratos.isPending;
-  const erro = parcelas.isError || contratos.isError;
+  const carregando = parcelas.isPending;
+  const erro = parcelas.isError;
 
   return (
     <div className="space-y-6">
@@ -341,10 +311,7 @@ export default function Cobranca() {
       {erro ? (
         <ErroListagem
           mensagem="Falha ao buscar as parcelas em atraso."
-          onRetry={() => {
-            if (parcelas.isError) parcelas.refetch();
-            if (contratos.isError) contratos.refetch();
-          }}
+          onRetry={() => parcelas.refetch()}
         />
       ) : carregando ? (
         <div className="space-y-6">

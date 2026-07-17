@@ -64,7 +64,8 @@ export default function Projecao() {
   const [valorConferido, setValorConferido] = useState("");
   const criarSaldo = useCreateSaldoReferencia();
 
-  const parcelas = useListParcelas(activeLojaId!, {
+  // Sem janela de propósito: a curva precisa do futuro inteiro e do atraso passado.
+  const parcelas = useListParcelas(activeLojaId!, undefined, {
     query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const contasPagar = useListContasPagar(activeLojaId!, {

@@ -1046,6 +1046,11 @@ export const ParcelaFormaRecebimento = {
   OUTRO: 'OUTRO',
 } as const;
 
+export interface ParcelaContrato {
+  leadId: string;
+  lead?: Lead | null;
+}
+
 export interface Parcela {
   id: string;
   lojaId: string;
@@ -1062,6 +1067,7 @@ export interface Parcela {
   recebidoEm?: string | null;
   /** @nullable */
   formaRecebimento?: ParcelaFormaRecebimento;
+  contrato?: ParcelaContrato | null;
 }
 
 export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItemTipo];
@@ -1513,6 +1519,19 @@ export type CheckDisponibilidadeVestidosParams = {
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 data: string;
+};
+
+export type ListParcelasParams = {
+/**
+ * Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
 };
 
 export type ListPagamentosParams = {

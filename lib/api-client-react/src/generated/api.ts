@@ -71,6 +71,7 @@ import type {
   LeadUpdate,
   ListComissaoFechamentosParams,
   ListPagamentosParams,
+  ListParcelasParams,
   LoginInput,
   Loja,
   LojaInput,
@@ -6140,17 +6141,29 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCancelarContratoMutationOptions(options));
     }
 
-export const getListParcelasUrl = (lojaId: string,) => {
+export const getListParcelasUrl = (lojaId: string,
+    params?: ListParcelasParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/financeiro/parcelas`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/parcelas?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/parcelas`
 }
 
-export const listParcelas = async (lojaId: string, options?: RequestInit): Promise<Parcela[]> => {
+/**
+ * @summary Parcelas da loja — opcionalmente recortadas por vencimento
+ */
+export const listParcelas = async (lojaId: string,
+    params?: ListParcelasParams, options?: RequestInit): Promise<Parcela[]> => {
 
-  return customFetch<Parcela[]>(getListParcelasUrl(lojaId),
+  return customFetch<Parcela[]>(getListParcelasUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -6163,23 +6176,25 @@ export const listParcelas = async (lojaId: string, options?: RequestInit): Promi
 
 
 
-export const getListParcelasQueryKey = (lojaId: string,) => {
+export const getListParcelasQueryKey = (lojaId: string,
+    params?: ListParcelasParams,) => {
     return [
-    `/api/lojas/${lojaId}/financeiro/parcelas`
+    `/api/lojas/${lojaId}/financeiro/parcelas`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListParcelasQueryOptions = <TData = Awaited<ReturnType<typeof listParcelas>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParcelas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListParcelasQueryOptions = <TData = Awaited<ReturnType<typeof listParcelas>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListParcelasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParcelas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListParcelasQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListParcelasQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParcelas>>> = ({ signal }) => listParcelas(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParcelas>>> = ({ signal }) => listParcelas(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -6192,13 +6207,17 @@ export type ListParcelasQueryResult = NonNullable<Awaited<ReturnType<typeof list
 export type ListParcelasQueryError = ErrorType<unknown>
 
 
+/**
+ * @summary Parcelas da loja — opcionalmente recortadas por vencimento
+ */
 
 export function useListParcelas<TData = Awaited<ReturnType<typeof listParcelas>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParcelas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListParcelasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParcelas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListParcelasQueryOptions(lojaId,options)
+  const queryOptions = getListParcelasQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

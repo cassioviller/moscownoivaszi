@@ -69,7 +69,8 @@ export default function DRE() {
   const competencia = competenciaValida(compParam ?? "") ? compParam! : competenciaAtual();
   const intervalo = useMemo(() => intervaloDaCompetencia(competencia), [competencia]);
 
-  const parcelas = useListParcelas(activeLojaId!, {
+  // Sem janela de propósito: o DRE é por competência, não por vencimento.
+  const parcelas = useListParcelas(activeLojaId!, undefined, {
     query: {
       queryKey: getListParcelasQueryKey(activeLojaId!),
       enabled: !!activeLojaId,

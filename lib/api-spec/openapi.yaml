@@ -1434,6 +1434,22 @@ paths:
     get:
       operationId: listParcelas
       tags: [financeiro]
+      summary: Parcelas da loja — opcionalmente recortadas por vencimento
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
       responses:
         "200":
           description: List of parcelas
@@ -2877,6 +2893,22 @@ components:
         valorRecebido: { type: ["number", "null"] }
         recebidoEm: { type: ["string", "null"], format: date-time }
         formaRecebimento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+        # Quem é a noiva desta parcela, sem rebuscar todos os contratos: a
+        # cobrança junta por aqui. Presente no GET da lista; ausente nas
+        # respostas de receber/estornar (que devolvem a parcela seca).
+        contrato:
+          anyOf:
+            - $ref: "#/components/schemas/ParcelaContrato"
+            - type: "null"
+    ParcelaContrato:
+      type: object
+      required: [leadId]
+      properties:
+        leadId: { type: string }
+        lead:
+          anyOf:
+            - $ref: "#/components/schemas/Lead"
+            - type: "null"
     ReceberParcelaInput:
       type: object
       required: [valorRecebido, recebidoEm]

@@ -90,7 +90,8 @@ export default function FluxoCaixa() {
 
   // Parcelas vêm inteiras (a rota não filtra); os helpers da lib recortam o
   // intervalo e as competências a partir daí.
-  const parcelas = useListParcelas(activeLojaId!, {
+  // Sem janela de propósito: horizonte e competências olham além do período visível.
+  const parcelas = useListParcelas(activeLojaId!, undefined, {
     query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 

@@ -20,6 +20,7 @@ import {
   UpdateSalarioRecorrenteBody,
   CreateSaldoReferenciaBody,
   ListParcelasResponse,
+  ListParcelasQueryParams,
   ListContasPagarResponse,
   CreateContaPagarBody,
   CreateContaPagarResponse,
@@ -60,13 +61,30 @@ router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/financeiro", requireModulo("financeiro"));
 router.use("/lojas/:lojaId/contas-pagar", requireModulo("financeiro"));
 
+// `de`/`ate` recortam por vencimento (dia local, inclusivo nas duas pontas),
+// no mesmo padrão do GET /pagamentos. O join contrato→lead existe para a
+// cobrança saber quem cobrar sem rebuscar todos os contratos — o `.parse`
+// reduz o contrato inteiro ao `{leadId, lead}` do schema.
 router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  // Sem o `with` do contrato/lead: o schema Parcela não tem esse aninhado, então
-  // o `.parse` abaixo o descartava — era um join pago à toa a cada chamada. A
-  // tela de cobrança já busca os contratos e junta por contratoId.
+  const parsed = ListParcelasQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  const { de, ate } = parsed.data;
+  if (de && ate && de > ate) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+
   const parcelas = await db.query.parcelasTable.findMany({
-    where: eq(parcelasTable.lojaId, lojaId),
+    where: and(
+      eq(parcelasTable.lojaId, lojaId),
+      ...(de ? [gte(parcelasTable.vencimento, inicioDoDia(de))] : []),
+      ...(ate ? [lt(parcelasTable.vencimento, inicioDoDia(addDias(ate, 1)))] : []),
+    ),
+    with: { contrato: { with: { lead: true } } },
     orderBy: parcelasTable.vencimento,
   });
   res.json(ListParcelasResponse.parse(parcelas));

@@ -96,8 +96,15 @@ export default function Receber() {
   // Estorno
   const [parcelaEstornar, setParcelaEstornar] = useState<Parcela | null>(null);
 
-  const parcelas = useListParcelas(activeLojaId!, {
-    query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // A tela é "o que vence nesta janela" — o recorte agora acontece no servidor
+  // (de/ate por vencimento, dia local). O filtro client-side abaixo permanece
+  // como cinto de segurança da mesma regra.
+  const janelaVencimento = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
+  const parcelas = useListParcelas(activeLojaId!, janelaVencimento, {
+    query: {
+      queryKey: getListParcelasQueryKey(activeLojaId!, janelaVencimento),
+      enabled: !!activeLojaId,
+    },
   });
 
   const receber = useReceberParcela();
