@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
+import { leadNaLoja, reservaNaLoja } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
   CreateReservaBody,
@@ -57,6 +58,10 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const parsed = CreateReservaBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (!(await leadNaLoja(parsed.data.leadId, lojaId))) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
     return;
   }
   const [reserva] = await db.insert(reservasTable).values({
@@ -210,6 +215,17 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     .where(and(eq(vestidosTable.id, dados.vestidoId), eq(vestidosTable.lojaId, lojaId)));
   if (!vestido) {
     res.status(404).json({ error: "Vestido not found" });
+    return;
+  }
+
+  // O vestido já foi validado acima; lead e reserva (ambos opcionais) precisam do
+  // mesmo cuidado, senão o bloqueio referencia uma noiva/reserva de outra loja.
+  if (dados.leadId && !(await leadNaLoja(dados.leadId, lojaId))) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
+    return;
+  }
+  if (dados.reservaId && !(await reservaNaLoja(dados.reservaId, lojaId))) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
     return;
   }
 

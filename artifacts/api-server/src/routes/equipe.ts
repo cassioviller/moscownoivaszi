@@ -12,13 +12,17 @@ import {
   UpdateMembroEquipeResponse,
   RemoveMembroEquipeParams
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { hashSenha } from "../lib/auth";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
+// Gerir a equipe é ato administrativo: criar login, trocar perfil, remover
+// membro. Sem este gate, qualquer sessão com loja ativa se auto-promovia a
+// admin. O módulo é `admin` — o mesmo que a tela já exige (equipe/index.tsx).
+router.use("/lojas/:lojaId/equipe", requireModulo("admin"));
 
 router.get("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
   const params = ListEquipeParams.safeParse(req.params);

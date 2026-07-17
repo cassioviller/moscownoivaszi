@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable } from "@workspace/db";
 import { eq, and, max } from "drizzle-orm";
+import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
   CreateCabineBody,
@@ -125,7 +126,19 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  
+
+  // As FKs vêm do corpo: garantir que lead, cabine e vendedora são DESTA loja,
+  // senão o atendimento nasce referenciando outra (vazamento de tenant).
+  const [okLead, okCabine, okVend] = await Promise.all([
+    leadNaLoja(parsed.data.leadId, lojaId),
+    cabineNaLoja(parsed.data.cabineId, lojaId),
+    vendedoraNaLoja(parsed.data.vendedoraId, lojaId),
+  ]);
+  if (!okLead || !okCabine || !okVend) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine ou vendedora não são desta loja" });
+    return;
+  }
+
   const [atendimento] = await db.insert(atendimentosTable).values({
     id: randomUUID(),
     lojaId,
