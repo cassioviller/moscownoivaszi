@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { classificarErro } from "./lib/erros";
 
 const app: Express = express();
 
@@ -66,43 +67,14 @@ app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
 });
 
-// Códigos de erro do Postgres podem vir no erro raiz ou embrulhados
-// pelo driver/ORM em `cause`.
-function pgErrorCode(err: unknown): string | undefined {
-  const e = err as { code?: unknown; cause?: { code?: unknown } };
-  const code = e?.cause?.code ?? e?.code;
-  return typeof code === "string" ? code : undefined;
-}
-
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const log = req.log ?? logger;
-  const code = pgErrorCode(err);
-
-  if (code === "23505") {
-    log.warn({ err }, "Violação de unicidade");
-    res.status(409).json({ error: "Registro duplicado ou conflito de dados" });
-    return;
-  }
-
-  if (code === "23503") {
-    log.warn({ err }, "Violação de integridade referencial");
-    res.status(409).json({ error: "Operação viola vínculos existentes" });
-    return;
-  }
-
-  if (code === "23P01") {
-    // EXCLUDE bloqueio_vestidos_sem_sobreposicao: cinto de segurança do
-    // banco contra sobreposição de ocupação física de vestido.
-    log.warn({ err }, "Violação de exclusão (sobreposição de disponibilidade)");
-    res.status(409).json({ error: "Conflito de disponibilidade" });
-    return;
-  }
-
-  log.error({ err }, "Erro não tratado");
+  const { status, body, logLevel, logMsg } = classificarErro(err);
+  log[logLevel]({ err }, logMsg);
   if (res.headersSent) {
     return;
   }
-  res.status(500).json({ error: "Erro interno do servidor" });
+  res.status(status).json(body);
 });
 
 export default app;

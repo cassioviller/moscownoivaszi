@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { buscarSessao, buscarLoja, getPermissoes, COOKIE_NOME } from "../lib/auth";
-import { acaoDoMetodo, podeNoModulo, type Acao } from "../lib/permissoes";
+import { acaoDoMetodo, acaoDoRequest, podeNoModulo, type Acao } from "../lib/permissoes";
 
 export async function requireSessao(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies[COOKIE_NOME];
@@ -79,7 +79,7 @@ export function requireModulo(modulo: string, acao?: Acao) {
       next();
       return;
     }
-    const exigida = acao ?? acaoDoMetodo(req.method);
+    const exigida = acao ?? acaoDoRequest(req.method, req.path);
     const permissoes = await getPermissoes(usuario.id, lojaId, false);
     if (!permissoes || !podeNoModulo(permissoes, modulo, exigida)) {
       res.status(403).json({ error: "ACESSO_NEGADO_MODULO", modulo, acao: exigida });

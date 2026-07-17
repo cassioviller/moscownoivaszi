@@ -9,7 +9,7 @@ import {
   SelecionarLojaResponse 
 } from "@workspace/api-zod";
 import {
-  compararSenha,
+  compararSenhaConstante,
   criarSessao,
   buscarSessao,
   buscarLojasUsuario,
@@ -29,13 +29,12 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   const [usuario] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, parsed.data.email.toLowerCase().trim()));
-  
-  if (!usuario || !usuario.ativo) {
-    res.status(401).json({ error: "Credenciais inválidas" });
-    return;
-  }
 
-  const senhaValida = await compararSenha(parsed.data.senha, usuario.senhaHash);
+  // Sempre roda o compare (contra dummy se não há usuário) para o tempo de
+  // resposta não revelar quais e-mails têm conta. A mensagem já era idêntica; o
+  // que faltava era igualar o TEMPO.
+  const hashParaComparar = usuario && usuario.ativo ? usuario.senhaHash : null;
+  const senhaValida = await compararSenhaConstante(parsed.data.senha, hashParaComparar);
   if (!senhaValida) {
     res.status(401).json({ error: "Credenciais inválidas" });
     return;

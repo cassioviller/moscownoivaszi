@@ -15,6 +15,26 @@ export async function compararSenha(senha: string, hash: string): Promise<boolea
   return bcrypt.compare(senha, hash);
 }
 
+// Hash de sacrifício, criado uma vez sob demanda. Serve para gastar o mesmo
+// tempo de um bcrypt.compare real quando o e-mail NÃO existe.
+let hashDummy: string | null = null;
+function getHashDummy(): string {
+  if (!hashDummy) hashDummy = bcrypt.hashSync(randomBytes(16).toString("hex"), 12);
+  return hashDummy;
+}
+
+/**
+ * Compara a senha em TEMPO CONSTANTE quanto à existência do usuário. Com hash
+ * nulo (usuário inexistente/inativo) ainda roda um bcrypt.compare contra um
+ * dummy — senão o 401 imediato denuncia quais e-mails têm conta, insumo para
+ * phishing e força bruta dirigida. Sempre devolve false para hash nulo.
+ */
+export async function compararSenhaConstante(senha: string, hash: string | null): Promise<boolean> {
+  const alvo = hash ?? getHashDummy();
+  const ok = await bcrypt.compare(senha, alvo);
+  return hash !== null && ok;
+}
+
 export async function criarSessao(usuarioId: string) {
   const id = randomBytes(32).toString("base64url");
   const expiraEm = new Date(Date.now() + SESSAO_TTL_MS);

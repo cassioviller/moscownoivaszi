@@ -121,4 +121,25 @@ describe("Lote 7 — escopo de loja + permissões por módulo", () => {
     // outra loja → o handler barra por escopo com 404.
     await agent.get(`/api/lojas/${f.lojaId}/vestidos/${vestidoOutra.id}`).expect(404);
   });
+
+  it("cancelar/estornar exigem editar: perfil com só `criar` é negado", async () => {
+    const soCriar = await criarFixture();
+    try {
+      await db
+        .update(perfisTable)
+        .set({ acessosModulos: { leads: { ver: true, criar: true, editar: false }, financeiro: { ver: true, criar: true, editar: false } } })
+        .where(eq(perfisTable.id, soCriar.perfilId));
+      const agent = await loginComLoja(soCriar.vendedoraEmail, soCriar.lojaId);
+
+      // O gate roda ANTES do handler: nem precisa existir contrato/parcela real.
+      // Antes, POST derivava `criar` e passava; agora deriva `editar` e barra.
+      const c1 = await agent.post(`/api/lojas/${soCriar.lojaId}/contratos/qualquer/cancelar`).send({}).expect(403);
+      expect(c1.body.acao).toBe("editar");
+      const c2 = await agent.post(`/api/lojas/${soCriar.lojaId}/parcelas/qualquer/estornar`).send({}).expect(403);
+      expect(c2.body.acao).toBe("editar");
+      await agent.post(`/api/lojas/${soCriar.lojaId}/financeiro/pagamentos/qualquer/estornar`).send({}).expect(403);
+    } finally {
+      await limparFixture(soCriar);
+    }
+  });
 });

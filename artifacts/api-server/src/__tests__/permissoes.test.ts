@@ -3,6 +3,7 @@ import {
   ACOES,
   MODULOS,
   acaoDoMetodo,
+  acaoDoRequest,
   normalizarAcessos,
   podeNoModulo,
   resolverAcessosEfetivos,
@@ -139,5 +140,21 @@ describe("acaoDoMetodo", () => {
     for (const m of ["GET", "POST", "PATCH", "DELETE"]) {
       expect(ACOES).toContain(acaoDoMetodo(m));
     }
+  });
+});
+
+describe("acaoDoRequest", () => {
+  it("cancelar/estornar são POST mas exigem editar — mutam recurso existente", () => {
+    expect(acaoDoRequest("POST", "/api/lojas/1/contratos/2/cancelar")).toBe("editar");
+    expect(acaoDoRequest("POST", "/api/lojas/1/parcelas/2/estornar")).toBe("editar");
+    expect(acaoDoRequest("POST", "/api/lojas/1/financeiro/pagamentos/2/estornar")).toBe("editar");
+  });
+
+  it("POST comum continua criar; demais métodos seguem o método", () => {
+    expect(acaoDoRequest("POST", "/api/lojas/1/contratos")).toBe("criar");
+    expect(acaoDoRequest("GET", "/api/lojas/1/contratos")).toBe("ver");
+    expect(acaoDoRequest("DELETE", "/api/lojas/1/parcelas/2")).toBe("editar");
+    // Não casa no meio do caminho, só no fim.
+    expect(acaoDoRequest("POST", "/api/lojas/1/cancelar/algo")).toBe("criar");
   });
 });

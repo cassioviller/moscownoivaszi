@@ -85,3 +85,14 @@ export function acaoDoMetodo(metodo: string): Acao {
   if (m === "POST") return "criar";
   return "editar";
 }
+
+/**
+ * Ação exigida a partir do método E do caminho. Cancelar/estornar são POST mas
+ * MUTAM um recurso existente — são `editar`, não `criar`. Sem isto, um perfil
+ * com `criar` e sem `editar` (estado válido) cancelava contrato e estornava
+ * recebimento: o guard derivava `criar` do método e a rota mentia sobre o que faz.
+ */
+export function acaoDoRequest(metodo: string, caminho: string): Acao {
+  if (metodo.toUpperCase() === "POST" && /\/(cancelar|estornar)$/.test(caminho)) return "editar";
+  return acaoDoMetodo(metodo);
+}
