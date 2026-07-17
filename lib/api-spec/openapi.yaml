@@ -2728,11 +2728,12 @@ components:
             $ref: "#/components/schemas/OrcamentoItem"
     OrcamentoInput:
       type: object
-      required: [leadId, vendedoraId]
+      required: [leadId]
       properties:
         leadId: { type: string }
         atendimentoId: { type: string }
-        vendedoraId: { type: string }
+        # Sem vendedoraId: a autoria vem da sessão autenticada, nunca do corpo
+        # — mesma regra do registro de cobrança.
         descontoTipo: { type: string, enum: [PERCENTUAL, VALOR] }
         descontoValor: { type: number }
         validade: { type: string, format: date-time }

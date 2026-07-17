@@ -2965,7 +2965,6 @@ export const CreateOrcamentoParams = zod.object({
 export const CreateOrcamentoBody = zod.object({
   "leadId": zod.string(),
   "atendimentoId": zod.string().optional(),
-  "vendedoraId": zod.string(),
   "descontoTipo": zod.enum(['PERCENTUAL', 'VALOR']).optional(),
   "descontoValor": zod.number().optional(),
   "validade": zod.coerce.date().optional(),

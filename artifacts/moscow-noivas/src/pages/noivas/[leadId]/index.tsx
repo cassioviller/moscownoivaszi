@@ -89,7 +89,7 @@ export default function NoivaDetalhe() {
     try {
       const criado = await createOrcamento.mutateAsync({
         lojaId: activeLojaId!,
-        data: { leadId: leadId!, vendedoraId: user!.id },
+        data: { leadId: leadId! },
       });
       await queryClient.invalidateQueries({ queryKey: getListOrcamentosQueryKey(activeLojaId!) });
       toast({ title: "Orçamento criado", description: "Adicione os itens." });

@@ -10,7 +10,6 @@ import type { OrcamentoInputDescontoTipo } from './orcamentoInputDescontoTipo';
 export interface OrcamentoInput {
   leadId: string;
   atendimentoId?: string;
-  vendedoraId: string;
   descontoTipo?: OrcamentoInputDescontoTipo;
   descontoValor?: number;
   validade?: Date;

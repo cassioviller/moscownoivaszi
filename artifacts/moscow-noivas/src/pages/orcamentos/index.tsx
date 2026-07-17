@@ -90,7 +90,6 @@ export default function Orcamentos() {
         lojaId: activeLojaId!,
         data: {
           leadId: values.leadId,
-          vendedoraId: user!.id,
           validade: values.validade ? diaParaISO(values.validade) : undefined,
           observacoes: values.observacoes || undefined,
         },
