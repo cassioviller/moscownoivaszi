@@ -96,11 +96,47 @@ describe("Lote 6 — máquina de estados (API)", () => {
       .expect(422);
     expect(regressao.body.error).toBe("TRANSICAO_INVALIDA");
 
-    const perdido = await agent
+    // Perder sem motivo não passa mais: o dado estruturado só vale se for
+    // sempre coletado.
+    const semMotivo = await agent
       .patch(`/api/lojas/${f.lojaId}/leads/${lead.id}`)
       .send({ etapa: "PERDIDO" })
+      .expect(422);
+    expect(semMotivo.body.error).toBe("MOTIVO_OBRIGATORIO");
+
+    const perdido = await agent
+      .patch(`/api/lojas/${f.lojaId}/leads/${lead.id}`)
+      .send({ etapa: "PERDIDO", perdidaMotivo: "PRECO", perdidaDetalhe: "Acima do teto da noiva" })
       .expect(200);
     expect(perdido.body.etapa).toBe("PERDIDO");
     expect(perdido.body.perdidaEm).toBeTruthy();
+    expect(perdido.body.perdidaMotivo).toBe("PRECO");
+    expect(perdido.body.perdidaDetalhe).toBe("Acima do teto da noiva");
+  });
+
+  it("reviver lead perdido preserva o motivo como histórico; motivo fora do PERDIDO é ignorado", async () => {
+    const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const lead = await criarLead(f);
+
+    await agent
+      .patch(`/api/lojas/${f.lojaId}/leads/${lead.id}`)
+      .send({ etapa: "PERDIDO", perdidaMotivo: "SEM_RETORNO" })
+      .expect(200);
+
+    // Ela voltou! A etapa anda, mas o registro de por que se perdeu fica —
+    // mesmo espírito do carimbo perdidaEm.
+    const revivido = await agent
+      .patch(`/api/lojas/${f.lojaId}/leads/${lead.id}`)
+      .send({ etapa: "ATENDIMENTO_AGENDADO" })
+      .expect(200);
+    expect(revivido.body.etapa).toBe("ATENDIMENTO_AGENDADO");
+    expect(revivido.body.perdidaMotivo).toBe("SEM_RETORNO");
+
+    // Motivo mandado numa transição que não é perda: ignorado, não gravado.
+    const comMotivoSolto = await agent
+      .patch(`/api/lojas/${f.lojaId}/leads/${lead.id}`)
+      .send({ etapa: "EM_ATENDIMENTO", perdidaMotivo: "CONCORRENTE" })
+      .expect(200);
+    expect(comMotivoSolto.body.perdidaMotivo).toBe("SEM_RETORNO");
   });
 });

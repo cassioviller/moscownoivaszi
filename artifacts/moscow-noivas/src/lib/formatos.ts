@@ -49,6 +49,20 @@ export function tipoAtributoLabel(tipo: string): string {
   return TIPO_ATRIBUTO_LABELS[tipo] ?? tipo;
 }
 
+// Por que a noiva não fechou — espelha o enum lead_perdida_motivo do backend.
+export const PERDIDA_MOTIVO_LABELS: Record<string, string> = {
+  PRECO: "Preço",
+  DATA_INDISPONIVEL: "Data indisponível",
+  CONCORRENTE: "Fechou com concorrente",
+  DESISTENCIA: "Desistiu do aluguel",
+  SEM_RETORNO: "Parou de responder",
+  OUTRO: "Outro",
+};
+
+export function perdidaMotivoLabel(motivo: string): string {
+  return PERDIDA_MOTIVO_LABELS[motivo] ?? motivo;
+}
+
 const dataDiaFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 
 /**

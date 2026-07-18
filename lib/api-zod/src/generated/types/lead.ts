@@ -8,6 +8,7 @@
 import type { LeadEtapa } from './leadEtapa';
 import type { LeadInteresse } from './leadInteresse';
 import type { LeadOrigem } from './leadOrigem';
+import type { LeadPerdidaMotivo } from './leadPerdidaMotivo';
 
 export interface Lead {
   id: string;
@@ -32,6 +33,10 @@ export interface Lead {
   contratoFechadoEm?: Date | null;
   /** @nullable */
   perdidaEm?: Date | null;
+  /** @nullable */
+  perdidaMotivo?: LeadPerdidaMotivo;
+  /** @nullable */
+  perdidaDetalhe?: string | null;
   origem: LeadOrigem;
   createdAt: Date;
   interesse?: LeadInteresse;

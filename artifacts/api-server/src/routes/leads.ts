@@ -115,10 +115,27 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     return;
   }
 
+  // Perder EXIGE o motivo estruturado — o dado só vale se for sempre coletado.
+  // Fora do PERDIDO, motivo/detalhe enviados são ignorados (não fazem sentido);
+  // ao reviver, os campos ficam como histórico, mesmo espírito do perdidaEm.
+  const { perdidaMotivo, perdidaDetalhe, ...resto } = parsed.data;
+  const perda: Partial<{ perdidaMotivo: typeof perdidaMotivo; perdidaDetalhe: string | null }> = {};
+  if (parsed.data.etapa === "PERDIDO") {
+    if (!perdidaMotivo) {
+      res.status(422).json({
+        error: "MOTIVO_OBRIGATORIO",
+        detalhe: "Marcar como perdida pede o motivo (PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO ou OUTRO)",
+      });
+      return;
+    }
+    perda.perdidaMotivo = perdidaMotivo;
+    perda.perdidaDetalhe = perdidaDetalhe ?? null;
+  }
+
   const carimbo = parsed.data.etapa ? carimboEtapa(parsed.data.etapa, existente) : {};
 
   const [lead] = await db.update(leadsTable)
-    .set({ ...parsed.data, ...carimbo, updatedAt: new Date() })
+    .set({ ...resto, ...perda, ...carimbo, updatedAt: new Date() })
     .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)))
     .returning();
 

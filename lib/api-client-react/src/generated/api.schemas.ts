@@ -310,6 +310,21 @@ export const LeadEtapa = {
   PERDIDO: 'PERDIDO',
 } as const;
 
+/**
+ * @nullable
+ */
+export type LeadPerdidaMotivo = typeof LeadPerdidaMotivo[keyof typeof LeadPerdidaMotivo] | null;
+
+
+export const LeadPerdidaMotivo = {
+  PRECO: 'PRECO',
+  DATA_INDISPONIVEL: 'DATA_INDISPONIVEL',
+  CONCORRENTE: 'CONCORRENTE',
+  DESISTENCIA: 'DESISTENCIA',
+  SEM_RETORNO: 'SEM_RETORNO',
+  OUTRO: 'OUTRO',
+} as const;
+
 export type LeadOrigem = typeof LeadOrigem[keyof typeof LeadOrigem];
 
 
@@ -352,6 +367,10 @@ export interface Lead {
   contratoFechadoEm?: string | null;
   /** @nullable */
   perdidaEm?: string | null;
+  /** @nullable */
+  perdidaMotivo?: LeadPerdidaMotivo;
+  /** @nullable */
+  perdidaDetalhe?: string | null;
   origem: LeadOrigem;
   createdAt: string;
   interesse?: LeadInteresse;
@@ -394,6 +413,21 @@ export const LeadUpdateEtapa = {
   PERDIDO: 'PERDIDO',
 } as const;
 
+/**
+ * Obrigatório quando etapa vira PERDIDO; ignorado nas demais
+ */
+export type LeadUpdatePerdidaMotivo = typeof LeadUpdatePerdidaMotivo[keyof typeof LeadUpdatePerdidaMotivo];
+
+
+export const LeadUpdatePerdidaMotivo = {
+  PRECO: 'PRECO',
+  DATA_INDISPONIVEL: 'DATA_INDISPONIVEL',
+  CONCORRENTE: 'CONCORRENTE',
+  DESISTENCIA: 'DESISTENCIA',
+  SEM_RETORNO: 'SEM_RETORNO',
+  OUTRO: 'OUTRO',
+} as const;
+
 export interface LeadUpdate {
   etapa?: LeadUpdateEtapa;
   noivaNome?: string;
@@ -403,6 +437,9 @@ export interface LeadUpdate {
   casamentoData?: string;
   casamentoHorario?: string;
   casamentoLocal?: string;
+  /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
+  perdidaMotivo?: LeadUpdatePerdidaMotivo;
+  perdidaDetalhe?: string;
 }
 
 export interface LeadInteresseInput {

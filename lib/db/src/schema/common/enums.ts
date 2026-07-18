@@ -18,6 +18,17 @@ export const leadEtapaEnum = pgEnum("lead_etapa", [
 
 export const leadOrigemEnum = pgEnum("lead_origem", ["LOJA", "WHATSAPP"]);
 
+// Por que a noiva não fechou — estruturado para o funil responder "onde
+// estamos perdendo": preço, data indisponível, concorrente…
+export const leadPerdidaMotivoEnum = pgEnum("lead_perdida_motivo", [
+  "PRECO",
+  "DATA_INDISPONIVEL",
+  "CONCORRENTE",
+  "DESISTENCIA",
+  "SEM_RETORNO",
+  "OUTRO",
+]);
+
 export const bloqueioTipoEnum = pgEnum("bloqueio_tipo", [
   "RESERVA_CASAMENTO",
   "MANUTENCAO",

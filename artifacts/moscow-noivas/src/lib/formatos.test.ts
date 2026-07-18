@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   brl,
   dataDia,
+  perdidaMotivoLabel,
   statusContratoLabel,
   statusOrcamentoLabel,
   tipoAtributoLabel,
@@ -70,5 +71,17 @@ describe("dataDia", () => {
   it("date-only (meia-noite UTC) NÃO escorrega um dia para trás", () => {
     expect(dataDia("2026-11-20")).toBe("20/11/2026");
     expect(dataDia("2026-11-20T00:00:00.000Z")).toBe("20/11/2026");
+  });
+});
+
+describe("perdidaMotivoLabel", () => {
+  it("motivo de perda em linguagem de gente, nunca a chave crua", () => {
+    expect(perdidaMotivoLabel("PRECO")).toBe("Preço");
+    expect(perdidaMotivoLabel("DATA_INDISPONIVEL")).toBe("Data indisponível");
+    expect(perdidaMotivoLabel("SEM_RETORNO")).toBe("Parou de responder");
+  });
+
+  it("motivo novo do backend aparece feio, mas aparece", () => {
+    expect(perdidaMotivoLabel("MUDANCA_DE_CIDADE")).toBe("MUDANCA_DE_CIDADE");
   });
 });

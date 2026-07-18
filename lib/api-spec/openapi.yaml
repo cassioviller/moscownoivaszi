@@ -2420,6 +2420,10 @@ components:
         orcamentoAbertoEm: { type: ["string", "null"], format: date-time }
         contratoFechadoEm: { type: ["string", "null"], format: date-time }
         perdidaEm: { type: ["string", "null"], format: date-time }
+        perdidaMotivo:
+          type: ["string", "null"]
+          enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO, null]
+        perdidaDetalhe: { type: ["string", "null"] }
         origem: { type: string, enum: [LOJA, WHATSAPP] }
         createdAt: { type: string, format: date-time }
         interesse:
@@ -2449,6 +2453,11 @@ components:
         casamentoData: { type: string, format: date-time }
         casamentoHorario: { type: string }
         casamentoLocal: { type: string }
+        perdidaMotivo:
+          type: string
+          enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO]
+          description: "Obrigatório quando etapa vira PERDIDO; ignorado nas demais"
+        perdidaDetalhe: { type: string }
     LeadInteresse:
       type: object
       required: [leadId]

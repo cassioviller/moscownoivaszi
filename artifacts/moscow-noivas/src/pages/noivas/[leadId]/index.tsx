@@ -1,23 +1,45 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetLead,
   getGetLeadQueryKey,
+  useUpdateLead,
+  getListLeadsQueryKey,
   useListOrcamentos,
   getListOrcamentosQueryKey,
   useCreateOrcamento,
   useListContratos,
   getListContratosQueryKey,
+  type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { etapaLabel } from "@/lib/formatos";
+import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
   dataLongaFmt,
@@ -72,6 +94,12 @@ export default function NoivaDetalhe() {
     query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const createOrcamento = useCreateOrcamento();
+  const updateLead = useUpdateLead();
+
+  // Diálogo de perda: motivo estruturado obrigatório, detalhe livre opcional.
+  const [perdendo, setPerdendo] = useState(false);
+  const [motivoPerda, setMotivoPerda] = useState<LeadUpdatePerdidaMotivo | "">("");
+  const [detalhePerda, setDetalhePerda] = useState("");
 
   // Sem endpoint "por lead": filtra as listas da loja client-side.
   const orcamentosDaNoiva = useMemo(
@@ -102,6 +130,60 @@ export default function NoivaDetalhe() {
       });
     }
   };
+
+  async function invalidarLead() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetLeadQueryKey(activeLojaId!, leadId!) }),
+      queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(activeLojaId!) }),
+    ]);
+  }
+
+  async function marcarPerdida() {
+    if (!motivoPerda) {
+      toast({ title: "Escolha o motivo", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateLead.mutateAsync({
+        lojaId: activeLojaId!,
+        leadId: leadId!,
+        data: {
+          etapa: "PERDIDO",
+          perdidaMotivo: motivoPerda,
+          ...(detalhePerda.trim() ? { perdidaDetalhe: detalhePerda.trim() } : {}),
+        },
+      });
+      await invalidarLead();
+      setPerdendo(false);
+      setMotivoPerda("");
+      setDetalhePerda("");
+      toast({ title: "Noiva marcada como perdida" });
+    } catch (err) {
+      toast({
+        title: "Erro ao marcar como perdida",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function reativar() {
+    try {
+      await updateLead.mutateAsync({
+        lojaId: activeLojaId!,
+        leadId: leadId!,
+        data: { etapa: "NOVO" },
+      });
+      await invalidarLead();
+      toast({ title: "Noiva reativada", description: "De volta ao funil, como novo contato." });
+    } catch (err) {
+      toast({
+        title: "Erro ao reativar",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }
 
   if (isError) {
     return (
@@ -149,17 +231,109 @@ export default function NoivaDetalhe() {
           </h1>
           <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"} className="mt-2">
             {etapaLabel(lead.etapa)}
+            {lead.etapa === "PERDIDO" && lead.perdidaMotivo && ` · ${perdidaMotivoLabel(lead.perdidaMotivo)}`}
           </Badge>
+          {lead.etapa === "PERDIDO" && lead.perdidaDetalhe && (
+            <p className="mt-1 text-xs text-muted-foreground">{lead.perdidaDetalhe}</p>
+          )}
         </div>
-        {podeEditar && (
-          <Button asChild variant="outline" data-testid="button-editar-noiva">
-            <Link to={`/loja/${lojaId}/noivas/${leadId}/editar`}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar dados
-            </Link>
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {podeEditar && lead.etapa === "PERDIDO" && (
+            <Button
+              variant="outline"
+              onClick={reativar}
+              disabled={updateLead.isPending}
+              data-testid="button-reativar-noiva"
+            >
+              {updateLead.isPending ? "Reativando…" : "Reativar"}
+            </Button>
+          )}
+          {podeEditar && lead.etapa !== "PERDIDO" && (
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setPerdendo(true)}
+              data-testid="button-marcar-perdida"
+            >
+              Marcar como perdida
+            </Button>
+          )}
+          {podeEditar && (
+            <Button asChild variant="outline" data-testid="button-editar-noiva">
+              <Link to={`/loja/${lojaId}/noivas/${leadId}/editar`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar dados
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
+
+      <AlertDialog
+        open={perdendo}
+        onOpenChange={(aberto) => {
+          if (!aberto) {
+            setPerdendo(false);
+            setMotivoPerda("");
+            setDetalhePerda("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar {lead.noivaNome} como perdida?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ela sai do funil ativo, mas o cadastro e o histórico ficam — e dá para
+              reativar se ela voltar. O motivo alimenta o relatório de por que as
+              noivas não fecham.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div className="grid gap-1.5">
+              <Label className="text-xs text-muted-foreground">Motivo</Label>
+              <Select
+                value={motivoPerda}
+                onValueChange={(v) => setMotivoPerda(v as LeadUpdatePerdidaMotivo)}
+              >
+                <SelectTrigger data-testid="select-motivo-perda">
+                  <SelectValue placeholder="Por que ela não fechou?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PERDIDA_MOTIVO_LABELS).map(([valor, rotulo]) => (
+                    <SelectItem key={valor} value={valor}>
+                      {rotulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="detalhe-perda" className="text-xs text-muted-foreground">
+                Detalhe (opcional)
+              </Label>
+              <Input
+                id="detalhe-perda"
+                value={detalhePerda}
+                onChange={(e) => setDetalhePerda(e.target.value)}
+                placeholder="Ex.: fechou com ateliê X, orçamento acima do teto…"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                // Sem motivo o diálogo fica aberto — a validação fala primeiro.
+                if (!motivoPerda) e.preventDefault();
+                void marcarPerdida();
+              }}
+              disabled={updateLead.isPending}
+            >
+              {updateLead.isPending ? "Marcando…" : "Marcar como perdida"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
