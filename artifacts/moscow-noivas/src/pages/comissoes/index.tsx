@@ -12,6 +12,8 @@ import {
   getPreviewComissaoQueryKey,
   useGerarComissaoFechamento,
   useBaixarEstornoComissao,
+  useListBaixasEstornoComissao,
+  getListBaixasEstornoComissaoQueryKey,
   getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
@@ -127,6 +129,12 @@ export default function Comissoes() {
   const fechamentos = useListComissaoFechamentos(activeLojaId!, paramsFech, {
     query: {
       queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech),
+      enabled: !!activeLojaId,
+    },
+  });
+  const baixas = useListBaixasEstornoComissao(activeLojaId!, {
+    query: {
+      queryKey: getListBaixasEstornoComissaoQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },
   });
@@ -260,7 +268,10 @@ export default function Comissoes() {
           motivo: motivo || null,
         },
       });
-      await queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) }),
+        queryClient.invalidateQueries({ queryKey: getListBaixasEstornoComissaoQueryKey(activeLojaId!) }),
+      ]);
       setEstornoBaixando(null);
       setMotivoBaixa("");
       toast({
@@ -442,6 +453,39 @@ export default function Comissoes() {
                     </p>
                   </div>
                   <span className="shrink-0 font-serif text-xl tabular-nums">R$ {brl(f.valorTotal)}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* — Baixas de estorno — só existe se alguma foi feita. O rastro do I10
+          visível: quem baixou, quando e por quê. */}
+      {(baixas.data?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Baixas de estorno</CardTitle>
+            <CardDescription>
+              Estornos baixados à mão — o valor deixou de carregar por decisão registrada, não por venda.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {baixas.data?.map((b) => (
+                <li key={b.contratoId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="font-medium">{b.vendedoraNome ?? "Vendedora"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {b.noivaNome && `Contrato de ${b.noivaNome} · `}
+                      baixado por {b.baixadoPorNome ?? "—"}
+                      {b.baixadoEm && ` em ${diaFmt.format(new Date(b.baixadoEm))}`}
+                      {b.motivo && ` · ${b.motivo}`}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-serif text-xl tabular-nums text-destructive">
+                    R$ {brl(b.valor)}
+                  </span>
                 </li>
               ))}
             </ul>

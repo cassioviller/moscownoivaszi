@@ -4622,6 +4622,26 @@ export const GerarComissaoFechamentoResponse = zod.array(GerarComissaoFechamento
 
 
 /**
+ * O outro lado do I10: as baixas manuais já feitas, com quem baixou, quando e por quê — o relatório que fecha o ciclo de auditoria. Reconciliações automáticas (estorno absorvido por um fechamento) não entram: não têm autor nem motivo.
+ */
+export const ListBaixasEstornoComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListBaixasEstornoComissaoResponseItem = zod.object({
+  "contratoId": zod.string(),
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "noivaNome": zod.string().nullish(),
+  "valor": zod.number().describe('O valor do contrato cancelado cujo estorno foi baixado'),
+  "motivo": zod.string().nullish(),
+  "baixadoPorNome": zod.string().nullish(),
+  "baixadoEm": zod.coerce.date()
+})
+export const ListBaixasEstornoComissaoResponse = zod.array(ListBaixasEstornoComissaoResponseItem)
+
+
+/**
  * Baixa MANUAL do estorno pendente de uma vendedora (I10). Só admin. Quando a venda cancelada não é absorvida por nenhum mês — a vendedora parou de vender — o estorno carrega para sempre. A baixa é uma decisão humana e auditável (registra quem e por quê); nunca automática, que apagaria o rastro de um erro ou fraude.
  */
 export const BaixarEstornoComissaoParams = zod.object({

@@ -36,6 +36,7 @@ export * from './atributoOpcaoInput';
 export * from './atributoOpcaoUpdate';
 export * from './atributoTipo';
 export * from './atributoUpdate';
+export * from './baixaEstornoComissao';
 export * from './baixarEstornoComissaoInput';
 export * from './baixarEstornoComissaoResultado';
 export * from './bloqueioVestido';

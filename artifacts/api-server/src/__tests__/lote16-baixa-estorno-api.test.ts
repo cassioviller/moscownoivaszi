@@ -140,6 +140,86 @@ describe("Lote 16 — baixa manual de estorno (I10)", () => {
     }
   });
 
+  it("baixa manual aparece no relatório com autor, motivo e valor; loja alheia não vê", async () => {
+    const outra = await criarFixture();
+    const alheia = await criarFixture();
+    try {
+      const { ag, contrato } = await comEstornoPendente(outra);
+      await ag
+        .post(`/api/lojas/${outra.lojaId}/comissao/estornos/baixa`)
+        .send({ vendedoraId: outra.vendedoraId, competencia: "2025-07", motivo: "Desligamento" })
+        .expect(200);
+
+      const rel = await ag
+        .get(`/api/lojas/${outra.lojaId}/comissao/estornos/baixas`)
+        .expect(200);
+      expect(rel.body).toHaveLength(1);
+      expect(rel.body[0]).toMatchObject({
+        contratoId: contrato.id,
+        vendedoraId: outra.vendedoraId,
+        valor: 10000,
+        motivo: "Desligamento",
+      });
+      expect(rel.body[0].baixadoPorNome).toContain("Super Admin");
+      expect(rel.body[0].noivaNome).toContain("Noiva");
+      expect(rel.body[0].baixadoEm).toBeTruthy();
+
+      // A loja alheia não enxerga a baixa desta.
+      const agAlheia = await loginComLoja(alheia.superAdminEmail, alheia.lojaId);
+      const relAlheia = await agAlheia
+        .get(`/api/lojas/${alheia.lojaId}/comissao/estornos/baixas`)
+        .expect(200);
+      expect(relAlheia.body).toEqual([]);
+    } finally {
+      await limparFixture(outra);
+      await limparFixture(alheia);
+    }
+  });
+
+  it("reconciliação automática (absorvida por fechamento) NÃO entra no relatório", async () => {
+    const outra = await criarFixture();
+    try {
+      const ag = await loginComLoja(outra.superAdminEmail, outra.lojaId);
+      await ag.post(`/api/lojas/${outra.lojaId}/comissao/regras`).send({
+        vendedoraId: outra.vendedoraId,
+        vigenciaInicio: dia("2020-01-01").toISOString(),
+        faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual: 10 }],
+      }).expect(201);
+
+      // Junho vende e fecha; a venda é cancelada; JULHO vende de novo e o
+      // fechamento de julho ABSORVE o estorno — reconciliação automática.
+      const lead = await criarLead(outra);
+      const contratoJun = await criarContrato(outra, {
+        leadId: lead.id, valorTotal: 5000, fechadoEm: dia("2025-06-10"),
+      });
+      await ag.post(`/api/lojas/${outra.lojaId}/comissao/fechamentos`)
+        .send({ competencia: "2025-06" }).expect(201);
+      await ag.post(`/api/lojas/${outra.lojaId}/contratos/${contratoJun.id}/cancelar`)
+        .send({ motivo: "Desistência" }).expect(200);
+      const lead2 = await criarLead(outra);
+      await criarContrato(outra, {
+        leadId: lead2.id, valorTotal: 8000, fechadoEm: dia("2025-07-10"),
+      });
+      await ag.post(`/api/lojas/${outra.lojaId}/comissao/fechamentos`)
+        .send({ competencia: "2025-07" }).expect(201);
+
+      // O estorno foi reconciliado (comissaoEstornadaEm carimbado), mas sem
+      // autor — não é baixa manual, não aparece.
+      const [linha] = await db
+        .select({ estornadaEm: contratosTable.comissaoEstornadaEm })
+        .from(contratosTable)
+        .where(eq(contratosTable.id, contratoJun.id));
+      expect(linha.estornadaEm).not.toBeNull();
+
+      const rel = await ag
+        .get(`/api/lojas/${outra.lojaId}/comissao/estornos/baixas`)
+        .expect(200);
+      expect(rel.body).toEqual([]);
+    } finally {
+      await limparFixture(outra);
+    }
+  });
+
   it("vendedora de outra loja → 422 VENDEDORA_INVALIDA", async () => {
     const outra = await criarFixture();
     const alheia = await criarFixture();

@@ -1996,6 +1996,27 @@ paths:
                 items:
                   $ref: "#/components/schemas/ComissaoFechamento"
 
+  /lojas/{lojaId}/comissao/estornos/baixas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listBaixasEstornoComissao
+      tags: [comissao]
+      description: >
+        O outro lado do I10: as baixas manuais já feitas, com quem baixou,
+        quando e por quê — o relatório que fecha o ciclo de auditoria.
+        Reconciliações automáticas (estorno absorvido por um fechamento) não
+        entram: não têm autor nem motivo.
+      responses:
+        "200":
+          description: "Baixas manuais, mais recente primeiro"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BaixaEstornoComissao"
+
   /lojas/{lojaId}/comissao/estornos/baixa:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3209,6 +3230,21 @@ components:
         motivo:
           type: ["string", "null"]
           description: "Justificativa da baixa — fica no registro de auditoria"
+
+    BaixaEstornoComissao:
+      type: object
+      required: [contratoId, vendedoraId, valor, baixadoEm]
+      properties:
+        contratoId: { type: string }
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
+        noivaNome: { type: ["string", "null"] }
+        valor:
+          type: number
+          description: "O valor do contrato cancelado cujo estorno foi baixado"
+        motivo: { type: ["string", "null"] }
+        baixadoPorNome: { type: ["string", "null"] }
+        baixadoEm: { type: string, format: date-time }
 
     BaixarEstornoComissaoResultado:
       type: object

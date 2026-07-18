@@ -1516,6 +1516,22 @@ export interface BaixarEstornoComissaoInput {
   motivo?: string | null;
 }
 
+export interface BaixaEstornoComissao {
+  contratoId: string;
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  /** @nullable */
+  noivaNome?: string | null;
+  /** O valor do contrato cancelado cujo estorno foi baixado */
+  valor: number;
+  /** @nullable */
+  motivo?: string | null;
+  /** @nullable */
+  baixadoPorNome?: string | null;
+  baixadoEm: string;
+}
+
 export interface BaixarEstornoComissaoResultado {
   vendedoraId: string;
   /** Quantos contratos cancelados tiveram o estorno baixado */

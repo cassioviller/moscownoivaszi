@@ -35,6 +35,7 @@ import type {
   AtributoOpcaoInput,
   AtributoOpcaoUpdate,
   AtributoUpdate,
+  BaixaEstornoComissao,
   BaixarEstornoComissaoInput,
   BaixarEstornoComissaoResultado,
   BloqueioVestido,
@@ -8077,6 +8078,80 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getGerarComissaoFechamentoMutationOptions(options));
     }
+
+export const getListBaixasEstornoComissaoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/comissao/estornos/baixas`
+}
+
+/**
+ * O outro lado do I10: as baixas manuais já feitas, com quem baixou, quando e por quê — o relatório que fecha o ciclo de auditoria. Reconciliações automáticas (estorno absorvido por um fechamento) não entram: não têm autor nem motivo.
+ */
+export const listBaixasEstornoComissao = async (lojaId: string, options?: RequestInit): Promise<BaixaEstornoComissao[]> => {
+
+  return customFetch<BaixaEstornoComissao[]>(getListBaixasEstornoComissaoUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBaixasEstornoComissaoQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/comissao/estornos/baixas`
+    ] as const;
+    }
+
+
+export const getListBaixasEstornoComissaoQueryOptions = <TData = Awaited<ReturnType<typeof listBaixasEstornoComissao>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBaixasEstornoComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBaixasEstornoComissaoQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBaixasEstornoComissao>>> = ({ signal }) => listBaixasEstornoComissao(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBaixasEstornoComissao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBaixasEstornoComissaoQueryResult = NonNullable<Awaited<ReturnType<typeof listBaixasEstornoComissao>>>
+export type ListBaixasEstornoComissaoQueryError = ErrorType<unknown>
+
+
+
+export function useListBaixasEstornoComissao<TData = Awaited<ReturnType<typeof listBaixasEstornoComissao>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBaixasEstornoComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBaixasEstornoComissaoQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getBaixarEstornoComissaoUrl = (lojaId: string,) => {
 

@@ -6,10 +6,12 @@ import {
   comissaoFechamentosTable,
   contasPagarTable,
   contratosTable,
+  leadsTable,
   usuariosTable,
   usuariosLojasTable,
 } from "@workspace/db";
-import { eq, and, gte, lt, lte, inArray, isNull, desc } from "drizzle-orm";
+import { eq, and, gte, lt, lte, inArray, isNull, isNotNull, desc } from "drizzle-orm";
+import { alias as aliasedTable } from "drizzle-orm/pg-core";
 import { ehViolacaoUnica } from "../lib/erros";
 import {
   ListComissaoRegrasResponse,
@@ -25,6 +27,7 @@ import {
   GerarComissaoFechamentoResponse,
   BaixarEstornoComissaoBody,
   BaixarEstornoComissaoResponse,
+  ListBaixasEstornoComissaoResponse,
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -641,6 +644,38 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
     return;
   }
   res.status(201).json(GerarComissaoFechamentoResponse.parse(criados));
+});
+
+/**
+ * O outro lado do I10: as baixas manuais já feitas, com quem baixou, quando e
+ * por quê. Reconciliação automática (estorno absorvido por um fechamento) não
+ * entra — não tem autor nem motivo; o filtro é justamente `baixa_por IS NOT
+ * NULL`. Sem este relatório o rastro existe no banco mas ninguém o vê.
+ */
+router.get("/lojas/:lojaId/comissao/estornos/baixas", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const autor = aliasedTable(usuariosTable, "autor_baixa");
+  const linhas = await db
+    .select({
+      contratoId: contratosTable.id,
+      vendedoraId: contratosTable.vendedoraId,
+      vendedoraNome: usuariosTable.nome,
+      noivaNome: leadsTable.noivaNome,
+      valor: contratosTable.valorTotal,
+      motivo: contratosTable.comissaoEstornoBaixaMotivo,
+      baixadoPorNome: autor.nome,
+      baixadoEm: contratosTable.comissaoEstornadaEm,
+    })
+    .from(contratosTable)
+    .leftJoin(usuariosTable, eq(usuariosTable.id, contratosTable.vendedoraId))
+    .leftJoin(leadsTable, eq(leadsTable.id, contratosTable.leadId))
+    .leftJoin(autor, eq(autor.id, contratosTable.comissaoEstornoBaixaPor))
+    .where(and(
+      eq(contratosTable.lojaId, lojaId),
+      isNotNull(contratosTable.comissaoEstornoBaixaPor),
+    ))
+    .orderBy(desc(contratosTable.comissaoEstornadaEm));
+  res.json(ListBaixasEstornoComissaoResponse.parse(linhas));
 });
 
 /**
