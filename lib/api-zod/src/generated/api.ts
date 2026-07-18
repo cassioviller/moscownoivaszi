@@ -4621,6 +4621,29 @@ export const GerarComissaoFechamentoResponseItem = zod.object({
 export const GerarComissaoFechamentoResponse = zod.array(GerarComissaoFechamentoResponseItem)
 
 
+/**
+ * Baixa MANUAL do estorno pendente de uma vendedora (I10). Só admin. Quando a venda cancelada não é absorvida por nenhum mês — a vendedora parou de vender — o estorno carrega para sempre. A baixa é uma decisão humana e auditável (registra quem e por quê); nunca automática, que apagaria o rastro de um erro ou fraude.
+ */
+export const BaixarEstornoComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const baixarEstornoComissaoBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const BaixarEstornoComissaoBody = zod.object({
+  "vendedoraId": zod.string(),
+  "competencia": zod.string().regex(baixarEstornoComissaoBodyCompetenciaRegExp).describe('A competência em que o estorno aparece pendente (a mesma do preview)'),
+  "motivo": zod.string().nullish().describe('Justificativa da baixa — fica no registro de auditoria')
+})
+
+export const BaixarEstornoComissaoResponse = zod.object({
+  "vendedoraId": zod.string(),
+  "contratosBaixados": zod.number().describe('Quantos contratos cancelados tiveram o estorno baixado'),
+  "valorBaixado": zod.number().describe('Total do estorno baixado, em reais')
+})
+
+
 export const GetDashboardParams = zod.object({
   "lojaId": zod.coerce.string()
 })

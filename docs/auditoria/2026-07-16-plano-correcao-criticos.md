@@ -170,3 +170,34 @@ Placar após D6/D8: frontend **129**, typecheck verde.
 Destaque para I1 (o `.parse()` na saída como 500 silencioso, que é a raiz que torna esta
 classe de bug invisível) e I5 (validar `valorTotal` também no contrato manual,
 sem orçamento — o caminho por orçamento já ficou coberto por C7).
+
+### Fecho de I10 — baixa manual de estorno (2026-07-18)
+
+O último deferido. A decisão de produto veio: **ação de baixa explícita**, nunca
+automática. O estorno de uma venda cancelada só é reconciliado quando um mês o
+absorve (§6.4); se a vendedora parou de vender, nenhum mês absorve e o valor
+carrega para sempre — visível no preview, mas sem saída pela tela. Agora tem:
+
+- **Schema** — `contratos.comissao_estorno_baixa_por` (FK usuários, `set null`) e
+  `comissao_estorno_baixa_motivo`. O carimbo continua em `comissaoEstornadaEm`
+  (é o que faz o estorno parar de carregar); os dois campos novos distinguem a
+  baixa MANUAL da reconciliação automática e guardam quem/por quê. DDL por psql
+  numa transação com guarda + `drizzle-kit push` para conferir ("Changes
+  applied", sem prompt).
+- **Contrato/rota** — `POST /lojas/{lojaId}/comissao/estornos/baixa`, gateado por
+  `requireModulo("admin", "editar")` (só admin — a rota já exigia comissão para
+  ver). O pendente é recalculado DENTRO da transação (como o fechamento): baixa
+  o que está pendente no banco, não ids que o cliente mandou. Vendedora de outra
+  loja → 422; nada pendente → 422 `SEM_ESTORNO_PENDENTE` (que também torna a
+  segunda baixa idempotente-por-recusa).
+- **Prova** — 4 testes de API: baixa soma no resultado e some do preview + rastro
+  no contrato; segunda baixa 422; só admin (comissão-sem-admin → 403, admin →
+  200); vendedora de outra loja → 422. API 278 → **282**.
+- **Tela** — na linha do ranking em que a vendedora só aparece pelo estorno
+  ("segue pendente até ela voltar a vender"), um botão "Dar baixa" (admin-gated,
+  mesma régua do backend) abre confirmação com motivo opcional e invalida o
+  preview. Não aparece quando há venda no mês (aí o estorno é absorvido no
+  fechamento, não baixado à mão).
+
+Com isto, **o backlog da auditoria de 2026-07-16 está inteiramente fechado** —
+resta apenas D7 (primitivos shadcn não usados; churn sem valor de usuário).

@@ -1502,6 +1502,28 @@ export interface ComissaoPreviewLinha {
   faltaProximoDegrau?: number | null;
 }
 
+export interface BaixarEstornoComissaoInput {
+  vendedoraId: string;
+  /**
+     * A competência em que o estorno aparece pendente (a mesma do preview)
+     * @pattern ^\d{4}-\d{2}$
+     */
+  competencia: string;
+  /**
+     * Justificativa da baixa — fica no registro de auditoria
+     * @nullable
+     */
+  motivo?: string | null;
+}
+
+export interface BaixarEstornoComissaoResultado {
+  vendedoraId: string;
+  /** Quantos contratos cancelados tiveram o estorno baixado */
+  contratosBaixados: number;
+  /** Total do estorno baixado, em reais */
+  valorBaixado: number;
+}
+
 export interface DashboardSummary {
   totalLeadsAtivos: number;
   totalVestidosAtivos: number;

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListComissaoRegras,
   getListComissaoRegrasQueryKey,
@@ -10,6 +11,7 @@ import {
   usePreviewComissao,
   getPreviewComissaoQueryKey,
   useGerarComissaoFechamento,
+  useBaixarEstornoComissao,
   getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
@@ -99,7 +101,9 @@ function descreverFaixa(f: ComissaoFaixa): string {
 }
 
 export default function Comissoes() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // Baixar estorno é ação de admin — a mesma régua do gate do backend.
+  const podeBaixarEstorno = podeNoModulo(acessosModulos, "admin", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -130,6 +134,7 @@ export default function Comissoes() {
   const criarRegra = useCreateComissaoRegra();
   const removerRegra = useDeleteComissaoRegra();
   const gerarFechamento = useGerarComissaoFechamento();
+  const baixarEstorno = useBaixarEstornoComissao();
 
   // Resumo do que o fechamento vai LANÇAR em contas a pagar — o número que dá
   // confiança antes de uma ação irreversível.
@@ -140,6 +145,12 @@ export default function Comissoes() {
 
   // Regra em vias de ser apagada (abre a confirmação nomeando a vendedora).
   const [regraRemovendo, setRegraRemovendo] = useState<{ id: string; nome: string } | null>(null);
+
+  // Estorno em vias de baixa (abre a confirmação nomeando a vendedora e o valor).
+  const [estornoBaixando, setEstornoBaixando] = useState<
+    { vendedoraId: string; nome: string; valor: number } | null
+  >(null);
+  const [motivoBaixa, setMotivoBaixa] = useState("");
 
   const [vendedoraId, setVendedoraId] = useState("");
   const [bonusAcumula, setBonusAcumula] = useState(false);
@@ -231,6 +242,34 @@ export default function Comissoes() {
     } catch (err) {
       toast({
         title: "Erro ao gerar o fechamento",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function onBaixarEstorno() {
+    if (!estornoBaixando) return;
+    const motivo = motivoBaixa.trim();
+    try {
+      const r = await baixarEstorno.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          vendedoraId: estornoBaixando.vendedoraId,
+          competencia,
+          motivo: motivo || null,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) });
+      setEstornoBaixando(null);
+      setMotivoBaixa("");
+      toast({
+        title: "Estorno baixado",
+        description: `R$ ${brl(r.valorBaixado)} de ${estornoBaixando.nome} — o valor deixa de carregar.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao baixar o estorno",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -343,6 +382,22 @@ export default function Comissoes() {
                           ? `R$ ${brl(linha.estornoPendente)} de estorno esperando — segue pendente até ela voltar a vender`
                           : `R$ ${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
                       </p>
+                    )}
+                    {soEstorno && podeBaixarEstorno && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-7 text-xs"
+                        onClick={() =>
+                          setEstornoBaixando({
+                            vendedoraId: linha.vendedoraId,
+                            nome: linha.vendedoraNome ?? "a vendedora",
+                            valor: linha.estornoPendente!,
+                          })
+                        }
+                      >
+                        Dar baixa
+                      </Button>
                     )}
                     {linha.faltaProximoDegrau !== null && linha.faltaProximoDegrau !== undefined && (
                       <p className="text-xs text-muted-foreground">
@@ -556,6 +611,46 @@ export default function Comissoes() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!estornoBaixando}
+        onOpenChange={(aberto) => {
+          if (!aberto) {
+            setEstornoBaixando(null);
+            setMotivoBaixa("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Dar baixa em R$ {estornoBaixando ? brl(estornoBaixando.valor) : ""} de {estornoBaixando?.nome}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O estorno deixa de carregar para os próximos meses. Use quando a vendedora
+              não vai mais vender e o valor não será recuperado por venda futura. Fica no
+              registro quem baixou. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-1.5">
+            <Label htmlFor="motivo-baixa" className="text-xs text-muted-foreground">
+              Motivo (opcional)
+            </Label>
+            <Input
+              id="motivo-baixa"
+              value={motivoBaixa}
+              onChange={(e) => setMotivoBaixa(e.target.value)}
+              placeholder="Ex.: acordo com a vendedora, desligamento…"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onBaixarEstorno} disabled={baixarEstorno.isPending}>
+              {baixarEstorno.isPending ? "Baixando…" : "Dar baixa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!regraRemovendo} onOpenChange={(aberto) => !aberto && setRegraRemovendo(null)}>
         <AlertDialogContent>

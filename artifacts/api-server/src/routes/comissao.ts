@@ -23,6 +23,8 @@ import {
   PreviewComissaoResponse,
   GerarComissaoFechamentoBody,
   GerarComissaoFechamentoResponse,
+  BaixarEstornoComissaoBody,
+  BaixarEstornoComissaoResponse,
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -640,5 +642,80 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
   }
   res.status(201).json(GerarComissaoFechamentoResponse.parse(criados));
 });
+
+/**
+ * Baixa MANUAL do estorno pendente de uma vendedora (I10) — só admin.
+ *
+ * O estorno de uma venda cancelada só é reconciliado quando UM mês o absorve
+ * (`fecharTransacao`, §6.4). Se a vendedora parou de vender, nenhum mês absorve
+ * e o valor carrega para sempre — visível, mas sem saída pela tela. Esta é a
+ * saída: uma decisão humana, gateada por admin, que carimba `comissaoEstornadaEm`
+ * (o estorno para de carregar) e registra QUEM baixou e por quê. Nunca é
+ * automática de propósito — uma baixa silenciosa esconderia um lançamento errado
+ * ou uma fraude.
+ */
+router.post("/lojas/:lojaId/comissao/estornos/baixa",
+  requireModulo("admin", "editar"),
+  async (req, res): Promise<void> => {
+    const lojaId = req.params.lojaId as string;
+    const parsed = BaixarEstornoComissaoBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const { vendedoraId, competencia, motivo } = parsed.data;
+    if (!competenciaValida(competencia)) {
+      res.status(400).json({ error: "COMPETENCIA_INVALIDA" });
+      return;
+    }
+
+    const [membro] = await db
+      .select({ usuarioId: usuariosLojasTable.usuarioId })
+      .from(usuariosLojasTable)
+      .where(and(eq(usuariosLojasTable.lojaId, lojaId), eq(usuariosLojasTable.usuarioId, vendedoraId)));
+    if (!membro) {
+      res.status(422).json({ error: "VENDEDORA_INVALIDA", detalhe: "A vendedora não é da loja" });
+      return;
+    }
+
+    const baixadoPor = req.usuario!.id;
+    const resultado = await db.transaction(async (tx) => {
+      // O pendente é recalculado DENTRO da transação, como no fechamento: a lista
+      // a baixar nasce do estado do banco no instante da escrita, não de ids que
+      // o cliente mandou (que poderiam baixar o que já não está pendente, ou uma
+      // pendência nascida entre o preview e o clique).
+      const pend = await estornosPendentes(tx, lojaId, [vendedoraId], competencia);
+      const e = pend.get(vendedoraId);
+      if (!e || e.contratoIds.length === 0) return null;
+
+      await tx
+        .update(contratosTable)
+        .set({
+          comissaoEstornadaEm: new Date(),
+          comissaoEstornoBaixaPor: baixadoPor,
+          comissaoEstornoBaixaMotivo: motivo ?? null,
+        })
+        .where(and(eq(contratosTable.lojaId, lojaId), inArray(contratosTable.id, e.contratoIds)));
+
+      return { contratosBaixados: e.contratoIds.length, valorBaixadoC: e.totalC };
+    });
+
+    if (!resultado) {
+      res.status(422).json({
+        error: "SEM_ESTORNO_PENDENTE",
+        detalhe: `Nenhum estorno pendente para a vendedora em ${competencia}`,
+      });
+      return;
+    }
+
+    res.status(200).json(
+      BaixarEstornoComissaoResponse.parse({
+        vendedoraId,
+        contratosBaixados: resultado.contratosBaixados,
+        valorBaixado: real(resultado.valorBaixadoC),
+      }),
+    );
+  },
+);
 
 export default router;

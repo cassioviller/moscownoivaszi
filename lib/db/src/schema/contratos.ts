@@ -37,6 +37,14 @@ export const contratosTable = pgTable("contratos", {
   observacoes: text("observacoes"),
   fechadoEm: timestamp("fechado_em", { withTimezone: true }).notNull().defaultNow(),
   comissaoEstornadaEm: timestamp("comissao_estornada_em", { withTimezone: true }),
+  // Baixa MANUAL de estorno (I10): quando o estorno de uma venda cancelada não é
+  // absorvido por nenhum mês (a vendedora parou de vender), ele carrega para
+  // sempre. A baixa é uma decisão HUMANA e auditável — nunca automática, que
+  // apagaria o rastro de um erro de lançamento ou fraude. `comissaoEstornadaEm`
+  // recebe o carimbo (e por isso o estorno para de carregar); estes dois campos
+  // distinguem a baixa manual da reconciliação automática e dizem QUEM e por quê.
+  comissaoEstornoBaixaPor: text("comissao_estorno_baixa_por").references(() => usuariosTable.id, { onDelete: "set null" }),
+  comissaoEstornoBaixaMotivo: text("comissao_estorno_baixa_motivo"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

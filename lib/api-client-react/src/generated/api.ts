@@ -35,6 +35,8 @@ import type {
   AtributoOpcaoInput,
   AtributoOpcaoUpdate,
   AtributoUpdate,
+  BaixarEstornoComissaoInput,
+  BaixarEstornoComissaoResultado,
   BloqueioVestido,
   BloqueioVestidoInput,
   BloqueioVestidoUpdate,
@@ -8074,6 +8076,74 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getGerarComissaoFechamentoMutationOptions(options));
+    }
+
+export const getBaixarEstornoComissaoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/comissao/estornos/baixa`
+}
+
+/**
+ * Baixa MANUAL do estorno pendente de uma vendedora (I10). Só admin. Quando a venda cancelada não é absorvida por nenhum mês — a vendedora parou de vender — o estorno carrega para sempre. A baixa é uma decisão humana e auditável (registra quem e por quê); nunca automática, que apagaria o rastro de um erro ou fraude.
+ */
+export const baixarEstornoComissao = async (lojaId: string,
+    baixarEstornoComissaoInput: BaixarEstornoComissaoInput, options?: RequestInit): Promise<BaixarEstornoComissaoResultado> => {
+
+  return customFetch<BaixarEstornoComissaoResultado>(getBaixarEstornoComissaoUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(baixarEstornoComissaoInput)
+  }
+);}
+
+
+
+
+export const getBaixarEstornoComissaoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof baixarEstornoComissao>>, TError,{lojaId: string;data: BodyType<BaixarEstornoComissaoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof baixarEstornoComissao>>, TError,{lojaId: string;data: BodyType<BaixarEstornoComissaoInput>}, TContext> => {
+
+const mutationKey = ['baixarEstornoComissao'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof baixarEstornoComissao>>, {lojaId: string;data: BodyType<BaixarEstornoComissaoInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  baixarEstornoComissao(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BaixarEstornoComissaoMutationResult = NonNullable<Awaited<ReturnType<typeof baixarEstornoComissao>>>
+    export type BaixarEstornoComissaoMutationBody = BodyType<BaixarEstornoComissaoInput>
+    export type BaixarEstornoComissaoMutationError = ErrorType<unknown>
+
+    export const useBaixarEstornoComissao = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof baixarEstornoComissao>>, TError,{lojaId: string;data: BodyType<BaixarEstornoComissaoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof baixarEstornoComissao>>,
+        TError,
+        {lojaId: string;data: BodyType<BaixarEstornoComissaoInput>},
+        TContext
+      > => {
+      return useMutation(getBaixarEstornoComissaoMutationOptions(options));
     }
 
 export const getGetDashboardUrl = (lojaId: string,) => {
