@@ -76,9 +76,9 @@ function parseDia(dia: string): Date {
 }
 
 /** Ordem da foto de capa (menor `ordem`), ou null se o vestido não tem fotos. */
-function ordemCapa(vestido: Vestido): number | null {
+function fotoCapa(vestido: Vestido) {
   if (!vestido.fotos || vestido.fotos.length === 0) return null;
-  return vestido.fotos.reduce((min, f) => Math.min(min, f.ordem), vestido.fotos[0].ordem);
+  return vestido.fotos.reduce((menor, f) => (f.ordem < menor.ordem ? f : menor), vestido.fotos[0]);
 }
 
 /** Badge do status cadastral do vestido — rótulo tratado, nunca o valor cru. */
@@ -499,14 +499,17 @@ export default function Vestidos() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filtrados.map(vestido => {
-            const capa = ordemCapa(vestido);
+            const capa = fotoCapa(vestido);
             return (
             <Link key={vestido.id} href={`/vestidos/${vestido.id}`}>
               <Card className="hover-elevate cursor-pointer overflow-hidden group">
                 <div className="aspect-[3/4] bg-muted flex items-center justify-center relative">
                   {capa !== null ? (
                     <img
-                      src={getGetVestidoFotoUrl(activeLojaId!, vestido.id, capa)}
+                      src={getGetVestidoFotoUrl(activeLojaId!, vestido.id, capa.ordem, {
+                        variante: "thumb",
+                        v: String(Date.parse(capa.atualizadaEm)),
+                      })}
                       alt={vestido.nome}
                       loading="lazy"
                       className="absolute inset-0 h-full w-full object-cover"

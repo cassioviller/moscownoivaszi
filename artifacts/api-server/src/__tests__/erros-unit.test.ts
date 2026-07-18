@@ -51,4 +51,13 @@ describe("classificarErro", () => {
     expect(c.logLevel).toBe("error");
     expect(c.logMsg).toBe("Erro não tratado");
   });
+
+  it("corpo acima do limite do parser vira 413, não 500 — mesmo embrulhado", () => {
+    // O body-parser marca `type: "entity.too.large"`; antes caía no 500 mudo.
+    const c = classificarErro({ type: "entity.too.large" });
+    expect(c.status).toBe(413);
+    expect(c.body.error).toBe("PAYLOAD_MUITO_GRANDE");
+    expect(c.logLevel).toBe("warn");
+    expect(classificarErro({ cause: { type: "entity.too.large" } }).status).toBe(413);
+  });
 });

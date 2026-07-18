@@ -10,6 +10,7 @@ import {
   UpdateVestidoResponse,
   SetVestidoFotoBody,
   SetVestidoFotoResponse,
+  GetVestidoFotoQueryParams,
   CheckDisponibilidadeVestidosQueryParams,
   CheckDisponibilidadeVestidosResponse
 } from "@workspace/api-zod";
@@ -27,11 +28,28 @@ import {
   type ConflitoDetalhe,
   type Janela,
 } from "../lib/disponibilidade";
+import { identificarImagem } from "../lib/imagem";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/vestidos", requireModulo("vestidos"));
+
+// Fotos nas respostas de vestido: só a META (nunca bytes — `fotos: true`
+// arrastava o bytea inteiro do banco para o zod descartar). `updatedAt` sai
+// como `atualizadaEm`: é a versão que alimenta o cache-busting das URLs.
+const FOTOS_META = {
+  columns: { ordem: true, mime: true, largura: true, altura: true, updatedAt: true },
+} as const;
+
+type FotoMetaRow = { ordem: number; mime: string; largura: number; altura: number; updatedAt: Date };
+
+function comFotosMeta<V extends { fotos: FotoMetaRow[] }>(vestido: V) {
+  return {
+    ...vestido,
+    fotos: vestido.fotos.map(({ updatedAt, ...f }) => ({ ...f, atualizadaEm: updatedAt })),
+  };
+}
 
 router.get("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -39,19 +57,12 @@ router.get("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
     where: eq(vestidosTable.lojaId, lojaId),
     with: {
       atributos: true,
-      fotos: {
-        columns: {
-          ordem: true,
-          mime: true,
-          largura: true,
-          altura: true,
-        }
-      }
+      fotos: FOTOS_META
     },
     orderBy: vestidosTable.nome,
   });
 
-  res.json(ListVestidosResponse.parse(vestidos));
+  res.json(ListVestidosResponse.parse(vestidos.map(comFotosMeta)));
 });
 
 router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
@@ -87,10 +98,10 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
 
   const vestido = await db.query.vestidosTable.findFirst({
     where: eq(vestidosTable.id, vestidoId),
-    with: { atributos: true, fotos: true }
+    with: { atributos: true, fotos: FOTOS_META }
   });
 
-  res.status(201).json(CreateVestidoResponse.parse(vestido));
+  res.status(201).json(CreateVestidoResponse.parse(comFotosMeta(vestido!)));
 });
 
 // ── Disponibilidade em lote ──
@@ -203,14 +214,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void>
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
     with: {
       atributos: true,
-      fotos: {
-        columns: {
-          ordem: true,
-          mime: true,
-          largura: true,
-          altura: true,
-        }
-      }
+      fotos: FOTOS_META
     },
   });
 
@@ -219,7 +223,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void>
     return;
   }
 
-  res.json(GetVestidoResponse.parse(vestido));
+  res.json(GetVestidoResponse.parse(comFotosMeta(vestido)));
 });
 
 router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void> => {
@@ -256,7 +260,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
 
   const vestido = await db.query.vestidosTable.findFirst({
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
-    with: { atributos: true, fotos: true }
+    with: { atributos: true, fotos: FOTOS_META }
   });
 
   if (!vestido) {
@@ -264,7 +268,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
     return;
   }
 
-  res.json(UpdateVestidoResponse.parse(vestido));
+  res.json(UpdateVestidoResponse.parse(comFotosMeta(vestido)));
 });
 
 router.delete("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void> => {
@@ -275,7 +279,9 @@ router.delete("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<vo
 
 // Serve o bytea da foto como imagem binária (consumido por <img src>).
 // Escopo de loja garantido pelo JOIN com o vestido (404 se a foto for de
-// outra loja). Cache com ETag por updatedAt para revalidação barata.
+// outra loja). `variante=thumb` serve a miniatura quando existe (fallback na
+// cheia — nunca 404 por falta de thumb). Com `?v=` a URL é versionada por
+// updatedAt e o cache pode ser immutable; sem, revalidação barata por ETag.
 router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
   const { lojaId, vestidoId, ordem: ordemStr } = req.params;
   const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
@@ -283,6 +289,12 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
     res.status(400).json({ error: "Ordem inválida" });
     return;
   }
+  const query = GetVestidoFotoQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
+  const { variante = "cheia", v } = query.data;
 
   const foto = await db.query.vestidoFotosTable.findFirst({
     where: and(eq(vestidoFotosTable.vestidoId, vestidoId as string), eq(vestidoFotosTable.ordem, ordem)),
@@ -294,17 +306,27 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
     return;
   }
 
-  const etag = `"${vestidoId}-${ordem}-${foto.updatedAt.getTime()}"`;
+  const servirThumb = variante === "thumb" && foto.thumbBytes != null;
+  // A variante entra no ETag: thumb e cheia da mesma foto não podem trocar 304.
+  const etag = `"${vestidoId}-${ordem}-${servirThumb ? "t" : "c"}-${foto.updatedAt.getTime()}"`;
   if (req.headers["if-none-match"] === etag) {
     res.status(304).end();
     return;
   }
 
-  res.setHeader("Content-Type", foto.mime);
-  res.setHeader("Cache-Control", "private, max-age=60, must-revalidate");
+  res.setHeader("Content-Type", servirThumb ? foto.thumbMime ?? foto.mime : foto.mime);
+  res.setHeader(
+    "Cache-Control",
+    v ? "private, max-age=31536000, immutable" : "private, max-age=60, must-revalidate",
+  );
   res.setHeader("ETag", etag);
-  res.send(foto.bytes);
+  res.send(servirThumb ? foto.thumbBytes : foto.bytes);
 });
+
+// Limites da foto: o que o cliente DEVERIA mandar depois do downscale por
+// canvas. Acima disso é bug do cliente ou má-fé — recusa, não acomoda.
+const FOTO_MAX_BYTES = 2 * 1024 * 1024;
+const THUMB_MAX_BYTES = 512 * 1024;
 
 router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {
   const { lojaId, vestidoId, ordem: ordemStr } = req.params;
@@ -323,27 +345,49 @@ router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
     return;
   }
 
+  // Mime e dimensões saem do BINÁRIO, nunca da palavra do cliente — um mime
+  // mentiroso viraria o Content-Type servido de volta (stored-XSS).
   const buffer = Buffer.from(parsed.data.base64, "base64");
+  if (buffer.length > FOTO_MAX_BYTES) {
+    res.status(422).json({ error: "FOTO_MUITO_GRANDE", detalhe: "Máximo 2MB — a foto deveria ter sido reduzida antes do envio" });
+    return;
+  }
+  const info = identificarImagem(buffer);
+  if (!info) {
+    res.status(422).json({ error: "FOTO_INVALIDA", detalhe: "Use JPEG, PNG ou WebP" });
+    return;
+  }
 
+  let thumbBuffer: Buffer | null = null;
+  let thumbInfo: ReturnType<typeof identificarImagem> = null;
+  if (parsed.data.thumbBase64) {
+    thumbBuffer = Buffer.from(parsed.data.thumbBase64, "base64");
+    if (thumbBuffer.length > THUMB_MAX_BYTES) {
+      res.status(422).json({ error: "FOTO_MUITO_GRANDE", detalhe: "Miniatura acima de 512KB" });
+      return;
+    }
+    thumbInfo = identificarImagem(thumbBuffer);
+    if (!thumbInfo) {
+      res.status(422).json({ error: "FOTO_INVALIDA", detalhe: "Miniatura precisa ser JPEG, PNG ou WebP" });
+      return;
+    }
+  }
+
+  // Sem thumb no corpo, as colunas são ANULADAS: nunca servir a miniatura de
+  // uma foto que já não existe.
+  const valores = {
+    mime: info.mime,
+    largura: info.largura,
+    altura: info.altura,
+    bytes: buffer,
+    thumbBytes: thumbBuffer,
+    thumbMime: thumbInfo?.mime ?? null,
+  };
   const [foto] = await db.insert(vestidoFotosTable)
-    .values({
-      id: randomUUID(),
-      vestidoId: vestidoId as string,
-      ordem,
-      mime: parsed.data.mime,
-      largura: parsed.data.largura,
-      altura: parsed.data.altura,
-      bytes: buffer,
-    })
+    .values({ id: randomUUID(), vestidoId: vestidoId as string, ordem, ...valores })
     .onConflictDoUpdate({
       target: [vestidoFotosTable.vestidoId, vestidoFotosTable.ordem],
-      set: {
-        mime: parsed.data.mime,
-        largura: parsed.data.largura,
-        altura: parsed.data.altura,
-        bytes: buffer,
-        updatedAt: new Date(),
-      }
+      set: { ...valores, updatedAt: new Date() },
     })
     .returning();
 
@@ -352,7 +396,7 @@ router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
     mime: foto.mime,
     largura: foto.largura,
     altura: foto.altura,
-    base64: parsed.data.base64,
+    atualizadaEm: foto.updatedAt,
   }));
 });
 

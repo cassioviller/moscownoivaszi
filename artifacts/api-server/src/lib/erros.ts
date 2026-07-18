@@ -44,7 +44,30 @@ export function ehZodError(err: unknown): boolean {
   return e?.name === "ZodError" && Array.isArray(e?.issues);
 }
 
+/**
+ * True se o erro (em qualquer nível da cadeia) é o `entity.too.large` do
+ * body-parser — corpo maior que o limit do express.json. Sem isto, mandar uma
+ * foto grande demais virava 500 genérico, indistinguível de bug.
+ */
+export function ehCorpoGrandeDemais(err: unknown): boolean {
+  let atual: unknown = err;
+  for (let i = 0; i < 8 && atual && typeof atual === "object"; i++) {
+    if ((atual as { type?: unknown }).type === "entity.too.large") return true;
+    atual = (atual as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export function classificarErro(err: unknown): Classificacao {
+  if (ehCorpoGrandeDemais(err)) {
+    return {
+      status: 413,
+      body: { error: "PAYLOAD_MUITO_GRANDE" },
+      logLevel: "warn",
+      logMsg: "Corpo da requisição acima do limite do parser",
+    };
+  }
+
   if (ehZodError(err)) {
     // O cliente não tem culpa nem conserto — segue 500 genérico para ele; o
     // recado vai para o LOG, com marcação greppável.

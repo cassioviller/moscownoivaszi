@@ -579,9 +579,10 @@ export const ListVestidosResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 export const ListVestidosResponse = zod.array(ListVestidosResponseItem)
@@ -627,9 +628,10 @@ export const CreateVestidoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 
@@ -692,9 +694,10 @@ export const GetVestidoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 
@@ -737,9 +740,10 @@ export const UpdateVestidoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 
@@ -758,6 +762,13 @@ export const GetVestidoFotoParams = zod.object({
   "ordem": zod.coerce.number()
 })
 
+export const getVestidoFotoQueryVarianteDefault = `cheia`;
+
+export const GetVestidoFotoQueryParams = zod.object({
+  "variante": zod.enum(['cheia', 'thumb']).default(getVestidoFotoQueryVarianteDefault),
+  "v": zod.coerce.string().optional().describe('Versão para cache-busting (atualizadaEm em ms). Presente → cache immutable.')
+})
+
 export const GetVestidoFotoResponse = zod.unknown()
 
 
@@ -768,18 +779,16 @@ export const SetVestidoFotoParams = zod.object({
 })
 
 export const SetVestidoFotoBody = zod.object({
-  "mime": zod.string(),
-  "largura": zod.number(),
-  "altura": zod.number(),
-  "base64": zod.string()
+  "base64": zod.string().describe('A foto (JPEG\/PNG\/WebP). Mime e dimensões são derivados do binário no servidor.'),
+  "thumbBase64": zod.string().nullish().describe('Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback).')
 })
 
 export const SetVestidoFotoResponse = zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
   "altura": zod.number(),
-  "base64": zod.string()
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })
 
 
@@ -1174,9 +1183,10 @@ export const ListAtendimentosResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -1289,9 +1299,10 @@ export const ListAtendimentosResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -1430,9 +1441,10 @@ export const CreateAtendimentoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -1545,9 +1557,10 @@ export const CreateAtendimentoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -1685,9 +1698,10 @@ export const UpdateAtendimentoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -1800,9 +1814,10 @@ export const UpdateAtendimentoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -1932,9 +1947,10 @@ export const ListAjustesResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2064,9 +2080,10 @@ export const CreateAjusteResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2193,9 +2210,10 @@ export const UpdateAjusteResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2378,9 +2396,10 @@ export const ListReservasResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2492,9 +2511,10 @@ export const CreateReservaResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2606,9 +2626,10 @@ export const UpdateReservaResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2716,9 +2737,10 @@ export const ListBloqueiosResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2802,9 +2824,10 @@ export const CreateBloqueioResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({
@@ -2886,9 +2909,10 @@ export const UpdateBloqueioResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 }).optional(),
   "lead": zod.union([zod.object({

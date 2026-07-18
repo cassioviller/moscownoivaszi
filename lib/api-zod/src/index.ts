@@ -10,4 +10,5 @@ export {
   ExportarFolhaParams,
   ListComissaoFechamentosParams,
   PreviewComissaoParams,
+  GetVestidoFotoParams,
 } from "./generated/api";

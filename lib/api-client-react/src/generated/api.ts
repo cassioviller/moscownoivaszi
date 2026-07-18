@@ -66,6 +66,7 @@ import type {
   FolhaInput,
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
+  GetVestidoFotoParams,
   HealthStatus,
   Lead,
   LeadInput,
@@ -117,8 +118,8 @@ import type {
   UsuarioInput,
   UsuarioUpdate,
   Vestido,
-  VestidoFoto,
   VestidoFotoInput,
+  VestidoFotoMeta,
   VestidoInput,
   VestidoUpdate
 } from './api.schemas';
@@ -2593,19 +2594,28 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 export const getGetVestidoFotoUrl = (lojaId: string,
     vestidoId: string,
-    ordem: number,) => {
+    ordem: number,
+    params?: GetVestidoFotoParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/vestidos/${vestidoId}/fotos/${ordem}`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/vestidos/${vestidoId}/fotos/${ordem}?${stringifiedParams}` : `/api/lojas/${lojaId}/vestidos/${vestidoId}/fotos/${ordem}`
 }
 
 export const getVestidoFoto = async (lojaId: string,
     vestidoId: string,
-    ordem: number, options?: RequestInit): Promise<Blob> => {
+    ordem: number,
+    params?: GetVestidoFotoParams, options?: RequestInit): Promise<Blob> => {
 
-  return customFetch<Blob>(getGetVestidoFotoUrl(lojaId,vestidoId,ordem),
+  return customFetch<Blob>(getGetVestidoFotoUrl(lojaId,vestidoId,ordem,params),
   {
     ...options,
     method: 'GET'
@@ -2620,25 +2630,27 @@ export const getVestidoFoto = async (lojaId: string,
 
 export const getGetVestidoFotoQueryKey = (lojaId: string,
     vestidoId: string,
-    ordem: number,) => {
+    ordem: number,
+    params?: GetVestidoFotoParams,) => {
     return [
-    `/api/lojas/${lojaId}/vestidos/${vestidoId}/fotos/${ordem}`
+    `/api/lojas/${lojaId}/vestidos/${vestidoId}/fotos/${ordem}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
 export const getGetVestidoFotoQueryOptions = <TData = Awaited<ReturnType<typeof getVestidoFoto>>, TError = ErrorType<void>>(lojaId: string,
     vestidoId: string,
-    ordem: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVestidoFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+    ordem: number,
+    params?: GetVestidoFotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVestidoFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetVestidoFotoQueryKey(lojaId,vestidoId,ordem);
+  const queryKey =  queryOptions?.queryKey ?? getGetVestidoFotoQueryKey(lojaId,vestidoId,ordem,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVestidoFoto>>> = ({ signal }) => getVestidoFoto(lojaId,vestidoId,ordem, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVestidoFoto>>> = ({ signal }) => getVestidoFoto(lojaId,vestidoId,ordem,params, { signal, ...requestOptions });
 
 
 
@@ -2655,11 +2667,12 @@ export type GetVestidoFotoQueryError = ErrorType<void>
 export function useGetVestidoFoto<TData = Awaited<ReturnType<typeof getVestidoFoto>>, TError = ErrorType<void>>(
  lojaId: string,
     vestidoId: string,
-    ordem: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVestidoFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+    ordem: number,
+    params?: GetVestidoFotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVestidoFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetVestidoFotoQueryOptions(lojaId,vestidoId,ordem,options)
+  const queryOptions = getGetVestidoFotoQueryOptions(lojaId,vestidoId,ordem,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -2685,9 +2698,9 @@ export const getSetVestidoFotoUrl = (lojaId: string,
 export const setVestidoFoto = async (lojaId: string,
     vestidoId: string,
     ordem: number,
-    vestidoFotoInput: VestidoFotoInput, options?: RequestInit): Promise<VestidoFoto> => {
+    vestidoFotoInput: VestidoFotoInput, options?: RequestInit): Promise<VestidoFotoMeta> => {
 
-  return customFetch<VestidoFoto>(getSetVestidoFotoUrl(lojaId,vestidoId,ordem),
+  return customFetch<VestidoFotoMeta>(getSetVestidoFotoUrl(lojaId,vestidoId,ordem),
   {
     ...options,
     method: 'PUT',

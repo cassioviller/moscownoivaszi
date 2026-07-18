@@ -230,9 +230,12 @@ export interface VestidoAtributo {
 
 export interface VestidoFotoMeta {
   ordem: number;
+  /** Derivado do binário pelo servidor, nunca do cliente */
   mime: string;
   largura: number;
   altura: number;
+  /** Versão da foto — alimenta o cache-busting (?v=) das URLs */
+  atualizadaEm: string;
 }
 
 export interface Vestido {
@@ -255,19 +258,14 @@ export interface Vestido {
   fotos?: VestidoFotoMeta[];
 }
 
-export interface VestidoFoto {
-  ordem: number;
-  mime: string;
-  largura: number;
-  altura: number;
-  base64: string;
-}
-
 export interface VestidoFotoInput {
-  mime: string;
-  largura: number;
-  altura: number;
+  /** A foto (JPEG/PNG/WebP). Mime e dimensões são derivados do binário no servidor. */
   base64: string;
+  /**
+     * Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback).
+     * @nullable
+     */
+  thumbBase64?: string | null;
 }
 
 export interface VestidoInput {
@@ -1557,6 +1555,22 @@ export type CheckDisponibilidadeVestidosParams = {
  */
 data: string;
 };
+
+export type GetVestidoFotoParams = {
+variante?: GetVestidoFotoVariante;
+/**
+ * Versão para cache-busting (atualizadaEm em ms). Presente → cache immutable.
+ */
+v?: string;
+};
+
+export type GetVestidoFotoVariante = typeof GetVestidoFotoVariante[keyof typeof GetVestidoFotoVariante];
+
+
+export const GetVestidoFotoVariante = {
+  cheia: 'cheia',
+  thumb: 'thumb',
+} as const;
 
 export type ListParcelasParams = {
 /**

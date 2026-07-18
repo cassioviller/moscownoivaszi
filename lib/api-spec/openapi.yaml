@@ -596,9 +596,23 @@ paths:
     get:
       operationId: getVestidoFoto
       tags: [vestidos]
+      parameters:
+        - name: variante
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [cheia, thumb]
+            default: cheia
+        - name: v
+          in: query
+          required: false
+          description: "Versão para cache-busting (atualizadaEm em ms). Presente → cache immutable."
+          schema:
+            type: string
       responses:
         "200":
-          description: Imagem da foto (binário)
+          description: "Imagem (binário). variante=thumb sem thumb gravada cai na cheia."
           content:
             image/*:
               schema:
@@ -621,7 +635,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VestidoFoto"
+                $ref: "#/components/schemas/VestidoFotoMeta"
     delete:
       operationId: deleteVestidoFoto
       tags: [vestidos]
@@ -2335,29 +2349,26 @@ components:
         opcaoId: { type: string }
     VestidoFotoMeta:
       type: object
-      required: [ordem, mime, largura, altura]
+      required: [ordem, mime, largura, altura, atualizadaEm]
       properties:
         ordem: { type: integer }
-        mime: { type: string }
+        mime: { type: string, description: "Derivado do binário pelo servidor, nunca do cliente" }
         largura: { type: integer }
         altura: { type: integer }
-    VestidoFoto:
-      type: object
-      required: [ordem, mime, largura, altura, base64]
-      properties:
-        ordem: { type: integer }
-        mime: { type: string }
-        largura: { type: integer }
-        altura: { type: integer }
-        base64: { type: string }
+        atualizadaEm:
+          type: string
+          format: date-time
+          description: "Versão da foto — alimenta o cache-busting (?v=) das URLs"
     VestidoFotoInput:
       type: object
-      required: [mime, largura, altura, base64]
+      required: [base64]
       properties:
-        mime: { type: string }
-        largura: { type: integer }
-        altura: { type: integer }
-        base64: { type: string }
+        base64:
+          type: string
+          description: "A foto (JPEG/PNG/WebP). Mime e dimensões são derivados do binário no servidor."
+        thumbBase64:
+          type: ["string", "null"]
+          description: "Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback)."
     VestidoInput:
       type: object
       required: [codigo, nome, precoBase]

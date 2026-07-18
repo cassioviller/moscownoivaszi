@@ -46,6 +46,12 @@ if (corsOrigins.length > 0) {
 }
 
 app.use(cookieParser());
+// O upload de foto (base64 no JSON) precisa de um teto próprio: 2MiB de foto +
+// 512KiB de thumb × 4/3 do base64 + envelope. TEM de vir ANTES do parser
+// global — o primeiro parser marca req._body e o segundo pula; na ordem
+// inversa, o global (100kb) estoura antes e NENHUMA foto real entra (era o
+// estado até aqui: upload de foto de verdade dava 500).
+app.use("/api/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", express.json({ limit: "6mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

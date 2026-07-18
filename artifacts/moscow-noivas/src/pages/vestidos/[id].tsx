@@ -235,7 +235,9 @@ export default function VestidoDetail() {
             .map((foto) => (
               <img
                 key={foto.ordem}
-                src={getGetVestidoFotoUrl(activeLojaId!, vestido.id, foto.ordem)}
+                src={getGetVestidoFotoUrl(activeLojaId!, vestido.id, foto.ordem, {
+                  v: String(Date.parse(foto.atualizadaEm)),
+                })}
                 alt={`${vestido.nome} — foto ${foto.ordem + 1}`}
                 loading="lazy"
                 className="h-72 w-auto shrink-0 rounded-lg border object-cover"

@@ -24,28 +24,43 @@ import { ArrowLeft, AlertCircle, Image as ImageIcon, Trash2, Upload } from "luci
 import { VestidoForm, type VestidoFormValues } from "../vestido-form";
 import { podeNoModulo } from "@/lib/permissoes";
 
-/** Lê o arquivo escolhido e monta o payload JSON do endpoint de foto (base64 + dimensões). */
-async function arquivoParaFotoInput(file: File): Promise<VestidoFotoInput> {
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-    reader.onerror = () => reject(reader.error ?? new Error("Não foi possível ler o arquivo"));
-    reader.readAsDataURL(file);
-  });
-  const { largura, altura } = await new Promise<{ largura: number; altura: number }>((resolve, reject) => {
+/** Redesenha a imagem num canvas com lado maior ≤ max e devolve o JPEG em base64. */
+function reduzir(img: HTMLImageElement, max: number, qualidade: number): string {
+  const escala = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas indisponível neste navegador");
+  // Fundo branco: são fotografias — alpha de PNG vira branco, não preto.
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", qualidade).split(",")[1] ?? "";
+}
+
+/**
+ * O arquivo escolhido vira DUAS variantes JPEG geradas aqui no cliente: a
+ * cheia (≤1600px — "otimizada para abrir rápido" de verdade) e a thumb
+ * (≤480px, para os cards da lista). De quebra, o re-encode via canvas descarta
+ * EXIF/GPS e aplica a orientação. Mime e dimensões o SERVIDOR deriva do
+ * binário — não vão no payload.
+ */
+async function gerarVariantes(file: File): Promise<VestidoFotoInput> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
+    const el = new Image();
+    el.onload = () => {
       URL.revokeObjectURL(url);
-      resolve({ largura: img.naturalWidth, altura: img.naturalHeight });
+      resolve(el);
     };
-    img.onerror = () => {
+    el.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error("Arquivo não é uma imagem válida"));
     };
-    img.src = url;
+    el.src = url;
   });
-  return { mime: file.type || "image/jpeg", largura, altura, base64 };
+  return { base64: reduzir(img, 1600, 0.82), thumbBase64: reduzir(img, 480, 0.8) };
 }
 
 /** Um slot de foto (ordem 0 ou 1): exibe, troca e remove — portado de fotos-vestido.tsx do orcamentos. */
@@ -65,8 +80,6 @@ function SlotFoto({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
-  // Cache-busting local: a URL da foto é fixa, então versionamos após cada upload.
-  const [versao, setVersao] = useState(() => Date.now());
   const setFoto = useSetVestidoFoto();
   const deleteFoto = useDeleteVestidoFoto();
   const ocupado = setFoto.isPending || deleteFoto.isPending;
@@ -82,10 +95,9 @@ function SlotFoto({
   async function onArquivoEscolhido(file: File | undefined) {
     if (!file) return;
     try {
-      const data = await arquivoParaFotoInput(file);
+      const data = await gerarVariantes(file);
       await setFoto.mutateAsync({ lojaId, vestidoId, ordem, data });
       await invalidar();
-      setVersao(Date.now());
       toast({ title: "Foto atualizada" });
     } catch (err) {
       toast({
@@ -117,7 +129,10 @@ function SlotFoto({
       <div className="aspect-[3/4] overflow-hidden rounded-lg border bg-muted">
         {foto ? (
           <img
-            src={`${getGetVestidoFotoUrl(lojaId, vestidoId, ordem)}?v=${versao}`}
+            src={getGetVestidoFotoUrl(lojaId, vestidoId, ordem, {
+              variante: "thumb",
+              v: String(Date.parse(foto.atualizadaEm)),
+            })}
             alt={`${nomeVestido} — foto ${ordem + 1}`}
             loading="lazy"
             className="h-full w-full object-cover"
