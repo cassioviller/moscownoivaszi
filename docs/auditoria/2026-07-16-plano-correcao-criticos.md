@@ -143,6 +143,28 @@ a nenhuma página; **D8** chaves de módulo cruas na lista de acessos do perfil.
 Placar final: API **278**, frontend **123**, E2E **68**, typecheck verde nas
 três camadas.
 
+### Fecho de D6 e D8 (2026-07-18)
+
+- ✅ **D6** — as quatro telas que ficavam em branco na falha de carregamento
+  (admin, admin/perfis, equipe, configurações) ganharam estado de erro. O
+  desenho que já vivia inline em ~10 páginas (`Alert destructive` +
+  "Tentar novamente" via `refetch`) foi extraído para `EstadoErro`
+  (`components/estado-erro.tsx`). Em configurações o erro é agregado por aba —
+  a query de disponibilidade, na falha, chegava a mostrar "não configuradas",
+  mascarando o erro; agora sai a saída com retry no topo da aba.
+- ✅ **D8** — a lista de perfis da tela de Equipe mostrava os acessos por chave
+  crua (`leads, agenda, financeiro`) e ainda com `.filter(([, v]) => v)`, que
+  tratava o objeto `{ver,criar,editar}` como sempre-verdadeiro — um módulo sem
+  nenhuma ação aparecia. Extraído para `resumoAcessos` em `lib/permissoes.ts`
+  (fonte única `MODULOS_ROTULOS`, re-exportada pela matriz): rótulo humano,
+  filtro por `moduloLiberado`, ordem canônica. (`permissoes.test.ts` +6)
+
+**D7 fica em aberto (consciente):** são primitivos shadcn (`components/ui/`) que
+nenhuma página importa — mexer é churn sem valor de usuário. Some quando/se um
+tree-shake de componentes não usados for feito.
+
+Placar após D6/D8: frontend **129**, typecheck verde.
+
 ### Notas dos importantes
 
 Destaque para I1 (o `.parse()` na saída como 500 silencioso, que é a raiz que torna esta

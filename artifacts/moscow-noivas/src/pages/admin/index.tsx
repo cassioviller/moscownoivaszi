@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Building2, Users } from "lucide-react";
+import { EstadoErro } from "@/components/estado-erro";
 
 const novaLojaSchema = z.object({
   nome: z.string().min(1, "Nome da loja é obrigatório"),
@@ -46,10 +47,22 @@ export default function AdminConsole() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: lojas, isLoading: loadingLojas } = useListLojas({
+  const {
+    data: lojas,
+    isLoading: loadingLojas,
+    isError: erroLojas,
+    error: errLojas,
+    refetch: refetchLojas,
+  } = useListLojas({
     query: { queryKey: getListLojasQueryKey() },
   });
-  const { data: usuarios, isLoading: loadingUsuarios } = useListUsuarios({
+  const {
+    data: usuarios,
+    isLoading: loadingUsuarios,
+    isError: erroUsuarios,
+    error: errUsuarios,
+    refetch: refetchUsuarios,
+  } = useListUsuarios({
     query: { queryKey: getListUsuariosQueryKey() },
   });
 
@@ -110,7 +123,13 @@ export default function AdminConsole() {
 
         <Card>
           <CardContent className="pt-6 space-y-6">
-            {loadingLojas ? (
+            {erroLojas ? (
+              <EstadoErro
+                titulo="Erro ao carregar as lojas"
+                erro={errLojas}
+                onTentarNovamente={() => refetchLojas()}
+              />
+            ) : loadingLojas ? (
               <div className="animate-pulse space-y-3">
                 {[1, 2].map((i) => (
                   <div key={i} className="h-10 bg-muted rounded-md" />
@@ -176,7 +195,13 @@ export default function AdminConsole() {
 
         <Card>
           <CardContent className="pt-6 space-y-6">
-            {loadingUsuarios ? (
+            {erroUsuarios ? (
+              <EstadoErro
+                titulo="Erro ao carregar os usuários"
+                erro={errUsuarios}
+                onTentarNovamente={() => refetchUsuarios()}
+              />
+            ) : loadingUsuarios ? (
               <div className="animate-pulse space-y-3">
                 {[1, 2].map((i) => (
                   <div key={i} className="h-10 bg-muted rounded-md" />

@@ -47,3 +47,30 @@ export function moduloLiberado(acesso: unknown): boolean {
   }
   return false;
 }
+
+/**
+ * Rótulos e ordem dos módulos conhecidos — espelha o gate do backend/sidebar
+ * (a lista `MODULOS` do api-server). Fonte única dos nomes de módulo na tela.
+ */
+export const MODULOS_ROTULOS: Record<string, string> = {
+  leads: "Leads",
+  agenda: "Agenda",
+  vestidos: "Vestidos",
+  financeiro: "Financeiro",
+  comissao: "Comissões",
+  admin: "Administração da loja",
+};
+
+/**
+ * Resumo textual dos acessos de um perfil, para a lista de perfis: só os
+ * módulos com ao menos uma ação liberada, já com rótulo humano (nunca a chave
+ * crua), na ordem canônica. Vazio vira "sem acessos".
+ */
+export function resumoAcessos(acessos: Acessos): string {
+  if (!acessos) return "sem acessos";
+  const nomes = Object.keys(MODULOS_ROTULOS)
+    .concat(Object.keys(acessos).filter((m) => !(m in MODULOS_ROTULOS)))
+    .filter((m) => moduloLiberado(acessos[m]))
+    .map((m) => MODULOS_ROTULOS[m] ?? m);
+  return nomes.join(", ") || "sem acessos";
+}

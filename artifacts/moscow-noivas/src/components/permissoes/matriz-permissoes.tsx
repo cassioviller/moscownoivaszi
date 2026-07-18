@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AcessosModulos, AcoesModulo } from "@workspace/api-client-react";
+import { MODULOS_ROTULOS } from "@/lib/permissoes";
 import {
   Table,
   TableBody,
@@ -36,15 +37,8 @@ const ACOES_ROTULOS: Record<Acao, string> = {
 
 const NADA: AcoesModulo = { ver: false, criar: false, editar: false };
 
-/** Rótulos e ordem dos módulos conhecidos (espelha o gate do backend/sidebar). */
-export const MODULOS_ROTULOS: Record<string, string> = {
-  leads: "Leads",
-  agenda: "Agenda",
-  vestidos: "Vestidos",
-  financeiro: "Financeiro",
-  comissao: "Comissões",
-  admin: "Administração da loja",
-};
+/** Rótulos e ordem dos módulos — fonte única em lib/permissoes, re-exportado. */
+export { MODULOS_ROTULOS };
 const ORDEM_MODULOS = Object.keys(MODULOS_ROTULOS);
 
 /** Módulos conhecidos primeiro (na ordem canônica), extras do perfil ao final. */

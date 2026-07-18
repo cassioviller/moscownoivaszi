@@ -5,18 +5,40 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Settings2, Users } from "lucide-react";
 import { tipoAtributoLabel } from "@/lib/formatos";
+import { EstadoErro } from "@/components/estado-erro";
 
 export default function Configuracoes() {
   const { activeLojaId, user } = useAuth();
   
   // Loja specific queries
-  const { data: atributos } = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const { data: cabines } = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const { data: disponibilidade } = useGetDisponibilidade(activeLojaId!, { query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const atributosQ = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const cabinesQ = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const disponibilidadeQ = useGetDisponibilidade(activeLojaId!, { query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const { data: atributos } = atributosQ;
+  const { data: cabines } = cabinesQ;
+  const { data: disponibilidade } = disponibilidadeQ;
 
   // Admin/Superadmin queries
-  const { data: lojas } = useListLojas({ query: { queryKey: getListLojasQueryKey(), enabled: !!user?.isSuperAdmin } });
-  const { data: usuarios } = useListUsuarios({ query: { queryKey: getListUsuariosQueryKey(), enabled: !!user?.isSuperAdmin } });
+  const lojasQ = useListLojas({ query: { queryKey: getListLojasQueryKey(), enabled: !!user?.isSuperAdmin } });
+  const usuariosQ = useListUsuarios({ query: { queryKey: getListUsuariosQueryKey(), enabled: !!user?.isSuperAdmin } });
+  const { data: lojas } = lojasQ;
+  const { data: usuarios } = usuariosQ;
+
+  // Erro por aba: qualquer query da aba que falha deixa a tela em branco, então
+  // uma saída única no topo com "Tentar novamente" para todas as da aba.
+  const erroLoja = atributosQ.isError || cabinesQ.isError || disponibilidadeQ.isError;
+  const errLoja = atributosQ.error ?? cabinesQ.error ?? disponibilidadeQ.error;
+  const recarregarLoja = () => {
+    atributosQ.refetch();
+    cabinesQ.refetch();
+    disponibilidadeQ.refetch();
+  };
+  const erroAdmin = lojasQ.isError || usuariosQ.isError;
+  const errAdmin = lojasQ.error ?? usuariosQ.error;
+  const recarregarAdmin = () => {
+    lojasQ.refetch();
+    usuariosQ.refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -31,6 +53,13 @@ export default function Configuracoes() {
         </TabsList>
 
         <TabsContent value="loja" className="space-y-6">
+          {erroLoja && (
+            <EstadoErro
+              titulo="Erro ao carregar as configurações da loja"
+              erro={errLoja}
+              onTentarNovamente={recarregarLoja}
+            />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -111,6 +140,13 @@ export default function Configuracoes() {
 
         {user?.isSuperAdmin && (
           <TabsContent value="admin" className="space-y-6">
+            {erroAdmin && (
+              <EstadoErro
+                titulo="Erro ao carregar a administração"
+                erro={errAdmin}
+                onTentarNovamente={recarregarAdmin}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>

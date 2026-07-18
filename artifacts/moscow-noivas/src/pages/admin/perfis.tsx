@@ -13,13 +13,20 @@ import {
   ehPerfilAdmin,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
+import { EstadoErro } from "@/components/estado-erro";
 
 /** Templates globais de perfil — rota top-level /admin/perfis (fora de /loja). */
 export default function AdminPerfis() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: perfis, isLoading } = useListPerfis({
+  const {
+    data: perfis,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useListPerfis({
     query: { queryKey: getListPerfisQueryKey() },
   });
   const updatePerfil = useUpdatePerfil();
@@ -58,7 +65,13 @@ export default function AdminPerfis() {
           </p>
         </div>
 
-        {isLoading ? (
+        {isError ? (
+          <EstadoErro
+            titulo="Erro ao carregar os perfis"
+            erro={error}
+            onTentarNovamente={() => refetch()}
+          />
+        ) : isLoading ? (
           <div className="space-y-4">
             {[1, 2].map((i) => (
               <Card key={i} className="animate-pulse h-48" />

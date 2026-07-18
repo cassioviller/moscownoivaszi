@@ -54,7 +54,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { podeNoModulo } from "@/lib/permissoes";
+import { EstadoErro } from "@/components/estado-erro";
+import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 
 const novoMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -83,7 +84,13 @@ export default function Equipe() {
   // Gate flat por módulo (padrão do sidebar): sem mapa (superadmin) → liberado.
   const podeGerir = podeNoModulo(acessosModulos, "admin", "editar");
 
-  const { data: equipe, isLoading: loadingEquipe } = useListEquipe(activeLojaId!, {
+  const {
+    data: equipe,
+    isLoading: loadingEquipe,
+    isError: erroEquipe,
+    error: errEquipe,
+    refetch: refetchEquipe,
+  } = useListEquipe(activeLojaId!, {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
@@ -216,7 +223,13 @@ export default function Equipe() {
             <CardTitle>Membros da Equipe</CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingEquipe ? (
+            {erroEquipe ? (
+              <EstadoErro
+                titulo="Erro ao carregar a equipe"
+                erro={errEquipe}
+                onTentarNovamente={() => refetchEquipe()}
+              />
+            ) : loadingEquipe ? (
               <div className="animate-pulse space-y-4">
                 {[1, 2].map((i) => (
                   <div key={i} className="h-12 bg-muted rounded-md" />
@@ -294,10 +307,7 @@ export default function Equipe() {
                   <li key={perfil.id} className="border-b pb-2">
                     <span className="font-medium block">{perfil.nome}</span>
                     <span className="text-xs text-muted-foreground block truncate">
-                      {Object.entries(perfil.acessosModulos)
-                        .filter(([, v]) => v)
-                        .map(([m]) => m)
-                        .join(", ") || "sem acessos"}
+                      {resumoAcessos(perfil.acessosModulos)}
                     </span>
                   </li>
                 ))}

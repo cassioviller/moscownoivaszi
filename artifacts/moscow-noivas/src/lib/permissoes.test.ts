@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moduloLiberado, podeNoModulo } from "./permissoes";
+import { moduloLiberado, podeNoModulo, resumoAcessos } from "./permissoes";
 
 const VER = { ver: true, criar: false, editar: false };
 const TUDO = { ver: true, criar: true, editar: true };
@@ -59,5 +59,34 @@ describe("moduloLiberado", () => {
     expect(moduloLiberado(NADA)).toBe(false);
     expect(moduloLiberado(false)).toBe(false);
     expect(moduloLiberado(undefined)).toBe(false);
+  });
+});
+
+describe("resumoAcessos", () => {
+  it("rotula os módulos liberados, nunca a chave crua, na ordem canônica", () => {
+    expect(resumoAcessos({ financeiro: VER, leads: TUDO })).toBe("Leads, Financeiro");
+  });
+
+  it("omite módulo sem nenhuma ação — não conta o objeto como truthy", () => {
+    // O bug do D8: `.filter(([, v]) => v)` mostrava um módulo NADA (objeto
+    // sempre truthy). Agora ele some.
+    expect(resumoAcessos({ financeiro: NADA, leads: VER })).toBe("Leads");
+  });
+
+  it("perfil sem nenhum acesso vira 'sem acessos'", () => {
+    expect(resumoAcessos({})).toBe("sem acessos");
+    expect(resumoAcessos({ financeiro: NADA })).toBe("sem acessos");
+  });
+
+  it("tolera o formato plano antigo (true)", () => {
+    expect(resumoAcessos({ agenda: true })).toBe("Agenda");
+  });
+
+  it("módulo desconhecido cai no fallback, mas não some", () => {
+    expect(resumoAcessos({ relatorios: true })).toBe("relatorios");
+  });
+
+  it("sem mapa (superadmin) não lista módulos", () => {
+    expect(resumoAcessos(null)).toBe("sem acessos");
   });
 });
