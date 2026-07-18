@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AceitarConviteInput,
+  AceitarConviteResultado,
   Ajuste,
   AjusteChecklistItem,
   AjusteChecklistItemInput,
@@ -56,6 +58,9 @@ import type {
   Contrato,
   ContratoInput,
   ContratoUpdate,
+  Convite,
+  ConviteInput,
+  ConvitePublico,
   DashboardSummary,
   DisponibilidadeVestidos,
   EnviarContabilidadeInput,
@@ -68,6 +73,7 @@ import type {
   FolhaInput,
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
+  GetConviteInfoParams,
   GetVestidoFotoParams,
   HealthStatus,
   Lead,
@@ -1689,6 +1695,425 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRemoveMembroEquipeMutationOptions(options));
+    }
+
+export const getListConvitesEquipeUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/equipe/convites`
+}
+
+/**
+ * Convites PENDENTES (não usados, não expirados). O token sai aqui de propósito: é o admin quem monta e copia o link.
+ */
+export const listConvitesEquipe = async (lojaId: string, options?: RequestInit): Promise<Convite[]> => {
+
+  return customFetch<Convite[]>(getListConvitesEquipeUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListConvitesEquipeQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/equipe/convites`
+    ] as const;
+    }
+
+
+export const getListConvitesEquipeQueryOptions = <TData = Awaited<ReturnType<typeof listConvitesEquipe>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listConvitesEquipe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListConvitesEquipeQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listConvitesEquipe>>> = ({ signal }) => listConvitesEquipe(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listConvitesEquipe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListConvitesEquipeQueryResult = NonNullable<Awaited<ReturnType<typeof listConvitesEquipe>>>
+export type ListConvitesEquipeQueryError = ErrorType<unknown>
+
+
+
+export function useListConvitesEquipe<TData = Awaited<ReturnType<typeof listConvitesEquipe>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listConvitesEquipe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListConvitesEquipeQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateConviteEquipeUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/equipe/convites`
+}
+
+/**
+ * Convite por link: o admin manda o link pelo WhatsApp e a própria pessoa define a senha — ninguém mais digita a senha do colega. Vale 7 dias, uso único. E-mail já membro da loja → 409 CONVIDADO_JA_E_MEMBRO; convite pendente do mesmo e-mail → 409 CONVITE_PENDENTE.
+ */
+export const createConviteEquipe = async (lojaId: string,
+    conviteInput: ConviteInput, options?: RequestInit): Promise<Convite> => {
+
+  return customFetch<Convite>(getCreateConviteEquipeUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(conviteInput)
+  }
+);}
+
+
+
+
+export const getCreateConviteEquipeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createConviteEquipe>>, TError,{lojaId: string;data: BodyType<ConviteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createConviteEquipe>>, TError,{lojaId: string;data: BodyType<ConviteInput>}, TContext> => {
+
+const mutationKey = ['createConviteEquipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createConviteEquipe>>, {lojaId: string;data: BodyType<ConviteInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  createConviteEquipe(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateConviteEquipeMutationResult = NonNullable<Awaited<ReturnType<typeof createConviteEquipe>>>
+    export type CreateConviteEquipeMutationBody = BodyType<ConviteInput>
+    export type CreateConviteEquipeMutationError = ErrorType<unknown>
+
+    export const useCreateConviteEquipe = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createConviteEquipe>>, TError,{lojaId: string;data: BodyType<ConviteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createConviteEquipe>>,
+        TError,
+        {lojaId: string;data: BodyType<ConviteInput>},
+        TContext
+      > => {
+      return useMutation(getCreateConviteEquipeMutationOptions(options));
+    }
+
+export const getReenviarConviteEquipeUrl = (lojaId: string,
+    conviteId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/equipe/convites/${conviteId}/reenviar`
+}
+
+/**
+ * Regenera token e validade — o link antigo morre (desejável se vazou no WhatsApp errado).
+ */
+export const reenviarConviteEquipe = async (lojaId: string,
+    conviteId: string, options?: RequestInit): Promise<Convite> => {
+
+  return customFetch<Convite>(getReenviarConviteEquipeUrl(lojaId,conviteId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReenviarConviteEquipeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reenviarConviteEquipe>>, TError,{lojaId: string;conviteId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reenviarConviteEquipe>>, TError,{lojaId: string;conviteId: string}, TContext> => {
+
+const mutationKey = ['reenviarConviteEquipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reenviarConviteEquipe>>, {lojaId: string;conviteId: string}> = (props) => {
+          const {lojaId,conviteId} = props ?? {};
+
+          return  reenviarConviteEquipe(lojaId,conviteId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReenviarConviteEquipeMutationResult = NonNullable<Awaited<ReturnType<typeof reenviarConviteEquipe>>>
+
+    export type ReenviarConviteEquipeMutationError = ErrorType<unknown>
+
+    export const useReenviarConviteEquipe = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reenviarConviteEquipe>>, TError,{lojaId: string;conviteId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reenviarConviteEquipe>>,
+        TError,
+        {lojaId: string;conviteId: string},
+        TContext
+      > => {
+      return useMutation(getReenviarConviteEquipeMutationOptions(options));
+    }
+
+export const getCancelarConviteEquipeUrl = (lojaId: string,
+    conviteId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/equipe/convites/${conviteId}`
+}
+
+export const cancelarConviteEquipe = async (lojaId: string,
+    conviteId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getCancelarConviteEquipeUrl(lojaId,conviteId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getCancelarConviteEquipeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelarConviteEquipe>>, TError,{lojaId: string;conviteId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelarConviteEquipe>>, TError,{lojaId: string;conviteId: string}, TContext> => {
+
+const mutationKey = ['cancelarConviteEquipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelarConviteEquipe>>, {lojaId: string;conviteId: string}> = (props) => {
+          const {lojaId,conviteId} = props ?? {};
+
+          return  cancelarConviteEquipe(lojaId,conviteId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelarConviteEquipeMutationResult = NonNullable<Awaited<ReturnType<typeof cancelarConviteEquipe>>>
+
+    export type CancelarConviteEquipeMutationError = ErrorType<unknown>
+
+    export const useCancelarConviteEquipe = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelarConviteEquipe>>, TError,{lojaId: string;conviteId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelarConviteEquipe>>,
+        TError,
+        {lojaId: string;conviteId: string},
+        TContext
+      > => {
+      return useMutation(getCancelarConviteEquipeMutationOptions(options));
+    }
+
+export const getGetConviteInfoUrl = (params: GetConviteInfoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/equipe/convites/info?${stringifiedParams}` : `/api/equipe/convites/info`
+}
+
+export const getConviteInfo = async (params: GetConviteInfoParams, options?: RequestInit): Promise<ConvitePublico> => {
+
+  return customFetch<ConvitePublico>(getGetConviteInfoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConviteInfoQueryKey = (params?: GetConviteInfoParams,) => {
+    return [
+    `/api/equipe/convites/info`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetConviteInfoQueryOptions = <TData = Awaited<ReturnType<typeof getConviteInfo>>, TError = ErrorType<void>>(params: GetConviteInfoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConviteInfo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConviteInfoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConviteInfo>>> = ({ signal }) => getConviteInfo(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConviteInfo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConviteInfoQueryResult = NonNullable<Awaited<ReturnType<typeof getConviteInfo>>>
+export type GetConviteInfoQueryError = ErrorType<void>
+
+
+
+export function useGetConviteInfo<TData = Awaited<ReturnType<typeof getConviteInfo>>, TError = ErrorType<void>>(
+ params: GetConviteInfoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConviteInfo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConviteInfoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAceitarConviteUrl = () => {
+
+
+
+
+  return `/api/equipe/convites/aceitar`
+}
+
+export const aceitarConvite = async (aceitarConviteInput: AceitarConviteInput, options?: RequestInit): Promise<AceitarConviteResultado> => {
+
+  return customFetch<AceitarConviteResultado>(getAceitarConviteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(aceitarConviteInput)
+  }
+);}
+
+
+
+
+export const getAceitarConviteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aceitarConvite>>, TError,{data: BodyType<AceitarConviteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof aceitarConvite>>, TError,{data: BodyType<AceitarConviteInput>}, TContext> => {
+
+const mutationKey = ['aceitarConvite'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof aceitarConvite>>, {data: BodyType<AceitarConviteInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  aceitarConvite(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AceitarConviteMutationResult = NonNullable<Awaited<ReturnType<typeof aceitarConvite>>>
+    export type AceitarConviteMutationBody = BodyType<AceitarConviteInput>
+    export type AceitarConviteMutationError = ErrorType<void>
+
+    export const useAceitarConvite = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aceitarConvite>>, TError,{data: BodyType<AceitarConviteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof aceitarConvite>>,
+        TError,
+        {data: BodyType<AceitarConviteInput>},
+        TContext
+      > => {
+      return useMutation(getAceitarConviteMutationOptions(options));
     }
 
 export const getListAtributosUrl = (lojaId: string,) => {

@@ -6,6 +6,14 @@ import { eq, and, gt } from "drizzle-orm";
 
 export const SESSAO_TTL_MS = 8 * 60 * 60 * 1000;
 export const COOKIE_NOME = "moscow_sessao";
+// Convite por link vale 7 dias — tempo de a colega ver o WhatsApp, sem o link
+// virar porta permanente.
+export const CONVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Token de convite: mesmo formato do id de sessão (256 bits, base64url). */
+export function gerarTokenConvite(): string {
+  return randomBytes(32).toString("base64url");
+}
 
 export async function hashSenha(senha: string): Promise<string> {
   return bcrypt.hash(senha, 12);

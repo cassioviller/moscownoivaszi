@@ -14,7 +14,13 @@ import {
   useAddMembroEquipe,
   useUpdateMembroEquipe,
   useRemoveMembroEquipe,
+  useListConvitesEquipe,
+  getListConvitesEquipeQueryKey,
+  useCreateConviteEquipe,
+  useReenviarConviteEquipe,
+  useCancelarConviteEquipe,
   type MembroEquipe,
+  type Convite,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +71,21 @@ const novoMembroSchema = z.object({
 });
 type NovoMembroValues = z.infer<typeof novoMembroSchema>;
 
+const conviteSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+  perfilId: z.string().min(1, "Selecione um perfil"),
+});
+type ConviteValues = z.infer<typeof conviteSchema>;
+
+/** O link que a convidada abre — token no path do FRONT (SPA, não vaza em log). */
+const linkDoConvite = (token: string) => `${window.location.origin}/convite/${token}`;
+
+const ERROS_CONVITE: Record<string, string> = {
+  CONVIDADO_JA_E_MEMBRO: "Este e-mail já é da equipe desta loja.",
+  CONVITE_PENDENTE: "Já existe convite pendente para este e-mail — reenvie ou cancele o existente.",
+};
+
 const editarMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   perfilId: z.string().min(1, "Selecione um perfil"),
@@ -78,6 +99,9 @@ export default function Equipe() {
   const queryClient = useQueryClient();
 
   const [novoAberto, setNovoAberto] = useState(false);
+  const [convidandoAberto, setConvidandoAberto] = useState(false);
+  // Token do convite recém-criado: o diálogo troca do form para o link copiável.
+  const [linkGerado, setLinkGerado] = useState<string | null>(null);
   const [editando, setEditando] = useState<MembroEquipe | null>(null);
   const [removendo, setRemovendo] = useState<MembroEquipe | null>(null);
 
@@ -101,13 +125,90 @@ export default function Equipe() {
   const updateMembro = useUpdateMembroEquipe();
   const removeMembro = useRemoveMembroEquipe();
 
+  // Convites pendentes — só o admin vê (a query nem roda sem o gate).
+  const convites = useListConvitesEquipe(activeLojaId!, {
+    query: {
+      queryKey: getListConvitesEquipeQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && podeGerir,
+    },
+  });
+  const criarConvite = useCreateConviteEquipe();
+  const reenviarConvite = useReenviarConviteEquipe();
+  const cancelarConvite = useCancelarConviteEquipe();
+
   const invalidarEquipe = () =>
     queryClient.invalidateQueries({ queryKey: getListEquipeQueryKey(activeLojaId!) });
+  const invalidarConvites = () =>
+    queryClient.invalidateQueries({ queryKey: getListConvitesEquipeQueryKey(activeLojaId!) });
 
   const formNovo = useForm<NovoMembroValues>({
     resolver: zodResolver(novoMembroSchema),
     defaultValues: { nome: "", email: "", senha: "", perfilId: "" },
   });
+
+  const formConvite = useForm<ConviteValues>({
+    resolver: zodResolver(conviteSchema),
+    defaultValues: { nome: "", email: "", perfilId: "" },
+  });
+
+  async function copiarLink(token: string) {
+    try {
+      await navigator.clipboard.writeText(linkDoConvite(token));
+      toast({ title: "Link copiado", description: "Cole no WhatsApp da convidada." });
+    } catch {
+      // Clipboard bloqueado (permissão/contexto): o link visível no diálogo
+      // continua selecionável à mão.
+      toast({ title: "Não deu para copiar automaticamente", description: "Selecione o link e copie.", variant: "destructive" });
+    }
+  }
+
+  const onConvidar = async (values: ConviteValues) => {
+    try {
+      const criado = await criarConvite.mutateAsync({ lojaId: activeLojaId!, data: values });
+      await invalidarConvites();
+      formConvite.reset();
+      setLinkGerado(criado.token);
+    } catch (err) {
+      const e = err as { data?: { error?: string } };
+      toast({
+        title: "Erro ao criar o convite",
+        description:
+          ERROS_CONVITE[e?.data?.error ?? ""] ?? (err instanceof Error ? err.message : "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onReenviar = async (convite: Convite) => {
+    try {
+      const renovado = await reenviarConvite.mutateAsync({
+        lojaId: activeLojaId!,
+        conviteId: convite.id,
+      });
+      await invalidarConvites();
+      await copiarLink(renovado.token);
+    } catch (err) {
+      toast({
+        title: "Erro ao reenviar",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onCancelarConvite = async (convite: Convite) => {
+    try {
+      await cancelarConvite.mutateAsync({ lojaId: activeLojaId!, conviteId: convite.id });
+      await invalidarConvites();
+      toast({ title: "Convite cancelado", description: "O link deixou de valer." });
+    } catch (err) {
+      toast({
+        title: "Erro ao cancelar",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const formEditar = useForm<EditarMembroValues>({
     resolver: zodResolver(editarMembroSchema),
@@ -207,12 +308,68 @@ export default function Equipe() {
           </p>
         </div>
         {podeGerir && (
-          <Button onClick={() => setNovoAberto(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo membro
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {/* Caminho primário: a própria pessoa define a senha. O cadastro
+                com senha digitada continua como secundário na transição. */}
+            <Button onClick={() => setConvidandoAberto(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Convidar por link
+            </Button>
+            <Button variant="outline" onClick={() => setNovoAberto(true)}>
+              Cadastrar com senha
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* — Convites pendentes — só existe quando há algum. */}
+      {podeGerir && (convites.data?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Convites pendentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {convites.data?.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-md"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{c.nome}</div>
+                    <div className="text-sm text-muted-foreground truncate">
+                      {c.email} · {c.perfilNome ?? c.perfilId} · expira{" "}
+                      {new Date(c.expiraEm).toLocaleDateString("pt-BR")}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => copiarLink(c.token)}>
+                      Copiar link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={reenviarConvite.isPending}
+                      onClick={() => onReenviar(c)}
+                    >
+                      Reenviar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={cancelarConvite.isPending}
+                      onClick={() => onCancelarConvite(c)}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* GAP Onda 2+: preview de comissão do mês por membro (orcamentos usava
           previewComissao) — sem endpoint no client gerado. */}
@@ -326,6 +483,100 @@ export default function Equipe() {
       </div>
 
       {/* Cadastrar membro */}
+      {/* Convidar por link: o form vira o link copiável após criar. */}
+      <Dialog
+        open={convidandoAberto}
+        onOpenChange={(aberto) => {
+          setConvidandoAberto(aberto);
+          if (!aberto) {
+            setLinkGerado(null);
+            formConvite.reset();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{linkGerado ? "Convite criado" : "Convidar por link"}</DialogTitle>
+          </DialogHeader>
+          {linkGerado ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Mande este link para a convidada (WhatsApp serve). Ela define a
+                própria senha ao aceitar. Vale por 7 dias, uso único.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={linkDoConvite(linkGerado)} onFocus={(e) => e.target.select()} />
+                <Button type="button" onClick={() => copiarLink(linkGerado)}>
+                  Copiar
+                </Button>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setConvidandoAberto(false);
+                    setLinkGerado(null);
+                  }}
+                >
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <Form {...formConvite}>
+              <form onSubmit={formConvite.handleSubmit(onConvidar)} className="space-y-4">
+                <FormField
+                  control={formConvite.control}
+                  name="nome"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome *</FormLabel>
+                      <FormControl>
+                        <Input autoComplete="off" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formConvite.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>E-mail *</FormLabel>
+                      <FormControl>
+                        <Input type="email" autoComplete="off" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formConvite.control}
+                  name="perfilId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Perfil *</FormLabel>
+                      {seletorPerfil(field)}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setConvidandoAberto(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={criarConvite.isPending}>
+                    {criarConvite.isPending ? "Criando…" : "Gerar link"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={novoAberto} onOpenChange={setNovoAberto}>
         <DialogContent>
           <DialogHeader>

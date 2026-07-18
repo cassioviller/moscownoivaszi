@@ -158,6 +158,49 @@ export interface MembroEquipeInput {
   perfilId: string;
 }
 
+export interface Convite {
+  id: string;
+  lojaId: string;
+  token: string;
+  nome: string;
+  email: string;
+  perfilId: string;
+  /** @nullable */
+  perfilNome?: string | null;
+  criadoEm: string;
+  expiraEm: string;
+}
+
+export interface ConviteInput {
+  /** @minLength 1 */
+  nome: string;
+  email: string;
+  perfilId: string;
+}
+
+export interface ConvitePublico {
+  lojaNome: string;
+  nome: string;
+  /** m•••a@dominio — nunca o e-mail inteiro */
+  emailMascarado: string;
+  /** true = e-mail sem conta, o aceite pede senha; false = conta existente, o aceite só vincula */
+  precisaSenha: boolean;
+  expiraEm: string;
+}
+
+export interface AceitarConviteInput {
+  token: string;
+  /**
+     * Obrigatória quando o e-mail ainda não tem conta; ignorada quando já tem
+     * @minLength 6
+     */
+  senha?: string;
+}
+
+export interface AceitarConviteResultado {
+  jaTinhaConta: boolean;
+}
+
 export interface MembroEquipeUpdate {
   nome?: string;
   perfilId?: string;
@@ -1584,6 +1627,10 @@ export interface DashboardSummary {
   pagarProximos30Dias: number;
   atendimentosHoje?: number;
 }
+
+export type GetConviteInfoParams = {
+token: string;
+};
 
 export type CheckDisponibilidadeVestidosParams = {
 /**

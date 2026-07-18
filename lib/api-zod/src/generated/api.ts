@@ -419,6 +419,112 @@ export const RemoveMembroEquipeParams = zod.object({
 export const RemoveMembroEquipeResponse = zod.void()
 
 
+/**
+ * Convites PENDENTES (não usados, não expirados). O token sai aqui de propósito: é o admin quem monta e copia o link.
+ */
+export const ListConvitesEquipeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListConvitesEquipeResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "token": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilId": zod.string(),
+  "perfilNome": zod.string().nullish(),
+  "criadoEm": zod.coerce.date(),
+  "expiraEm": zod.coerce.date()
+})
+export const ListConvitesEquipeResponse = zod.array(ListConvitesEquipeResponseItem)
+
+
+/**
+ * Convite por link: o admin manda o link pelo WhatsApp e a própria pessoa define a senha — ninguém mais digita a senha do colega. Vale 7 dias, uso único. E-mail já membro da loja → 409 CONVIDADO_JA_E_MEMBRO; convite pendente do mesmo e-mail → 409 CONVITE_PENDENTE.
+ */
+export const CreateConviteEquipeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+
+
+export const CreateConviteEquipeBody = zod.object({
+  "nome": zod.string().min(1),
+  "email": zod.string().email(),
+  "perfilId": zod.string()
+})
+
+export const CreateConviteEquipeResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "token": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilId": zod.string(),
+  "perfilNome": zod.string().nullish(),
+  "criadoEm": zod.coerce.date(),
+  "expiraEm": zod.coerce.date()
+})
+
+
+/**
+ * Regenera token e validade — o link antigo morre (desejável se vazou no WhatsApp errado).
+ */
+export const ReenviarConviteEquipeParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "conviteId": zod.coerce.string()
+})
+
+export const ReenviarConviteEquipeResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "token": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilId": zod.string(),
+  "perfilNome": zod.string().nullish(),
+  "criadoEm": zod.coerce.date(),
+  "expiraEm": zod.coerce.date()
+})
+
+
+export const CancelarConviteEquipeParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "conviteId": zod.coerce.string()
+})
+
+export const CancelarConviteEquipeResponse = zod.void()
+
+
+export const GetConviteInfoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetConviteInfoResponse = zod.object({
+  "lojaNome": zod.string(),
+  "nome": zod.string(),
+  "emailMascarado": zod.string().describe('m•••a@dominio — nunca o e-mail inteiro'),
+  "precisaSenha": zod.boolean().describe('true = e-mail sem conta, o aceite pede senha; false = conta existente, o aceite só vincula'),
+  "expiraEm": zod.coerce.date()
+})
+
+
+export const aceitarConviteBodySenhaMin = 6;
+
+
+
+export const AceitarConviteBody = zod.object({
+  "token": zod.string(),
+  "senha": zod.string().min(aceitarConviteBodySenhaMin).optional().describe('Obrigatória quando o e-mail ainda não tem conta; ignorada quando já tem')
+})
+
+export const AceitarConviteResponse = zod.object({
+  "jaTinhaConta": zod.boolean()
+})
+
+
 export const ListAtributosParams = zod.object({
   "lojaId": zod.coerce.string()
 })

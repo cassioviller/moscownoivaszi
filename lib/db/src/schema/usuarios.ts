@@ -1,4 +1,5 @@
-import { pgTable, text, boolean, timestamp, jsonb, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, jsonb, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -56,6 +57,39 @@ export const sessoesTable = pgTable("sessoes", {
 export const insertSessaoSchema = createInsertSchema(sessoesTable);
 export type InsertSessao = z.infer<typeof insertSessaoSchema>;
 export type Sessao = typeof sessoesTable.$inferSelect;
+
+/**
+ * Convite por link (E6): o admin manda o link pelo WhatsApp e a própria pessoa
+ * define a senha — ninguém mais digita a senha do colega. O usuário nasce só
+ * no ACEITE: pré-criá-lo com hash impossível sequestraria o e-mail (unique) se
+ * o convite fosse abandonado. Token cru como as sessões (256 bits aleatórios;
+ * o admin precisa re-copiar o link da listagem). Uso único via UPDATE
+ * condicional no aceite; "reenviar" regenera token+validade (link antigo morre).
+ */
+export const convitesTable = pgTable("convites", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  nome: text("nome").notNull(),
+  email: text("email").notNull(), // normalizado lower/trim na rota
+  perfilId: text("perfil_id").notNull().references(() => perfisTable.id),
+  criadoPorId: text("criado_por_id").references(() => usuariosTable.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+  usadoEm: timestamp("usado_em", { withTimezone: true }),
+}, (t) => ({
+  tokenUnq: uniqueIndex("convites_token_unq").on(t.token),
+  // Um convite PENDENTE por e-mail/loja: o 409 nasce do banco, não de
+  // check-then-insert racy. Parcial: aceitos não bloqueiam reconvite futuro.
+  pendenteUnq: uniqueIndex("convites_loja_email_pendente_unq")
+    .on(t.lojaId, t.email)
+    .where(sql`usado_em IS NULL`),
+  lojaIdx: index("convites_loja_id_idx").on(t.lojaId),
+}));
+
+export const insertConviteSchema = createInsertSchema(convitesTable).omit({ criadoEm: true });
+export type InsertConvite = z.infer<typeof insertConviteSchema>;
+export type Convite = typeof convitesTable.$inferSelect;
 
 export const perfilOverridesLojasTable = pgTable("perfil_overrides_lojas", {
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),

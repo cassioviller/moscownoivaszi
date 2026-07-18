@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 import { AppLayout } from "@/components/layout/app-layout";
 import Login from "@/pages/login";
+import Convite from "@/pages/convite";
 import SelecionarLoja from "@/pages/selecionar-loja";
 import Dashboard from "@/pages/dashboard";
 
@@ -119,6 +120,8 @@ function App() {
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            {/* Pública como o login: a convidada ainda não tem sessão. */}
+            <Route path="/convite/:token" element={<Convite />} />
             <Route
               path="/selecionar-loja"
               element={

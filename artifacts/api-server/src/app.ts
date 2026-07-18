@@ -67,6 +67,18 @@ const loginLimiter = rateLimit({
 });
 app.use("/api/auth/login", loginLimiter);
 
+// As rotas públicas de convite (info/aceitar) são probing surface: 30 req por
+// IP a cada 5 minutos cobre o uso legítimo com folga.
+const conviteLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: () => !!process.env.VITEST,
+  message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
+});
+app.use("/api/equipe/convites", conviteLimiter);
+
 app.use("/api", router);
 
 app.use("/api", (_req, res) => {

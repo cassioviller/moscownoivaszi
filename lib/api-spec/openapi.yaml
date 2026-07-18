@@ -12,6 +12,7 @@ tags:
   - name: auth
   - name: admin
   - name: equipe
+  - name: convites
   - name: catalogo
   - name: vestidos
   - name: leads
@@ -368,6 +369,132 @@ paths:
       responses:
         "204":
           description: Removed
+
+  /lojas/{lojaId}/equipe/convites:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listConvitesEquipe
+      tags: [equipe]
+      description: "Convites PENDENTES (não usados, não expirados). O token sai aqui de propósito: é o admin quem monta e copia o link."
+      responses:
+        "200":
+          description: Convites pendentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Convite"
+    post:
+      operationId: createConviteEquipe
+      tags: [equipe]
+      description: >
+        Convite por link: o admin manda o link pelo WhatsApp e a própria pessoa
+        define a senha — ninguém mais digita a senha do colega. Vale 7 dias,
+        uso único. E-mail já membro da loja → 409 CONVIDADO_JA_E_MEMBRO;
+        convite pendente do mesmo e-mail → 409 CONVITE_PENDENTE.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConviteInput"
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Convite"
+
+  /lojas/{lojaId}/equipe/convites/{conviteId}/reenviar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: conviteId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: reenviarConviteEquipe
+      tags: [equipe]
+      description: "Regenera token e validade — o link antigo morre (desejável se vazou no WhatsApp errado)."
+      responses:
+        "200":
+          description: Convite renovado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Convite"
+
+  /lojas/{lojaId}/equipe/convites/{conviteId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: conviteId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: cancelarConviteEquipe
+      tags: [equipe]
+      responses:
+        "204":
+          description: Cancelado
+
+  # Rotas PÚBLICAS do convite — sem sessão: quem tem o token (256 bits) é a
+  # capability. Token via QUERY/corpo, nunca no path: o log de request grava o
+  # path e o token não pode cair em log.
+  /equipe/convites/info:
+    get:
+      operationId: getConviteInfo
+      tags: [convites]
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "O que a convidada precisa ver antes de aceitar"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvitePublico"
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Convite expirado ou já utilizado
+
+  /equipe/convites/aceitar:
+    post:
+      operationId: aceitarConvite
+      tags: [convites]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AceitarConviteInput"
+      responses:
+        "200":
+          description: >
+            Aceito. E-mail novo: usuário criado com a senha enviada e sessão
+            aberta (cookie). E-mail já cadastrado: só o vínculo com a loja é
+            criado, SEM sessão — o portador do link não provou ser o dono da
+            conta; jaTinhaConta=true manda o front ao login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AceitarConviteResultado"
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Convite expirado ou já utilizado
 
   # ───────────────────────── Catálogo (Atributos) ─────────────────────────
   /lojas/{lojaId}/atributos:
@@ -2320,6 +2447,51 @@ components:
         email: { type: string, format: email }
         senha: { type: string, minLength: 6 }
         perfilId: { type: string }
+    Convite:
+      type: object
+      required: [id, lojaId, token, nome, email, perfilId, criadoEm, expiraEm]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        token: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        perfilId: { type: string }
+        perfilNome: { type: ["string", "null"] }
+        criadoEm: { type: string, format: date-time }
+        expiraEm: { type: string, format: date-time }
+    ConviteInput:
+      type: object
+      required: [nome, email, perfilId]
+      properties:
+        nome: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        perfilId: { type: string }
+    ConvitePublico:
+      type: object
+      required: [lojaNome, nome, emailMascarado, precisaSenha, expiraEm]
+      properties:
+        lojaNome: { type: string }
+        nome: { type: string }
+        emailMascarado: { type: string, description: "m•••a@dominio — nunca o e-mail inteiro" }
+        precisaSenha:
+          type: boolean
+          description: "true = e-mail sem conta, o aceite pede senha; false = conta existente, o aceite só vincula"
+        expiraEm: { type: string, format: date-time }
+    AceitarConviteInput:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+        senha:
+          type: string
+          minLength: 6
+          description: "Obrigatória quando o e-mail ainda não tem conta; ignorada quando já tem"
+    AceitarConviteResultado:
+      type: object
+      required: [jaTinhaConta]
+      properties:
+        jaTinhaConta: { type: boolean }
     MembroEquipeUpdate:
       type: object
       properties:
