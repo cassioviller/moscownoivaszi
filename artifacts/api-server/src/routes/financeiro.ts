@@ -32,6 +32,8 @@ import {
   GerarFolhaBody,
   GerarFolhaResponse,
   ExportarFolhaQueryParams,
+  ExportarContasPagarQueryParams,
+  ExportarParcelasQueryParams,
   EnviarContabilidadeBody,
   EnviarContabilidadeResponse
 } from "@workspace/api-zod";
@@ -41,8 +43,10 @@ import {
   competenciaValida,
   montarContasDaFolha,
   montarCsvContabilidade,
+  diaLocalSP,
   type ItemContabil,
 } from "../lib/folha";
+import { montarCsv } from "../lib/csv";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -522,6 +526,109 @@ router.get("/lojas/:lojaId/financeiro/folha/exportar", async (req, res): Promise
     .setHeader("Content-Disposition", `attachment; filename="contabilidade-${de}-a-${ate}.csv"`);
   // BOM: sem ele o Excel lê UTF-8 como latin-1 e "Salário" vira "SalÃ¡rio".
   res.send("﻿" + csv);
+});
+
+/**
+ * A janela de exportação: de/ate opcionais (dia local inclusivo, padrão do GET
+ * /parcelas); sem intervalo, o mês corrente — o período que a contadora fecha.
+ */
+function janelaExportacao(de?: string, ate?: string): { de: string; ate: string } | null {
+  const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const d = de ?? `${hoje.slice(0, 7)}-01`;
+  const a = ate ?? hoje;
+  return d > a ? null : { de: d, ate: a };
+}
+
+// CSV das contas a pagar por vencimento. SÓ LÊ — mesmo racional do exportar
+// da folha: um GET tem de ser seguro para refresh/prefetch.
+router.get("/lojas/:lojaId/financeiro/contas-pagar/exportar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = ExportarContasPagarQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  const janela = janelaExportacao(parsed.data.de, parsed.data.ate);
+  if (!janela) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+
+  const contas = await db.query.contasPagarTable.findMany({
+    where: and(
+      eq(contasPagarTable.lojaId, lojaId),
+      gte(contasPagarTable.vencimento, inicioDoDia(janela.de)),
+      lt(contasPagarTable.vencimento, inicioDoDia(addDias(janela.ate, 1))),
+    ),
+    with: { colaborador: { columns: { nome: true } } },
+    orderBy: contasPagarTable.vencimento,
+  });
+
+  const linhas = [["Vencimento", "Descrição", "Tipo", "Categoria", "Fornecedor", "Colaborador", "Competência", "Valor", "Status"]];
+  for (const c of contas) {
+    linhas.push([
+      diaLocalSP(c.vencimento),
+      c.descricao,
+      c.tipo,
+      c.categoria ?? "",
+      c.fornecedor ?? "",
+      c.colaborador?.nome ?? "",
+      c.competencia ?? "",
+      c.valorPrevisto.toFixed(2),
+      c.status,
+    ]);
+  }
+  res
+    .status(200)
+    .type("text/csv; charset=utf-8")
+    .setHeader("Content-Disposition", `attachment; filename="contas-pagar-${janela.de}-a-${janela.ate}.csv"`);
+  res.send("﻿" + montarCsv(linhas));
+});
+
+// CSV das parcelas (a receber) por vencimento, com a noiva na linha — o
+// mapa da inadimplência que a contadora importa sem redigitar.
+router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = ExportarParcelasQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  const janela = janelaExportacao(parsed.data.de, parsed.data.ate);
+  if (!janela) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+
+  const parcelas = await db.query.parcelasTable.findMany({
+    where: and(
+      eq(parcelasTable.lojaId, lojaId),
+      gte(parcelasTable.vencimento, inicioDoDia(janela.de)),
+      lt(parcelasTable.vencimento, inicioDoDia(addDias(janela.ate, 1))),
+    ),
+    with: { contrato: { columns: {}, with: { lead: { columns: { noivaNome: true } } } } },
+    orderBy: parcelasTable.vencimento,
+  });
+
+  const linhas = [["Vencimento", "Noiva", "Nº", "Descrição", "Valor Previsto", "Status", "Valor Recebido", "Recebido Em", "Forma"]];
+  for (const p of parcelas) {
+    linhas.push([
+      diaLocalSP(p.vencimento),
+      p.contrato?.lead?.noivaNome ?? "",
+      String(p.numero),
+      p.descricao ?? "",
+      p.valorPrevisto.toFixed(2),
+      p.status,
+      p.valorRecebido != null ? p.valorRecebido.toFixed(2) : "",
+      p.recebidoEm ? diaLocalSP(p.recebidoEm) : "",
+      p.formaRecebimento ?? "",
+    ]);
+  }
+  res
+    .status(200)
+    .type("text/csv; charset=utf-8")
+    .setHeader("Content-Disposition", `attachment; filename="parcelas-${janela.de}-a-${janela.ate}.csv"`);
+  res.send("﻿" + montarCsv(linhas));
 });
 
 /**

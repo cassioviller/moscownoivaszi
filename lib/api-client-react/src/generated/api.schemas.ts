@@ -1622,6 +1622,32 @@ de?: string;
 ate?: string;
 };
 
+export type ExportarContasPagarParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ExportarParcelasParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
 export type ListPagamentosParams = {
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)

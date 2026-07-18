@@ -28,6 +28,7 @@ import {
   useRemoveContaPagar,
   useListEquipe,
   getListEquipeQueryKey,
+  getExportarContasPagarUrl,
   type ContaPagar,
   type ContaPagarTipo,
   type ContaPagarInputTipo,
@@ -417,6 +418,19 @@ export default function Pagar() {
           </Button>
           <Button variant="outline" onClick={() => setNovaOpen(true)}>
             Lançar despesa
+          </Button>
+          {/* Download nativo do CSV da janela em vista — a contadora importa
+              sem redigitar. <a> em vez de fetch: o navegador cuida do arquivo. */}
+          <Button variant="outline" asChild>
+            <a
+              href={getExportarContasPagarUrl(activeLojaId!, {
+                de: intervalo.iniYMD,
+                ate: intervalo.fimYMD,
+              })}
+              download
+            >
+              Exportar CSV
+            </a>
           </Button>
         </div>
       </div>

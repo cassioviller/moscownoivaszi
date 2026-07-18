@@ -14,6 +14,7 @@ import {
   getListParcelasQueryKey,
   useReceberParcela,
   useEstornarParcela,
+  getExportarParcelasUrl,
   type Parcela,
   type ReceberParcelaInputFormaRecebimento,
 } from "@workspace/api-client-react";
@@ -224,9 +225,23 @@ export default function Receber() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-serif">Contas a receber</h1>
-        <p className="text-sm text-muted-foreground">O que entra das noivas, por contrato.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-serif">Contas a receber</h1>
+          <p className="text-sm text-muted-foreground">O que entra das noivas, por contrato.</p>
+        </div>
+        {/* Download nativo do CSV da janela em vista — com a noiva na linha. */}
+        <Button variant="outline" asChild>
+          <a
+            href={getExportarParcelasUrl(activeLojaId!, {
+              de: intervalo.iniYMD,
+              ate: intervalo.fimYMD,
+            })}
+            download
+          >
+            Exportar CSV
+          </a>
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">

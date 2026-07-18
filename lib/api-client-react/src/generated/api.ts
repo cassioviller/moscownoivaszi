@@ -61,7 +61,9 @@ import type {
   EnviarContabilidadeInput,
   EnviarContabilidadeResultado,
   ErrorResponse,
+  ExportarContasPagarParams,
   ExportarFolhaParams,
+  ExportarParcelasParams,
   FolhaGerada,
   FolhaInput,
   GerarComissaoFechamentoInput,
@@ -6647,6 +6649,184 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateContaPagarMutationOptions(options));
     }
+
+export const getExportarContasPagarUrl = (lojaId: string,
+    params?: ExportarContasPagarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/contas-pagar/exportar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/contas-pagar/exportar`
+}
+
+/**
+ * @summary CSV das contas a pagar por vencimento, para a contadora
+ */
+export const exportarContasPagar = async (lojaId: string,
+    params?: ExportarContasPagarParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportarContasPagarUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarContasPagarQueryKey = (lojaId: string,
+    params?: ExportarContasPagarParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/contas-pagar/exportar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportarContasPagarQueryOptions = <TData = Awaited<ReturnType<typeof exportarContasPagar>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ExportarContasPagarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarContasPagarQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarContasPagar>>> = ({ signal }) => exportarContasPagar(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarContasPagar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarContasPagarQueryResult = NonNullable<Awaited<ReturnType<typeof exportarContasPagar>>>
+export type ExportarContasPagarQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary CSV das contas a pagar por vencimento, para a contadora
+ */
+
+export function useExportarContasPagar<TData = Awaited<ReturnType<typeof exportarContasPagar>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: ExportarContasPagarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarContasPagarQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportarParcelasUrl = (lojaId: string,
+    params?: ExportarParcelasParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/parcelas/exportar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/parcelas/exportar`
+}
+
+/**
+ * @summary CSV das parcelas (a receber) por vencimento, com a noiva
+ */
+export const exportarParcelas = async (lojaId: string,
+    params?: ExportarParcelasParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportarParcelasUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarParcelasQueryKey = (lojaId: string,
+    params?: ExportarParcelasParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/parcelas/exportar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportarParcelasQueryOptions = <TData = Awaited<ReturnType<typeof exportarParcelas>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ExportarParcelasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarParcelas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarParcelasQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarParcelas>>> = ({ signal }) => exportarParcelas(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarParcelas>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarParcelasQueryResult = NonNullable<Awaited<ReturnType<typeof exportarParcelas>>>
+export type ExportarParcelasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary CSV das parcelas (a receber) por vencimento, com a noiva
+ */
+
+export function useExportarParcelas<TData = Awaited<ReturnType<typeof exportarParcelas>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: ExportarParcelasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarParcelas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarParcelasQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getRemoveContaPagarUrl = (lojaId: string,
     contaId: string,) => {

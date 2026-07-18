@@ -11,4 +11,6 @@ export {
   ListComissaoFechamentosParams,
   PreviewComissaoParams,
   GetVestidoFotoParams,
+  ExportarContasPagarParams,
+  ExportarParcelasParams,
 } from "./generated/api";

@@ -4226,6 +4226,44 @@ export const CreateContaPagarResponse = zod.object({
 
 
 /**
+ * @summary CSV das contas a pagar por vencimento, para a contadora
+ */
+export const ExportarContasPagarParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarContasPagarQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarContasPagarQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarContasPagarQueryParams = zod.object({
+  "de": zod.coerce.string().regex(exportarContasPagarQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarContasPagarQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarContasPagarResponse = zod.unknown()
+
+
+/**
+ * @summary CSV das parcelas (a receber) por vencimento, com a noiva
+ */
+export const ExportarParcelasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarParcelasQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarParcelasQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarParcelasQueryParams = zod.object({
+  "de": zod.coerce.string().regex(exportarParcelasQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarParcelasQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarParcelasResponse = zod.unknown()
+
+
+/**
  * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
  * @summary Remove uma conta a pagar ainda PREVISTA
  */
