@@ -584,6 +584,43 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
   }
   const { competencia } = q.data;
 
+  // E26: competência FECHADA é imutável — a resposta é a memória do
+  // fechamento (a mesma que respondeu "quanto pagar"), não um recálculo ao
+  // vivo que revisita contratos, estornos e regras a cada F5. Também blinda a
+  // tela contra dado novo fora de época: um contrato lançado retroativamente
+  // depois do fecho mudaria o preview recalculado, mas não muda o que foi
+  // PAGO. Só o mês aberto merece cálculo ao vivo.
+  const fechamentosDaComp = await db
+    .select({ fechamento: comissaoFechamentosTable, vendedoraNome: usuariosTable.nome })
+    .from(comissaoFechamentosTable)
+    .leftJoin(usuariosTable, eq(usuariosTable.id, comissaoFechamentosTable.vendedoraId))
+    .where(and(
+      eq(comissaoFechamentosTable.lojaId, lojaId),
+      eq(comissaoFechamentosTable.competencia, competencia),
+    ));
+  if (fechamentosDaComp.length > 0) {
+    const linhas = fechamentosDaComp
+      .map(({ fechamento, vendedoraNome }) => ({
+        vendedoraId: fechamento.vendedoraId,
+        vendedoraNome,
+        totalVendas: fechamento.totalVendas,
+        // O estorno que existia foi abatido no próprio fechamento; o que
+        // surgiu depois pertence ao mês seguinte — aqui é sempre zero.
+        estornoPendente: 0,
+        percentualAplicado: fechamento.percentualAplicado,
+        valorComissao: fechamento.valorComissao,
+        valorBonus: fechamento.valorBonus,
+        valorTotal: fechamento.valorTotal,
+        // Mês fechado não tem degrau a perseguir.
+        faltaProximoDegrau: null,
+      }))
+      .sort((a, b) => b.valorTotal - a.valorTotal);
+    // Imutável de verdade: o navegador pode segurar por uma hora sem risco.
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.json(PreviewComissaoResponse.parse(linhas));
+    return;
+  }
+
   // Quem vendeu no mês MAIS quem deve estorno: uma vendedora que parou de
   // vender ainda precisa aparecer, senão o estorno dela some da tela e carrega
   // para sempre sem ninguém saber.
