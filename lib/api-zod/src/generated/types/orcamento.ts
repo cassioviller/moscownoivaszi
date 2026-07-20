@@ -25,6 +25,12 @@ export interface Orcamento {
   validade?: Date | null;
   /** @nullable */
   observacoes?: string | null;
+  /** @nullable */
+  publicoToken?: string | null;
+  /** @nullable */
+  publicoExpiraEm?: Date | null;
+  /** @nullable */
+  publicoAbertoEm?: Date | null;
   createdAt: Date;
   itens?: OrcamentoItem[];
 }

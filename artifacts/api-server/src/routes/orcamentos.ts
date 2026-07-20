@@ -13,10 +13,12 @@ import {
   AddOrcamentoItemResponse,
   UpdateOrcamentoItemBody,
   UpdateOrcamentoItemResponse,
-  RemoveOrcamentoItemResponse
+  RemoveOrcamentoItemResponse,
+  CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
+import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
 
 const router: IRouter = Router();
@@ -198,6 +200,41 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
   const itemId = req.params.itemId as string;
   await db.delete(orcamentoItensTable).where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   res.status(204).send();
+});
+
+/**
+ * Link público (E13): gera/regenera o token de leitura da noiva. Token novo
+ * mata o anterior (coluna única, mesmo modelo do reenvio de convite E6) e a
+ * validade recomeça. Gerar link de um RASCUNHO marca ENVIADO — compartilhar
+ * É enviar; RECUSADO não gera (não há o que a noiva rever de um não).
+ */
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const orcamentoId = req.params.orcamentoId as string;
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+  });
+  if (!orcamento) {
+    res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  if (orcamento.status === "RECUSADO") {
+    res.status(422).json({ error: "ORCAMENTO_RECUSADO", detalhe: "Orçamento recusado não gera link" });
+    return;
+  }
+
+  const token = gerarTokenConvite();
+  const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
+  await db.update(orcamentosTable)
+    .set({
+      publicoToken: token,
+      publicoExpiraEm: expiraEm,
+      ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(orcamentosTable.id, orcamento.id));
+
+  res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });
 
 router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", async (req, res): Promise<void> => {

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import convitesRouter from "./convites";
+import orcamentosPublicoRouter from "./orcamentos-publico";
 import adminRouter from "./admin";
 import equipeRouter from "./equipe";
 import catalogoRouter from "./catalogo";
@@ -19,9 +20,11 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-// PÚBLICO (aceite de convite) — TEM de vir antes dos routers de domínio: eles
-// aplicam requireSessaoComLoja sem path, e depois deles isto viraria 401.
+// PÚBLICO (aceite de convite, orçamento da noiva) — TEM de vir antes dos
+// routers de domínio: eles aplicam requireSessaoComLoja sem path, e depois
+// deles isto viraria 401.
 router.use(convitesRouter);
+router.use(orcamentosPublicoRouter);
 router.use(adminRouter);
 router.use(equipeRouter);
 router.use(catalogoRouter);

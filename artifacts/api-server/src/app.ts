@@ -78,6 +78,8 @@ const conviteLimiter = rateLimit({
   message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
 });
 app.use("/api/equipe/convites", conviteLimiter);
+// O link público do orçamento é a mesma probing surface do convite.
+app.use("/api/orcamentos/publico", conviteLimiter);
 
 app.use("/api", router);
 

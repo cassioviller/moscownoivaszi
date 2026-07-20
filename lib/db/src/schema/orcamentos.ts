@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -20,9 +20,18 @@ export const orcamentosTable = pgTable("orcamentos", {
   validade: timestamp("validade", { withTimezone: true }),
   observacoes: text("observacoes"),
   aprovadoEm: timestamp("aprovado_em", { withTimezone: true }),
+  // Link público somente-leitura (E13): o token é a capability (256 bits,
+  // mesmo formato do convite E6); regenerar troca o token e o link antigo
+  // morre. `publicoAbertoEm` guarda a PRIMEIRA abertura pela noiva — é o
+  // "avisa a loja que ela viu" — e por isso nunca é sobrescrito.
+  publicoToken: text("publico_token"),
+  publicoExpiraEm: timestamp("publico_expira_em", { withTimezone: true }),
+  publicoAbertoEm: timestamp("publico_aberto_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  publicoTokenUnq: uniqueIndex("orcamentos_publico_token_unq").on(t.publicoToken),
+}));
 
 export const insertOrcamentoSchema = createInsertSchema(orcamentosTable).omit({ createdAt: true, updatedAt: true });
 export type InsertOrcamento = z.infer<typeof insertOrcamentoSchema>;

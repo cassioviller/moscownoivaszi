@@ -3169,6 +3169,9 @@ export const ListOrcamentosResponseItem = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -3207,6 +3210,9 @@ export const CreateOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -3236,6 +3242,9 @@ export const GetOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -3273,6 +3282,9 @@ export const UpdateOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -3371,6 +3383,9 @@ export const AprovarOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -3400,6 +3415,9 @@ export const RecusarOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -3410,6 +3428,46 @@ export const RecusarOrcamentoResponse = zod.object({
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
 })).optional()
+})
+
+
+/**
+ * Gera (ou regenera) o link público somente-leitura do orçamento. Token novo mata o link anterior — mesmo modelo do reenvio de convite. Gerar link de um RASCUNHO o marca como ENVIADO: compartilhar É enviar.
+ */
+export const CriarLinkOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "orcamentoId": zod.coerce.string()
+})
+
+export const CriarLinkOrcamentoResponse = zod.object({
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date()
+})
+
+
+/**
+ * Visão pública somente-leitura do orçamento — o que a noiva abre pelo link, sem login. Token em QUERY, nunca no path (o logger corta a query; o token jamais cai em log). A primeira abertura carimba `publicoAbertoEm` no orçamento — o aviso à loja de que ela viu.
+ */
+export const GetOrcamentoPublicoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetOrcamentoPublicoResponse = zod.object({
+  "lojaNome": zod.string(),
+  "noivaNome": zod.string(),
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']),
+  "validade": zod.coerce.date().nullish(),
+  "observacoes": zod.string().nullish(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
+  "totalBruto": zod.number(),
+  "totalLiquido": zod.number(),
+  "itens": zod.array(zod.object({
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+}))
 })
 
 

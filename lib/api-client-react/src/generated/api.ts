@@ -76,6 +76,7 @@ import type {
   GerarPlanoInput,
   GetConviteInfoParams,
   GetMinhaComissaoParams,
+  GetOrcamentoPublicoParams,
   GetVestidoFotoParams,
   HealthStatus,
   Lead,
@@ -84,6 +85,7 @@ import type {
   LeadInteresseInput,
   LeadUpdate,
   LeadsPage,
+  LinkOrcamentoPublico,
   ListComissaoFechamentosParams,
   ListLeadsParams,
   ListPagamentosParams,
@@ -101,6 +103,7 @@ import type {
   OrcamentoItem,
   OrcamentoItemInput,
   OrcamentoItemUpdate,
+  OrcamentoPublico,
   OrcamentoUpdate,
   Pagamento,
   PagamentoInput,
@@ -6261,6 +6264,156 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getRecusarOrcamentoMutationOptions(options));
     }
+
+export const getCriarLinkOrcamentoUrl = (lojaId: string,
+    orcamentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/orcamentos/${orcamentoId}/link`
+}
+
+/**
+ * Gera (ou regenera) o link público somente-leitura do orçamento. Token novo mata o link anterior — mesmo modelo do reenvio de convite. Gerar link de um RASCUNHO o marca como ENVIADO: compartilhar É enviar.
+ */
+export const criarLinkOrcamento = async (lojaId: string,
+    orcamentoId: string, options?: RequestInit): Promise<LinkOrcamentoPublico> => {
+
+  return customFetch<LinkOrcamentoPublico>(getCriarLinkOrcamentoUrl(lojaId,orcamentoId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCriarLinkOrcamentoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof criarLinkOrcamento>>, TError,{lojaId: string;orcamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof criarLinkOrcamento>>, TError,{lojaId: string;orcamentoId: string}, TContext> => {
+
+const mutationKey = ['criarLinkOrcamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof criarLinkOrcamento>>, {lojaId: string;orcamentoId: string}> = (props) => {
+          const {lojaId,orcamentoId} = props ?? {};
+
+          return  criarLinkOrcamento(lojaId,orcamentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CriarLinkOrcamentoMutationResult = NonNullable<Awaited<ReturnType<typeof criarLinkOrcamento>>>
+
+    export type CriarLinkOrcamentoMutationError = ErrorType<void>
+
+    export const useCriarLinkOrcamento = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof criarLinkOrcamento>>, TError,{lojaId: string;orcamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof criarLinkOrcamento>>,
+        TError,
+        {lojaId: string;orcamentoId: string},
+        TContext
+      > => {
+      return useMutation(getCriarLinkOrcamentoMutationOptions(options));
+    }
+
+export const getGetOrcamentoPublicoUrl = (params: GetOrcamentoPublicoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/orcamentos/publico?${stringifiedParams}` : `/api/orcamentos/publico`
+}
+
+/**
+ * Visão pública somente-leitura do orçamento — o que a noiva abre pelo link, sem login. Token em QUERY, nunca no path (o logger corta a query; o token jamais cai em log). A primeira abertura carimba `publicoAbertoEm` no orçamento — o aviso à loja de que ela viu.
+ */
+export const getOrcamentoPublico = async (params: GetOrcamentoPublicoParams, options?: RequestInit): Promise<OrcamentoPublico> => {
+
+  return customFetch<OrcamentoPublico>(getGetOrcamentoPublicoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrcamentoPublicoQueryKey = (params?: GetOrcamentoPublicoParams,) => {
+    return [
+    `/api/orcamentos/publico`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOrcamentoPublicoQueryOptions = <TData = Awaited<ReturnType<typeof getOrcamentoPublico>>, TError = ErrorType<void>>(params: GetOrcamentoPublicoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrcamentoPublico>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrcamentoPublicoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrcamentoPublico>>> = ({ signal }) => getOrcamentoPublico(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrcamentoPublico>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrcamentoPublicoQueryResult = NonNullable<Awaited<ReturnType<typeof getOrcamentoPublico>>>
+export type GetOrcamentoPublicoQueryError = ErrorType<void>
+
+
+
+export function useGetOrcamentoPublico<TData = Awaited<ReturnType<typeof getOrcamentoPublico>>, TError = ErrorType<void>>(
+ params: GetOrcamentoPublicoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrcamentoPublico>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrcamentoPublicoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListContratosUrl = (lojaId: string,) => {
 

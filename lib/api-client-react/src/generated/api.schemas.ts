@@ -1037,6 +1037,12 @@ export interface Orcamento {
   validade?: string | null;
   /** @nullable */
   observacoes?: string | null;
+  /** @nullable */
+  publicoToken?: string | null;
+  /** @nullable */
+  publicoExpiraEm?: string | null;
+  /** @nullable */
+  publicoAbertoEm?: string | null;
   createdAt: string;
   itens?: OrcamentoItem[];
 }
@@ -1108,6 +1114,65 @@ export interface OrcamentoItemUpdate {
   valorUnitario?: number;
   /** @minimum 1 */
   quantidade?: number;
+}
+
+export interface LinkOrcamentoPublico {
+  token: string;
+  expiraEm: string;
+}
+
+export type OrcamentoPublicoItemTipo = typeof OrcamentoPublicoItemTipo[keyof typeof OrcamentoPublicoItemTipo];
+
+
+export const OrcamentoPublicoItemTipo = {
+  VESTIDO: 'VESTIDO',
+  SERVICO: 'SERVICO',
+  AJUSTE: 'AJUSTE',
+} as const;
+
+export interface OrcamentoPublicoItem {
+  tipo: OrcamentoPublicoItemTipo;
+  descricao: string;
+  valorUnitario: number;
+  quantidade: number;
+}
+
+export type OrcamentoPublicoStatus = typeof OrcamentoPublicoStatus[keyof typeof OrcamentoPublicoStatus];
+
+
+export const OrcamentoPublicoStatus = {
+  RASCUNHO: 'RASCUNHO',
+  ENVIADO: 'ENVIADO',
+  APROVADO: 'APROVADO',
+  RECUSADO: 'RECUSADO',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OrcamentoPublicoDescontoTipo = typeof OrcamentoPublicoDescontoTipo[keyof typeof OrcamentoPublicoDescontoTipo] | null;
+
+
+export const OrcamentoPublicoDescontoTipo = {
+  PERCENTUAL: 'PERCENTUAL',
+  VALOR: 'VALOR',
+} as const;
+
+export interface OrcamentoPublico {
+  lojaNome: string;
+  noivaNome: string;
+  status: OrcamentoPublicoStatus;
+  /** @nullable */
+  validade?: string | null;
+  /** @nullable */
+  observacoes?: string | null;
+  /** @nullable */
+  descontoTipo?: OrcamentoPublicoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
+  totalBruto: number;
+  totalLiquido: number;
+  itens: OrcamentoPublicoItem[];
 }
 
 export type ContratoStatus = typeof ContratoStatus[keyof typeof ContratoStatus];
@@ -1772,6 +1837,10 @@ export const ListLeadsEtapa = {
   DEVOLVIDO: 'DEVOLVIDO',
   PERDIDO: 'PERDIDO',
 } as const;
+
+export type GetOrcamentoPublicoParams = {
+token: string;
+};
 
 export type ListParcelasParams = {
 /**

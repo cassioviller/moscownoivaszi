@@ -11,6 +11,7 @@ import {
   useRecusarOrcamento,
   useUpdateOrcamento,
   useCreateContrato,
+  useCriarLinkOrcamento,
   useListContratos,
   getListContratosQueryKey,
   useListLeads,
@@ -54,7 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2 } from "lucide-react";
+import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -122,6 +123,7 @@ export default function OrcamentoDetail() {
   const recusar = useRecusarOrcamento();
   const atualizar = useUpdateOrcamento();
   const createContrato = useCreateContrato();
+  const criarLink = useCriarLinkOrcamento();
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
@@ -197,6 +199,39 @@ export default function OrcamentoDetail() {
   const editavel = statusEditavel && podeEditar;
   const invalidar = () => queryClient.invalidateQueries({ queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!) });
   const invalidarLista = () => queryClient.invalidateQueries({ queryKey: getListOrcamentosQueryKey(activeLojaId!) });
+
+  const linkDaNoiva = (token: string) => `${window.location.origin}/orcamento/${token}`;
+
+  const copiarLinkNoiva = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(linkDaNoiva(token));
+      toast({ title: "Link copiado", description: "É só colar no WhatsApp da noiva." });
+    } catch {
+      // Sem clipboard (http, permissão negada): mostra o link para copiar à mão.
+      toast({ title: "Não deu para copiar automaticamente", description: linkDaNoiva(token) });
+    }
+  };
+
+  // Link vigente → só copia (o mesmo link segue valendo). Sem link ou vencido
+  // → gera um novo (que também marca ENVIADO se ainda era rascunho) e copia.
+  const linkVigente =
+    orcamento?.publicoToken && orcamento.publicoExpiraEm && new Date(orcamento.publicoExpiraEm) > new Date()
+      ? orcamento.publicoToken
+      : null;
+
+  const onLinkNoiva = async () => {
+    if (linkVigente) {
+      await copiarLinkNoiva(linkVigente);
+      return;
+    }
+    try {
+      const r = await criarLink.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id! });
+      await Promise.all([invalidar(), invalidarLista()]);
+      await copiarLinkNoiva(r.token);
+    } catch (err) {
+      toast({ title: "Erro ao gerar o link", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    }
+  };
 
   const onAddItem = async (values: NovoItemValues) => {
     const valorUnitario = Number(values.valorUnitario);
@@ -381,10 +416,24 @@ export default function OrcamentoDetail() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-serif">Orçamento — {lead?.noivaNome ?? "Noiva"}</h1>
-          <p className="text-sm text-muted-foreground">Criado em {format(new Date(orcamento.createdAt), "dd/MM/yyyy")}</p>
+          <p className="text-sm text-muted-foreground">
+            Criado em {format(new Date(orcamento.createdAt), "dd/MM/yyyy")}
+            {/* O aviso de abertura (E13): a noiva viu — a vendedora sabe a hora de puxar a conversa. */}
+            {orcamento.publicoAbertoEm
+              ? ` · aberto pela noiva em ${format(new Date(orcamento.publicoAbertoEm), "dd/MM/yyyy 'às' HH:mm")}`
+              : orcamento.publicoToken
+                ? " · link enviado, ainda não aberto"
+                : ""}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="text-sm px-3 py-1">{statusOrcamentoLabel(orcamento.status)}</Badge>
+          {podeEditar && orcamento.status !== "RECUSADO" && (
+            <Button variant="outline" size="sm" onClick={onLinkNoiva} disabled={criarLink.isPending}>
+              <Link2 className="h-4 w-4 mr-2" />
+              {criarLink.isPending ? "Gerando…" : linkVigente ? "Copiar link da noiva" : "Link para a noiva"}
+            </Button>
+          )}
           {editavel && (
             <>
               {orcamento.status === "RASCUNHO" && (

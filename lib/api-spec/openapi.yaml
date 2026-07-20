@@ -1501,6 +1501,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/link:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: criarLinkOrcamento
+      tags: [orcamentos]
+      description: >
+        Gera (ou regenera) o link público somente-leitura do orçamento. Token
+        novo mata o link anterior — mesmo modelo do reenvio de convite. Gerar
+        link de um RASCUNHO o marca como ENVIADO: compartilhar É enviar.
+      responses:
+        "200":
+          description: Token e validade do link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkOrcamentoPublico"
+        "404":
+          description: Orçamento não encontrado
+        "422":
+          description: Orçamento RECUSADO não gera link
+  /orcamentos/publico:
+    get:
+      operationId: getOrcamentoPublico
+      tags: [orcamentos]
+      security: []
+      description: >
+        Visão pública somente-leitura do orçamento — o que a noiva abre pelo
+        link, sem login. Token em QUERY, nunca no path (o logger corta a query;
+        o token jamais cai em log). A primeira abertura carimba
+        `publicoAbertoEm` no orçamento — o aviso à loja de que ela viu.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orçamento para a noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrcamentoPublico"
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Link expirado
 
   # ───────────────────────── Contratos ─────────────────────────
   /lojas/{lojaId}/contratos:
@@ -3147,6 +3200,12 @@ components:
         descontoValor: { type: ["number", "null"] }
         validade: { type: ["string", "null"], format: date-time }
         observacoes: { type: ["string", "null"] }
+        # Link público (E13). O token aparece aqui para a vendedora RE-COPIAR
+        # o link sem regenerar (mesmo padrão da listagem de convites) — a rota
+        # é autenticada e gateada por módulo.
+        publicoToken: { type: ["string", "null"] }
+        publicoExpiraEm: { type: ["string", "null"], format: date-time }
+        publicoAbertoEm: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
         itens:
           type: array
@@ -3198,6 +3257,39 @@ components:
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
         quantidade: { type: integer, minimum: 1 }
+    LinkOrcamentoPublico:
+      type: object
+      required: [token, expiraEm]
+      properties:
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+    OrcamentoPublicoItem:
+      type: object
+      required: [tipo, descricao, valorUnitario, quantidade]
+      properties:
+        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        descricao: { type: string }
+        valorUnitario: { type: number }
+        quantidade: { type: integer }
+    OrcamentoPublico:
+      # A visão da NOIVA: nomes e valores, nenhum id interno — o que ela não
+      # precisa navegar, não precisa vazar.
+      type: object
+      required: [lojaNome, noivaNome, status, itens, totalBruto, totalLiquido]
+      properties:
+        lojaNome: { type: string }
+        noivaNome: { type: string }
+        status: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
+        validade: { type: ["string", "null"], format: date-time }
+        observacoes: { type: ["string", "null"] }
+        descontoTipo: { type: ["string", "null"], enum: [PERCENTUAL, VALOR, null] }
+        descontoValor: { type: ["number", "null"] }
+        totalBruto: { type: number }
+        totalLiquido: { type: number }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrcamentoPublicoItem"
 
     # ── Contratos ──
     Contrato:
