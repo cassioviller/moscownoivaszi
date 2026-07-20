@@ -202,6 +202,9 @@ export default function FluxoCaixa() {
           <Link to="cobranca" className="text-muted-foreground hover:text-foreground">
             Cobrança →
           </Link>
+          <Link to="auditoria" className="text-muted-foreground hover:text-foreground">
+            Auditoria →
+          </Link>
         </div>
       </div>
 

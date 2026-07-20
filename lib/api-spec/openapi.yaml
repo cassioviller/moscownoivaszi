@@ -1939,6 +1939,22 @@ paths:
           description: Estornado
         "404":
           description: Pagamento não encontrado
+  /lojas/{lojaId}/financeiro/auditoria:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAuditoria
+      tags: [financeiro]
+      summary: Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+      responses:
+        "200":
+          description: Últimos registros da trilha
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditoriaItem"
   /lojas/{lojaId}/financeiro/salarios-recorrentes:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3059,6 +3075,23 @@ components:
                 anyOf:
                   - $ref: "#/components/schemas/ConflitoBloqueio"
                   - type: "null"
+
+    AuditoriaItem:
+      type: object
+      required: [id, acao, entidade, entidadeId, usuarioNome, criadoEm]
+      properties:
+        id: { type: string }
+        acao:
+          type: string
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO]
+        entidade: { type: string }
+        entidadeId: { type: string }
+        usuarioId: { type: ["string", "null"] }
+        usuarioNome: { type: string, description: "Desnormalizado — sobrevive à saída do autor da equipe" }
+        detalhe:
+          type: ["object", "null"]
+          additionalProperties: true
+        criadoEm: { type: string, format: date-time }
 
     ProximaJanelaVestido:
       type: object

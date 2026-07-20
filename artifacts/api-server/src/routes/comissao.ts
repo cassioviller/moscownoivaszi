@@ -13,6 +13,7 @@ import {
 import { eq, and, gte, lt, lte, inArray, isNull, isNotNull, desc } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/pg-core";
 import { ehViolacaoUnica } from "../lib/erros";
+import { registrarAuditoria } from "../lib/auditoria";
 import {
   ListComissaoRegrasResponse,
   CreateComissaoRegraBody,
@@ -731,6 +732,23 @@ router.post("/lojas/:lojaId/comissao/estornos/baixa",
           comissaoEstornoBaixaMotivo: motivo ?? null,
         })
         .where(and(eq(contratosTable.lojaId, lojaId), inArray(contratosTable.id, e.contratoIds)));
+
+      // E10: além das colunas do I10 (acopladas ao contrato), a linha na
+      // trilha transversal — uma baixa cobre N contratos, uma linha só.
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "ESTORNO_COMISSAO_BAIXADO",
+        entidade: "contrato",
+        entidadeId: e.contratoIds[0],
+        detalhe: {
+          vendedoraId,
+          competencia,
+          motivo: motivo ?? null,
+          contratoIds: e.contratoIds,
+          valorBaixado: e.totalC / 100,
+        },
+      });
 
       return { contratosBaixados: e.contratoIds.length, valorBaixadoC: e.totalC };
     });

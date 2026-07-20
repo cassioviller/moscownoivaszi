@@ -8,4 +8,5 @@ export * from "./orcamentos";
 export * from "./contratos";
 export * from "./financeiro";
 export * from "./comissao";
+export * from "./auditoria";
 export * from "./relations";

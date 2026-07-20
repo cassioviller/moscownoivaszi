@@ -37,6 +37,7 @@ import type {
   AtributoOpcaoInput,
   AtributoOpcaoUpdate,
   AtributoUpdate,
+  AuditoriaItem,
   BaixaEstornoComissao,
   BaixarEstornoComissaoInput,
   BaixarEstornoComissaoResultado,
@@ -7721,6 +7722,83 @@ export const useEstornarPagamento = <TError = ErrorType<void>,
       > => {
       return useMutation(getEstornarPagamentoMutationOptions(options));
     }
+
+export const getListAuditoriaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/auditoria`
+}
+
+/**
+ * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+ */
+export const listAuditoria = async (lojaId: string, options?: RequestInit): Promise<AuditoriaItem[]> => {
+
+  return customFetch<AuditoriaItem[]>(getListAuditoriaUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuditoriaQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/auditoria`
+    ] as const;
+    }
+
+
+export const getListAuditoriaQueryOptions = <TData = Awaited<ReturnType<typeof listAuditoria>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuditoriaQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditoria>>> = ({ signal }) => listAuditoria(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAuditoriaQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditoria>>>
+export type ListAuditoriaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+ */
+
+export function useListAuditoria<TData = Awaited<ReturnType<typeof listAuditoria>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAuditoriaQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListSalariosRecorrentesUrl = (lojaId: string,) => {
 

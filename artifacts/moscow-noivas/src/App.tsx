@@ -40,6 +40,7 @@ import Cobranca from "@/pages/financeiro/cobranca";
 import Receber from "@/pages/financeiro/receber";
 import Pagar from "@/pages/financeiro/pagar";
 import Folha from "@/pages/financeiro/folha";
+import Auditoria from "@/pages/financeiro/auditoria";
 import Catalogo from "@/pages/catalogo";
 import Noivas from "@/pages/noivas";
 import NovaNoiva from "@/pages/noivas/nova";
@@ -170,6 +171,7 @@ function App() {
               {/* A folha é um recorte de contas a pagar (as SALARIO de uma
                   competência) + o fechamento com a contabilidade. */}
               <Route path="financeiro/folha" element={<Folha />} />
+              <Route path="financeiro/auditoria" element={<Auditoria />} />
               <Route path="comissoes" element={<Comissoes />} />
               <Route path="equipe" element={<Equipe />} />
               <Route path="permissoes" element={<Permissoes />} />

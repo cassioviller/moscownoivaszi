@@ -938,6 +938,37 @@ export interface DisponibilidadeVestidos {
   itens: DisponibilidadeVestidosItensItem[];
 }
 
+export type AuditoriaItemAcao = typeof AuditoriaItemAcao[keyof typeof AuditoriaItemAcao];
+
+
+export const AuditoriaItemAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AuditoriaItemDetalhe = { [key: string]: unknown } | null;
+
+export interface AuditoriaItem {
+  id: string;
+  acao: AuditoriaItemAcao;
+  entidade: string;
+  entidadeId: string;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** Desnormalizado — sobrevive à saída do autor da equipe */
+  usuarioNome: string;
+  /** @nullable */
+  detalhe?: AuditoriaItemDetalhe;
+  criadoEm: string;
+}
+
 export interface ProximaJanelaVestido {
   /**
      * Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo

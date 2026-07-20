@@ -7,11 +7,13 @@ import {
   pagamentoItensTable,
   salariosRecorrentesTable,
   saldosReferenciaTable,
+  auditLogTable,
 } from "@workspace/db";
 import { eq, and, inArray, gte, lt, desc, isNull, sql } from "drizzle-orm";
 import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
+  ListAuditoriaResponse,
   ListPagamentosQueryParams,
   ListPagamentosResponse,
   CreatePagamentoBody,
@@ -39,6 +41,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
+import { registrarAuditoria } from "../lib/auditoria";
 import {
   competenciaValida,
   montarContasDaFolha,
@@ -160,6 +163,19 @@ router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", async (req, res): Prom
       .set({ status: "PAGA" })
       .where(eq(contasPagarTable.id, conta.id))
       .returning();
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "CONTA_PAGA",
+      entidade: "conta_pagar",
+      entidadeId: conta.id,
+      detalhe: {
+        pagamentoId,
+        descricao: conta.descricao,
+        valorPago: parsed.data.valorPago,
+        forma: parsed.data.forma ?? null,
+      },
+    });
     return atualizada;
   });
 
@@ -288,6 +304,18 @@ router.post("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<vo
     await tx.update(contasPagarTable)
       .set({ status: "PAGA" })
       .where(inArray(contasPagarTable.id, contaIds));
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "PAGAMENTO_REGISTRADO",
+      entidade: "pagamento",
+      entidadeId: pagamentoId,
+      detalhe: {
+        valorPago,
+        forma: parsed.data.forma ?? null,
+        contas: contas.map((c) => ({ id: c.id, descricao: c.descricao })),
+      },
+    });
   });
 
   const criado = await db.query.pagamentosTable.findFirst({
@@ -320,8 +348,30 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
         .where(and(eq(contasPagarTable.lojaId, lojaId), inArray(contasPagarTable.id, contaIds)));
     }
     await tx.delete(pagamentosTable).where(eq(pagamentosTable.id, pagamento.id));
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "PAGAMENTO_ESTORNADO",
+      entidade: "pagamento",
+      entidadeId: pagamento.id,
+      // O pagamento é DELETADO no estorno — a trilha vira o único rastro dele.
+      detalhe: { valorPago: pagamento.valorPago, data: pagamento.data, contaIds },
+    });
   });
   res.status(204).end();
+});
+
+// Trilha de auditoria (E10): a linha do tempo do que mexeu em dinheiro —
+// quem recebeu, estornou, pagou, baixou. Só leitura; a escrita vive nas
+// próprias ações (registrarAuditoria dentro das transações).
+router.get("/lojas/:lojaId/financeiro/auditoria", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const linhas = await db.select()
+    .from(auditLogTable)
+    .where(eq(auditLogTable.lojaId, lojaId))
+    .orderBy(desc(auditLogTable.criadoEm))
+    .limit(200);
+  res.json(ListAuditoriaResponse.parse(linhas));
 });
 
 router.get("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): Promise<void> => {

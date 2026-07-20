@@ -4566,6 +4566,26 @@ export const EstornarPagamentoParams = zod.object({
 export const EstornarPagamentoResponse = zod.void()
 
 
+/**
+ * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+ */
+export const ListAuditoriaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListAuditoriaResponseItem = zod.object({
+  "id": zod.string(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']),
+  "entidade": zod.string(),
+  "entidadeId": zod.string(),
+  "usuarioId": zod.string().nullish(),
+  "usuarioNome": zod.string().describe('Desnormalizado — sobrevive à saída do autor da equipe'),
+  "detalhe": zod.record(zod.string(), zod.unknown()).nullish(),
+  "criadoEm": zod.coerce.date()
+})
+export const ListAuditoriaResponse = zod.array(ListAuditoriaResponseItem)
+
+
 export const ListSalariosRecorrentesParams = zod.object({
   "lojaId": zod.coerce.string()
 })

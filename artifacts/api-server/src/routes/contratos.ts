@@ -12,6 +12,7 @@ import {
 } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
+import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
 import { gerarContratoPdf } from "../lib/contrato-pdf";
 import {
@@ -533,15 +534,31 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
     return;
   }
 
-  const [parcela] = await db.update(parcelasTable)
-    .set({
-      status: "PAGA",
-      recebidoEm: parsed.data.recebidoEm,
-      valorRecebido: parsed.data.valorRecebido,
-      formaRecebimento: parsed.data.formaRecebimento,
-    })
-    .where(eq(parcelasTable.id, existente.id))
-    .returning();
+  const parcela = await db.transaction(async (tx) => {
+    const [atualizada] = await tx.update(parcelasTable)
+      .set({
+        status: "PAGA",
+        recebidoEm: parsed.data.recebidoEm,
+        valorRecebido: parsed.data.valorRecebido,
+        formaRecebimento: parsed.data.formaRecebimento,
+      })
+      .where(eq(parcelasTable.id, existente.id))
+      .returning();
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "PARCELA_RECEBIDA",
+      entidade: "parcela",
+      entidadeId: existente.id,
+      detalhe: {
+        contratoId: existente.contratoId,
+        numero: existente.numero,
+        valorRecebido: parsed.data.valorRecebido,
+        formaRecebimento: parsed.data.formaRecebimento ?? null,
+      },
+    });
+    return atualizada;
+  });
   res.json(ReceberParcelaResponse.parse(parcela));
 });
 
@@ -569,15 +586,32 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
     return;
   }
 
-  const [parcela] = await db.update(parcelasTable)
-    .set({
-      status: "PREVISTA",
-      valorRecebido: null,
-      recebidoEm: null,
-      formaRecebimento: null,
-    })
-    .where(eq(parcelasTable.id, existente.id))
-    .returning();
+  const parcela = await db.transaction(async (tx) => {
+    const [atualizada] = await tx.update(parcelasTable)
+      .set({
+        status: "PREVISTA",
+        valorRecebido: null,
+        recebidoEm: null,
+        formaRecebimento: null,
+      })
+      .where(eq(parcelasTable.id, existente.id))
+      .returning();
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "RECEBIMENTO_ESTORNADO",
+      entidade: "parcela",
+      entidadeId: existente.id,
+      detalhe: {
+        contratoId: existente.contratoId,
+        numero: existente.numero,
+        // O que o estorno desfez — some da parcela, fica na trilha.
+        valorRecebido: existente.valorRecebido,
+        recebidoEm: existente.recebidoEm,
+      },
+    });
+    return atualizada;
+  });
   res.json(EstornarParcelaResponse.parse(parcela));
 });
 
