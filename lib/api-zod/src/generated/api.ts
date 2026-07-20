@@ -5194,6 +5194,60 @@ export const PreviewComissaoResponseItem = zod.object({
 export const PreviewComissaoResponse = zod.array(PreviewComissaoResponseItem)
 
 
+/**
+ * Aplica uma escada HIPOTÉTICA às bases reais das últimas competências da vendedora (a base do fechamento quando o mês já fechou; as vendas brutas quando não), reusando o motor calcularComissao. Não grava nada — é um POST que só consulta.
+ * @summary "Se a escada fosse esta, quanto teria pago?" — simulação sobre as bases reais
+ */
+export const SimularComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const simularComissaoBodyFaixasItemMinAcumuladoMin = 0;
+
+export const simularComissaoBodyFaixasItemMaxAcumuladoMin = 0;
+
+export const simularComissaoBodyFaixasItemPercentualMin = 0;
+export const simularComissaoBodyFaixasItemPercentualMax = 100;
+
+export const simularComissaoBodyFaixasItemBonusFixoMin = 0;
+
+
+export const simularComissaoBodyBonusAcumulaFaixasDefault = false;
+export const simularComissaoBodyMesesDefault = 3;
+export const simularComissaoBodyMesesMax = 12;
+
+
+
+export const SimularComissaoBody = zod.object({
+  "vendedoraId": zod.string(),
+  "faixas": zod.array(zod.object({
+  "minAcumulado": zod.number().min(simularComissaoBodyFaixasItemMinAcumuladoMin),
+  "maxAcumulado": zod.number().min(simularComissaoBodyFaixasItemMaxAcumuladoMin).nullish(),
+  "percentual": zod.number().min(simularComissaoBodyFaixasItemPercentualMin).max(simularComissaoBodyFaixasItemPercentualMax).nullish(),
+  "bonusFixo": zod.number().min(simularComissaoBodyFaixasItemBonusFixoMin).nullish()
+})).min(1),
+  "bonusAcumulaFaixas": zod.boolean().default(simularComissaoBodyBonusAcumulaFaixasDefault),
+  "meses": zod.number().min(1).max(simularComissaoBodyMesesMax).default(simularComissaoBodyMesesDefault)
+})
+
+export const SimularComissaoResponse = zod.object({
+  "vendedoraId": zod.string(),
+  "linhas": zod.array(zod.object({
+  "competencia": zod.string(),
+  "base": zod.number(),
+  "fechada": zod.boolean(),
+  "pagoReal": zod.number(),
+  "pagoRealPercentual": zod.number().nullish(),
+  "simulado": zod.number(),
+  "simuladoPercentual": zod.number().nullish(),
+  "diferenca": zod.number()
+})),
+  "totalPagoReal": zod.number(),
+  "totalSimulado": zod.number(),
+  "totalDiferenca": zod.number()
+})
+
+
 export const ListComissaoFechamentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })

@@ -31,6 +31,8 @@ import {
   ListBaixasEstornoComissaoResponse,
   GetMinhaComissaoQueryParams,
   GetMinhaComissaoResponse,
+  SimularComissaoBody,
+  SimularComissaoResponse,
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -413,6 +415,104 @@ router.delete("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promi
     .delete(comissaoRegrasTable)
     .where(and(eq(comissaoRegrasTable.id, regraId), eq(comissaoRegrasTable.lojaId, lojaId)));
   res.status(204).send();
+});
+
+// ── Simulador de escada (E23) ──
+
+/** A competência `n` meses antes de `comp` ("2026-07", 1 → "2026-06"). */
+function competenciaAnterior(comp: string, n: number): string {
+  const ano = Number(comp.slice(0, 4));
+  const mes = Number(comp.slice(5, 7));
+  const d = new Date(Date.UTC(ano, mes - 1 - n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * "Se a faixa fosse Y%, quanto teria pago?" — a escada hipotética aplicada às
+ * bases REAIS dos últimos meses, pelo MESMO motor do fechamento. Mês fechado
+ * usa a base do fechamento (líquida, a que pagou de verdade) e o pago
+ * registrado; mês sem fechamento usa as vendas brutas e recalcula o "real"
+ * com a regra vigente da época. Não grava nada.
+ */
+router.post("/lojas/:lojaId/comissao/simular", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = SimularComissaoBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { vendedoraId, faixas, bonusAcumulaFaixas = false, meses = 3 } = parsed.data;
+
+  const [membro] = await db
+    .select({ usuarioId: usuariosLojasTable.usuarioId })
+    .from(usuariosLojasTable)
+    .where(and(eq(usuariosLojasTable.lojaId, lojaId), eq(usuariosLojasTable.usuarioId, vendedoraId)));
+  if (!membro) {
+    res.status(422).json({ error: "VENDEDORA_INVALIDA", detalhe: "A vendedora não é da loja" });
+    return;
+  }
+  const faixasCalc = faixas.map(paraCalc);
+  const validacao = validarFaixas(faixasCalc);
+  if (!validacao.ok) {
+    res.status(422).json({ error: "FAIXAS_INVALIDAS", detalhe: validacao.motivo });
+    return;
+  }
+
+  // As N competências ANTERIORES à corrente — mês em curso não responde
+  // "quanto teria pago" (a base ainda cresce).
+  const atual = competenciaDe(new Date());
+  const comps = Array.from({ length: meses }, (_, i) => competenciaAnterior(atual, meses - i));
+
+  const fechamentos = await db
+    .select()
+    .from(comissaoFechamentosTable)
+    .where(and(
+      eq(comissaoFechamentosTable.lojaId, lojaId),
+      eq(comissaoFechamentosTable.vendedoraId, vendedoraId),
+      inArray(comissaoFechamentosTable.competencia, comps),
+    ));
+  const fechadaPor = new Map(fechamentos.map((f) => [f.competencia, f]));
+
+  const linhas = [];
+  for (const competencia of comps) {
+    const fechamento = fechadaPor.get(competencia);
+    let baseC: number;
+    let pagoRealC: number;
+    let pagoRealPercentual: number | null;
+    if (fechamento) {
+      baseC = cent(fechamento.totalVendas);
+      pagoRealC = cent(fechamento.valorTotal);
+      pagoRealPercentual = fechamento.percentualAplicado;
+    } else {
+      baseC = (await vendasDaCompetencia(db, lojaId, competencia)).get(vendedoraId) ?? 0;
+      const regra = (await regrasVigentes(db, lojaId, [vendedoraId], competencia)).get(vendedoraId);
+      const r = regra ? calcularComissao(baseC, regra.faixas, regra.bonusAcumulaFaixas) : null;
+      pagoRealC = r?.valorTotal ?? 0;
+      pagoRealPercentual = r?.percentualAplicado ?? null;
+    }
+
+    const sim = calcularComissao(baseC, faixasCalc, bonusAcumulaFaixas);
+    linhas.push({
+      competencia,
+      base: real(baseC),
+      fechada: !!fechamento,
+      pagoReal: real(pagoRealC),
+      pagoRealPercentual,
+      simulado: real(sim.valorTotal),
+      simuladoPercentual: sim.percentualAplicado,
+      diferenca: real(sim.valorTotal - pagoRealC),
+    });
+  }
+
+  const totalPagoRealC = linhas.reduce((s, l) => s + cent(l.pagoReal), 0);
+  const totalSimuladoC = linhas.reduce((s, l) => s + cent(l.simulado), 0);
+  res.json(SimularComissaoResponse.parse({
+    vendedoraId,
+    linhas,
+    totalPagoReal: real(totalPagoRealC),
+    totalSimulado: real(totalSimuladoC),
+    totalDiferenca: real(totalSimuladoC - totalPagoRealC),
+  }));
 });
 
 // ── Minha comissão (E11) ──

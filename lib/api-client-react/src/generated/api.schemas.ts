@@ -1791,6 +1791,39 @@ export interface MinhaComissao {
   fechamentos: MinhaComissaoFechamentosItem[];
 }
 
+export interface SimularComissaoInput {
+  vendedoraId: string;
+  /** @minItems 1 */
+  faixas: ComissaoFaixaInput[];
+  bonusAcumulaFaixas?: boolean;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  meses?: number;
+}
+
+export interface SimulacaoComissaoLinha {
+  competencia: string;
+  base: number;
+  fechada: boolean;
+  pagoReal: number;
+  /** @nullable */
+  pagoRealPercentual?: number | null;
+  simulado: number;
+  /** @nullable */
+  simuladoPercentual?: number | null;
+  diferenca: number;
+}
+
+export interface SimulacaoComissao {
+  vendedoraId: string;
+  linhas: SimulacaoComissaoLinha[];
+  totalPagoReal: number;
+  totalSimulado: number;
+  totalDiferenca: number;
+}
+
 export interface ComissaoFechamento {
   id: string;
   lojaId: string;

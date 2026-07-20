@@ -143,6 +143,8 @@ import type {
   SaldoReferenciaInput,
   SelecionarLojaInput,
   Sessao,
+  SimulacaoComissao,
+  SimularComissaoInput,
   Usuario,
   UsuarioInput,
   UsuarioUpdate,
@@ -9759,6 +9761,78 @@ export function usePreviewComissao<TData = Awaited<ReturnType<typeof previewComi
 
 
 
+
+export const getSimularComissaoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/comissao/simular`
+}
+
+/**
+ * Aplica uma escada HIPOTÉTICA às bases reais das últimas competências da vendedora (a base do fechamento quando o mês já fechou; as vendas brutas quando não), reusando o motor calcularComissao. Não grava nada — é um POST que só consulta.
+ * @summary "Se a escada fosse esta, quanto teria pago?" — simulação sobre as bases reais
+ */
+export const simularComissao = async (lojaId: string,
+    simularComissaoInput: SimularComissaoInput, options?: RequestInit): Promise<SimulacaoComissao> => {
+
+  return customFetch<SimulacaoComissao>(getSimularComissaoUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(simularComissaoInput)
+  }
+);}
+
+
+
+
+export const getSimularComissaoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof simularComissao>>, TError,{lojaId: string;data: BodyType<SimularComissaoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof simularComissao>>, TError,{lojaId: string;data: BodyType<SimularComissaoInput>}, TContext> => {
+
+const mutationKey = ['simularComissao'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof simularComissao>>, {lojaId: string;data: BodyType<SimularComissaoInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  simularComissao(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SimularComissaoMutationResult = NonNullable<Awaited<ReturnType<typeof simularComissao>>>
+    export type SimularComissaoMutationBody = BodyType<SimularComissaoInput>
+    export type SimularComissaoMutationError = ErrorType<void>
+
+    /**
+ * @summary "Se a escada fosse esta, quanto teria pago?" — simulação sobre as bases reais
+ */
+export const useSimularComissao = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof simularComissao>>, TError,{lojaId: string;data: BodyType<SimularComissaoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof simularComissao>>,
+        TError,
+        {lojaId: string;data: BodyType<SimularComissaoInput>},
+        TContext
+      > => {
+      return useMutation(getSimularComissaoMutationOptions(options));
+    }
 
 export const getListComissaoFechamentosUrl = (lojaId: string,
     params?: ListComissaoFechamentosParams,) => {

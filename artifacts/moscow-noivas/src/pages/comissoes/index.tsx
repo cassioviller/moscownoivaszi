@@ -17,8 +17,10 @@ import {
   getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
+  useSimularComissao,
   type ComissaoFaixa,
   type ComissaoRegra,
+  type SimulacaoComissao,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
@@ -47,7 +49,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Trash2, Plus, FlaskConical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl } from "@/lib/formatos";
 import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
@@ -143,6 +152,10 @@ export default function Comissoes() {
   const removerRegra = useDeleteComissaoRegra();
   const gerarFechamento = useGerarComissaoFechamento();
   const baixarEstorno = useBaixarEstornoComissao();
+  const simular = useSimularComissao();
+
+  // Resultado da simulação (E23) — abre o dialog quando chega.
+  const [simulacao, setSimulacao] = useState<SimulacaoComissao | null>(null);
 
   // Resumo do que o fechamento vai LANÇAR em contas a pagar — o número que dá
   // confiança antes de uma ação irreversível.
@@ -178,13 +191,12 @@ export default function Comissoes() {
   const atualizarFaixa = (i: number, campo: keyof FaixaForm, valor: string) =>
     setFaixas((prev) => prev.map((f, j) => (j === i ? { ...f, [campo]: valor } : f)));
 
-  async function onSalvarRegra() {
-    if (!vendedoraId) {
-      toast({ title: "Escolha a vendedora", variant: "destructive" });
-      return;
-    }
-    // Vazio e lixo são coisas diferentes: em branco é "sem teto"/"não paga",
-    // texto inválido é engano de digitação e não pode virar 0 silenciosamente.
+  /**
+   * Converte as faixas digitadas ou null se algo é inválido. Vazio e lixo são
+   * coisas diferentes: em branco é "sem teto"/"não paga", texto inválido é
+   * engano de digitação e não pode virar 0 silenciosamente.
+   */
+  function converterFaixas() {
     const convertidas = [];
     for (const f of faixas) {
       const min = parseValor(f.minAcumulado);
@@ -192,10 +204,22 @@ export default function Comissoes() {
       const pct = parseValor(f.percentual);
       const bonus = parseValor(f.bonusFixo);
       if (min === null || Number.isNaN(min) || [max, pct, bonus].some((v) => v !== null && Number.isNaN(v))) {
-        toast({ title: "Há valor inválido nas faixas", variant: "destructive" });
-        return;
+        return null;
       }
       convertidas.push({ minAcumulado: min, maxAcumulado: max, percentual: pct, bonusFixo: bonus });
+    }
+    return convertidas;
+  }
+
+  async function onSalvarRegra() {
+    if (!vendedoraId) {
+      toast({ title: "Escolha a vendedora", variant: "destructive" });
+      return;
+    }
+    const convertidas = converterFaixas();
+    if (!convertidas) {
+      toast({ title: "Há valor inválido nas faixas", variant: "destructive" });
+      return;
     }
 
     try {
@@ -282,6 +306,34 @@ export default function Comissoes() {
       toast({
         title: "Erro ao baixar o estorno",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
+
+  /** E23: a escada digitada, aplicada às bases reais dos últimos 3 meses. */
+  async function onSimular() {
+    if (!vendedoraId) {
+      toast({ title: "Escolha a vendedora", variant: "destructive" });
+      return;
+    }
+    const convertidas = converterFaixas();
+    if (!convertidas) {
+      toast({ title: "Há valor inválido nas faixas", variant: "destructive" });
+      return;
+    }
+    try {
+      const resultado = await simular.mutateAsync({
+        lojaId: activeLojaId!,
+        data: { vendedoraId, bonusAcumulaFaixas: bonusAcumula, faixas: convertidas },
+      });
+      setSimulacao(resultado);
+    } catch (err) {
+      const e = err as { data?: { error?: string; detalhe?: string } };
+      const detalhe = e?.data?.error === "FAIXAS_INVALIDAS" ? MOTIVO_FAIXA[e.data.detalhe ?? ""] : undefined;
+      toast({
+        title: "Erro ao simular",
+        description: detalhe ?? mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -717,6 +769,11 @@ export default function Comissoes() {
                 <Plus className="mr-1 h-4 w-4" />
                 Adicionar faixa
               </Button>
+              {/* E23: testa a escada digitada contra as bases reais, sem gravar. */}
+              <Button variant="outline" size="sm" onClick={onSimular} disabled={simular.isPending}>
+                <FlaskConical className="mr-1 h-4 w-4" />
+                {simular.isPending ? "Simulando…" : "Simular últimos 3 meses"}
+              </Button>
               <Button size="sm" onClick={onSalvarRegra} disabled={criarRegra.isPending}>
                 {criarRegra.isPending ? "Salvando…" : "Salvar regra"}
               </Button>
@@ -724,6 +781,82 @@ export default function Comissoes() {
           </div>
         </CardContent>
       </Card>
+
+      {/* — Resultado da simulação (E23) — */}
+      <Dialog open={!!simulacao} onOpenChange={(aberto) => !aberto && setSimulacao(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Se a escada fosse esta —{" "}
+              {simulacao ? (nomePorUsuario.get(simulacao.vendedoraId) ?? "vendedora") : ""}
+            </DialogTitle>
+            <DialogDescription>
+              A escada digitada aplicada às vendas reais dos últimos meses, pelo mesmo motor do
+              fechamento. Mês fechado compara com o que foi pago de verdade; mês aberto, com o que a
+              regra vigente pagaria. Nada é gravado.
+            </DialogDescription>
+          </DialogHeader>
+          {simulacao && (
+            <div className="space-y-3">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="py-1.5 pr-2 font-normal">Mês</th>
+                    <th className="px-2 py-1.5 text-right font-normal">Vendas</th>
+                    <th className="px-2 py-1.5 text-right font-normal">Pago</th>
+                    <th className="px-2 py-1.5 text-right font-normal">Simulado</th>
+                    <th className="py-1.5 pl-2 text-right font-normal">Diferença</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {simulacao.linhas.map((l) => (
+                    <tr key={l.competencia} className="border-b last:border-0">
+                      <td className="py-1.5 pr-2">
+                        {rotuloCompetencia(l.competencia)}
+                        {!l.fechada && (
+                          <span className="ml-1 text-xs text-muted-foreground">(sem fechamento)</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.base)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.pagoReal)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.simulado)}</td>
+                      <td
+                        className={`py-1.5 pl-2 text-right tabular-nums ${
+                          l.diferenca > 0 ? "text-destructive" : l.diferenca < 0 ? "text-positivo" : ""
+                        }`}
+                      >
+                        {l.diferenca > 0 ? "+" : ""}R$ {brl(l.diferenca)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="font-medium">
+                    <td className="py-2 pr-2">Total</td>
+                    <td />
+                    <td className="px-2 py-2 text-right tabular-nums">R$ {brl(simulacao.totalPagoReal)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">R$ {brl(simulacao.totalSimulado)}</td>
+                    <td
+                      className={`py-2 pl-2 text-right tabular-nums ${
+                        simulacao.totalDiferenca > 0
+                          ? "text-destructive"
+                          : simulacao.totalDiferenca < 0
+                            ? "text-positivo"
+                            : ""
+                      }`}
+                    >
+                      {simulacao.totalDiferenca > 0 ? "+" : ""}R$ {brl(simulacao.totalDiferenca)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+              <p className="text-xs text-muted-foreground">
+                Diferença positiva = a escada nova teria pago MAIS do que foi pago.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!estornoBaixando}

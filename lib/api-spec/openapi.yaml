@@ -2545,6 +2545,33 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ComissaoPreviewLinha"
+  /lojas/{lojaId}/comissao/simular:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: simularComissao
+      tags: [comissao]
+      summary: '"Se a escada fosse esta, quanto teria pago?" — simulação sobre as bases reais'
+      description: >
+        Aplica uma escada HIPOTÉTICA às bases reais das últimas competências da
+        vendedora (a base do fechamento quando o mês já fechou; as vendas
+        brutas quando não), reusando o motor calcularComissao. Não grava nada —
+        é um POST que só consulta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimularComissaoInput"
+      responses:
+        "200":
+          description: Comparação mês a mês entre o pago real e o simulado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulacaoComissao"
+        "422":
+          description: Vendedora fora da loja ou escada inválida
   /lojas/{lojaId}/comissao/fechamentos:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -4046,6 +4073,43 @@ components:
               valorBonus: { type: number }
               valorTotal: { type: number }
               fechadoEm: { type: string, format: date-time }
+    SimularComissaoInput:
+      type: object
+      required: [vendedoraId, faixas]
+      properties:
+        vendedoraId: { type: string }
+        faixas:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ComissaoFaixaInput"
+        bonusAcumulaFaixas: { type: boolean, default: false }
+        meses: { type: integer, minimum: 1, maximum: 12, default: 3 }
+    SimulacaoComissaoLinha:
+      type: object
+      required: [competencia, base, fechada, pagoReal, simulado, diferenca]
+      properties:
+        competencia: { type: string }
+        # Base líquida do fechamento quando o mês fechou; vendas brutas quando não.
+        base: { type: number }
+        fechada: { type: boolean }
+        pagoReal: { type: number }
+        pagoRealPercentual: { type: ["number", "null"] }
+        simulado: { type: number }
+        simuladoPercentual: { type: ["number", "null"] }
+        diferenca: { type: number }
+    SimulacaoComissao:
+      type: object
+      required: [vendedoraId, linhas, totalPagoReal, totalSimulado, totalDiferenca]
+      properties:
+        vendedoraId: { type: string }
+        linhas:
+          type: array
+          items:
+            $ref: "#/components/schemas/SimulacaoComissaoLinha"
+        totalPagoReal: { type: number }
+        totalSimulado: { type: number }
+        totalDiferenca: { type: number }
     ComissaoFechamento:
       type: object
       required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal]
