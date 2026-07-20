@@ -3,6 +3,7 @@ import {
   agingDeParcelas,
   faixaDeAtraso,
   linkWhatsApp,
+  msgCobranca,
   rotuloContato,
   type ParcelaComNoiva,
 } from "./cobranca";
@@ -108,6 +109,40 @@ describe("agingDeParcelas", () => {
     const aging = agingDeParcelas([], HOJE);
     expect(aging.faixas.ate30).toEqual({ total: 0, qtdNoivas: 0 });
     expect(aging.noivas).toEqual([]);
+  });
+});
+
+describe("msgCobranca", () => {
+  it("cita o valor vencido e há quantos dias", () => {
+    const msg = msgCobranca({ noivaNome: "Ana", totalVencido: 1234.5, diasMaisAntigo: 45 });
+    expect(msg).toContain("Olá, Ana!");
+    // Intl usa espaço estreito não-quebrável entre "R$" e o número — normalizo.
+    expect(msg.replace(/\s/g, " ")).toContain("R$ 1.234,50");
+    expect(msg).toContain("há 45 dias");
+    // A saída para quem já pagou — o tom concierge que a tela pediu.
+    expect(msg).toContain("Se já tiver acertado");
+  });
+
+  it("um dia de atraso é 'desde ontem', não 'há 1 dias'", () => {
+    expect(msgCobranca({ noivaNome: "Bia", totalVencido: 100, diasMaisAntigo: 1 })).toContain("desde ontem");
+  });
+
+  it("usa o nome da loja quando há, e cai no atelier quando não", () => {
+    expect(msgCobranca({ noivaNome: "Ana", totalVencido: 100, diasMaisAntigo: 5, lojaNome: "Moscow Noivas" })).toContain(
+      "Aqui é da Moscow Noivas.",
+    );
+    expect(msgCobranca({ noivaNome: "Ana", totalVencido: 100, diasMaisAntigo: 5 })).toContain("Aqui é do atelier.");
+  });
+
+  it("noiva sem nome não deixa buraco na saudação", () => {
+    expect(msgCobranca({ noivaNome: null, totalVencido: 100, diasMaisAntigo: 5 })).toContain("Olá, noiva!");
+  });
+
+  it("encoda dentro de um link wa.me sem quebrar", () => {
+    const msg = msgCobranca({ noivaNome: "Ana", totalVencido: 100, diasMaisAntigo: 5 });
+    const link = linkWhatsApp("(11) 98888-7777", msg);
+    expect(link).toContain("https://wa.me/5511988887777?text=");
+    expect(decodeURIComponent(link!.split("text=")[1]!)).toBe(msg);
   });
 });
 

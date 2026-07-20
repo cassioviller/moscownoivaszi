@@ -31,6 +31,7 @@ import { podeNoModulo } from "@/lib/permissoes";
 import {
   agingDeParcelas,
   linkWhatsApp,
+  msgCobranca,
   rotuloContato,
   CANAIS,
   ROTULO_CANAL,
@@ -54,8 +55,16 @@ function ehFaixa(valor: string | null): valor is Faixa {
   return valor !== null && (FAIXAS as readonly string[]).includes(valor);
 }
 
-const msgPadrao = (nome: string | null) =>
-  `Olá ${nome ?? ""}! Aqui é do atelier. Passando com carinho para lembrar de uma parcela em aberto. Qualquer dúvida, estou à disposição.`;
+/**
+ * A régua do "há N dias": a cor sobe com o atraso (âmbar → laranja → vermelho).
+ * É o "em destaque" que faltava — antes o número vivia em cinza e só o valor de
+ * `mais60` ficava vermelho. Mantém o tom da tela: um marcador, não um alarme.
+ */
+const CLASSE_ATRASO: Record<Faixa, string> = {
+  ate30: "border-amber-500/40 text-amber-700 dark:text-amber-400",
+  d31a60: "border-orange-500/50 text-orange-700 dark:text-orange-400",
+  mais60: "border-destructive/50 text-destructive",
+};
 
 
 /**
@@ -186,9 +195,17 @@ function HistoricoNoiva({ leadId, aberto }: { leadId: string; aberto: boolean })
   );
 }
 
-function LinhaNoiva({ noiva }: { noiva: NoivaInadimplente }) {
+function LinhaNoiva({ noiva, lojaNome }: { noiva: NoivaInadimplente; lojaNome?: string | null }) {
   const naLoja = useCaminhoDaLoja();
-  const wa = linkWhatsApp(noiva.whatsapp, msgPadrao(noiva.noivaNome));
+  const wa = linkWhatsApp(
+    noiva.whatsapp,
+    msgCobranca({
+      noivaNome: noiva.noivaNome,
+      totalVencido: noiva.totalVencido,
+      diasMaisAntigo: noiva.diasMaisAntigo,
+      lojaNome,
+    }),
+  );
   const critico = noiva.faixaMaisAntiga === "mais60";
 
   /**
@@ -208,12 +225,20 @@ function LinhaNoiva({ noiva }: { noiva: NoivaInadimplente }) {
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0 space-y-1.5">
             <p className="font-medium truncate">{noiva.noivaNome ?? "Noiva"}</p>
-            <p className="text-xs text-muted-foreground">
-              {noiva.qtdParcelas} parcela{noiva.qtdParcelas === 1 ? "" : "s"} · há {noiva.diasMaisAntigo} dia
-              {noiva.diasMaisAntigo === 1 ? "" : "s"} · {ROTULO_FAIXA[noiva.faixaMaisAntiga]}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={`font-normal tabular-nums ${CLASSE_ATRASO[noiva.faixaMaisAntiga]}`}
+                title={ROTULO_FAIXA[noiva.faixaMaisAntiga]}
+              >
+                vencida há {noiva.diasMaisAntigo} dia{noiva.diasMaisAntigo === 1 ? "" : "s"}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {noiva.qtdParcelas} parcela{noiva.qtdParcelas === 1 ? "" : "s"}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <span
@@ -256,8 +281,12 @@ function LinhaNoiva({ noiva }: { noiva: NoivaInadimplente }) {
 
 export default function Cobranca() {
   const naLoja = useCaminhoDaLoja();
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Nome da loja para a mensagem de cobrança ("Aqui é da Moscow Noivas") — vem
+  // da sessão, como na agenda; sem request extra.
+  const lojaNome = session?.lojas?.find((l) => l.id === activeLojaId)?.nome;
 
   const faixaParam = searchParams.get("faixa");
   const faixaAtiva: Faixa | null = ehFaixa(faixaParam) ? faixaParam : null;
@@ -387,7 +416,7 @@ export default function Cobranca() {
               ) : (
                 <ul className="space-y-3">
                   {noivasVisiveis.map((n) => (
-                    <LinhaNoiva key={n.leadId} noiva={n} />
+                    <LinhaNoiva key={n.leadId} noiva={n} lojaNome={lojaNome} />
                   ))}
                 </ul>
               )}

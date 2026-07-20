@@ -42,6 +42,37 @@ export type ConfirmacaoAtendimento = {
   endereco?: string | null;
 };
 
+const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+export type Cobranca = {
+  noivaNome?: string | null;
+  /** Total vencido da noiva, em reais. */
+  totalVencido: number;
+  /** Dias de atraso da parcela mais antiga (≥1 — o aging descarta o que vence hoje). */
+  diasMaisAntigo: number;
+  lojaNome?: string | null;
+};
+
+/**
+ * Mensagem de cobrança pronta. Sucede o `msgPadrao` genérico que vivia na tela:
+ * aquele só dizia "uma parcela em aberto", sem valor nem atraso — a noiva não
+ * sabia do que se tratava e a loja repetia o número à mão.
+ *
+ * Cita o valor e há quanto tempo, mas mantém o tom concierge que a tela escolheu
+ * (a cobrança do atelier é um lembrete afetuoso, não uma régua): a saída para
+ * "já paguei" vem escrita, para a noiva em dia não se sentir cobrada por erro.
+ */
+export function msgCobranca(p: Cobranca): string {
+  const quem = p.noivaNome || "noiva";
+  const daLoja = p.lojaNome ? `da ${p.lojaNome}` : "do atelier";
+  const atraso = p.diasMaisAntigo === 1 ? "desde ontem" : `há ${p.diasMaisAntigo} dias`;
+  return [
+    `Olá, ${quem}! Aqui é ${daLoja}.`,
+    `Passando com carinho para lembrar de um valor em aberto: ${brlFmt.format(p.totalVencido)}, ${atraso}.`,
+    "Se já tiver acertado, é só desconsiderar. Qualquer dúvida, estou à disposição.",
+  ].join("\n");
+}
+
 /** Mensagem de confirmação do atendimento/prova — criação e véspera usam a mesma. */
 export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
   const quando = `${diaFmt.format(new Date(p.inicio))} às ${horaFmt.format(new Date(p.inicio))}`;

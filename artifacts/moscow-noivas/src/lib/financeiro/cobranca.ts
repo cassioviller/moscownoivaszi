@@ -24,8 +24,9 @@ export function faixaDeAtraso(diasDeAtraso: number): Faixa {
 }
 
 // O deep-link wa.me virou módulo neutro quando a agenda passou a usá-lo (E8);
-// re-export mantém os consumidores do financeiro sem mexer.
-export { linkWhatsApp } from "../whatsapp";
+// re-export mantém os consumidores do financeiro sem mexer. `msgCobranca` (E29)
+// mora lá pelo mesmo motivo — ao lado da mensagem de confirmação da agenda.
+export { linkWhatsApp, msgCobranca, type Cobranca } from "../whatsapp";
 
 // ── Registro de contato (o histórico por noiva) ──
 
