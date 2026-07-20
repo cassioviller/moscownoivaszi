@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { brl } from "@/lib/formatos";
 import { dreDoIntervalo } from "@/lib/financeiro/dre";
+import { baixarCsv, linhasDre } from "@/lib/financeiro/exportar";
 import {
   competenciaAtual,
   competenciaValida,
@@ -157,6 +158,16 @@ export default function DRE() {
           onClick={() => irPara(deslocarCompetencia(competencia, 1))}
         >
           <ChevronRight className="h-4 w-4" />
+        </Button>
+        {/* E22: o CSV nasce dos MESMOS números da tela (dreDoIntervalo). */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={carregando || erro || vazio}
+          onClick={() => baixarCsv(`dre-${competencia}.csv`, linhasDre(dre, competencia))}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Exportar CSV
         </Button>
       </div>
 

@@ -14,12 +14,15 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Download } from "lucide-react";
 import { ErroListagem } from "./helpers";
 import { brl } from "@/lib/formatos";
 import { resumoCaixa, movimentos, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
+import { baixarCsv, linhasFluxo } from "@/lib/financeiro/exportar";
 import {
   resolverIntervalo,
   competenciaAtual,
@@ -234,6 +237,21 @@ export default function FluxoCaixa() {
             onChange={(e) => definirDia("fim", e.target.value)}
           />
         </div>
+        {/* E22: o CSV nasce da MESMA linha do tempo da tela (movimentos). */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={carregando || erro || linhaDoTempo.length === 0}
+          onClick={() =>
+            baixarCsv(
+              `fluxo-${intervalo.iniYMD}-a-${intervalo.fimYMD}.csv`,
+              linhasFluxo(linhaDoTempo),
+            )
+          }
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Exportar CSV
+        </Button>
       </div>
 
       {erro ? (
