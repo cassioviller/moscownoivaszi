@@ -667,6 +667,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DisponibilidadeVestidos"
+  /lojas/{lojaId}/vestidos/utilizacao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getUtilizacaoVestidos
+      tags: [vestidos]
+      summary: Utilização por vestido — provas, reservas e contratos no período
+      description: >
+        O relatório de encalhe e de estrela: TODOS os vestidos do acervo, cada
+        um com quantas provas, reservas ativas e contratos gerou no período (e
+        a receita dos contratos). Zeros aparecem de propósito — o vestido sem
+        uso é a resposta de "o que sai de linha".
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do período (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do período (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Uma linha por vestido do acervo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestidoUtilizacao"
+        "400":
+          description: Intervalo inválido
   /lojas/{lojaId}/vestidos/{vestidoId}/proxima-janela:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -2743,6 +2781,22 @@ components:
         thumbBase64:
           type: ["string", "null"]
           description: "Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback)."
+    VestidoUtilizacao:
+      type: object
+      required: [vestidoId, codigo, nome, status, precoBase, provas, reservas, contratos, receita]
+      properties:
+        vestidoId: { type: string }
+        codigo: { type: string }
+        nome: { type: string }
+        status: { type: string }
+        precoBase: { type: number }
+        # Provas agendadas no período (inclui FALTOU — a demanda existiu).
+        provas: { type: integer }
+        # Reservas de casamento ATIVAS com data no período.
+        reservas: { type: integer }
+        # Itens VESTIDO em contratos ATIVOS fechados no período.
+        contratos: { type: integer }
+        receita: { type: number }
     VestidoInput:
       type: object
       required: [codigo, nome, precoBase]

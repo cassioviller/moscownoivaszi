@@ -77,6 +77,7 @@ import type {
   GetConviteInfoParams,
   GetMinhaComissaoParams,
   GetOrcamentoPublicoParams,
+  GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
   HealthStatus,
   Lead,
@@ -138,7 +139,8 @@ import type {
   VestidoFotoInput,
   VestidoFotoMeta,
   VestidoInput,
-  VestidoUpdate
+  VestidoUpdate,
+  VestidoUtilizacao
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -2807,6 +2809,96 @@ export function useCheckDisponibilidadeVestidos<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getCheckDisponibilidadeVestidosQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetUtilizacaoVestidosUrl = (lojaId: string,
+    params?: GetUtilizacaoVestidosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/vestidos/utilizacao?${stringifiedParams}` : `/api/lojas/${lojaId}/vestidos/utilizacao`
+}
+
+/**
+ * O relatório de encalhe e de estrela: TODOS os vestidos do acervo, cada um com quantas provas, reservas ativas e contratos gerou no período (e a receita dos contratos). Zeros aparecem de propósito — o vestido sem uso é a resposta de "o que sai de linha".
+ * @summary Utilização por vestido — provas, reservas e contratos no período
+ */
+export const getUtilizacaoVestidos = async (lojaId: string,
+    params?: GetUtilizacaoVestidosParams, options?: RequestInit): Promise<VestidoUtilizacao[]> => {
+
+  return customFetch<VestidoUtilizacao[]>(getGetUtilizacaoVestidosUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUtilizacaoVestidosQueryKey = (lojaId: string,
+    params?: GetUtilizacaoVestidosParams,) => {
+    return [
+    `/api/lojas/${lojaId}/vestidos/utilizacao`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetUtilizacaoVestidosQueryOptions = <TData = Awaited<ReturnType<typeof getUtilizacaoVestidos>>, TError = ErrorType<void>>(lojaId: string,
+    params?: GetUtilizacaoVestidosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUtilizacaoVestidos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUtilizacaoVestidosQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUtilizacaoVestidos>>> = ({ signal }) => getUtilizacaoVestidos(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUtilizacaoVestidos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUtilizacaoVestidosQueryResult = NonNullable<Awaited<ReturnType<typeof getUtilizacaoVestidos>>>
+export type GetUtilizacaoVestidosQueryError = ErrorType<void>
+
+
+/**
+ * @summary Utilização por vestido — provas, reservas e contratos no período
+ */
+
+export function useGetUtilizacaoVestidos<TData = Awaited<ReturnType<typeof getUtilizacaoVestidos>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: GetUtilizacaoVestidosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUtilizacaoVestidos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUtilizacaoVestidosQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -43,7 +43,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, ClipboardPlus, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
+import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const novoVestidoSchema = z.object({
@@ -259,6 +259,13 @@ export default function Vestidos() {
           {/* Cadastro completo (com características do catálogo) na página dedicada;
               o dialog continua como atalho rápido. Link (role=link) não colide com o
               botão "Novo Vestido" (role=button) exercitado pelo E2E. */}
+          {/* Relatório de utilização (E15): leitura, qualquer perfil que vê o módulo. */}
+          <Button variant="ghost" asChild>
+            <Link href="/vestidos/utilizacao">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Utilização
+            </Link>
+          </Button>
           {podeCriar && (
             <Button variant="outline" asChild>
               <Link href="/vestidos/novo">

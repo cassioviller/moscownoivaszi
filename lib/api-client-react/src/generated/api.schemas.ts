@@ -311,6 +311,18 @@ export interface VestidoFotoInput {
   thumbBase64?: string | null;
 }
 
+export interface VestidoUtilizacao {
+  vestidoId: string;
+  codigo: string;
+  nome: string;
+  status: string;
+  precoBase: number;
+  provas: number;
+  reservas: number;
+  contratos: number;
+  receita: number;
+}
+
 export interface VestidoInput {
   /** @minLength 1 */
   codigo: string;
@@ -1787,6 +1799,19 @@ export type CheckDisponibilidadeVestidosParams = {
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 data: string;
+};
+
+export type GetUtilizacaoVestidosParams = {
+/**
+ * Início do período (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do período (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
 };
 
 export type GetVestidoFotoParams = {

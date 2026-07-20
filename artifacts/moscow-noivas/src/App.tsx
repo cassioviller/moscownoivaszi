@@ -29,6 +29,7 @@ import ReservaDetalhe from "@/pages/reservas/[bloqueioId]";
 import Vestidos from "@/pages/vestidos";
 import VestidoDetail from "@/pages/vestidos/[id]";
 import NovoVestido from "@/pages/vestidos/novo";
+import UtilizacaoVestidos from "@/pages/vestidos/utilizacao";
 import EditarVestido from "@/pages/vestidos/[id]/editar";
 import Orcamentos from "@/pages/orcamentos";
 import OrcamentoDetail from "@/pages/orcamentos/[id]";
@@ -155,6 +156,7 @@ function App() {
               <Route path="reservas/:bloqueioId" element={<ReservaDetalhe />} />
               <Route path="vestidos" element={<Vestidos />} />
               <Route path="vestidos/novo" element={<NovoVestido />} />
+              <Route path="vestidos/utilizacao" element={<UtilizacaoVestidos />} />
               <Route path="vestidos/:id" element={<VestidoDetail />} />
               <Route path="vestidos/:id/editar" element={<EditarVestido />} />
               <Route path="orcamentos" element={<Orcamentos />} />

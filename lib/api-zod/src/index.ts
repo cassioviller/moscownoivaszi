@@ -15,4 +15,5 @@ export {
   ExportarParcelasParams,
   ListLeadsParams,
   GetMinhaComissaoParams,
+  GetUtilizacaoVestidosParams,
 } from "./generated/api";

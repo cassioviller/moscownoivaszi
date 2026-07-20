@@ -1,6 +1,16 @@
 import { Router, type IRouter } from "express";
-import { db, vestidosTable, vestidoFotosTable, vestidoAtributosTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import {
+  db,
+  vestidosTable,
+  vestidoFotosTable,
+  vestidoAtributosTable,
+  atendimentosTable,
+  bloqueioVestidosTable,
+  contratosTable,
+  contratoItensTable,
+} from "@workspace/db";
+import { eq, and, gte, lt, isNull, isNotNull, count, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   ListVestidosResponse,
   CreateVestidoBody,
@@ -13,7 +23,9 @@ import {
   GetVestidoFotoQueryParams,
   CheckDisponibilidadeVestidosQueryParams,
   CheckDisponibilidadeVestidosResponse,
-  GetProximaJanelaVestidoResponse
+  GetProximaJanelaVestidoResponse,
+  GetUtilizacaoVestidosQueryParams,
+  GetUtilizacaoVestidosResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -25,6 +37,8 @@ import {
   detalharConflitos,
   diaLocal,
   proximaDataLivre,
+  inicioDoDia,
+  addDias,
   type BloqueioJanelasInput,
   type BloqueioAtivoComContexto,
   type ConflitoDetalhe,
@@ -208,6 +222,96 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   });
 
   res.json(CheckDisponibilidadeVestidosResponse.parse({ data, itens }));
+});
+
+// ── Utilização por vestido (E15) ──
+// O relatório de encalhe e de estrela: TODOS os vestidos, cada um com quantas
+// provas, reservas e contratos gerou no período — zeros incluídos de
+// propósito, porque o vestido sem uso é a resposta de "o que sai de linha".
+// Três agregações no banco (nunca as linhas) + costura em memória.
+router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = GetUtilizacaoVestidosQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  const { de, ate } = parsed.data;
+  if (de && ate && de > ate) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+  const inicio = de ? inicioDoDia(de) : null;
+  const fim = ate ? inicioDoDia(addDias(ate, 1)) : null;
+  // Vale para qualquer coluna de instante (inicio, casamentoData, fechadoEm).
+  const recorte = (coluna: AnyPgColumn) => [
+    ...(inicio ? [gte(coluna, inicio)] : []),
+    ...(fim ? [lt(coluna, fim)] : []),
+  ];
+
+  const receitaSql = sql`sum(${contratoItensTable.valorUnitario} * ${contratoItensTable.quantidade})`
+    .mapWith(Number);
+
+  const [vestidos, provas, reservas, contratos] = await Promise.all([
+    db
+      .select({
+        vestidoId: vestidosTable.id,
+        codigo: vestidosTable.codigo,
+        nome: vestidosTable.nome,
+        status: vestidosTable.status,
+        precoBase: vestidosTable.precoBase,
+      })
+      .from(vestidosTable)
+      .where(eq(vestidosTable.lojaId, lojaId))
+      .orderBy(vestidosTable.nome),
+    // Provas agendadas no período (FALTOU conta: a demanda existiu).
+    db
+      .select({ vestidoId: bloqueioVestidosTable.vestidoId, qtd: count() })
+      .from(atendimentosTable)
+      .innerJoin(bloqueioVestidosTable, eq(bloqueioVestidosTable.id, atendimentosTable.bloqueioId))
+      .where(and(
+        eq(atendimentosTable.lojaId, lojaId),
+        eq(atendimentosTable.tipo, "PROVA"),
+        ...recorte(atendimentosTable.inicio),
+      ))
+      .groupBy(bloqueioVestidosTable.vestidoId),
+    // Reservas de casamento ativas com data no período.
+    db
+      .select({ vestidoId: bloqueioVestidosTable.vestidoId, qtd: count() })
+      .from(bloqueioVestidosTable)
+      .where(and(
+        eq(bloqueioVestidosTable.lojaId, lojaId),
+        eq(bloqueioVestidosTable.tipo, "RESERVA_CASAMENTO"),
+        isNull(bloqueioVestidosTable.canceladoEm),
+        ...recorte(bloqueioVestidosTable.casamentoData),
+      ))
+      .groupBy(bloqueioVestidosTable.vestidoId),
+    // Itens VESTIDO de contratos ATIVOS fechados no período — e a receita.
+    db
+      .select({ vestidoId: contratoItensTable.vestidoId, qtd: count(), receita: receitaSql })
+      .from(contratoItensTable)
+      .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
+      .where(and(
+        eq(contratoItensTable.lojaId, lojaId),
+        eq(contratoItensTable.tipo, "VESTIDO"),
+        isNotNull(contratoItensTable.vestidoId),
+        eq(contratosTable.status, "ATIVO"),
+        ...recorte(contratosTable.fechadoEm),
+      ))
+      .groupBy(contratoItensTable.vestidoId),
+  ]);
+
+  const provasPor = new Map(provas.map((p) => [p.vestidoId, p.qtd]));
+  const reservasPor = new Map(reservas.map((r) => [r.vestidoId, r.qtd]));
+  const contratosPor = new Map(contratos.map((c) => [c.vestidoId, c]));
+
+  res.json(GetUtilizacaoVestidosResponse.parse(vestidos.map((v) => ({
+    ...v,
+    provas: provasPor.get(v.vestidoId) ?? 0,
+    reservas: reservasPor.get(v.vestidoId) ?? 0,
+    contratos: contratosPor.get(v.vestidoId)?.qtd ?? 0,
+    receita: Math.round((contratosPor.get(v.vestidoId)?.receita ?? 0) * 100) / 100,
+  }))));
 });
 
 // ── Próxima janela livre (E9) ──

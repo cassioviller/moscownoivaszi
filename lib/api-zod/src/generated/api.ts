@@ -778,6 +778,37 @@ export const CheckDisponibilidadeVestidosResponse = zod.object({
 
 
 /**
+ * O relatório de encalhe e de estrela: TODOS os vestidos do acervo, cada um com quantas provas, reservas ativas e contratos gerou no período (e a receita dos contratos). Zeros aparecem de propósito — o vestido sem uso é a resposta de "o que sai de linha".
+ * @summary Utilização por vestido — provas, reservas e contratos no período
+ */
+export const GetUtilizacaoVestidosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getUtilizacaoVestidosQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getUtilizacaoVestidosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetUtilizacaoVestidosQueryParams = zod.object({
+  "de": zod.coerce.string().regex(getUtilizacaoVestidosQueryDeRegExp).optional().describe('Início do período (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(getUtilizacaoVestidosQueryAteRegExp).optional().describe('Fim do período (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const GetUtilizacaoVestidosResponseItem = zod.object({
+  "vestidoId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "status": zod.string(),
+  "precoBase": zod.number(),
+  "provas": zod.number(),
+  "reservas": zod.number(),
+  "contratos": zod.number(),
+  "receita": zod.number()
+})
+export const GetUtilizacaoVestidosResponse = zod.array(GetUtilizacaoVestidosResponseItem)
+
+
+/**
  * @summary Próxima data de casamento em que uma reserva nova NÃO conflitaria
  */
 export const GetProximaJanelaVestidoParams = zod.object({
