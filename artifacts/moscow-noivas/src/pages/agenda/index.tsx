@@ -38,8 +38,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Clock, Plus, AlertCircle } from "lucide-react";
+import { Clock, Plus, AlertCircle, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 
 const novoAtendimentoSchema = z.object({
   leadId: z.string().min(1, "Escolha a noiva"),
@@ -59,7 +61,7 @@ const SITUACAO_LABELS: Record<string, string> = {
 };
 
 export default function Agenda() {
-  const { activeLojaId, user, acessosModulos } = useAuth();
+  const { activeLojaId, user, acessosModulos, session } = useAuth();
   const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -77,6 +79,25 @@ export default function Agenda() {
     return mapa;
   }, [leads.data]);
 
+  // E8: confirmação por wa.me — a mensagem carrega nome e endereço da loja,
+  // que já vêm na sessão (/auth/me); nada de request extra.
+  const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
+  const waConfirmacao = (a: {
+    lead?: { noivaNome?: string; whatsapp?: string | null } | null;
+    tipo: string;
+    inicio: string;
+  }) =>
+    linkWhatsApp(
+      a.lead?.whatsapp,
+      msgConfirmacaoAtendimento({
+        noivaNome: a.lead?.noivaNome,
+        tipo: a.tipo,
+        inicio: a.inicio,
+        lojaNome: lojaAtiva?.nome,
+        endereco: lojaAtiva?.endereco,
+      }),
+    );
+
   // Somente os atendimentos de HOJE, ordenados por horário.
   const doDia = useMemo(() => {
     const hoje = new Date();
@@ -92,7 +113,7 @@ export default function Agenda() {
 
   const onSubmit = async (values: NovoAtendimentoValues) => {
     try {
-      await createAtendimento.mutateAsync({
+      const criado = await createAtendimento.mutateAsync({
         lojaId: activeLojaId!,
         data: {
           leadId: values.leadId,
@@ -104,7 +125,22 @@ export default function Agenda() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
-      toast({ title: "Atendimento agendado" });
+      const wa = waConfirmacao(criado);
+      toast({
+        title: "Atendimento agendado",
+        ...(wa
+          ? {
+              description: "Quer já mandar a confirmação para a noiva?",
+              action: (
+                <ToastAction altText="Enviar confirmação por WhatsApp" asChild>
+                  <a href={wa} target="_blank" rel="noopener noreferrer">
+                    WhatsApp
+                  </a>
+                </ToastAction>
+              ),
+            }
+          : {}),
+      });
       form.reset();
       setOpen(false);
     } catch (err) {
@@ -272,22 +308,35 @@ export default function Agenda() {
             ) : doDia.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">Nenhum atendimento agendado para hoje.</div>
             ) : (
-              doDia.map(atendimento => (
-                <div key={atendimento.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-                      <Clock className="h-5 w-5" />
+              doDia.map(atendimento => {
+                const wa = atendimento.situacao === "AGENDADO" ? waConfirmacao(atendimento) : null;
+                return (
+                  <div key={atendimento.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {nomePorLead.get(atendimento.leadId) ?? "Noiva"} — {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{format(new Date(atendimento.inicio), "HH:mm")}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">
-                        {nomePorLead.get(atendimento.leadId) ?? "Noiva"} — {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{format(new Date(atendimento.inicio), "HH:mm")}</p>
+                    <div className="flex items-center gap-2">
+                      {wa && (
+                        <Button asChild variant="outline" size="sm">
+                          <a href={wa} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle className="h-4 w-4 mr-1" />
+                            Confirmar
+                          </a>
+                        </Button>
+                      )}
+                      <Badge>{SITUACAO_LABELS[atendimento.situacao] ?? atendimento.situacao}</Badge>
                     </div>
                   </div>
-                  <Badge>{SITUACAO_LABELS[atendimento.situacao] ?? atendimento.situacao}</Badge>
-                </div>
-              ))
+                );
+              })
             )}
           </CardContent>
         </Card>

@@ -33,9 +33,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertCircle, CalendarDays, Plus, Search } from "lucide-react";
+import { AlertCircle, CalendarDays, MessageCircle, Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
+import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 
 const TODAS = "TODAS";
 
@@ -71,7 +72,7 @@ type Confirmacao = {
  */
 export default function Atendimentos() {
   const { lojaId } = useParams();
-  const { activeLojaId, acessosModulos } = useAuth();
+  const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -169,9 +170,26 @@ export default function Atendimentos() {
     }
   };
 
+  // E8: confirmar por wa.me na véspera (ou quando for) — só faz sentido para
+  // quem ainda está AGENDADO; nome/endereço da loja vêm da sessão.
+  const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
+
   const renderLinha = (a: Atendimento, comData?: boolean) => {
     const noivaNome = a.lead?.noivaNome ?? "Noiva";
     const desfechoEscolhido = desfechos[a.id];
+    const wa =
+      a.situacao === "AGENDADO"
+        ? linkWhatsApp(
+            a.lead?.whatsapp,
+            msgConfirmacaoAtendimento({
+              noivaNome: a.lead?.noivaNome,
+              tipo: a.tipo,
+              inicio: a.inicio,
+              lojaNome: lojaAtiva?.nome,
+              endereco: lojaAtiva?.endereco,
+            }),
+          )
+        : null;
     return (
       <li key={a.id} className="flex items-start gap-4 px-4 py-3" data-testid={`linha-atendimento-${a.id}`}>
         <div className="flex w-16 shrink-0 flex-col items-center">
@@ -204,6 +222,15 @@ export default function Atendimentos() {
                 ? ` · ${DESFECHO_LABELS[a.desfecho] ?? a.desfecho}`
                 : ""}
             </Badge>
+
+            {wa && (
+              <Button asChild variant="outline" size="sm">
+                <a href={wa} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="mr-1 h-4 w-4" />
+                  Confirmar por WhatsApp
+                </a>
+              </Button>
+            )}
 
             {podeEditar && a.situacao === "AGENDADO" && (
               <>

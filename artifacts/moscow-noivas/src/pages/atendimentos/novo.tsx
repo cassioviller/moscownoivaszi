@@ -51,8 +51,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { MessageCircle } from "lucide-react";
 import { dataCurtaFmt } from "../noivas/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
+import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 
 const agendarSchema = z
   .object({
@@ -90,7 +93,7 @@ const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
  */
 export default function NovoAtendimento() {
   const { lojaId } = useParams();
-  const { activeLojaId, acessosModulos } = useAuth();
+  const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -179,6 +182,24 @@ export default function NovoAtendimento() {
 
   const regra = disponibilidade.data;
 
+  // E8: confirmação por wa.me com nome/endereço da loja vindos da sessão.
+  const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
+  const waConfirmacao = (a: {
+    lead?: { noivaNome?: string; whatsapp?: string | null } | null;
+    tipo: string;
+    inicio: string;
+  }) =>
+    linkWhatsApp(
+      a.lead?.whatsapp,
+      msgConfirmacaoAtendimento({
+        noivaNome: a.lead?.noivaNome,
+        tipo: a.tipo,
+        inicio: a.inicio,
+        lojaNome: lojaAtiva?.nome,
+        endereco: lojaAtiva?.endereco,
+      }),
+    );
+
   const onSubmit = async (values: AgendarValues) => {
     // GAP Onda 3: a grade de horários livres (gradeDoDia/slots do orcamentos)
     // não tem endpoint no client gerado — usamos input de hora simples e
@@ -194,7 +215,7 @@ export default function NovoAtendimento() {
       return;
     }
     try {
-      await createAtendimento.mutateAsync({
+      const criado = await createAtendimento.mutateAsync({
         lojaId: activeLojaId!,
         data: {
           leadId: values.leadId,
@@ -207,7 +228,22 @@ export default function NovoAtendimento() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
-      toast({ title: "Atendimento agendado" });
+      const wa = waConfirmacao(criado);
+      toast({
+        title: "Atendimento agendado",
+        ...(wa
+          ? {
+              description: "Quer já mandar a confirmação para a noiva?",
+              action: (
+                <ToastAction altText="Enviar confirmação por WhatsApp" asChild>
+                  <a href={wa} target="_blank" rel="noopener noreferrer">
+                    WhatsApp
+                  </a>
+                </ToastAction>
+              ),
+            }
+          : {}),
+      });
       form.reset();
     } catch (err) {
       toast({
@@ -492,31 +528,44 @@ export default function NovoAtendimento() {
             <p className="text-sm text-muted-foreground">Nenhum atendimento agendado.</p>
           ) : (
             <ul className="divide-y">
-              {proximos.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-4 py-3">
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm font-medium">
-                      {a.lead?.noivaNome ?? "Noiva"}
-                      {a.tipo === "PROVA" ? " — Prova" : ""}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {dataHoraFmt.format(new Date(a.inicio))} · {a.cabine?.nome ?? "Cabine"} ·{" "}
-                      {a.vendedora?.nome ?? "Vendedora"}
-                    </span>
-                  </div>
-                  {podeCriar && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label="Cancelar atendimento"
-                      disabled={deleteAtendimento.isPending}
-                      onClick={() => setCancelando(a)}
-                    >
-                      Cancelar
-                    </Button>
-                  )}
-                </li>
-              ))}
+              {proximos.map((a) => {
+                const wa = waConfirmacao(a);
+                return (
+                  <li key={a.id} className="flex items-center justify-between gap-4 py-3">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-sm font-medium">
+                        {a.lead?.noivaNome ?? "Noiva"}
+                        {a.tipo === "PROVA" ? " — Prova" : ""}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {dataHoraFmt.format(new Date(a.inicio))} · {a.cabine?.nome ?? "Cabine"} ·{" "}
+                        {a.vendedora?.nome ?? "Vendedora"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {wa && (
+                        <Button asChild variant="outline" size="sm">
+                          <a href={wa} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle className="mr-1 h-4 w-4" />
+                            Confirmar
+                          </a>
+                        </Button>
+                      )}
+                      {podeCriar && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Cancelar atendimento"
+                          disabled={deleteAtendimento.isPending}
+                          onClick={() => setCancelando(a)}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
