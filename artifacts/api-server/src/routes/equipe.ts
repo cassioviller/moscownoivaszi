@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable } from "@workspace/db";
-import { eq, and, gt, isNull, desc } from "drizzle-orm";
+import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable } from "@workspace/db";
+import { eq, and, gt, gte, isNull, desc, count } from "drizzle-orm";
 import {
   ListEquipeParams,
   ListEquipeResponse,
@@ -14,7 +14,8 @@ import {
   ListConvitesEquipeResponse,
   CreateConviteEquipeBody,
   CreateConviteEquipeResponse,
-  ReenviarConviteEquipeResponse
+  ReenviarConviteEquipeResponse,
+  GetAtividadeEquipeResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { hashSenha, gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
@@ -52,6 +53,50 @@ router.get("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
     .where(eq(usuariosLojasTable.lojaId, params.data.lojaId));
 
   res.json(ListEquipeResponse.parse(equipe));
+});
+
+// Log de atividade (E18): a visão da dona — quem entrou quando e quem mexeu
+// em quê. `ultimoLoginEm` vem do carimbo no login (sessão não serve: logout e
+// expiração apagam a linha); as ações vêm do audit_log do E10. Mesmo gate
+// admin do restante da gestão de equipe.
+router.get("/lojas/:lojaId/equipe/atividade", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const corte30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [membros, acoes, eventos] = await Promise.all([
+    db
+      .select({
+        usuarioId: usuariosTable.id,
+        nome: usuariosTable.nome,
+        email: usuariosTable.email,
+        perfilNome: perfisTable.nome,
+        ativo: usuariosTable.ativo,
+        ultimoAcesso: usuariosTable.ultimoLoginEm,
+      })
+      .from(usuariosLojasTable)
+      .innerJoin(usuariosTable, eq(usuariosTable.id, usuariosLojasTable.usuarioId))
+      .innerJoin(perfisTable, eq(perfisTable.id, usuariosLojasTable.perfilId))
+      .where(eq(usuariosLojasTable.lojaId, lojaId)),
+    db
+      .select({ usuarioId: auditLogTable.usuarioId, qtd: count() })
+      .from(auditLogTable)
+      .where(and(eq(auditLogTable.lojaId, lojaId), gte(auditLogTable.criadoEm, corte30d)))
+      .groupBy(auditLogTable.usuarioId),
+    db
+      .select()
+      .from(auditLogTable)
+      .where(eq(auditLogTable.lojaId, lojaId))
+      .orderBy(desc(auditLogTable.criadoEm))
+      .limit(50),
+  ]);
+
+  const acoesPor = new Map(acoes.map((a) => [a.usuarioId, a.qtd]));
+  res.json(GetAtividadeEquipeResponse.parse({
+    membros: membros
+      .map((m) => ({ ...m, acoes30d: acoesPor.get(m.usuarioId) ?? 0 }))
+      .sort((a, b) => (b.ultimoAcesso?.getTime() ?? 0) - (a.ultimoAcesso?.getTime() ?? 0)),
+    eventos,
+  }));
 });
 
 router.post("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {

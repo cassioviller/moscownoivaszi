@@ -31,6 +31,7 @@ import type {
   Atendimento,
   AtendimentoInput,
   AtendimentoUpdate,
+  AtividadeEquipe,
   Atributo,
   AtributoInput,
   AtributoOpcao,
@@ -1984,6 +1985,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCancelarConviteEquipeMutationOptions(options));
     }
+
+export const getGetAtividadeEquipeUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/equipe/atividade`
+}
+
+/**
+ * A visão da dona (E18): quando cada membro entrou pela última vez (carimbo de login — sessões somem no logout) e quantas ações sensíveis fez nos últimos 30 dias, mais o feed recente do audit_log da loja. Mesmo gate admin da gestão de equipe.
+ * @summary Log de atividade da equipe — últimos acessos e ações sensíveis
+ */
+export const getAtividadeEquipe = async (lojaId: string, options?: RequestInit): Promise<AtividadeEquipe> => {
+
+  return customFetch<AtividadeEquipe>(getGetAtividadeEquipeUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAtividadeEquipeQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/equipe/atividade`
+    ] as const;
+    }
+
+
+export const getGetAtividadeEquipeQueryOptions = <TData = Awaited<ReturnType<typeof getAtividadeEquipe>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAtividadeEquipe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAtividadeEquipeQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAtividadeEquipe>>> = ({ signal }) => getAtividadeEquipe(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAtividadeEquipe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAtividadeEquipeQueryResult = NonNullable<Awaited<ReturnType<typeof getAtividadeEquipe>>>
+export type GetAtividadeEquipeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Log de atividade da equipe — últimos acessos e ações sensíveis
+ */
+
+export function useGetAtividadeEquipe<TData = Awaited<ReturnType<typeof getAtividadeEquipe>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAtividadeEquipe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAtividadeEquipeQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetConviteInfoUrl = (params: GetConviteInfoParams,) => {
   const normalizedParams = new URLSearchParams();

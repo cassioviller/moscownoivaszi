@@ -498,6 +498,37 @@ export const CancelarConviteEquipeParams = zod.object({
 export const CancelarConviteEquipeResponse = zod.void()
 
 
+/**
+ * A visão da dona (E18): quando cada membro entrou pela última vez (carimbo de login — sessões somem no logout) e quantas ações sensíveis fez nos últimos 30 dias, mais o feed recente do audit_log da loja. Mesmo gate admin da gestão de equipe.
+ * @summary Log de atividade da equipe — últimos acessos e ações sensíveis
+ */
+export const GetAtividadeEquipeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetAtividadeEquipeResponse = zod.object({
+  "membros": zod.array(zod.object({
+  "usuarioId": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilNome": zod.string(),
+  "ativo": zod.boolean(),
+  "ultimoAcesso": zod.coerce.date().nullish(),
+  "acoes30d": zod.number()
+})),
+  "eventos": zod.array(zod.object({
+  "id": zod.string(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']),
+  "entidade": zod.string(),
+  "entidadeId": zod.string(),
+  "usuarioId": zod.string().nullish(),
+  "usuarioNome": zod.string().describe('Desnormalizado — sobrevive à saída do autor da equipe'),
+  "detalhe": zod.record(zod.string(), zod.unknown()).nullish(),
+  "criadoEm": zod.coerce.date()
+}))
+})
+
+
 export const GetConviteInfoQueryParams = zod.object({
   "token": zod.coerce.string()
 })

@@ -446,6 +446,25 @@ paths:
   # Rotas PÚBLICAS do convite — sem sessão: quem tem o token (256 bits) é a
   # capability. Token via QUERY/corpo, nunca no path: o log de request grava o
   # path e o token não pode cair em log.
+  /lojas/{lojaId}/equipe/atividade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getAtividadeEquipe
+      tags: [equipe]
+      summary: Log de atividade da equipe — últimos acessos e ações sensíveis
+      description: >
+        A visão da dona (E18): quando cada membro entrou pela última vez
+        (carimbo de login — sessões somem no logout) e quantas ações sensíveis
+        fez nos últimos 30 dias, mais o feed recente do audit_log da loja.
+        Mesmo gate admin da gestão de equipe.
+      responses:
+        "200":
+          description: Resumo por membro + eventos recentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AtividadeEquipe"
   /equipe/convites/info:
     get:
       operationId: getConviteInfo
@@ -2672,6 +2691,31 @@ components:
       required: [jaTinhaConta]
       properties:
         jaTinhaConta: { type: boolean }
+    MembroAtividade:
+      type: object
+      required: [usuarioId, nome, email, perfilNome, ativo, acoes30d]
+      properties:
+        usuarioId: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        perfilNome: { type: string }
+        ativo: { type: boolean }
+        # Último LOGIN do usuário (global, não por loja). Null = nunca entrou.
+        ultimoAcesso: { type: ["string", "null"], format: date-time }
+        # Linhas do audit_log desta loja nos últimos 30 dias.
+        acoes30d: { type: integer }
+    AtividadeEquipe:
+      type: object
+      required: [membros, eventos]
+      properties:
+        membros:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembroAtividade"
+        eventos:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditoriaItem"
     MembroEquipeUpdate:
       type: object
       properties:

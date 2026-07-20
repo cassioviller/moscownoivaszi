@@ -41,6 +41,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   const sessao = await criarSessao(usuario.id);
+  // Carimbo do último acesso (E18) — a sessão não serve de fonte: logout e
+  // expiração apagam a linha.
+  await db.update(usuariosTable)
+    .set({ ultimoLoginEm: new Date() })
+    .where(eq(usuariosTable.id, usuario.id));
   const lojas = await buscarLojasUsuario(usuario.id, usuario.isSuperAdmin);
 
   res.cookie(COOKIE_NOME, sessao.id, {

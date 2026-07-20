@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
 
-const ROTULO_ACAO: Record<string, string> = {
+// Exportados para o log de atividade da equipe (E18) — mesma trilha, outra lente.
+export const ROTULO_ACAO: Record<string, string> = {
   PARCELA_RECEBIDA: "Parcela recebida",
   RECEBIMENTO_ESTORNADO: "Recebimento estornado",
   CONTA_PAGA: "Conta paga",
@@ -33,7 +34,7 @@ const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
 });
 
 /** Uma frase com o que a ação mexeu, extraída do detalhe jsonb. */
-function resumoDetalhe(item: AuditoriaItem): string | null {
+export function resumoDetalhe(item: AuditoriaItem): string | null {
   const d = (item.detalhe ?? {}) as Record<string, unknown>;
   const partes: string[] = [];
   const valor = d.valorRecebido ?? d.valorPago ?? d.valorBaixado;

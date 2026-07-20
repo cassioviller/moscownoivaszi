@@ -11,6 +11,9 @@ export const usuariosTable = pgTable("usuarios", {
   senhaHash: text("senha_hash").notNull(),
   ativo: boolean("ativo").notNull().default(true),
   isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+  // Carimbado a cada login (E18). As sessões não servem de fonte: logout e
+  // expiração apagam a linha, e o "último acesso" sumiria junto.
+  ultimoLoginEm: timestamp("ultimo_login_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

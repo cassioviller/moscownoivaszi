@@ -62,6 +62,7 @@ import {
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { EstadoErro } from "@/components/estado-erro";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
+import { AtividadeEquipe } from "./atividade";
 
 const novoMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -481,6 +482,9 @@ export default function Equipe() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Log de atividade (E18): últimos acessos + ações sensíveis. */}
+      <AtividadeEquipe />
 
       {/* Cadastrar membro */}
       {/* Convidar por link: o form vira o link copiável após criar. */}

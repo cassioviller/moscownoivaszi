@@ -201,6 +201,53 @@ export interface AceitarConviteResultado {
   jaTinhaConta: boolean;
 }
 
+export interface MembroAtividade {
+  usuarioId: string;
+  nome: string;
+  email: string;
+  perfilNome: string;
+  ativo: boolean;
+  /** @nullable */
+  ultimoAcesso?: string | null;
+  acoes30d: number;
+}
+
+export type AuditoriaItemAcao = typeof AuditoriaItemAcao[keyof typeof AuditoriaItemAcao];
+
+
+export const AuditoriaItemAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AuditoriaItemDetalhe = { [key: string]: unknown } | null;
+
+export interface AuditoriaItem {
+  id: string;
+  acao: AuditoriaItemAcao;
+  entidade: string;
+  entidadeId: string;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** Desnormalizado — sobrevive à saída do autor da equipe */
+  usuarioNome: string;
+  /** @nullable */
+  detalhe?: AuditoriaItemDetalhe;
+  criadoEm: string;
+}
+
+export interface AtividadeEquipe {
+  membros: MembroAtividade[];
+  eventos: AuditoriaItem[];
+}
+
 export interface MembroEquipeUpdate {
   nome?: string;
   perfilId?: string;
@@ -950,37 +997,6 @@ export interface DisponibilidadeVestidos {
   /** Dia local YYYY-MM-DD consultado */
   data: string;
   itens: DisponibilidadeVestidosItensItem[];
-}
-
-export type AuditoriaItemAcao = typeof AuditoriaItemAcao[keyof typeof AuditoriaItemAcao];
-
-
-export const AuditoriaItemAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-} as const;
-
-/**
- * @nullable
- */
-export type AuditoriaItemDetalhe = { [key: string]: unknown } | null;
-
-export interface AuditoriaItem {
-  id: string;
-  acao: AuditoriaItemAcao;
-  entidade: string;
-  entidadeId: string;
-  /** @nullable */
-  usuarioId?: string | null;
-  /** Desnormalizado — sobrevive à saída do autor da equipe */
-  usuarioNome: string;
-  /** @nullable */
-  detalhe?: AuditoriaItemDetalhe;
-  criadoEm: string;
 }
 
 export interface ProximaJanelaVestido {
