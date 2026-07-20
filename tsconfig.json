@@ -13,6 +13,9 @@
       "path": "./lib/funil-core"
     },
     {
+      "path": "./lib/agenda-core"
+    },
+    {
       "path": "./lib/api-client-react"
     },
     {

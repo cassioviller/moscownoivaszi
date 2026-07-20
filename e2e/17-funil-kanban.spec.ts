@@ -1,6 +1,6 @@
-import { test, expect, type Page, type Locator } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, arrastar } from "./helpers";
 
 const estado = lerEstado();
 
@@ -13,26 +13,6 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  * avança, nunca volta), então reusar a noiva do seed global faria o segundo
  * `pnpm test:e2e` rodar contra um estado diferente do primeiro.
  */
-
-/**
- * Arraste de verdade: o PointerSensor do dnd-kit só ativa depois de 8px de
- * movimento, e `dragTo` do Playwright é um salto único que não passa por esse
- * limiar. Daí os passos intermediários.
- */
-async function arrastar(page: Page, alca: Locator, alvo: Locator): Promise<void> {
-  const origem = await alca.boundingBox();
-  const destino = await alvo.boundingBox();
-  if (!origem || !destino) throw new Error("origem ou destino sem caixa visível");
-
-  await page.mouse.move(origem.x + origem.width / 2, origem.y + origem.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(
-    destino.x + destino.width / 2,
-    destino.y + Math.min(destino.height / 2, 120),
-    { steps: 20 },
-  );
-  await page.mouse.up();
-}
 
 test.describe("Funil kanban das noivas", () => {
   let leadId: string;

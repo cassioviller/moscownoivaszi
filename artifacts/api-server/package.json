@@ -15,6 +15,7 @@
     "@workspace/db": "workspace:*",
     "@workspace/financeiro-core": "workspace:*",
     "@workspace/funil-core": "workspace:*",
+    "@workspace/agenda-core": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

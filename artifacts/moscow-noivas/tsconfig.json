@@ -22,6 +22,9 @@
     },
     {
       "path": "../../lib/funil-core"
+    },
+    {
+      "path": "../../lib/agenda-core"
     }
   ]
 }

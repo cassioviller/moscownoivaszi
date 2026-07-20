@@ -1,4 +1,4 @@
-import { expect, type Page, type APIRequestContext, request } from "@playwright/test";
+import { expect, type Page, type Locator, type APIRequestContext, request } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -71,6 +71,34 @@ export async function fecharTourDoAcesso(page: Page): Promise<void> {
     await comecar.click();
     await expect(comecar).toBeHidden();
   }
+}
+
+/**
+ * Arraste de verdade, para as telas com dnd-kit (funil do E27, grade do E28).
+ *
+ * `dragTo` do Playwright é um salto único e o PointerSensor só ativa depois de
+ * 8px de movimento — o salto não passa por esse limiar e o drop nunca acontece.
+ * Daí os passos intermediários.
+ */
+export async function arrastar(page: Page, alca: Locator, alvo: Locator): Promise<void> {
+  // Numa grade alta com overflow, o alvo pode estar fora da viewport: o mouse
+  // não alcança um ponto que não está na tela. Trazer o alvo à vista primeiro.
+  await alvo.scrollIntoViewIfNeeded();
+  const origem = await alca.boundingBox();
+  const destino = await alvo.boundingBox();
+  if (!origem || !destino) throw new Error("origem ou destino sem caixa visível");
+
+  await page.mouse.move(origem.x + origem.width / 2, origem.y + origem.height / 2);
+  await page.mouse.down();
+  // O salto com passos intermediários cruza o limiar de 8px do PointerSensor já
+  // no primeiro sub-passo; o clamp evita mirar longe demais numa coluna alta,
+  // e numa célula baixa cai no centro (height/2 < 120).
+  await page.mouse.move(
+    destino.x + destino.width / 2,
+    destino.y + Math.min(destino.height / 2, 120),
+    { steps: 20 },
+  );
+  await page.mouse.up();
 }
 
 export interface ErroApi {

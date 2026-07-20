@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
@@ -12,7 +12,12 @@ import {
   getListLeadsQueryKey,
   useListAjustes,
   getListAjustesQueryKey,
+  useGetDisponibilidade,
+  getGetDisponibilidadeQueryKey,
 } from "@workspace/api-client-react";
+import { GradeDoDia } from "./grade";
+import { EXPEDIENTE_PADRAO } from "@/lib/agenda";
+import { diaLocal } from "@/lib/financeiro/datas";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,6 +71,8 @@ export default function Agenda() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const atendimentos = useListAtendimentos(activeLojaId!, { query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
@@ -98,13 +105,31 @@ export default function Agenda() {
       }),
     );
 
-  // Somente os atendimentos de HOJE, ordenados por horário.
-  const doDia = useMemo(() => {
-    const hoje = new Date();
-    return (atendimentos.data ?? [])
-      .filter((a) => isSameDay(new Date(a.inicio), hoje))
-      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentos.data]);
+  // O dia da grade vive na URL (?dia=YYYY-MM-DD), como a semana do E20 — sem
+  // isso não há deep-link para "a agenda de amanhã" nem teste determinístico.
+  const diaYMD = searchParams.get("dia") ?? diaLocal(new Date());
+
+  // O expediente configurado desenha as linhas da grade; loja sem regra usa o
+  // mesmo default das colunas do schema.
+  const disponibilidade = useGetDisponibilidade(activeLojaId!, {
+    query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId, retry: false },
+  });
+  const expediente = disponibilidade.data
+    ? {
+        aberturaHora: disponibilidade.data.atendimentoAberturaHora,
+        fechamentoHora: disponibilidade.data.atendimentoFechamentoHora,
+      }
+    : EXPEDIENTE_PADRAO;
+
+  // Atendimentos do dia escolhido, comparados no fuso da loja — `isSameDay` do
+  // date-fns lê o fuso do navegador, que não é necessariamente o da loja.
+  const doDia = useMemo(
+    () =>
+      (atendimentos.data ?? [])
+        .filter((a) => diaLocal(a.inicio) === diaYMD)
+        .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime()),
+    [atendimentos.data, diaYMD],
+  );
 
   const form = useForm<NovoAtendimentoValues>({
     resolver: zodResolver(novoAtendimentoSchema),
@@ -311,38 +336,52 @@ export default function Agenda() {
               <div className="animate-pulse space-y-4">
                 {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted rounded-md" />)}
               </div>
-            ) : doDia.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">Nenhum atendimento agendado para hoje.</div>
             ) : (
-              doDia.map(atendimento => {
-                const wa = atendimento.situacao === "AGENDADO" ? waConfirmacao(atendimento) : null;
-                return (
-                  <div key={atendimento.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-                        <Clock className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-medium">
-                          {nomePorLead.get(atendimento.leadId) ?? "Noiva"} — {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{format(new Date(atendimento.inicio), "HH:mm")}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {wa && (
-                        <Button asChild variant="outline" size="sm">
-                          <a href={wa} target="_blank" rel="noopener noreferrer">
-                            <MessageCircle className="h-4 w-4 mr-1" />
-                            Confirmar
-                          </a>
-                        </Button>
-                      )}
-                      <Badge>{SITUACAO_LABELS[atendimento.situacao] ?? atendimento.situacao}</Badge>
-                    </div>
+              <>
+                <GradeDoDia
+                  activeLojaId={activeLojaId!}
+                  diaYMD={diaYMD}
+                  atendimentos={doDia}
+                  cabines={cabines.data ?? []}
+                  expediente={expediente}
+                  podeEditar={podeEditar}
+                  nomePorLead={nomePorLead}
+                />
+
+                {/* A confirmação por wa.me (E8) saiu do card, que na grade tem
+                    largura de coluna: vira uma fila abaixo, só de quem ainda
+                    está AGENDADO — que é justamente quem precisa confirmar. */}
+                {doDia.some((a) => a.situacao === "AGENDADO") && (
+                  <div className="space-y-2 border-t pt-4">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Confirmar presença
+                    </p>
+                    {doDia
+                      .filter((a) => a.situacao === "AGENDADO")
+                      .map((atendimento) => {
+                        const wa = waConfirmacao(atendimento);
+                        return (
+                          <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="min-w-0 truncate">
+                              <span className="tabular-nums text-muted-foreground">
+                                {format(new Date(atendimento.inicio), "HH:mm")}
+                              </span>{" "}
+                              {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
+                            </span>
+                            {wa && (
+                              <Button asChild variant="outline" size="sm">
+                                <a href={wa} target="_blank" rel="noopener noreferrer">
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  Confirmar
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </CardContent>
         </Card>

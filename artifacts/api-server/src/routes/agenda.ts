@@ -31,9 +31,66 @@ import {
   SetDisponibilidadeResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import {
+  recusaDeMover,
+  DETALHE_RECUSA,
+  EXPEDIENTE_PADRAO,
+  type MotivoRecusa,
+} from "@workspace/agenda-core";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
+
+/**
+ * Pré-checagem amigável do reagendamento (E28). Traduz o movimento pedido em
+ * "pode ou não, e por quê" usando a MESMA função que a grade usa para apagar a
+ * célula — sem isso, a tela ofereceria um destino que o banco recusa.
+ *
+ * Não é a garantia: entre este SELECT e o UPDATE cabe outra requisição. Quem
+ * segura de verdade continua sendo a UNIQUE (cabine, inicio) / (loja, vendedora,
+ * inicio), como o lote17 provou sob concorrência. Isto existe para a mensagem
+ * ser específica em vez de um 409 que não diz o que colidiu.
+ */
+async function recusaDeMoverAtendimento(
+  lojaId: string,
+  existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date },
+  mudanca: { cabineId?: string; vendedoraId?: string; inicio?: Date },
+): Promise<MotivoRecusa | null> {
+  const regra = await db.query.regraDisponibilidadeTable.findFirst({
+    where: eq(regraDisponibilidadeTable.lojaId, lojaId),
+  });
+  const expediente = regra
+    ? {
+        aberturaHora: regra.atendimentoAberturaHora,
+        fechamentoHora: regra.atendimentoFechamentoHora,
+      }
+    : EXPEDIENTE_PADRAO;
+
+  const destino = {
+    cabineId: mudanca.cabineId ?? existente.cabineId,
+    inicio: mudanca.inicio ?? existente.inicio,
+  };
+  const movida = {
+    id: existente.id,
+    cabineId: existente.cabineId,
+    vendedoraId: mudanca.vendedoraId ?? existente.vendedoraId,
+    inicio: existente.inicio,
+  };
+
+  // Só quem disputa exatamente aquele instante concorre — é o que as UNIQUE
+  // enxergam, e carregar o dia inteiro para comparar seria desperdício.
+  const concorrentes = await db
+    .select({
+      id: atendimentosTable.id,
+      cabineId: atendimentosTable.cabineId,
+      vendedoraId: atendimentosTable.vendedoraId,
+      inicio: atendimentosTable.inicio,
+    })
+    .from(atendimentosTable)
+    .where(and(eq(atendimentosTable.lojaId, lojaId), eq(atendimentosTable.inicio, destino.inicio)));
+
+  return recusaDeMover(movida, destino, concorrentes, expediente);
+}
 
 // Joins padrão dos atendimentos: as telas de fila/agenda/provas precisam de
 // noiva, cabine, vendedora e — nas provas — vestido via bloqueio + ajustes
@@ -160,7 +217,41 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  
+
+  // Arrastar na grade (E28) reagenda por AQUI, então este endpoint deixou de ser
+  // só "editar observação": ele move cabine e horário. Até o E28 não conferia
+  // nem o escopo de tenant das FKs (que o POST já conferia) nem o expediente.
+  const existente = await db.query.atendimentosTable.findFirst({
+    where: and(
+      eq(atendimentosTable.id, atendimentoId as string),
+      eq(atendimentosTable.lojaId, lojaId as string),
+    ),
+  });
+  if (!existente) {
+    res.status(404).json({ error: "Atendimento not found" });
+    return;
+  }
+
+  // Mesma guarda do POST: um cabineId/vendedoraId de outra loja entraria aqui e
+  // o GET enriquecido puxaria os dados dela para dentro desta.
+  const [okCabine, okVend] = await Promise.all([
+    parsed.data.cabineId ? cabineNaLoja(parsed.data.cabineId, lojaId as string) : true,
+    parsed.data.vendedoraId ? vendedoraNaLoja(parsed.data.vendedoraId, lojaId as string) : true,
+  ]);
+  if (!okCabine || !okVend) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "cabine ou vendedora não são desta loja" });
+    return;
+  }
+
+  // Só vale checar movimento quando algo do movimento mudou.
+  if (parsed.data.inicio !== undefined || parsed.data.cabineId !== undefined) {
+    const recusa = await recusaDeMoverAtendimento(lojaId as string, existente, parsed.data);
+    if (recusa) {
+      res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
+      return;
+    }
+  }
+
   const [atendimento] = await db.update(atendimentosTable)
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))

@@ -173,6 +173,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
+      '@workspace/agenda-core':
+        specifier: workspace:*
+        version: link:../../lib/agenda-core
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -441,6 +444,9 @@ importers:
 
   artifacts/moscow-noivas:
     dependencies:
+      '@workspace/agenda-core':
+        specifier: workspace:*
+        version: link:../../lib/agenda-core
       '@workspace/financeiro-core':
         specifier: workspace:*
         version: link:../../lib/financeiro-core
@@ -646,6 +652,8 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.25.76
+
+  lib/agenda-core: {}
 
   lib/api-client-react:
     dependencies:
