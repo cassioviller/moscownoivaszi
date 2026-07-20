@@ -11,6 +11,7 @@ import {
   ScrollText,
   CircleDollarSign,
   Percent,
+  Wallet,
   UsersRound,
   Settings,
   LogOut,
@@ -59,6 +60,9 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
       { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "leads" },
       { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro", modulo: "financeiro" },
       { icon: Percent, label: "Comissões", href: "/comissoes", modulo: "comissao" },
+      // Sem `modulo` de propósito: é o extrato da PRÓPRIA pessoa (a rota
+      // filtra pela sessão) — a vendedora sem o módulo comissao precisa ver.
+      { icon: Wallet, label: "Minha comissão", href: "/minha-comissao" },
     ],
   },
   {

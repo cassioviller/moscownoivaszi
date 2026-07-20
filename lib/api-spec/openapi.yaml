@@ -2192,6 +2192,35 @@ paths:
   # As faixas não têm rotas próprias: elas só existem dentro de uma regra, e
   # editá-las uma a uma deixaria a escada inválida no meio do caminho
   # (sobreposta, com buraco). A regra inteira é substituída de uma vez.
+  # Fora do prefixo /comissao de propósito: o gate requireModulo("comissao") é
+  # da GESTÃO; aqui a vendedora vê só o próprio extrato (filtro pela sessão).
+  /lojas/{lojaId}/minha-comissao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getMinhaComissao
+      tags: [comissao]
+      summary: Extrato de comissão da própria pessoa logada
+      parameters:
+        - name: competencia
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: Extrato do mês + histórico de fechamentos da pessoa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MinhaComissao"
+        "400":
+          description: Competência inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /lojas/{lojaId}/comissao/preview:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3529,6 +3558,34 @@ components:
         ativo: { type: boolean }
         bonusAcumulaFaixas: { type: boolean }
 
+    MinhaComissao:
+      type: object
+      required: [competencia, temRegra, totalVendas, estornoPendente, valorComissao, valorBonus, valorTotal, fechamentos]
+      properties:
+        competencia: { type: string, description: "Competência YYYY-MM consultada" }
+        temRegra: { type: boolean, description: "false = sem escada vigente; valores zerados" }
+        totalVendas: { type: number, description: "Base líquida do mês (estorno já abatido)" }
+        estornoPendente: { type: number }
+        percentualAplicado: { type: ["number", "null"] }
+        valorComissao: { type: number }
+        valorBonus: { type: number }
+        valorTotal: { type: number }
+        faltaProximoDegrau: { type: ["number", "null"], description: "Quanto falta vender para a próxima faixa; null = topo" }
+        proximoDegrauPercentual: { type: ["number", "null"] }
+        fechamentos:
+          type: array
+          description: "Meses já fechados da pessoa, mais recente primeiro"
+          items:
+            type: object
+            required: [competencia, totalVendas, valorComissao, valorBonus, valorTotal, fechadoEm]
+            properties:
+              competencia: { type: string }
+              totalVendas: { type: number }
+              percentualAplicado: { type: ["number", "null"] }
+              valorComissao: { type: number }
+              valorBonus: { type: number }
+              valorTotal: { type: number }
+              fechadoEm: { type: string, format: date-time }
     ComissaoFechamento:
       type: object
       required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal]

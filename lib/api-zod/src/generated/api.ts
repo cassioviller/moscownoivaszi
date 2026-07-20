@@ -4851,6 +4851,43 @@ export const DeleteComissaoRegraParams = zod.object({
 export const DeleteComissaoRegraResponse = zod.void()
 
 
+/**
+ * @summary Extrato de comissão da própria pessoa logada
+ */
+export const GetMinhaComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getMinhaComissaoQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetMinhaComissaoQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(getMinhaComissaoQueryCompetenciaRegExp)
+})
+
+export const GetMinhaComissaoResponse = zod.object({
+  "competencia": zod.string().describe('Competência YYYY-MM consultada'),
+  "temRegra": zod.boolean().describe('false = sem escada vigente; valores zerados'),
+  "totalVendas": zod.number().describe('Base líquida do mês (estorno já abatido)'),
+  "estornoPendente": zod.number(),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number(),
+  "faltaProximoDegrau": zod.number().nullish().describe('Quanto falta vender para a próxima faixa; null = topo'),
+  "proximoDegrauPercentual": zod.number().nullish(),
+  "fechamentos": zod.array(zod.object({
+  "competencia": zod.string(),
+  "totalVendas": zod.number(),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number(),
+  "fechadoEm": zod.coerce.date()
+})).describe('Meses já fechados da pessoa, mais recente primeiro')
+})
+
+
 export const PreviewComissaoParams = zod.object({
   "lojaId": zod.coerce.string()
 })

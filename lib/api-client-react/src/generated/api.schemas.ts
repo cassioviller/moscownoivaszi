@@ -1585,6 +1585,41 @@ export interface ComissaoRegraUpdate {
   bonusAcumulaFaixas?: boolean;
 }
 
+export type MinhaComissaoFechamentosItem = {
+  competencia: string;
+  totalVendas: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  valorTotal: number;
+  fechadoEm: string;
+};
+
+export interface MinhaComissao {
+  /** Competência YYYY-MM consultada */
+  competencia: string;
+  /** false = sem escada vigente; valores zerados */
+  temRegra: boolean;
+  /** Base líquida do mês (estorno já abatido) */
+  totalVendas: number;
+  estornoPendente: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  valorTotal: number;
+  /**
+     * Quanto falta vender para a próxima faixa; null = topo
+     * @nullable
+     */
+  faltaProximoDegrau?: number | null;
+  /** @nullable */
+  proximoDegrauPercentual?: number | null;
+  /** Meses já fechados da pessoa, mais recente primeiro */
+  fechamentos: MinhaComissaoFechamentosItem[];
+}
+
 export interface ComissaoFechamento {
   id: string;
   lojaId: string;
@@ -1802,6 +1837,13 @@ de?: string;
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 ate?: string;
+};
+
+export type GetMinhaComissaoParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia: string;
 };
 
 export type PreviewComissaoParams = {

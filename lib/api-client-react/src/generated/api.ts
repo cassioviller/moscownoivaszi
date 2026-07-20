@@ -75,6 +75,7 @@ import type {
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
   GetConviteInfoParams,
+  GetMinhaComissaoParams,
   GetVestidoFotoParams,
   HealthStatus,
   Lead,
@@ -94,6 +95,7 @@ import type {
   MembroEquipe,
   MembroEquipeInput,
   MembroEquipeUpdate,
+  MinhaComissao,
   Orcamento,
   OrcamentoInput,
   OrcamentoItem,
@@ -8640,6 +8642,95 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteComissaoRegraMutationOptions(options));
     }
+
+export const getGetMinhaComissaoUrl = (lojaId: string,
+    params: GetMinhaComissaoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/minha-comissao?${stringifiedParams}` : `/api/lojas/${lojaId}/minha-comissao`
+}
+
+/**
+ * @summary Extrato de comissão da própria pessoa logada
+ */
+export const getMinhaComissao = async (lojaId: string,
+    params: GetMinhaComissaoParams, options?: RequestInit): Promise<MinhaComissao> => {
+
+  return customFetch<MinhaComissao>(getGetMinhaComissaoUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMinhaComissaoQueryKey = (lojaId: string,
+    params?: GetMinhaComissaoParams,) => {
+    return [
+    `/api/lojas/${lojaId}/minha-comissao`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMinhaComissaoQueryOptions = <TData = Awaited<ReturnType<typeof getMinhaComissao>>, TError = ErrorType<ErrorResponse>>(lojaId: string,
+    params: GetMinhaComissaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMinhaComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMinhaComissaoQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMinhaComissao>>> = ({ signal }) => getMinhaComissao(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMinhaComissao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMinhaComissaoQueryResult = NonNullable<Awaited<ReturnType<typeof getMinhaComissao>>>
+export type GetMinhaComissaoQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Extrato de comissão da própria pessoa logada
+ */
+
+export function useGetMinhaComissao<TData = Awaited<ReturnType<typeof getMinhaComissao>>, TError = ErrorType<ErrorResponse>>(
+ lojaId: string,
+    params: GetMinhaComissaoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMinhaComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMinhaComissaoQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getPreviewComissaoUrl = (lojaId: string,
     params: PreviewComissaoParams,) => {

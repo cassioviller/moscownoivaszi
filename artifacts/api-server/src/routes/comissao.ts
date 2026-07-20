@@ -29,6 +29,8 @@ import {
   BaixarEstornoComissaoBody,
   BaixarEstornoComissaoResponse,
   ListBaixasEstornoComissaoResponse,
+  GetMinhaComissaoQueryParams,
+  GetMinhaComissaoResponse,
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -411,6 +413,64 @@ router.delete("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promi
     .delete(comissaoRegrasTable)
     .where(and(eq(comissaoRegrasTable.id, regraId), eq(comissaoRegrasTable.lojaId, lojaId)));
   res.status(204).send();
+});
+
+// ── Minha comissão (E11) ──
+// Fora do prefixo /comissao DE PROPÓSITO: o requireModulo("comissao") da linha
+// de cima é o gate da GESTÃO (ver todo mundo, editar escadas, fechar). Aqui a
+// pessoa vê só o próprio extrato — o filtro é a sessão, não um id do cliente.
+router.get("/lojas/:lojaId/minha-comissao", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const q = GetMinhaComissaoQueryParams.safeParse(req.query);
+  if (!q.success || !competenciaValida(q.data.competencia)) {
+    res.status(400).json({ error: "COMPETENCIA_INVALIDA" });
+    return;
+  }
+  const { competencia } = q.data;
+  const vendedoraId = req.usuario!.id;
+
+  const [vendas, estornos, regras, fechamentos] = await Promise.all([
+    vendasDaCompetencia(db, lojaId, competencia),
+    estornosPendentes(db, lojaId, [vendedoraId], competencia),
+    regrasVigentes(db, lojaId, [vendedoraId], competencia),
+    db.select()
+      .from(comissaoFechamentosTable)
+      .where(and(
+        eq(comissaoFechamentosTable.lojaId, lojaId),
+        eq(comissaoFechamentosTable.vendedoraId, vendedoraId),
+      ))
+      .orderBy(desc(comissaoFechamentosTable.competencia))
+      .limit(12),
+  ]);
+
+  const brutoC = vendas.get(vendedoraId) ?? 0;
+  const estorno = estornos.get(vendedoraId) ?? { totalC: 0, contratoIds: [] };
+  const netC = brutoC - estorno.totalC;
+  const regra = regras.get(vendedoraId);
+  const r = regra ? calcularComissao(netC, regra.faixas, regra.bonusAcumulaFaixas) : null;
+  const degrau = regra ? proximoDegrau(netC, regra.faixas) : null;
+
+  res.json(GetMinhaComissaoResponse.parse({
+    competencia,
+    temRegra: !!regra,
+    totalVendas: real(Math.max(0, netC)),
+    estornoPendente: real(estorno.totalC),
+    percentualAplicado: r?.percentualAplicado ?? null,
+    valorComissao: real(r?.valorComissao ?? 0),
+    valorBonus: real(r?.valorBonus ?? 0),
+    valorTotal: real(r?.valorTotal ?? 0),
+    faltaProximoDegrau: degrau ? real(degrau.faltam) : null,
+    proximoDegrauPercentual: degrau?.percentual ?? null,
+    fechamentos: fechamentos.map((f) => ({
+      competencia: f.competencia,
+      totalVendas: f.totalVendas,
+      percentualAplicado: f.percentualAplicado,
+      valorComissao: f.valorComissao,
+      valorBonus: f.valorBonus,
+      valorTotal: f.valorTotal,
+      fechadoEm: f.fechadoEm,
+    })),
+  }));
 });
 
 // ── Preview (ranking ao vivo) ──

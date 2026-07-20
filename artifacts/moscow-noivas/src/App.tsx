@@ -53,6 +53,7 @@ import Permissoes from "@/pages/permissoes";
 import AdminConsole from "@/pages/admin";
 import AdminPerfis from "@/pages/admin/perfis";
 import Comissoes from "@/pages/comissoes";
+import MinhaComissao from "@/pages/minha-comissao";
 import Equipe from "@/pages/equipe";
 import Configuracoes from "@/pages/configuracoes";
 
@@ -173,6 +174,7 @@ function App() {
               <Route path="financeiro/folha" element={<Folha />} />
               <Route path="financeiro/auditoria" element={<Auditoria />} />
               <Route path="comissoes" element={<Comissoes />} />
+              <Route path="minha-comissao" element={<MinhaComissao />} />
               <Route path="equipe" element={<Equipe />} />
               <Route path="permissoes" element={<Permissoes />} />
               <Route path="configuracoes" element={<Configuracoes />} />

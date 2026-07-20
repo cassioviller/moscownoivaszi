@@ -14,4 +14,5 @@ export {
   ExportarContasPagarParams,
   ExportarParcelasParams,
   ListLeadsParams,
+  GetMinhaComissaoParams,
 } from "./generated/api";
