@@ -667,6 +667,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DisponibilidadeVestidos"
+  /lojas/{lojaId}/vestidos/{vestidoId}/proxima-janela:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: vestidoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getProximaJanelaVestido
+      tags: [vestidos]
+      summary: Próxima data de casamento em que uma reserva nova NÃO conflitaria
+      responses:
+        "200":
+          description: Próxima janela livre (null = nada no horizonte, ou vestido inativo)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProximaJanelaVestido"
+        "404":
+          description: Vestido não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /lojas/{lojaId}/vestidos/{vestidoId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3034,6 +3059,16 @@ components:
                 anyOf:
                   - $ref: "#/components/schemas/ConflitoBloqueio"
                   - type: "null"
+
+    ProximaJanelaVestido:
+      type: object
+      required: [proximaData, aPartirDe, horizonteDias]
+      properties:
+        proximaData:
+          type: ["string", "null"]
+          description: "Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo"
+        aPartirDe: { type: string, description: "Dia local de onde a varredura partiu (hoje)" }
+        horizonteDias: { type: integer }
 
     # ── Orçamentos ──
     Orcamento:

@@ -302,6 +302,40 @@ export function ocupacaoFisica(
   return { inicio, fim };
 }
 
+/**
+ * Primeiro dia local >= `aPartirDe` em que uma RESERVA_CASAMENTO nova passaria
+ * sem conflito (E9). Simula a vendedora "tentando data por data": monta o
+ * candidato de cada dia com `janelasDoBloqueio` e testa com `conflitos` — a
+ * MESMA régua da escrita, nunca uma cópia que diverge. Inclui a janela de
+ * prova do candidato: dia que passaria aqui é dia que o POST aceitaria.
+ * Retorna null se nada livre dentro do horizonte (ex.: janela física aberta
+ * por retirada sem devolução bloqueia tudo à frente).
+ */
+export function proximaDataLivre(params: {
+  janelasExistentes: Janela[];
+  regra: RegraJanelas;
+  aPartirDe: string;
+  horizonteDias?: number;
+}): string | null {
+  const horizonte = params.horizonteDias ?? 365;
+  for (let i = 0; i < horizonte; i++) {
+    const dia = addDias(params.aPartirDe, i);
+    const candidato: BloqueioJanelasInput = {
+      id: "candidato-proxima-janela",
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: inicioDoDia(dia),
+      provaDataReal: null,
+      retiradaDataReal: null,
+      devolucaoDataReal: null,
+      inicio: null,
+      fim: null,
+    };
+    const novas = janelasDoBloqueio(candidato, params.regra, params.aPartirDe);
+    if (conflitos(novas, params.janelasExistentes).length === 0) return dia;
+  }
+  return null;
+}
+
 // ───────────────────────── Orquestração (IO) ─────────────────────────
 
 /** Regra efetiva da loja (fallback REGRA_DEFAULT). */

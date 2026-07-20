@@ -109,6 +109,7 @@ import type {
   PerfilOverrideLoja,
   PerfilUpdate,
   PreviewComissaoParams,
+  ProximaJanelaVestido,
   ReceberParcelaInput,
   RegistroCobranca,
   RegistroCobrancaInput,
@@ -2800,6 +2801,88 @@ export function useCheckDisponibilidadeVestidos<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getCheckDisponibilidadeVestidosQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetProximaJanelaVestidoUrl = (lojaId: string,
+    vestidoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/vestidos/${vestidoId}/proxima-janela`
+}
+
+/**
+ * @summary Próxima data de casamento em que uma reserva nova NÃO conflitaria
+ */
+export const getProximaJanelaVestido = async (lojaId: string,
+    vestidoId: string, options?: RequestInit): Promise<ProximaJanelaVestido> => {
+
+  return customFetch<ProximaJanelaVestido>(getGetProximaJanelaVestidoUrl(lojaId,vestidoId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProximaJanelaVestidoQueryKey = (lojaId: string,
+    vestidoId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/vestidos/${vestidoId}/proxima-janela`
+    ] as const;
+    }
+
+
+export const getGetProximaJanelaVestidoQueryOptions = <TData = Awaited<ReturnType<typeof getProximaJanelaVestido>>, TError = ErrorType<ErrorResponse>>(lojaId: string,
+    vestidoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProximaJanelaVestido>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProximaJanelaVestidoQueryKey(lojaId,vestidoId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProximaJanelaVestido>>> = ({ signal }) => getProximaJanelaVestido(lojaId,vestidoId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && vestidoId !== null && vestidoId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProximaJanelaVestido>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProximaJanelaVestidoQueryResult = NonNullable<Awaited<ReturnType<typeof getProximaJanelaVestido>>>
+export type GetProximaJanelaVestidoQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Próxima data de casamento em que uma reserva nova NÃO conflitaria
+ */
+
+export function useGetProximaJanelaVestido<TData = Awaited<ReturnType<typeof getProximaJanelaVestido>>, TError = ErrorType<ErrorResponse>>(
+ lojaId: string,
+    vestidoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProximaJanelaVestido>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProximaJanelaVestidoQueryOptions(lojaId,vestidoId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -151,6 +151,7 @@ export * from './perfilOverrideInput';
 export * from './perfilOverrideLoja';
 export * from './perfilUpdate';
 export * from './previewComissaoParams';
+export * from './proximaJanelaVestido';
 export * from './receberParcelaInput';
 export * from './receberParcelaInputFormaRecebimento';
 export * from './registroCobranca';

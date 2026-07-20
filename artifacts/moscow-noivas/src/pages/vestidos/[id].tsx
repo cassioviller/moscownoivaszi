@@ -11,6 +11,8 @@ import {
   getListAtributosQueryKey,
   useCheckDisponibilidadeVestidos,
   getCheckDisponibilidadeVestidosQueryKey,
+  useGetProximaJanelaVestido,
+  getGetProximaJanelaVestidoQueryKey,
   getGetVestidoFotoUrl,
 } from "@workspace/api-client-react";
 import type { Atributo, BloqueioVestido, Lead, VestidoAtributo } from "@workspace/api-client-react";
@@ -24,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl } from "@/lib/formatos";
+import { brl, dataDia } from "@/lib/formatos";
 
 /** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
 function rotularSelecoes(
@@ -126,6 +128,15 @@ export default function VestidoDetail() {
     },
   );
   const itemHoje = disponibilidadeHoje.data?.itens.find((item) => item.vestidoId === id);
+
+  // E9: a próxima data de casamento que uma reserva nova aceitaria — calculada
+  // no backend com a régua real (prova+uso+lavagem), não pelo helper aproximado.
+  const proximaJanela = useGetProximaJanelaVestido(activeLojaId!, id!, {
+    query: {
+      queryKey: getGetProximaJanelaVestidoQueryKey(activeLojaId!, id!),
+      enabled: !!activeLojaId && !!id,
+    },
+  });
 
   const leadsPorId = useMemo(() => {
     const mapa = new Map<string, Lead>();
@@ -327,6 +338,20 @@ export default function VestidoDetail() {
             )}
           </CardHeader>
           <CardContent>
+            {proximaJanela.data && (
+              <p className="mb-4 text-sm">
+                Próxima janela livre para casamento:{" "}
+                {proximaJanela.data.proximaData ? (
+                  <span className="font-medium">
+                    {proximaJanela.data.proximaData === proximaJanela.data.aPartirDe
+                      ? "a partir de hoje"
+                      : dataDia(proximaJanela.data.proximaData)}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">nenhuma no próximo ano</span>
+                )}
+              </p>
+            )}
             {bloqueiosQuery.isError ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />

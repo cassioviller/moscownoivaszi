@@ -938,6 +938,17 @@ export interface DisponibilidadeVestidos {
   itens: DisponibilidadeVestidosItensItem[];
 }
 
+export interface ProximaJanelaVestido {
+  /**
+     * Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo
+     * @nullable
+     */
+  proximaData: string | null;
+  /** Dia local de onde a varredura partiu (hoje) */
+  aPartirDe: string;
+  horizonteDias: number;
+}
+
 export type OrcamentoStatus = typeof OrcamentoStatus[keyof typeof OrcamentoStatus];
 
 

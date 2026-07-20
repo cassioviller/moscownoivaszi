@@ -12,7 +12,8 @@ import {
   SetVestidoFotoResponse,
   GetVestidoFotoQueryParams,
   CheckDisponibilidadeVestidosQueryParams,
-  CheckDisponibilidadeVestidosResponse
+  CheckDisponibilidadeVestidosResponse,
+  GetProximaJanelaVestidoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -23,6 +24,7 @@ import {
   conflitos,
   detalharConflitos,
   diaLocal,
+  proximaDataLivre,
   type BloqueioJanelasInput,
   type BloqueioAtivoComContexto,
   type ConflitoDetalhe,
@@ -206,6 +208,53 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   });
 
   res.json(CheckDisponibilidadeVestidosResponse.parse({ data, itens }));
+});
+
+// ── Próxima janela livre (E9) ──
+// "Quando posso ter esse vestido para um casamento?" — a resposta que a
+// vendedora tentava achar data por data no batch acima.
+const HORIZONTE_PROXIMA_JANELA = 365;
+
+router.get("/lojas/:lojaId/vestidos/:vestidoId/proxima-janela", async (req, res): Promise<void> => {
+  const { lojaId, vestidoId } = req.params;
+  const vestido = await db.query.vestidosTable.findFirst({
+    columns: { id: true, status: true },
+    where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
+  });
+  if (!vestido) {
+    res.status(404).json({ error: "Vestido not found" });
+    return;
+  }
+
+  const hojeDia = diaLocal(new Date());
+  if (vestido.status !== "ativo") {
+    res.json(GetProximaJanelaVestidoResponse.parse({
+      proximaData: null,
+      aPartirDe: hojeDia,
+      horizonteDias: HORIZONTE_PROXIMA_JANELA,
+    }));
+    return;
+  }
+
+  const [regra, ativos] = await Promise.all([
+    buscarRegra(lojaId as string),
+    buscarBloqueiosAtivos({ lojaId: lojaId as string, vestidoId: vestidoId as string }),
+  ]);
+  const janelasExistentes = ativos.flatMap(({ bloqueio }) =>
+    janelasDoBloqueio(bloqueio, regra, hojeDia),
+  );
+  const proximaData = proximaDataLivre({
+    janelasExistentes,
+    regra,
+    aPartirDe: hojeDia,
+    horizonteDias: HORIZONTE_PROXIMA_JANELA,
+  });
+
+  res.json(GetProximaJanelaVestidoResponse.parse({
+    proximaData,
+    aPartirDe: hojeDia,
+    horizonteDias: HORIZONTE_PROXIMA_JANELA,
+  }));
 });
 
 router.get("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void> => {

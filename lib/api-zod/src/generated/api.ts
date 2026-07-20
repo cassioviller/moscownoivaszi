@@ -777,6 +777,21 @@ export const CheckDisponibilidadeVestidosResponse = zod.object({
 })
 
 
+/**
+ * @summary Próxima data de casamento em que uma reserva nova NÃO conflitaria
+ */
+export const GetProximaJanelaVestidoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "vestidoId": zod.coerce.string()
+})
+
+export const GetProximaJanelaVestidoResponse = zod.object({
+  "proximaData": zod.string().nullable().describe('Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo'),
+  "aPartirDe": zod.string().describe('Dia local de onde a varredura partiu (hoje)'),
+  "horizonteDias": zod.number()
+})
+
+
 export const GetVestidoParams = zod.object({
   "lojaId": zod.coerce.string(),
   "vestidoId": zod.coerce.string()
