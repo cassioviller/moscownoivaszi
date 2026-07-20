@@ -82,6 +82,17 @@ app.use("/api/equipe/convites", conviteLimiter);
 app.use("/api/orcamentos/publico", conviteLimiter);
 // Captação externa: além de probing surface, é porta de spam — mesmo teto.
 app.use("/api/captacao", conviteLimiter);
+// Lookbook público: o JSON é probing surface; as FOTOS não (uma página com 10
+// vestidos × 2 fotos estouraria 30 req/5min no primeiro acesso legítimo).
+const lookbookLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: () => !!process.env.VITEST,
+  message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
+});
+app.use("/api/lookbooks/publico", lookbookLimiter);
 
 app.use("/api", router);
 

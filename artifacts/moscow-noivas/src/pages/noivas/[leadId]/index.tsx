@@ -15,6 +15,7 @@ import {
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { LookbookNoiva } from "./lookbook";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,12 @@ import {
   whatsappDigits,
   } from "../helpers";
 
-const ROTULO_ORIGEM: Record<string, string> = { LOJA: "Loja", WHATSAPP: "WhatsApp" };
+const ROTULO_ORIGEM: Record<string, string> = {
+  LOJA: "Loja",
+  WHATSAPP: "WhatsApp",
+  SITE: "Site",
+  INSTAGRAM: "Instagram",
+};
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
   ENVIADO: "Enviado",
@@ -469,6 +475,9 @@ export default function NoivaDetalhe() {
             )}
           </CardContent>
         </Card>
+
+        {/* Lookbook (E21): a seleção provada vira link para rever em casa. */}
+        <LookbookNoiva leadId={leadId!} />
 
         <Card>
           <CardHeader>

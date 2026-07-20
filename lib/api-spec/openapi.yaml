@@ -911,6 +911,139 @@ paths:
         "204":
           description: Deleted
 
+  # ───────────────────────── Lookbooks (E21) ─────────────────────────
+  /lojas/{lojaId}/lookbooks:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listLookbooks
+      tags: [vestidos]
+      summary: Lookbooks de uma noiva (para recopiar o link ou revogar)
+      parameters:
+        - name: leadId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lookbooks da noiva, mais recente primeiro
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lookbook"
+    post:
+      operationId: createLookbook
+      tags: [vestidos]
+      summary: A seleção do atendimento vira link para a noiva rever em casa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookbookInput"
+      responses:
+        "201":
+          description: Lookbook criado (o token compõe o link público)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lookbook"
+        "422":
+          description: Lead ou vestidos não são desta loja
+  /lojas/{lojaId}/lookbooks/{lookbookId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: lookbookId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: deleteLookbook
+      tags: [vestidos]
+      description: Revoga o lookbook — o link público morre na hora.
+      responses:
+        "204":
+          description: Revogado
+  /lookbooks/publico:
+    get:
+      operationId: getLookbookPublico
+      tags: [vestidos]
+      security: []
+      description: >
+        A página que a noiva abre sem login. Token em QUERY (o logger corta a
+        query — não cai em log). As URLs das fotos saem da rota pública irmã,
+        escopadas ao MESMO token.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: O lookbook da noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LookbookPublico"
+        "404":
+          description: Token desconhecido ou revogado
+        "410":
+          description: Link expirado
+  /lookbooks/publico/foto:
+    get:
+      operationId: getLookbookPublicoFoto
+      tags: [vestidos]
+      security: []
+      description: >
+        Foto de um vestido DO lookbook, sem login — o token escopa: vestido
+        fora da seleção é 404, mesmo existindo. Cache como na rota autenticada
+        (?v= → immutable; sem → ETag).
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: vestidoId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ordem
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: variante
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [cheia, thumb]
+            default: cheia
+        - name: v
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Imagem (binário)
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Token desconhecido ou vestido fora do lookbook
+        "410":
+          description: Link expirado
+
   # ───────────────────────── Leads / Noivas ─────────────────────────
   /lojas/{lojaId}/leads:
     parameters:
@@ -3022,6 +3155,59 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VestidoAtributo"
+    LookbookInput:
+      type: object
+      required: [leadId, vestidoIds]
+      properties:
+        leadId: { type: string }
+        vestidoIds:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string }
+    Lookbook:
+      type: object
+      required: [id, leadId, token, expiraEm, criadoEm, vestidos]
+      properties:
+        id: { type: string }
+        leadId: { type: string }
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+        criadoEm: { type: string, format: date-time }
+        vestidos:
+          type: array
+          items:
+            type: object
+            required: [vestidoId, nome]
+            properties:
+              vestidoId: { type: string }
+              nome: { type: string }
+    LookbookPublicoFoto:
+      type: object
+      required: [ordem, atualizadaEm]
+      properties:
+        ordem: { type: integer }
+        atualizadaEm: { type: string, format: date-time }
+    LookbookPublicoVestido:
+      type: object
+      required: [vestidoId, nome, fotos]
+      properties:
+        vestidoId: { type: string }
+        nome: { type: string }
+        fotos:
+          type: array
+          items:
+            $ref: "#/components/schemas/LookbookPublicoFoto"
+    LookbookPublico:
+      type: object
+      required: [lojaNome, noivaNome, vestidos]
+      properties:
+        lojaNome: { type: string }
+        noivaNome: { type: string }
+        vestidos:
+          type: array
+          items:
+            $ref: "#/components/schemas/LookbookPublicoVestido"
     CaptacaoLeadInput:
       type: object
       required: [noivaNome]

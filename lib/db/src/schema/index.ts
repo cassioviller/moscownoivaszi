@@ -5,6 +5,7 @@ export * from "./vestidos";
 export * from "./leads";
 export * from "./atendimentos";
 export * from "./orcamentos";
+export * from "./lookbooks";
 export * from "./contratos";
 export * from "./financeiro";
 export * from "./comissao";

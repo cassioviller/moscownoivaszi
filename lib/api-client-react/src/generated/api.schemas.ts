@@ -560,6 +560,46 @@ export interface LeadInteresseInput {
   atributos?: VestidoAtributo[];
 }
 
+export interface LookbookInput {
+  leadId: string;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     */
+  vestidoIds: string[];
+}
+
+export type LookbookVestidosItem = {
+  vestidoId: string;
+  nome: string;
+};
+
+export interface Lookbook {
+  id: string;
+  leadId: string;
+  token: string;
+  expiraEm: string;
+  criadoEm: string;
+  vestidos: LookbookVestidosItem[];
+}
+
+export interface LookbookPublicoFoto {
+  ordem: number;
+  atualizadaEm: string;
+}
+
+export interface LookbookPublicoVestido {
+  vestidoId: string;
+  nome: string;
+  fotos: LookbookPublicoFoto[];
+}
+
+export interface LookbookPublico {
+  lojaNome: string;
+  noivaNome: string;
+  vestidos: LookbookPublicoVestido[];
+}
+
 export type CaptacaoLeadInputOrigem = typeof CaptacaoLeadInputOrigem[keyof typeof CaptacaoLeadInputOrigem];
 
 
@@ -1882,6 +1922,30 @@ export type GetVestidoFotoVariante = typeof GetVestidoFotoVariante[keyof typeof 
 
 
 export const GetVestidoFotoVariante = {
+  cheia: 'cheia',
+  thumb: 'thumb',
+} as const;
+
+export type ListLookbooksParams = {
+leadId: string;
+};
+
+export type GetLookbookPublicoParams = {
+token: string;
+};
+
+export type GetLookbookPublicoFotoParams = {
+token: string;
+vestidoId: string;
+ordem: number;
+variante?: GetLookbookPublicoFotoVariante;
+v?: string;
+};
+
+export type GetLookbookPublicoFotoVariante = typeof GetLookbookPublicoFotoVariante[keyof typeof GetLookbookPublicoFotoVariante];
+
+
+export const GetLookbookPublicoFotoVariante = {
   cheia: 'cheia',
   thumb: 'thumb',
 } as const;

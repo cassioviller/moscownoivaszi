@@ -13,6 +13,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import Login from "@/pages/login";
 import Convite from "@/pages/convite";
 import OrcamentoPublico from "@/pages/orcamento-publico";
+import LookbookPublico from "@/pages/lookbook-publico";
 import SelecionarLoja from "@/pages/selecionar-loja";
 import Dashboard from "@/pages/dashboard";
 
@@ -129,6 +130,8 @@ function App() {
             <Route path="/convite/:token" element={<Convite />} />
             {/* Pública: a noiva abre o orçamento pelo link, sem conta (E13). */}
             <Route path="/orcamento/:token" element={<OrcamentoPublico />} />
+            {/* Pública: o lookbook dos vestidos provados, sem conta (E21). */}
+            <Route path="/lookbook/:token" element={<LookbookPublico />} />
             <Route
               path="/selecionar-loja"
               element={

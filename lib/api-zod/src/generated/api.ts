@@ -1037,6 +1037,108 @@ export const DeleteVestidoFotoParams = zod.object({
 export const DeleteVestidoFotoResponse = zod.void()
 
 
+/**
+ * @summary Lookbooks de uma noiva (para recopiar o link ou revogar)
+ */
+export const ListLookbooksParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListLookbooksQueryParams = zod.object({
+  "leadId": zod.coerce.string()
+})
+
+export const ListLookbooksResponseItem = zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string()
+}))
+})
+export const ListLookbooksResponse = zod.array(ListLookbooksResponseItem)
+
+
+/**
+ * @summary A seleção do atendimento vira link para a noiva rever em casa
+ */
+export const CreateLookbookParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const createLookbookBodyVestidoIdsMax = 30;
+
+
+
+export const CreateLookbookBody = zod.object({
+  "leadId": zod.string(),
+  "vestidoIds": zod.array(zod.string()).min(1).max(createLookbookBodyVestidoIdsMax)
+})
+
+export const CreateLookbookResponse = zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string()
+}))
+})
+
+
+/**
+ * Revoga o lookbook — o link público morre na hora.
+ */
+export const DeleteLookbookParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "lookbookId": zod.coerce.string()
+})
+
+export const DeleteLookbookResponse = zod.void()
+
+
+/**
+ * A página que a noiva abre sem login. Token em QUERY (o logger corta a query — não cai em log). As URLs das fotos saem da rota pública irmã, escopadas ao MESMO token.
+ */
+export const GetLookbookPublicoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetLookbookPublicoResponse = zod.object({
+  "lojaNome": zod.string(),
+  "noivaNome": zod.string(),
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "atualizadaEm": zod.coerce.date()
+}))
+}))
+})
+
+
+/**
+ * Foto de um vestido DO lookbook, sem login — o token escopa: vestido fora da seleção é 404, mesmo existindo. Cache como na rota autenticada (?v= → immutable; sem → ETag).
+ */
+export const getLookbookPublicoFotoQueryVarianteDefault = `cheia`;
+
+export const GetLookbookPublicoFotoQueryParams = zod.object({
+  "token": zod.coerce.string(),
+  "vestidoId": zod.coerce.string(),
+  "ordem": zod.coerce.number(),
+  "variante": zod.enum(['cheia', 'thumb']).default(getLookbookPublicoFotoQueryVarianteDefault),
+  "v": zod.coerce.string().optional()
+})
+
+export const GetLookbookPublicoFotoResponse = zod.unknown()
+
+
 export const ListLeadsParams = zod.object({
   "lojaId": zod.coerce.string()
 })

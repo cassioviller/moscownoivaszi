@@ -80,6 +80,8 @@ import type {
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
   GetConviteInfoParams,
+  GetLookbookPublicoFotoParams,
+  GetLookbookPublicoParams,
   GetMinhaComissaoParams,
   GetOrcamentoPublicoParams,
   GetUtilizacaoVestidosParams,
@@ -94,12 +96,16 @@ import type {
   LinkOrcamentoPublico,
   ListComissaoFechamentosParams,
   ListLeadsParams,
+  ListLookbooksParams,
   ListPagamentosParams,
   ListParcelasParams,
   LoginInput,
   Loja,
   LojaInput,
   LojaUpdate,
+  Lookbook,
+  LookbookInput,
+  LookbookPublico,
   MembroEquipe,
   MembroEquipeInput,
   MembroEquipeUpdate,
@@ -3734,6 +3740,397 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteVestidoFotoMutationOptions(options));
     }
+
+export const getListLookbooksUrl = (lojaId: string,
+    params: ListLookbooksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/lookbooks?${stringifiedParams}` : `/api/lojas/${lojaId}/lookbooks`
+}
+
+/**
+ * @summary Lookbooks de uma noiva (para recopiar o link ou revogar)
+ */
+export const listLookbooks = async (lojaId: string,
+    params: ListLookbooksParams, options?: RequestInit): Promise<Lookbook[]> => {
+
+  return customFetch<Lookbook[]>(getListLookbooksUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLookbooksQueryKey = (lojaId: string,
+    params?: ListLookbooksParams,) => {
+    return [
+    `/api/lojas/${lojaId}/lookbooks`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListLookbooksQueryOptions = <TData = Awaited<ReturnType<typeof listLookbooks>>, TError = ErrorType<unknown>>(lojaId: string,
+    params: ListLookbooksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLookbooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLookbooksQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLookbooks>>> = ({ signal }) => listLookbooks(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLookbooks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLookbooksQueryResult = NonNullable<Awaited<ReturnType<typeof listLookbooks>>>
+export type ListLookbooksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lookbooks de uma noiva (para recopiar o link ou revogar)
+ */
+
+export function useListLookbooks<TData = Awaited<ReturnType<typeof listLookbooks>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params: ListLookbooksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLookbooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLookbooksQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateLookbookUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/lookbooks`
+}
+
+/**
+ * @summary A seleção do atendimento vira link para a noiva rever em casa
+ */
+export const createLookbook = async (lojaId: string,
+    lookbookInput: LookbookInput, options?: RequestInit): Promise<Lookbook> => {
+
+  return customFetch<Lookbook>(getCreateLookbookUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(lookbookInput)
+  }
+);}
+
+
+
+
+export const getCreateLookbookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLookbook>>, TError,{lojaId: string;data: BodyType<LookbookInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLookbook>>, TError,{lojaId: string;data: BodyType<LookbookInput>}, TContext> => {
+
+const mutationKey = ['createLookbook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLookbook>>, {lojaId: string;data: BodyType<LookbookInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  createLookbook(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLookbookMutationResult = NonNullable<Awaited<ReturnType<typeof createLookbook>>>
+    export type CreateLookbookMutationBody = BodyType<LookbookInput>
+    export type CreateLookbookMutationError = ErrorType<void>
+
+    /**
+ * @summary A seleção do atendimento vira link para a noiva rever em casa
+ */
+export const useCreateLookbook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLookbook>>, TError,{lojaId: string;data: BodyType<LookbookInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLookbook>>,
+        TError,
+        {lojaId: string;data: BodyType<LookbookInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLookbookMutationOptions(options));
+    }
+
+export const getDeleteLookbookUrl = (lojaId: string,
+    lookbookId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/lookbooks/${lookbookId}`
+}
+
+/**
+ * Revoga o lookbook — o link público morre na hora.
+ */
+export const deleteLookbook = async (lojaId: string,
+    lookbookId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteLookbookUrl(lojaId,lookbookId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLookbookMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLookbook>>, TError,{lojaId: string;lookbookId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLookbook>>, TError,{lojaId: string;lookbookId: string}, TContext> => {
+
+const mutationKey = ['deleteLookbook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLookbook>>, {lojaId: string;lookbookId: string}> = (props) => {
+          const {lojaId,lookbookId} = props ?? {};
+
+          return  deleteLookbook(lojaId,lookbookId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLookbookMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLookbook>>>
+
+    export type DeleteLookbookMutationError = ErrorType<unknown>
+
+    export const useDeleteLookbook = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLookbook>>, TError,{lojaId: string;lookbookId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLookbook>>,
+        TError,
+        {lojaId: string;lookbookId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteLookbookMutationOptions(options));
+    }
+
+export const getGetLookbookPublicoUrl = (params: GetLookbookPublicoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lookbooks/publico?${stringifiedParams}` : `/api/lookbooks/publico`
+}
+
+/**
+ * A página que a noiva abre sem login. Token em QUERY (o logger corta a query — não cai em log). As URLs das fotos saem da rota pública irmã, escopadas ao MESMO token.
+ */
+export const getLookbookPublico = async (params: GetLookbookPublicoParams, options?: RequestInit): Promise<LookbookPublico> => {
+
+  return customFetch<LookbookPublico>(getGetLookbookPublicoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLookbookPublicoQueryKey = (params?: GetLookbookPublicoParams,) => {
+    return [
+    `/api/lookbooks/publico`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLookbookPublicoQueryOptions = <TData = Awaited<ReturnType<typeof getLookbookPublico>>, TError = ErrorType<void>>(params: GetLookbookPublicoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLookbookPublico>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLookbookPublicoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLookbookPublico>>> = ({ signal }) => getLookbookPublico(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLookbookPublico>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLookbookPublicoQueryResult = NonNullable<Awaited<ReturnType<typeof getLookbookPublico>>>
+export type GetLookbookPublicoQueryError = ErrorType<void>
+
+
+
+export function useGetLookbookPublico<TData = Awaited<ReturnType<typeof getLookbookPublico>>, TError = ErrorType<void>>(
+ params: GetLookbookPublicoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLookbookPublico>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLookbookPublicoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLookbookPublicoFotoUrl = (params: GetLookbookPublicoFotoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lookbooks/publico/foto?${stringifiedParams}` : `/api/lookbooks/publico/foto`
+}
+
+/**
+ * Foto de um vestido DO lookbook, sem login — o token escopa: vestido fora da seleção é 404, mesmo existindo. Cache como na rota autenticada (?v= → immutable; sem → ETag).
+ */
+export const getLookbookPublicoFoto = async (params: GetLookbookPublicoFotoParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetLookbookPublicoFotoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLookbookPublicoFotoQueryKey = (params?: GetLookbookPublicoFotoParams,) => {
+    return [
+    `/api/lookbooks/publico/foto`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLookbookPublicoFotoQueryOptions = <TData = Awaited<ReturnType<typeof getLookbookPublicoFoto>>, TError = ErrorType<void>>(params: GetLookbookPublicoFotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLookbookPublicoFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLookbookPublicoFotoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLookbookPublicoFoto>>> = ({ signal }) => getLookbookPublicoFoto(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLookbookPublicoFoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLookbookPublicoFotoQueryResult = NonNullable<Awaited<ReturnType<typeof getLookbookPublicoFoto>>>
+export type GetLookbookPublicoFotoQueryError = ErrorType<void>
+
+
+
+export function useGetLookbookPublicoFoto<TData = Awaited<ReturnType<typeof getLookbookPublicoFoto>>, TError = ErrorType<void>>(
+ params: GetLookbookPublicoFotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLookbookPublicoFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLookbookPublicoFotoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListLeadsUrl = (lojaId: string,
     params?: ListLeadsParams,) => {

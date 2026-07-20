@@ -16,4 +16,5 @@ export {
   ListLeadsParams,
   GetMinhaComissaoParams,
   GetUtilizacaoVestidosParams,
+  ListLookbooksParams,
 } from "./generated/api";
