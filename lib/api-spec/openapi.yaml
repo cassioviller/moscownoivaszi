@@ -1072,6 +1072,15 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 100 }
+        # A lista lê como histórico (mais antiga primeiro); a coluna do funil
+        # mostra UMA página, e ali a ordem decide o que existe na tela — uma
+        # noiva recém-chegada no fim de 36 cairia na página 2, invisível
+        # justamente quando é mais urgente. Default preservado: os pickers de
+        # agenda/orçamentos e a lista já contam com a ordem antiga.
+        - name: ordem
+          in: query
+          required: false
+          schema: { type: string, enum: [antigos, recentes], default: antigos }
       responses:
         "200":
           description: Página de leads (sem pagina/porPagina, vem tudo — os pickers dependem disso)
@@ -3117,6 +3126,11 @@ components:
         perdidaDetalhe: { type: ["string", "null"] }
         origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
         createdAt: { type: string, format: date-time }
+        # Instante do contato mais recente em registros_cobranca (E27). Derivado,
+        # não é coluna de `leads`: é o que permite ao funil marcar "parada há N
+        # dias sem contato" sem uma consulta por card. `null` = nunca contatada,
+        # e aí a contagem do funil corre desde `createdAt`.
+        ultimoContatoEm: { type: ["string", "null"], format: date-time }
         interesse:
           $ref: "#/components/schemas/LeadInteresse"
     # Envelope da listagem: `total` é o universo do filtro, não da página —

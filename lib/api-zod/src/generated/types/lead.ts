@@ -39,5 +39,7 @@ export interface Lead {
   perdidaDetalhe?: string | null;
   origem: LeadOrigem;
   createdAt: Date;
+  /** @nullable */
+  ultimoContatoEm?: Date | null;
   interesse?: LeadInteresse;
 }

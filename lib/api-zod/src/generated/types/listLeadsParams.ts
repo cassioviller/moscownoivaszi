@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ListLeadsEtapa } from './listLeadsEtapa';
+import type { ListLeadsOrdem } from './listLeadsOrdem';
 
 export type ListLeadsParams = {
 /**
@@ -23,4 +24,5 @@ pagina?: number;
  * @maximum 100
  */
 porPagina?: number;
+ordem?: ListLeadsOrdem;
 };

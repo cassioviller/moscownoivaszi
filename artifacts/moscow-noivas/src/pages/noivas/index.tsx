@@ -20,9 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, AlertCircle, Search } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Plus, AlertCircle, Search, LayoutGrid, Columns3 } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
+import { FunilNoivas } from "./funil";
 import {
   dataCurtaFmt,
   diasAteCasamento,
@@ -46,6 +48,7 @@ export default function Noivas() {
   const [buscaAplicada, setBuscaAplicada] = useState("");
   const [etapa, setEtapa] = useState<string>(TODAS_ETAPAS);
   const [pagina, setPagina] = useState(1);
+  const [vista, setVista] = useState<"lista" | "funil">("lista");
 
   // Debounce: a query só muda quando a digitação assenta (300ms).
   useEffect(() => {
@@ -71,12 +74,15 @@ export default function Noivas() {
   const { data, isLoading, isError, error, refetch } = useListLeads(activeLojaId!, params, {
     query: {
       queryKey: getListLeadsQueryKey(activeLojaId!, params),
-      enabled: !!activeLojaId,
+      // No funil cada coluna faz a própria consulta por etapa — a listagem
+      // paginada da lista ficaria pendurada sem ninguém para lê-la.
+      enabled: !!activeLojaId && vista === "lista",
       // Trocar de página/filtro mantém a lista anterior na tela em vez de piscar.
       placeholderData: keepPreviousData,
     },
   });
   const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
+  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const visiveis = data?.itens ?? [];
   const total = data?.total ?? 0;
@@ -115,22 +121,47 @@ export default function Noivas() {
             data-testid="input-busca-noiva"
           />
         </div>
-        <Select value={etapa} onValueChange={setEtapa}>
-          <SelectTrigger className="w-56" aria-label="Filtrar por etapa" data-testid="select-filtro-etapa">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODAS_ETAPAS}>Todas as etapas</SelectItem>
-            {Object.values(LeadEtapa).map((e) => (
-              <SelectItem key={e} value={e}>
-                {etapaLabel(e)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* No funil a etapa é a coluna — filtrar por etapa esvaziaria as outras dez. */}
+        {vista === "lista" && (
+          <Select value={etapa} onValueChange={setEtapa}>
+            <SelectTrigger className="w-56" aria-label="Filtrar por etapa" data-testid="select-filtro-etapa">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODAS_ETAPAS}>Todas as etapas</SelectItem>
+              {Object.values(LeadEtapa).map((e) => (
+                <SelectItem key={e} value={e}>
+                  {etapaLabel(e)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <ToggleGroup
+          type="single"
+          value={vista}
+          onValueChange={(v) => v && setVista(v as "lista" | "funil")}
+          className="ml-auto"
+          aria-label="Como ver as noivas"
+        >
+          <ToggleGroupItem value="lista" aria-label="Ver em lista" data-testid="toggle-vista-lista">
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="funil" aria-label="Ver em funil" data-testid="toggle-vista-funil">
+            <Columns3 className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
-      {isError ? (
+      {vista === "funil" ? (
+        <FunilNoivas
+          lojaId={lojaId!}
+          activeLojaId={activeLojaId!}
+          busca={buscaAplicada}
+          podeEditar={podeEditar}
+        />
+      ) : isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar as noivas</AlertTitle>

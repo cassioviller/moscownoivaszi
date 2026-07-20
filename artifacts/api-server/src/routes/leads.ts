@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable } from "@workspace/db";
-import { eq, and, desc, or, ilike, sql, count } from "drizzle-orm";
+import { eq, and, desc, or, ilike, sql, count, inArray } from "drizzle-orm";
 import {
   ListLeadsResponse,
   ListLeadsQueryParams,
@@ -33,6 +33,28 @@ function carimboEtapa(
   return {};
 }
 
+/**
+ * Último contato de cada lead (E27): `max(contatoData)` de registros_cobranca.
+ * É uma query agregada à parte, não uma subquery correlacionada dentro do
+ * relational builder — ali o drizzle aliasa a tabela e a correlação com
+ * `leads.id` sai errada em silêncio. Um SELECT a mais, limitado à página.
+ *
+ * Alimenta o "parada há N dias sem contato" do funil; sem isto o kanban faria
+ * uma consulta de cobranças por card.
+ */
+async function ultimoContatoPorLead(leadIds: string[]): Promise<Map<string, Date>> {
+  if (leadIds.length === 0) return new Map();
+  const linhas = await db
+    .select({
+      leadId: registrosCobrancaTable.leadId,
+      ultimo: sql<Date>`max(${registrosCobrancaTable.contatoData})`,
+    })
+    .from(registrosCobrancaTable)
+    .where(inArray(registrosCobrancaTable.leadId, leadIds))
+    .groupBy(registrosCobrancaTable.leadId);
+  return new Map(linhas.map((l) => [l.leadId, l.ultimo]));
+}
+
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/leads", requireModulo("leads"));
 
@@ -43,7 +65,7 @@ router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
     res.status(400).json({ error: "FILTRO_INVALIDO" });
     return;
   }
-  const { q, etapa, pagina, porPagina } = parsed.data;
+  const { q, etapa, pagina, porPagina, ordem } = parsed.data;
 
   const condicoes = [eq(leadsTable.lojaId, lojaId)];
   if (etapa) condicoes.push(eq(leadsTable.etapa, etapa));
@@ -79,14 +101,23 @@ router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
         }
       },
       // id desempata createdAt igual — sem ordem estável, página 2 repete item.
-      orderBy: [leadsTable.createdAt, leadsTable.id],
+      orderBy:
+        ordem === "recentes"
+          ? [desc(leadsTable.createdAt), desc(leadsTable.id)]
+          : [leadsTable.createdAt, leadsTable.id],
       ...(paginado ? { limit: tamanho, offset: ((pagina ?? 1) - 1) * tamanho } : {}),
     }),
   ]);
 
+  const contatos = await ultimoContatoPorLead(leads.map((l) => l.id));
+
   res.json(ListLeadsResponse.parse({
     total: contagem[0]!.total,
-    itens: leads.map(l => ({ ...l, interesse: l.interesse ?? undefined })),
+    itens: leads.map(l => ({
+      ...l,
+      ultimoContatoEm: contatos.get(l.id) ?? null,
+      interesse: l.interesse ?? undefined,
+    })),
   }));
 });
 
@@ -104,7 +135,9 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
     ...parsed.data,
   }).returning();
 
-  res.status(201).json(CreateLeadResponse.parse({ ...lead, interesse: undefined }));
+  // Lead recém-criado nunca tem contato registrado — explícito para o campo
+  // significar o mesmo em toda resposta que devolve um Lead.
+  res.status(201).json(CreateLeadResponse.parse({ ...lead, ultimoContatoEm: null, interesse: undefined }));
 });
 
 router.get("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
@@ -125,7 +158,13 @@ router.get("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetLeadResponse.parse({ ...lead, interesse: lead.interesse ?? undefined }));
+  const contatos = await ultimoContatoPorLead([lead.id]);
+
+  res.json(GetLeadResponse.parse({
+    ...lead,
+    ultimoContatoEm: contatos.get(lead.id) ?? null,
+    interesse: lead.interesse ?? undefined,
+  }));
 });
 
 router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
@@ -187,7 +226,13 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     with: { interesse: { with: { atributos: true } } }
   });
 
-  res.json(UpdateLeadResponse.parse({ ...fullLead, interesse: fullLead?.interesse ?? undefined }));
+  const contatos = await ultimoContatoPorLead([lead.id]);
+
+  res.json(UpdateLeadResponse.parse({
+    ...fullLead,
+    ultimoContatoEm: contatos.get(lead.id) ?? null,
+    interesse: fullLead?.interesse ?? undefined,
+  }));
 });
 
 router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {

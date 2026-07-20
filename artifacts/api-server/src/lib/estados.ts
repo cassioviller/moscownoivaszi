@@ -1,4 +1,5 @@
 import type { Lead, Orcamento, Reserva } from "@workspace/db";
+import type { EtapaLead } from "@workspace/funil-core";
 
 /**
  * Máquina de estados do domínio. Funções puras (sem IO): validam se uma
@@ -12,45 +13,30 @@ export type ReservaStatus = Reserva["status"];
 
 // ───────────────────────── Lead ─────────────────────────
 
-// Funil linear da noiva. PERDIDO fica fora do funil (estado lateral).
-export const FUNIL_LEAD: LeadEtapa[] = [
-  "NOVO",
-  "INTERESSES_PREENCHIDOS",
-  "ATENDIMENTO_AGENDADO",
-  "EM_ATENDIMENTO",
-  "ORCAMENTO_ABERTO",
-  "CONTRATO_FECHADO",
-  "EM_PROVAS",
-  "RETIRADO",
-  "CASAMENTO_REALIZADO",
-  "DEVOLVIDO",
-];
+// O funil mudou de casa no E27: o kanban precisa da mesma régua no frontend, e
+// `@workspace/db` não entra no bundle do browser. Aqui ficam só os re-exports,
+// para não mexer em nenhum consumidor destas rotas.
+export {
+  FUNIL_LEAD,
+  ETAPAS_LEAD,
+  transicaoLeadValida,
+  avancarEtapaLead,
+  etapasAlcancaveis,
+} from "@workspace/funil-core";
 
 /**
- * Transição de etapa permitida: avança no funil (nunca regride), sempre pode
- * marcar como PERDIDO, e um lead PERDIDO pode ser revivido para qualquer etapa
- * do funil. Manter no mesmo estado é sempre válido (no-op).
+ * A trava: `EtapaLead` é declarada à mão no funil-core (para ficar livre do
+ * drizzle) e `LeadEtapa` vem do enum do banco. Se alguém acrescentar uma etapa
+ * numa ponta e esquecer a outra, ESTA linha deixa de compilar — é a prova de
+ * que a régua duplicada não pode divergir em silêncio.
  */
-export function transicaoLeadValida(de: LeadEtapa, para: LeadEtapa): boolean {
-  if (de === para) return true;
-  if (para === "PERDIDO") return true;
-  if (de === "PERDIDO") return FUNIL_LEAD.includes(para);
-  const iDe = FUNIL_LEAD.indexOf(de);
-  const iPara = FUNIL_LEAD.indexOf(para);
-  return iDe !== -1 && iPara !== -1 && iPara > iDe;
-}
-
-/**
- * Avanço automático (efeito colateral de um evento): move a etapa até `alvo`
- * apenas se for à frente no funil. Nunca regride e nunca mexe num lead fora do
- * funil (ex.: PERDIDO permanece PERDIDO). Retorna a etapa resultante.
- */
-export function avancarEtapaLead(atual: LeadEtapa, alvo: LeadEtapa): LeadEtapa {
-  const iAtual = FUNIL_LEAD.indexOf(atual);
-  const iAlvo = FUNIL_LEAD.indexOf(alvo);
-  if (iAtual === -1 || iAlvo === -1) return atual;
-  return iAlvo > iAtual ? alvo : atual;
-}
+type EtapasEmDia = [EtapaLead] extends [LeadEtapa]
+  ? [LeadEtapa] extends [EtapaLead]
+    ? true
+    : never
+  : never;
+const _etapasEmDia: EtapasEmDia = true;
+void _etapasEmDia;
 
 // ───────────────────────── Orçamento ─────────────────────────
 

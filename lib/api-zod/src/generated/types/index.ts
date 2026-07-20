@@ -129,6 +129,7 @@ export * from './leadUpdatePerdidaMotivo';
 export * from './linkOrcamentoPublico';
 export * from './listComissaoFechamentosParams';
 export * from './listLeadsEtapa';
+export * from './listLeadsOrdem';
 export * from './listLeadsParams';
 export * from './listLookbooksParams';
 export * from './listPagamentosParams';

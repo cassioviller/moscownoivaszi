@@ -182,6 +182,9 @@ importers:
       '@workspace/financeiro-core':
         specifier: workspace:*
         version: link:../../lib/financeiro-core
+      '@workspace/funil-core':
+        specifier: workspace:*
+        version: link:../../lib/funil-core
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -441,6 +444,9 @@ importers:
       '@workspace/financeiro-core':
         specifier: workspace:*
         version: link:../../lib/financeiro-core
+      '@workspace/funil-core':
+        specifier: workspace:*
+        version: link:../../lib/funil-core
       react-router:
         specifier: ^7.18.1
         version: 7.18.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -448,6 +454,9 @@ importers:
         specifier: ^5.0.14
         version: 5.0.14(@types/react@19.2.17)(react@19.1.0)
     devDependencies:
+      '@dnd-kit/core':
+        specifier: ^6.3.1
+        version: 6.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.80.0(react@19.1.0))
@@ -686,6 +695,12 @@ importers:
 
   lib/financeiro-core: {}
 
+  lib/funil-core:
+    dependencies:
+      '@workspace/financeiro-core':
+        specifier: workspace:*
+        version: link:../financeiro-core
+
   scripts:
     devDependencies:
       '@types/node':
@@ -791,6 +806,22 @@ packages:
 
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
+
+  '@dnd-kit/accessibility@3.1.1':
+    resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
+    peerDependencies:
+      react: '>=16.8.0'
+
+  '@dnd-kit/core@6.3.1':
+    resolution: {integrity: sha512-xkGBRQQab4RLwgXxoqETICr6S5JlogafbhNsidmrkVv2YRs5MLwpjoF2qpiGjQt8S9AoxtIV603s0GIUpY5eYQ==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
+  '@dnd-kit/utilities@3.2.2':
+    resolution: {integrity: sha512-+MKAJEOfaBe5SmV6t34p80MMKhjvUz0vRrvVJbPT0WElzaOJ/1xs+D+KDv+tD/NE5ujfrChEcshd4fLn0wpiqg==}
+    peerDependencies:
+      react: '>=16.8.0'
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
@@ -3566,6 +3597,24 @@ snapshots:
       commander: 15.0.0
 
   '@date-fns/tz@1.5.0': {}
+
+  '@dnd-kit/accessibility@3.1.1(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+      tslib: 2.8.1
+
+  '@dnd-kit/core@6.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@dnd-kit/accessibility': 3.1.1(react@19.1.0)
+      '@dnd-kit/utilities': 3.2.2(react@19.1.0)
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+      tslib: 2.8.1
+
+  '@dnd-kit/utilities@3.2.2(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+      tslib: 2.8.1
 
   '@drizzle-team/brocli@0.10.2': {}
 

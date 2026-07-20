@@ -477,6 +477,8 @@ export interface Lead {
   perdidaDetalhe?: string | null;
   origem: LeadOrigem;
   createdAt: string;
+  /** @nullable */
+  ultimoContatoEm?: string | null;
   interesse?: LeadInteresse;
 }
 
@@ -1999,6 +2001,7 @@ pagina?: number;
  * @maximum 100
  */
 porPagina?: number;
+ordem?: ListLeadsOrdem;
 };
 
 export type ListLeadsEtapa = typeof ListLeadsEtapa[keyof typeof ListLeadsEtapa];
@@ -2016,6 +2019,14 @@ export const ListLeadsEtapa = {
   CASAMENTO_REALIZADO: 'CASAMENTO_REALIZADO',
   DEVOLVIDO: 'DEVOLVIDO',
   PERDIDO: 'PERDIDO',
+} as const;
+
+export type ListLeadsOrdem = typeof ListLeadsOrdem[keyof typeof ListLeadsOrdem];
+
+
+export const ListLeadsOrdem = {
+  antigos: 'antigos',
+  recentes: 'recentes',
 } as const;
 
 export type GetOrcamentoPublicoParams = {

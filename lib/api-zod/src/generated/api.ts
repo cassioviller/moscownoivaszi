@@ -1148,13 +1148,14 @@ export const listLeadsQueryQMax = 200;
 
 export const listLeadsQueryPorPaginaMax = 100;
 
-
+export const listLeadsQueryOrdemDefault = `antigos`;
 
 export const ListLeadsQueryParams = zod.object({
   "q": zod.coerce.string().max(listLeadsQueryQMax).optional().describe('Busca em nome da noiva\/noivo e WhatsApp (dígitos com ou sem máscara)'),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']).optional(),
   "pagina": zod.coerce.number().min(1).optional(),
-  "porPagina": zod.coerce.number().min(1).max(listLeadsQueryPorPaginaMax).optional()
+  "porPagina": zod.coerce.number().min(1).max(listLeadsQueryPorPaginaMax).optional(),
+  "ordem": zod.enum(['antigos', 'recentes']).default(listLeadsQueryOrdemDefault)
 })
 
 export const ListLeadsResponse = zod.object({
@@ -1177,6 +1178,7 @@ export const ListLeadsResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1227,6 +1229,7 @@ export const CreateLeadResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1263,6 +1266,7 @@ export const GetLeadResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1312,6 +1316,7 @@ export const UpdateLeadResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1490,6 +1495,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1573,6 +1579,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1623,6 +1630,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1693,6 +1701,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1757,6 +1766,7 @@ export const CreateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1840,6 +1850,7 @@ export const CreateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1890,6 +1901,7 @@ export const CreateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -1960,6 +1972,7 @@ export const CreateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2023,6 +2036,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2106,6 +2120,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2156,6 +2171,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2226,6 +2242,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2294,6 +2311,7 @@ export const ListAjustesResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2364,6 +2382,7 @@ export const ListAjustesResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2432,6 +2451,7 @@ export const CreateAjusteResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2502,6 +2522,7 @@ export const CreateAjusteResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2567,6 +2588,7 @@ export const UpdateAjusteResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2637,6 +2659,7 @@ export const UpdateAjusteResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2826,6 +2849,7 @@ export const ListReservasResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2856,6 +2880,7 @@ export const ListReservasResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2945,6 +2970,7 @@ export const CreateReservaResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -2975,6 +3001,7 @@ export const CreateReservaResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3064,6 +3091,7 @@ export const UpdateReservaResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3094,6 +3122,7 @@ export const UpdateReservaResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3179,6 +3208,7 @@ export const ListBloqueiosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3268,6 +3298,7 @@ export const CreateBloqueioResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3355,6 +3386,7 @@ export const UpdateBloqueioResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3751,6 +3783,7 @@ export const ListContratosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3792,6 +3825,7 @@ export const ListContratosResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3892,6 +3926,7 @@ export const CreateContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -3933,6 +3968,7 @@ export const CreateContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4012,6 +4048,7 @@ export const GetContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4053,6 +4090,7 @@ export const GetContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4142,6 +4180,7 @@ export const UpdateContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4183,6 +4222,7 @@ export const UpdateContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4278,6 +4318,7 @@ export const CancelarContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4319,6 +4360,7 @@ export const CancelarContratoResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4388,6 +4430,7 @@ export const ListParcelasResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4447,6 +4490,7 @@ export const ReceberParcelaResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4499,6 +4543,7 @@ export const EstornarParcelaResponse = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -4574,6 +4619,7 @@ export const GerarPlanoParcelasResponseItem = zod.object({
   "perdidaDetalhe": zod.string().nullish(),
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
