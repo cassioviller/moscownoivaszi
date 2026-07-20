@@ -293,6 +293,37 @@ export default function Comissoes() {
     return mapa;
   }, [equipe.data]);
 
+  /**
+   * Linha do tempo (E17): a API sempre devolveu TODAS as versões da escada,
+   * mas a lista plana as exibia como regras irmãs — redefinir a vigência
+   * parecia apagar o histórico. Agrupar por vendedora e rotular cada versão
+   * (vigente / futura / encerrada) é o que responde "por que março pagou
+   * diferente?": a escada de março continua aqui, com o período em que valeu.
+   */
+  const linhaDoTempo = useMemo(() => {
+    const porVendedora = new Map<string, ComissaoRegra[]>();
+    for (const regra of regras.data ?? []) {
+      const lista = porVendedora.get(regra.vendedoraId) ?? [];
+      lista.push(regra);
+      porVendedora.set(regra.vendedoraId, lista);
+    }
+    const agora = Date.now();
+    return [...porVendedora.entries()]
+      .map(([vendedoraId, versoes]) => {
+        versoes.sort(
+          (a, b) => new Date(b.vigenciaInicio).getTime() - new Date(a.vigenciaInicio).getTime(),
+        );
+        // A vigente: a mais recente ATIVA que já começou — o mesmo critério do motor.
+        const vigente = versoes.find(
+          (v) => v.ativo && new Date(v.vigenciaInicio).getTime() <= agora,
+        );
+        const nome =
+          versoes[0].vendedoraNome ?? nomePorUsuario.get(vendedoraId) ?? "Vendedora";
+        return { vendedoraId, nome, versoes, vigenteId: vigente?.id ?? null };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [regras.data, nomePorUsuario]);
+
   const jaFechada = (fechamentos.data?.length ?? 0) > 0;
 
   return (
@@ -498,8 +529,10 @@ export default function Comissoes() {
         <CardHeader>
           <CardTitle>Regras de Comissão</CardTitle>
           <CardDescription>
-            Cada vendedora tem a sua escada. Um intervalo sem faixa não comissiona — é assim que se
-            diz “abaixo disso não paga”.
+            Cada vendedora tem a sua escada, versionada no tempo: redefinir cria uma versão nova e
+            as antigas ficam na linha do tempo — é aí que se responde “por que março pagou
+            diferente?”. Um intervalo sem faixa não comissiona — é assim que se diz “abaixo disso
+            não paga”.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -512,42 +545,78 @@ export default function Comissoes() {
               Nenhuma regra definida — sem regra, não há comissão.
             </p>
           ) : (
-            <ul className="space-y-4">
-              {regras.data?.map((regra: ComissaoRegra) => (
-                <li key={regra.id} className="rounded-lg border p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium">
-                        {regra.vendedoraNome ?? nomePorUsuario.get(regra.vendedoraId) ?? "Vendedora"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Vale desde {diaFmt.format(new Date(regra.vigenciaInicio))}
-                        {regra.bonusAcumulaFaixas && " · bônus acumulam"}
-                        {!regra.ativo && " · inativa"}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remover regra de ${regra.vendedoraNome ?? "vendedora"}`}
-                      disabled={removerRegra.isPending}
-                      onClick={() =>
-                        setRegraRemovendo({
-                          id: regra.id,
-                          nome: regra.vendedoraNome ?? nomePorUsuario.get(regra.vendedoraId) ?? "vendedora",
-                        })
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <ul className="mt-2 space-y-1">
-                    {regra.faixas.map((f) => (
-                      <li key={f.id} className="text-sm tabular-nums text-muted-foreground">
-                        {descreverFaixa(f)}
-                      </li>
-                    ))}
-                  </ul>
+            <ul className="space-y-6">
+              {linhaDoTempo.map((vendedora) => (
+                <li key={vendedora.vendedoraId} className="space-y-2">
+                  <p className="font-medium">{vendedora.nome}</p>
+                  {/* Linha do tempo da escada (E17): mais recente no topo. */}
+                  <ol className="space-y-2 border-l pl-4">
+                    {vendedora.versoes.map((regra, i) => {
+                      const inicio = new Date(regra.vigenciaInicio);
+                      const futura = inicio.getTime() > Date.now();
+                      const vigente = regra.id === vendedora.vigenteId;
+                      // A versão acima (mais recente) encerra esta na véspera.
+                      const sucessora = i > 0 ? vendedora.versoes[i - 1] : null;
+                      const fim = sucessora
+                        ? new Date(new Date(sucessora.vigenciaInicio).getTime() - 86_400_000)
+                        : null;
+                      return (
+                        <li
+                          key={regra.id}
+                          className={`rounded-lg border p-3 ${vigente ? "" : "opacity-80"}`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <p className="text-xs text-muted-foreground">
+                              {vigente ? (
+                                <>
+                                  <Badge className="mr-2 font-normal">vigente</Badge>
+                                  desde {diaFmt.format(inicio)}
+                                </>
+                              ) : futura ? (
+                                <>
+                                  <Badge variant="secondary" className="mr-2 font-normal">
+                                    futura
+                                  </Badge>
+                                  entra em vigor em {diaFmt.format(inicio)}
+                                </>
+                              ) : !regra.ativo ? (
+                                <>
+                                  <Badge variant="outline" className="mr-2 font-normal">
+                                    inativa
+                                  </Badge>
+                                  definida para {diaFmt.format(inicio)}
+                                </>
+                              ) : (
+                                <>
+                                  valeu de {diaFmt.format(inicio)}
+                                  {fim ? ` a ${diaFmt.format(fim)}` : ""}
+                                </>
+                              )}
+                              {regra.bonusAcumulaFaixas && " · bônus acumulam"}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Remover a versão de ${diaFmt.format(inicio)} de ${vendedora.nome}`}
+                              disabled={removerRegra.isPending}
+                              onClick={() =>
+                                setRegraRemovendo({ id: regra.id, nome: vendedora.nome })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <ul className="mt-1 space-y-1">
+                            {regra.faixas.map((f) => (
+                              <li key={f.id} className="text-sm tabular-nums text-muted-foreground">
+                                {descreverFaixa(f)}
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      );
+                    })}
+                  </ol>
                 </li>
               ))}
             </ul>
