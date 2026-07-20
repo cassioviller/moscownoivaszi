@@ -15,6 +15,7 @@ import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
 import { gerarContratoPdf } from "../lib/contrato-pdf";
+import { ratearRestante } from "../lib/parcelas";
 import {
   EstornarParcelaResponse,
   GerarPlanoParcelasBody,
@@ -681,7 +682,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
   const periodicidadeDias = parsed.data.periodicidadeDias ?? 30;
   const venc0 = new Date(parsed.data.primeiroVencimento);
   const restante = totalCentavos - entradaCentavos;
-  const base = Math.floor(restante / n);
+  const valores = ratearRestante(restante, n);
 
   const linhas: (typeof parcelasTable.$inferInsert)[] = [];
   if (entradaCentavos > 0) {
@@ -697,7 +698,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
   }
   const offsetInicial = entradaCentavos > 0 ? 1 : 0;
   for (let i = 0; i < n; i++) {
-    const valor = i === n - 1 ? restante - base * (n - 1) : base;
+    const valor = valores[i];
     linhas.push({
       id: randomUUID(),
       lojaId,
