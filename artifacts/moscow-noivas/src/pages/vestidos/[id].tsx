@@ -103,7 +103,7 @@ export default function VestidoDetail() {
   const bloqueiosQuery = useListBloqueios(activeLojaId!, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
-  const leadsQuery = useListLeads(activeLojaId!, {
+  const leadsQuery = useListLeads(activeLojaId!, undefined, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
@@ -129,7 +129,7 @@ export default function VestidoDetail() {
 
   const leadsPorId = useMemo(() => {
     const mapa = new Map<string, Lead>();
-    for (const lead of leadsQuery.data ?? []) mapa.set(lead.id, lead);
+    for (const lead of leadsQuery.data?.itens ?? []) mapa.set(lead.id, lead);
     return mapa;
   }, [leadsQuery.data]);
 

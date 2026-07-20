@@ -103,7 +103,7 @@ export default function OrcamentoDetail() {
   const { data: orcamento, isLoading, isError, refetch } = useGetOrcamento(activeLojaId!, id!, {
     query: { queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id }
   });
-  const leads = useListLeads(activeLojaId!, {
+  const leads = useListLeads(activeLojaId!, undefined, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   // O GetOrcamento não expõe o contrato gerado; buscamos na lista de contratos
@@ -127,7 +127,7 @@ export default function OrcamentoDetail() {
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const lead = useMemo(
-    () => leads.data?.find((l) => l.id === orcamento?.leadId),
+    () => leads.data?.itens.find((l) => l.id === orcamento?.leadId),
     [leads.data, orcamento?.leadId],
   );
 

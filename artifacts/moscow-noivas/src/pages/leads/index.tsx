@@ -49,12 +49,13 @@ export default function Leads() {
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
 
-  const { data: leads, isLoading, isError, error, refetch } = useListLeads(activeLojaId!, {
+  const { data: pagina, isLoading, isError, error, refetch } = useListLeads(activeLojaId!, undefined, {
     query: {
       queryKey: getListLeadsQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     }
   });
+  const leads = pagina?.itens;
   const createLead = useCreateLead();
 
   const form = useForm<NovoLeadValues>({

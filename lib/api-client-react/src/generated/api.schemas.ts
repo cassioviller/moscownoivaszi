@@ -419,6 +419,11 @@ export interface Lead {
   interesse?: LeadInteresse;
 }
 
+export interface LeadsPage {
+  total: number;
+  itens: Lead[];
+}
+
 export type LeadInputOrigem = typeof LeadInputOrigem[keyof typeof LeadInputOrigem];
 
 
@@ -1654,6 +1659,41 @@ export type GetVestidoFotoVariante = typeof GetVestidoFotoVariante[keyof typeof 
 export const GetVestidoFotoVariante = {
   cheia: 'cheia',
   thumb: 'thumb',
+} as const;
+
+export type ListLeadsParams = {
+/**
+ * Busca em nome da noiva/noivo e WhatsApp (dígitos com ou sem máscara)
+ * @maxLength 200
+ */
+q?: string;
+etapa?: ListLeadsEtapa;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+};
+
+export type ListLeadsEtapa = typeof ListLeadsEtapa[keyof typeof ListLeadsEtapa];
+
+
+export const ListLeadsEtapa = {
+  NOVO: 'NOVO',
+  INTERESSES_PREENCHIDOS: 'INTERESSES_PREENCHIDOS',
+  ATENDIMENTO_AGENDADO: 'ATENDIMENTO_AGENDADO',
+  EM_ATENDIMENTO: 'EM_ATENDIMENTO',
+  ORCAMENTO_ABERTO: 'ORCAMENTO_ABERTO',
+  CONTRATO_FECHADO: 'CONTRATO_FECHADO',
+  EM_PROVAS: 'EM_PROVAS',
+  RETIRADO: 'RETIRADO',
+  CASAMENTO_REALIZADO: 'CASAMENTO_REALIZADO',
+  DEVOLVIDO: 'DEVOLVIDO',
+  PERDIDO: 'PERDIDO',
 } as const;
 
 export type ListParcelasParams = {

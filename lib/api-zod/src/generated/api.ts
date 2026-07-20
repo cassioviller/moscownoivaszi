@@ -911,7 +911,23 @@ export const ListLeadsParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const ListLeadsResponseItem = zod.object({
+export const listLeadsQueryQMax = 200;
+
+
+export const listLeadsQueryPorPaginaMax = 100;
+
+
+
+export const ListLeadsQueryParams = zod.object({
+  "q": zod.coerce.string().max(listLeadsQueryQMax).optional().describe('Busca em nome da noiva\/noivo e WhatsApp (dígitos com ou sem máscara)'),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']).optional(),
+  "pagina": zod.coerce.number().min(1).optional(),
+  "porPagina": zod.coerce.number().min(1).max(listLeadsQueryPorPaginaMax).optional()
+})
+
+export const ListLeadsResponse = zod.object({
+  "total": zod.number(),
+  "itens": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
@@ -939,8 +955,8 @@ export const ListLeadsResponseItem = zod.object({
   "opcaoId": zod.string()
 })).optional()
 }).optional()
+}))
 })
-export const ListLeadsResponse = zod.array(ListLeadsResponseItem)
 
 
 export const CreateLeadParams = zod.object({

@@ -50,7 +50,24 @@ async function main(): Promise<void> {
     $$;
   `);
 
-  console.log("[apply-sql-extras] extensão btree_gist + constraints aplicadas");
+  // 4. pg_trgm + índices da busca server-side de leads (E7): ILIKE em nomes
+  //    e LIKE sobre o whatsapp normalizado — a MESMA expressão da rota, senão
+  //    o índice não é usado.
+  await pool.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leads_noiva_nome_trgm_idx
+      ON leads USING gin (noiva_nome gin_trgm_ops);
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leads_noivo_nome_trgm_idx
+      ON leads USING gin (noivo_nome gin_trgm_ops);
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leads_whatsapp_digitos_trgm_idx
+      ON leads USING gin (regexp_replace(coalesce(whatsapp, ''), '\\D', '', 'g') gin_trgm_ops);
+  `);
+
+  console.log("[apply-sql-extras] extensões btree_gist/pg_trgm + constraints + índices aplicados");
 }
 
 main()

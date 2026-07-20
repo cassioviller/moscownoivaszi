@@ -777,15 +777,34 @@ paths:
     get:
       operationId: listLeads
       tags: [leads]
+      # Params no nível do GET (no path vazariam para o POST — gotcha do codegen).
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: "Busca em nome da noiva/noivo e WhatsApp (dígitos com ou sem máscara)"
+          schema: { type: string, maxLength: 200 }
+        - name: etapa
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [NOVO, INTERESSES_PREENCHIDOS, ATENDIMENTO_AGENDADO, EM_ATENDIMENTO, ORCAMENTO_ABERTO, CONTRATO_FECHADO, EM_PROVAS, RETIRADO, CASAMENTO_REALIZADO, DEVOLVIDO, PERDIDO]
+        - name: pagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: porPagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100 }
       responses:
         "200":
-          description: List of leads
+          description: Página de leads (sem pagina/porPagina, vem tudo — os pickers dependem disso)
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Lead"
+                $ref: "#/components/schemas/LeadsPage"
     post:
       operationId: createLead
       tags: [leads]
@@ -2660,6 +2679,17 @@ components:
         createdAt: { type: string, format: date-time }
         interesse:
           $ref: "#/components/schemas/LeadInteresse"
+    # Envelope da listagem: `total` é o universo do filtro, não da página —
+    # é o que permite "página 2 de 5" sem carregar tudo.
+    LeadsPage:
+      type: object
+      required: [itens, total]
+      properties:
+        total: { type: integer }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
     LeadInput:
       type: object
       required: [noivaNome]

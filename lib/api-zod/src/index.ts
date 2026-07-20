@@ -13,4 +13,5 @@ export {
   GetVestidoFotoParams,
   ExportarContasPagarParams,
   ExportarParcelasParams,
+  ListLeadsParams,
 } from "./generated/api";

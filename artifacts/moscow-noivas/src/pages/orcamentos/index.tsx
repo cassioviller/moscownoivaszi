@@ -62,7 +62,7 @@ export default function Orcamentos() {
   const [filtro, setFiltro] = useState("todos");
 
   const { data: orcamentos, isLoading, isError, refetch } = useListOrcamentos(activeLojaId!, { query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const leads = useListLeads(activeLojaId!, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const leads = useListLeads(activeLojaId!, undefined, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createOrcamento = useCreateOrcamento();
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
@@ -70,7 +70,7 @@ export default function Orcamentos() {
 
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();
-    for (const lead of leads.data ?? []) mapa.set(lead.id, lead.noivaNome);
+    for (const lead of leads.data?.itens ?? []) mapa.set(lead.id, lead.noivaNome);
     return mapa;
   }, [leads.data]);
 
@@ -154,7 +154,7 @@ export default function Orcamentos() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {(leads.data ?? []).map((lead) => (
+                        {(leads.data?.itens ?? []).map((lead) => (
                           <SelectItem key={lead.id} value={lead.id}>{lead.noivaNome}</SelectItem>
                         ))}
                       </SelectContent>

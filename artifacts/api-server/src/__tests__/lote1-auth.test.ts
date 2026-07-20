@@ -55,7 +55,9 @@ describe("autorização por perfil (regressão C1)", () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const res = await agent.get(`/api/lojas/${f.lojaId}/leads`);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    // E7: a listagem virou envelope paginado { itens, total }.
+    expect(Array.isArray(res.body.itens)).toBe(true);
+    expect(typeof res.body.total).toBe("number");
   });
 
   it("vendedora não acessa rotas /admin", async () => {

@@ -81,7 +81,9 @@ import type {
   LeadInteresse,
   LeadInteresseInput,
   LeadUpdate,
+  LeadsPage,
   ListComissaoFechamentosParams,
+  ListLeadsParams,
   ListPagamentosParams,
   ListParcelasParams,
   LoginInput,
@@ -3249,17 +3251,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteVestidoFotoMutationOptions(options));
     }
 
-export const getListLeadsUrl = (lojaId: string,) => {
+export const getListLeadsUrl = (lojaId: string,
+    params?: ListLeadsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/leads`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/leads?${stringifiedParams}` : `/api/lojas/${lojaId}/leads`
 }
 
-export const listLeads = async (lojaId: string, options?: RequestInit): Promise<Lead[]> => {
+export const listLeads = async (lojaId: string,
+    params?: ListLeadsParams, options?: RequestInit): Promise<LeadsPage> => {
 
-  return customFetch<Lead[]>(getListLeadsUrl(lojaId),
+  return customFetch<LeadsPage>(getListLeadsUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -3272,23 +3283,25 @@ export const listLeads = async (lojaId: string, options?: RequestInit): Promise<
 
 
 
-export const getListLeadsQueryKey = (lojaId: string,) => {
+export const getListLeadsQueryKey = (lojaId: string,
+    params?: ListLeadsParams,) => {
     return [
-    `/api/lojas/${lojaId}/leads`
+    `/api/lojas/${lojaId}/leads`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListLeadsQueryOptions = <TData = Awaited<ReturnType<typeof listLeads>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListLeadsQueryOptions = <TData = Awaited<ReturnType<typeof listLeads>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListLeadsQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListLeadsQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLeads>>> = ({ signal }) => listLeads(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLeads>>> = ({ signal }) => listLeads(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -3303,11 +3316,12 @@ export type ListLeadsQueryError = ErrorType<unknown>
 
 
 export function useListLeads<TData = Awaited<ReturnType<typeof listLeads>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListLeadsQueryOptions(lojaId,options)
+  const queryOptions = getListLeadsQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

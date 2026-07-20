@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
-import { 
+import { eq, and, desc, or, ilike, sql, count } from "drizzle-orm";
+import {
   ListLeadsResponse,
+  ListLeadsQueryParams,
   CreateLeadBody,
   CreateLeadResponse,
   GetLeadResponse,
@@ -37,19 +38,56 @@ router.use("/lojas/:lojaId/leads", requireModulo("leads"));
 
 router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const leads = await db.query.leadsTable.findMany({
-    where: eq(leadsTable.lojaId, lojaId),
-    with: {
-      interesse: {
-        with: {
-          atributos: true
-        }
-      }
-    },
-    orderBy: leadsTable.createdAt,
-  });
+  const parsed = ListLeadsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const { q, etapa, pagina, porPagina } = parsed.data;
 
-  res.json(ListLeadsResponse.parse(leads.map(l => ({ ...l, interesse: l.interesse ?? undefined }))));
+  const condicoes = [eq(leadsTable.lojaId, lojaId)];
+  if (etapa) condicoes.push(eq(leadsTable.etapa, etapa));
+  const busca = q?.trim();
+  if (busca) {
+    const padrao = `%${busca}%`;
+    const porCampo = [ilike(leadsTable.noivaNome, padrao), ilike(leadsTable.noivoNome, padrao)];
+    // Dígitos casam contra o whatsapp SEM máscara: "11988" encontra
+    // "(11) 98888-7777" — mesma expressão do índice trigram dos extras.
+    const soDigitos = busca.replace(/\D/g, "");
+    if (soDigitos.length >= 4) {
+      porCampo.push(
+        sql`regexp_replace(coalesce(${leadsTable.whatsapp}, ''), '\\D', '', 'g') LIKE ${`%${soDigitos}%`}`,
+      );
+    }
+    condicoes.push(or(...porCampo)!);
+  }
+  const where = and(...condicoes);
+
+  // `total` conta o filtro inteiro; sem pagina/porPagina a resposta segue
+  // completa — os pickers (agenda, orçamentos) dependem da lista cheia.
+  const paginado = pagina !== undefined || porPagina !== undefined;
+  const tamanho = porPagina ?? 24;
+  const [contagem, leads] = await Promise.all([
+    db.select({ total: count() }).from(leadsTable).where(where),
+    db.query.leadsTable.findMany({
+      where,
+      with: {
+        interesse: {
+          with: {
+            atributos: true
+          }
+        }
+      },
+      // id desempata createdAt igual — sem ordem estável, página 2 repete item.
+      orderBy: [leadsTable.createdAt, leadsTable.id],
+      ...(paginado ? { limit: tamanho, offset: ((pagina ?? 1) - 1) * tamanho } : {}),
+    }),
+  ]);
+
+  res.json(ListLeadsResponse.parse({
+    total: contagem[0]!.total,
+    itens: leads.map(l => ({ ...l, interesse: l.interesse ?? undefined })),
+  }));
 });
 
 router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {

@@ -26,7 +26,7 @@ export default function Dashboard() {
     }
   });
 
-  const leadsQuery = useListLeads(activeLojaId!, {
+  const leadsQuery = useListLeads(activeLojaId!, undefined, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const atendimentosQuery = useListAtendimentos(activeLojaId!, {
@@ -35,7 +35,7 @@ export default function Dashboard() {
 
   // Os cinco leads mais recentes (por data de criação).
   const leadsRecentes = useMemo(() => {
-    return [...(leadsQuery.data ?? [])]
+    return [...(leadsQuery.data?.itens ?? [])]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
   }, [leadsQuery.data]);
@@ -51,7 +51,7 @@ export default function Dashboard() {
 
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();
-    for (const lead of leadsQuery.data ?? []) mapa.set(lead.id, lead.noivaNome);
+    for (const lead of leadsQuery.data?.itens ?? []) mapa.set(lead.id, lead.noivaNome);
     return mapa;
   }, [leadsQuery.data]);
 

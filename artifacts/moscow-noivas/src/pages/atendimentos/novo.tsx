@@ -108,7 +108,7 @@ export default function NovoAtendimento() {
     bloqueioId: searchParams.get("reserva") ?? "",
   } as const;
 
-  const leads = useListLeads(activeLojaId!, {
+  const leads = useListLeads(activeLojaId!, undefined, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {
@@ -153,7 +153,7 @@ export default function NovoAtendimento() {
 
   // Noivas agendáveis: fora da etapa PERDIDO (equivalente às "noivas ativas" do orcamentos).
   const noivas = useMemo(
-    () => (leads.data ?? []).filter((l) => l.etapa !== "PERDIDO"),
+    () => (leads.data?.itens ?? []).filter((l) => l.etapa !== "PERDIDO"),
     [leads.data],
   );
 
