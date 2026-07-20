@@ -6,6 +6,7 @@ import { useStoreStore } from "@/lib/store";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { TourAcessoPrimeiraEntrada } from "@/components/tour-acesso";
 
 /**
  * Layout das rotas /loja/:lojaId/…: valida a sessão, sincroniza a loja da URL
@@ -74,6 +75,10 @@ export function AppLayout() {
             <Outlet />
           </div>
         </main>
+
+        {/* Tour do acesso (E24): primeira entrada nesta loja mostra o que o
+            perfil libera; depois vive em Configurações → "Seu acesso". */}
+        <TourAcessoPrimeiraEntrada />
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useListAtributos, useListCabines, useGetDisponibilidade, useListLojas, useListUsuarios, getListAtributosQueryKey, getListCabinesQueryKey, getGetDisponibilidadeQueryKey, getListLojasQueryKey, getListUsuariosQueryKey } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -6,13 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Settings2, Users } from "lucide-react";
 import { tipoAtributoLabel } from "@/lib/formatos";
 import { EstadoErro } from "@/components/estado-erro";
-import { podeNoModulo } from "@/lib/permissoes";
+import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
+import { TourAcessoDialog } from "@/components/tour-acesso";
+import { Button } from "@/components/ui/button";
 
 export default function Configuracoes() {
   const { activeLojaId, user, acessosModulos } = useAuth();
   // O endpoint do token é gateado por admin no backend — mesma régua aqui.
   const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
+  // Tour do acesso (E24): reabrível a qualquer momento.
+  const [tourAberto, setTourAberto] = useState(false);
   
   // Loja specific queries
   const atributosQ = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
@@ -65,6 +70,25 @@ export default function Configuracoes() {
             />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Seu acesso (E24): o resumo do perfil + tour reabrível. */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Seu acesso</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {user?.isSuperAdmin
+                    ? "Superadmin — acesso total."
+                    : `Seu perfil libera: ${resumoAcessos(acessosModulos)}.`}{" "}
+                  Precisa de algo a mais? Peça ao admin da loja.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setTourAberto(true)}>
+                  Rever o tour
+                </Button>
+                <TourAcessoDialog open={tourAberto} onOpenChange={setTourAberto} />
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Atributos de Vestido</CardTitle>
