@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable } from "@workspace/db";
-import { eq, and, max } from "drizzle-orm";
+import { eq, and, max, inArray } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
@@ -199,7 +199,39 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
     where: eq(ajustesTable.lojaId, lojaId),
     with: AJUSTE_WITH,
   });
-  res.json(ListAjustesResponse.parse(ajustes));
+
+  // O prazo real da costureira (E14): a PRÓXIMA prova do mesmo bloqueio depois
+  // da prova que criou o ajuste. Uma query pelas provas dos bloqueios em cena —
+  // não a agenda inteira — e o pareamento em memória.
+  const bloqueioIds = [
+    ...new Set(ajustes.map((a) => a.atendimento?.bloqueioId).filter((b): b is string => !!b)),
+  ];
+  const provas = bloqueioIds.length
+    ? await db
+        .select({
+          bloqueioId: atendimentosTable.bloqueioId,
+          inicio: atendimentosTable.inicio,
+        })
+        .from(atendimentosTable)
+        .where(and(
+          eq(atendimentosTable.lojaId, lojaId),
+          eq(atendimentosTable.tipo, "PROVA"),
+          inArray(atendimentosTable.bloqueioId, bloqueioIds),
+        ))
+    : [];
+
+  const comPrazo = ajustes.map((a) => {
+    const bloqueioId = a.atendimento?.bloqueioId;
+    const aposEsta = a.atendimento?.inicio;
+    const proxima = bloqueioId && aposEsta
+      ? provas
+          .filter((p) => p.bloqueioId === bloqueioId && p.inicio > aposEsta)
+          .reduce<Date | null>((min, p) => (min === null || p.inicio < min ? p.inicio : min), null)
+      : null;
+    return { ...a, proximaProva: proxima };
+  });
+
+  res.json(ListAjustesResponse.parse(comPrazo));
 });
 
 router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {

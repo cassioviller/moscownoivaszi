@@ -1488,7 +1488,8 @@ export const ListAtendimentosResponseItem = zod.object({
 }).optional()
 }),zod.null()]).optional()
 }),zod.null()]).optional()
-}).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })).optional()
 })
 export const ListAtendimentosResponse = zod.array(ListAtendimentosResponseItem)
@@ -1754,7 +1755,8 @@ export const CreateAtendimentoResponse = zod.object({
 }).optional()
 }),zod.null()]).optional()
 }),zod.null()]).optional()
-}).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })).optional()
 })
 
@@ -2019,7 +2021,8 @@ export const UpdateAtendimentoResponse = zod.object({
 }).optional()
 }),zod.null()]).optional()
 }),zod.null()]).optional()
-}).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })).optional()
 })
 
@@ -2156,7 +2159,8 @@ export const ListAjustesResponseItem = zod.object({
 }).optional()
 }),zod.null()]).optional()
 }),zod.null()]).optional()
-}).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })
 export const ListAjustesResponse = zod.array(ListAjustesResponseItem)
 
@@ -2293,7 +2297,8 @@ export const CreateAjusteResponse = zod.object({
 }).optional()
 }),zod.null()]).optional()
 }),zod.null()]).optional()
-}).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })
 
 
@@ -2427,7 +2432,8 @@ export const UpdateAjusteResponse = zod.object({
 }).optional()
 }),zod.null()]).optional()
 }),zod.null()]).optional()
-}).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })
 
 

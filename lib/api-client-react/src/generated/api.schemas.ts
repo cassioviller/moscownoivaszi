@@ -676,6 +676,8 @@ export interface Ajuste {
   status: AjusteStatus;
   checklist?: AjusteChecklistItem[];
   atendimento?: AjusteAtendimento;
+  /** @nullable */
+  proximaProva?: string | null;
 }
 
 export interface Atendimento {

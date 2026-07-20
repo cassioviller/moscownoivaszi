@@ -17,4 +17,6 @@ export interface Ajuste {
   status: AjusteStatus;
   checklist?: AjusteChecklistItem[];
   atendimento?: AjusteAtendimento;
+  /** @nullable */
+  proximaProva?: Date | null;
 }

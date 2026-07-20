@@ -2977,6 +2977,10 @@ components:
         # para não ciclar com Atendimento.
         atendimento:
           $ref: "#/components/schemas/AjusteAtendimento"
+        # O prazo REAL da costureira (E14): a próxima PROVA do mesmo vestido
+        # depois da prova que criou o ajuste — é para ela que o ajuste precisa
+        # estar pronto. Null = sem prova marcada (o casamento vira a referência).
+        proximaProva: { type: ["string", "null"], format: date-time }
     AjusteAtendimento:
       type: object
       required: [id, leadId, tipo, inicio, situacao]
