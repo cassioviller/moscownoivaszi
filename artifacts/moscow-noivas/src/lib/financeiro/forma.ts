@@ -1,12 +1,11 @@
 import type { ReceberParcelaInputFormaRecebimento } from "@workspace/api-client-react";
-import type { Parcela, ContaPagar } from "@workspace/api-client-react";
-import { centavos, reais } from "./dinheiro";
-import { diaDeNegocio, hojeLocal } from "./datas";
 
 /**
- * Forma de pagamento e o predicado de atraso — o vocabulário que contrato,
- * recebimento e conta a pagar compartilham.
+ * Forma de pagamento (vocabulário de TELA) — o predicado de atraso mora no
+ * motor único (@workspace/financeiro-core), o mesmo do api-server (E25).
+ * forma.test.ts ao lado prova o core.
  */
+export { estaAtrasada, vencidas, type Vencidas } from "@workspace/financeiro-core";
 
 /**
  * Tipado pelo enum gerado: se o backend mudar as formas, o openapi regenera e
@@ -28,29 +27,4 @@ export const FORMAS = Object.keys(ROTULO_FORMA) as ReceberParcelaInputFormaReceb
 export function rotuloForma(forma: string | null | undefined): string | null {
   if (!forma) return null;
   return ROTULO_FORMA[forma as ReceberParcelaInputFormaRecebimento] ?? forma;
-}
-
-/**
- * Uma obrigação está ATRASADA quando ainda está PREVISTA e o vencimento já
- * passou. Derivado, nunca gravado: o status no banco não sabe que dia é hoje.
- */
-export function estaAtrasada(
-  obrigacao: { status: string; vencimento: string },
-  hoje: string = hojeLocal(),
-): boolean {
-  return obrigacao.status === "PREVISTA" && diaDeNegocio(obrigacao.vencimento) < hoje;
-}
-
-export type Vencidas = { qtd: number; total: number };
-
-/** Total em aberto e já vencido de uma lista de obrigações. */
-export function vencidas(
-  obrigacoes: readonly (Parcela | ContaPagar)[],
-  hoje: string = hojeLocal(),
-): Vencidas {
-  const atrasadas = obrigacoes.filter((o) => estaAtrasada(o, hoje));
-  return {
-    qtd: atrasadas.length,
-    total: reais(atrasadas.reduce((s, o) => s + centavos(o.valorPrevisto), 0)),
-  };
 }

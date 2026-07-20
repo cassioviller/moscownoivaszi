@@ -1,75 +1,34 @@
-import type { Parcela, Pagamento, ContaPagar } from "@workspace/api-client-react";
-import { centavos, reais } from "./dinheiro";
-import { diaLocal, hojeLocal, ultimasCompetencias, type Intervalo, instanteNoIntervalo } from "./datas";
-import { vencidas } from "./forma";
+import type { Parcela, Pagamento } from "@workspace/api-client-react";
+import { entradasDoIntervalo, saidasDoIntervalo, type Intervalo } from "@workspace/financeiro-core";
 
 /**
- * Fluxo de caixa — o dinheiro que DE FATO se moveu, nunca o previsto.
- * Entradas: parcela PAGA, pela data do recebimento. Saídas: pagamento, pela
- * data da saída. Ambas são INSTANTES, então tudo aqui agrupa por dia LOCAL
- * (ver datas.ts) — o caixa de um dia é o que a loja movimentou naquele dia.
- *
- * Não é extrato bancário: sem saldo inicial e sem conciliação. O previsto vive
- * separado, como horizonte, para nunca ser somado ao realizado por engano.
+ * E25: as agregações de caixa (resumo, tendência, horizonte) moram no motor
+ * único (@workspace/financeiro-core) — o mesmo que o api-server usa. Aqui fica
+ * só o que é de TELA: `movimentos`, que monta a linha do tempo com rótulo de
+ * noiva e href de navegação. fluxo.test.ts ao lado prova o core.
  */
-
-export type ResumoCaixa = {
-  /** Reais. */
-  entradas: number;
-  saidas: number;
-  /** Pode ser negativo. */
-  saldo: number;
-};
+export {
+  entradasDoIntervalo,
+  saidasDoIntervalo,
+  resumoCaixa,
+  tendenciaCaixa,
+  horizonteAberto,
+  type ResumoCaixa,
+  type PontoTendencia,
+  type HorizonteAberto,
+} from "@workspace/financeiro-core";
 
 export type Movimento = {
   id: string;
   tipo: "ENTRADA" | "SAIDA";
   data: string;
   valor: number;
-  descricao: string;
   /** Quem/o quê, quando dá para nomear (noiva, colaborador, fornecedor). */
   rotulo: string | null;
+  descricao: string;
   /** Destino do clique, quando existe uma tela que explica o movimento. */
   href: string | null;
 };
-
-export type PontoTendencia = { competencia: string; entradas: number; saidas: number; saldo: number };
-
-/**
- * O previsto que ainda não virou caixa. Vive fora do ResumoCaixa de propósito:
- * somar horizonte com realizado é contar dinheiro que não chegou.
- */
-export type HorizonteAberto = {
-  /** Reais. */
-  aReceber: number;
-  aReceberAtraso: number;
-  aPagar: number;
-  aPagarAtraso: number;
-};
-
-/** Parcelas efetivamente recebidas dentro do intervalo. */
-export function entradasDoIntervalo(parcelas: readonly Parcela[], intervalo: Intervalo): Parcela[] {
-  return parcelas.filter(
-    (p) => p.status === "PAGA" && !!p.recebidoEm && instanteNoIntervalo(p.recebidoEm, intervalo),
-  );
-}
-
-/** Saídas de caixa dentro do intervalo. */
-export function saidasDoIntervalo(pagamentos: readonly Pagamento[], intervalo: Intervalo): Pagamento[] {
-  return pagamentos.filter((pg) => instanteNoIntervalo(pg.data, intervalo));
-}
-
-export function resumoCaixa(
-  parcelas: readonly Parcela[],
-  pagamentos: readonly Pagamento[],
-  intervalo: Intervalo,
-): ResumoCaixa {
-  const entradasC = entradasDoIntervalo(parcelas, intervalo)
-    .reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0);
-  const saidasC = saidasDoIntervalo(pagamentos, intervalo)
-    .reduce((s, pg) => s + centavos(pg.valorPago), 0);
-  return { entradas: reais(entradasC), saidas: reais(saidasC), saldo: reais(entradasC - saidasC) };
-}
 
 /** Rótulo de uma parcela na linha do tempo. */
 function descricaoParcela(p: Parcela): string {
@@ -117,58 +76,4 @@ export function movimentos(
   return [...entradas, ...saidas].sort(
     (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
   );
-}
-
-/**
- * O que está em aberto, pelo VENCIMENTO — previsão, não caixa. O atraso é o
- * subconjunto já vencido, então `aReceberAtraso <= aReceber` sempre.
- */
-export function horizonteAberto(
-  parcelas: readonly Parcela[],
-  contas: readonly ContaPagar[],
-  hoje: string = hojeLocal(),
-): HorizonteAberto {
-  return {
-    aReceber: reais(abertoEmCentavos(parcelas)),
-    aReceberAtraso: vencidas(parcelas, hoje).total,
-    aPagar: reais(abertoEmCentavos(contas)),
-    aPagarAtraso: vencidas(contas, hoje).total,
-  };
-}
-
-/** Soma do que segue PREVISTO — pago ou cancelado já saiu do horizonte. */
-function abertoEmCentavos(itens: readonly { status: string; valorPrevisto: number }[]): number {
-  return itens.reduce((s, i) => (i.status === "PREVISTA" ? s + centavos(i.valorPrevisto) : s), 0);
-}
-
-/**
- * Saldo por mês dos últimos N meses, do mais antigo ao mais recente. Mês sem
- * movimento aparece zerado — a série precisa ser contínua para virar curva.
- */
-export function tendenciaCaixa(
-  parcelas: readonly Parcela[],
-  pagamentos: readonly Pagamento[],
-  opts: { meses: number; ate: string },
-): PontoTendencia[] {
-  const meses = Math.max(1, Math.min(24, opts.meses));
-  const comps = ultimasCompetencias(opts.ate, meses);
-
-  const porMes = new Map<string, { ent: number; sai: number }>();
-  const bucket = (chave: string) => {
-    let b = porMes.get(chave);
-    if (!b) porMes.set(chave, (b = { ent: 0, sai: 0 }));
-    return b;
-  };
-  for (const p of parcelas) {
-    if (p.status !== "PAGA" || !p.recebidoEm) continue;
-    bucket(diaLocal(p.recebidoEm).slice(0, 7)).ent += centavos(p.valorRecebido ?? 0);
-  }
-  for (const pg of pagamentos) {
-    bucket(diaLocal(pg.data).slice(0, 7)).sai += centavos(pg.valorPago);
-  }
-
-  return comps.map((competencia) => {
-    const { ent, sai } = porMes.get(competencia) ?? { ent: 0, sai: 0 };
-    return { competencia, entradas: reais(ent), saidas: reais(sai), saldo: reais(ent - sai) };
-  });
 }
