@@ -158,9 +158,15 @@ export default function Agenda() {
         <h1 className="text-3xl font-serif">Agenda</h1>
         <div className="flex items-center gap-2">
           {activeLojaId && (
-            <Button asChild variant="ghost">
-              <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
-            </Button>
+            <>
+              {/* Visão semanal (E20): a grade semana × cabine. */}
+              <Button asChild variant="ghost">
+                <Link to={`/loja/${activeLojaId}/agenda/semana`}>Semana</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
+              </Button>
+            </>
           )}
           {podeCriar && (
             <Button onClick={() => setOpen(true)}>
