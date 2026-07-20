@@ -6,9 +6,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Settings2, Users } from "lucide-react";
 import { tipoAtributoLabel } from "@/lib/formatos";
 import { EstadoErro } from "@/components/estado-erro";
+import { podeNoModulo } from "@/lib/permissoes";
+import { CaptacaoExterna } from "./captacao";
 
 export default function Configuracoes() {
-  const { activeLojaId, user } = useAuth();
+  const { activeLojaId, user, acessosModulos } = useAuth();
+  // O endpoint do token é gateado por admin no backend — mesma régua aqui.
+  const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
   
   // Loja specific queries
   const atributosQ = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
@@ -135,6 +139,9 @@ export default function Configuracoes() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Captação externa (E19) — só para quem gere a loja. */}
+            {podeCaptacao && <CaptacaoExterna />}
           </div>
         </TabsContent>
 

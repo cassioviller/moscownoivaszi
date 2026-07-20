@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import authRouter from "./auth";
 import convitesRouter from "./convites";
 import orcamentosPublicoRouter from "./orcamentos-publico";
+import captacaoRouter from "./captacao";
 import adminRouter from "./admin";
 import equipeRouter from "./equipe";
 import catalogoRouter from "./catalogo";
@@ -25,6 +26,7 @@ router.use(authRouter);
 // deles isto viraria 401.
 router.use(convitesRouter);
 router.use(orcamentosPublicoRouter);
+router.use(captacaoRouter);
 router.use(adminRouter);
 router.use(equipeRouter);
 router.use(catalogoRouter);

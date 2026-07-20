@@ -465,6 +465,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AtividadeEquipe"
+  /captacao/leads:
+    post:
+      operationId: captarLead
+      tags: [leads]
+      security: []
+      summary: Captação externa (E19) — formulário do site/Instagram cria o lead
+      description: >
+        Rota PÚBLICA: o token da loja (gerido em Configurações, em query — o
+        logger corta a query e ele não cai em log) é a credencial. O lead nasce
+        NOVO com a origem informada; hoje todo lead nasce digitado à mão na
+        loja — este é o primeiro que chega sozinho.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptacaoLeadInput"
+      responses:
+        "201":
+          description: Lead criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptacaoLeadResultado"
+        "404":
+          description: Token desconhecido (captação desligada ou rotacionada)
+  /lojas/{lojaId}/captacao/token:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getCaptacaoToken
+      tags: [leads]
+      description: O token vigente da captação externa (null = desligada). Gate admin.
+      responses:
+        "200":
+          description: Token vigente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptacaoToken"
+    post:
+      operationId: rotacionarCaptacaoToken
+      tags: [leads]
+      description: >
+        Gera (ou rotaciona) o token da captação. O anterior morre na hora —
+        formulário antigo para de criar lead. Gate admin.
+      responses:
+        "200":
+          description: Token novo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptacaoToken"
   /equipe/convites/info:
     get:
       operationId: getConviteInfo
@@ -2896,7 +2955,7 @@ components:
           type: ["string", "null"]
           enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO, null]
         perdidaDetalhe: { type: ["string", "null"] }
-        origem: { type: string, enum: [LOJA, WHATSAPP] }
+        origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
         createdAt: { type: string, format: date-time }
         interesse:
           $ref: "#/components/schemas/LeadInteresse"
@@ -2922,7 +2981,7 @@ components:
         casamentoData: { type: string, format: date-time }
         casamentoHorario: { type: string }
         casamentoLocal: { type: string }
-        origem: { type: string, enum: [LOJA, WHATSAPP] }
+        origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
     LeadUpdate:
       type: object
       properties:
@@ -2963,6 +3022,27 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VestidoAtributo"
+    CaptacaoLeadInput:
+      type: object
+      required: [noivaNome]
+      properties:
+        noivaNome: { type: string, minLength: 1, maxLength: 200 }
+        noivoNome: { type: string, maxLength: 200 }
+        whatsapp: { type: string, maxLength: 30 }
+        casamentoData: { type: string, format: date-time }
+        # De onde o formulário veio. LOJA fica de fora: lead digitado na loja
+        # nasce pela rota autenticada.
+        origem: { type: string, enum: [SITE, INSTAGRAM, WHATSAPP], default: SITE }
+    CaptacaoLeadResultado:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+    CaptacaoToken:
+      type: object
+      required: [token]
+      properties:
+        token: { type: ["string", "null"] }
     RegistroCobranca:
       type: object
       required: [id, leadId, data, canal]

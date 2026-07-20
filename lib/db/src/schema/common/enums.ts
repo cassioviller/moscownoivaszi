@@ -16,7 +16,9 @@ export const leadEtapaEnum = pgEnum("lead_etapa", [
   "PERDIDO",
 ]);
 
-export const leadOrigemEnum = pgEnum("lead_origem", ["LOJA", "WHATSAPP"]);
+// SITE/INSTAGRAM nascem da captação externa (E19) — lead que chega sozinho
+// pelo formulário público, sem ninguém digitar na loja.
+export const leadOrigemEnum = pgEnum("lead_origem", ["LOJA", "WHATSAPP", "SITE", "INSTAGRAM"]);
 
 // Por que a noiva não fechou — estruturado para o funil responder "onde
 // estamos perdendo": preço, data indisponível, concorrente…

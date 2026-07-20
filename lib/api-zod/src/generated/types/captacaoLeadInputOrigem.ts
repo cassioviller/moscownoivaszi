@@ -6,12 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type LeadOrigem = typeof LeadOrigem[keyof typeof LeadOrigem];
+export type CaptacaoLeadInputOrigem = typeof CaptacaoLeadInputOrigem[keyof typeof CaptacaoLeadInputOrigem];
 
 
-export const LeadOrigem = {
-  LOJA: 'LOJA',
-  WHATSAPP: 'WHATSAPP',
+export const CaptacaoLeadInputOrigem = {
   SITE: 'SITE',
   INSTAGRAM: 'INSTAGRAM',
+  WHATSAPP: 'WHATSAPP',
 } as const;

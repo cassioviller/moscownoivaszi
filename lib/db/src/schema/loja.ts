@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,9 +9,15 @@ export const lojasTable = pgTable("lojas", {
   endereco: text("endereco"),
   telefone: text("telefone"),
   ativo: boolean("ativo").notNull().default(true),
+  // Captação externa (E19): o token é a credencial do formulário do site/
+  // Instagram para criar leads sem sessão. Null = captação desligada;
+  // rotacionar troca o token e o formulário antigo para de funcionar.
+  captacaoToken: text("captacao_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  captacaoTokenUnq: uniqueIndex("lojas_captacao_token_unq").on(t.captacaoToken),
+}));
 
 export const insertLojaSchema = createInsertSchema(lojasTable).omit({ createdAt: true, updatedAt: true });
 export type InsertLoja = z.infer<typeof insertLojaSchema>;

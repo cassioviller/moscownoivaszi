@@ -27,7 +27,9 @@ const noivaSchema = z.object({
   casamentoData: z.string().optional(),
   casamentoHorario: z.string().optional(),
   casamentoLocal: z.string().optional(),
-  origem: z.enum(["LOJA", "WHATSAPP"]),
+  // SITE/INSTAGRAM nascem da captação externa (E19); aqui aparecem para a
+  // edição não engasgar com um lead captado (a origem é imutável na edição).
+  origem: z.enum(["LOJA", "WHATSAPP", "SITE", "INSTAGRAM"]),
 });
 
 export type NoivaFormValues = z.infer<typeof noivaSchema>;
@@ -97,6 +99,8 @@ export function NoivaForm({
                 <SelectContent>
                   <SelectItem value="LOJA">Loja</SelectItem>
                   <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                  <SelectItem value="SITE">Site</SelectItem>
+                  <SelectItem value="INSTAGRAM">Instagram</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

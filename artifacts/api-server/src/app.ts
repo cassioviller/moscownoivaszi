@@ -80,6 +80,8 @@ const conviteLimiter = rateLimit({
 app.use("/api/equipe/convites", conviteLimiter);
 // O link público do orçamento é a mesma probing surface do convite.
 app.use("/api/orcamentos/publico", conviteLimiter);
+// Captação externa: além de probing surface, é porta de spam — mesmo teto.
+app.use("/api/captacao", conviteLimiter);
 
 app.use("/api", router);
 

@@ -433,6 +433,8 @@ export type LeadOrigem = typeof LeadOrigem[keyof typeof LeadOrigem];
 export const LeadOrigem = {
   LOJA: 'LOJA',
   WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
 } as const;
 
 export interface LeadInteresse {
@@ -489,6 +491,8 @@ export type LeadInputOrigem = typeof LeadInputOrigem[keyof typeof LeadInputOrige
 export const LeadInputOrigem = {
   LOJA: 'LOJA',
   WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
 } as const;
 
 export interface LeadInput {
@@ -554,6 +558,38 @@ export interface LeadInteresseInput {
   naoQuerUsar?: string;
   tetoOrcamento?: number;
   atributos?: VestidoAtributo[];
+}
+
+export type CaptacaoLeadInputOrigem = typeof CaptacaoLeadInputOrigem[keyof typeof CaptacaoLeadInputOrigem];
+
+
+export const CaptacaoLeadInputOrigem = {
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
+  WHATSAPP: 'WHATSAPP',
+} as const;
+
+export interface CaptacaoLeadInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  noivaNome: string;
+  /** @maxLength 200 */
+  noivoNome?: string;
+  /** @maxLength 30 */
+  whatsapp?: string;
+  casamentoData?: string;
+  origem?: CaptacaoLeadInputOrigem;
+}
+
+export interface CaptacaoLeadResultado {
+  id: string;
+}
+
+export interface CaptacaoToken {
+  /** @nullable */
+  token: string | null;
 }
 
 export type RegistroCobrancaCanal = typeof RegistroCobrancaCanal[keyof typeof RegistroCobrancaCanal];
@@ -1804,6 +1840,10 @@ export interface DashboardSummary {
   pagarProximos30Dias: number;
   atendimentosHoje?: number;
 }
+
+export type CaptarLeadParams = {
+token: string;
+};
 
 export type GetConviteInfoParams = {
 token: string;

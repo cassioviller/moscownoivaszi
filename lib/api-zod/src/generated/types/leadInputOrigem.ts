@@ -12,4 +12,6 @@ export type LeadInputOrigem = typeof LeadInputOrigem[keyof typeof LeadInputOrige
 export const LeadInputOrigem = {
   LOJA: 'LOJA',
   WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
 } as const;

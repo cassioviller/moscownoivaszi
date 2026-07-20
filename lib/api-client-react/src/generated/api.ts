@@ -49,6 +49,10 @@ import type {
   CabineInput,
   CabineUpdate,
   CancelarContratoInput,
+  CaptacaoLeadInput,
+  CaptacaoLeadResultado,
+  CaptacaoToken,
+  CaptarLeadParams,
   CheckDisponibilidadeVestidosParams,
   ComissaoFechamento,
   ComissaoPreviewLinha,
@@ -2063,6 +2067,226 @@ export function useGetAtividadeEquipe<TData = Awaited<ReturnType<typeof getAtivi
 
 
 
+
+export const getCaptarLeadUrl = (params: CaptarLeadParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/captacao/leads?${stringifiedParams}` : `/api/captacao/leads`
+}
+
+/**
+ * Rota PÚBLICA: o token da loja (gerido em Configurações, em query — o logger corta a query e ele não cai em log) é a credencial. O lead nasce NOVO com a origem informada; hoje todo lead nasce digitado à mão na loja — este é o primeiro que chega sozinho.
+ * @summary Captação externa (E19) — formulário do site/Instagram cria o lead
+ */
+export const captarLead = async (captacaoLeadInput: CaptacaoLeadInput,
+    params: CaptarLeadParams, options?: RequestInit): Promise<CaptacaoLeadResultado> => {
+
+  return customFetch<CaptacaoLeadResultado>(getCaptarLeadUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(captacaoLeadInput)
+  }
+);}
+
+
+
+
+export const getCaptarLeadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof captarLead>>, TError,{data: BodyType<CaptacaoLeadInput>;params: CaptarLeadParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof captarLead>>, TError,{data: BodyType<CaptacaoLeadInput>;params: CaptarLeadParams}, TContext> => {
+
+const mutationKey = ['captarLead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof captarLead>>, {data: BodyType<CaptacaoLeadInput>;params: CaptarLeadParams}> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  captarLead(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CaptarLeadMutationResult = NonNullable<Awaited<ReturnType<typeof captarLead>>>
+    export type CaptarLeadMutationBody = BodyType<CaptacaoLeadInput>
+    export type CaptarLeadMutationError = ErrorType<void>
+
+    /**
+ * @summary Captação externa (E19) — formulário do site/Instagram cria o lead
+ */
+export const useCaptarLead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof captarLead>>, TError,{data: BodyType<CaptacaoLeadInput>;params: CaptarLeadParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof captarLead>>,
+        TError,
+        {data: BodyType<CaptacaoLeadInput>;params: CaptarLeadParams},
+        TContext
+      > => {
+      return useMutation(getCaptarLeadMutationOptions(options));
+    }
+
+export const getGetCaptacaoTokenUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/captacao/token`
+}
+
+/**
+ * O token vigente da captação externa (null = desligada). Gate admin.
+ */
+export const getCaptacaoToken = async (lojaId: string, options?: RequestInit): Promise<CaptacaoToken> => {
+
+  return customFetch<CaptacaoToken>(getGetCaptacaoTokenUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCaptacaoTokenQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/captacao/token`
+    ] as const;
+    }
+
+
+export const getGetCaptacaoTokenQueryOptions = <TData = Awaited<ReturnType<typeof getCaptacaoToken>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCaptacaoToken>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCaptacaoTokenQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaptacaoToken>>> = ({ signal }) => getCaptacaoToken(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCaptacaoToken>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCaptacaoTokenQueryResult = NonNullable<Awaited<ReturnType<typeof getCaptacaoToken>>>
+export type GetCaptacaoTokenQueryError = ErrorType<unknown>
+
+
+
+export function useGetCaptacaoToken<TData = Awaited<ReturnType<typeof getCaptacaoToken>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCaptacaoToken>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCaptacaoTokenQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRotacionarCaptacaoTokenUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/captacao/token`
+}
+
+/**
+ * Gera (ou rotaciona) o token da captação. O anterior morre na hora — formulário antigo para de criar lead. Gate admin.
+ */
+export const rotacionarCaptacaoToken = async (lojaId: string, options?: RequestInit): Promise<CaptacaoToken> => {
+
+  return customFetch<CaptacaoToken>(getRotacionarCaptacaoTokenUrl(lojaId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRotacionarCaptacaoTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotacionarCaptacaoToken>>, TError,{lojaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rotacionarCaptacaoToken>>, TError,{lojaId: string}, TContext> => {
+
+const mutationKey = ['rotacionarCaptacaoToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rotacionarCaptacaoToken>>, {lojaId: string}> = (props) => {
+          const {lojaId} = props ?? {};
+
+          return  rotacionarCaptacaoToken(lojaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RotacionarCaptacaoTokenMutationResult = NonNullable<Awaited<ReturnType<typeof rotacionarCaptacaoToken>>>
+
+    export type RotacionarCaptacaoTokenMutationError = ErrorType<unknown>
+
+    export const useRotacionarCaptacaoToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotacionarCaptacaoToken>>, TError,{lojaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rotacionarCaptacaoToken>>,
+        TError,
+        {lojaId: string},
+        TContext
+      > => {
+      return useMutation(getRotacionarCaptacaoTokenMutationOptions(options));
+    }
 
 export const getGetConviteInfoUrl = (params: GetConviteInfoParams,) => {
   const normalizedParams = new URLSearchParams();
