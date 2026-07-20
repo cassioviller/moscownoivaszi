@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { lerEstado, loginViaUI } from "./helpers";
+import { lerEstado, loginViaUI, fecharTourDoAcesso } from "./helpers";
 
 const estado = lerEstado();
 
@@ -30,6 +30,7 @@ test.describe("Autenticação", () => {
       // Workaround do bug de seleção travada (testado em 02-selecionar-loja).
       await page.goto("/dashboard");
     }
+    await fecharTourDoAcesso(page);
     await page.getByRole("button", { name: "Sair" }).click();
     await expect(page).toHaveURL(/login/);
   });

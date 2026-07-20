@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { lerEstado, sessaoViaAPI, API_URL } from "./helpers";
+import { lerEstado, sessaoViaAPI, API_URL, fecharTourDoAcesso } from "./helpers";
 
 const estado = lerEstado();
 
@@ -108,6 +108,9 @@ test.describe("Matriz de permissões — sweep por perfil", () => {
   test("menu: sidebar da vendedora espelha a matriz item a item", async ({ page }) => {
     await sessaoViaAPI(page, estado.mariaEmail, estado.senha, estado.lojaId);
     await page.goto("/dashboard");
+    // O tour abre sobre a sidebar na primeira entrada da vendedora e esconde
+    // justamente o que este teste confere.
+    await fecharTourDoAcesso(page);
     await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
 
     for (const item of ITENS_MENU) {
@@ -124,6 +127,7 @@ test.describe("Matriz de permissões — sweep por perfil", () => {
   test("menu: superadmin vê todos os itens", async ({ page }) => {
     await sessaoViaAPI(page, estado.adminEmail, estado.senha, estado.lojaId);
     await page.goto("/dashboard");
+    await fecharTourDoAcesso(page);
     await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
 
     for (const item of ITENS_MENU) {

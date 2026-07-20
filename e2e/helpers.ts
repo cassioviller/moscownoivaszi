@@ -55,6 +55,24 @@ export async function sessaoViaAPI(
   return api;
 }
 
+/**
+ * Fecha o tour do acesso (E24), que abre modal sobre o dashboard na PRIMEIRA
+ * entrada de cada perfil. Enquanto ele está aberto o overlay do Radix intercepta
+ * todo clique atrás dele — a sidebar existe no snapshot mas nada nela responde,
+ * e o spec morre por timeout num `click` que parece trivial.
+ *
+ * Espera antes de checar: o tour monta depois que os acessos do /me resolvem,
+ * então um `isVisible()` seco passa direto e a corrida volta mais tarde.
+ */
+export async function fecharTourDoAcesso(page: Page): Promise<void> {
+  const comecar = page.getByRole("button", { name: "Começar" });
+  await comecar.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+  if (await comecar.isVisible().catch(() => false)) {
+    await comecar.click();
+    await expect(comecar).toBeHidden();
+  }
+}
+
 export interface ErroApi {
   status: number;
   url: string;
