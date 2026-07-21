@@ -9,6 +9,7 @@ import { tipoAtributoLabel } from "@/lib/formatos";
 import { EstadoErro } from "@/components/estado-erro";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
+import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
 
@@ -223,6 +224,9 @@ export default function Configuracoes() {
                   </ul>
                 </CardContent>
               </Card>
+
+              {/* Status de backup do sistema (E30) — o dump é do banco inteiro. */}
+              <BackupSistema />
             </div>
           </TabsContent>
         )}

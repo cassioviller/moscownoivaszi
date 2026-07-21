@@ -39,6 +39,8 @@ import type {
   AtributoOpcaoUpdate,
   AtributoUpdate,
   AuditoriaItem,
+  BackupLog,
+  BackupStatus,
   BaixaEstornoComissao,
   BaixarEstornoComissaoInput,
   BaixarEstornoComissaoResultado,
@@ -1450,6 +1452,155 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSetPerfilOverrideMutationOptions(options));
+    }
+
+export const getGetBackupStatusUrl = () => {
+
+
+
+
+  return `/api/admin/backup`
+}
+
+/**
+ * A visão do SRE (E30): o backup é o dump do banco INTEIRO, um evento de infraestrutura sem dono de loja — por isso vive no gate superadmin. A tela lê daqui o "último backup: há X horas" e a lista das últimas execuções (ok, erro ou em andamento).
+ * @summary Status do backup do sistema — quando foi o último e o histórico recente
+ */
+export const getBackupStatus = async ( options?: RequestInit): Promise<BackupStatus> => {
+
+  return customFetch<BackupStatus>(getGetBackupStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBackupStatusQueryKey = () => {
+    return [
+    `/api/admin/backup`
+    ] as const;
+    }
+
+
+export const getGetBackupStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBackupStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBackupStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBackupStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBackupStatus>>> = ({ signal }) => getBackupStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBackupStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBackupStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBackupStatus>>>
+export type GetBackupStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Status do backup do sistema — quando foi o último e o histórico recente
+ */
+
+export function useGetBackupStatus<TData = Awaited<ReturnType<typeof getBackupStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBackupStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBackupStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunBackupUrl = () => {
+
+
+
+
+  return `/api/admin/backup`
+}
+
+/**
+ * Roda o pg_dump na hora e devolve a linha registrada. Mesmo motor da rotina agendada; muda só o gatilho (manual) e o autor (quem apertou).
+ * @summary Dispara um backup manual agora
+ */
+export const runBackup = async ( options?: RequestInit): Promise<BackupLog> => {
+
+  return customFetch<BackupLog>(getRunBackupUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRunBackupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runBackup>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runBackup>>, TError,void, TContext> => {
+
+const mutationKey = ['runBackup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runBackup>>, void> = () => {
+
+
+          return  runBackup(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunBackupMutationResult = NonNullable<Awaited<ReturnType<typeof runBackup>>>
+
+    export type RunBackupMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Dispara um backup manual agora
+ */
+export const useRunBackup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runBackup>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runBackup>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunBackupMutationOptions(options));
     }
 
 export const getListEquipeUrl = (lojaId: string,) => {

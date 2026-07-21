@@ -27,11 +27,14 @@ import {
   ListPerfilOverridesResponse,
   SetPerfilOverrideParams,
   SetPerfilOverrideBody,
-  SetPerfilOverrideResponse
+  SetPerfilOverrideResponse,
+  GetBackupStatusResponse,
+  RunBackupResponse
 } from "@workspace/api-zod";
 import { requireSessao, requireSuperAdmin } from "../middlewares/auth";
 import { hashSenha } from "../lib/auth";
 import { normalizarAcessos } from "../lib/permissoes";
+import { executarBackup, statusBackup } from "../lib/backup";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -266,6 +269,21 @@ router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
   res.json(
     SetPerfilOverrideResponse.parse({ ...override, acessosModulos: normalizarAcessos(override.acessosModulos) }),
   );
+});
+
+// Backup do sistema (E30) — o dump é do banco inteiro, então vive no gate
+// superadmin junto com as lojas e usuários globais.
+router.get("/admin/backup", async (_req, res): Promise<void> => {
+  const status = await statusBackup();
+  res.json(GetBackupStatusResponse.parse(status));
+});
+
+router.post("/admin/backup", async (req, res): Promise<void> => {
+  const registro = await executarBackup({
+    gatilho: "manual",
+    autorNome: req.usuario?.nome,
+  });
+  res.json(RunBackupResponse.parse(registro));
 });
 
 export default router;

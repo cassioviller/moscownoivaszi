@@ -15,6 +15,9 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm run test:e2e` — Playwright (sobe API + frontend; ver `playwright.config.ts`)
 - `pnpm --filter @workspace/api-spec run codegen` — regenera cliente e Zod do OpenAPI
 - `pnpm --filter @workspace/db run push` — aplica o schema no banco (dev)
+- `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
+  comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
+  aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.
 - Env obrigatória: `DATABASE_URL` (Postgres)
 
 ## Stack

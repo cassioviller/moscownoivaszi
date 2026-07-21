@@ -254,6 +254,51 @@ export interface MembroEquipeUpdate {
   ativo?: boolean;
 }
 
+export type BackupLogGatilho = typeof BackupLogGatilho[keyof typeof BackupLogGatilho];
+
+
+export const BackupLogGatilho = {
+  manual: 'manual',
+  agendado: 'agendado',
+} as const;
+
+export type BackupLogStatus = typeof BackupLogStatus[keyof typeof BackupLogStatus];
+
+
+export const BackupLogStatus = {
+  em_andamento: 'em_andamento',
+  ok: 'ok',
+  erro: 'erro',
+} as const;
+
+export interface BackupLog {
+  id: string;
+  gatilho: BackupLogGatilho;
+  status: BackupLogStatus;
+  iniciadoEm: string;
+  /** @nullable */
+  concluidoEm?: string | null;
+  /**
+     * Tamanho do arquivo comprimido — só quando status = ok
+     * @nullable
+     */
+  tamanhoBytes?: number | null;
+  /** @nullable */
+  arquivo?: string | null;
+  /**
+     * Quem disparou o backup manual; null nos agendados
+     * @nullable
+     */
+  autorNome?: string | null;
+  /** @nullable */
+  erro?: string | null;
+}
+
+export interface BackupStatus {
+  ultimo: BackupLog | null;
+  recentes: BackupLog[];
+}
+
 export type AtributoTipo = typeof AtributoTipo[keyof typeof AtributoTipo];
 
 

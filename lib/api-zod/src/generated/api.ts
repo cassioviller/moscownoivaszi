@@ -346,6 +346,53 @@ export const SetPerfilOverrideResponse = zod.object({
 })
 
 
+/**
+ * A visão do SRE (E30): o backup é o dump do banco INTEIRO, um evento de infraestrutura sem dono de loja — por isso vive no gate superadmin. A tela lê daqui o "último backup: há X horas" e a lista das últimas execuções (ok, erro ou em andamento).
+ * @summary Status do backup do sistema — quando foi o último e o histórico recente
+ */
+export const GetBackupStatusResponse = zod.object({
+  "ultimo": zod.union([zod.object({
+  "id": zod.string(),
+  "gatilho": zod.enum(['manual', 'agendado']),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
+  "arquivo": zod.string().nullish(),
+  "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
+  "erro": zod.string().nullish()
+}),zod.null()]),
+  "recentes": zod.array(zod.object({
+  "id": zod.string(),
+  "gatilho": zod.enum(['manual', 'agendado']),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
+  "arquivo": zod.string().nullish(),
+  "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
+  "erro": zod.string().nullish()
+}))
+})
+
+
+/**
+ * Roda o pg_dump na hora e devolve a linha registrada. Mesmo motor da rotina agendada; muda só o gatilho (manual) e o autor (quem apertou).
+ * @summary Dispara um backup manual agora
+ */
+export const RunBackupResponse = zod.object({
+  "id": zod.string(),
+  "gatilho": zod.enum(['manual', 'agendado']),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
+  "arquivo": zod.string().nullish(),
+  "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
+  "erro": zod.string().nullish()
+})
+
+
 export const ListEquipeParams = zod.object({
   "lojaId": zod.coerce.string()
 })
