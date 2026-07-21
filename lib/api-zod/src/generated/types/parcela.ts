@@ -19,7 +19,10 @@ export interface Parcela {
   valorPrevisto: number;
   vencimento: Date;
   status: ParcelaStatus;
-  /** @nullable */
+  /**
+     * Acumulado desta parcela, somando todos os recebimentos
+     * @nullable
+     */
   valorRecebido?: number | null;
   /** @nullable */
   recebidoEm?: Date | null;

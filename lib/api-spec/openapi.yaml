@@ -2044,6 +2044,11 @@ paths:
     post:
       operationId: receberParcela
       tags: [financeiro]
+      summary: Recebe (total ou parcialmente) uma parcela
+      description: >
+        Aceita pagamento em partes (E49): o valor informado ACUMULA no
+        `valorRecebido`, e o acumulado decide o status — quitou vira PAGA,
+        sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
       requestBody:
         required: true
         content:
@@ -2052,11 +2057,17 @@ paths:
               $ref: "#/components/schemas/ReceberParcelaInput"
       responses:
         "200":
-          description: Recebida
+          description: Recebida (PAGA se quitou, PARCIAL se sobrou saldo)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Parcela"
+        "409":
+          description: Parcela já quitada (PARCELA_JA_RECEBIDA)
+        "422":
+          description: >
+            Valor acima do que falta (VALOR_ACIMA_DO_SALDO), parcela cancelada
+            ou contrato não ativo
   /lojas/{lojaId}/parcelas/{parcelaId}/estornar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -4133,8 +4144,10 @@ components:
         descricao: { type: ["string", "null"] }
         valorPrevisto: { type: number }
         vencimento: { type: string, format: date-time }
-        status: { type: string, enum: [PREVISTA, PAGA, CANCELADA] }
-        valorRecebido: { type: ["number", "null"] }
+        # PARCIAL (E49): a noiva pagou parte. O dinheiro entrou no caixa e o
+        # resto (valorPrevisto − valorRecebido) segue cobrável.
+        status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+        valorRecebido: { type: ["number", "null"], description: "Acumulado desta parcela, somando todos os recebimentos" }
         recebidoEm: { type: ["string", "null"], format: date-time }
         formaRecebimento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
         # Quem é a noiva desta parcela, sem rebuscar todos os contratos: a
@@ -4157,6 +4170,9 @@ components:
       type: object
       required: [valorRecebido, recebidoEm]
       properties:
+        # O que entrou AGORA, não o total (E49): receber duas vezes acumula, e o
+        # acumulado é que decide entre PARCIAL e PAGA. Valor acima do que falta
+        # é recusado (422) em vez de aceito — inflaria o caixa realizado.
         valorRecebido: { type: number }
         recebidoEm: { type: string, format: date-time }
         formaRecebimento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }

@@ -8049,6 +8049,10 @@ export const getReceberParcelaUrl = (lojaId: string,
   return `/api/lojas/${lojaId}/parcelas/${parcelaId}/receber`
 }
 
+/**
+ * Aceita pagamento em partes (E49): o valor informado ACUMULA no `valorRecebido`, e o acumulado decide o status — quitou vira PAGA, sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
+ * @summary Recebe (total ou parcialmente) uma parcela
+ */
 export const receberParcela = async (lojaId: string,
     parcelaId: string,
     receberParcelaInput: ReceberParcelaInput, options?: RequestInit): Promise<Parcela> => {
@@ -8065,7 +8069,7 @@ export const receberParcela = async (lojaId: string,
 
 
 
-export const getReceberParcelaMutationOptions = <TError = ErrorType<unknown>,
+export const getReceberParcelaMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receberParcela>>, TError,{lojaId: string;parcelaId: string;data: BodyType<ReceberParcelaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof receberParcela>>, TError,{lojaId: string;parcelaId: string;data: BodyType<ReceberParcelaInput>}, TContext> => {
 
@@ -8094,9 +8098,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ReceberParcelaMutationResult = NonNullable<Awaited<ReturnType<typeof receberParcela>>>
     export type ReceberParcelaMutationBody = BodyType<ReceberParcelaInput>
-    export type ReceberParcelaMutationError = ErrorType<unknown>
+    export type ReceberParcelaMutationError = ErrorType<void>
 
-    export const useReceberParcela = <TError = ErrorType<unknown>,
+    /**
+ * @summary Recebe (total ou parcialmente) uma parcela
+ */
+export const useReceberParcela = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receberParcela>>, TError,{lojaId: string;parcelaId: string;data: BodyType<ReceberParcelaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof receberParcela>>,

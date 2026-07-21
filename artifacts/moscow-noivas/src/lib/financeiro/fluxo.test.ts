@@ -4,7 +4,17 @@ import { horizonteAberto, movimentos, resumoCaixa, tendenciaCaixa } from "./flux
 
 const INTERVALO_MARCO = { iniYMD: "2027-03-01", fimYMD: "2027-03-31" };
 
+/**
+ * Parcela de teste. O DEFAULT do recebimento acompanha o status: PREVISTA e
+ * CANCELADA nascem sem `valorRecebido`, porque a linha não existe no banco de
+ * outro jeito — o estorno zera os campos ao devolver a parcela a PREVISTA.
+ * Desde a E49 isso importa de verdade: `valorRecebido` numa parcela aberta é
+ * dinheiro já recebido, e uma fixture inconsistente diria que ela não deve mais
+ * nada. Quem quiser o caso PARCIAL passa status e valor explicitamente.
+ */
 function parcela(over: Partial<Parcela> = {}): Parcela {
+  const status = over.status ?? "PAGA";
+  const semRecebimento = status === "PREVISTA" || status === "CANCELADA";
   return {
     id: "p1",
     lojaId: "loja",
@@ -12,9 +22,9 @@ function parcela(over: Partial<Parcela> = {}): Parcela {
     numero: 1,
     valorPrevisto: 1000,
     vencimento: new Date("2027-03-10T12:00:00-03:00").toISOString(),
-    status: "PAGA",
-    valorRecebido: 1000,
-    recebidoEm: new Date("2027-03-10T14:00:00-03:00").toISOString(),
+    status,
+    valorRecebido: semRecebimento ? null : 1000,
+    recebidoEm: semRecebimento ? null : new Date("2027-03-10T14:00:00-03:00").toISOString(),
     ...over,
   } as Parcela;
 }

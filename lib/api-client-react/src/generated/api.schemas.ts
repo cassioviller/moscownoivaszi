@@ -1478,6 +1478,7 @@ export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
 
 export const ParcelaStatus = {
   PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
   PAGA: 'PAGA',
   CANCELADA: 'CANCELADA',
 } as const;
@@ -1513,7 +1514,10 @@ export interface Parcela {
   valorPrevisto: number;
   vencimento: string;
   status: ParcelaStatus;
-  /** @nullable */
+  /**
+     * Acumulado desta parcela, somando todos os recebimentos
+     * @nullable
+     */
   valorRecebido?: number | null;
   /** @nullable */
   recebidoEm?: string | null;

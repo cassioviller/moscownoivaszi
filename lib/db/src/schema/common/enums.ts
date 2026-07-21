@@ -90,8 +90,17 @@ export const formaPagamentoEnum = pgEnum("forma_pagamento", [
   "OUTRO",
 ]);
 
+/**
+ * PARCIAL (E49) fica ENTRE prevista e paga: a noiva pagou parte, o dinheiro
+ * entrou no caixa e o resto continua devido. Antes o status era binário, então
+ * meio pagamento ou sumia do "a receber" (marcado PAGA, faltando dinheiro) ou
+ * ficava 100% aberto (o que entrou não aparecia no caixa). Não é um estado
+ * gravado à toa: quem decide é o saldo (`valorRecebido` vs `valorPrevisto`), e
+ * a régua de leitura mora em financeiro-core (`estaAberta`/`saldoAberto`).
+ */
 export const parcelaStatusEnum = pgEnum("parcela_status", [
   "PREVISTA",
+  "PARCIAL",
   "PAGA",
   "CANCELADA",
 ]);

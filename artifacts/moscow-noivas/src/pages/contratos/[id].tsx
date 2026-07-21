@@ -50,7 +50,14 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusContratoLabel } from "@/lib/formatos";
-import { ROTULO_FORMA, rotuloForma, estaAtrasada } from "@/lib/financeiro/forma";
+import {
+  ROTULO_FORMA,
+  rotuloForma,
+  estaAtrasada,
+  estaAberta,
+  saldoAberto,
+  teveRecebimento,
+} from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { centavos, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -258,7 +265,9 @@ export default function ContratoDetail() {
   };
 
   const abrirReceber = (parcela: Parcela) => {
-    setValorRecebido(parcela.valorPrevisto.toFixed(2).replace(".", ","));
+    // O que FALTA, não o previsto: numa parcela meio recebida, sugerir o valor
+    // cheio cobraria de novo o que já entrou.
+    setValorRecebido(saldoAberto(parcela).toFixed(2).replace(".", ","));
     setFormaRecebimento("");
     setParcelaReceber(parcela);
   };
@@ -320,6 +329,12 @@ export default function ContratoDetail() {
     if (p.status === "PAGA") {
       const forma = p.formaRecebimento ? ` (${rotuloForma(p.formaRecebimento)})` : "";
       return { rotulo: `Paga${forma}`, variante: "default" as const };
+    }
+    // Parcial atrasada é atrasada: o resto venceu igual (E49).
+    if (p.status === "PARCIAL") {
+      return atrasada(p)
+        ? { rotulo: "Parcial · atrasada", variante: "destructive" as const }
+        : { rotulo: "Parcial", variante: "secondary" as const };
     }
     if (atrasada(p)) return { rotulo: "Atrasada", variante: "destructive" as const };
     return { rotulo: "Prevista", variante: "secondary" as const };
@@ -465,15 +480,20 @@ export default function ContratoDetail() {
                             <p className={`font-semibold text-sm ${atrasada(parcela) ? "text-destructive" : ""}`}>
                               R$ {brl(parcela.valorPrevisto)}
                             </p>
+                            {parcela.status === "PARCIAL" && (
+                              <p className="text-[10px] text-muted-foreground tabular-nums">
+                                faltam R$ {brl(saldoAberto(parcela))}
+                              </p>
+                            )}
                             <Badge variant={st.variante} className="text-[10px]">
                               {st.rotulo}
                             </Badge>
                           </div>
                         </div>
-                        {podeMexer && parcela.status === "PREVISTA" && (
+                        {podeMexer && estaAberta(parcela) && (
                           <div className="flex gap-2">
                             <Button size="sm" variant="outline" onClick={() => abrirReceber(parcela)}>
-                              Receber
+                              {parcela.status === "PARCIAL" ? "Receber o restante" : "Receber"}
                             </Button>
                             <Button
                               size="sm"
@@ -485,7 +505,7 @@ export default function ContratoDetail() {
                             </Button>
                           </div>
                         )}
-                        {podeEditar && parcela.status === "PAGA" && (
+                        {podeEditar && teveRecebimento(parcela) && (
                           <div className="flex gap-2">
                             <Button size="sm" variant="ghost" onClick={() => setConfirmacao({ tipo: "estornar", parcela })}>
                               Estornar

@@ -28,7 +28,43 @@ export type ObrigacaoPrevista = {
   status: string;
   vencimento: string | Date;
   valorPrevisto: number;
+  /** Já recebido nesta obrigação (E49). Ausente = nada recebido. */
+  valorRecebido?: number | null;
 };
+
+/**
+ * Uma obrigação segue ABERTA enquanto sobra saldo — PREVISTA ou PARCIAL (E49).
+ *
+ * Antes "aberta" era `status === "PREVISTA"`, e a parcela meio paga sumia do
+ * horizonte, do aging e da projeção com dinheiro ainda a receber. Toda leitura
+ * de "o que falta" passa por aqui: uma régua só, num lugar só.
+ */
+export function estaAberta(obrigacao: { status: string }): boolean {
+  return obrigacao.status === "PREVISTA" || obrigacao.status === "PARCIAL";
+}
+
+/**
+ * Uma obrigação ENTROU no caixa quando algum dinheiro dela chegou — PAGA ou
+ * PARCIAL. O valor é sempre `valorRecebido`, nunca o previsto: o caixa
+ * realizado só conhece o que de fato entrou.
+ */
+export function teveRecebimento(obrigacao: { status: string }): boolean {
+  return obrigacao.status === "PAGA" || obrigacao.status === "PARCIAL";
+}
+
+/** Centavos que ainda faltam. Nunca negativo — pagar a mais não vira crédito. */
+function saldoAbertoC(o: ObrigacaoPrevista): number {
+  return Math.max(0, centavos(o.valorPrevisto) - centavos(o.valorRecebido ?? 0));
+}
+
+/**
+ * O que ainda falta receber/pagar nesta obrigação, em reais. É este valor — e
+ * não o previsto — que entra no aging, no horizonte e na projeção: cobrar de
+ * novo o que já foi pago é o erro que a noiva percebe primeiro.
+ */
+export function saldoAberto(o: ObrigacaoPrevista): number {
+  return reais(saldoAbertoC(o));
+}
 
 export type ResumoCaixa = {
   /** Reais. */
@@ -38,10 +74,10 @@ export type ResumoCaixa = {
   saldo: number;
 };
 
-/** Parcelas efetivamente recebidas dentro do intervalo. */
+/** Parcelas com dinheiro efetivamente recebido dentro do intervalo. */
 export function entradasDoIntervalo<T extends ParcelaPaga>(parcelas: readonly T[], intervalo: Intervalo): T[] {
   return parcelas.filter(
-    (p) => p.status === "PAGA" && !!p.recebidoEm && instanteNoIntervalo(p.recebidoEm, intervalo),
+    (p) => teveRecebimento(p) && !!p.recebidoEm && instanteNoIntervalo(p.recebidoEm, intervalo),
   );
 }
 
@@ -83,7 +119,7 @@ export function tendenciaCaixa(
     return b;
   };
   for (const p of parcelas) {
-    if (p.status !== "PAGA" || !p.recebidoEm) continue;
+    if (!teveRecebimento(p) || !p.recebidoEm) continue;
     bucket(diaLocal(p.recebidoEm).slice(0, 7)).ent += centavos(p.valorRecebido ?? 0);
   }
   for (const pg of pagamentos) {
@@ -97,21 +133,22 @@ export function tendenciaCaixa(
 }
 
 /**
- * Uma obrigação está ATRASADA quando ainda está PREVISTA e o vencimento já
- * passou. Derivado, nunca gravado: o status no banco não sabe que dia é hoje.
+ * Uma obrigação está ATRASADA quando ainda está ABERTA (PREVISTA ou PARCIAL) e
+ * o vencimento já passou. Derivado, nunca gravado: o status no banco não sabe
+ * que dia é hoje.
  */
 export function estaAtrasada(obrigacao: ObrigacaoPrevista, hoje: string = hojeLocal()): boolean {
-  return obrigacao.status === "PREVISTA" && diaDeNegocio(obrigacao.vencimento) < hoje;
+  return estaAberta(obrigacao) && diaDeNegocio(obrigacao.vencimento) < hoje;
 }
 
 export type Vencidas = { qtd: number; total: number };
 
-/** Total em aberto e já vencido de uma lista de obrigações. */
+/** Total em aberto e já vencido — o SALDO, não o previsto (E49). */
 export function vencidas(obrigacoes: readonly ObrigacaoPrevista[], hoje: string = hojeLocal()): Vencidas {
   const atrasadas = obrigacoes.filter((o) => estaAtrasada(o, hoje));
   return {
     qtd: atrasadas.length,
-    total: reais(atrasadas.reduce((s, o) => s + centavos(o.valorPrevisto), 0)),
+    total: reais(atrasadas.reduce((s, o) => s + saldoAbertoC(o), 0)),
   };
 }
 
@@ -140,9 +177,9 @@ export function horizonteAberto(
   };
 }
 
-/** Soma do que segue PREVISTO — pago ou cancelado já saiu do horizonte. */
-function abertoEmCentavos(itens: readonly { status: string; valorPrevisto: number }[]): number {
-  return itens.reduce((s, i) => (i.status === "PREVISTA" ? s + centavos(i.valorPrevisto) : s), 0);
+/** Soma do SALDO do que segue aberto — quitado ou cancelado saiu do horizonte. */
+function abertoEmCentavos(itens: readonly ObrigacaoPrevista[]): number {
+  return itens.reduce((s, i) => (estaAberta(i) ? s + saldoAbertoC(i) : s), 0);
 }
 
 /**
@@ -156,9 +193,9 @@ export function previstoNaJanela(
   janela: Intervalo,
 ): number {
   const soma = obrigacoes.reduce((s, o) => {
-    if (o.status !== "PREVISTA") return s;
+    if (!estaAberta(o)) return s;
     const dia = diaDeNegocio(o.vencimento);
-    return dia >= janela.iniYMD && dia <= janela.fimYMD ? s + centavos(o.valorPrevisto) : s;
+    return dia >= janela.iniYMD && dia <= janela.fimYMD ? s + saldoAbertoC(o) : s;
   }, 0);
   return reais(soma);
 }

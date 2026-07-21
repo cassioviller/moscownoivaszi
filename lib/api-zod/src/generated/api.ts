@@ -4126,8 +4126,8 @@ export const ListContratosResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4269,8 +4269,8 @@ export const CreateContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4391,8 +4391,8 @@ export const GetContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4523,8 +4523,8 @@ export const UpdateContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4661,8 +4661,8 @@ export const CancelarContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4773,8 +4773,8 @@ export const ListParcelasResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4814,6 +4814,10 @@ export const ListParcelasResponseItem = zod.object({
 export const ListParcelasResponse = zod.array(ListParcelasResponseItem)
 
 
+/**
+ * Aceita pagamento em partes (E49): o valor informado ACUMULA no `valorRecebido`, e o acumulado decide o status — quitou vira PAGA, sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
+ * @summary Recebe (total ou parcialmente) uma parcela
+ */
 export const ReceberParcelaParams = zod.object({
   "lojaId": zod.coerce.string(),
   "parcelaId": zod.coerce.string()
@@ -4833,8 +4837,8 @@ export const ReceberParcelaResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4886,8 +4890,8 @@ export const EstornarParcelaResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({
@@ -4962,8 +4966,8 @@ export const GerarPlanoParcelasResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "contrato": zod.union([zod.object({

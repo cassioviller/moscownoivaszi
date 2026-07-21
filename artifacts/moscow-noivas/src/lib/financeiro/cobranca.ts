@@ -1,4 +1,5 @@
 import type { Parcela } from "@workspace/api-client-react";
+import { estaAberta, saldoAberto } from "@workspace/financeiro-core";
 import { centavos, reais } from "./dinheiro";
 import { diaDeNegocio, diasEntre, hojeLocal } from "./datas";
 
@@ -83,7 +84,7 @@ export type ParcelaComNoiva = Parcela & {
   } | null;
 };
 
-/** Parcelas PREVISTAS já vencidas, por faixa de atraso e por noiva. */
+/** Parcelas ABERTAS já vencidas, por faixa de atraso e por noiva. */
 export function agingDeParcelas(
   parcelas: readonly ParcelaComNoiva[],
   hoje: string = hojeLocal(),
@@ -96,7 +97,9 @@ export function agingDeParcelas(
   >();
 
   for (const p of parcelas) {
-    if (p.status !== "PREVISTA") continue;
+    // Aberta é PREVISTA ou PARCIAL (E49): quem pagou metade continua devendo a
+    // outra metade, e sumir da fila seria perdoar a diferença em silêncio.
+    if (!estaAberta(p)) continue;
     const venc = diaDeNegocio(p.vencimento);
     const dias = diasEntre(venc, hoje);
     if (dias < 1) continue; // vence hoje ou no futuro: não é atraso
@@ -104,7 +107,9 @@ export function agingDeParcelas(
     const leadId = p.contrato?.leadId;
     if (!leadId) continue; // sem noiva não há quem cobrar
     const f = faixaDeAtraso(dias);
-    const valorC = centavos(p.valorPrevisto);
+    // O que FALTA, não o previsto: cobrar de novo o que já foi pago é o erro
+    // que a noiva percebe primeiro.
+    const valorC = centavos(saldoAberto(p));
     faixaTotC[f] += valorC;
     faixaNoivas[f].add(leadId);
 

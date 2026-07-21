@@ -1,6 +1,6 @@
 import { centavos, reais } from "./dinheiro";
 import { addDias, diaDeNegocio, hojeLocal } from "./datas";
-import type { ObrigacaoPrevista } from "./caixa";
+import { estaAberta, saldoAberto, type ObrigacaoPrevista } from "./caixa";
 
 /**
  * Projeção de caixa: parte de um saldo e aplica os eventos previstos dia a dia,
@@ -86,17 +86,19 @@ export function projetarCaixa(
   let atrasoReceberC = 0;
   let atrasoPagarC = 0;
 
+  // O SALDO, não o previsto (E49): metade já recebida não pode ser projetada
+  // como se ainda fosse entrar — a curva nasceria acima do caixa real.
   for (const p of parcelas) {
-    if (p.status !== "PREVISTA") continue;
+    if (!estaAberta(p)) continue;
     const dia = diaDeNegocio(p.vencimento);
-    if (dia < hoje) atrasoReceberC += centavos(p.valorPrevisto);
-    else if (dia <= limite) eventos.push({ dia, entradasC: centavos(p.valorPrevisto), saidasC: 0 });
+    if (dia < hoje) atrasoReceberC += centavos(saldoAberto(p));
+    else if (dia <= limite) eventos.push({ dia, entradasC: centavos(saldoAberto(p)), saidasC: 0 });
   }
   for (const c of contas) {
-    if (c.status !== "PREVISTA") continue;
+    if (!estaAberta(c)) continue;
     const dia = diaDeNegocio(c.vencimento);
-    if (dia < hoje) atrasoPagarC += centavos(c.valorPrevisto);
-    else if (dia <= limite) eventos.push({ dia, entradasC: 0, saidasC: centavos(c.valorPrevisto) });
+    if (dia < hoje) atrasoPagarC += centavos(saldoAberto(c));
+    else if (dia <= limite) eventos.push({ dia, entradasC: 0, saidasC: centavos(saldoAberto(c)) });
   }
 
   return {

@@ -11,6 +11,7 @@ export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
 
 export const ParcelaStatus = {
   PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
   PAGA: 'PAGA',
   CANCELADA: 'CANCELADA',
 } as const;

@@ -535,12 +535,40 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
     return;
   }
 
+  /**
+   * `valorRecebido` do corpo é o que entrou AGORA, não o total (E49): uma
+   * parcela pode ser recebida em partes, e o acumulado é que decide o status.
+   * Quitou? PAGA. Sobrou? PARCIAL — o dinheiro entra no caixa e o resto segue
+   * cobrável, em vez de sumir do "a receber" (marcada PAGA faltando dinheiro)
+   * ou de ficar 100% aberta (o que entrou não apareceria no caixa).
+   */
+  const jaRecebidoC = cent(existente.valorRecebido ?? 0);
+  const entrandoC = cent(parsed.data.valorRecebido);
+  const saldoC = cent(existente.valorPrevisto) - jaRecebidoC;
+
+  // Receber mais que o saldo é recusado, e não clampado: o caso comum é dígito
+  // a mais, e aceitar inflaria o caixa REALIZADO com dinheiro que não entrou —
+  // um erro que só aparece na conciliação. A mensagem diz quanto falta, que é
+  // o que a vendedora precisa para digitar de novo.
+  if (entrandoC > saldoC) {
+    res.status(422).json({
+      error: "VALOR_ACIMA_DO_SALDO",
+      detalhe: `Faltam R$ ${reais(saldoC).toFixed(2)} nesta parcela — o valor informado é maior.`,
+    });
+    return;
+  }
+
+  const totalRecebidoC = jaRecebidoC + entrandoC;
+  const quitada = totalRecebidoC >= cent(existente.valorPrevisto);
+
   const parcela = await db.transaction(async (tx) => {
     const [atualizada] = await tx.update(parcelasTable)
       .set({
-        status: "PAGA",
+        status: quitada ? "PAGA" : "PARCIAL",
+        // O instante do ÚLTIMO recebimento: é por ele que o caixa realizado
+        // data a entrada, e a última parcela do acordo é o que fecha a conta.
         recebidoEm: parsed.data.recebidoEm,
-        valorRecebido: parsed.data.valorRecebido,
+        valorRecebido: reais(totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento,
       })
       .where(eq(parcelasTable.id, existente.id))
@@ -554,7 +582,12 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
       detalhe: {
         contratoId: existente.contratoId,
         numero: existente.numero,
+        // O que entrou NESTE recebimento (a trilha é por ação), mais o
+        // acumulado e o que sobrou — sem eles um recebimento parcial na
+        // trilha não diz se quitou.
         valorRecebido: parsed.data.valorRecebido,
+        totalRecebido: reais(totalRecebidoC),
+        saldoRestante: reais(cent(existente.valorPrevisto) - totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento ?? null,
       },
     });
@@ -575,8 +608,12 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
     res.status(404).json({ error: "Parcela not found" });
     return;
   }
-  if (existente.status !== "PAGA") {
-    res.status(422).json({ error: "PARCELA_NAO_PAGA", detalhe: "Só parcelas pagas podem ser estornadas" });
+  // PARCIAL também estorna (E49). O estorno é tudo-ou-nada: a parcela não tem
+  // livro de recebimentos, só o acumulado — desfazer "o último pagamento" não
+  // é uma operação que o dado sustente. Volta a PREVISTA, zerada, e a trilha
+  // guarda quanto foi desfeito.
+  if (existente.status !== "PAGA" && existente.status !== "PARCIAL") {
+    res.status(422).json({ error: "PARCELA_NAO_PAGA", detalhe: "Só parcelas com recebimento podem ser estornadas" });
     return;
   }
   // Estornar devolve a parcela a PREVISTA (cobrável). Num contrato cancelado

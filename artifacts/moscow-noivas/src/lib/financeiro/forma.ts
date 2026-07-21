@@ -5,7 +5,14 @@ import type { ReceberParcelaInputFormaRecebimento } from "@workspace/api-client-
  * motor único (@workspace/financeiro-core), o mesmo do api-server (E25).
  * forma.test.ts ao lado prova o core.
  */
-export { estaAtrasada, vencidas, type Vencidas } from "@workspace/financeiro-core";
+export {
+  estaAtrasada,
+  vencidas,
+  estaAberta,
+  saldoAberto,
+  teveRecebimento,
+  type Vencidas,
+} from "@workspace/financeiro-core";
 
 /**
  * Tipado pelo enum gerado: se o backend mudar as formas, o openapi regenera e

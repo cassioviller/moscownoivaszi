@@ -53,7 +53,16 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO } from "@/lib/formatos";
-import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
+import {
+  ROTULO_FORMA,
+  FORMAS,
+  rotuloForma,
+  estaAtrasada,
+  vencidas,
+  estaAberta,
+  saldoAberto,
+  teveRecebimento,
+} from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
@@ -127,21 +136,24 @@ export default function Receber() {
     [parcelas.data, intervalo.iniYMD, intervalo.fimYMD],
   );
 
+  // Abertas contam o SALDO (E49): a parcela meio recebida entra aqui com o
+  // que falta, e no "recebido" com o que entrou — as duas coisas ao mesmo
+  // tempo, que é a verdade de um pagamento parcial.
   const resumo = useMemo(() => {
-    const previstas = naJanela.filter((p) => p.status === "PREVISTA");
-    const pagas = naJanela.filter((p) => p.status === "PAGA");
+    const abertas = naJanela.filter(estaAberta);
+    const comRecebimento = naJanela.filter(teveRecebimento);
     return {
-      aReceber: reais(somaCentavos(previstas, (p) => p.valorPrevisto)),
-      recebido: reais(somaCentavos(pagas, (p) => p.valorRecebido ?? p.valorPrevisto)),
+      aReceber: reais(somaCentavos(abertas, saldoAberto)),
+      recebido: reais(somaCentavos(comRecebimento, (p) => p.valorRecebido ?? 0)),
       emAtraso: vencidas(naJanela, hoje).total,
     };
   }, [naJanela, hoje]);
 
   const lista = useMemo(() => {
     const filtrada = naJanela.filter((p) => {
-      if (filtro === "abertas") return p.status === "PREVISTA";
+      if (filtro === "abertas") return estaAberta(p);
       if (filtro === "atrasadas") return estaAtrasada(p, hoje);
-      if (filtro === "recebidas") return p.status === "PAGA";
+      if (filtro === "recebidas") return teveRecebimento(p);
       return true;
     });
     return filtrada.sort((a, b) => a.vencimento.localeCompare(b.vencimento));
@@ -154,7 +166,9 @@ export default function Receber() {
     p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`;
 
   const abrirReceber = (parcela: Parcela) => {
-    setValorRecebido(parcela.valorPrevisto.toFixed(2).replace(".", ","));
+    // Sugere o que FALTA, não o previsto: numa parcela meio recebida, repetir
+    // o valor cheio faria a vendedora cobrar de novo o que já entrou.
+    setValorRecebido(saldoAberto(parcela).toFixed(2).replace(".", ","));
     setDataRecebimento(hojeLocal());
     setFormaRecebimento("");
     setParcelaReceber(parcela);
@@ -218,6 +232,12 @@ export default function Receber() {
     if (p.status === "PAGA") {
       const forma = p.formaRecebimento ? ` (${rotuloForma(p.formaRecebimento)})` : "";
       return { rotulo: `Recebida${forma}`, variante: "default" as const };
+    }
+    // Parcial atrasada é atrasada: o resto venceu igual.
+    if (p.status === "PARCIAL") {
+      return estaAtrasada(p, hoje)
+        ? { rotulo: "Parcial · atrasada", variante: "destructive" as const }
+        : { rotulo: "Parcial", variante: "secondary" as const };
     }
     if (estaAtrasada(p, hoje)) return { rotulo: "Atrasada", variante: "destructive" as const };
     return { rotulo: "Prevista", variante: "secondary" as const };
@@ -321,29 +341,42 @@ export default function Receber() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge variant={status.variante}>{status.rotulo}</Badge>
-                      <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
-                        R$ {brl(p.valorPrevisto)}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
+                          R$ {brl(p.valorPrevisto)}
+                        </span>
+                        {/* Mostra a conta, não só o resultado: numa parcela
+                            meio recebida o valor da parcela sozinho não diz o
+                            que ainda falta — e é o que falta que se cobra. */}
+                        {p.status === "PARCIAL" && (
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            R$ {brl(p.valorRecebido ?? 0)} recebido · faltam R${" "}
+                            {brl(saldoAberto(p))}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {p.status === "PREVISTA" && (
-                    <div className="flex justify-end border-t pt-2">
-                      <Button size="sm" variant="outline" onClick={() => abrirReceber(p)}>
-                        Receber
-                      </Button>
-                    </div>
-                  )}
-                  {p.status === "PAGA" && (
-                    <div className="flex justify-end border-t pt-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={estornar.isPending}
-                        onClick={() => setParcelaEstornar(p)}
-                      >
-                        Estornar recebimento
-                      </Button>
+                  {/* Uma parcela PARCIAL tem as DUAS saídas ao mesmo tempo:
+                      receber o que falta ou desfazer o que entrou. */}
+                  {(estaAberta(p) || teveRecebimento(p)) && (
+                    <div className="flex justify-end gap-2 border-t pt-2">
+                      {teveRecebimento(p) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={estornar.isPending}
+                          onClick={() => setParcelaEstornar(p)}
+                        >
+                          Estornar recebimento
+                        </Button>
+                      )}
+                      {estaAberta(p) && (
+                        <Button size="sm" variant="outline" onClick={() => abrirReceber(p)}>
+                          {p.status === "PARCIAL" ? "Receber o restante" : "Receber"}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
