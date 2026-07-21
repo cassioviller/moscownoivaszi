@@ -143,6 +143,19 @@ export default function MinhaComissao() {
             </Card>
           </div>
 
+          {/* E55: a colocação, sem os valores das colegas. O ranking já
+              existia atrás do gate de gestão — a vendedora não podia ver onde
+              está sem ganhar acesso a quanto todo mundo ganha. */}
+          {d.colocacao && (
+            <p className="text-sm text-muted-foreground" data-testid="colocacao">
+              Você está em{" "}
+              <span className="font-medium text-foreground">
+                {d.colocacao.posicao}º de {d.colocacao.de}
+              </span>{" "}
+              na loja neste mês.
+            </p>
+          )}
+
           {/* E51: "no seu ritmo, o mês fecha em Y%". O card acima diz o que
               vale HOJE; este diz para onde o mês está indo — que é o que dá
               tempo de mudar o resultado, em vez de descobrir no dia 30. */}

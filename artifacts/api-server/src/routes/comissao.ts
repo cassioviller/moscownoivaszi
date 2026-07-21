@@ -534,7 +534,7 @@ router.get("/lojas/:lojaId/minha-comissao", async (req, res): Promise<void> => {
   const { competencia } = q.data;
   const vendedoraId = req.usuario!.id;
 
-  const [vendas, estornos, regras, fechamentos] = await Promise.all([
+  const [vendas, estornos, regras, fechamentos, ranking] = await Promise.all([
     vendasDaCompetencia(db, lojaId, competencia),
     estornosPendentes(db, lojaId, [vendedoraId], competencia),
     regrasVigentes(db, lojaId, [vendedoraId], competencia),
@@ -546,6 +546,9 @@ router.get("/lojas/:lojaId/minha-comissao", async (req, res): Promise<void> => {
       ))
       .orderBy(desc(comissaoFechamentosTable.competencia))
       .limit(12),
+    // A MESMA ordenação do preview (E55): daqui sai só o ordinal, mas a
+    // posição tem de ser a mesma que a gestão vê — duas ordens divergiriam.
+    linhasDaCompetencia(lojaId, competencia, new Date()),
   ]);
 
   const brutoC = vendas.get(vendedoraId) ?? 0;
@@ -567,6 +570,8 @@ router.get("/lojas/:lojaId/minha-comissao", async (req, res): Promise<void> => {
     faltaProximoDegrau: degrau ? real(degrau.faltam) : null,
     proximoDegrauPercentual: degrau?.percentual ?? null,
     projecao: projecaoDaLinha(brutoC, estorno.totalC, competencia, regra, new Date()),
+    // Só o ordinal: onde a pessoa está, nunca quanto as colegas ganham.
+    colocacao: colocacaoDe(ranking.linhas, vendedoraId, !!regra),
     fechamentos: fechamentos.map((f) => ({
       competencia: f.competencia,
       totalVendas: f.totalVendas,
@@ -607,15 +612,18 @@ function projecaoDaLinha(
 
 // ── Preview (ranking ao vivo) ──
 
-router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> => {
-  const lojaId = req.params.lojaId as string;
-  const q = PreviewComissaoQueryParams.safeParse(req.query);
-  if (!q.success || !competenciaValida(q.data.competencia)) {
-    res.status(400).json({ error: "COMPETENCIA_INVALIDA" });
-    return;
-  }
-  const { competencia } = q.data;
-
+/**
+ * As linhas da competência, ORDENADAS — a fonte única do ranking (E55).
+ *
+ * Nasceu dentro da rota de preview e saiu quando o extrato pessoal passou a
+ * precisar da mesma ordem para dizer "3º de 8": duas implementações de
+ * ordenação acabariam discordando, e a vendedora veria uma posição no extrato
+ * dela e outra no ranking da gestão.
+ *
+ * `imutavel` diz se veio da memória do fechamento (competência fechada) ou de
+ * cálculo ao vivo — é o que autoriza o cache longo na resposta do preview.
+ */
+async function linhasDaCompetencia(lojaId: string, competencia: string, agora: Date) {
   // E26: competência FECHADA é imutável — a resposta é a memória do
   // fechamento (a mesma que respondeu "quanto pagar"), não um recálculo ao
   // vivo que revisita contratos, estornos e regras a cada F5. Também blinda a
@@ -630,6 +638,7 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
       eq(comissaoFechamentosTable.lojaId, lojaId),
       eq(comissaoFechamentosTable.competencia, competencia),
     ));
+
   if (fechamentosDaComp.length > 0) {
     const linhas = fechamentosDaComp
       .map(({ fechamento, vendedoraNome }) => ({
@@ -650,10 +659,7 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
         projecao: null,
       }))
       .sort((a, b) => b.valorTotal - a.valorTotal);
-    // Imutável de verdade: o navegador pode segurar por uma hora sem risco.
-    res.setHeader("Cache-Control", "private, max-age=3600");
-    res.json(PreviewComissaoResponse.parse(linhas));
-    return;
+    return { linhas, imutavel: true };
   }
 
   // Quem vendeu no mês MAIS quem deve estorno: uma vendedora que parou de
@@ -664,10 +670,7 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
     candidatasComEstorno(db, lojaId),
   ]);
   const vendedoraIds = [...new Set([...vendas.keys(), ...candidatas])];
-  if (vendedoraIds.length === 0) {
-    res.json(PreviewComissaoResponse.parse([]));
-    return;
-  }
+  if (vendedoraIds.length === 0) return { linhas: [], imutavel: false };
 
   const [nomes, estornos, regras] = await Promise.all([
     db.select({ id: usuariosTable.id, nome: usuariosTable.nome })
@@ -677,9 +680,6 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
     regrasVigentes(db, lojaId, vendedoraIds, competencia),
   ]);
   const nomePorId = new Map(nomes.map((n) => [n.id, n.nome]));
-  // Um instante só para o ranking inteiro: virar o dia no meio do map faria
-  // duas vendedoras serem projetadas com denominadores diferentes.
-  const agora = new Date();
 
   const linhas = vendedoraIds.map((vendedoraId) => {
     const brutoC = vendas.get(vendedoraId) ?? 0;
@@ -706,7 +706,53 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
   // na pergunta, não na resposta.
   const visiveis = linhas.filter((l) => vendas.has(l.vendedoraId) || l.estornoPendente > 0);
   visiveis.sort((a, b) => b.valorTotal - a.valorTotal || b.estornoPendente - a.estornoPendente);
-  res.json(PreviewComissaoResponse.parse(visiveis));
+  return { linhas: visiveis, imutavel: false };
+}
+
+/**
+ * A colocação da pessoa dentro da competência (E55), SEM os valores das
+ * colegas.
+ *
+ * O ranking já existia no preview, atrás do gate de gestão — a vendedora não
+ * podia ver onde está sem ganhar acesso a quanto todo mundo ganha. Aqui sai
+ * só o ordinal: posição e total de pessoas.
+ *
+ * Empate compartilha a posição (1224, não 1223): duas pessoas com o mesmo
+ * total são a mesma colocação, e desempatar por um critério invisível faria a
+ * segunda achar que perdeu por algum motivo que ninguém sabe explicar.
+ *
+ * Menos de duas pessoas não é ranking — "1º de 1" é ruído, e some.
+ *
+ * E quem NÃO tem escada vigente fica de fora. O ranking é de comissão, e sem
+ * escada a comissão é zero por definição: a pessoa apareceria em último tendo
+ * vendido mais que todo mundo, sem nada na tela que explicasse por quê. Para
+ * ela o extrato já diz o que importa — "sem escada vigente, fale com a
+ * administração" —, e uma colocação ali só somaria uma injustiça aparente.
+ */
+function colocacaoDe(
+  linhas: readonly { vendedoraId: string; valorTotal: number }[],
+  vendedoraId: string,
+  temRegra: boolean,
+): { posicao: number; de: number } | null {
+  if (!temRegra || linhas.length < 2) return null;
+  const minha = linhas.find((l) => l.vendedoraId === vendedoraId);
+  if (!minha) return null;
+  const acima = linhas.filter((l) => l.valorTotal > minha.valorTotal).length;
+  return { posicao: acima + 1, de: linhas.length };
+}
+
+router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const q = PreviewComissaoQueryParams.safeParse(req.query);
+  if (!q.success || !competenciaValida(q.data.competencia)) {
+    res.status(400).json({ error: "COMPETENCIA_INVALIDA" });
+    return;
+  }
+
+  const { linhas, imutavel } = await linhasDaCompetencia(lojaId, q.data.competencia, new Date());
+  // Imutável de verdade: o navegador pode segurar por uma hora sem risco.
+  if (imutavel) res.setHeader("Cache-Control", "private, max-age=3600");
+  res.json(PreviewComissaoResponse.parse(linhas));
 });
 
 /**

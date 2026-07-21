@@ -168,6 +168,7 @@ export * from './membroEquipe';
 export * from './membroEquipeInput';
 export * from './membroEquipeUpdate';
 export * from './minhaComissao';
+export * from './minhaComissaoColocacao';
 export * from './minhaComissaoFechamentosItem';
 export * from './orcamento';
 export * from './orcamentoDescontoTipo';

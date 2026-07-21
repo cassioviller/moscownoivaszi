@@ -1959,6 +1959,12 @@ export interface ComissaoRegraUpdate {
   bonusAcumulaFaixas?: boolean;
 }
 
+export type MinhaComissaoColocacao = {
+  posicao: number;
+  /** Quantas pessoas no ranking do mês */
+  de: number;
+} | null;
+
 export type MinhaComissaoFechamentosItem = {
   competencia: string;
   totalVendas: number;
@@ -2002,6 +2008,7 @@ export interface MinhaComissao {
   /** @nullable */
   proximoDegrauPercentual?: number | null;
   projecao?: ProjecaoComissao | null;
+  colocacao?: MinhaComissaoColocacao;
   /** Meses já fechados da pessoa, mais recente primeiro */
   fechamentos: MinhaComissaoFechamentosItem[];
 }

@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MinhaComissaoColocacao } from './minhaComissaoColocacao';
 import type { MinhaComissaoFechamentosItem } from './minhaComissaoFechamentosItem';
 import type { ProjecaoComissao } from './projecaoComissao';
 
@@ -29,6 +30,7 @@ export interface MinhaComissao {
   /** @nullable */
   proximoDegrauPercentual?: number | null;
   projecao?: ProjecaoComissao | null;
+  colocacao?: MinhaComissaoColocacao;
   /** Meses já fechados da pessoa, mais recente primeiro */
   fechamentos: MinhaComissaoFechamentosItem[];
 }

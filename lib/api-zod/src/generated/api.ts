@@ -5692,6 +5692,10 @@ export const GetMinhaComissaoResponse = zod.object({
   "percentualProjetado": zod.number().nullish(),
   "valorTotalProjetado": zod.number().describe('Comissão + bônus sobre a base projetada')
 }),zod.null()]).optional(),
+  "colocacao": zod.union([zod.object({
+  "posicao": zod.number(),
+  "de": zod.number().describe('Quantas pessoas no ranking do mês')
+}),zod.null()]).optional(),
   "fechamentos": zod.array(zod.object({
   "competencia": zod.string(),
   "totalVendas": zod.number(),

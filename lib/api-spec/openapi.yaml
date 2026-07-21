@@ -4478,6 +4478,17 @@ components:
           oneOf:
             - $ref: "#/components/schemas/ProjecaoComissao"
             - type: "null"
+        # A colocação SEM os valores das colegas (E55): só o ordinal. null
+        # quando a pessoa não está no ranking do mês ou quando há menos de
+        # duas pessoas — "1º de 1" não é ranking.
+        colocacao:
+          oneOf:
+            - type: object
+              required: [posicao, de]
+              properties:
+                posicao: { type: integer }
+                de: { type: integer, description: "Quantas pessoas no ranking do mês" }
+            - type: "null"
         fechamentos:
           type: array
           description: "Meses já fechados da pessoa, mais recente primeiro"
