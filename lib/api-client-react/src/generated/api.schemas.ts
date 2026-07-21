@@ -685,10 +685,17 @@ export interface LookbookPublicoFoto {
   atualizadaEm: string;
 }
 
+export type LookbookPublicoVestidoAtributosItem = {
+  atributo: string;
+  valor: string;
+};
+
 export interface LookbookPublicoVestido {
   vestidoId: string;
   nome: string;
+  precoBase: number;
   fotos: LookbookPublicoFoto[];
+  atributos: LookbookPublicoVestidoAtributosItem[];
 }
 
 export interface LookbookPublico {

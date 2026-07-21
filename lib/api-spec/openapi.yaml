@@ -3361,14 +3361,23 @@ components:
         atualizadaEm: { type: string, format: date-time }
     LookbookPublicoVestido:
       type: object
-      required: [vestidoId, nome, fotos]
+      required: [vestidoId, nome, precoBase, fotos, atributos]
       properties:
         vestidoId: { type: string }
         nome: { type: string }
+        precoBase: { type: number }
         fotos:
           type: array
           items:
             $ref: "#/components/schemas/LookbookPublicoFoto"
+        atributos:
+          type: array
+          items:
+            type: object
+            required: [atributo, valor]
+            properties:
+              atributo: { type: string }
+              valor: { type: string }
     LookbookPublico:
       type: object
       required: [lojaNome, noivaNome, vestidos]

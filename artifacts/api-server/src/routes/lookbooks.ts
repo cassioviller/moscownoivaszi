@@ -7,6 +7,9 @@ import {
   leadsTable,
   vestidosTable,
   vestidoFotosTable,
+  vestidoAtributosTable,
+  atributosTable,
+  atributoOpcoesTable,
 } from "@workspace/db";
 import { eq, and, gt, inArray, desc, asc } from "drizzle-orm";
 import {
@@ -67,6 +70,8 @@ router.get("/lookbooks/publico", async (req, res): Promise<void> => {
     .select({
       vestidoId: lookbookItensTable.vestidoId,
       nome: vestidosTable.nome,
+      // E44: preço vai junto — é o que a noiva olha para decidir em casa.
+      precoBase: vestidosTable.precoBase,
       fotoOrdem: vestidoFotosTable.ordem,
       fotoAtualizadaEm: vestidoFotosTable.updatedAt,
     })
@@ -76,13 +81,43 @@ router.get("/lookbooks/publico", async (req, res): Promise<void> => {
     .where(eq(lookbookItensTable.lookbookId, linha.lookbook.id))
     .orderBy(asc(lookbookItensTable.ordem), asc(vestidoFotosTable.ordem));
 
-  const porVestido = new Map<string, { vestidoId: string; nome: string; fotos: { ordem: number; atualizadaEm: Date }[] }>();
+  const porVestido = new Map<
+    string,
+    { vestidoId: string; nome: string; precoBase: number; fotos: { ordem: number; atualizadaEm: Date }[]; atributos: { atributo: string; valor: string }[] }
+  >();
   for (const it of itens) {
-    const v = porVestido.get(it.vestidoId) ?? { vestidoId: it.vestidoId, nome: it.nome, fotos: [] };
+    const v = porVestido.get(it.vestidoId) ?? {
+      vestidoId: it.vestidoId,
+      nome: it.nome,
+      precoBase: it.precoBase,
+      fotos: [],
+      atributos: [],
+    };
     if (it.fotoOrdem !== null && it.fotoAtualizadaEm !== null) {
       v.fotos.push({ ordem: it.fotoOrdem, atualizadaEm: it.fotoAtualizadaEm });
     }
     porVestido.set(it.vestidoId, v);
+  }
+
+  // E44: características legíveis (nome do atributo + valor da opção), já JOINáveis
+  // — antes o payload público as escondia. Uma query só, ordenada pela ordem do
+  // atributo no catálogo.
+  const vestidoIds = [...porVestido.keys()];
+  if (vestidoIds.length > 0) {
+    const attrs = await db
+      .select({
+        vestidoId: vestidoAtributosTable.vestidoId,
+        atributo: atributosTable.nome,
+        valor: atributoOpcoesTable.valor,
+      })
+      .from(vestidoAtributosTable)
+      .innerJoin(atributosTable, eq(atributosTable.id, vestidoAtributosTable.atributoId))
+      .innerJoin(atributoOpcoesTable, eq(atributoOpcoesTable.id, vestidoAtributosTable.opcaoId))
+      .where(inArray(vestidoAtributosTable.vestidoId, vestidoIds))
+      .orderBy(asc(atributosTable.ordem));
+    for (const a of attrs) {
+      porVestido.get(a.vestidoId)?.atributos.push({ atributo: a.atributo, valor: a.valor });
+    }
   }
 
   res.json(GetLookbookPublicoResponse.parse({

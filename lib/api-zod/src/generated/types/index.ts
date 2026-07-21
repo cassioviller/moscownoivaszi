@@ -153,6 +153,7 @@ export * from './lookbookInput';
 export * from './lookbookPublico';
 export * from './lookbookPublicoFoto';
 export * from './lookbookPublicoVestido';
+export * from './lookbookPublicoVestidoAtributosItem';
 export * from './lookbookVestidosItem';
 export * from './membroAtividade';
 export * from './membroEquipe';

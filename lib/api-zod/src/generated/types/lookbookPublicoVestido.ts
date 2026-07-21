@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LookbookPublicoFoto } from './lookbookPublicoFoto';
+import type { LookbookPublicoVestidoAtributosItem } from './lookbookPublicoVestidoAtributosItem';
 
 export interface LookbookPublicoVestido {
   vestidoId: string;
   nome: string;
+  precoBase: number;
   fotos: LookbookPublicoFoto[];
+  atributos: LookbookPublicoVestidoAtributosItem[];
 }

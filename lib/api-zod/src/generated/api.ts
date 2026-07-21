@@ -1162,9 +1162,14 @@ export const GetLookbookPublicoResponse = zod.object({
   "vestidos": zod.array(zod.object({
   "vestidoId": zod.string(),
   "nome": zod.string(),
+  "precoBase": zod.number(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
   "atualizadaEm": zod.coerce.date()
+})),
+  "atributos": zod.array(zod.object({
+  "atributo": zod.string(),
+  "valor": zod.string()
 }))
 }))
 })

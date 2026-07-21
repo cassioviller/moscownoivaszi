@@ -4,6 +4,7 @@ import {
   getGetLookbookPublicoQueryKey,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { brl } from "@/lib/formatos";
 
 /**
  * Página PÚBLICA do lookbook (/lookbook/:token) — a noiva revê em casa os
@@ -75,7 +76,15 @@ export default function LookbookPublico() {
                       Sem foto
                     </div>
                   )}
-                  <figcaption className="p-3 text-center font-serif text-lg">{v.nome}</figcaption>
+                  <figcaption className="space-y-1 p-3 text-center">
+                    <p className="font-serif text-lg">{v.nome}</p>
+                    <p className="text-sm font-medium text-primary">R$ {brl(v.precoBase)}</p>
+                    {v.atributos.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {v.atributos.map((a) => `${a.atributo}: ${a.valor}`).join(" · ")}
+                      </p>
+                    )}
+                  </figcaption>
                 </figure>
               ))}
             </div>
