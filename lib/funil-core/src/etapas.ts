@@ -24,6 +24,17 @@ export type EtapaLead = (typeof ETAPAS_LEAD)[number];
 export const FUNIL_LEAD: EtapaLead[] = ETAPAS_LEAD.filter((e) => e !== "PERDIDO");
 
 /**
+ * De CONTRATO_FECHADO em diante a noiva já fechou — é a conversão "ganha".
+ * O relatório de conversão (E34) conta quantos leads de cada origem chegaram
+ * até aqui; a definição vive junto da régua, não espalhada nas queries.
+ */
+export const ETAPAS_CONVERTIDA: EtapaLead[] = FUNIL_LEAD.slice(FUNIL_LEAD.indexOf("CONTRATO_FECHADO"));
+
+export function converteu(etapa: EtapaLead): boolean {
+  return ETAPAS_CONVERTIDA.includes(etapa);
+}
+
+/**
  * Transição de etapa permitida: avança no funil (nunca regride), sempre pode
  * marcar como PERDIDO, e um lead PERDIDO pode ser revivido para qualquer etapa
  * do funil. Manter no mesmo estado é sempre válido (no-op).

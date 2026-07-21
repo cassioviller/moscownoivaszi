@@ -607,6 +607,56 @@ export interface LeadInteresseInput {
   atributos?: VestidoAtributo[];
 }
 
+export type ConversaoLeadsPorOrigemItemOrigem = typeof ConversaoLeadsPorOrigemItemOrigem[keyof typeof ConversaoLeadsPorOrigemItemOrigem];
+
+
+export const ConversaoLeadsPorOrigemItemOrigem = {
+  LOJA: 'LOJA',
+  WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
+} as const;
+
+export type ConversaoLeadsPorOrigemItem = {
+  origem: ConversaoLeadsPorOrigemItemOrigem;
+  total: number;
+  convertidos: number;
+};
+
+/**
+ * null = perdido sem motivo registrado (dado legado)
+ * @nullable
+ */
+export type ConversaoLeadsPorMotivoPerdaItemMotivo = typeof ConversaoLeadsPorMotivoPerdaItemMotivo[keyof typeof ConversaoLeadsPorMotivoPerdaItemMotivo] | null;
+
+
+export const ConversaoLeadsPorMotivoPerdaItemMotivo = {
+  PRECO: 'PRECO',
+  DATA_INDISPONIVEL: 'DATA_INDISPONIVEL',
+  CONCORRENTE: 'CONCORRENTE',
+  DESISTENCIA: 'DESISTENCIA',
+  SEM_RETORNO: 'SEM_RETORNO',
+  OUTRO: 'OUTRO',
+} as const;
+
+export type ConversaoLeadsPorMotivoPerdaItem = {
+  /**
+     * null = perdido sem motivo registrado (dado legado)
+     * @nullable
+     */
+  motivo: ConversaoLeadsPorMotivoPerdaItemMotivo;
+  total: number;
+};
+
+export interface ConversaoLeads {
+  totalLeads: number;
+  /** Leads que chegaram a CONTRATO_FECHADO ou além */
+  convertidos: number;
+  perdidos: number;
+  porOrigem: ConversaoLeadsPorOrigemItem[];
+  porMotivoPerda: ConversaoLeadsPorMotivoPerdaItem[];
+}
+
 export interface LookbookInput {
   leadId: string;
   /**

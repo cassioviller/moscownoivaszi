@@ -1290,6 +1290,30 @@ export const CreateLeadResponse = zod.object({
 })
 
 
+/**
+ * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+ * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
+ */
+export const GetConversaoLeadsParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetConversaoLeadsResponse = zod.object({
+  "totalLeads": zod.number(),
+  "convertidos": zod.number().describe('Leads que chegaram a CONTRATO_FECHADO ou além'),
+  "perdidos": zod.number(),
+  "porOrigem": zod.array(zod.object({
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "total": zod.number(),
+  "convertidos": zod.number()
+})),
+  "porMotivoPerda": zod.array(zod.object({
+  "motivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullable().describe('null = perdido sem motivo registrado (dado legado)'),
+  "total": zod.number()
+}))
+})
+
+
 export const GetLeadParams = zod.object({
   "lojaId": zod.coerce.string(),
   "leadId": zod.coerce.string()

@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Plus, AlertCircle, Search, LayoutGrid, Columns3 } from "lucide-react";
+import { Plus, AlertCircle, Search, LayoutGrid, Columns3, BarChart3 } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { FunilNoivas } from "./funil";
@@ -98,14 +98,22 @@ export default function Noivas() {
             Cada noiva, sua jornada e o casamento à vista.
           </p>
         </div>
-        {podeCriar && (
-          <Button asChild data-testid="button-adicionar-noiva">
-            <Link to={`/loja/${lojaId}/noivas/nova`}>
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar noiva
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" data-testid="link-conversao">
+            <Link to={`/loja/${lojaId}/noivas/conversao`}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Conversão
             </Link>
           </Button>
-        )}
+          {podeCriar && (
+            <Button asChild data-testid="button-adicionar-noiva">
+              <Link to={`/loja/${lojaId}/noivas/nova`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar noiva
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

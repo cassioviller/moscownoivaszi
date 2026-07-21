@@ -1136,6 +1136,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+  /lojas/{lojaId}/leads/conversao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getConversaoLeads
+      tags: [leads]
+      summary: Relatório de conversão — por origem (E19) e por motivo de perda (E4)
+      description: >
+        Dois agregados sobre os leads da loja: quantos cada origem trouxe e
+        quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas
+        por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+      responses:
+        "200":
+          description: Agregados de conversão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversaoLeads"
   /lojas/{lojaId}/leads/{leadId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3259,6 +3277,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VestidoAtributo"
+    ConversaoLeads:
+      type: object
+      required: [totalLeads, convertidos, perdidos, porOrigem, porMotivoPerda]
+      properties:
+        totalLeads: { type: integer }
+        convertidos: { type: integer, description: "Leads que chegaram a CONTRATO_FECHADO ou além" }
+        perdidos: { type: integer }
+        porOrigem:
+          type: array
+          items:
+            type: object
+            required: [origem, total, convertidos]
+            properties:
+              origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
+              total: { type: integer }
+              convertidos: { type: integer }
+        porMotivoPerda:
+          type: array
+          items:
+            type: object
+            required: [motivo, total]
+            properties:
+              motivo:
+                type: ["string", "null"]
+                enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO, null]
+                description: "null = perdido sem motivo registrado (dado legado)"
+              total: { type: integer }
     LookbookInput:
       type: object
       required: [leadId, vestidoIds]

@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS } from "@/lib/formatos";
+import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
   dataLongaFmt,
@@ -52,12 +52,6 @@ import {
   whatsappDigits,
   } from "../helpers";
 
-const ROTULO_ORIGEM: Record<string, string> = {
-  LOJA: "Loja",
-  WHATSAPP: "WhatsApp",
-  SITE: "Site",
-  INSTAGRAM: "Instagram",
-};
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
   ENVIADO: "Enviado",

@@ -63,6 +63,18 @@ export function perdidaMotivoLabel(motivo: string): string {
   return PERDIDA_MOTIVO_LABELS[motivo] ?? motivo;
 }
 
+// De onde a noiva veio — espelha o enum lead_origem do backend (E19).
+export const ROTULO_ORIGEM: Record<string, string> = {
+  LOJA: "Loja",
+  WHATSAPP: "WhatsApp",
+  SITE: "Site",
+  INSTAGRAM: "Instagram",
+};
+
+export function origemLabel(origem: string): string {
+  return ROTULO_ORIGEM[origem] ?? origem;
+}
+
 const dataDiaFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
 
 /**

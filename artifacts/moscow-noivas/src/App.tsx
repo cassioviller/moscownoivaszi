@@ -46,6 +46,7 @@ import Auditoria from "@/pages/financeiro/auditoria";
 import Catalogo from "@/pages/catalogo";
 import Noivas from "@/pages/noivas";
 import NovaNoiva from "@/pages/noivas/nova";
+import ConversaoLeads from "@/pages/noivas/conversao";
 import NoivaDetalhe from "@/pages/noivas/[leadId]";
 import EditarNoiva from "@/pages/noivas/[leadId]/editar";
 import InteressesNoiva from "@/pages/noivas/[leadId]/interesses";
@@ -158,6 +159,7 @@ function App() {
               <Route path="leads/:id" element={<RedirectLeadParaNoiva />} />
               <Route path="noivas" element={<Noivas />} />
               <Route path="noivas/nova" element={<NovaNoiva />} />
+              <Route path="noivas/conversao" element={<ConversaoLeads />} />
               <Route path="noivas/:leadId" element={<NoivaDetalhe />} />
               <Route path="noivas/:leadId/editar" element={<EditarNoiva />} />
               <Route path="noivas/:leadId/interesses" element={<InteressesNoiva />} />

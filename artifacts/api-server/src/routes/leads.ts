@@ -13,11 +13,12 @@ import {
   SetLeadInteresseResponse,
   ListRegistrosCobrancaResponse,
   CreateRegistroCobrancaBody,
-  CreateRegistroCobrancaResponse
+  CreateRegistroCobrancaResponse,
+  GetConversaoLeadsResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
-import { transicaoLeadValida, type LeadEtapa } from "../lib/estados";
+import { transicaoLeadValida, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 
 const router: IRouter = Router();
 
@@ -138,6 +139,42 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   // Lead recém-criado nunca tem contato registrado — explícito para o campo
   // significar o mesmo em toda resposta que devolve um Lead.
   res.status(201).json(CreateLeadResponse.parse({ ...lead, ultimoContatoEm: null, interesse: undefined }));
+});
+
+/**
+ * Relatório de conversão (E34): o consumidor que faltava para o `perdidaMotivo`
+ * (E4) e a `origem` (E19). Dois agregados puros — quanto cada canal trouxe e
+ * quantos fecharam, e por que as noivas se perderam. Vem ANTES de `/:leadId`
+ * para "conversao" não ser lido como um id de lead.
+ */
+router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+
+  const porOrigem = await db
+    .select({
+      origem: leadsTable.origem,
+      total: count(),
+      convertidos: sql<number>`count(*) filter (where ${inArray(leadsTable.etapa, [...ETAPAS_CONVERTIDA])})`.mapWith(Number),
+    })
+    .from(leadsTable)
+    .where(eq(leadsTable.lojaId, lojaId))
+    .groupBy(leadsTable.origem);
+
+  const porMotivoPerda = await db
+    .select({ motivo: leadsTable.perdidaMotivo, total: count() })
+    .from(leadsTable)
+    .where(and(eq(leadsTable.lojaId, lojaId), eq(leadsTable.etapa, "PERDIDO")))
+    .groupBy(leadsTable.perdidaMotivo);
+
+  res.json(
+    GetConversaoLeadsResponse.parse({
+      totalLeads: porOrigem.reduce((a, o) => a + o.total, 0),
+      convertidos: porOrigem.reduce((a, o) => a + o.convertidos, 0),
+      perdidos: porMotivoPerda.reduce((a, m) => a + m.total, 0),
+      porOrigem,
+      porMotivoPerda: porMotivoPerda.map((m) => ({ motivo: m.motivo ?? null, total: m.total })),
+    }),
+  );
 });
 
 router.get("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {

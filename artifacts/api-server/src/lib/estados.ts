@@ -19,6 +19,7 @@ export type ReservaStatus = Reserva["status"];
 export {
   FUNIL_LEAD,
   ETAPAS_LEAD,
+  ETAPAS_CONVERTIDA,
   transicaoLeadValida,
   avancarEtapaLead,
   etapasAlcancaveis,

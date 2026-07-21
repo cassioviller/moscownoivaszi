@@ -66,6 +66,7 @@ import type {
   Contrato,
   ContratoInput,
   ContratoUpdate,
+  ConversaoLeads,
   Convite,
   ConviteInput,
   ConvitePublico,
@@ -4432,6 +4433,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateLeadMutationOptions(options));
     }
+
+export const getGetConversaoLeadsUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/conversao`
+}
+
+/**
+ * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+ * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
+ */
+export const getConversaoLeads = async (lojaId: string, options?: RequestInit): Promise<ConversaoLeads> => {
+
+  return customFetch<ConversaoLeads>(getGetConversaoLeadsUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConversaoLeadsQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/conversao`
+    ] as const;
+    }
+
+
+export const getGetConversaoLeadsQueryOptions = <TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConversaoLeadsQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConversaoLeads>>> = ({ signal }) => getConversaoLeads(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConversaoLeadsQueryResult = NonNullable<Awaited<ReturnType<typeof getConversaoLeads>>>
+export type GetConversaoLeadsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
+ */
+
+export function useGetConversaoLeads<TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConversaoLeadsQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetLeadUrl = (lojaId: string,
     leadId: string,) => {
