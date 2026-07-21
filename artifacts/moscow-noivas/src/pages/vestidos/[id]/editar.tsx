@@ -235,6 +235,28 @@ export default function EditarVestido() {
     }
   }
 
+  // E42: tirar de linha / reativar. A régua de disponibilidade já trata
+  // status != "ativo" como INATIVO — aqui fecha o loop do relatório de utilização
+  // (E15), que aponta candidatos a sair de linha sem dar a ação.
+  async function alternarStatus() {
+    if (!vestido) return;
+    const novo = vestido.status === "ativo" ? "inativo" : "ativo";
+    try {
+      await updateVestido.mutateAsync({ lojaId: activeLojaId!, vestidoId: id!, data: { status: novo } });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetVestidoQueryKey(activeLojaId!, id!) }),
+        queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) }),
+      ]);
+      toast({ title: novo === "ativo" ? "Vestido reativado" : "Vestido fora de linha" });
+    } catch (err) {
+      toast({
+        title: "Erro ao mudar a situação",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }
+
   const fotosPorOrdem = new Map((vestido?.fotos ?? []).map((f) => [f.ordem, f]));
 
   return (
@@ -299,6 +321,27 @@ export default function EditarVestido() {
                 submitLabel="Salvar alterações"
                 onSubmit={onSubmit}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Situação no catálogo</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" data-testid="situacao-vestido">
+                {vestido.status === "ativo"
+                  ? "Ativo — aparece no catálogo e pode ser reservado."
+                  : "Fora de linha — não aparece nas buscas nem fica disponível para reserva."}
+              </p>
+              <Button
+                variant={vestido.status === "ativo" ? "outline" : "default"}
+                onClick={alternarStatus}
+                disabled={updateVestido.isPending}
+                data-testid="toggle-status-vestido"
+              >
+                {vestido.status === "ativo" ? "Tirar de linha" : "Reativar"}
+              </Button>
             </CardContent>
           </Card>
 
