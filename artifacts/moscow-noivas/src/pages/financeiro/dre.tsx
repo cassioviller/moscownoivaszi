@@ -22,6 +22,8 @@ import {
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { brl } from "@/lib/formatos";
 import { dreDoIntervalo } from "@/lib/financeiro/dre";
+import { recebimentosPorForma } from "@/lib/financeiro/forma";
+import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasDre } from "@/lib/financeiro/exportar";
 import {
   competenciaAtual,
@@ -89,6 +91,13 @@ export default function DRE() {
   const dre = useMemo(
     () => dreDoIntervalo(parcelas.data ?? [], pagamentos.data ?? [], intervalo),
     [parcelas.data, pagamentos.data, intervalo],
+  );
+
+  // Mesmo filtro do DRE (entradasDoIntervalo): `porForma.total` e
+  // `dre.receitas` são o mesmo dinheiro, visto por outro corte.
+  const porForma = useMemo(
+    () => recebimentosPorForma(parcelas.data ?? [], intervalo),
+    [parcelas.data, intervalo],
   );
 
   /** Últimos 12 meses; se a URL apontar para fora da janela, a opção entra mesmo assim. */
@@ -164,7 +173,7 @@ export default function DRE() {
           variant="outline"
           size="sm"
           disabled={carregando || erro || vazio}
-          onClick={() => baixarCsv(`dre-${competencia}.csv`, linhasDre(dre, competencia))}
+          onClick={() => baixarCsv(`dre-${competencia}.csv`, linhasDre(dre, competencia, porForma))}
         >
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
@@ -202,6 +211,18 @@ export default function DRE() {
               <p className="text-2xl font-semibold tabular-nums text-positivo">
                 R$ {brl(dre.receitas)}
               </p>
+            </CardContent>
+          </Card>
+
+          {/* E50: o mesmo dinheiro, por MEIO — é aqui que a taxa do cartão
+              encontra a maquininha e o Pix encontra o extrato. */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recebimentos por meio</CardTitle>
+              <CardDescription>Para conciliar cartão, Pix e caixa físico.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RecebimentosPorFormaLista dados={porForma} />
             </CardContent>
           </Card>
 

@@ -1,4 +1,5 @@
 import type { DRE } from "./dre";
+import type { RecebimentosPorForma } from "./forma";
 import type { Movimento } from "./fluxo";
 import { diaLocal } from "./datas";
 
@@ -38,11 +39,22 @@ export function baixarCsv(nomeArquivo: string, linhas: readonly (readonly string
 }
 
 /** O DRE como a tela mostra: recebimentos, despesas (negativas) e resultado. */
-export function linhasDre(dre: DRE, competencia: string): string[][] {
+export function linhasDre(
+  dre: DRE,
+  competencia: string,
+  porForma?: RecebimentosPorForma,
+): string[][] {
   const linhas: string[][] = [
     ["Competência", "Linha", "Valor"],
     [competencia, "Recebimentos", dre.receitas.toFixed(2)],
   ];
+  // O recorte por meio entra logo abaixo do total que ele detalha (E50): é a
+  // linha que a contadora usa para bater cartão e Pix contra o extrato, e ela
+  // some do arquivo se ficar só na tela. As linhas SOMAM o mesmo que
+  // "Recebimentos" — é o mesmo dinheiro, por outro corte.
+  for (const f of porForma?.linhas ?? []) {
+    linhas.push([competencia, `Recebimento — ${f.rotulo}`, f.total.toFixed(2)]);
+  }
   for (const d of dre.despesas) {
     linhas.push([competencia, `Despesa — ${d.rotulo}`, (-d.total).toFixed(2)]);
   }

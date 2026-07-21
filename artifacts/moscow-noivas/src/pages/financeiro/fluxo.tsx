@@ -23,6 +23,8 @@ import { ErroListagem } from "./helpers";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { brl } from "@/lib/formatos";
 import { resumoCaixa, movimentos, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
+import { recebimentosPorForma } from "@/lib/financeiro/forma";
+import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasFluxo } from "@/lib/financeiro/exportar";
 import {
   resolverIntervalo,
@@ -143,6 +145,14 @@ export default function FluxoCaixa() {
   const resumo = useMemo(
     () => resumoCaixa(parcelas.data ?? [], pagamentos.data ?? [], intervalo),
     [parcelas.data, pagamentos.data, intervalo],
+  );
+
+  // As MESMAS entradas do resumo, recortadas por meio (E50): `porForma.total`
+  // e `resumo.entradas` são o mesmo dinheiro — se divergirem, um dos dois está
+  // lendo errado.
+  const porForma = useMemo(
+    () => recebimentosPorForma(parcelas.data ?? [], intervalo),
+    [parcelas.data, intervalo],
   );
 
   const linhaDoTempo = useMemo(
@@ -312,6 +322,22 @@ export default function FluxoCaixa() {
               </CardContent>
             </Card>
           </div>
+
+          {/* — Por onde o dinheiro entrou (E50): o detalhe das Entradas acima.
+              Some quando não houve entrada — card vazio não informa nada. — */}
+          {porForma.linhas.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm uppercase tracking-widest text-muted-foreground">
+                  Entradas por meio
+                </CardTitle>
+                <CardDescription>Para conciliar cartão, Pix e caixa físico.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RecebimentosPorFormaLista dados={porForma} />
+              </CardContent>
+            </Card>
+          )}
 
           {/* — Em aberto: previsão pelo vencimento, fora do caixa realizado. É
               a porta para as telas de ação (receber/pagar). — */}
