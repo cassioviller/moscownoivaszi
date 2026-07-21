@@ -1,4 +1,4 @@
-import { dentroDoFuncionamento, diaDaSemanaLocal } from "./slots";
+import { dentroDoFuncionamento, diaDaSemanaLocal, SLOT_MINUTOS } from "./slots";
 
 /**
  * A regra de "esse atendimento pode ir para ali?", em UM lugar.
@@ -29,9 +29,31 @@ export type Marcacao = {
   cabineId: string;
   vendedoraId: string;
   inicio: Date | string;
+  // Uma PROVA ocupa `provaDuracao` slots; qualquer outra, um só (E40). Ausente =
+  // tratada como 1 slot, o comportamento de antes.
+  tipo?: "ATENDIMENTO" | "PROVA";
 };
 
-export type Expediente = { aberturaHora: number; fechamentoHora: number; dias?: number[] };
+export type Expediente = {
+  aberturaHora: number;
+  fechamentoHora: number;
+  dias?: number[];
+  /** Duração da PROVA em slots de 30 min (E40). Ausente = 1 slot. */
+  provaDuracao?: number;
+};
+
+const SLOT_MS = SLOT_MINUTOS * 60_000;
+
+/** Duração da marcação em milissegundos: PROVA ocupa `provaDuracao` slots. */
+function duracaoMs(m: Marcacao, provaDuracao?: number): number {
+  const slots = m.tipo === "PROVA" ? Math.max(1, provaDuracao ?? 1) : 1;
+  return slots * SLOT_MS;
+}
+
+/** Dois intervalos [iniA,fimA) e [iniB,fimB) se cruzam? */
+function sobrepoe(iniA: number, fimA: number, iniB: number, fimB: number): boolean {
+  return iniA < fimB && iniB < fimA;
+}
 
 /**
  * Expediente de quem ainda não configurou nada. Espelha os defaults das colunas
@@ -63,11 +85,17 @@ export function recusaDeMover(
     return "FORA_DO_HORARIO";
   }
 
-  const quando = instante(destino.inicio);
+  // E40: conflito por SOBREPOSIÇÃO de intervalo, não só de instante — uma prova
+  // que ocupa dois slots bloqueia o slot seguinte na mesma cabine. As UNIQUE do
+  // banco ainda são a garantia do instante exato; isto é a pré-checagem que a
+  // grade e a rota usam para não oferecer um destino que colide com a prova.
+  const iniMovida = instante(destino.inicio);
+  const fimMovida = iniMovida + duracaoMs(movida, expediente.provaDuracao);
   for (const outra of outras) {
     if (outra.id === movida.id) continue;
-    if (instante(outra.inicio) !== quando) continue;
-    // Espelha as duas UNIQUE do banco: (cabine, inicio) e (loja, vendedora, inicio).
+    const iniOutra = instante(outra.inicio);
+    const fimOutra = iniOutra + duracaoMs(outra, expediente.provaDuracao);
+    if (!sobrepoe(iniMovida, fimMovida, iniOutra, fimOutra)) continue;
     if (outra.cabineId === destino.cabineId) return "CABINE_OCUPADA";
     if (outra.vendedoraId === movida.vendedoraId) return "VENDEDORA_OCUPADA";
   }

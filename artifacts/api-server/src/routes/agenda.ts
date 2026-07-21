@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
-import { eq, and, max, inArray } from "drizzle-orm";
+import { eq, and, max, inArray, gte, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
@@ -55,7 +55,7 @@ const router: IRouter = Router();
  */
 async function recusaDeMoverAtendimento(
   lojaId: string,
-  existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date },
+  existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date; tipo: "ATENDIMENTO" | "PROVA" },
   mudanca: { cabineId?: string; vendedoraId?: string; inicio?: Date },
 ): Promise<MotivoRecusa | null> {
   const regra = await db.query.regraDisponibilidadeTable.findFirst({
@@ -66,6 +66,7 @@ async function recusaDeMoverAtendimento(
         aberturaHora: regra.atendimentoAberturaHora,
         fechamentoHora: regra.atendimentoFechamentoHora,
         dias: regra.diasFuncionamento,
+        provaDuracao: regra.provaDuracao,
       }
     : EXPEDIENTE_PADRAO;
 
@@ -78,19 +79,29 @@ async function recusaDeMoverAtendimento(
     cabineId: existente.cabineId,
     vendedoraId: mudanca.vendedoraId ?? existente.vendedoraId,
     inicio: existente.inicio,
+    tipo: existente.tipo,
   };
 
-  // Só quem disputa exatamente aquele instante concorre — é o que as UNIQUE
-  // enxergam, e carregar o dia inteiro para comparar seria desperdício.
+  // E40: uma prova ocupa vários slots, então o conflito não é mais só do instante
+  // exato — busca-se uma JANELA em torno do destino (± a duração máxima de prova)
+  // e o `recusaDeMover` decide a sobreposição de intervalo. A janela é curta:
+  // longe do desperdício de carregar o dia inteiro.
+  const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * 30 * 60_000;
+  const destinoMs = new Date(destino.inicio).getTime();
   const concorrentes = await db
     .select({
       id: atendimentosTable.id,
       cabineId: atendimentosTable.cabineId,
       vendedoraId: atendimentosTable.vendedoraId,
       inicio: atendimentosTable.inicio,
+      tipo: atendimentosTable.tipo,
     })
     .from(atendimentosTable)
-    .where(and(eq(atendimentosTable.lojaId, lojaId), eq(atendimentosTable.inicio, destino.inicio)));
+    .where(and(
+      eq(atendimentosTable.lojaId, lojaId),
+      gte(atendimentosTable.inicio, new Date(destinoMs - janelaMs)),
+      lte(atendimentosTable.inicio, new Date(destinoMs + janelaMs)),
+    ));
 
   return recusaDeMover(movida, destino, concorrentes, expediente);
 }

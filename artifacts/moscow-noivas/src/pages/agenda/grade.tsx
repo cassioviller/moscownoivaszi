@@ -112,6 +112,27 @@ export function GradeDoDia({
     return { porCelula: mapa, orfaos: fora };
   }, [atendimentos, expediente.aberturaHora, expediente.fechamentoHora]);
 
+  // E40: uma PROVA ocupa `provaDuracao` slots. Os slots seguintes ao de início,
+  // na mesma cabine, ficam "cobertos" — mostram uma barra de continuação (e já
+  // recusam drop pela sobreposição de intervalo do recusaDeMover).
+  const coberturas = useMemo(() => {
+    const mapa = new Map<string, Atendimento>();
+    const dur = Math.max(1, expediente.provaDuracao ?? 1);
+    if (dur <= 1) return mapa;
+    for (const a of atendimentos) {
+      if (a.tipo !== "PROVA") continue;
+      const slot = slotDe(a.inicio, expediente.aberturaHora, expediente.fechamentoHora);
+      if (!slot) continue;
+      const idx = slots.indexOf(slot);
+      for (let k = 1; k < dur; k++) {
+        const s = slots[idx + k];
+        if (!s) break;
+        mapa.set(chaveCelula(a.cabineId, s), a);
+      }
+    }
+    return mapa;
+  }, [atendimentos, slots, expediente.aberturaHora, expediente.fechamentoHora, expediente.provaDuracao]);
+
   async function aoSoltar(evento: DragEndEvent) {
     const movida = arrastando;
     setArrastando(null);
@@ -193,6 +214,7 @@ export function GradeDoDia({
                   slot={slot}
                   diaYMD={diaYMD}
                   ocupantes={porCelula.get(chaveCelula(cabine.id, slot)) ?? []}
+                  cobertura={coberturas.get(chaveCelula(cabine.id, slot))}
                   arrastando={arrastando}
                   atendimentosDoDia={atendimentos}
                   expediente={expediente}
@@ -245,6 +267,7 @@ function Celula({
   slot,
   diaYMD,
   ocupantes,
+  cobertura,
   arrastando,
   atendimentosDoDia,
   expediente,
@@ -255,6 +278,8 @@ function Celula({
   slot: string;
   diaYMD: string;
   ocupantes: Atendimento[];
+  /** Prova que ocupa este slot como continuação (E40), quando não é o slot de início. */
+  cobertura?: Atendimento;
   arrastando: Atendimento | null;
   atendimentosDoDia: Atendimento[];
   expediente: Expediente;
@@ -289,6 +314,14 @@ function Celula({
         arrastando && !aceita ? "opacity-30" : "",
       ].join(" ")}
     >
+      {ocupantes.length === 0 && cobertura && (
+        <div
+          className="rounded-md border border-dashed bg-muted/40 px-1.5 py-1 text-[10px] text-muted-foreground"
+          data-testid={`cobertura-agenda-${cabineId}-${slot}`}
+        >
+          prova de {nomePorLead.get(cobertura.leadId) ?? "noiva"}
+        </div>
+      )}
       {ocupantes.map((a) => (
         <CartaoAtendimento
           key={a.id}
