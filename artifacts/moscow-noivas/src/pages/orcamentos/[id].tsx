@@ -18,6 +18,8 @@ import {
   getListLeadsQueryKey,
   useGetLead,
   getGetLeadQueryKey,
+  useListVestidos,
+  getListVestidosQueryKey,
   type OrcamentoItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -68,6 +70,9 @@ function round2(v: number): number {
 
 const novoItemSchema = z.object({
   tipo: z.enum(["VESTIDO", "SERVICO", "AJUSTE"]),
+  // vestidoId liga o item ao catálogo (E35): ao escolher um vestido, descrição
+  // e valor vêm dele. Vazio = item avulso (serviço/ajuste ou vestido sem ficha).
+  vestidoId: z.string().optional(),
   descricao: z.string().min(1, "Descrição obrigatória"),
   valorUnitario: z.string().min(1, "Valor obrigatório"),
   quantidade: z.string(),
@@ -117,6 +122,15 @@ export default function OrcamentoDetail() {
       enabled: !!activeLojaId && !!orcamento?.leadId,
     },
   });
+  // Catálogo para o seletor de item (E35). Só os ativos entram na escolha; um
+  // vestido inativo já vinculado a um item antigo ainda aparece no rótulo.
+  const vestidos = useListVestidos(activeLojaId!, {
+    query: { queryKey: getListVestidosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const vestidoPorId = useMemo(
+    () => new Map((vestidos.data ?? []).map((v) => [v.id, v])),
+    [vestidos.data],
+  );
   // O GetOrcamento não expõe o contrato gerado; buscamos na lista de contratos
   // (client-side, só quando APROVADO) para alternar Gerar/Ver contrato.
   const contratos = useListContratos(activeLojaId!, {
@@ -168,7 +182,7 @@ export default function OrcamentoDetail() {
 
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
-    defaultValues: { tipo: "VESTIDO", descricao: "", valorUnitario: "", quantidade: "1" },
+    defaultValues: { tipo: "VESTIDO", vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" },
   });
 
   const editarItemForm = useForm<EditarItemValues>({
@@ -261,10 +275,17 @@ export default function OrcamentoDetail() {
       await addItem.mutateAsync({
         lojaId: activeLojaId!,
         orcamentoId: id!,
-        data: { tipo: values.tipo, descricao: values.descricao, valorUnitario, quantidade },
+        data: {
+          tipo: values.tipo,
+          descricao: values.descricao,
+          valorUnitario,
+          quantidade,
+          // vestidoId só faz sentido em item de vestido; serviço/ajuste vão sem.
+          ...(values.tipo === "VESTIDO" && values.vestidoId ? { vestidoId: values.vestidoId } : {}),
+        },
       });
       await invalidar();
-      itemForm.reset({ tipo: values.tipo, descricao: "", valorUnitario: "", quantidade: "1" });
+      itemForm.reset({ tipo: values.tipo, vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
       toast({ title: "Erro ao adicionar item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
     }
@@ -535,7 +556,19 @@ export default function OrcamentoDetail() {
               {orcamento.itens.map(item => (
                 <li key={item.id} className="flex justify-between items-center border-b pb-2">
                   <div>
-                    <p className="font-medium">{item.descricao}</p>
+                    <p className="font-medium">
+                      {item.descricao}
+                      {/* E35: item ligado ao catálogo — link para a ficha do vestido. */}
+                      {item.vestidoId && (
+                        <Link
+                          to={`/loja/${activeLojaId}/vestidos/${item.vestidoId}`}
+                          className="ml-2 text-xs font-normal text-muted-foreground underline underline-offset-2 hover:text-primary"
+                          data-testid="link-item-vestido"
+                        >
+                          {vestidoPorId.get(item.vestidoId)?.codigo ?? "no catálogo"}
+                        </Link>
+                      )}
+                    </p>
                     <p className="text-sm text-muted-foreground">Qtd: {item.quantidade} x R$ {brl(item.valorUnitario)}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -599,7 +632,14 @@ export default function OrcamentoDetail() {
                     render={({ field }) => (
                       <FormItem className="w-32">
                         <FormLabel>Tipo</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={(v) => {
+                            field.onChange(v);
+                            // Trocar de tipo desfaz o vínculo com o catálogo.
+                            if (v !== "VESTIDO") itemForm.setValue("vestidoId", "");
+                          }}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -615,6 +655,42 @@ export default function OrcamentoDetail() {
                       </FormItem>
                     )}
                   />
+                  {/* Seletor do catálogo (E35): escolher um vestido preenche
+                      descrição e valor e vincula o item ao estoque. */}
+                  {itemForm.watch("tipo") === "VESTIDO" && (
+                    <div className="w-56 space-y-2">
+                      <label className="text-sm font-medium">Do catálogo</label>
+                      <Select
+                        value={itemForm.watch("vestidoId") || "AVULSO"}
+                        onValueChange={(v) => {
+                          if (v === "AVULSO") {
+                            itemForm.setValue("vestidoId", "");
+                            return;
+                          }
+                          itemForm.setValue("vestidoId", v);
+                          const ves = vestidoPorId.get(v);
+                          if (ves) {
+                            itemForm.setValue("descricao", ves.nome);
+                            itemForm.setValue("valorUnitario", String(ves.precoBase));
+                          }
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-vestido-catalogo">
+                          <SelectValue placeholder="Escolher vestido" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AVULSO">— avulso (digitar) —</SelectItem>
+                          {(vestidos.data ?? [])
+                            .filter((v) => v.status === "ativo")
+                            .map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.codigo} · {v.nome}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <FormField
                     control={itemForm.control}
                     name="descricao"
