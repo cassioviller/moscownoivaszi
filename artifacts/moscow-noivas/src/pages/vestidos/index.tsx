@@ -9,6 +9,8 @@ import {
   useCheckDisponibilidadeVestidos,
   getCheckDisponibilidadeVestidosQueryKey,
   getGetVestidoFotoUrl,
+  useListAtributos,
+  getListAtributosQueryKey,
 } from "@workspace/api-client-react";
 import type { Vestido, DisponibilidadeVestidosItensItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -130,11 +132,26 @@ export default function Vestidos() {
   } = useListVestidos(activeLojaId!, { query: { queryKey: getListVestidosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createVestido = useCreateVestido();
 
+  // Catálogo de atributos (E41): vira filtro por decote/volume etc. — a lista de
+  // vestidos já traz os `atributos` de cada um, aqui vêm os nomes e opções.
+  const { data: atributos } = useListAtributos(activeLojaId!, {
+    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+
   // Filtros client-side simples (busca + selects) — só a data vai para a URL.
   const [busca, setBusca] = useState("");
   const [tamanho, setTamanho] = useState(TODOS);
   const [cor, setCor] = useState(TODOS);
   const [categoria, setCategoria] = useState(TODOS);
+  // atributoId → opcaoId escolhida (E41).
+  const [filtrosAtributo, setFiltrosAtributo] = useState<Record<string, string>>({});
+  // Só os livres na data escolhida (E41) — depende de `dataSelecionada`.
+  const [soDisponiveis, setSoDisponiveis] = useState(false);
+
+  const atributosAtivos = useMemo(
+    () => (atributos ?? []).filter((a) => a.ativo && (a.opcoes ?? []).some((o) => o.ativo)),
+    [atributos],
+  );
 
   // Data do casamento na URL (?data=YYYY-MM-DD) para link compartilhável.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -184,22 +201,33 @@ export default function Vestidos() {
 
   const filtrados = useMemo(() => {
     const consulta = normalizar(busca.trim());
+    const paresAtributo = Object.entries(filtrosAtributo).filter(([, op]) => op && op !== TODOS);
     return (vestidos ?? []).filter((v) => {
       if (consulta && !normalizar(v.nome).includes(consulta) && !normalizar(v.codigo).includes(consulta)) return false;
       if (tamanho !== TODOS && v.tamanho !== tamanho) return false;
       if (cor !== TODOS && v.cor !== cor) return false;
       if (categoria !== TODOS && v.categoria !== categoria) return false;
+      // E41: cada atributo escolhido precisa bater — o vestido tem aquele par.
+      for (const [atributoId, opcaoId] of paresAtributo) {
+        if (!(v.atributos ?? []).some((a) => a.atributoId === atributoId && a.opcaoId === opcaoId)) return false;
+      }
+      // E41: só os livres na data (o toggle só age com data selecionada).
+      if (soDisponiveis && dataSelecionada && !dispPorVestido.get(v.id)?.disponivel) return false;
       return true;
     });
-  }, [vestidos, busca, tamanho, cor, categoria]);
+  }, [vestidos, busca, tamanho, cor, categoria, filtrosAtributo, soDisponiveis, dataSelecionada, dispPorVestido]);
 
-  const temFiltrosAtivos = busca.trim() !== "" || tamanho !== TODOS || cor !== TODOS || categoria !== TODOS || !!dataSelecionada;
+  const temAtributoFiltrado = Object.values(filtrosAtributo).some((op) => op && op !== TODOS);
+  const temFiltrosAtivos =
+    busca.trim() !== "" || tamanho !== TODOS || cor !== TODOS || categoria !== TODOS || !!dataSelecionada || temAtributoFiltrado || soDisponiveis;
 
   function limparFiltros() {
     setBusca("");
     setTamanho(TODOS);
     setCor(TODOS);
     setCategoria(TODOS);
+    setFiltrosAtributo({});
+    setSoDisponiveis(false);
     definirData(null);
   }
 
@@ -434,6 +462,26 @@ export default function Vestidos() {
             ))}
           </SelectContent>
         </Select>
+        {/* E41: um filtro por atributo do catálogo (decote, volume…). */}
+        {atributosAtivos.map((attr) => (
+          <Select
+            key={attr.id}
+            value={filtrosAtributo[attr.id] ?? TODOS}
+            onValueChange={(v) => setFiltrosAtributo((f) => ({ ...f, [attr.id]: v }))}
+          >
+            <SelectTrigger className="w-[150px]" data-testid={`filtro-atributo-${attr.id}`}>
+              <SelectValue placeholder={attr.nome} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>{attr.nome}: todos</SelectItem>
+              {(attr.opcoes ?? [])
+                .filter((o) => o.ativo)
+                .map((o) => (
+                  <SelectItem key={o.id} value={o.id}>{o.valor}</SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        ))}
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
@@ -457,6 +505,19 @@ export default function Vestidos() {
             </Button>
           )}
         </div>
+        {/* E41: filtrar só os livres na data escolhida — a disponibilidade já
+            está resolvida por vestido, aqui vira recorte. */}
+        {dataSelecionada && (
+          <Button
+            variant={soDisponiveis ? "default" : "outline"}
+            size="sm"
+            aria-pressed={soDisponiveis}
+            data-testid="toggle-so-disponiveis"
+            onClick={() => setSoDisponiveis((s) => !s)}
+          >
+            Só disponíveis
+          </Button>
+        )}
         <div className="ml-auto text-sm text-muted-foreground whitespace-nowrap">
           {filtrados.length} de {vestidos?.length ?? 0} vestidos
         </div>
