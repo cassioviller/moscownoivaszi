@@ -62,6 +62,7 @@ import { brl } from "@/lib/formatos";
 import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { ErroListagem, mensagemApi } from "@/pages/financeiro/helpers";
+import { serieDeComissao } from "@/lib/comissao-serie";
 
 /**
  * Comissões: a escada de cada vendedora, o ranking ao vivo do mês e o
@@ -89,6 +90,9 @@ const MOTIVO_FAIXA: Record<string, string> = {
   aberta_no_meio: "Só a última faixa pode ficar sem máximo.",
   sobreposicao: "Duas faixas cobrem o mesmo valor.",
 };
+
+/** Quantos meses fechados a série mostra — um ano dá para ver sazonalidade. */
+const MESES_NA_SERIE = 12;
 
 const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
 const rotuloCompetencia = (c: string) => mesFmt.format(new Date(`${c}-01T12:00:00.000Z`));
@@ -141,6 +145,14 @@ export default function Comissoes() {
       enabled: !!activeLojaId,
     },
   });
+  // Sem filtro: a série (E52) é sobre o histórico, não sobre a competência em
+  // vista. A lista é pequena por natureza — uma linha por vendedora por mês.
+  const historico = useListComissaoFechamentos(activeLojaId!, undefined, {
+    query: {
+      queryKey: getListComissaoFechamentosQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+    },
+  });
   const baixas = useListBaixasEstornoComissao(activeLojaId!, {
     query: {
       queryKey: getListBaixasEstornoComissaoQueryKey(activeLojaId!),
@@ -163,6 +175,18 @@ export default function Comissoes() {
     const linhas = (preview.data ?? []).filter((l) => l.valorTotal > 0);
     return { qtd: linhas.length, total: linhas.reduce((soma, l) => soma + l.valorTotal, 0) };
   }, [preview.data]);
+
+  // A série do custo de comissão (E52): agregação pura sobre o histórico já
+  // persistido — nenhum recálculo, então o número aqui é o que foi pago.
+  const serie = useMemo(
+    () => serieDeComissao(historico.data ?? [], { meses: MESES_NA_SERIE }),
+    [historico.data],
+  );
+  // A escala das barras: contra o MAIOR custo, nunca contra zero.
+  const maiorCusto = useMemo(
+    () => Math.max(...serie.pontos.map((p) => p.custoComissao), 0.01),
+    [serie.pontos],
+  );
 
   // Regra em vias de ser apagada (abre a confirmação nomeando a vendedora).
   const [regraRemovendo, setRegraRemovendo] = useState<{ id: string; nome: string } | null>(null);
@@ -520,6 +544,55 @@ export default function Comissoes() {
           )}
         </CardContent>
       </Card>
+
+      {/* — E52: o custo de comissão ao longo do tempo. O ranking acima é o mês;
+          isto é a tendência, e a taxa efetiva é a pergunta que só aparece
+          olhando vários meses juntos: "a comissão está comendo mais?". — */}
+      {serie.pontos.length > 0 && (
+        <Card data-testid="serie-comissao">
+          <CardHeader>
+            <CardTitle>Custo de comissão no tempo</CardTitle>
+            <CardDescription>
+              Meses já fechados — o que foi de fato pago, não previsão. Taxa efetiva do período:{" "}
+              <span className="font-medium">
+                {serie.taxaEfetivaMedia !== null ? `${serie.taxaEfetivaMedia}%` : "—"}
+              </span>{" "}
+              (R$ {brl(serie.custoTotal)} sobre R$ {brl(serie.totalVendas)} vendidos).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {serie.pontos.map((p) => (
+                <li key={p.competencia} className="space-y-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <span className="text-sm capitalize">{rotuloCompetencia(p.competencia)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      base R$ {brl(p.totalVendas)} · {p.vendedoras}{" "}
+                      {p.vendedoras === 1 ? "vendedora" : "vendedoras"}
+                    </span>
+                    <span className="shrink-0 tabular-nums">
+                      R$ {brl(p.custoComissao)}
+                      {p.taxaEfetiva !== null && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {p.taxaEfetiva}%
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {/* A barra compara o CUSTO entre os meses (contra o maior),
+                      não contra a base: a pergunta aqui é o tamanho da conta. */}
+                  <div className="h-1.5 rounded-sm bg-muted" aria-hidden="true">
+                    <div
+                      className="h-full rounded-sm bg-primary/60"
+                      style={{ width: `${(p.custoComissao / maiorCusto) * 100}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* — Fechamentos da competência — */}
       {jaFechada && (
