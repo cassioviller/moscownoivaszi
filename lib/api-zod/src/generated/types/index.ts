@@ -21,6 +21,8 @@ export * from './ajusteInput';
 export * from './ajusteStatus';
 export * from './ajusteUpdate';
 export * from './ajusteUpdateStatus';
+export * from './alertaCaixa';
+export * from './alertaCaixaMenorSaldo';
 export * from './atendimento';
 export * from './atendimentoDesfecho';
 export * from './atendimentoInput';

@@ -5134,6 +5134,30 @@ export const PagarContaPagarResponse = zod.object({
 
 
 /**
+ * A mesma conta da tela de Projeção reduzida ao que faz alguém agir: o primeiro dia negativo e o piso da curva, partindo do saldo de HOJE (âncora + realizado desde ela). Existe para o dashboard e o hub de fluxo não terem de baixar parcelas, contas, saldos e pagamentos inteiros só para descobrir isso. Sem saldo de referência devolve `ancorado: false` e nada mais — curva sem nível não sustenta alarme.
+ * @summary O veredito da projeção — o caixa fica negativo no horizonte?
+ */
+export const GetAlertaCaixaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getAlertaCaixaResponseDiaNegativoRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAlertaCaixaResponseMenorSaldoDiaRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetAlertaCaixaResponse = zod.object({
+  "ancorado": zod.boolean().describe('false = não há saldo de referência; o resto vem null e não há alerta a dar'),
+  "saldoHoje": zod.number().nullable().describe('Saldo de partida: âncora + realizado desde ela'),
+  "diaNegativo": zod.string().regex(getAlertaCaixaResponseDiaNegativoRegExp).nullable().describe('Primeiro dia em que o saldo projetado fica negativo; null se nunca'),
+  "menorSaldo": zod.object({
+  "dia": zod.string().regex(getAlertaCaixaResponseMenorSaldoDiaRegExp).nullable().describe('null = o piso é o próprio saldo de hoje (nada o derruba)'),
+  "valor": zod.number()
+}).nullable(),
+  "horizonteDias": zod.number()
+})
+
+
+/**
  * @summary Caixa realizado — saídas efetivamente pagas
  */
 export const ListPagamentosParams = zod.object({

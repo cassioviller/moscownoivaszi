@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { ErroListagem } from "./helpers";
+import { AlertaCaixa } from "@/components/alerta-caixa";
 import { brl } from "@/lib/formatos";
 import { resumoCaixa, movimentos, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
 import { baixarCsv, linhasFluxo } from "@/lib/financeiro/exportar";
@@ -210,6 +211,10 @@ export default function FluxoCaixa() {
           </Link>
         </div>
       </div>
+
+      {/* Esta tela é o REALIZADO; o furo mora no previsto, uma tela adiante.
+          O aviso é o que costura as duas — e some quando não há o que avisar. */}
+      <AlertaCaixa />
 
       {/* — Lente de visualização (?ini=&fim=) — */}
       <div className="flex flex-wrap items-end gap-3">

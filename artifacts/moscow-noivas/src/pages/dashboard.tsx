@@ -14,6 +14,7 @@ import { Link } from "@/lib/router-compat";
 import { format } from "date-fns";
 import { Calendar, Users, FileText, CheckCircle2, TrendingUp, Clock } from "lucide-react";
 import { dataDia, etapaLabel } from "@/lib/formatos";
+import { AlertaCaixa } from "@/components/alerta-caixa";
 
 export default function Dashboard() {
   const { activeLojaId } = useAuth();
@@ -79,6 +80,9 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Bem-vindo ao painel da sua loja.</p>
         </div>
       </div>
+
+      {/* Acima dos números: se o caixa vai furar, é a primeira coisa a saber. */}
+      <AlertaCaixa />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="hover-elevate">

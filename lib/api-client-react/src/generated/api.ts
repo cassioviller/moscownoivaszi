@@ -28,6 +28,7 @@ import type {
   AjusteChecklistItemUpdate,
   AjusteInput,
   AjusteUpdate,
+  AlertaCaixa,
   Atendimento,
   AtendimentoInput,
   AtendimentoUpdate,
@@ -8755,6 +8756,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getPagarContaPagarMutationOptions(options));
     }
+
+export const getGetAlertaCaixaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/alerta-caixa`
+}
+
+/**
+ * A mesma conta da tela de Projeção reduzida ao que faz alguém agir: o primeiro dia negativo e o piso da curva, partindo do saldo de HOJE (âncora + realizado desde ela). Existe para o dashboard e o hub de fluxo não terem de baixar parcelas, contas, saldos e pagamentos inteiros só para descobrir isso. Sem saldo de referência devolve `ancorado: false` e nada mais — curva sem nível não sustenta alarme.
+ * @summary O veredito da projeção — o caixa fica negativo no horizonte?
+ */
+export const getAlertaCaixa = async (lojaId: string, options?: RequestInit): Promise<AlertaCaixa> => {
+
+  return customFetch<AlertaCaixa>(getGetAlertaCaixaUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAlertaCaixaQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/alerta-caixa`
+    ] as const;
+    }
+
+
+export const getGetAlertaCaixaQueryOptions = <TData = Awaited<ReturnType<typeof getAlertaCaixa>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAlertaCaixa>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAlertaCaixaQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertaCaixa>>> = ({ signal }) => getAlertaCaixa(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAlertaCaixa>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAlertaCaixaQueryResult = NonNullable<Awaited<ReturnType<typeof getAlertaCaixa>>>
+export type GetAlertaCaixaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary O veredito da projeção — o caixa fica negativo no horizonte?
+ */
+
+export function useGetAlertaCaixa<TData = Awaited<ReturnType<typeof getAlertaCaixa>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAlertaCaixa>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAlertaCaixaQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListPagamentosUrl = (lojaId: string,
     params?: ListPagamentosParams,) => {

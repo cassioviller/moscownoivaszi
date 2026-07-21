@@ -9,7 +9,8 @@ import {
   saldosReferenciaTable,
   auditLogTable,
 } from "@workspace/db";
-import { eq, and, inArray, gte, lt, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, or, inArray, gte, lt, lte, desc, isNull, sql } from "drizzle-orm";
+import { alertaDeCaixa, diaLocal, hojeLocal } from "@workspace/financeiro-core";
 import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
@@ -21,6 +22,7 @@ import {
   CreateSalarioRecorrenteBody,
   UpdateSalarioRecorrenteBody,
   CreateSaldoReferenciaBody,
+  GetAlertaCaixaResponse,
   ListParcelasResponse,
   ListParcelasQueryParams,
   ListContasPagarResponse,
@@ -60,8 +62,8 @@ const router: IRouter = Router();
  * hora do mesmo dia local — o que faz o dedup por (loja, dia) funcionar.
  */
 function ancorarMeioDiaSP(instante: Date | string): Date {
-  const diaLocal = new Date(new Date(instante).getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
-  return new Date(`${diaLocal}T12:00:00-03:00`);
+  const dia = new Date(new Date(instante).getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
+  return new Date(`${dia}T12:00:00-03:00`);
 }
 
 router.use(requireSessaoComLoja);
@@ -465,6 +467,119 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
     })
     .returning();
   res.json(CreateSaldoReferenciaResponse.parse(saldo));
+});
+
+/**
+ * O alerta de caixa (E46): o veredito da projeção, para quem nunca abre a
+ * projeção. A conta é a mesma da tela — saldo de hoje + curva do previsto —,
+ * mas roda AQUI porque o dashboard e o hub de fluxo precisariam, cada um,
+ * baixar parcelas, contas, saldos e pagamentos inteiros só para chegar nela.
+ * Uma conta, um lugar, duas telas: sem over-fetch e sem risco de divergirem.
+ */
+const HORIZONTE_ALERTA = 30;
+
+router.get("/lojas/:lojaId/financeiro/alerta-caixa", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const hoje = hojeLocal();
+
+  // A âncora vem sozinha e primeiro: sem saldo conferido não há alerta a dar, e
+  // as três consultas seguintes seriam trabalho jogado fora. O índice único por
+  // (loja, dia) garante uma linha por dia, então "a mais recente" é exata.
+  const [ancora] = await db
+    .select({ dataReferencia: saldosReferenciaTable.dataReferencia, valor: saldosReferenciaTable.valor })
+    .from(saldosReferenciaTable)
+    .where(
+      and(
+        eq(saldosReferenciaTable.lojaId, lojaId),
+        lte(saldosReferenciaTable.dataReferencia, inicioDoDia(addDias(hoje, 1))),
+      ),
+    )
+    .orderBy(desc(saldosReferenciaTable.dataReferencia))
+    .limit(1);
+
+  if (!ancora) {
+    // Pelo próprio motor, não por um objeto escrito à mão aqui: o formato do
+    // "não sei" é decisão dele.
+    res.json(
+      GetAlertaCaixaResponse.parse(
+        alertaDeCaixa([], [], [], [], { horizonteDias: HORIZONTE_ALERTA, hoje }),
+      ),
+    );
+    return;
+  }
+
+  const ancoraDia = diaLocal(ancora.dataReferencia);
+  // Duas janelas, dois eixos: o saldo olha para TRÁS pelo instante do
+  // recebimento/pagamento; a curva olha para FRENTE pelo vencimento.
+  const saldoDe = inicioDoDia(ancoraDia);
+  const saldoAte = inicioDoDia(addDias(hoje, 1));
+  const curvaDe = inicioDoDia(hoje);
+  const curvaAte = inicioDoDia(addDias(hoje, HORIZONTE_ALERTA + 1));
+
+  const [parcelas, contas, pagamentos] = await Promise.all([
+    // As duas pernas da parcela numa consulta só — as PAGAS alimentam o saldo,
+    // as PREVISTAS alimentam a curva, e cada motor aplica o próprio filtro.
+    db
+      .select({
+        status: parcelasTable.status,
+        recebidoEm: parcelasTable.recebidoEm,
+        valorRecebido: parcelasTable.valorRecebido,
+        vencimento: parcelasTable.vencimento,
+        valorPrevisto: parcelasTable.valorPrevisto,
+      })
+      .from(parcelasTable)
+      .where(
+        and(
+          eq(parcelasTable.lojaId, lojaId),
+          or(
+            and(
+              eq(parcelasTable.status, "PAGA"),
+              gte(parcelasTable.recebidoEm, saldoDe),
+              lt(parcelasTable.recebidoEm, saldoAte),
+            ),
+            and(
+              eq(parcelasTable.status, "PREVISTA"),
+              gte(parcelasTable.vencimento, curvaDe),
+              lt(parcelasTable.vencimento, curvaAte),
+            ),
+          ),
+        ),
+      ),
+    db
+      .select({
+        status: contasPagarTable.status,
+        vencimento: contasPagarTable.vencimento,
+        valorPrevisto: contasPagarTable.valorPrevisto,
+      })
+      .from(contasPagarTable)
+      .where(
+        and(
+          eq(contasPagarTable.lojaId, lojaId),
+          eq(contasPagarTable.status, "PREVISTA"),
+          gte(contasPagarTable.vencimento, curvaDe),
+          lt(contasPagarTable.vencimento, curvaAte),
+        ),
+      ),
+    db
+      .select({ data: pagamentosTable.data, valorPago: pagamentosTable.valorPago })
+      .from(pagamentosTable)
+      .where(
+        and(
+          eq(pagamentosTable.lojaId, lojaId),
+          gte(pagamentosTable.data, saldoDe),
+          lt(pagamentosTable.data, saldoAte),
+        ),
+      ),
+  ]);
+
+  res.json(
+    GetAlertaCaixaResponse.parse(
+      alertaDeCaixa([ancora], parcelas, contas, pagamentos, {
+        horizonteDias: HORIZONTE_ALERTA,
+        hoje,
+      }),
+    ),
+  );
 });
 
 // ───────────────────────── Folha / contabilidade ─────────────────────────

@@ -2252,6 +2252,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContaPagar"
+  /lojas/{lojaId}/financeiro/alerta-caixa:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getAlertaCaixa
+      tags: [financeiro]
+      summary: O veredito da projeção — o caixa fica negativo no horizonte?
+      description: >
+        A mesma conta da tela de Projeção reduzida ao que faz alguém agir: o
+        primeiro dia negativo e o piso da curva, partindo do saldo de HOJE
+        (âncora + realizado desde ela). Existe para o dashboard e o hub de fluxo
+        não terem de baixar parcelas, contas, saldos e pagamentos inteiros só
+        para descobrir isso. Sem saldo de referência devolve `ancorado: false` e
+        nada mais — curva sem nível não sustenta alarme.
+      responses:
+        "200":
+          description: Veredito do caixa no horizonte
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertaCaixa"
   /lojas/{lojaId}/financeiro/pagamentos:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3332,6 +3353,30 @@ components:
                 enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO, null]
                 description: "null = perdido sem motivo registrado (dado legado)"
               total: { type: integer }
+    AlertaCaixa:
+      type: object
+      required: [ancorado, saldoHoje, diaNegativo, menorSaldo, horizonteDias]
+      properties:
+        ancorado:
+          type: boolean
+          description: "false = não há saldo de referência; o resto vem null e não há alerta a dar"
+        saldoHoje:
+          type: ["number", "null"]
+          description: "Saldo de partida: âncora + realizado desde ela"
+        diaNegativo:
+          type: ["string", "null"]
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: "Primeiro dia em que o saldo projetado fica negativo; null se nunca"
+        menorSaldo:
+          type: ["object", "null"]
+          required: [dia, valor]
+          properties:
+            dia:
+              type: ["string", "null"]
+              pattern: '^\d{4}-\d{2}-\d{2}$'
+              description: "null = o piso é o próprio saldo de hoje (nada o derruba)"
+            valor: { type: number }
+        horizonteDias: { type: integer }
     LookbookInput:
       type: object
       required: [leadId, vestidoIds]

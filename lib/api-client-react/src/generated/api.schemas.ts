@@ -657,6 +657,38 @@ export interface ConversaoLeads {
   porMotivoPerda: ConversaoLeadsPorMotivoPerdaItem[];
 }
 
+/**
+ * @nullable
+ */
+export type AlertaCaixaMenorSaldo = {
+  /**
+     * null = o piso é o próprio saldo de hoje (nada o derruba)
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  dia: string | null;
+  valor: number;
+} | null;
+
+export interface AlertaCaixa {
+  /** false = não há saldo de referência; o resto vem null e não há alerta a dar */
+  ancorado: boolean;
+  /**
+     * Saldo de partida: âncora + realizado desde ela
+     * @nullable
+     */
+  saldoHoje: number | null;
+  /**
+     * Primeiro dia em que o saldo projetado fica negativo; null se nunca
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  diaNegativo: string | null;
+  /** @nullable */
+  menorSaldo: AlertaCaixaMenorSaldo;
+  horizonteDias: number;
+}
+
 export interface LookbookInput {
   leadId: string;
   /**
