@@ -1,4 +1,4 @@
-import { dentroDoFuncionamento } from "./slots";
+import { dentroDoFuncionamento, diaDaSemanaLocal } from "./slots";
 
 /**
  * A regra de "esse atendimento pode ir para ali?", em UM lugar.
@@ -14,9 +14,10 @@ import { dentroDoFuncionamento } from "./slots";
  * o mesmo desenho que o E1 provou sob `Promise.all`.
  */
 
-export type MotivoRecusa = "FORA_DO_HORARIO" | "CABINE_OCUPADA" | "VENDEDORA_OCUPADA";
+export type MotivoRecusa = "LOJA_FECHADA" | "FORA_DO_HORARIO" | "CABINE_OCUPADA" | "VENDEDORA_OCUPADA";
 
 export const DETALHE_RECUSA: Record<MotivoRecusa, string> = {
+  LOJA_FECHADA: "a loja não abre nesse dia da semana",
   FORA_DO_HORARIO: "o horário está fora do expediente da loja",
   CABINE_OCUPADA: "já há atendimento nessa cabine nesse horário",
   VENDEDORA_OCUPADA: "a vendedora já tem atendimento nesse horário",
@@ -30,7 +31,7 @@ export type Marcacao = {
   inicio: Date | string;
 };
 
-export type Expediente = { aberturaHora: number; fechamentoHora: number };
+export type Expediente = { aberturaHora: number; fechamentoHora: number; dias?: number[] };
 
 /**
  * Expediente de quem ainda não configurou nada. Espelha os defaults das colunas
@@ -54,6 +55,10 @@ export function recusaDeMover(
   outras: readonly Marcacao[],
   expediente: Expediente,
 ): MotivoRecusa | null {
+  // E38: a loja pode não abrir nesse dia da semana — distinto de fora do horário.
+  if (expediente.dias && !expediente.dias.includes(diaDaSemanaLocal(destino.inicio))) {
+    return "LOJA_FECHADA";
+  }
   if (!dentroDoFuncionamento(destino.inicio, expediente.aberturaHora, expediente.fechamentoHora)) {
     return "FORA_DO_HORARIO";
   }

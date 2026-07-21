@@ -29,6 +29,14 @@ export function horaLocal(instante: Date | string): { hora: number; minuto: numb
   return { hora: Number(h), minuto: Number(m) };
 }
 
+const formatadorDia = new Intl.DateTimeFormat("en-US", { timeZone: FUSO_LOJA, weekday: "short" });
+const NUM_DIA: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/** Dia da semana de um instante no fuso da loja: 0=domingo … 6=sábado. */
+export function diaDaSemanaLocal(instante: Date | string): number {
+  return NUM_DIA[formatadorDia.format(new Date(instante))] ?? 0;
+}
+
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 
 /** "HH:MM" de um par hora/minuto. */
@@ -62,7 +70,11 @@ export function dentroDoFuncionamento(
   instante: Date | string,
   aberturaHora: number,
   fechamentoHora: number,
+  // Dias em que a loja abre (E38). Ausente = sem restrição de dia (loja sem
+  // regra configurada); presente e sem o dia do instante = fechada nesse dia.
+  dias?: number[],
 ): boolean {
+  if (dias && !dias.includes(diaDaSemanaLocal(instante))) return false;
   const { hora } = horaLocal(instante);
   return hora >= aberturaHora && hora < fechamentoHora;
 }

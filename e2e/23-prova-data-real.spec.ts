@@ -21,8 +21,11 @@ test.describe("Prova conclui e carimba a data real (E37)", () => {
     const equipe = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/equipe`);
     const vendedoras = (await equipe.json()) as { usuarioId: string }[];
 
-    // Bloqueio fresco em data distante: não conflita com o do seed (+90d).
-    const casamento = new Date(Date.now() + 200 * 24 * 3600_000).toISOString();
+    // Bloqueio fresco em data distante E única por execução: cada run espalha o
+    // casamento por um offset diferente, senão as ocupações de runs anteriores
+    // (DB persistente) colidiriam entre si (VESTIDO_INDISPONIVEL).
+    const offsetDias = 300 + (Date.now() % 3000);
+    const casamento = new Date(Date.now() + offsetDias * 24 * 3600_000).toISOString();
     const bloq = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/bloqueios`, {
       data: {
         vestidoId: "e2e-vestido-1",

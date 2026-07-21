@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, integer, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -33,6 +33,9 @@ export const regraDisponibilidadeTable = pgTable("regra_disponibilidade", {
   lavagemDiasDepois: integer("lavagem_dias_depois").notNull().default(7),
   atendimentoAberturaHora: integer("atendimento_abertura_hora").notNull().default(9),
   atendimentoFechamentoHora: integer("atendimento_fechamento_hora").notNull().default(19),
+  // Dias da semana em que a loja abre (E38): 0=domingo … 6=sábado. Default
+  // seg–sáb (loja de noiva fecha domingo). Sem dia aberto = agenda fechada.
+  diasFuncionamento: jsonb("dias_funcionamento").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6]),
 });
 
 export const insertRegraDisponibilidadeSchema = createInsertSchema(regraDisponibilidadeTable);

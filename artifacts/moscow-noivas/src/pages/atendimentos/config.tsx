@@ -24,6 +24,10 @@ import { podeNoModulo } from "@/lib/permissoes";
  * feat/orcamentos). O horário vive na regra de disponibilidade da loja
  * (atendimentoAberturaHora/FechamentoHora); salvar preserva os demais campos.
  */
+
+// Índice = dia da semana (0=domingo … 6=sábado), como no diasFuncionamento (E38).
+const DIAS_ROTULO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 export default function ConfigAtendimentos() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
@@ -47,12 +51,15 @@ export default function ConfigAtendimentos() {
   const [nomeCabine, setNomeCabine] = useState("");
   const [abertura, setAbertura] = useState("");
   const [fechamento, setFechamento] = useState("");
+  // Dias em que a loja abre (E38): 0=domingo … 6=sábado.
+  const [dias, setDias] = useState<number[]>([]);
 
   const regra = disponibilidade.data;
   useEffect(() => {
     if (regra) {
       setAbertura(String(regra.atendimentoAberturaHora));
       setFechamento(String(regra.atendimentoFechamentoHora));
+      setDias(regra.diasFuncionamento ?? [1, 2, 3, 4, 5, 6]);
     }
   }, [regra]);
 
@@ -63,6 +70,14 @@ export default function ConfigAtendimentos() {
       toast({
         title: "Horário inválido",
         description: "A abertura deve ser antes do fechamento (0h a 24h).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (dias.length === 0) {
+      toast({
+        title: "Escolha ao menos um dia",
+        description: "Sem nenhum dia aberto, a agenda fica fechada a semana inteira.",
         variant: "destructive",
       });
       return;
@@ -79,6 +94,7 @@ export default function ConfigAtendimentos() {
           lavagemDiasDepois: regra?.lavagemDiasDepois,
           atendimentoAberturaHora: a,
           atendimentoFechamentoHora: f,
+          diasFuncionamento: [...dias].sort((x, y) => x - y),
         },
       });
       await queryClient.invalidateQueries({
@@ -143,43 +159,70 @@ export default function ConfigAtendimentos() {
         </CardHeader>
         <CardContent>
           {podeEditar ? (
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="abertura">Abre (h)</Label>
-                <Input
-                  id="abertura"
-                  type="number"
-                  min={0}
-                  max={23}
-                  className="w-24"
-                  value={abertura}
-                  onChange={(e) => setAbertura(e.target.value)}
-                />
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="abertura">Abre (h)</Label>
+                  <Input
+                    id="abertura"
+                    type="number"
+                    min={0}
+                    max={23}
+                    className="w-24"
+                    value={abertura}
+                    onChange={(e) => setAbertura(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fechamento">Fecha (h)</Label>
+                  <Input
+                    id="fechamento"
+                    type="number"
+                    min={1}
+                    max={24}
+                    className="w-24"
+                    value={fechamento}
+                    onChange={(e) => setFechamento(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="fechamento">Fecha (h)</Label>
-                <Input
-                  id="fechamento"
-                  type="number"
-                  min={1}
-                  max={24}
-                  className="w-24"
-                  value={fechamento}
-                  onChange={(e) => setFechamento(e.target.value)}
-                />
+                <Label>Dias de funcionamento</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DIAS_ROTULO.map((rot, n) => {
+                    const aberto = dias.includes(n);
+                    return (
+                      <Button
+                        key={n}
+                        type="button"
+                        size="sm"
+                        variant={aberto ? "default" : "outline"}
+                        aria-pressed={aberto}
+                        data-testid={`dia-func-${n}`}
+                        onClick={() =>
+                          setDias((ds) => (aberto ? ds.filter((d) => d !== n) : [...ds, n]))
+                        }
+                      >
+                        {rot}
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
               <Button
                 variant="outline"
                 onClick={salvarHorario}
                 disabled={setDisponibilidade.isPending || disponibilidade.isLoading}
               >
-                {setDisponibilidade.isPending ? "Salvando…" : "Salvar horário"}
+                {setDisponibilidade.isPending ? "Salvando…" : "Salvar expediente"}
               </Button>
             </div>
           ) : (
             <p className="text-sm">
               {regra
-                ? `${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h`
+                ? `${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h · ${
+                    regra.diasFuncionamento?.map((d) => DIAS_ROTULO[d]).join(", ") ?? "—"
+                  }`
                 : "Carregando…"}
             </p>
           )}

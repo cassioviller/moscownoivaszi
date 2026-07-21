@@ -1023,6 +1023,12 @@ export interface RegraDisponibilidade {
   lavagemDiasDepois: number;
   atendimentoAberturaHora: number;
   atendimentoFechamentoHora: number;
+  /**
+     * Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  diasFuncionamento: number[];
 }
 
 export interface RegraDisponibilidadeInput {
@@ -1033,6 +1039,11 @@ export interface RegraDisponibilidadeInput {
   lavagemDiasDepois?: number;
   atendimentoAberturaHora?: number;
   atendimentoFechamentoHora?: number;
+  /**
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  diasFuncionamento?: number[];
 }
 
 export type ReservaStatus = typeof ReservaStatus[keyof typeof ReservaStatus];

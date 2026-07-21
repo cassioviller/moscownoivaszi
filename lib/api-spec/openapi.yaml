@@ -3544,7 +3544,7 @@ components:
         status: { type: string, enum: [PENDENTE, FEITO] }
     RegraDisponibilidade:
       type: object
-      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora]
+      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora, diasFuncionamento]
       properties:
         lojaId: { type: string }
         provaDiasAntes: { type: integer }
@@ -3554,6 +3554,10 @@ components:
         lavagemDiasDepois: { type: integer }
         atendimentoAberturaHora: { type: integer }
         atendimentoFechamentoHora: { type: integer }
+        diasFuncionamento:
+          type: array
+          description: "Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)"
+          items: { type: integer, minimum: 0, maximum: 6 }
     RegraDisponibilidadeInput:
       type: object
       properties:
@@ -3564,6 +3568,9 @@ components:
         lavagemDiasDepois: { type: integer }
         atendimentoAberturaHora: { type: integer }
         atendimentoFechamentoHora: { type: integer }
+        diasFuncionamento:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
 
     # ── Reservas ──
     Reserva:

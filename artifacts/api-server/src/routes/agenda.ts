@@ -35,6 +35,7 @@ import {
   recusaDeMover,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
+  diaDaSemanaLocal,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
 import { randomUUID } from "node:crypto";
@@ -63,6 +64,7 @@ async function recusaDeMoverAtendimento(
     ? {
         aberturaHora: regra.atendimentoAberturaHora,
         fechamentoHora: regra.atendimentoFechamentoHora,
+        dias: regra.diasFuncionamento,
       }
     : EXPEDIENTE_PADRAO;
 
@@ -193,6 +195,17 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   ]);
   if (!okLead || !okCabine || !okVend) {
     res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine ou vendedora não são desta loja" });
+    return;
+  }
+
+  // E38: a criação não conferia funcionamento nenhum (só o form do cliente e o
+  // reagendamento faziam) — daí os órfãos. Barrar o dia fechado aqui: a loja
+  // não abre naquele dia da semana, então o atendimento não deveria nascer.
+  const regra = await db.query.regraDisponibilidadeTable.findFirst({
+    where: eq(regraDisponibilidadeTable.lojaId, lojaId),
+  });
+  if (regra && !regra.diasFuncionamento.includes(diaDaSemanaLocal(parsed.data.inicio))) {
+    res.status(422).json({ error: "LOJA_FECHADA", detalhe: DETALHE_RECUSA.LOJA_FECHADA });
     return;
   }
 

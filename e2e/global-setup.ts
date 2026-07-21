@@ -103,10 +103,13 @@ export default async function globalSetup() {
     db.insert(cabinesTable).values({ id: "e2e-cabine-1", lojaId: loja.id, nome: "E2E Cabine" }),
   );
 
-  // Regra de disponibilidade da loja (upsert — unique por loja).
+  // Regra de disponibilidade da loja (upsert — unique por loja). A loja do seed
+  // abre TODOS os dias (E38): assim os testes que criam atendimento "hoje" não
+  // dependem de o dia da suíte cair num dia fechado. O teste do E38 gere e
+  // restaura sua própria configuração de dias.
   await db.insert(regraDisponibilidadeTable)
-    .values({ id: "e2e-regra-disp", lojaId: loja.id, provaDiasAntes: 14, usoDiasAntes: 3, usoDiasDepois: 2, lavagemDiasDepois: 7 })
-    .onConflictDoNothing();
+    .values({ id: "e2e-regra-disp", lojaId: loja.id, provaDiasAntes: 14, usoDiasAntes: 3, usoDiasDepois: 2, lavagemDiasDepois: 7, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] })
+    .onConflictDoUpdate({ target: regraDisponibilidadeTable.lojaId, set: { diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] } });
 
   // Escada de comissão da admin — alvo da tela de comissões. Vigência bem no
   // passado para valer em qualquer competência que o teste olhe. As faixas são

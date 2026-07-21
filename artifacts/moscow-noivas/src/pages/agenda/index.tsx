@@ -118,6 +118,8 @@ export default function Agenda() {
     ? {
         aberturaHora: disponibilidade.data.atendimentoAberturaHora,
         fechamentoHora: disponibilidade.data.atendimentoFechamentoHora,
+        // E38: a grade também recusa o drop num dia fechado (LOJA_FECHADA).
+        dias: disponibilidade.data.diasFuncionamento,
       }
     : EXPEDIENTE_PADRAO;
 
