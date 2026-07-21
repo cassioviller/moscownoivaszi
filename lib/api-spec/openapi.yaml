@@ -2801,6 +2801,28 @@ paths:
                 $ref: "#/components/schemas/SimulacaoComissao"
         "422":
           description: Vendedora fora da loja ou escada inválida
+  /lojas/{lojaId}/comissao/pendencias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listPendenciasComissao
+      tags: [comissao]
+      summary: Competências passadas com venda e sem fechamento (E53)
+      description: >
+        Varredura das últimas competências: onde houve venda e ainda não há
+        fechamento, a pendência aparece. O mês CORRENTE nunca entra — ele ainda
+        pode receber vendas, e o fechamento o recusa. A granularidade é por
+        (competência, vendedora): um mês pode ter fechado para quem já vendia e
+        ganhado depois uma venda de outra pessoa.
+      responses:
+        "200":
+          description: Pendências, da competência mais antiga para a mais recente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendenciaComissao"
   /lojas/{lojaId}/comissao/fechamentos:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -4478,6 +4500,13 @@ components:
         totalPagoReal: { type: number }
         totalSimulado: { type: number }
         totalDiferenca: { type: number }
+    PendenciaComissao:
+      type: object
+      required: [competencia, vendedoras, totalVendas]
+      properties:
+        competencia: { type: string, description: "YYYY-MM" }
+        vendedoras: { type: integer, description: "Quantas ainda não têm fechamento no mês" }
+        totalVendas: { type: number, description: "Base que ainda não virou comissão" }
     ComissaoFechamento:
       type: object
       required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal]

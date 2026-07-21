@@ -5790,6 +5790,22 @@ export const SimularComissaoResponse = zod.object({
 })
 
 
+/**
+ * Varredura das últimas competências: onde houve venda e ainda não há fechamento, a pendência aparece. O mês CORRENTE nunca entra — ele ainda pode receber vendas, e o fechamento o recusa. A granularidade é por (competência, vendedora): um mês pode ter fechado para quem já vendia e ganhado depois uma venda de outra pessoa.
+ * @summary Competências passadas com venda e sem fechamento (E53)
+ */
+export const ListPendenciasComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListPendenciasComissaoResponseItem = zod.object({
+  "competencia": zod.string().describe('YYYY-MM'),
+  "vendedoras": zod.number().describe('Quantas ainda não têm fechamento no mês'),
+  "totalVendas": zod.number().describe('Base que ainda não virou comissão')
+})
+export const ListPendenciasComissaoResponse = zod.array(ListPendenciasComissaoResponseItem)
+
+
 export const ListComissaoFechamentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })

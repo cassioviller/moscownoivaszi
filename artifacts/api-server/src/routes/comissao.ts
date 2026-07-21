@@ -22,6 +22,7 @@ import {
   UpdateComissaoRegraResponse,
   ListComissaoFechamentosResponse,
   ListComissaoFechamentosQueryParams,
+  ListPendenciasComissaoResponse,
   PreviewComissaoQueryParams,
   PreviewComissaoResponse,
   GerarComissaoFechamentoBody,
@@ -44,6 +45,8 @@ import {
   ordenarFaixas,
   proximoDegrau,
   projetarCompetencia,
+  competenciasAnteriores,
+  pendenciasDeFechamento,
   validarFaixas,
   vencimentoComissao,
   type FaixaCalc,
@@ -703,6 +706,68 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
   const visiveis = linhas.filter((l) => vendas.has(l.vendedoraId) || l.estornoPendente > 0);
   visiveis.sort((a, b) => b.valorTotal - a.valorTotal || b.estornoPendente - a.estornoPendente);
   res.json(PreviewComissaoResponse.parse(visiveis));
+});
+
+/**
+ * Quantas competências para trás a varredura olha. Um ano: pendência mais
+ * antiga que isso não é esquecimento, é decisão — e continuar gritando sobre
+ * ela treinaria o alerta a ser ignorado.
+ */
+const MESES_VARREDURA_PENDENCIAS = 12;
+
+// A competência esquecida (E53). Uma consulta para as vendas da janela e outra
+// para os fechamentos dela — não uma por mês: `vendasDaCompetencia` é por
+// competência, e chamá-la 12 vezes faria 12 idas ao banco para responder uma
+// pergunta só.
+router.get("/lojas/:lojaId/comissao/pendencias", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const janela = competenciasAnteriores(competenciaDe(new Date()), MESES_VARREDURA_PENDENCIAS);
+  const { inicio } = limitesCompetencia(janela[0]);
+  const { fim } = limitesCompetencia(janela[janela.length - 1]);
+
+  const [contratos, fechados] = await Promise.all([
+    db
+      .select({
+        vendedoraId: contratosTable.vendedoraId,
+        valorTotal: contratosTable.valorTotal,
+        fechadoEm: contratosTable.fechadoEm,
+      })
+      .from(contratosTable)
+      .where(and(
+        eq(contratosTable.lojaId, lojaId),
+        eq(contratosTable.status, "ATIVO"),
+        gte(contratosTable.fechadoEm, inicio),
+        lt(contratosTable.fechadoEm, fim),
+      )),
+    db
+      .select({
+        competencia: comissaoFechamentosTable.competencia,
+        vendedoraId: comissaoFechamentosTable.vendedoraId,
+      })
+      .from(comissaoFechamentosTable)
+      .where(and(
+        eq(comissaoFechamentosTable.lojaId, lojaId),
+        inArray(comissaoFechamentosTable.competencia, janela),
+      )),
+  ]);
+
+  // A competência do contrato vem do MESMO `competenciaDe` que o fechamento
+  // usa — derivar aqui de outro jeito colocaria uma venda da virada do mês num
+  // mês para a varredura e noutro para o fechamento.
+  const vendas = contratos.map((c) => ({
+    competencia: competenciaDe(c.fechadoEm),
+    vendedoraId: c.vendedoraId,
+    totalC: cent(c.valorTotal),
+  }));
+
+  const pendencias = pendenciasDeFechamento(vendas, fechados, janela);
+  res.json(ListPendenciasComissaoResponse.parse(
+    pendencias.map((p) => ({
+      competencia: p.competencia,
+      vendedoras: p.vendedoras,
+      totalVendas: real(p.totalC),
+    })),
+  ));
 });
 
 // ── Fechamentos ──

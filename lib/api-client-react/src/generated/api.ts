@@ -129,6 +129,7 @@ import type {
   PagamentoInput,
   PagarContaInput,
   Parcela,
+  PendenciaComissao,
   Perfil,
   PerfilInput,
   PerfilOverrideInput,
@@ -10428,6 +10429,84 @@ export const useSimularComissao = <TError = ErrorType<void>,
       > => {
       return useMutation(getSimularComissaoMutationOptions(options));
     }
+
+export const getListPendenciasComissaoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/comissao/pendencias`
+}
+
+/**
+ * Varredura das últimas competências: onde houve venda e ainda não há fechamento, a pendência aparece. O mês CORRENTE nunca entra — ele ainda pode receber vendas, e o fechamento o recusa. A granularidade é por (competência, vendedora): um mês pode ter fechado para quem já vendia e ganhado depois uma venda de outra pessoa.
+ * @summary Competências passadas com venda e sem fechamento (E53)
+ */
+export const listPendenciasComissao = async (lojaId: string, options?: RequestInit): Promise<PendenciaComissao[]> => {
+
+  return customFetch<PendenciaComissao[]>(getListPendenciasComissaoUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPendenciasComissaoQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/comissao/pendencias`
+    ] as const;
+    }
+
+
+export const getListPendenciasComissaoQueryOptions = <TData = Awaited<ReturnType<typeof listPendenciasComissao>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPendenciasComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPendenciasComissaoQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPendenciasComissao>>> = ({ signal }) => listPendenciasComissao(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPendenciasComissao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPendenciasComissaoQueryResult = NonNullable<Awaited<ReturnType<typeof listPendenciasComissao>>>
+export type ListPendenciasComissaoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Competências passadas com venda e sem fechamento (E53)
+ */
+
+export function useListPendenciasComissao<TData = Awaited<ReturnType<typeof listPendenciasComissao>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPendenciasComissao>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPendenciasComissaoQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListComissaoFechamentosUrl = (lojaId: string,
     params?: ListComissaoFechamentosParams,) => {

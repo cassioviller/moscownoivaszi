@@ -2038,6 +2038,15 @@ export interface SimulacaoComissao {
   totalDiferenca: number;
 }
 
+export interface PendenciaComissao {
+  /** YYYY-MM */
+  competencia: string;
+  /** Quantas ainda não têm fechamento no mês */
+  vendedoras: number;
+  /** Base que ainda não virou comissão */
+  totalVendas: number;
+}
+
 export interface ComissaoFechamento {
   id: string;
   lojaId: string;

@@ -14,6 +14,8 @@ import {
   useBaixarEstornoComissao,
   useListBaixasEstornoComissao,
   getListBaixasEstornoComissaoQueryKey,
+  useListPendenciasComissao,
+  getListPendenciasComissaoQueryKey,
   getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
@@ -56,7 +58,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Plus, FlaskConical } from "lucide-react";
+import { Trash2, Plus, FlaskConical, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { brl } from "@/lib/formatos";
 import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
@@ -150,6 +153,14 @@ export default function Comissoes() {
   const historico = useListComissaoFechamentos(activeLojaId!, undefined, {
     query: {
       queryKey: getListComissaoFechamentosQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+    },
+  });
+  // A varredura das competências esquecidas (E53). Sem parâmetro: a pergunta
+  // é sobre o passado inteiro da janela, não sobre a competência em vista.
+  const pendencias = useListPendenciasComissao(activeLojaId!, {
+    query: {
+      queryKey: getListPendenciasComissaoQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },
   });
@@ -290,6 +301,11 @@ export default function Comissoes() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech) }),
         queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
+        // O histórico alimenta a série (E52) e a varredura alimenta o alerta
+        // (E53): fechar acabou de mudar os dois, e um alerta que sobrevive à
+        // ação que o resolve é pior do que alerta nenhum.
+        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!) }),
+        queryClient.invalidateQueries({ queryKey: getListPendenciasComissaoQueryKey(activeLojaId!) }),
       ]);
       toast({
         title: `Fechamento de ${rotuloCompetencia(competencia)} gerado`,
@@ -411,6 +427,38 @@ export default function Comissoes() {
           próximo degrau compensa até o último dia.
         </p>
       </div>
+
+      {/* — E53: a competência esquecida. O fechamento é um mês por vez e nada
+          sinalizava o mês que ficou para trás: a vendedora não recebe, ninguém
+          reclama porque ninguém sabe, e a pendência acumula invisível. Cada
+          linha LEVA à competência — avisar sem dar o caminho é meio aviso. — */}
+      {(pendencias.data?.length ?? 0) > 0 && (
+        <Alert variant="destructive" data-testid="pendencias-comissao">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>
+            {pendencias.data!.length === 1
+              ? "Uma competência passada ainda não foi fechada"
+              : `${pendencias.data!.length} competências passadas ainda não foram fechadas`}
+          </AlertTitle>
+          <AlertDescription className="space-y-1">
+            {pendencias.data!.map((p) => (
+              <div key={p.competencia} className="flex flex-wrap items-baseline gap-x-2">
+                <button
+                  type="button"
+                  className="font-medium capitalize underline underline-offset-4"
+                  onClick={() => trocarCompetencia(p.competencia)}
+                >
+                  {rotuloCompetencia(p.competencia)}
+                </button>
+                <span className="text-xs">
+                  R$ {brl(p.totalVendas)} em vendas · {p.vendedoras}{" "}
+                  {p.vendedoras === 1 ? "vendedora" : "vendedoras"} sem fechamento
+                </span>
+              </div>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid gap-1.5">

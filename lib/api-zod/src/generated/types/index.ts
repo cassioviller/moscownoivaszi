@@ -195,6 +195,7 @@ export * from './parcela';
 export * from './parcelaContrato';
 export * from './parcelaFormaRecebimento';
 export * from './parcelaStatus';
+export * from './pendenciaComissao';
 export * from './perfil';
 export * from './perfilInput';
 export * from './perfilOverrideInput';

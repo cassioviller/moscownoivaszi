@@ -223,6 +223,74 @@ export function competenciaDe(instante: Date): string {
   return new Date(instante.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 7);
 }
 
+/** As `meses` competências ANTERIORES a `competenciaAtual`, da mais antiga à mais recente. */
+export function competenciasAnteriores(competenciaAtual: string, meses: number): string[] {
+  const ano = Number(competenciaAtual.slice(0, 4));
+  const mes = Number(competenciaAtual.slice(5, 7)); // 1..12
+  const out: string[] = [];
+  for (let i = meses; i >= 1; i--) {
+    const d = new Date(Date.UTC(ano, mes - 1 - i, 1));
+    out.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+  }
+  return out;
+}
+
+export type VendaPorFechar = { competencia: string; vendedoraId: string; totalC: number };
+
+export type PendenciaFechamento = {
+  competencia: string;
+  /** Quantas vendedoras ainda não têm fechamento nesta competência. */
+  vendedoras: number;
+  /** Centavos — a base que ainda não virou comissão. */
+  totalC: number;
+};
+
+/**
+ * As competências passadas que têm venda e ainda não fecharam (E53).
+ *
+ * O fechamento é um mês por vez e nada sinalizava o mês esquecido: a vendedora
+ * não recebe, ninguém reclama porque ninguém sabe, e a pendência se acumula
+ * invisível — até virar uma conversa difícil meses depois.
+ *
+ * A granularidade é por (competência, VENDEDORA), não por competência: um mês
+ * pode ter fechado para quem já vendia e ter ganhado depois uma venda de outra
+ * pessoa (contrato reativado, por exemplo). Olhar só "esta competência tem
+ * algum fechamento?" daria o mês por resolvido e esconderia exatamente esse
+ * caso — que é o mais difícil de descobrir à mão.
+ *
+ * O mês CORRENTE nunca entra: ele ainda pode receber vendas, e o próprio
+ * fechamento o recusa.
+ */
+export function pendenciasDeFechamento(
+  vendas: readonly VendaPorFechar[],
+  jaFechados: readonly { competencia: string; vendedoraId: string }[],
+  competenciasDaJanela: readonly string[],
+): PendenciaFechamento[] {
+  const fechado = new Set(jaFechados.map((f) => `${f.competencia}|${f.vendedoraId}`));
+  const janela = new Set(competenciasDaJanela);
+
+  // `vendas` chega uma linha por CONTRATO: a contagem é de PESSOAS a fechar,
+  // então a vendedora com três contratos no mês continua sendo uma.
+  const porComp = new Map<string, { vendedoras: Set<string>; totalC: number }>();
+  for (const v of vendas) {
+    if (!janela.has(v.competencia)) continue;
+    if (fechado.has(`${v.competencia}|${v.vendedoraId}`)) continue;
+    const atual = porComp.get(v.competencia) ?? { vendedoras: new Set<string>(), totalC: 0 };
+    atual.vendedoras.add(v.vendedoraId);
+    atual.totalC += v.totalC;
+    porComp.set(v.competencia, atual);
+  }
+
+  return [...porComp.entries()]
+    .map(([competencia, { vendedoras, totalC }]) => ({
+      competencia,
+      vendedoras: vendedoras.size,
+      totalC,
+    }))
+    // Mais antiga primeiro: é a que está esquecida há mais tempo.
+    .sort((a, b) => a.competencia.localeCompare(b.competencia));
+}
+
 /** Vencimento da conta de comissão: dia 5 do mês seguinte à competência. */
 export function vencimentoComissao(competencia: string): Date {
   const { fim } = limitesCompetencia(competencia);
