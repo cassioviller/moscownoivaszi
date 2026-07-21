@@ -2465,61 +2465,70 @@ paths:
                 type: string
         "400":
           description: Intervalo inválido
-  /lojas/{lojaId}/financeiro/salarios-recorrentes:
+  /lojas/{lojaId}/financeiro/recorrencias:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
-      operationId: listSalariosRecorrentes
+      operationId: listRecorrencias
       tags: [financeiro]
+      summary: O que se repete todo mês — salário, aluguel, assinatura, fornecedor
       responses:
         "200":
-          description: List of salarios
+          description: Recorrências da loja
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SalarioRecorrente"
+                  $ref: "#/components/schemas/Recorrencia"
     post:
-      operationId: createSalarioRecorrente
+      operationId: createRecorrencia
       tags: [financeiro]
+      description: >
+        SALARIO exige `usuarioId` (e só um ativo por pessoa); DESPESA e
+        FORNECEDOR exigem `descricao` — sem ela a conta gerada não teria como
+        se chamar.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SalarioRecorrenteInput"
+              $ref: "#/components/schemas/RecorrenciaInput"
       responses:
         "201":
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SalarioRecorrente"
-  /lojas/{lojaId}/financeiro/salarios-recorrentes/{salarioId}:
+                $ref: "#/components/schemas/Recorrencia"
+        "400":
+          description: Campos incompatíveis com o tipo (RECORRENCIA_INVALIDA)
+        "409":
+          description: Já existe salário ativo para esta pessoa (SALARIO_ATIVO_EXISTENTE)
+  /lojas/{lojaId}/financeiro/recorrencias/{recorrenciaId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
-      - name: salarioId
+      - name: recorrenciaId
         in: path
         required: true
         schema:
           type: string
     patch:
-      operationId: updateSalarioRecorrente
+      operationId: updateRecorrencia
       tags: [financeiro]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SalarioRecorrenteUpdate"
+              $ref: "#/components/schemas/RecorrenciaUpdate"
       responses:
         "200":
           description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SalarioRecorrente"
+                $ref: "#/components/schemas/Recorrencia"
   /lojas/{lojaId}/financeiro/saldos-referencia:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -2553,17 +2562,18 @@ paths:
                 $ref: "#/components/schemas/SaldoReferencia"
 
   # ───────────────────────── Folha / contabilidade ─────────────────────────
-  /lojas/{lojaId}/financeiro/folha:
+  /lojas/{lojaId}/financeiro/recorrencias/gerar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     post:
-      operationId: gerarFolha
+      operationId: gerarRecorrencias
       tags: [financeiro]
-      summary: Gera a folha da competência a partir dos salários recorrentes ativos
+      summary: Gera as contas da competência a partir das recorrências ativas
       description: >
-        Idempotente: cada salário recorrente ativo vira NO MÁXIMO uma conta a
-        pagar SALARIO por competência. Reexecutar responde `geradas: 0` —
-        é o que torna seguro clicar de novo depois de um erro de rede.
+        Salário, aluguel, assinatura e fornecedor fixo pelo mesmo caminho (E48).
+        Idempotente: cada recorrência ativa vira NO MÁXIMO uma conta a pagar por
+        competência. Reexecutar responde `geradas: 0` — é o que torna seguro
+        clicar de novo depois de um erro de rede.
       requestBody:
         required: true
         content:
@@ -2572,7 +2582,7 @@ paths:
               $ref: "#/components/schemas/FolhaInput"
       responses:
         "200":
-          description: Folha gerada (geradas pode ser 0 numa reexecução)
+          description: Competência gerada (geradas pode ser 0 numa reexecução)
           content:
             application/json:
               schema:
@@ -4165,6 +4175,10 @@ components:
         valorPrevisto: { type: number }
         vencimento: { type: string, format: date-time }
         status: { type: string, enum: [PREVISTA, PAGA] }
+        # Rastro da geração (E48): preenchido só nas contas que nasceram de uma
+        # recorrência. É o que deixa a tela separar o que o motor lançou do que
+        # alguém digitou à mão na mesma competência.
+        recorrenciaId: { type: ["string", "null"] }
     ContaPagarInput:
       type: object
       required: [tipo, descricao, valorPrevisto, vencimento]
@@ -4233,26 +4247,40 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PagamentoItem"
-    SalarioRecorrente:
+    # O que se repete todo mês (E48). `tipo` decide quais campos importam:
+    # SALARIO usa `usuarioId` e deriva a descrição de quem recebe; DESPESA e
+    # FORNECEDOR usam `descricao` (e, se quiserem, categoria/fornecedor).
+    Recorrencia:
       type: object
-      required: [id, lojaId, usuarioId, valor, diaVencimento, ativo]
+      required: [id, lojaId, tipo, valor, diaVencimento, ativo]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        usuarioId: { type: string }
+        tipo: { type: string, enum: [SALARIO, DESPESA, FORNECEDOR] }
+        usuarioId: { type: ["string", "null"] }
+        descricao: { type: ["string", "null"] }
+        categoria: { type: ["string", "null"] }
+        fornecedor: { type: ["string", "null"] }
         valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
-    SalarioRecorrenteInput:
+    RecorrenciaInput:
       type: object
-      required: [usuarioId, valor, diaVencimento]
+      required: [tipo, valor, diaVencimento]
       properties:
-        usuarioId: { type: string }
+        tipo: { type: string, enum: [SALARIO, DESPESA, FORNECEDOR] }
+        usuarioId: { type: string, description: "Obrigatório para SALARIO" }
+        descricao: { type: string, minLength: 1, description: "Obrigatório para DESPESA/FORNECEDOR" }
+        categoria: { type: string }
+        fornecedor: { type: string }
         valor: { type: number }
         diaVencimento: { type: integer }
-    SalarioRecorrenteUpdate:
+    RecorrenciaUpdate:
       type: object
       properties:
+        descricao: { type: string, minLength: 1 }
+        categoria: { type: string }
+        fornecedor: { type: string }
         valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
@@ -4261,8 +4289,8 @@ components:
       required: [competencia]
       properties:
         competencia: { type: string, pattern: '^\d{4}-\d{2}$' }
-    # `geradas` é 0 numa reexecução — o sinal de que a folha daquela
-    # competência já existe, não um erro.
+    # `geradas` é 0 numa reexecução — o sinal de que a competência já foi
+    # gerada, não um erro.
     FolhaGerada:
       type: object
       required: [geradas, contas]

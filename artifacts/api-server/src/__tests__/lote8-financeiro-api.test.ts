@@ -77,13 +77,13 @@ describe("Lote 8 — financeiro auditável", () => {
   it("salário recorrente persiste usuarioId/valor (antes 500 por colunas fantasma)", async () => {
     const agent = await loginComLoja(f.superAdminEmail, f.lojaId);
     const criado = await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes`)
-      .send({ usuarioId: f.vendedoraId, valor: 2800, diaVencimento: 5 })
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias`)
+      .send({ tipo: "SALARIO", usuarioId: f.vendedoraId, valor: 2800, diaVencimento: 5 })
       .expect(201);
     expect(criado.body.usuarioId).toBe(f.vendedoraId);
     expect(criado.body.valor).toBe(2800);
 
-    const lista = await agent.get(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes`).expect(200);
+    const lista = await agent.get(`/api/lojas/${f.lojaId}/financeiro/recorrencias`).expect(200);
     expect(lista.body.some((s: { id: string }) => s.id === criado.body.id)).toBe(true);
   });
 

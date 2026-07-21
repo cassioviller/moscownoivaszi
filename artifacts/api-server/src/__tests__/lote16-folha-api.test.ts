@@ -16,8 +16,8 @@ describe("Lote 16 — folha de pagamento (API)", () => {
     f = await criarFixture();
     agent = await loginComLoja(f.superAdminEmail, f.lojaId);
     await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes`)
-      .send({ usuarioId: f.vendedoraId, valor: 3200, diaVencimento: 5 })
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias`)
+      .send({ tipo: "SALARIO", usuarioId: f.vendedoraId, valor: 3200, diaVencimento: 5 })
       .expect(201);
   });
 
@@ -28,7 +28,7 @@ describe("Lote 16 — folha de pagamento (API)", () => {
 
   it("gera a folha da competência a partir do salário recorrente ativo", async () => {
     const res = await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/folha`)
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`)
       .send({ competencia })
       .expect(200);
 
@@ -46,7 +46,7 @@ describe("Lote 16 — folha de pagamento (API)", () => {
 
   it("rodar de novo gera 0 — reexecutar é seguro", async () => {
     const res = await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/folha`)
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`)
       .send({ competencia })
       .expect(200);
     expect(res.body).toEqual({ geradas: 0, contas: [] });
@@ -59,7 +59,7 @@ describe("Lote 16 — folha de pagamento (API)", () => {
 
   it("competência inválida é 400", async () => {
     await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/folha`)
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`)
       .send({ competencia: "2029-13" })
       .expect(400);
   });
@@ -69,8 +69,8 @@ describe("Lote 16 — folha de pagamento (API)", () => {
     // leem "nada feito" e ambos inserem. O índice único parcial impede.
     const comp = "2029-08";
     const [r1, r2] = await Promise.all([
-      agent.post(`/api/lojas/${f.lojaId}/financeiro/folha`).send({ competencia: comp }),
-      agent.post(`/api/lojas/${f.lojaId}/financeiro/folha`).send({ competencia: comp }),
+      agent.post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`).send({ competencia: comp }),
+      agent.post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`).send({ competencia: comp }),
     ]);
     expect([r1.status, r2.status]).toEqual([200, 200]);
     // Exatamente um dos dois gerou a conta; o outro reportou 0. Nunca os dois.
@@ -83,8 +83,8 @@ describe("Lote 16 — folha de pagamento (API)", () => {
 
   it("colaborador com salário ativo não ganha um segundo — 409", async () => {
     await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes`)
-      .send({ usuarioId: f.vendedoraId, valor: 4000, diaVencimento: 10 })
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias`)
+      .send({ tipo: "SALARIO", usuarioId: f.vendedoraId, valor: 4000, diaVencimento: 10 })
       .expect(409);
   });
 
@@ -146,15 +146,15 @@ describe("Lote 16 — folha de pagamento (API)", () => {
 
   it("salário inativo sai da folha do mês seguinte", async () => {
     const salarios = await agent
-      .get(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes`)
+      .get(`/api/lojas/${f.lojaId}/financeiro/recorrencias`)
       .expect(200);
     await agent
-      .patch(`/api/lojas/${f.lojaId}/financeiro/salarios-recorrentes/${salarios.body[0].id}`)
+      .patch(`/api/lojas/${f.lojaId}/financeiro/recorrencias/${salarios.body[0].id}`)
       .send({ ativo: false })
       .expect(200);
 
     const res = await agent
-      .post(`/api/lojas/${f.lojaId}/financeiro/folha`)
+      .post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`)
       .send({ competencia: "2029-05" })
       .expect(200);
     expect(res.body.geradas).toBe(0);
@@ -163,7 +163,7 @@ describe("Lote 16 — folha de pagamento (API)", () => {
   it("o gate do módulo vale para as rotas novas", async () => {
     // A vendedora não tem o módulo financeiro no perfil da fixture.
     const semAcesso = await loginComLoja(f.vendedoraEmail, f.lojaId);
-    await semAcesso.post(`/api/lojas/${f.lojaId}/financeiro/folha`).send({ competencia }).expect(403);
+    await semAcesso.post(`/api/lojas/${f.lojaId}/financeiro/recorrencias/gerar`).send({ competencia }).expect(403);
     await semAcesso.get(`/api/lojas/${f.lojaId}/financeiro/folha/exportar`).expect(403);
   });
 });

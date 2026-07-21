@@ -91,8 +91,9 @@ rode o codegen.
   saída multi-conta, cobrança por faixa de atraso).
 - **Comissão** — escada por vendedora, versionada por vigência, com bônus,
   preview ao vivo do mês e fechamento idempotente que gera a conta a pagar.
-- **Folha** — geração idempotente a partir dos salários recorrentes e fecho com
-  a contabilidade (export CSV).
+- **Recorrências** — o que se repete todo mês (salário, aluguel, assinatura,
+  fornecedor fixo) vira conta a pagar por geração idempotente por competência,
+  e o período fecha com a contabilidade (export CSV).
 - **Multi-loja** — tudo é escopado por loja; superadmin tem bypass.
 
 ## Gotchas
@@ -101,7 +102,9 @@ rode o codegen.
   pergunta "renomeou ou removeu?" e não há terminal interativo aqui. Aplique o
   DDL equivalente por `psql "$DATABASE_URL"` (em transação, com uma guarda que
   aborta se a tabela não estiver no estado esperado) e rode o push depois — ele
-  confirma com "Changes applied", sem prompt.
+  confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
+  `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
+  existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
 - **`lib/api-zod` é consumido COMPILADO.** Depois do codegen, rode
   `npx tsc --build` na raiz, senão as rotas continuam vendo o contrato antigo e
   o erro de tipo aponta para o lugar errado.

@@ -25,7 +25,7 @@ test.describe("Onda 5 — folha", () => {
   test("/financeiro/folha monta e carrega dados sem erro de API", async ({ page }) => {
     const falhas = observarApi(page);
     await page.goto("/financeiro/folha");
-    await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recorrências do mês", exact: true })).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(falhas, `Chamadas de API falharam: ${falhas.join(", ")}`).toEqual([]);
   });
@@ -33,10 +33,10 @@ test.describe("Onda 5 — folha", () => {
   test("a folha é alcançável a partir de contas a pagar", async ({ page }) => {
     await page.goto("/financeiro/pagar");
     await page.getByRole("link", { name: /Folha/ }).first().click();
-    await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recorrências do mês", exact: true })).toBeVisible();
   });
 
-  test("nenhum 'Invalid Date' ou 'NaN' na folha", async ({ page }) => {
+  test("nenhum 'Invalid Date' ou 'NaN' nas recorrências", async ({ page }) => {
     await page.goto("/financeiro/folha");
     await page.waitForLoadState("networkidle");
     const corpo = (await page.locator("main, body").first().textContent()) ?? "";
@@ -69,14 +69,14 @@ test.describe("Onda 5 — folha", () => {
     }
   });
 
-  test("PROBE API: gerar a folha é idempotente", async ({ request }) => {
+  test("PROBE API: gerar a competência é idempotente", async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
     });
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
     const gerar = () =>
-      request.post(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/folha`, {
+      request.post(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/recorrencias/gerar`, {
         data: { competencia: "2025-01" },
       });
 
@@ -89,7 +89,7 @@ test.describe("Onda 5 — folha", () => {
     // Rodar de novo não pode pagar ninguém duas vezes.
     const segunda = await gerar();
     expect(segunda.status()).toBe(200);
-    expect((await segunda.json()).geradas, "reexecutar a folha não pode gerar de novo").toBe(0);
+    expect((await segunda.json()).geradas, "reexecutar a geração não pode gerar de novo").toBe(0);
   });
 });
 

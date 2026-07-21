@@ -137,6 +137,9 @@ import type {
   PreviewComissaoParams,
   ProximaJanelaVestido,
   ReceberParcelaInput,
+  Recorrencia,
+  RecorrenciaInput,
+  RecorrenciaUpdate,
   RegistroCobranca,
   RegistroCobrancaInput,
   RegraDisponibilidade,
@@ -144,9 +147,6 @@ import type {
   Reserva,
   ReservaInput,
   ReservaUpdate,
-  SalarioRecorrente,
-  SalarioRecorrenteInput,
-  SalarioRecorrenteUpdate,
   SaldoReferencia,
   SaldoReferenciaInput,
   SelecionarLojaInput,
@@ -9328,17 +9328,20 @@ export function useExportarAuditoria<TData = Awaited<ReturnType<typeof exportarA
 
 
 
-export const getListSalariosRecorrentesUrl = (lojaId: string,) => {
+export const getListRecorrenciasUrl = (lojaId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/financeiro/salarios-recorrentes`
+  return `/api/lojas/${lojaId}/financeiro/recorrencias`
 }
 
-export const listSalariosRecorrentes = async (lojaId: string, options?: RequestInit): Promise<SalarioRecorrente[]> => {
+/**
+ * @summary O que se repete todo mês — salário, aluguel, assinatura, fornecedor
+ */
+export const listRecorrencias = async (lojaId: string, options?: RequestInit): Promise<Recorrencia[]> => {
 
-  return customFetch<SalarioRecorrente[]>(getListSalariosRecorrentesUrl(lojaId),
+  return customFetch<Recorrencia[]>(getListRecorrenciasUrl(lojaId),
   {
     ...options,
     method: 'GET'
@@ -9351,42 +9354,45 @@ export const listSalariosRecorrentes = async (lojaId: string, options?: RequestI
 
 
 
-export const getListSalariosRecorrentesQueryKey = (lojaId: string,) => {
+export const getListRecorrenciasQueryKey = (lojaId: string,) => {
     return [
-    `/api/lojas/${lojaId}/financeiro/salarios-recorrentes`
+    `/api/lojas/${lojaId}/financeiro/recorrencias`
     ] as const;
     }
 
 
-export const getListSalariosRecorrentesQueryOptions = <TData = Awaited<ReturnType<typeof listSalariosRecorrentes>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSalariosRecorrentes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListRecorrenciasQueryOptions = <TData = Awaited<ReturnType<typeof listRecorrencias>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecorrencias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListSalariosRecorrentesQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListRecorrenciasQueryKey(lojaId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSalariosRecorrentes>>> = ({ signal }) => listSalariosRecorrentes(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecorrencias>>> = ({ signal }) => listRecorrencias(lojaId, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSalariosRecorrentes>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecorrencias>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type ListSalariosRecorrentesQueryResult = NonNullable<Awaited<ReturnType<typeof listSalariosRecorrentes>>>
-export type ListSalariosRecorrentesQueryError = ErrorType<unknown>
+export type ListRecorrenciasQueryResult = NonNullable<Awaited<ReturnType<typeof listRecorrencias>>>
+export type ListRecorrenciasQueryError = ErrorType<unknown>
 
 
+/**
+ * @summary O que se repete todo mês — salário, aluguel, assinatura, fornecedor
+ */
 
-export function useListSalariosRecorrentes<TData = Awaited<ReturnType<typeof listSalariosRecorrentes>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSalariosRecorrentes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListRecorrencias<TData = Awaited<ReturnType<typeof listRecorrencias>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecorrencias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListSalariosRecorrentesQueryOptions(lojaId,options)
+  const queryOptions = getListRecorrenciasQueryOptions(lojaId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -9399,34 +9405,37 @@ export function useListSalariosRecorrentes<TData = Awaited<ReturnType<typeof lis
 
 
 
-export const getCreateSalarioRecorrenteUrl = (lojaId: string,) => {
+export const getCreateRecorrenciaUrl = (lojaId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/financeiro/salarios-recorrentes`
+  return `/api/lojas/${lojaId}/financeiro/recorrencias`
 }
 
-export const createSalarioRecorrente = async (lojaId: string,
-    salarioRecorrenteInput: SalarioRecorrenteInput, options?: RequestInit): Promise<SalarioRecorrente> => {
+/**
+ * SALARIO exige `usuarioId` (e só um ativo por pessoa); DESPESA e FORNECEDOR exigem `descricao` — sem ela a conta gerada não teria como se chamar.
+ */
+export const createRecorrencia = async (lojaId: string,
+    recorrenciaInput: RecorrenciaInput, options?: RequestInit): Promise<Recorrencia> => {
 
-  return customFetch<SalarioRecorrente>(getCreateSalarioRecorrenteUrl(lojaId),
+  return customFetch<Recorrencia>(getCreateRecorrenciaUrl(lojaId),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(salarioRecorrenteInput)
+    body: JSON.stringify(recorrenciaInput)
   }
 );}
 
 
 
 
-export const getCreateSalarioRecorrenteMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSalarioRecorrente>>, TError,{lojaId: string;data: BodyType<SalarioRecorrenteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createSalarioRecorrente>>, TError,{lojaId: string;data: BodyType<SalarioRecorrenteInput>}, TContext> => {
+export const getCreateRecorrenciaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRecorrencia>>, TError,{lojaId: string;data: BodyType<RecorrenciaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRecorrencia>>, TError,{lojaId: string;data: BodyType<RecorrenciaInput>}, TContext> => {
 
-const mutationKey = ['createSalarioRecorrente'];
+const mutationKey = ['createRecorrencia'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -9436,10 +9445,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSalarioRecorrente>>, {lojaId: string;data: BodyType<SalarioRecorrenteInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRecorrencia>>, {lojaId: string;data: BodyType<RecorrenciaInput>}> = (props) => {
           const {lojaId,data} = props ?? {};
 
-          return  createSalarioRecorrente(lojaId,data,requestOptions)
+          return  createRecorrencia(lojaId,data,requestOptions)
         }
 
 
@@ -9449,51 +9458,51 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type CreateSalarioRecorrenteMutationResult = NonNullable<Awaited<ReturnType<typeof createSalarioRecorrente>>>
-    export type CreateSalarioRecorrenteMutationBody = BodyType<SalarioRecorrenteInput>
-    export type CreateSalarioRecorrenteMutationError = ErrorType<unknown>
+    export type CreateRecorrenciaMutationResult = NonNullable<Awaited<ReturnType<typeof createRecorrencia>>>
+    export type CreateRecorrenciaMutationBody = BodyType<RecorrenciaInput>
+    export type CreateRecorrenciaMutationError = ErrorType<void>
 
-    export const useCreateSalarioRecorrente = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSalarioRecorrente>>, TError,{lojaId: string;data: BodyType<SalarioRecorrenteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    export const useCreateRecorrencia = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRecorrencia>>, TError,{lojaId: string;data: BodyType<RecorrenciaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof createSalarioRecorrente>>,
+        Awaited<ReturnType<typeof createRecorrencia>>,
         TError,
-        {lojaId: string;data: BodyType<SalarioRecorrenteInput>},
+        {lojaId: string;data: BodyType<RecorrenciaInput>},
         TContext
       > => {
-      return useMutation(getCreateSalarioRecorrenteMutationOptions(options));
+      return useMutation(getCreateRecorrenciaMutationOptions(options));
     }
 
-export const getUpdateSalarioRecorrenteUrl = (lojaId: string,
-    salarioId: string,) => {
+export const getUpdateRecorrenciaUrl = (lojaId: string,
+    recorrenciaId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/financeiro/salarios-recorrentes/${salarioId}`
+  return `/api/lojas/${lojaId}/financeiro/recorrencias/${recorrenciaId}`
 }
 
-export const updateSalarioRecorrente = async (lojaId: string,
-    salarioId: string,
-    salarioRecorrenteUpdate: SalarioRecorrenteUpdate, options?: RequestInit): Promise<SalarioRecorrente> => {
+export const updateRecorrencia = async (lojaId: string,
+    recorrenciaId: string,
+    recorrenciaUpdate: RecorrenciaUpdate, options?: RequestInit): Promise<Recorrencia> => {
 
-  return customFetch<SalarioRecorrente>(getUpdateSalarioRecorrenteUrl(lojaId,salarioId),
+  return customFetch<Recorrencia>(getUpdateRecorrenciaUrl(lojaId,recorrenciaId),
   {
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(salarioRecorrenteUpdate)
+    body: JSON.stringify(recorrenciaUpdate)
   }
 );}
 
 
 
 
-export const getUpdateSalarioRecorrenteMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSalarioRecorrente>>, TError,{lojaId: string;salarioId: string;data: BodyType<SalarioRecorrenteUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateSalarioRecorrente>>, TError,{lojaId: string;salarioId: string;data: BodyType<SalarioRecorrenteUpdate>}, TContext> => {
+export const getUpdateRecorrenciaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRecorrencia>>, TError,{lojaId: string;recorrenciaId: string;data: BodyType<RecorrenciaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRecorrencia>>, TError,{lojaId: string;recorrenciaId: string;data: BodyType<RecorrenciaUpdate>}, TContext> => {
 
-const mutationKey = ['updateSalarioRecorrente'];
+const mutationKey = ['updateRecorrencia'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -9503,10 +9512,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSalarioRecorrente>>, {lojaId: string;salarioId: string;data: BodyType<SalarioRecorrenteUpdate>}> = (props) => {
-          const {lojaId,salarioId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRecorrencia>>, {lojaId: string;recorrenciaId: string;data: BodyType<RecorrenciaUpdate>}> = (props) => {
+          const {lojaId,recorrenciaId,data} = props ?? {};
 
-          return  updateSalarioRecorrente(lojaId,salarioId,data,requestOptions)
+          return  updateRecorrencia(lojaId,recorrenciaId,data,requestOptions)
         }
 
 
@@ -9516,19 +9525,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UpdateSalarioRecorrenteMutationResult = NonNullable<Awaited<ReturnType<typeof updateSalarioRecorrente>>>
-    export type UpdateSalarioRecorrenteMutationBody = BodyType<SalarioRecorrenteUpdate>
-    export type UpdateSalarioRecorrenteMutationError = ErrorType<unknown>
+    export type UpdateRecorrenciaMutationResult = NonNullable<Awaited<ReturnType<typeof updateRecorrencia>>>
+    export type UpdateRecorrenciaMutationBody = BodyType<RecorrenciaUpdate>
+    export type UpdateRecorrenciaMutationError = ErrorType<unknown>
 
-    export const useUpdateSalarioRecorrente = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSalarioRecorrente>>, TError,{lojaId: string;salarioId: string;data: BodyType<SalarioRecorrenteUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    export const useUpdateRecorrencia = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRecorrencia>>, TError,{lojaId: string;recorrenciaId: string;data: BodyType<RecorrenciaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof updateSalarioRecorrente>>,
+        Awaited<ReturnType<typeof updateRecorrencia>>,
         TError,
-        {lojaId: string;salarioId: string;data: BodyType<SalarioRecorrenteUpdate>},
+        {lojaId: string;recorrenciaId: string;data: BodyType<RecorrenciaUpdate>},
         TContext
       > => {
-      return useMutation(getUpdateSalarioRecorrenteMutationOptions(options));
+      return useMutation(getUpdateRecorrenciaMutationOptions(options));
     }
 
 export const getListSaldoReferenciaUrl = (lojaId: string,) => {
@@ -9667,22 +9676,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateSaldoReferenciaMutationOptions(options));
     }
 
-export const getGerarFolhaUrl = (lojaId: string,) => {
+export const getGerarRecorrenciasUrl = (lojaId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/financeiro/folha`
+  return `/api/lojas/${lojaId}/financeiro/recorrencias/gerar`
 }
 
 /**
- * Idempotente: cada salário recorrente ativo vira NO MÁXIMO uma conta a pagar SALARIO por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
- * @summary Gera a folha da competência a partir dos salários recorrentes ativos
+ * Salário, aluguel, assinatura e fornecedor fixo pelo mesmo caminho (E48). Idempotente: cada recorrência ativa vira NO MÁXIMO uma conta a pagar por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
+ * @summary Gera as contas da competência a partir das recorrências ativas
  */
-export const gerarFolha = async (lojaId: string,
+export const gerarRecorrencias = async (lojaId: string,
     folhaInput: FolhaInput, options?: RequestInit): Promise<FolhaGerada> => {
 
-  return customFetch<FolhaGerada>(getGerarFolhaUrl(lojaId),
+  return customFetch<FolhaGerada>(getGerarRecorrenciasUrl(lojaId),
   {
     ...options,
     method: 'POST',
@@ -9694,11 +9703,11 @@ export const gerarFolha = async (lojaId: string,
 
 
 
-export const getGerarFolhaMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gerarFolha>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof gerarFolha>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext> => {
+export const getGerarRecorrenciasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gerarRecorrencias>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof gerarRecorrencias>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext> => {
 
-const mutationKey = ['gerarFolha'];
+const mutationKey = ['gerarRecorrencias'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -9708,10 +9717,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gerarFolha>>, {lojaId: string;data: BodyType<FolhaInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gerarRecorrencias>>, {lojaId: string;data: BodyType<FolhaInput>}> = (props) => {
           const {lojaId,data} = props ?? {};
 
-          return  gerarFolha(lojaId,data,requestOptions)
+          return  gerarRecorrencias(lojaId,data,requestOptions)
         }
 
 
@@ -9721,22 +9730,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type GerarFolhaMutationResult = NonNullable<Awaited<ReturnType<typeof gerarFolha>>>
-    export type GerarFolhaMutationBody = BodyType<FolhaInput>
-    export type GerarFolhaMutationError = ErrorType<void>
+    export type GerarRecorrenciasMutationResult = NonNullable<Awaited<ReturnType<typeof gerarRecorrencias>>>
+    export type GerarRecorrenciasMutationBody = BodyType<FolhaInput>
+    export type GerarRecorrenciasMutationError = ErrorType<void>
 
     /**
- * @summary Gera a folha da competência a partir dos salários recorrentes ativos
+ * @summary Gera as contas da competência a partir das recorrências ativas
  */
-export const useGerarFolha = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gerarFolha>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useGerarRecorrencias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gerarRecorrencias>>, TError,{lojaId: string;data: BodyType<FolhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof gerarFolha>>,
+        Awaited<ReturnType<typeof gerarRecorrencias>>,
         TError,
         {lojaId: string;data: BodyType<FolhaInput>},
         TContext
       > => {
-      return useMutation(getGerarFolhaMutationOptions(options));
+      return useMutation(getGerarRecorrenciasMutationOptions(options));
     }
 
 export const getExportarFolhaUrl = (lojaId: string,

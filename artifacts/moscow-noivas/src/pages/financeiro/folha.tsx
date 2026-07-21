@@ -18,15 +18,15 @@ import {
   getListContasPagarQueryKey,
   useListPagamentos,
   getListPagamentosQueryKey,
-  useListSalariosRecorrentes,
-  getListSalariosRecorrentesQueryKey,
+  useListRecorrencias,
+  getListRecorrenciasQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
-  useGerarFolha,
+  useGerarRecorrencias,
   useEnviarContabilidade,
-  useCreateSalarioRecorrente,
-  useUpdateSalarioRecorrente,
-  type SalarioRecorrente,
+  useCreateRecorrencia,
+  useUpdateRecorrencia,
+  type Recorrencia,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router";
@@ -66,7 +66,15 @@ import { ErroListagem, ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from
 const MENSAGENS_ERRO: Record<string, string> = {
   COMPETENCIA_INVALIDA: "Competência inválida (use AAAA-MM).",
   INTERVALO_INVALIDO: "Intervalo inválido.",
+  RECORRENCIA_INVALIDA: "Faltou um campo que este tipo de recorrência exige.",
+  SALARIO_ATIVO_EXISTE: "Esta colaboradora já tem salário ativo — edite o existente.",
 };
+
+/** Como a recorrência se chama: salário é quem recebe, despesa é o que é. */
+function rotuloRecorrencia(r: Recorrencia, nomes: Map<string, string>): string {
+  if (r.tipo !== "SALARIO") return r.descricao ?? "Despesa recorrente";
+  return (r.usuarioId && nomes.get(r.usuarioId)) ?? "Colaboradora";
+}
 
 export default function Folha() {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -88,17 +96,17 @@ export default function Folha() {
   const pagamentos = useListPagamentos(activeLojaId!, params, {
     query: { queryKey: getListPagamentosQueryKey(activeLojaId!, params), enabled: !!activeLojaId },
   });
-  const salarios = useListSalariosRecorrentes(activeLojaId!, {
-    query: { queryKey: getListSalariosRecorrentesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  const recorrencias = useListRecorrencias(activeLojaId!, {
+    query: { queryKey: getListRecorrenciasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
-  const gerarFolha = useGerarFolha();
+  const gerarRecorrencias = useGerarRecorrencias();
   const enviarContabilidade = useEnviarContabilidade();
-  const criarSalario = useCreateSalarioRecorrente();
-  const atualizarSalario = useUpdateSalarioRecorrente();
+  const criarRecorrencia = useCreateRecorrencia();
+  const atualizarRecorrencia = useUpdateRecorrencia();
 
   // Definir salário é escrita no financeiro; o servidor recusa de qualquer
   // jeito, isto só evita oferecer o que vai ser negado.
@@ -107,22 +115,26 @@ export default function Folha() {
   const [novoUsuarioId, setNovoUsuarioId] = useState("");
   const [novoValor, setNovoValor] = useState("");
   const [novoDia, setNovoDia] = useState("5");
-  const [editando, setEditando] = useState<SalarioRecorrente | null>(null);
+  const [novaDescricao, setNovaDescricao] = useState("");
+  const [novoFornecedor, setNovoFornecedor] = useState("");
+  const [novoValorDespesa, setNovoValorDespesa] = useState("");
+  const [novoDiaDespesa, setNovoDiaDespesa] = useState("10");
+  const [editando, setEditando] = useState<Recorrencia | null>(null);
   const [editValor, setEditValor] = useState("");
   const [editDia, setEditDia] = useState("");
 
-  const invalidarSalarios = () =>
-    queryClient.invalidateQueries({ queryKey: getListSalariosRecorrentesQueryKey(activeLojaId!) });
+  const invalidarRecorrencias = () =>
+    queryClient.invalidateQueries({ queryKey: getListRecorrenciasQueryKey(activeLojaId!) });
 
   /**
    * Lê valor e dia do teclado. Vazio e lixo são coisas diferentes: `parseValor`
    * devolve null para "não digitou" e NaN para "digitou errado" — e o dia tem
-   * que caber no mês, senão `vencimentoDaFolha` grampeia calado.
+   * que caber no mês, senão `vencimentoDaCompetencia` grampeia calado.
    */
-  function lerSalario(valorTexto: string, diaTexto: string): { valor: number; dia: number } | null {
+  function lerValorEDia(valorTexto: string, diaTexto: string): { valor: number; dia: number } | null {
     const valor = parseValor(valorTexto);
     if (valor === null || Number.isNaN(valor) || valor <= 0) {
-      toast({ title: "Valor do salário inválido", variant: "destructive" });
+      toast({ title: "Valor inválido", variant: "destructive" });
       return null;
     }
     const dia = Number(diaTexto);
@@ -138,14 +150,14 @@ export default function Folha() {
       toast({ title: "Escolha a colaboradora", variant: "destructive" });
       return;
     }
-    const lido = lerSalario(novoValor, novoDia);
+    const lido = lerValorEDia(novoValor, novoDia);
     if (!lido) return;
     try {
-      await criarSalario.mutateAsync({
+      await criarRecorrencia.mutateAsync({
         lojaId: activeLojaId!,
-        data: { usuarioId: novoUsuarioId, valor: lido.valor, diaVencimento: lido.dia },
+        data: { tipo: "SALARIO", usuarioId: novoUsuarioId, valor: lido.valor, diaVencimento: lido.dia },
       });
-      await invalidarSalarios();
+      await invalidarRecorrencias();
       setNovoUsuarioId("");
       setNovoValor("");
       setNovoDia("5");
@@ -159,25 +171,58 @@ export default function Folha() {
     }
   }
 
-  function abrirEdicao(s: SalarioRecorrente) {
-    setEditValor(s.valor.toFixed(2).replace(".", ","));
-    setEditDia(String(s.diaVencimento));
-    setEditando(s);
+  async function onCriarDespesa() {
+    if (!novaDescricao.trim()) {
+      toast({ title: "Descreva a despesa", variant: "destructive" });
+      return;
+    }
+    const lido = lerValorEDia(novoValorDespesa, novoDiaDespesa);
+    if (!lido) return;
+    try {
+      await criarRecorrencia.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          tipo: novoFornecedor.trim() ? "FORNECEDOR" : "DESPESA",
+          descricao: novaDescricao.trim(),
+          fornecedor: novoFornecedor.trim() || undefined,
+          valor: lido.valor,
+          diaVencimento: lido.dia,
+        },
+      });
+      await invalidarRecorrencias();
+      setNovaDescricao("");
+      setNovoFornecedor("");
+      setNovoValorDespesa("");
+      setNovoDiaDespesa("10");
+      toast({ title: "Despesa recorrente criada" });
+    } catch (err) {
+      toast({
+        title: "Erro ao criar a despesa",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
+
+  function abrirEdicao(r: Recorrencia) {
+    setEditValor(r.valor.toFixed(2).replace(".", ","));
+    setEditDia(String(r.diaVencimento));
+    setEditando(r);
   }
 
   async function onSalvarEdicao() {
     if (!editando) return;
-    const lido = lerSalario(editValor, editDia);
+    const lido = lerValorEDia(editValor, editDia);
     if (!lido) return;
     try {
-      await atualizarSalario.mutateAsync({
+      await atualizarRecorrencia.mutateAsync({
         lojaId: activeLojaId!,
-        salarioId: editando.id,
+        recorrenciaId: editando.id,
         data: { valor: lido.valor, diaVencimento: lido.dia },
       });
-      await invalidarSalarios();
+      await invalidarRecorrencias();
       setEditando(null);
-      toast({ title: "Salário atualizado" });
+      toast({ title: "Recorrência atualizada" });
     } catch (err) {
       toast({
         title: "Erro ao atualizar",
@@ -187,15 +232,15 @@ export default function Folha() {
     }
   }
 
-  async function alternarAtivo(s: SalarioRecorrente) {
+  async function alternarAtivo(r: Recorrencia) {
     try {
-      await atualizarSalario.mutateAsync({
+      await atualizarRecorrencia.mutateAsync({
         lojaId: activeLojaId!,
-        salarioId: s.id,
-        data: { ativo: !s.ativo },
+        recorrenciaId: r.id,
+        data: { ativo: !r.ativo },
       });
-      await invalidarSalarios();
-      toast({ title: s.ativo ? "Salário desativado" : "Salário reativado" });
+      await invalidarRecorrencias();
+      toast({ title: r.ativo ? "Recorrência desativada" : "Recorrência reativada" });
     } catch (err) {
       toast({
         title: "Erro ao alterar",
@@ -220,31 +265,44 @@ export default function Folha() {
     return mapa;
   }, [equipe.data]);
 
+  const salarios = useMemo(
+    () => (recorrencias.data ?? []).filter((r) => r.tipo === "SALARIO"),
+    [recorrencias.data],
+  );
+  const despesasRecorrentes = useMemo(
+    () => (recorrencias.data ?? []).filter((r) => r.tipo !== "SALARIO"),
+    [recorrencias.data],
+  );
+
   // Quem já tem salário sai da lista de "definir": o caminho para mudar o dela
   // é Editar, não lançar um segundo — dois salários para a mesma pessoa gerariam
-  // duas contas na mesma folha.
+  // duas contas na mesma competência.
   const semSalario = useMemo(() => {
-    const comSalario = new Set((salarios.data ?? []).map((s) => s.usuarioId));
+    const comSalario = new Set(salarios.map((s) => s.usuarioId));
     return (equipe.data ?? []).filter((m) => !comSalario.has(m.usuarioId));
-  }, [equipe.data, salarios.data]);
+  }, [equipe.data, salarios]);
 
-  const contasDaFolha = useMemo(
+  // Só o que a GERAÇÃO produziu (`recorrenciaId`), não tudo que tem a
+  // competência: uma despesa avulsa lançada à mão em julho é conta de julho,
+  // mas não é o que este mês gerou — misturá-las faria o total desta tela
+  // mudar por um lançamento que ela não fez.
+  const contasGeradas = useMemo(
     () =>
       (contas.data ?? [])
-        .filter((c) => c.tipo === "SALARIO" && c.competencia === competencia)
+        .filter((c) => !!c.recorrenciaId && c.competencia === competencia)
         .sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
     [contas.data, competencia],
   );
 
   const resumo = useMemo(() => {
-    const previstas = contasDaFolha.filter((c) => c.status === "PREVISTA");
-    const pagas = contasDaFolha.filter((c) => c.status === "PAGA");
+    const previstas = contasGeradas.filter((c) => c.status === "PREVISTA");
+    const pagas = contasGeradas.filter((c) => c.status === "PAGA");
     return {
-      total: reais(somaCentavos(contasDaFolha, (c) => c.valorPrevisto)),
+      total: reais(somaCentavos(contasGeradas, (c) => c.valorPrevisto)),
       aPagar: reais(somaCentavos(previstas, (c) => c.valorPrevisto)),
       pago: reais(somaCentavos(pagas, (c) => c.valorPrevisto)),
     };
-  }, [contasDaFolha]);
+  }, [contasGeradas]);
 
   // `pagamento.data` é um INSTANTE: o dia dele só existe no fuso da loja.
   const doPeriodo = useMemo(
@@ -256,23 +314,23 @@ export default function Folha() {
     [doPeriodo],
   );
 
-  const onGerarFolha = async () => {
+  const onGerar = async () => {
     try {
-      const res = await gerarFolha.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
+      const res = await gerarRecorrencias.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
       await queryClient.invalidateQueries({
         queryKey: getListContasPagarQueryKey(activeLojaId!),
       });
-      // Zero não é falha: é a folha do mês já estar feita.
+      // Zero não é falha: é a competência já estar gerada.
       toast({
-        title: res.geradas === 0 ? "Folha já estava gerada" : "Folha gerada",
+        title: res.geradas === 0 ? "Competência já estava gerada" : "Contas lançadas",
         description:
           res.geradas === 0
-            ? "Nenhum salário novo para lançar nesta competência."
-            : `${res.geradas} ${res.geradas === 1 ? "salário lançado" : "salários lançados"} em contas a pagar.`,
+            ? "Nada novo para lançar nesta competência."
+            : `${res.geradas} ${res.geradas === 1 ? "conta lançada" : "contas lançadas"} em contas a pagar.`,
       });
     } catch (err) {
       toast({
-        title: "Erro ao gerar a folha",
+        title: "Erro ao gerar a competência",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -314,14 +372,15 @@ export default function Folha() {
           >
             ← Contas a pagar
           </Link>
-          <h1 className="text-3xl font-serif">Folha do mês</h1>
+          <h1 className="text-3xl font-serif">Recorrências do mês</h1>
           <p className="text-sm text-muted-foreground">
-            O salário-base do atelier vira conta a pagar, e o período fecha com a contabilidade.
+            O que se repete todo mês — salário, aluguel, assinatura, fornecedor fixo — vira conta a
+            pagar, e o período fecha com a contabilidade.
           </p>
         </div>
       </div>
 
-      {/* — Gerar a folha da competência — */}
+      {/* — Gerar as contas da competência — */}
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap items-end gap-3">
@@ -335,43 +394,47 @@ export default function Folha() {
                 onChange={(e) => setCompetencia(e.target.value)}
               />
             </div>
-            <Button onClick={onGerarFolha} disabled={gerarFolha.isPending || !competencia}>
-              {gerarFolha.isPending ? "Gerando…" : "Gerar folha"}
+            <Button onClick={onGerar} disabled={gerarRecorrencias.isPending || !competencia}>
+              {gerarRecorrencias.isPending ? "Gerando…" : "Gerar competência"}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Cada salário-base ativo vira uma conta a pagar desta competência. Gerar de novo não
+            Cada recorrência ativa vira uma conta a pagar desta competência. Gerar de novo não
             duplica nada — o que já foi lançado é pulado.
           </p>
         </CardContent>
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <ResumoCard rotulo="Folha da competência" valor={resumo.total} />
+        <ResumoCard rotulo="Gerado na competência" valor={resumo.total} />
         <ResumoCard rotulo="A pagar" valor={resumo.aPagar} />
         <ResumoCard rotulo="Pago" valor={resumo.pago} />
       </div>
 
       {contas.isError ? (
-        <ErroListagem mensagem="Falha ao buscar as contas da folha." onRetry={() => contas.refetch()} />
+        <ErroListagem mensagem="Falha ao buscar as contas da competência." onRetry={() => contas.refetch()} />
       ) : contas.isLoading ? (
         <div className="h-40 animate-pulse rounded-lg bg-muted" />
-      ) : contasDaFolha.length === 0 ? (
+      ) : contasGeradas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          A folha de {competencia} ainda não foi gerada.
+          A competência {competencia} ainda não foi gerada.
         </p>
       ) : (
         <Card>
           <CardContent className="p-0">
             <div className="divide-y">
-              {contasDaFolha.map((c) => (
+              {contasGeradas.map((c) => {
+                // Salário se identifica por QUEM recebe; despesa, pelo que é.
+                // Sem o nome, o título já é a descrição — repeti-la embaixo
+                // gastaria a linha dizendo duas vezes a mesma coisa.
+                const nome = c.colaboradorId ? nomePorUsuario.get(c.colaboradorId) : null;
+                return (
                 <div key={c.id} className="flex items-baseline justify-between gap-3 px-4 py-3">
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate">
-                      {(c.colaboradorId && nomePorUsuario.get(c.colaboradorId)) ?? c.descricao}
-                    </span>
+                    <span className="truncate">{nome ?? c.descricao}</span>
                     <span className="text-xs text-muted-foreground">
-                      {c.descricao} · vence {dataFmt.format(new Date(c.vencimento))}
+                      {nome ? `${c.descricao} · ` : ""}vence{" "}
+                      {dataFmt.format(new Date(c.vencimento))}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -381,10 +444,11 @@ export default function Folha() {
                     <span className="font-serif tabular-nums">R$ {brl(c.valorPrevisto)}</span>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="border-t px-4 py-3 text-right text-xs text-muted-foreground">
-              As contas da folha são pagas em{" "}
+              As contas geradas são pagas em{" "}
               <Link to={caminho("/financeiro/pagar")} className="underline">
                 contas a pagar
               </Link>{" "}
@@ -406,20 +470,20 @@ export default function Folha() {
               a folha da competência é gerada.
             </p>
           </div>
-          {salarios.isError ? (
+          {recorrencias.isError ? (
             <ErroListagem
-              mensagem="Falha ao buscar os salários."
-              onRetry={() => salarios.refetch()}
+              mensagem="Falha ao buscar as recorrências."
+              onRetry={() => recorrencias.refetch()}
             />
-          ) : (salarios.data?.length ?? 0) === 0 ? (
+          ) : salarios.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum salário-base definido ainda.</p>
           ) : (
             <ul className="divide-y">
-              {salarios.data?.map((s) => (
+              {salarios.map((s) => (
                 <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate">
-                      {nomePorUsuario.get(s.usuarioId) ?? "Colaboradora"}
+                      {(s.usuarioId && nomePorUsuario.get(s.usuarioId)) ?? "Colaboradora"}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       vence dia {s.diaVencimento}
@@ -439,7 +503,7 @@ export default function Folha() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={atualizarSalario.isPending}
+                          disabled={atualizarRecorrencia.isPending}
                           onClick={() => alternarAtivo(s)}
                         >
                           {s.ativo ? "Desativar" : "Reativar"}
@@ -489,8 +553,118 @@ export default function Folha() {
                   placeholder="5"
                 />
               </div>
-              <Button size="sm" onClick={onCriarSalario} disabled={criarSalario.isPending}>
-                {criarSalario.isPending ? "Salvando…" : "Definir salário"}
+              <Button size="sm" onClick={onCriarSalario} disabled={criarRecorrencia.isPending}>
+                {criarRecorrencia.isPending ? "Salvando…" : "Definir salário"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* — Despesas recorrentes (E48): aluguel, assinatura, fornecedor fixo.
+          Mesmo motor do salário — a única diferença é não ter colaborador. — */}
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <div>
+            <p className="font-medium">Despesas recorrentes</p>
+            <p className="text-xs text-muted-foreground">
+              Aluguel, assinatura, fornecedor fixo — o que se repete todo mês e era relançado à mão.
+              Vira conta a pagar pelo mesmo caminho do salário, na mesma geração.
+            </p>
+          </div>
+          {despesasRecorrentes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma despesa recorrente cadastrada ainda.
+            </p>
+          ) : (
+            <ul className="divide-y" data-testid="lista-despesas-recorrentes">
+              {despesasRecorrentes.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate">{r.descricao}</span>
+                    <span className="text-xs text-muted-foreground">
+                      vence dia {r.diaVencimento}
+                      {r.fornecedor ? ` · ${r.fornecedor}` : ""}
+                      {r.ativo ? "" : " · inativa"}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="tabular-nums">R$ {brl(r.valor)}</span>
+                    {podeEditar && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => abrirEdicao(r)}>
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={atualizarRecorrencia.isPending}
+                          onClick={() => alternarAtivo(r)}
+                        >
+                          {r.ativo ? "Desativar" : "Reativar"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {podeEditar && (
+            <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground" htmlFor="despesa-descricao">
+                  Descrição
+                </Label>
+                <Input
+                  id="despesa-descricao"
+                  className="w-52"
+                  value={novaDescricao}
+                  onChange={(e) => setNovaDescricao(e.target.value)}
+                  placeholder="Aluguel da loja"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground" htmlFor="despesa-fornecedor">
+                  Fornecedor (opcional)
+                </Label>
+                <Input
+                  id="despesa-fornecedor"
+                  className="w-44"
+                  value={novoFornecedor}
+                  onChange={(e) => setNovoFornecedor(e.target.value)}
+                  placeholder="Imobiliária X"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground" htmlFor="despesa-valor">
+                  Valor (R$)
+                </Label>
+                <Input
+                  id="despesa-valor"
+                  className="w-32"
+                  inputMode="decimal"
+                  value={novoValorDespesa}
+                  onChange={(e) => setNovoValorDespesa(e.target.value)}
+                  placeholder="4.500,00"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground" htmlFor="despesa-dia">
+                  Vence dia
+                </Label>
+                <Input
+                  id="despesa-dia"
+                  className="w-20"
+                  inputMode="numeric"
+                  value={novoDiaDespesa}
+                  onChange={(e) => setNovoDiaDespesa(e.target.value)}
+                  placeholder="10"
+                />
+              </div>
+              <Button size="sm" onClick={onCriarDespesa} disabled={criarRecorrencia.isPending}>
+                {criarRecorrencia.isPending ? "Salvando…" : "Adicionar despesa"}
               </Button>
             </div>
           )}
@@ -501,11 +675,11 @@ export default function Folha() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Salário-base
-              {editando ? ` — ${nomePorUsuario.get(editando.usuarioId) ?? "Colaboradora"}` : ""}
+              {editando?.tipo === "SALARIO" ? "Salário-base" : "Despesa recorrente"}
+              {editando ? ` — ${rotuloRecorrencia(editando, nomePorUsuario)}` : ""}
             </DialogTitle>
             <DialogDescription>
-              Vale das próximas folhas em diante. As competências já geradas não mudam — a conta
+              Vale das próximas gerações em diante. As competências já geradas não mudam — a conta
               lançada é o que foi combinado naquele mês.
             </DialogDescription>
           </DialogHeader>
@@ -533,8 +707,8 @@ export default function Folha() {
             <Button variant="outline" onClick={() => setEditando(null)}>
               Cancelar
             </Button>
-            <Button onClick={onSalvarEdicao} disabled={atualizarSalario.isPending}>
-              {atualizarSalario.isPending ? "Salvando…" : "Salvar"}
+            <Button onClick={onSalvarEdicao} disabled={atualizarRecorrencia.isPending}>
+              {atualizarRecorrencia.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>

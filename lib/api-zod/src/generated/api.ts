@@ -5018,7 +5018,8 @@ export const ListContasPagarResponseItem = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 })
 export const ListContasPagarResponse = zod.array(ListContasPagarResponseItem)
 
@@ -5052,7 +5053,8 @@ export const CreateContaPagarResponse = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 })
 
 
@@ -5129,7 +5131,8 @@ export const PagarContaPagarResponse = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 })
 
 
@@ -5207,7 +5210,8 @@ export const ListPagamentosResponseItem = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 }).optional()
 })).optional()
 })
@@ -5267,7 +5271,8 @@ export const CreatePagamentoResponse = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 }).optional()
 })).optional()
 })
@@ -5354,56 +5359,87 @@ export const ExportarAuditoriaQueryParams = zod.object({
 export const ExportarAuditoriaResponse = zod.unknown()
 
 
-export const ListSalariosRecorrentesParams = zod.object({
+/**
+ * @summary O que se repete todo mês — salário, aluguel, assinatura, fornecedor
+ */
+export const ListRecorrenciasParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const ListSalariosRecorrentesResponseItem = zod.object({
+export const ListRecorrenciasResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().nullish(),
+  "descricao": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
   "valor": zod.number(),
   "diaVencimento": zod.number(),
   "ativo": zod.boolean()
 })
-export const ListSalariosRecorrentesResponse = zod.array(ListSalariosRecorrentesResponseItem)
+export const ListRecorrenciasResponse = zod.array(ListRecorrenciasResponseItem)
 
 
-export const CreateSalarioRecorrenteParams = zod.object({
+/**
+ * SALARIO exige `usuarioId` (e só um ativo por pessoa); DESPESA e FORNECEDOR exigem `descricao` — sem ela a conta gerada não teria como se chamar.
+ */
+export const CreateRecorrenciaParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const CreateSalarioRecorrenteBody = zod.object({
-  "usuarioId": zod.string(),
+
+
+
+export const CreateRecorrenciaBody = zod.object({
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().optional().describe('Obrigatório para SALARIO'),
+  "descricao": zod.string().min(1).optional().describe('Obrigatório para DESPESA\/FORNECEDOR'),
+  "categoria": zod.string().optional(),
+  "fornecedor": zod.string().optional(),
   "valor": zod.number(),
   "diaVencimento": zod.number()
 })
 
-export const CreateSalarioRecorrenteResponse = zod.object({
+export const CreateRecorrenciaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().nullish(),
+  "descricao": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
   "valor": zod.number(),
   "diaVencimento": zod.number(),
   "ativo": zod.boolean()
 })
 
 
-export const UpdateSalarioRecorrenteParams = zod.object({
+export const UpdateRecorrenciaParams = zod.object({
   "lojaId": zod.coerce.string(),
-  "salarioId": zod.coerce.string()
+  "recorrenciaId": zod.coerce.string()
 })
 
-export const UpdateSalarioRecorrenteBody = zod.object({
+
+
+
+export const UpdateRecorrenciaBody = zod.object({
+  "descricao": zod.string().min(1).optional(),
+  "categoria": zod.string().optional(),
+  "fornecedor": zod.string().optional(),
   "valor": zod.number().optional(),
   "diaVencimento": zod.number().optional(),
   "ativo": zod.boolean().optional()
 })
 
-export const UpdateSalarioRecorrenteResponse = zod.object({
+export const UpdateRecorrenciaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "usuarioId": zod.string(),
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().nullish(),
+  "descricao": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
   "valor": zod.number(),
   "diaVencimento": zod.number(),
   "ativo": zod.boolean()
@@ -5441,21 +5477,21 @@ export const CreateSaldoReferenciaResponse = zod.object({
 
 
 /**
- * Idempotente: cada salário recorrente ativo vira NO MÁXIMO uma conta a pagar SALARIO por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
- * @summary Gera a folha da competência a partir dos salários recorrentes ativos
+ * Salário, aluguel, assinatura e fornecedor fixo pelo mesmo caminho (E48). Idempotente: cada recorrência ativa vira NO MÁXIMO uma conta a pagar por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
+ * @summary Gera as contas da competência a partir das recorrências ativas
  */
-export const GerarFolhaParams = zod.object({
+export const GerarRecorrenciasParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const gerarFolhaBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const gerarRecorrenciasBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
 
 
-export const GerarFolhaBody = zod.object({
-  "competencia": zod.string().regex(gerarFolhaBodyCompetenciaRegExp)
+export const GerarRecorrenciasBody = zod.object({
+  "competencia": zod.string().regex(gerarRecorrenciasBodyCompetenciaRegExp)
 })
 
-export const GerarFolhaResponse = zod.object({
+export const GerarRecorrenciasResponse = zod.object({
   "geradas": zod.number(),
   "contas": zod.array(zod.object({
   "id": zod.string(),
@@ -5468,7 +5504,8 @@ export const GerarFolhaResponse = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 }))
 })
 

@@ -5,7 +5,7 @@ import {
   contasPagarTable,
   pagamentosTable,
   pagamentoItensTable,
-  salariosRecorrentesTable,
+  recorrenciasTable,
   saldosReferenciaTable,
   auditLogTable,
 } from "@workspace/db";
@@ -22,8 +22,8 @@ import {
   ListPagamentosResponse,
   CreatePagamentoBody,
   CreatePagamentoResponse,
-  CreateSalarioRecorrenteBody,
-  UpdateSalarioRecorrenteBody,
+  CreateRecorrenciaBody,
+  UpdateRecorrenciaBody,
   CreateSaldoReferenciaBody,
   GetAlertaCaixaResponse,
   ListParcelasResponse,
@@ -31,13 +31,13 @@ import {
   ListContasPagarResponse,
   CreateContaPagarBody,
   CreateContaPagarResponse,
-  ListSalariosRecorrentesResponse,
-  CreateSalarioRecorrenteResponse,
-  UpdateSalarioRecorrenteResponse,
+  ListRecorrenciasResponse,
+  CreateRecorrenciaResponse,
+  UpdateRecorrenciaResponse,
   ListSaldoReferenciaResponse,
   CreateSaldoReferenciaResponse,
-  GerarFolhaBody,
-  GerarFolhaResponse,
+  GerarRecorrenciasBody,
+  GerarRecorrenciasResponse,
   ExportarFolhaQueryParams,
   ExportarContasPagarQueryParams,
   ExportarParcelasQueryParams,
@@ -49,11 +49,11 @@ import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { registrarAuditoria, acaoValida, quandoLocalSP, ROTULO_ACAO } from "../lib/auditoria";
 import {
   competenciaValida,
-  montarContasDaFolha,
   montarCsvContabilidade,
   diaLocalSP,
   type ItemContabil,
 } from "../lib/folha";
+import { montarContasDaCompetencia, TIPOS_RECORRENCIA } from "../lib/recorrencias";
 import { montarCsv } from "../lib/csv";
 import { randomUUID } from "node:crypto";
 
@@ -492,63 +492,91 @@ router.get("/lojas/:lojaId/financeiro/auditoria/exportar", async (req, res): Pro
   res.send("﻿" + montarCsv(csv));
 });
 
-router.get("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): Promise<void> => {
+// ───────────────────────── Recorrências (E48) ─────────────────────────
+
+router.get("/lojas/:lojaId/financeiro/recorrencias", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const salarios = await db.select().from(salariosRecorrentesTable).where(eq(salariosRecorrentesTable.lojaId, lojaId));
-  res.json(ListSalariosRecorrentesResponse.parse(salarios));
+  const recorrencias = await db.select().from(recorrenciasTable).where(eq(recorrenciasTable.lojaId, lojaId));
+  res.json(ListRecorrenciasResponse.parse(recorrencias));
 });
 
-router.post("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/financeiro/recorrencias", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = CreateSalarioRecorrenteBody.safeParse(req.body);
+  const parsed = CreateRecorrenciaBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  // Um salário ativo por pessoa: dois gerariam duas contas na mesma folha. O
-  // índice parcial (salarios_recorrentes_ativo_unico) é o backstop; aqui damos
-  // o 409 legível em vez de deixar a violação virar 500. Para trocar o valor, é
-  // editar o existente (ou desativá-lo e criar outro), não empilhar.
-  const jaAtivo = await db.select({ id: salariosRecorrentesTable.id })
-    .from(salariosRecorrentesTable)
-    .where(and(
-      eq(salariosRecorrentesTable.lojaId, lojaId),
-      eq(salariosRecorrentesTable.usuarioId, parsed.data.usuarioId),
-      eq(salariosRecorrentesTable.ativo, true),
-    ));
-  if (jaAtivo.length > 0) {
-    res.status(409).json({ error: "SALARIO_ATIVO_EXISTE", detalhe: "Este colaborador já tem salário ativo — edite o existente." });
+  const { tipo, usuarioId, descricao, categoria, fornecedor, valor, diaVencimento } = parsed.data;
+
+  // O `tipo` decide quais campos fazem sentido, e o contrato sozinho não sabe
+  // dizer isso (é o mesmo corpo para três formas). Recusar aqui é o que impede
+  // uma DESPESA sem descrição de virar "undefined 2026-07" na conta gerada, e
+  // um SALARIO sem colaborador de nunca gerar nada — falhando em silêncio.
+  if (tipo === "SALARIO" && !usuarioId) {
+    res.status(400).json({ error: "RECORRENCIA_INVALIDA", detalhe: "Salário exige o colaborador." });
+    return;
+  }
+  if (tipo !== "SALARIO" && !descricao) {
+    res.status(400).json({ error: "RECORRENCIA_INVALIDA", detalhe: "Despesa recorrente exige uma descrição." });
     return;
   }
 
-  const [salario] = await db.insert(salariosRecorrentesTable).values({
+  // Um salário ativo por pessoa: dois gerariam duas contas na mesma
+  // competência. O índice parcial (recorrencias_salario_ativo_unico) é o
+  // backstop; aqui damos o 409 legível em vez de deixar a violação virar 500.
+  // Para trocar o valor, é editar o existente (ou desativá-lo e criar outro),
+  // não empilhar. Despesa não tem esse limite de propósito: a loja com duas
+  // salas tem dois aluguéis, e o motor não tem como saber que não são o mesmo.
+  if (tipo === "SALARIO") {
+    const jaAtivo = await db.select({ id: recorrenciasTable.id })
+      .from(recorrenciasTable)
+      .where(and(
+        eq(recorrenciasTable.lojaId, lojaId),
+        eq(recorrenciasTable.usuarioId, usuarioId!),
+        eq(recorrenciasTable.ativo, true),
+      ));
+    if (jaAtivo.length > 0) {
+      res.status(409).json({ error: "SALARIO_ATIVO_EXISTE", detalhe: "Este colaborador já tem salário ativo — edite o existente." });
+      return;
+    }
+  }
+
+  const [recorrencia] = await db.insert(recorrenciasTable).values({
     id: randomUUID(),
     lojaId,
-    usuarioId: parsed.data.usuarioId,
-    valor: parsed.data.valor,
-    diaVencimento: parsed.data.diaVencimento,
+    tipo,
+    usuarioId: tipo === "SALARIO" ? usuarioId! : null,
+    descricao: tipo === "SALARIO" ? null : descricao!,
+    categoria: categoria ?? null,
+    fornecedor: tipo === "SALARIO" ? null : (fornecedor ?? null),
+    valor,
+    diaVencimento,
   }).returning();
-  res.status(201).json(CreateSalarioRecorrenteResponse.parse(salario));
+  res.status(201).json(CreateRecorrenciaResponse.parse(recorrencia));
 });
 
-router.patch("/lojas/:lojaId/financeiro/salarios-recorrentes/:salarioId", async (req, res): Promise<void> => {
+router.patch("/lojas/:lojaId/financeiro/recorrencias/:recorrenciaId", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const salarioId = req.params.salarioId as string;
-  const parsed = UpdateSalarioRecorrenteBody.safeParse(req.body);
+  const recorrenciaId = req.params.recorrenciaId as string;
+  const parsed = UpdateRecorrenciaBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
-  const [salario] = await db.update(salariosRecorrentesTable)
+  // `tipo` e `usuarioId` ficam de fora do update de propósito: virar o tipo de
+  // uma recorrência que já gerou contas deixaria o histórico dizendo uma coisa
+  // e a origem dizendo outra. Desative e crie a nova.
+  const [recorrencia] = await db.update(recorrenciasTable)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(and(eq(salariosRecorrentesTable.id, salarioId), eq(salariosRecorrentesTable.lojaId, lojaId)))
+    .where(and(eq(recorrenciasTable.id, recorrenciaId), eq(recorrenciasTable.lojaId, lojaId)))
     .returning();
-  if (!salario) {
-    res.status(404).json({ error: "Salario not found" });
+  if (!recorrencia) {
+    res.status(404).json({ error: "Recorrencia not found" });
     return;
   }
-  res.json(UpdateSalarioRecorrenteResponse.parse(salario));
+  res.json(UpdateRecorrenciaResponse.parse(recorrencia));
 });
 
 router.get("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Promise<void> => {
@@ -701,49 +729,54 @@ router.get("/lojas/:lojaId/financeiro/alerta-caixa", async (req, res): Promise<v
 // ───────────────────────── Folha / contabilidade ─────────────────────────
 
 /**
- * Gera a folha da competência: cada salário recorrente ATIVO vira uma conta a
- * pagar SALARIO. IDEMPOTENTE — o que já tem conta naquela competência é
- * pulado (regra no núcleo puro, ../lib/folha.ts), então rodar de novo devolve
- * `geradas: 0` em vez de dobrar o salário de alguém. Isso não é só higiene:
- * é o que permite reexecutar sem medo depois de um erro de rede.
+ * Gera as contas da competência: cada recorrência ATIVA vira uma conta a pagar
+ * — salário, aluguel, assinatura, fornecedor fixo (E48). IDEMPOTENTE: o que já
+ * tem conta naquela competência é pulado (regra no núcleo puro,
+ * ../lib/recorrencias.ts), então rodar de novo devolve `geradas: 0` em vez de
+ * dobrar a conta de alguém. Isso não é só higiene: é o que permite reexecutar
+ * sem medo depois de um erro de rede.
  */
-router.post("/lojas/:lojaId/financeiro/folha", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/financeiro/recorrencias/gerar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = GerarFolhaBody.safeParse(req.body);
+  const parsed = GerarRecorrenciasBody.safeParse(req.body);
   if (!parsed.success || !competenciaValida(parsed.data.competencia)) {
     res.status(400).json({ error: "COMPETENCIA_INVALIDA", detalhe: "Use AAAA-MM" });
     return;
   }
   const { competencia } = parsed.data;
 
-  const [salarios, jaFeitas] = await Promise.all([
-    db.select().from(salariosRecorrentesTable).where(eq(salariosRecorrentesTable.lojaId, lojaId)),
+  const [recorrencias, jaFeitas] = await Promise.all([
+    db.select().from(recorrenciasTable).where(eq(recorrenciasTable.lojaId, lojaId)),
+    // COMISSAO fica FORA de propósito: ela também tem `colaboradorId`, e o
+    // dedup largo do salário (por colaborador) leria a comissão da vendedora
+    // como "salário já feito" e a deixaria sem folha — em silêncio.
     db.select().from(contasPagarTable).where(and(
       eq(contasPagarTable.lojaId, lojaId),
-      eq(contasPagarTable.tipo, "SALARIO"),
+      inArray(contasPagarTable.tipo, TIPOS_RECORRENCIA),
       eq(contasPagarTable.competencia, competencia),
     )),
   ]);
 
-  const aCriar = montarContasDaFolha(competencia, salarios, jaFeitas);
+  const aCriar = montarContasDaCompetencia(competencia, recorrencias, jaFeitas);
   if (aCriar.length === 0) {
-    res.json(GerarFolhaResponse.parse({ geradas: 0, contas: [] }));
+    res.json(GerarRecorrenciasResponse.parse({ geradas: 0, contas: [] }));
     return;
   }
 
   // O check-then-insert acima decide O QUE gerar; o índice único parcial
-  // (contas_pagar_salario_unico) é a rede sob concorrência. `onConflictDoNothing`
-  // faz o POST perdedor de uma corrida inserir nada e reportar `geradas: 0`, em
-  // vez de estourar — e `returning()` só devolve o que ENTROU de fato.
+  // (contas_pagar_recorrencia_unica) é a rede sob concorrência.
+  // `onConflictDoNothing` faz o POST perdedor de uma corrida inserir nada e
+  // reportar `geradas: 0`, em vez de estourar — e `returning()` só devolve o
+  // que ENTROU de fato.
   const contas = await db.insert(contasPagarTable)
     .values(aCriar.map((c) => ({ id: randomUUID(), lojaId, ...c })))
     .onConflictDoNothing({
-      target: [contasPagarTable.lojaId, contasPagarTable.competencia, contasPagarTable.salarioRecorrenteId],
+      target: [contasPagarTable.lojaId, contasPagarTable.competencia, contasPagarTable.recorrenciaId],
       // O índice é PARCIAL — o Postgres só o casa se o predicado for repetido aqui.
-      where: sql`${contasPagarTable.tipo} = 'SALARIO'`,
+      where: sql`${contasPagarTable.recorrenciaId} is not null`,
     })
     .returning();
-  res.json(GerarFolhaResponse.parse({ geradas: contas.length, contas }));
+  res.json(GerarRecorrenciasResponse.parse({ geradas: contas.length, contas }));
 });
 
 /** Os itens pagos no intervalo, achatados para o extrato contábil. */

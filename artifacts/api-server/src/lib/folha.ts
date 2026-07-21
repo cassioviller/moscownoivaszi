@@ -1,12 +1,14 @@
 /**
- * Folha de pagamento — o núcleo PURO: montar as contas SALARIO de uma
- * competência e montar o CSV da contabilidade.
+ * O fechamento com a contabilidade — o núcleo PURO do CSV do extrato.
+ *
+ * A GERAÇÃO das contas morava aqui e saiu para `recorrencias.ts` (E48), quando
+ * deixou de ser só folha de salário: o mesmo motor passou a gerar aluguel e
+ * fornecedor fixo, e "folha" ficou nome pequeno demais para ele. Aqui continua
+ * o que é folha e contabilidade de fato.
  *
  * Puro de propósito (sem banco, sem Express, mesmo espírito de contrato-pdf.ts):
- * a idempotência da folha e o escape do CSV são exatamente as duas coisas que
- * precisam de teste unitário rápido — gerar a folha duas vezes não pode dobrar
- * o salário de ninguém, e uma vírgula na descrição não pode deslocar a coluna
- * da planilha da contabilidade.
+ * uma vírgula na descrição não pode deslocar a coluna da planilha que a
+ * contabilidade importa — é isso que o teste unitário rápido protege.
  */
 
 import { competenciaValida } from "./comissao";
@@ -16,94 +18,6 @@ export { competenciaValida };
 // Extraído para lib/csv.ts quando pagar/receber ganharam exportação (E5);
 // re-exportado daqui para os consumidores e testes existentes.
 export { escaparCsv } from "./csv";
-
-// ───────────────────────── Geração da folha ─────────────────────────
-
-/** O que a geração precisa saber de um salário recorrente. */
-export type SalarioParaFolha = {
-  id: string;
-  usuarioId: string;
-  valor: number;
-  diaVencimento: number;
-  ativo: boolean;
-};
-
-/** O que a geração precisa saber de uma conta SALARIO já existente na competência. */
-export type ContaSalarioExistente = {
-  colaboradorId: string | null;
-  salarioRecorrenteId: string | null;
-};
-
-/** Uma conta a pagar pronta para inserir (sem id/lojaId — quem grava resolve). */
-export type ContaDaFolha = {
-  tipo: "SALARIO";
-  colaboradorId: string;
-  competencia: string;
-  descricao: string;
-  valorPrevisto: number;
-  vencimento: Date;
-  salarioRecorrenteId: string;
-};
-
-/**
- * Vencimento da conta de salário: o `diaVencimento` combinado, dentro da
- * competência, ancorado ao MEIO-DIA de São Paulo — `vencimento` é data de
- * NEGÓCIO, e nascer à meia-noite a faria escorregar um dia ao ser lida em UTC
- * (mesma âncora de vencimentoComissao e de diaParaISO no frontend).
- *
- * O dia é grampeado ao último dia do mês: um salário combinado para o dia 31
- * não existe em fevereiro, e "31/02" viraria 03/03 na aritmética do Date —
- * a folha de fevereiro venceria em março, calada.
- */
-export function vencimentoDaFolha(competencia: string, diaVencimento: number): Date {
-  const ano = Number(competencia.slice(0, 4));
-  const mes = Number(competencia.slice(5, 7)); // 1..12
-  const ultimoDia = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-  const dia = Math.min(Math.max(diaVencimento, 1), ultimoDia);
-  const pad = (v: number) => String(v).padStart(2, "0");
-  return new Date(`${competencia}-${pad(dia)}T12:00:00-03:00`);
-}
-
-/**
- * As contas que FALTAM para a folha da competência estar completa.
- *
- * A idempotência mora aqui: um salário só vira conta se ainda não houver conta
- * SALARIO naquela competência para ele. "Para ele" é uma UNIÃO deliberada de
- * dois critérios — mesmo `salarioRecorrenteId` (o rastro da geração anterior)
- * OU mesmo `colaboradorId` (uma conta de salário lançada à mão, ou vinda de
- * uma recorrência antiga que foi trocada). O critério largo erra para o lado
- * seguro: no pior caso a folha deixa de gerar uma conta e alguém a lança à
- * mão; o critério estreito pagaria a mesma pessoa duas vezes no mesmo mês, e
- * isso só se descobre no extrato.
- *
- * Salários inativos não entram: `ativo: false` é a forma de tirar alguém da
- * folha sem apagar o histórico das contas que ele já originou.
- */
-export function montarContasDaFolha(
-  competencia: string,
-  salarios: readonly SalarioParaFolha[],
-  jaFeitas: readonly ContaSalarioExistente[],
-): ContaDaFolha[] {
-  const porRecorrencia = new Set(
-    jaFeitas.map((c) => c.salarioRecorrenteId).filter((id): id is string => !!id),
-  );
-  const porColaborador = new Set(
-    jaFeitas.map((c) => c.colaboradorId).filter((id): id is string => !!id),
-  );
-
-  return salarios
-    .filter((s) => s.ativo)
-    .filter((s) => !porRecorrencia.has(s.id) && !porColaborador.has(s.usuarioId))
-    .map((s) => ({
-      tipo: "SALARIO" as const,
-      colaboradorId: s.usuarioId,
-      competencia,
-      descricao: `Salário ${competencia}`,
-      valorPrevisto: s.valor,
-      vencimento: vencimentoDaFolha(competencia, s.diaVencimento),
-      salarioRecorrenteId: s.id,
-    }));
-}
 
 // ───────────────────────── CSV da contabilidade ─────────────────────────
 

@@ -1725,6 +1725,8 @@ export interface ContaPagar {
   valorPrevisto: number;
   vencimento: string;
   status: ContaPagarStatus;
+  /** @nullable */
+  recorrenciaId?: string | null;
 }
 
 export type ContaPagarInputTipo = typeof ContaPagarInputTipo[keyof typeof ContaPagarInputTipo];
@@ -1792,22 +1794,61 @@ export interface Pagamento {
   itens?: PagamentoItem[];
 }
 
-export interface SalarioRecorrente {
+export type RecorrenciaTipo = typeof RecorrenciaTipo[keyof typeof RecorrenciaTipo];
+
+
+export const RecorrenciaTipo = {
+  SALARIO: 'SALARIO',
+  DESPESA: 'DESPESA',
+  FORNECEDOR: 'FORNECEDOR',
+} as const;
+
+export interface Recorrencia {
   id: string;
   lojaId: string;
-  usuarioId: string;
+  tipo: RecorrenciaTipo;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** @nullable */
+  descricao?: string | null;
+  /** @nullable */
+  categoria?: string | null;
+  /** @nullable */
+  fornecedor?: string | null;
   valor: number;
   diaVencimento: number;
   ativo: boolean;
 }
 
-export interface SalarioRecorrenteInput {
-  usuarioId: string;
+export type RecorrenciaInputTipo = typeof RecorrenciaInputTipo[keyof typeof RecorrenciaInputTipo];
+
+
+export const RecorrenciaInputTipo = {
+  SALARIO: 'SALARIO',
+  DESPESA: 'DESPESA',
+  FORNECEDOR: 'FORNECEDOR',
+} as const;
+
+export interface RecorrenciaInput {
+  tipo: RecorrenciaInputTipo;
+  /** Obrigatório para SALARIO */
+  usuarioId?: string;
+  /**
+     * Obrigatório para DESPESA/FORNECEDOR
+     * @minLength 1
+     */
+  descricao?: string;
+  categoria?: string;
+  fornecedor?: string;
   valor: number;
   diaVencimento: number;
 }
 
-export interface SalarioRecorrenteUpdate {
+export interface RecorrenciaUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  categoria?: string;
+  fornecedor?: string;
   valor?: number;
   diaVencimento?: number;
   ativo?: boolean;

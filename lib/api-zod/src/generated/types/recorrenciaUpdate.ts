@@ -6,7 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SalarioRecorrenteUpdate {
+export interface RecorrenciaUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  categoria?: string;
+  fornecedor?: string;
   valor?: number;
   diaVencimento?: number;
   ativo?: boolean;

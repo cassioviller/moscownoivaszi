@@ -44,18 +44,21 @@ export const contasPagarTable = pgTable("contas_pagar", {
   valorPrevisto: decimal("valor_previsto", { precision: 10, scale: 2, mode: "number" }).notNull(),
   vencimento: timestamp("vencimento", { withTimezone: true }).notNull(),
   status: contaPagarStatusEnum("status").notNull().default("PREVISTA"),
-  salarioRecorrenteId: text("salario_recorrente_id"), // rastro da geração de folha (será ref dps se necessário)
+  recorrenciaId: text("recorrencia_id"), // rastro da geração recorrente (será ref dps se necessário)
   origemComissaoFechamentoId: text("origem_comissao_fechamento_id"), // rastro da comissão (será ref dps)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
-  // A idempotência da folha não pode depender só do check-then-insert da rota:
+  // A idempotência da geração não pode depender só do check-then-insert da rota:
   // dois POSTs simultâneos leem "nada feito" e ambos inserem, pagando todo mundo
-  // em dobro. Este é o backstop no banco — um salário recorrente rende no máximo
-  // UMA conta por competência+loja. Parcial (só SALARIO) porque contas avulsas e
-  // de comissão não têm salario_recorrente_id.
-  folhaUnica: uniqueIndex("contas_pagar_salario_unico")
-    .on(t.lojaId, t.competencia, t.salarioRecorrenteId)
-    .where(sql`${t.tipo} = 'SALARIO'`),
+  // em dobro. Este é o backstop no banco — uma recorrência rende no máximo UMA
+  // conta por competência+loja.
+  //
+  // O predicado era `tipo = 'SALARIO'` (E48): a despesa recorrente nasceria sem
+  // a rede que protegia o salário. `recorrencia_id IS NOT NULL` cobre toda conta
+  // GERADA, de qualquer tipo, e continua deixando de fora a lançada à mão.
+  recorrenciaUnica: uniqueIndex("contas_pagar_recorrencia_unica")
+    .on(t.lojaId, t.competencia, t.recorrenciaId)
+    .where(sql`${t.recorrenciaId} is not null`),
 }));
 
 export const insertContaPagarSchema = createInsertSchema(contasPagarTable).omit({ createdAt: true });
@@ -90,28 +93,52 @@ export const insertPagamentoItemSchema = createInsertSchema(pagamentoItensTable)
 export type InsertPagamentoItem = z.infer<typeof insertPagamentoItemSchema>;
 export type PagamentoItem = typeof pagamentoItensTable.$inferSelect;
 
-export const salariosRecorrentesTable = pgTable("salarios_recorrentes", {
+/**
+ * O que se repete todo mês e vira conta a pagar sozinho.
+ *
+ * Nasceu como `salarios_recorrentes` e só sabia pagar GENTE (E48): aluguel,
+ * assinatura e fornecedor fixo eram relançados à mão toda competência, ao lado
+ * de um motor de recorrência idempotente que já existia inteiro e não os
+ * enxergava. Generalizar custou uma coluna `tipo` e um `usuario_id` opcional —
+ * duplicar o motor teria custado a segunda implementação da idempotência.
+ *
+ * `tipo` espelha `contaPagarTipoEnum` mas é TEXTO, não o enum: a recorrência
+ * gera SALARIO/DESPESA/FORNECEDOR e nunca COMISSAO (que nasce do fechamento,
+ * não de um combinado mensal) — o pgEnum aqui prometeria um caminho que a
+ * geração não tem.
+ */
+export const recorrenciasTable = pgTable("recorrencias", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  usuarioId: text("usuario_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  tipo: text("tipo").notNull(),
+  /** Só SALARIO tem colaborador; aluguel não é de ninguém. */
+  usuarioId: text("usuario_id").references(() => usuariosTable.id, { onDelete: "cascade" }),
+  /** O que a conta gerada vai dizer. SALARIO deriva do nome de quem recebe. */
+  descricao: text("descricao"),
+  categoria: text("categoria"),
+  fornecedor: text("fornecedor"),
   valor: decimal("valor", { precision: 10, scale: 2, mode: "number" }).notNull(),
   diaVencimento: integer("dia_vencimento").notNull().default(5),
   ativo: boolean("ativo").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
-  // Dois salários ATIVOS para a mesma pessoa geram duas contas na mesma folha
-  // (o dedup do núcleo só olha o que já foi feito, não o lote). Um usuário tem
-  // no máximo um salário ativo por loja; desativar libera cadastrar outro sem
-  // apagar o histórico. Parcial em `ativo` para o inativo não trancar.
-  salarioAtivoUnico: uniqueIndex("salarios_recorrentes_ativo_unico")
+  // Dois salários ATIVOS para a mesma pessoa geram duas contas na mesma
+  // competência (o dedup do núcleo só olha o que já foi feito, não o lote). Um
+  // usuário tem no máximo um salário ativo por loja; desativar libera cadastrar
+  // outro sem apagar o histórico. Parcial em `ativo` para o inativo não trancar.
+  //
+  // `usuario_id is not null` não muda o comportamento (NULLs já são distintos
+  // num unique btree) — está aqui para o índice não LER como se restringisse
+  // despesa: a loja pode ter dois aluguéis ativos, e isso é assunto dela.
+  salarioAtivoUnico: uniqueIndex("recorrencias_salario_ativo_unico")
     .on(t.lojaId, t.usuarioId)
-    .where(sql`${t.ativo} = true`),
+    .where(sql`${t.ativo} = true and ${t.usuarioId} is not null`),
 }));
 
-export const insertSalarioRecorrenteSchema = createInsertSchema(salariosRecorrentesTable).omit({ createdAt: true, updatedAt: true });
-export type InsertSalarioRecorrente = z.infer<typeof insertSalarioRecorrenteSchema>;
-export type SalarioRecorrente = typeof salariosRecorrentesTable.$inferSelect;
+export const insertRecorrenciaSchema = createInsertSchema(recorrenciasTable).omit({ createdAt: true, updatedAt: true });
+export type InsertRecorrencia = z.infer<typeof insertRecorrenciaSchema>;
+export type Recorrencia = typeof recorrenciasTable.$inferSelect;
 
 /**
  * O saldo de caixa conferido num DIA — a âncora da projeção.
