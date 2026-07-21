@@ -222,6 +222,7 @@ export const AuditoriaItemAcao = {
   PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
   PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
   ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
 } as const;
 
 /**
@@ -2038,6 +2039,16 @@ export interface SimulacaoComissao {
   totalDiferenca: number;
 }
 
+export interface ReaberturaComissao {
+  fechamentoId: string;
+  competencia: string;
+  vendedoraId: string;
+  /** false = o fechamento não gerou conta (valor zero) */
+  contaPagarRemovida: boolean;
+  /** Contratos cujo estorno voltou a pendente */
+  estornosReabertos: number;
+}
+
 export interface PendenciaComissao {
   /** YYYY-MM */
   competencia: string;
@@ -2346,6 +2357,7 @@ export const ListAuditoriaAcao = {
   PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
   PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
   ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
 } as const;
 
 export type ExportarAuditoriaParams = {
@@ -2373,6 +2385,7 @@ export const ExportarAuditoriaAcao = {
   PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
   PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
   ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
 } as const;
 
 export type ExportarFolhaParams = {

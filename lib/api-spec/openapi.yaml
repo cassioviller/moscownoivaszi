@@ -2378,7 +2378,7 @@ paths:
           description: Uma das ações da união fechada (ACOES_AUDITORIA)
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO]
         - name: usuarioId
           in: query
           required: false
@@ -2447,7 +2447,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO]
         - name: usuarioId
           in: query
           required: false
@@ -2801,6 +2801,35 @@ paths:
                 $ref: "#/components/schemas/SimulacaoComissao"
         "422":
           description: Vendedora fora da loja ou escada inválida
+  /lojas/{lojaId}/comissao/fechamentos/{fechamentoId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: fechamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: reabrirComissaoFechamento
+      tags: [comissao]
+      summary: Reabre um fechamento errado, desfazendo o que ele criou (E54)
+      description: >
+        Transacional e completo: cancela a conta a pagar gerada, apaga o
+        fechamento e devolve a NULL o `comissaoEstornadaEm` dos contratos que
+        ESTE fechamento reconciliou. Recusa se a conta já foi PAGA — reabrir
+        deixaria uma saída de caixa sem contrapartida; o caminho é estornar o
+        pagamento antes. Deixa linha na trilha de auditoria.
+      responses:
+        "200":
+          description: Reaberto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReaberturaComissao"
+        "404":
+          description: Fechamento não encontrado nesta loja
+        "409":
+          description: A conta de comissão já foi paga (COMISSAO_JA_PAGA)
   /lojas/{lojaId}/comissao/pendencias:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3915,7 +3944,7 @@ components:
         id: { type: string }
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO]
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO]
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }
@@ -4500,6 +4529,15 @@ components:
         totalPagoReal: { type: number }
         totalSimulado: { type: number }
         totalDiferenca: { type: number }
+    ReaberturaComissao:
+      type: object
+      required: [fechamentoId, competencia, vendedoraId, contaPagarRemovida, estornosReabertos]
+      properties:
+        fechamentoId: { type: string }
+        competencia: { type: string }
+        vendedoraId: { type: string }
+        contaPagarRemovida: { type: boolean, description: "false = o fechamento não gerou conta (valor zero)" }
+        estornosReabertos: { type: integer, description: "Contratos cujo estorno voltou a pendente" }
     PendenciaComissao:
       type: object
       required: [competencia, vendedoras, totalVendas]

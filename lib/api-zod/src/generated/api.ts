@@ -565,7 +565,7 @@ export const GetAtividadeEquipeResponse = zod.object({
 })),
   "eventos": zod.array(zod.object({
   "id": zod.string(),
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO']),
   "entidade": zod.string(),
   "entidadeId": zod.string(),
   "usuarioId": zod.string().nullish(),
@@ -5306,7 +5306,7 @@ export const listAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const ListAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
   "usuarioId": zod.coerce.string().optional().describe('Autor da ação (id; o nome na linha é desnormalizado)'),
   "de": zod.coerce.string().regex(listAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(listAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
@@ -5314,7 +5314,7 @@ export const ListAuditoriaQueryParams = zod.object({
 
 export const ListAuditoriaResponseItem = zod.object({
   "id": zod.string(),
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO']),
   "entidade": zod.string(),
   "entidadeId": zod.string(),
   "usuarioId": zod.string().nullish(),
@@ -5354,7 +5354,7 @@ export const exportarAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}
 
 
 export const ExportarAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']).optional(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO']).optional(),
   "usuarioId": zod.coerce.string().optional(),
   "de": zod.coerce.string().regex(exportarAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(exportarAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
@@ -5787,6 +5787,24 @@ export const SimularComissaoResponse = zod.object({
   "totalPagoReal": zod.number(),
   "totalSimulado": zod.number(),
   "totalDiferenca": zod.number()
+})
+
+
+/**
+ * Transacional e completo: cancela a conta a pagar gerada, apaga o fechamento e devolve a NULL o `comissaoEstornadaEm` dos contratos que ESTE fechamento reconciliou. Recusa se a conta já foi PAGA — reabrir deixaria uma saída de caixa sem contrapartida; o caminho é estornar o pagamento antes. Deixa linha na trilha de auditoria.
+ * @summary Reabre um fechamento errado, desfazendo o que ele criou (E54)
+ */
+export const ReabrirComissaoFechamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "fechamentoId": zod.coerce.string()
+})
+
+export const ReabrirComissaoFechamentoResponse = zod.object({
+  "fechamentoId": zod.string(),
+  "competencia": zod.string(),
+  "vendedoraId": zod.string(),
+  "contaPagarRemovida": zod.boolean().describe('false = o fechamento não gerou conta (valor zero)'),
+  "estornosReabertos": zod.number().describe('Contratos cujo estorno voltou a pendente')
 })
 
 

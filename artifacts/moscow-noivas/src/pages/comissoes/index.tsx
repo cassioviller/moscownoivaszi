@@ -16,6 +16,7 @@ import {
   getListBaixasEstornoComissaoQueryKey,
   useListPendenciasComissao,
   getListPendenciasComissaoQueryKey,
+  useReabrirComissaoFechamento,
   getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
@@ -82,6 +83,8 @@ const MENSAGENS_ERRO: Record<string, string> = {
   COMPETENCIA_CORRENTE: "O mês corrente ainda pode receber vendas — só se fecha mês passado.",
   COMPETENCIA_JA_FECHADA: "Esta competência já foi fechada.",
   SEM_MOVIMENTO: "Nenhuma venda nesta competência.",
+  COMISSAO_JA_PAGA: "A comissão já foi paga — estorne o pagamento antes de reabrir.",
+  FECHAMENTO_NAO_ENCONTRADO: "Fechamento não encontrado.",
 };
 
 const MOTIVO_FAIXA: Record<string, string> = {
@@ -175,6 +178,7 @@ export default function Comissoes() {
   const removerRegra = useDeleteComissaoRegra();
   const gerarFechamento = useGerarComissaoFechamento();
   const baixarEstorno = useBaixarEstornoComissao();
+  const reabrirFechamento = useReabrirComissaoFechamento();
   const simular = useSimularComissao();
 
   // Resultado da simulação (E23) — abre o dialog quando chega.
@@ -207,6 +211,41 @@ export default function Comissoes() {
     { vendedoraId: string; nome: string; valor: number } | null
   >(null);
   const [motivoBaixa, setMotivoBaixa] = useState("");
+
+  // Fechamento em vias de reabertura (E54) — nomeia a vendedora e o valor.
+  const [fechamentoReabrindo, setFechamentoReabrindo] = useState<
+    { id: string; nome: string; valor: number } | null
+  >(null);
+
+  async function onReabrirFechamento() {
+    if (!fechamentoReabrindo) return;
+    try {
+      const res = await reabrirFechamento.mutateAsync({
+        lojaId: activeLojaId!,
+        fechamentoId: fechamentoReabrindo.id,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech) }),
+        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!) }),
+        queryClient.invalidateQueries({ queryKey: getListPendenciasComissaoQueryKey(activeLojaId!) }),
+        queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) }),
+        queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
+      ]);
+      setFechamentoReabrindo(null);
+      toast({
+        title: `Fechamento de ${rotuloCompetencia(competencia)} reaberto`,
+        description: res.estornosReabertos > 0
+          ? `${res.estornosReabertos} estorno(s) voltaram a pendentes.`
+          : "A competência pode ser fechada de novo.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao reabrir",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
+    }
+  }
 
   const [vendedoraId, setVendedoraId] = useState("");
   const [bonusAcumula, setBonusAcumula] = useState(false);
@@ -667,13 +706,59 @@ export default function Comissoes() {
                       {f.fechadoEm && ` · fechado em ${diaFmt.format(new Date(f.fechadoEm))}`}
                     </p>
                   </div>
-                  <span className="shrink-0 font-serif text-xl tabular-nums">R$ {brl(f.valorTotal)}</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="font-serif text-xl tabular-nums">R$ {brl(f.valorTotal)}</span>
+                    {/* E54: fechou errado, dá para desfazer sem SQL. Só admin —
+                        a mesma régua da baixa de estorno, que também mexe em
+                        dinheiro já apurado. */}
+                    {podeBaixarEstorno && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        data-testid={`reabrir-${f.id}`}
+                        onClick={() =>
+                          setFechamentoReabrindo({
+                            id: f.id,
+                            nome: f.vendedoraNome ?? nomePorUsuario.get(f.vendedoraId) ?? "a vendedora",
+                            valor: f.valorTotal,
+                          })
+                        }
+                      >
+                        Reabrir
+                      </Button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
           </CardContent>
         </Card>
       )}
+
+      {/* Reabrir apaga registro de dinheiro apurado: a confirmação diz o que
+          some, e não só "tem certeza?". */}
+      <AlertDialog
+        open={!!fechamentoReabrindo}
+        onOpenChange={(aberto) => !aberto && setFechamentoReabrindo(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reabrir o fechamento de {fechamentoReabrindo?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O fechamento de {rotuloCompetencia(competencia)} some, e com ele a conta a pagar de R${" "}
+              {brl(fechamentoReabrindo?.valor ?? 0)}. Estornos que este mês tinha reconciliado voltam
+              a pendentes. A competência fica aberta para ser fechada de novo, e a reabertura fica
+              registrada na trilha de auditoria.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onReabrirFechamento} disabled={reabrirFechamento.isPending}>
+              {reabrirFechamento.isPending ? "Reabrindo…" : "Reabrir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* — Baixas de estorno — só existe se alguma foi feita. O rastro do I10
           visível: quem baixou, quando e por quê. */}

@@ -204,6 +204,7 @@ export * from './perfilUpdate';
 export * from './previewComissaoParams';
 export * from './projecaoComissao';
 export * from './proximaJanelaVestido';
+export * from './reaberturaComissao';
 export * from './receberParcelaInput';
 export * from './receberParcelaInputFormaRecebimento';
 export * from './recorrencia';

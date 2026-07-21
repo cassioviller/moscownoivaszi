@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, unique, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, unique, boolean, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -82,6 +82,16 @@ export const comissaoFechamentosTable = pgTable("comissao_fechamentos", {
   /** = comissão + bônus. É este que vira ContaPagar. */
   valorTotal: decimal("valor_total", { precision: 10, scale: 2, mode: "number" }).notNull(),
   contaPagarId: text("conta_pagar_id").unique().references(() => contasPagarTable.id, { onDelete: "set null" }),
+  /**
+   * Quais contratos cancelados ESTE fechamento reconciliou (E54).
+   *
+   * Sem a lista, reabrir não teria como devolver `comissaoEstornadaEm` a NULL
+   * com precisão: dois fechamentos da mesma vendedora em competências
+   * diferentes carimbam instantes parecidos, e desfazer "pelo horário" pegaria
+   * o estorno do fechamento errado. NULL = fechamento anterior ao E54, que não
+   * guardou a lista; `[]` = não havia estorno a reconciliar.
+   */
+  estornoContratoIds: jsonb("estorno_contrato_ids").$type<string[]>(),
   fechadoEm: timestamp("fechado_em", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   unq: unique().on(t.lojaId, t.vendedoraId, t.competencia),

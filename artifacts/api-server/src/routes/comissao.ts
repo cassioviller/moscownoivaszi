@@ -23,6 +23,7 @@ import {
   ListComissaoFechamentosResponse,
   ListComissaoFechamentosQueryParams,
   ListPendenciasComissaoResponse,
+  ReabrirComissaoFechamentoResponse,
   PreviewComissaoQueryParams,
   PreviewComissaoResponse,
   GerarComissaoFechamentoBody,
@@ -709,6 +710,107 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
 });
 
 /**
+ * Reabrir um fechamento errado (E54).
+ *
+ * Fechar cria conta a pagar e reconcilia estorno; até aqui, desfazer isso só
+ * pelo SQL — o que significa que ninguém desfazia, ou desfazia pela metade.
+ * A reversão é TRANSACIONAL e desfaz as três coisas que o fechamento fez:
+ * apaga a conta gerada, apaga o fechamento e devolve `comissaoEstornadaEm` a
+ * NULL nos contratos que ESTE fechamento reconciliou.
+ *
+ * A guarda que protege o dinheiro: conta já PAGA recusa (409). Reabrir deixaria
+ * uma saída de caixa sem contrapartida — mesma régua do DELETE de conta a
+ * pagar, e o caminho é estornar o pagamento antes.
+ *
+ * DELETE, e não POST /reabrir: reabrir É apagar o fechamento, e o guard deriva
+ * a ação do método (DELETE → editar) sem precisar de exceção.
+ */
+router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const fechamentoId = req.params.fechamentoId as string;
+
+  const [fechamento] = await db
+    .select()
+    .from(comissaoFechamentosTable)
+    .where(and(
+      eq(comissaoFechamentosTable.id, fechamentoId),
+      eq(comissaoFechamentosTable.lojaId, lojaId),
+    ));
+  if (!fechamento) {
+    res.status(404).json({ error: "FECHAMENTO_NAO_ENCONTRADO" });
+    return;
+  }
+
+  if (fechamento.contaPagarId) {
+    const [conta] = await db
+      .select({ status: contasPagarTable.status })
+      .from(contasPagarTable)
+      .where(eq(contasPagarTable.id, fechamento.contaPagarId));
+    if (conta?.status === "PAGA") {
+      res.status(409).json({
+        error: "COMISSAO_JA_PAGA",
+        detalhe: "A comissão já foi paga — estorne o pagamento antes de reabrir o fechamento.",
+      });
+      return;
+    }
+  }
+
+  const estornos = fechamento.estornoContratoIds ?? [];
+
+  await db.transaction(async (tx) => {
+    // A ordem importa: o fechamento sai primeiro porque `conta_pagar_id` é
+    // UNIQUE e referencia a conta — apagar a conta antes deixaria a FK
+    // (ON DELETE SET NULL) mexendo numa linha que já vai embora.
+    await tx.delete(comissaoFechamentosTable).where(eq(comissaoFechamentosTable.id, fechamentoId));
+
+    if (fechamento.contaPagarId) {
+      await tx.delete(contasPagarTable).where(and(
+        eq(contasPagarTable.id, fechamento.contaPagarId),
+        eq(contasPagarTable.lojaId, lojaId),
+      ));
+    }
+
+    // O estorno volta a PENDENTE: ele não foi absorvido, porque o mês que o
+    // absorveu deixou de existir. Sem isto, o valor cancelado sumiria da
+    // próxima apuração e a loja pagaria comissão sobre venda desfeita.
+    if (estornos.length > 0) {
+      await tx
+        .update(contratosTable)
+        .set({ comissaoEstornadaEm: null })
+        .where(and(
+          eq(contratosTable.lojaId, lojaId),
+          inArray(contratosTable.id, estornos),
+        ));
+    }
+
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "COMISSAO_FECHAMENTO_REABERTO",
+      entidade: "comissao_fechamento",
+      entidadeId: fechamentoId,
+      detalhe: {
+        competencia: fechamento.competencia,
+        vendedoraId: fechamento.vendedoraId,
+        // O que o fechamento pagava — some da tabela, fica na trilha.
+        valorTotal: fechamento.valorTotal,
+        totalVendas: fechamento.totalVendas,
+        contaPagarId: fechamento.contaPagarId,
+        estornosReabertos: estornos.length,
+      },
+    });
+  });
+
+  res.json(ReabrirComissaoFechamentoResponse.parse({
+    fechamentoId,
+    competencia: fechamento.competencia,
+    vendedoraId: fechamento.vendedoraId,
+    contaPagarRemovida: !!fechamento.contaPagarId,
+    estornosReabertos: estornos.length,
+  }));
+});
+
+/**
  * Quantas competências para trás a varredura olha. Um ano: pendência mais
  * antiga que isso não é esquecimento, é decisão — e continuar gritando sobre
  * ela treinaria o alerta a ser ignorado.
@@ -898,6 +1000,10 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
         });
       }
 
+      // §6.4: só marca os cancelados como reconciliados se o mês absorveu o
+      // estorno INTEIRO. Se não absorveu, o saldo segue pendente e carrega para
+      // a competência seguinte — senão a diferença sumiria sem ninguém pagar.
+      const reconciliados = netC >= 0 ? estorno.contratoIds : [];
       const [fechamento] = await tx.insert(comissaoFechamentosTable).values({
         id: fechamentoId,
         lojaId,
@@ -909,18 +1015,18 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
         valorBonus: real(r.valorBonus),
         valorTotal: real(r.valorTotal),
         contaPagarId,
+        // A lista do que ESTE fechamento reconciliou (E54) — é ela que deixa a
+        // reabertura desfazer exatamente o que este mês fez, e não o do vizinho.
+        estornoContratoIds: reconciliados,
       }).returning();
 
-      // §6.4: só marca os cancelados como reconciliados se o mês absorveu o
-      // estorno INTEIRO. Se não absorveu, o saldo segue pendente e carrega para
-      // a competência seguinte — senão a diferença sumiria sem ninguém pagar.
-      if (netC >= 0 && estorno.contratoIds.length > 0) {
+      if (reconciliados.length > 0) {
         await tx
           .update(contratosTable)
           .set({ comissaoEstornadaEm: new Date() })
           .where(and(
             eq(contratosTable.lojaId, lojaId),
-            inArray(contratosTable.id, estorno.contratoIds),
+            inArray(contratosTable.id, reconciliados),
           ));
       }
 

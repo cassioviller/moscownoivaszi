@@ -137,6 +137,7 @@ import type {
   PerfilUpdate,
   PreviewComissaoParams,
   ProximaJanelaVestido,
+  ReaberturaComissao,
   ReceberParcelaInput,
   Recorrencia,
   RecorrenciaInput,
@@ -10428,6 +10429,79 @@ export const useSimularComissao = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSimularComissaoMutationOptions(options));
+    }
+
+export const getReabrirComissaoFechamentoUrl = (lojaId: string,
+    fechamentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/comissao/fechamentos/${fechamentoId}`
+}
+
+/**
+ * Transacional e completo: cancela a conta a pagar gerada, apaga o fechamento e devolve a NULL o `comissaoEstornadaEm` dos contratos que ESTE fechamento reconciliou. Recusa se a conta já foi PAGA — reabrir deixaria uma saída de caixa sem contrapartida; o caminho é estornar o pagamento antes. Deixa linha na trilha de auditoria.
+ * @summary Reabre um fechamento errado, desfazendo o que ele criou (E54)
+ */
+export const reabrirComissaoFechamento = async (lojaId: string,
+    fechamentoId: string, options?: RequestInit): Promise<ReaberturaComissao> => {
+
+  return customFetch<ReaberturaComissao>(getReabrirComissaoFechamentoUrl(lojaId,fechamentoId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getReabrirComissaoFechamentoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reabrirComissaoFechamento>>, TError,{lojaId: string;fechamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reabrirComissaoFechamento>>, TError,{lojaId: string;fechamentoId: string}, TContext> => {
+
+const mutationKey = ['reabrirComissaoFechamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reabrirComissaoFechamento>>, {lojaId: string;fechamentoId: string}> = (props) => {
+          const {lojaId,fechamentoId} = props ?? {};
+
+          return  reabrirComissaoFechamento(lojaId,fechamentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReabrirComissaoFechamentoMutationResult = NonNullable<Awaited<ReturnType<typeof reabrirComissaoFechamento>>>
+
+    export type ReabrirComissaoFechamentoMutationError = ErrorType<void>
+
+    /**
+ * @summary Reabre um fechamento errado, desfazendo o que ele criou (E54)
+ */
+export const useReabrirComissaoFechamento = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reabrirComissaoFechamento>>, TError,{lojaId: string;fechamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reabrirComissaoFechamento>>,
+        TError,
+        {lojaId: string;fechamentoId: string},
+        TContext
+      > => {
+      return useMutation(getReabrirComissaoFechamentoMutationOptions(options));
     }
 
 export const getListPendenciasComissaoUrl = (lojaId: string,) => {

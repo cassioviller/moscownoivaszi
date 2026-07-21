@@ -15,6 +15,7 @@ export const ACOES_AUDITORIA = [
   "PAGAMENTO_REGISTRADO",
   "PAGAMENTO_ESTORNADO",
   "ESTORNO_COMISSAO_BAIXADO",
+  "COMISSAO_FECHAMENTO_REABERTO",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -38,6 +39,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PAGAMENTO_REGISTRADO: "Pagamento registrado",
   PAGAMENTO_ESTORNADO: "Pagamento estornado",
   ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
+  COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -62,7 +64,7 @@ export interface RegistroAuditoria {
   /** Autor da sessão (req.usuario) — id + nome desnormalizado. */
   usuario: { id: string; nome: string };
   acao: AcaoAuditoria;
-  entidade: "parcela" | "conta_pagar" | "pagamento" | "contrato";
+  entidade: "parcela" | "conta_pagar" | "pagamento" | "contrato" | "comissao_fechamento";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }

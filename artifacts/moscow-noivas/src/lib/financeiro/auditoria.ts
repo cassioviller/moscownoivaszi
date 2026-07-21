@@ -21,6 +21,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   PAGAMENTO_REGISTRADO: "Pagamento registrado",
   PAGAMENTO_ESTORNADO: "Pagamento estornado",
   ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
+  COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -31,6 +32,7 @@ export const ACOES_FILTRAVEIS = [
   "PAGAMENTO_REGISTRADO",
   "PAGAMENTO_ESTORNADO",
   "ESTORNO_COMISSAO_BAIXADO",
+  "COMISSAO_FECHAMENTO_REABERTO",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];
