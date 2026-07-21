@@ -16,6 +16,8 @@ import {
   getListContratosQueryKey,
   useListLeads,
   getListLeadsQueryKey,
+  useGetLead,
+  getGetLeadQueryKey,
   type OrcamentoItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -107,6 +109,14 @@ export default function OrcamentoDetail() {
   const leads = useListLeads(activeLojaId!, undefined, {
     query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
+  // O teto de orçamento vive no interesse da noiva (E32/E33), que a LISTA de
+  // leads não traz — só o GetLead completo. Busca-se pelo leadId do orçamento.
+  const leadCompleto = useGetLead(activeLojaId!, orcamento?.leadId as string, {
+    query: {
+      queryKey: getGetLeadQueryKey(activeLojaId!, orcamento?.leadId as string),
+      enabled: !!activeLojaId && !!orcamento?.leadId,
+    },
+  });
   // O GetOrcamento não expõe o contrato gerado; buscamos na lista de contratos
   // (client-side, só quando APROVADO) para alternar Gerar/Ver contrato.
   const contratos = useListContratos(activeLojaId!, {
@@ -148,6 +158,13 @@ export default function OrcamentoDetail() {
     }
     return { bruto, liquido: Math.max(0, liquido) };
   }, [orcamento]);
+
+  // Teto de orçamento da noiva (E33): o número que ela deu em Interesses e que
+  // até agora ninguém confrontava. Se o líquido passa, a tela avisa ANTES do
+  // envio — a conversa difícil na hora de ajustar, não depois do "achei caro".
+  const teto = leadCompleto.data?.interesse?.tetoOrcamento ?? null;
+  const acimaDoTeto = teto != null && teto > 0 && totais.liquido > teto;
+  const excedenteTeto = acimaDoTeto ? round2(totais.liquido - teto) : 0;
 
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
@@ -561,6 +578,16 @@ export default function OrcamentoDetail() {
             ) : null}
             <span className="font-semibold text-primary">Total: R$ {brl(totais.liquido)}</span>
           </div>
+
+          {acimaDoTeto && (
+            <p
+              className="flex items-center justify-end gap-1.5 text-sm text-amber-700 dark:text-amber-400"
+              data-testid="aviso-acima-teto"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              R$ {brl(excedenteTeto)} acima do teto de R$ {brl(teto!)} que a noiva definiu
+            </p>
+          )}
 
           {editavel && (
             <>
