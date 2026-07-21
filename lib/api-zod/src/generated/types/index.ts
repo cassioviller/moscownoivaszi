@@ -232,6 +232,7 @@ export * from './sessaoAcessosModulos';
 export * from './simulacaoComissao';
 export * from './simulacaoComissaoLinha';
 export * from './simularComissaoInput';
+export * from './trocarSenhaInput';
 export * from './usuario';
 export * from './usuarioInput';
 export * from './usuarioUpdate';

@@ -86,6 +86,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /auth/senha:
+    post:
+      operationId: trocarSenha
+      tags: [auth]
+      summary: A própria pessoa troca a própria senha (E57)
+      description: >
+        Exige a senha ATUAL: uma sessão sequestrada não pode virar troca de
+        senha. Ao trocar, TODAS as sessões da pessoa caem — inclusive a de quem
+        soubesse a senha antiga — e a de quem trocou é reemitida, para ela não
+        ser deslogada por se proteger. Limpa `precisaTrocarSenha`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrocarSenhaInput"
+      responses:
+        "204":
+          description: Senha trocada
+        "401":
+          description: Não autenticado
+        "422":
+          description: Senha atual incorreta (SENHA_ATUAL_INCORRETA) ou nova igual à atual (SENHA_REPETIDA)
   /auth/selecionar-loja:
     post:
       operationId: selecionarLoja
@@ -3100,6 +3123,12 @@ components:
         acessosModulos:
           $ref: "#/components/schemas/AcessosModulos"
 
+    TrocarSenhaInput:
+      type: object
+      required: [senhaAtual, novaSenha]
+      properties:
+        senhaAtual: { type: string, minLength: 1 }
+        novaSenha: { type: string, minLength: 6 }
     Usuario:
       type: object
       required: [id, nome, email, ativo, isSuperAdmin]
@@ -3109,6 +3138,9 @@ components:
         email: { type: string, format: email }
         ativo: { type: boolean }
         isSuperAdmin: { type: boolean }
+        # E57: a senha atual foi escolhida por outra pessoa; a tela obriga a
+        # trocar antes de deixar usar o sistema.
+        precisaTrocarSenha: { type: boolean }
     UsuarioInput:
       type: object
       required: [nome, email, senha]

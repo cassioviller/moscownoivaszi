@@ -121,6 +121,10 @@ router.post("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
       nome: parsed.data.nome,
       email: parsed.data.email.toLowerCase().trim(),
       senhaHash,
+      // A senha foi escolhida por OUTRA pessoa (E57): vale para entrar uma vez,
+      // e a tela cobra a troca antes de deixar usar o sistema. Quem aceita
+      // convite escolhe a própria e não passa por aqui.
+      precisaTrocarSenha: true,
     });
 
     await tx.insert(usuariosLojasTable).values({

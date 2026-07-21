@@ -43,16 +43,24 @@ export async function compararSenhaConstante(senha: string, hash: string | null)
   return hash !== null && ok;
 }
 
-export async function criarSessao(usuarioId: string) {
+/**
+ * `executor` permite criar a sessão DENTRO de uma transação — a troca de
+ * senha (E57) derruba as sessões e emite a nova no mesmo passo, e usar o `db`
+ * global ali criaria a sessão nova fora da transação que a antecede.
+ */
+export async function criarSessao(
+  usuarioId: string,
+  executor: { insert: typeof db.insert } = db,
+) {
   const id = randomBytes(32).toString("base64url");
   const expiraEm = new Date(Date.now() + SESSAO_TTL_MS);
-  
-  const [sessao] = await db.insert(sessoesTable).values({
+
+  const [sessao] = await executor.insert(sessoesTable).values({
     id,
     usuarioId,
     expiraEm,
   }).returning();
-  
+
   return sessao;
 }
 

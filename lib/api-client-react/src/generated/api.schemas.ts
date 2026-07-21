@@ -34,6 +34,7 @@ export interface Usuario {
   email: string;
   ativo: boolean;
   isSuperAdmin: boolean;
+  precisaTrocarSenha?: boolean;
 }
 
 export interface Loja {
@@ -118,6 +119,13 @@ export interface PerfilOverrideLoja {
 export interface PerfilOverrideInput {
   perfilId: string;
   acessosModulos: AcessosModulos;
+}
+
+export interface TrocarSenhaInput {
+  /** @minLength 1 */
+  senhaAtual: string;
+  /** @minLength 6 */
+  novaSenha: string;
 }
 
 export interface UsuarioInput {

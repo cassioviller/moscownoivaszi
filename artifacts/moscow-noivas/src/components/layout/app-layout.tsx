@@ -43,6 +43,13 @@ export function AppLayout() {
     return <Navigate to="/login" replace />;
   }
 
+  // E57: o mesmo gate do RequireAuth. O AppLayout é a porta das rotas de loja
+  // e não passa por ele — sem isto, /loja/:id/dashboard entraria direto e a
+  // troca forçada seria só uma sugestão.
+  if (user.precisaTrocarSenha) {
+    return <Navigate to="/trocar-senha" replace />;
+  }
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop: barra fixa. Mobile (< md): escondida, vive no drawer abaixo. */}

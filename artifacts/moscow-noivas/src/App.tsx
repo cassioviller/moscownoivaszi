@@ -16,6 +16,7 @@ import OrcamentoPublico from "@/pages/orcamento-publico";
 import LookbookPublico from "@/pages/lookbook-publico";
 import SelecionarLoja from "@/pages/selecionar-loja";
 import Dashboard from "@/pages/dashboard";
+import TrocarSenha from "@/pages/trocar-senha";
 
 import Agenda from "@/pages/agenda";
 import AgendaSemana from "@/pages/agenda/semana";
@@ -95,8 +96,15 @@ function TelaCarregando() {
 /** Guarda de autenticação para rotas fora do escopo /loja/:lojaId. */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
   if (isLoading) return <TelaCarregando />;
   if (!user) return <Navigate to="/login" replace />;
+  // E57: senha escolhida por outra pessoa trava o resto do sistema até ser
+  // trocada. A exceção é a própria tela de troca — senão o redirecionamento
+  // giraria em círculo.
+  if (user.precisaTrocarSenha && location.pathname !== "/trocar-senha") {
+    return <Navigate to="/trocar-senha" replace />;
+  }
   return children;
 }
 
@@ -143,6 +151,16 @@ function App() {
             <Route path="/orcamento/:token" element={<OrcamentoPublico />} />
             {/* Pública: o lookbook dos vestidos provados, sem conta (E21). */}
             <Route path="/lookbook/:token" element={<LookbookPublico />} />
+            {/* E57: fora do AppLayout de propósito — quem precisa trocar a
+                senha não deve ver a sidebar nem alcançar nenhum módulo. */}
+            <Route
+              path="/trocar-senha"
+              element={
+                <RequireAuth>
+                  <TrocarSenha />
+                </RequireAuth>
+              }
+            />
             <Route
               path="/selecionar-loja"
               element={

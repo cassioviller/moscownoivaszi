@@ -155,6 +155,7 @@ import type {
   Sessao,
   SimulacaoComissao,
   SimularComissaoInput,
+  TrocarSenhaInput,
   Usuario,
   UsuarioInput,
   UsuarioUpdate,
@@ -469,6 +470,77 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
 
 
 
+
+export const getTrocarSenhaUrl = () => {
+
+
+
+
+  return `/api/auth/senha`
+}
+
+/**
+ * Exige a senha ATUAL: uma sessão sequestrada não pode virar troca de senha. Ao trocar, TODAS as sessões da pessoa caem — inclusive a de quem soubesse a senha antiga — e a de quem trocou é reemitida, para ela não ser deslogada por se proteger. Limpa `precisaTrocarSenha`.
+ * @summary A própria pessoa troca a própria senha (E57)
+ */
+export const trocarSenha = async (trocarSenhaInput: TrocarSenhaInput, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getTrocarSenhaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(trocarSenhaInput)
+  }
+);}
+
+
+
+
+export const getTrocarSenhaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trocarSenha>>, TError,{data: BodyType<TrocarSenhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof trocarSenha>>, TError,{data: BodyType<TrocarSenhaInput>}, TContext> => {
+
+const mutationKey = ['trocarSenha'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof trocarSenha>>, {data: BodyType<TrocarSenhaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  trocarSenha(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TrocarSenhaMutationResult = NonNullable<Awaited<ReturnType<typeof trocarSenha>>>
+    export type TrocarSenhaMutationBody = BodyType<TrocarSenhaInput>
+    export type TrocarSenhaMutationError = ErrorType<void>
+
+    /**
+ * @summary A própria pessoa troca a própria senha (E57)
+ */
+export const useTrocarSenha = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trocarSenha>>, TError,{data: BodyType<TrocarSenhaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof trocarSenha>>,
+        TError,
+        {data: BodyType<TrocarSenhaInput>},
+        TContext
+      > => {
+      return useMutation(getTrocarSenhaMutationOptions(options));
+    }
 
 export const getSelecionarLojaUrl = () => {
 

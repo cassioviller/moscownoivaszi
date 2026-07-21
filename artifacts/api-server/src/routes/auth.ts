@@ -6,11 +6,14 @@ import {
   LoginResponse, 
   GetMeResponse, 
   SelecionarLojaBody, 
-  SelecionarLojaResponse 
+  SelecionarLojaResponse,
+  TrocarSenhaBody
 } from "@workspace/api-zod";
 import {
   compararSenhaConstante,
   criarSessao,
+  encerrarSessoesDoUsuario,
+  hashSenha,
   buscarSessao,
   buscarLojasUsuario,
   buscarLoja,
@@ -85,6 +88,57 @@ router.get("/auth/me", requireSessao, async (req, res): Promise<void> => {
     acessosModulos,
     lojas,
   }));
+});
+
+/**
+ * A própria pessoa troca a própria senha (E57).
+ *
+ * Exige a senha ATUAL de propósito, inclusive na troca FORÇADA: uma sessão
+ * sequestrada não pode virar troca de senha, e quem está sendo forçado sabe a
+ * senha (foi o admin quem contou — é exatamente esse o problema que se resolve).
+ *
+ * Trocar derruba TODAS as sessões da pessoa e reemite a de quem trocou. Sem
+ * isso, a troca não resolveria o caso que a motivou: o admin que conhece a
+ * senha e já está logado como ela continuaria dentro.
+ */
+router.post("/auth/senha", requireSessao, async (req, res): Promise<void> => {
+  const parsed = TrocarSenhaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const usuarioId = req.usuario!.id;
+
+  const [usuario] = await db.select().from(usuariosTable).where(eq(usuariosTable.id, usuarioId));
+  if (!usuario || !(await compararSenhaConstante(parsed.data.senhaAtual, usuario.senhaHash))) {
+    res.status(422).json({ error: "SENHA_ATUAL_INCORRETA", detalhe: "A senha atual não confere." });
+    return;
+  }
+  // Repetir a senha antiga passaria pela validação e não trocaria nada — a
+  // pessoa sairia da tela achando que se protegeu.
+  if (await compararSenhaConstante(parsed.data.novaSenha, usuario.senhaHash)) {
+    res.status(422).json({ error: "SENHA_REPETIDA", detalhe: "A nova senha é igual à atual." });
+    return;
+  }
+
+  const senhaHash = await hashSenha(parsed.data.novaSenha);
+  const sessao = await db.transaction(async (tx) => {
+    await tx.update(usuariosTable)
+      .set({ senhaHash, precisaTrocarSenha: false, updatedAt: new Date() })
+      .where(eq(usuariosTable.id, usuarioId));
+    await encerrarSessoesDoUsuario(tx, usuarioId);
+    return criarSessao(usuarioId, tx);
+  });
+
+  // A sessão nova no lugar da que acabou de cair: ser deslogada por se
+  // proteger ensinaria a não trocar a senha.
+  res.cookie(COOKIE_NOME, sessao.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    expires: sessao.expiraEm,
+  });
+  res.status(204).send();
 });
 
 router.post("/auth/selecionar-loja", requireSessao, async (req, res): Promise<void> => {

@@ -11,6 +11,16 @@ export const usuariosTable = pgTable("usuarios", {
   senhaHash: text("senha_hash").notNull(),
   ativo: boolean("ativo").notNull().default(true),
   isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+  /**
+   * A senha atual foi escolhida por OUTRA pessoa (E57).
+   *
+   * O cadastro-com-senha chama o campo de "senha inicial", mas nada forçava a
+   * troca: o admin que criou o acesso conhecia a senha da colega para sempre e
+   * podia entrar como ela — inclusive na trilha de auditoria, que registraria
+   * a colega. Marcado no cadastro por admin, limpo quando a própria pessoa
+   * troca. Quem aceita convite escolhe a própria senha e nunca é marcado.
+   */
+  precisaTrocarSenha: boolean("precisa_trocar_senha").notNull().default(false),
   // Carimbado a cada login (E18). As sessões não servem de fonte: logout e
   // expiração apagam a linha, e o "último acesso" sumiria junto.
   ultimoLoginEm: timestamp("ultimo_login_em", { withTimezone: true }),

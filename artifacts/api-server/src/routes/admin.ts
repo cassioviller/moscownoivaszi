@@ -184,6 +184,8 @@ router.post("/admin/usuarios", async (req, res): Promise<void> => {
     email: parsed.data.email.toLowerCase().trim(),
     senhaHash,
     isSuperAdmin: parsed.data.isSuperAdmin || false,
+    // Senha escolhida por outra pessoa (E57) — a troca é cobrada na entrada.
+    precisaTrocarSenha: true,
   }).returning();
   res.status(201).json(CreateUsuarioResponse.parse(usuario));
 });
@@ -204,6 +206,9 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   if (updateData.senha) {
     updateData.senhaHash = await hashSenha(updateData.senha);
     delete updateData.senha;
+    // Resetar a senha de alguém é o mesmo caso do cadastro: quem escolheu foi
+    // o admin, e a pessoa troca na próxima entrada.
+    updateData.precisaTrocarSenha = true;
   }
 
   const [usuario] = await db.update(usuariosTable)

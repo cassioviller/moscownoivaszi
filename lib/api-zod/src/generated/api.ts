@@ -31,7 +31,8 @@ export const LoginResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),
   "lojaAtivaId": zod.string().nullish(),
   "acessosModulos": zod.record(zod.string(), zod.unknown()).nullish(),
@@ -59,7 +60,8 @@ export const GetMeResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),
   "lojaAtivaId": zod.string().nullish(),
   "acessosModulos": zod.record(zod.string(), zod.unknown()).nullish(),
@@ -78,6 +80,23 @@ export const GetMeResponse = zod.object({
 })
 
 
+/**
+ * Exige a senha ATUAL: uma sessão sequestrada não pode virar troca de senha. Ao trocar, TODAS as sessões da pessoa caem — inclusive a de quem soubesse a senha antiga — e a de quem trocou é reemitida, para ela não ser deslogada por se proteger. Limpa `precisaTrocarSenha`.
+ * @summary A própria pessoa troca a própria senha (E57)
+ */
+
+export const trocarSenhaBodyNovaSenhaMin = 6;
+
+
+
+export const TrocarSenhaBody = zod.object({
+  "senhaAtual": zod.string().min(1),
+  "novaSenha": zod.string().min(trocarSenhaBodyNovaSenhaMin)
+})
+
+export const TrocarSenhaResponse = zod.void()
+
+
 export const SelecionarLojaBody = zod.object({
   "lojaId": zod.string()
 })
@@ -88,7 +107,8 @@ export const SelecionarLojaResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),
   "lojaAtivaId": zod.string().nullish(),
   "acessosModulos": zod.record(zod.string(), zod.unknown()).nullish(),
@@ -247,7 +267,8 @@ export const ListUsuariosResponseItem = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 })
 export const ListUsuariosResponse = zod.array(ListUsuariosResponseItem)
 
@@ -269,7 +290,8 @@ export const CreateUsuarioResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 })
 
 
@@ -295,7 +317,8 @@ export const UpdateUsuarioResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 })
 
 
@@ -1595,7 +1618,8 @@ export const ListAtendimentosResponseItem = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional(),
   "bloqueio": zod.union([zod.object({
   "id": zod.string(),
@@ -1867,7 +1891,8 @@ export const CreateAtendimentoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional(),
   "bloqueio": zod.union([zod.object({
   "id": zod.string(),
@@ -2138,7 +2163,8 @@ export const UpdateAtendimentoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional(),
   "bloqueio": zod.union([zod.object({
   "id": zod.string(),
@@ -2412,7 +2438,8 @@ export const ConfirmarAtendimentoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional(),
   "bloqueio": zod.union([zod.object({
   "id": zod.string(),
@@ -4209,7 +4236,8 @@ export const ListContratosResponseItem = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional()
 })
 export const ListContratosResponse = zod.array(ListContratosResponseItem)
@@ -4352,7 +4380,8 @@ export const CreateContratoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional()
 })
 
@@ -4474,7 +4503,8 @@ export const GetContratoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional()
 })
 
@@ -4606,7 +4636,8 @@ export const UpdateContratoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional()
 })
 
@@ -4744,7 +4775,8 @@ export const CancelarContratoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }).optional()
 })
 
@@ -5195,7 +5227,8 @@ export const ListPagamentosResponseItem = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),zod.null()]).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
@@ -5256,7 +5289,8 @@ export const CreatePagamentoResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),zod.null()]).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
