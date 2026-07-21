@@ -56,6 +56,24 @@ export async function criarSessao(usuarioId: string) {
   return sessao;
 }
 
+/**
+ * Derruba TODAS as sessões vivas de um usuário (E56).
+ *
+ * A permissão é lida da sessão e só se atualizava no próximo `/auth/me`: tirar
+ * alguém da equipe ou rebaixar o perfil não tinha efeito enquanto a aba dela
+ * estivesse aberta — a pessoa seguia com o acesso antigo por até 8 horas. Uma
+ * permissão revogada que continua valendo não é permissão.
+ *
+ * Recebe o executor para rodar DENTRO da transação que mudou o acesso: derrubar
+ * a sessão e mudar o perfil precisam acontecer juntos, ou nenhum dos dois.
+ */
+export async function encerrarSessoesDoUsuario(
+  executor: { delete: typeof db.delete },
+  usuarioId: string,
+): Promise<void> {
+  await executor.delete(sessoesTable).where(eq(sessoesTable.usuarioId, usuarioId));
+}
+
 export async function buscarSessao(id: string) {
   const [row] = await db
     .select({

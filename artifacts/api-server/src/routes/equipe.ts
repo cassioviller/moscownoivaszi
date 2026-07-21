@@ -18,7 +18,8 @@ import {
   GetAtividadeEquipeResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { hashSenha, gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
+import { registrarAuditoria } from "../lib/auditoria";
+import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
 import { ehViolacaoUnica } from "../lib/erros";
 import { randomUUID } from "node:crypto";
 
@@ -127,6 +128,17 @@ router.post("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
       lojaId: params.data.lojaId,
       perfilId: parsed.data.perfilId,
     });
+
+    await registrarAuditoria(tx, {
+      lojaId: params.data.lojaId,
+      usuario: req.usuario!,
+      acao: "MEMBRO_ADICIONADO",
+      entidade: "usuario",
+      entidadeId: usuarioId,
+      // A senha NÃO entra no detalhe, nem o hash: a trilha é lida por gente e
+      // exportada em CSV.
+      detalhe: { nome: parsed.data.nome, email: parsed.data.email, perfilId: parsed.data.perfilId },
+    });
   });
 
   const [membro] = await db
@@ -209,7 +221,19 @@ router.post("/lojas/:lojaId/equipe/convites", async (req, res): Promise<void> =>
     expiraEm: new Date(Date.now() + CONVITE_TTL_MS),
   };
   try {
-    await db.insert(convitesTable).values(valores);
+    await db.transaction(async (tx) => {
+      await tx.insert(convitesTable).values(valores);
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "CONVITE_CRIADO",
+        entidade: "convite",
+        entidadeId: valores.id,
+        // O TOKEN fica de fora: quem lê a trilha (ou o CSV dela) ganharia um
+        // link de entrada válido na loja.
+        detalhe: { email, perfilId: valores.perfilId },
+      });
+    });
   } catch (err) {
     // Unique parcial (loja,email pendente): a corrida resolve no banco.
     if (ehViolacaoUnica(err)) {
@@ -258,10 +282,22 @@ router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", async (req, re
 
 router.delete("/lojas/:lojaId/equipe/convites/:conviteId", async (req, res): Promise<void> => {
   const { lojaId, conviteId } = req.params;
-  const [removido] = await db
-    .delete(convitesTable)
-    .where(and(eq(convitesTable.id, conviteId as string), eq(convitesTable.lojaId, lojaId as string)))
-    .returning({ id: convitesTable.id });
+  const removido = await db.transaction(async (tx) => {
+    const [linha] = await tx
+      .delete(convitesTable)
+      .where(and(eq(convitesTable.id, conviteId as string), eq(convitesTable.lojaId, lojaId as string)))
+      .returning({ id: convitesTable.id, email: convitesTable.email });
+    if (!linha) return null;
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "CONVITE_CANCELADO",
+      entidade: "convite",
+      entidadeId: linha.id,
+      detalhe: { email: linha.email },
+    });
+    return linha;
+  });
   if (!removido) {
     res.status(404).json({ error: "Convite não encontrado" });
     return;
@@ -282,6 +318,11 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
     return;
   }
 
+  // Trocar o perfil ou inativar muda o ACESSO; renomear, não. Só o primeiro
+  // caso derruba sessão — obrigar a pessoa a logar de novo porque alguém
+  // corrigiu um acento no nome dela seria castigo sem motivo.
+  const mudouAcesso = parsed.data.perfilId !== undefined || parsed.data.ativo === false;
+
   await db.transaction(async (tx) => {
     if (parsed.data.nome !== undefined || parsed.data.ativo !== undefined) {
       await tx.update(usuariosTable)
@@ -301,6 +342,24 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
           eq(usuariosLojasTable.usuarioId, params.data.usuarioId)
         ));
     }
+
+    // Dentro da MESMA transação: derrubar a sessão e mudar o acesso precisam
+    // acontecer juntos, ou a pessoa fica com o acesso antigo válido.
+    if (mudouAcesso) await encerrarSessoesDoUsuario(tx, params.data.usuarioId);
+
+    await registrarAuditoria(tx, {
+      lojaId: params.data.lojaId,
+      usuario: req.usuario!,
+      acao: "MEMBRO_ALTERADO",
+      entidade: "usuario",
+      entidadeId: params.data.usuarioId,
+      detalhe: {
+        ...(parsed.data.nome !== undefined && { nome: parsed.data.nome }),
+        ...(parsed.data.ativo !== undefined && { ativo: parsed.data.ativo }),
+        ...(parsed.data.perfilId !== undefined && { perfilId: parsed.data.perfilId }),
+        sessoesEncerradas: mudouAcesso,
+      },
+    });
   });
 
   const [membro] = await db
@@ -352,6 +411,19 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
         eq(usuariosLojasTable.lojaId, params.data.lojaId),
         eq(usuariosLojasTable.usuarioId, params.data.usuarioId)
       ));
+
+    // Removida da equipe com a aba aberta continuaria navegando até a sessão
+    // expirar — o vínculo já não existe, e o acesso não pode sobreviver a ele.
+    await encerrarSessoesDoUsuario(tx, params.data.usuarioId);
+
+    await registrarAuditoria(tx, {
+      lojaId: params.data.lojaId,
+      usuario: req.usuario!,
+      acao: "MEMBRO_REMOVIDO",
+      entidade: "usuario",
+      entidadeId: params.data.usuarioId,
+      detalhe: { email: usuario?.email ?? null },
+    });
   });
 
   res.status(204).send();

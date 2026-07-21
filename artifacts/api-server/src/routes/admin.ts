@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { 
   ListLojasResponse, 
   CreateLojaBody, 
@@ -32,7 +32,8 @@ import {
   RunBackupResponse
 } from "@workspace/api-zod";
 import { requireSessao, requireSuperAdmin } from "../middlewares/auth";
-import { hashSenha } from "../lib/auth";
+import { hashSenha, encerrarSessoesDoUsuario } from "../lib/auth";
+import { registrarAuditoria } from "../lib/auditoria";
 import { normalizarAcessos } from "../lib/permissoes";
 import { executarBackup, statusBackup } from "../lib/backup";
 import { randomUUID } from "node:crypto";
@@ -254,17 +255,43 @@ router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
   }
 
   const acessos = normalizarAcessos(parsed.data.acessosModulos);
-  const [override] = await db.insert(perfilOverridesLojasTable)
-    .values({
+
+  const override = await db.transaction(async (tx) => {
+    const [linha] = await tx.insert(perfilOverridesLojasTable)
+      .values({
+        lojaId: params.data.lojaId,
+        perfilId: parsed.data.perfilId,
+        acessosModulos: acessos,
+      })
+      .onConflictDoUpdate({
+        target: [perfilOverridesLojasTable.lojaId, perfilOverridesLojasTable.perfilId],
+        set: { acessosModulos: acessos, updatedAt: new Date() },
+      })
+      .returning();
+
+    // Mudar o override muda o acesso de TODO MUNDO que tem esse perfil na loja
+    // (E56) — e a permissão vive na sessão. Sem derrubá-las, revogar um módulo
+    // só valeria no próximo login: por até 8 horas a pessoa segue entrando
+    // onde já não pode.
+    const afetados = await tx
+      .select({ usuarioId: usuariosLojasTable.usuarioId })
+      .from(usuariosLojasTable)
+      .where(and(
+        eq(usuariosLojasTable.lojaId, params.data.lojaId),
+        eq(usuariosLojasTable.perfilId, parsed.data.perfilId),
+      ));
+    for (const a of afetados) await encerrarSessoesDoUsuario(tx, a.usuarioId);
+
+    await registrarAuditoria(tx, {
       lojaId: params.data.lojaId,
-      perfilId: parsed.data.perfilId,
-      acessosModulos: acessos,
-    })
-    .onConflictDoUpdate({
-      target: [perfilOverridesLojasTable.lojaId, perfilOverridesLojasTable.perfilId],
-      set: { acessosModulos: acessos, updatedAt: new Date() },
-    })
-    .returning();
+      usuario: req.usuario!,
+      acao: "PERMISSOES_ALTERADAS",
+      entidade: "perfil",
+      entidadeId: parsed.data.perfilId,
+      detalhe: { acessosModulos: acessos, sessoesEncerradas: afetados.length },
+    });
+    return linha;
+  });
 
   res.json(
     SetPerfilOverrideResponse.parse({ ...override, acessosModulos: normalizarAcessos(override.acessosModulos) }),

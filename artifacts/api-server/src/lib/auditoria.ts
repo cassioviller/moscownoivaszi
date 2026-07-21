@@ -16,6 +16,15 @@ export const ACOES_AUDITORIA = [
   "PAGAMENTO_ESTORNADO",
   "ESTORNO_COMISSAO_BAIXADO",
   "COMISSAO_FECHAMENTO_REABERTO",
+  // Administração (E56): mexer em quem entra e no que cada um pode é ação
+  // sensível — a trilha era 100% financeira, e o feed do E18 mostrava "sem
+  // ações sensíveis" justamente para quem só administra.
+  "MEMBRO_ADICIONADO",
+  "MEMBRO_ALTERADO",
+  "MEMBRO_REMOVIDO",
+  "CONVITE_CRIADO",
+  "CONVITE_CANCELADO",
+  "PERMISSOES_ALTERADAS",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -40,6 +49,12 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PAGAMENTO_ESTORNADO: "Pagamento estornado",
   ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
   COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
+  MEMBRO_ADICIONADO: "Membro adicionado",
+  MEMBRO_ALTERADO: "Membro alterado",
+  MEMBRO_REMOVIDO: "Membro removido",
+  CONVITE_CRIADO: "Convite criado",
+  CONVITE_CANCELADO: "Convite cancelado",
+  PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -64,7 +79,15 @@ export interface RegistroAuditoria {
   /** Autor da sessão (req.usuario) — id + nome desnormalizado. */
   usuario: { id: string; nome: string };
   acao: AcaoAuditoria;
-  entidade: "parcela" | "conta_pagar" | "pagamento" | "contrato" | "comissao_fechamento";
+  entidade:
+    | "parcela"
+    | "conta_pagar"
+    | "pagamento"
+    | "contrato"
+    | "comissao_fechamento"
+    | "usuario"
+    | "convite"
+    | "perfil";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }
