@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable } from "@workspace/db";
+import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
 import { eq, and, max, inArray } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
 import {
@@ -270,7 +270,23 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     res.status(404).json({ error: "Atendimento not found" });
     return;
   }
-  
+
+  // E37: concluir uma PROVA carimba a data real no bloqueio, fechando o loop
+  // agenda↔disponibilidade — a janela de prova (disponibilidade.ts) colapsa
+  // para o dia em que a prova de fato aconteceu. Antes só a edição manual da
+  // reserva fazia isso; a conclusão do atendimento é a fonte da verdade.
+  // Usa o início real (E36); cai no horário marcado se a prova foi concluída
+  // sem passar por "iniciar". Colapsar a janela só reduz ocupação — nunca cria
+  // conflito, então não precisa revalidar disponibilidade.
+  if (parsed.data.situacao === "CONCLUIDO" && existente.tipo === "PROVA" && existente.bloqueioId) {
+    await db.update(bloqueioVestidosTable)
+      .set({ provaDataReal: atendimento.atendidoEm ?? atendimento.inicio, updatedAt: new Date() })
+      .where(and(
+        eq(bloqueioVestidosTable.id, existente.bloqueioId),
+        eq(bloqueioVestidosTable.lojaId, lojaId as string),
+      ));
+  }
+
   const fullAtendimento = await db.query.atendimentosTable.findFirst({
     where: eq(atendimentosTable.id, atendimento.id),
     with: ATENDIMENTO_WITH,
