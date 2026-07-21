@@ -15,6 +15,7 @@ import {
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { HistoricoContato } from "@/components/historico-contato";
 import { LookbookNoiva } from "./lookbook";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -399,6 +400,25 @@ export default function NoivaDetalhe() {
                 <p className="text-sm text-muted-foreground">Sem dados de contato.</p>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Histórico de contato (E32): a mesma timeline da Cobrança, aqui na
+            ficha. Registrar um contato zera o relógio do "parado há N dias" do
+            funil (E27) — por isso o onRegistrado recarrega o lead e a lista. */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Histórico de contato</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <HistoricoContato
+              leadId={leadId!}
+              aberto
+              onRegistrado={() => {
+                queryClient.invalidateQueries({ queryKey: getGetLeadQueryKey(activeLojaId!, leadId!) });
+                queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(activeLojaId!) });
+              }}
+            />
           </CardContent>
         </Card>
 
