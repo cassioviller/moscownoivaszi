@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetVestido,
   getGetVestidoQueryKey,
   useListBloqueios,
   getListBloqueiosQueryKey,
+  useCreateBloqueio,
   useListLeads,
   getListLeadsQueryKey,
   useListAtributos,
@@ -21,6 +23,9 @@ import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -89,6 +94,50 @@ export default function VestidoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
   const { lojaId, id } = useParams();
   const podeEditar = podeNoModulo(acessosModulos, "vestidos", "editar");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Manutenção (E43): o motor de janelas, o POST /bloqueios e o selo já existiam;
+  // só faltava a tela criar o bloqueio. Início obrigatório, fim opcional (= sem
+  // prazo). O dia vai ao meio-dia -03:00 para o fuso da loja não puxar a data.
+  const [manutInicio, setManutInicio] = useState("");
+  const [manutFim, setManutFim] = useState("");
+  const createBloqueio = useCreateBloqueio();
+
+  async function marcarManutencao() {
+    if (!manutInicio) {
+      toast({ title: "Informe o início da manutenção", variant: "destructive" });
+      return;
+    }
+    if (manutFim && manutFim < manutInicio) {
+      toast({ title: "O fim não pode ser antes do início", variant: "destructive" });
+      return;
+    }
+    try {
+      await createBloqueio.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          vestidoId: id!,
+          tipo: "MANUTENCAO",
+          inicio: `${manutInicio}T12:00:00-03:00`,
+          ...(manutFim ? { fim: `${manutFim}T12:00:00-03:00` } : {}),
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
+        queryClient.invalidateQueries({ queryKey: getCheckDisponibilidadeVestidosQueryKey(activeLojaId!, { data: hoje }) }),
+      ]);
+      setManutInicio("");
+      setManutFim("");
+      toast({ title: "Vestido marcado em manutenção" });
+    } catch (err) {
+      toast({
+        title: "Erro ao marcar manutenção",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }
 
   const {
     data: vestido,
@@ -408,6 +457,42 @@ export default function VestidoDetail() {
                   );
                 })}
               </ul>
+            )}
+
+            {/* E43: marcar em manutenção — cria um bloqueio MANUTENCAO. */}
+            {podeEditar && (
+              <div className="mt-6 flex flex-wrap items-end gap-2 border-t pt-4">
+                <div className="space-y-1">
+                  <Label htmlFor="manut-inicio" className="text-xs">Manutenção — de</Label>
+                  <Input
+                    id="manut-inicio"
+                    type="date"
+                    className="w-40"
+                    value={manutInicio}
+                    onChange={(e) => setManutInicio(e.target.value)}
+                    data-testid="manutencao-inicio"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="manut-fim" className="text-xs">até (opcional)</Label>
+                  <Input
+                    id="manut-fim"
+                    type="date"
+                    className="w-40"
+                    value={manutFim}
+                    onChange={(e) => setManutFim(e.target.value)}
+                    data-testid="manutencao-fim"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={marcarManutencao}
+                  disabled={createBloqueio.isPending}
+                  data-testid="marcar-manutencao"
+                >
+                  {createBloqueio.isPending ? "Marcando…" : "Marcar em manutenção"}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
