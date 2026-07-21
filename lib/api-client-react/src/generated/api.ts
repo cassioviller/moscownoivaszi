@@ -40,6 +40,7 @@ import type {
   AtributoOpcaoUpdate,
   AtributoUpdate,
   AuditoriaItem,
+  AutorAuditoria,
   BackupLog,
   BackupStatus,
   BaixaEstornoComissao,
@@ -76,6 +77,7 @@ import type {
   EnviarContabilidadeInput,
   EnviarContabilidadeResultado,
   ErrorResponse,
+  ExportarAuditoriaParams,
   ExportarContasPagarParams,
   ExportarFolhaParams,
   ExportarParcelasParams,
@@ -98,6 +100,7 @@ import type {
   LeadUpdate,
   LeadsPage,
   LinkOrcamentoPublico,
+  ListAuditoriaParams,
   ListBloqueiosParams,
   ListComissaoFechamentosParams,
   ListLeadsParams,
@@ -9067,20 +9070,30 @@ export const useEstornarPagamento = <TError = ErrorType<void>,
       return useMutation(getEstornarPagamentoMutationOptions(options));
     }
 
-export const getListAuditoriaUrl = (lojaId: string,) => {
+export const getListAuditoriaUrl = (lojaId: string,
+    params?: ListAuditoriaParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/financeiro/auditoria`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/auditoria?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/auditoria`
 }
 
 /**
+ * Sem filtro, os 200 registros mais recentes. Os filtros são combináveis (E, não OU) e o corte de 200 continua valendo DEPOIS deles — quem quiser o período inteiro usa o CSV de …/auditoria/exportar.
  * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
  */
-export const listAuditoria = async (lojaId: string, options?: RequestInit): Promise<AuditoriaItem[]> => {
+export const listAuditoria = async (lojaId: string,
+    params?: ListAuditoriaParams, options?: RequestInit): Promise<AuditoriaItem[]> => {
 
-  return customFetch<AuditoriaItem[]>(getListAuditoriaUrl(lojaId),
+  return customFetch<AuditoriaItem[]>(getListAuditoriaUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -9093,23 +9106,25 @@ export const listAuditoria = async (lojaId: string, options?: RequestInit): Prom
 
 
 
-export const getListAuditoriaQueryKey = (lojaId: string,) => {
+export const getListAuditoriaQueryKey = (lojaId: string,
+    params?: ListAuditoriaParams,) => {
     return [
-    `/api/lojas/${lojaId}/financeiro/auditoria`
+    `/api/lojas/${lojaId}/financeiro/auditoria`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListAuditoriaQueryOptions = <TData = Awaited<ReturnType<typeof listAuditoria>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAuditoriaQueryOptions = <TData = Awaited<ReturnType<typeof listAuditoria>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ListAuditoriaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListAuditoriaQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListAuditoriaQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditoria>>> = ({ signal }) => listAuditoria(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditoria>>> = ({ signal }) => listAuditoria(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -9119,19 +9134,188 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListAuditoriaQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditoria>>>
-export type ListAuditoriaQueryError = ErrorType<unknown>
+export type ListAuditoriaQueryError = ErrorType<void>
 
 
 /**
  * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
  */
 
-export function useListAuditoria<TData = Awaited<ReturnType<typeof listAuditoria>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListAuditoria<TData = Awaited<ReturnType<typeof listAuditoria>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ListAuditoriaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListAuditoriaQueryOptions(lojaId,options)
+  const queryOptions = getListAuditoriaQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAutoresAuditoriaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/auditoria/autores`
+}
+
+/**
+ * Sai da PRÓPRIA trilha, não da equipe: `usuarioId` é ON DELETE SET NULL, então quem saiu da loja continua tendo agido, e a lista de equipe é gated por `admin` — uma contadora com acesso só a financeiro ficaria sem filtro. Ordenado pela ação mais recente de cada autor.
+ * @summary Quem já deixou linha na trilha — as opções do filtro de autor
+ */
+export const listAutoresAuditoria = async (lojaId: string, options?: RequestInit): Promise<AutorAuditoria[]> => {
+
+  return customFetch<AutorAuditoria[]>(getListAutoresAuditoriaUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAutoresAuditoriaQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/auditoria/autores`
+    ] as const;
+    }
+
+
+export const getListAutoresAuditoriaQueryOptions = <TData = Awaited<ReturnType<typeof listAutoresAuditoria>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoresAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAutoresAuditoriaQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAutoresAuditoria>>> = ({ signal }) => listAutoresAuditoria(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAutoresAuditoria>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAutoresAuditoriaQueryResult = NonNullable<Awaited<ReturnType<typeof listAutoresAuditoria>>>
+export type ListAutoresAuditoriaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Quem já deixou linha na trilha — as opções do filtro de autor
+ */
+
+export function useListAutoresAuditoria<TData = Awaited<ReturnType<typeof listAutoresAuditoria>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoresAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAutoresAuditoriaQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportarAuditoriaUrl = (lojaId: string,
+    params?: ExportarAuditoriaParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/auditoria/exportar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/auditoria/exportar`
+}
+
+/**
+ * Aceita os mesmos filtros do GET /auditoria, mas SEM o corte de 200: a planilha que a contadora concilia não pode ser truncada em silêncio.
+ * @summary CSV da trilha de auditoria — os mesmos filtros da tela
+ */
+export const exportarAuditoria = async (lojaId: string,
+    params?: ExportarAuditoriaParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportarAuditoriaUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarAuditoriaQueryKey = (lojaId: string,
+    params?: ExportarAuditoriaParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/auditoria/exportar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportarAuditoriaQueryOptions = <TData = Awaited<ReturnType<typeof exportarAuditoria>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ExportarAuditoriaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarAuditoriaQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarAuditoria>>> = ({ signal }) => exportarAuditoria(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarAuditoria>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarAuditoriaQueryResult = NonNullable<Awaited<ReturnType<typeof exportarAuditoria>>>
+export type ExportarAuditoriaQueryError = ErrorType<void>
+
+
+/**
+ * @summary CSV da trilha de auditoria — os mesmos filtros da tela
+ */
+
+export function useExportarAuditoria<TData = Awaited<ReturnType<typeof exportarAuditoria>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ExportarAuditoriaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarAuditoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarAuditoriaQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

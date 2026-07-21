@@ -5285,10 +5285,22 @@ export const EstornarPagamentoResponse = zod.void()
 
 
 /**
+ * Sem filtro, os 200 registros mais recentes. Os filtros são combináveis (E, não OU) e o corte de 200 continua valendo DEPOIS deles — quem quiser o período inteiro usa o CSV de …/auditoria/exportar.
  * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
  */
 export const ListAuditoriaParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const listAuditoriaQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListAuditoriaQueryParams = zod.object({
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
+  "usuarioId": zod.coerce.string().optional().describe('Autor da ação (id; o nome na linha é desnormalizado)'),
+  "de": zod.coerce.string().regex(listAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(listAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
 })
 
 export const ListAuditoriaResponseItem = zod.object({
@@ -5302,6 +5314,44 @@ export const ListAuditoriaResponseItem = zod.object({
   "criadoEm": zod.coerce.date()
 })
 export const ListAuditoriaResponse = zod.array(ListAuditoriaResponseItem)
+
+
+/**
+ * Sai da PRÓPRIA trilha, não da equipe: `usuarioId` é ON DELETE SET NULL, então quem saiu da loja continua tendo agido, e a lista de equipe é gated por `admin` — uma contadora com acesso só a financeiro ficaria sem filtro. Ordenado pela ação mais recente de cada autor.
+ * @summary Quem já deixou linha na trilha — as opções do filtro de autor
+ */
+export const ListAutoresAuditoriaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListAutoresAuditoriaResponseItem = zod.object({
+  "usuarioId": zod.string(),
+  "nome": zod.string().describe('O nome mais recente com que este autor aparece na trilha'),
+  "total": zod.number().describe('Quantas linhas da trilha são dele')
+})
+export const ListAutoresAuditoriaResponse = zod.array(ListAutoresAuditoriaResponseItem)
+
+
+/**
+ * Aceita os mesmos filtros do GET /auditoria, mas SEM o corte de 200: a planilha que a contadora concilia não pode ser truncada em silêncio.
+ * @summary CSV da trilha de auditoria — os mesmos filtros da tela
+ */
+export const ExportarAuditoriaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarAuditoriaQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarAuditoriaQueryParams = zod.object({
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO']).optional(),
+  "usuarioId": zod.coerce.string().optional(),
+  "de": zod.coerce.string().regex(exportarAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarAuditoriaResponse = zod.unknown()
 
 
 export const ListSalariosRecorrentesParams = zod.object({

@@ -18,4 +18,6 @@ export {
   GetUtilizacaoVestidosParams,
   ListLookbooksParams,
   ListBloqueiosParams,
+  ListAuditoriaParams,
+  ExportarAuditoriaParams,
 } from "./generated/api";

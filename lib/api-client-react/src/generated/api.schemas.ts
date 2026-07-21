@@ -1224,6 +1224,14 @@ export interface DisponibilidadeVestidos {
   itens: DisponibilidadeVestidosItensItem[];
 }
 
+export interface AutorAuditoria {
+  usuarioId: string;
+  /** O nome mais recente com que este autor aparece na trilha */
+  nome: string;
+  /** Quantas linhas da trilha são dele */
+  total: number;
+}
+
 export interface ProximaJanelaVestido {
   /**
      * Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo
@@ -2239,6 +2247,66 @@ de?: string;
 ate?: string;
 colaboradorId?: string;
 };
+
+export type ListAuditoriaParams = {
+/**
+ * Uma das ações da união fechada (ACOES_AUDITORIA)
+ */
+acao?: ListAuditoriaAcao;
+/**
+ * Autor da ação (id; o nome na linha é desnormalizado)
+ */
+usuarioId?: string;
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ListAuditoriaAcao = typeof ListAuditoriaAcao[keyof typeof ListAuditoriaAcao];
+
+
+export const ListAuditoriaAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+} as const;
+
+export type ExportarAuditoriaParams = {
+acao?: ExportarAuditoriaAcao;
+usuarioId?: string;
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ExportarAuditoriaAcao = typeof ExportarAuditoriaAcao[keyof typeof ExportarAuditoriaAcao];
+
+
+export const ExportarAuditoriaAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+} as const;
 
 export type ExportarFolhaParams = {
 /**

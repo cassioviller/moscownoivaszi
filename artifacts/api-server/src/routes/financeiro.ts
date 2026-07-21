@@ -9,12 +9,15 @@ import {
   saldosReferenciaTable,
   auditLogTable,
 } from "@workspace/db";
-import { eq, and, or, inArray, gte, lt, lte, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, or, inArray, gte, lt, lte, desc, isNull, isNotNull, count, sql } from "drizzle-orm";
 import { alertaDeCaixa, diaLocal, hojeLocal } from "@workspace/financeiro-core";
 import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
   ListAuditoriaResponse,
+  ListAuditoriaQueryParams,
+  ListAutoresAuditoriaResponse,
+  ExportarAuditoriaQueryParams,
   ListPagamentosQueryParams,
   ListPagamentosResponse,
   CreatePagamentoBody,
@@ -43,7 +46,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
-import { registrarAuditoria } from "../lib/auditoria";
+import { registrarAuditoria, acaoValida, quandoLocalSP, ROTULO_ACAO } from "../lib/auditoria";
 import {
   competenciaValida,
   montarContasDaFolha,
@@ -366,14 +369,127 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
 // Trilha de auditoria (E10): a linha do tempo do que mexeu em dinheiro —
 // quem recebeu, estornou, pagou, baixou. Só leitura; a escrita vive nas
 // próprias ações (registrarAuditoria dentro das transações).
+
+const LIMITE_TRILHA = 200;
+
+/**
+ * Os filtros da trilha (E47), compartilhados pela lista e pelo CSV — é o que
+ * garante que a planilha traga a MESMA seleção que a tela mostra. Combináveis
+ * (E, não OU); ausente é "não filtra por isso".
+ *
+ * `de`/`ate` são dias LOCAIS inclusivos sobre um INSTANTE (`criadoEm`), o
+ * mesmo padrão do GET /pagamentos: o fim vira o início do dia seguinte, senão
+ * tudo que aconteceu depois da meia-noite do último dia ficaria de fora.
+ */
+type FiltroTrilha = { acao?: string; usuarioId?: string; de?: string; ate?: string };
+
+function condicoesTrilha(lojaId: string, f: FiltroTrilha) {
+  const condicoes = [eq(auditLogTable.lojaId, lojaId)];
+  if (f.acao) condicoes.push(eq(auditLogTable.acao, f.acao));
+  if (f.usuarioId) condicoes.push(eq(auditLogTable.usuarioId, f.usuarioId));
+  if (f.de) condicoes.push(gte(auditLogTable.criadoEm, inicioDoDia(f.de)));
+  if (f.ate) condicoes.push(lt(auditLogTable.criadoEm, inicioDoDia(addDias(f.ate, 1))));
+  return and(...condicoes);
+}
+
+/** `de` depois de `ate` é engano de digitação, não uma busca vazia. */
+function intervaloInvertido(f: FiltroTrilha): boolean {
+  return !!f.de && !!f.ate && f.de > f.ate;
+}
+
 router.get("/lojas/:lojaId/financeiro/auditoria", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  const parsed = ListAuditoriaQueryParams.safeParse(req.query);
+  if (!parsed.success || intervaloInvertido(parsed.data)) {
+    res.status(400).json({ error: "FILTRO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD, com 'de' antes de 'ate'" });
+    return;
+  }
+
   const linhas = await db.select()
     .from(auditLogTable)
-    .where(eq(auditLogTable.lojaId, lojaId))
+    .where(condicoesTrilha(lojaId, parsed.data))
     .orderBy(desc(auditLogTable.criadoEm))
-    .limit(200);
+    .limit(LIMITE_TRILHA);
   res.json(ListAuditoriaResponse.parse(linhas));
+});
+
+/**
+ * Os autores da trilha — as opções do filtro. Saem daqui e não da equipe
+ * porque `usuarioId` é ON DELETE SET NULL: quem saiu da loja continua tendo
+ * agido, e some da equipe sem sumir da trilha. Autor já anônimo (id nulo) fica
+ * de fora: não dá para filtrar por quem não tem id, e oferecer a opção seria
+ * prometer um filtro que não filtra.
+ */
+router.get("/lojas/:lojaId/financeiro/auditoria/autores", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+
+  // Agrupa por (id, nome) porque o nome é desnormalizado e pode ter mudado
+  // entre duas ações da mesma pessoa; o dedup abaixo fica com o mais recente.
+  const linhas = await db
+    .select({
+      usuarioId: auditLogTable.usuarioId,
+      nome: auditLogTable.usuarioNome,
+      total: count(),
+      ultima: sql<string>`max(${auditLogTable.criadoEm})`,
+    })
+    .from(auditLogTable)
+    .where(and(eq(auditLogTable.lojaId, lojaId), isNotNull(auditLogTable.usuarioId)))
+    .groupBy(auditLogTable.usuarioId, auditLogTable.usuarioNome)
+    .orderBy(desc(sql`max(${auditLogTable.criadoEm})`));
+
+  const porAutor = new Map<string, { usuarioId: string; nome: string; total: number }>();
+  for (const l of linhas) {
+    const id = l.usuarioId!;
+    const jaVisto = porAutor.get(id);
+    // A ordem é da ação mais recente para a mais antiga: o primeiro nome que
+    // aparece é o atual; os seguintes só somam o total.
+    if (jaVisto) jaVisto.total += Number(l.total);
+    else porAutor.set(id, { usuarioId: id, nome: l.nome, total: Number(l.total) });
+  }
+  res.json(ListAutoresAuditoriaResponse.parse([...porAutor.values()]));
+});
+
+/**
+ * O CSV da trilha (E47) — a última visão de dinheiro sem exportação.
+ *
+ * SEM o corte de 200 de propósito: a tela pode mostrar uma janela e dizer que
+ * é uma janela, mas planilha truncada em silêncio é pior que planilha nenhuma
+ * — a contadora concilia o que recebeu e não tem como saber do que faltou.
+ */
+router.get("/lojas/:lojaId/financeiro/auditoria/exportar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = ExportarAuditoriaQueryParams.safeParse(req.query);
+  if (!parsed.success || intervaloInvertido(parsed.data)) {
+    res.status(400).json({ error: "FILTRO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD, com 'de' antes de 'ate'" });
+    return;
+  }
+
+  const linhas = await db.select()
+    .from(auditLogTable)
+    .where(condicoesTrilha(lojaId, parsed.data))
+    .orderBy(desc(auditLogTable.criadoEm));
+
+  const csv = [["Quando", "Ação", "Autor", "Entidade", "ID da entidade", "Detalhe"]];
+  for (const l of linhas) {
+    csv.push([
+      quandoLocalSP(l.criadoEm),
+      acaoValida(l.acao) ? ROTULO_ACAO[l.acao] : l.acao,
+      l.usuarioNome,
+      l.entidade,
+      l.entidadeId,
+      // O detalhe cru, não um resumo: quem audita quer o contexto inteiro, e
+      // `escaparCsv` já neutraliza o que a planilha interpretaria como fórmula.
+      l.detalhe ? JSON.stringify(l.detalhe) : "",
+    ]);
+  }
+
+  const sufixo = parsed.data.de && parsed.data.ate ? `-${parsed.data.de}-a-${parsed.data.ate}` : "";
+  res
+    .status(200)
+    .type("text/csv; charset=utf-8")
+    .setHeader("Content-Disposition", `attachment; filename="auditoria${sufixo}.csv"`);
+  // BOM: sem ele o Excel lê UTF-8 como latin-1 e "comissão" vira "comissÃ£o".
+  res.send("﻿" + montarCsv(csv));
 });
 
 router.get("/lojas/:lojaId/financeiro/salarios-recorrentes", async (req, res): Promise<void> => {

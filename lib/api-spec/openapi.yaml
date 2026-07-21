@@ -2356,6 +2356,38 @@ paths:
       operationId: listAuditoria
       tags: [financeiro]
       summary: Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+      description: >
+        Sem filtro, os 200 registros mais recentes. Os filtros são combináveis
+        (E, não OU) e o corte de 200 continua valendo DEPOIS deles — quem quiser
+        o período inteiro usa o CSV de …/auditoria/exportar.
+      parameters:
+        - name: acao
+          in: query
+          required: false
+          description: Uma das ações da união fechada (ACOES_AUDITORIA)
+          schema:
+            type: string
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO]
+        - name: usuarioId
+          in: query
+          required: false
+          description: Autor da ação (id; o nome na linha é desnormalizado)
+          schema:
+            type: string
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
       responses:
         "200":
           description: Últimos registros da trilha
@@ -2365,6 +2397,74 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/AuditoriaItem"
+        "400":
+          description: Intervalo inválido
+  /lojas/{lojaId}/financeiro/auditoria/autores:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAutoresAuditoria
+      tags: [financeiro]
+      summary: Quem já deixou linha na trilha — as opções do filtro de autor
+      description: >
+        Sai da PRÓPRIA trilha, não da equipe: `usuarioId` é ON DELETE SET NULL,
+        então quem saiu da loja continua tendo agido, e a lista de equipe é
+        gated por `admin` — uma contadora com acesso só a financeiro ficaria sem
+        filtro. Ordenado pela ação mais recente de cada autor.
+      responses:
+        "200":
+          description: Autores distintos da trilha da loja
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AutorAuditoria"
+  /lojas/{lojaId}/financeiro/auditoria/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarAuditoria
+      tags: [financeiro]
+      summary: CSV da trilha de auditoria — os mesmos filtros da tela
+      description: >
+        Aceita os mesmos filtros do GET /auditoria, mas SEM o corte de 200: a
+        planilha que a contadora concilia não pode ser truncada em silêncio.
+      parameters:
+        - name: acao
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO]
+        - name: usuarioId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Intervalo inválido
   /lojas/{lojaId}/financeiro/salarios-recorrentes:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3781,6 +3881,14 @@ components:
           type: ["object", "null"]
           additionalProperties: true
         criadoEm: { type: string, format: date-time }
+
+    AutorAuditoria:
+      type: object
+      required: [usuarioId, nome, total]
+      properties:
+        usuarioId: { type: string }
+        nome: { type: string, description: "O nome mais recente com que este autor aparece na trilha" }
+        total: { type: integer, description: "Quantas linhas da trilha são dele" }
 
     ProximaJanelaVestido:
       type: object

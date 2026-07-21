@@ -1,28 +1,44 @@
-import { Link, useParams } from "react-router";
+import { useMemo } from "react";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAuditoria,
   getListAuditoriaQueryKey,
-  type AuditoriaItem,
+  useListAutoresAuditoria,
+  getListAutoresAuditoriaQueryKey,
+  getExportarAuditoriaUrl,
 } from "@workspace/api-client-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import {
+  ROTULO_ACAO,
+  ACOES_FILTRAVEIS,
+  acaoEmDestaque,
+  acaoFiltravel,
+  destinoDaLinha,
+  resumoDetalhe,
+} from "@/lib/financeiro/auditoria";
 
-// Exportados para o log de atividade da equipe (E18) — mesma trilha, outra lente.
-export const ROTULO_ACAO: Record<string, string> = {
-  PARCELA_RECEBIDA: "Parcela recebida",
-  RECEBIMENTO_ESTORNADO: "Recebimento estornado",
-  CONTA_PAGA: "Conta paga",
-  PAGAMENTO_REGISTRADO: "Pagamento registrado",
-  PAGAMENTO_ESTORNADO: "Pagamento estornado",
-  ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
-};
+// Reexportados para o log de atividade da equipe (E18) — mesma trilha, outra
+// lente. Moraram aqui até a E47; hoje o núcleo é `lib/financeiro/auditoria`.
+export { ROTULO_ACAO, resumoDetalhe };
 
-// Estornos desfazem dinheiro — merecem olho mais atento na lista.
-const ACOES_DESTAQUE = new Set(["RECEBIMENTO_ESTORNADO", "PAGAMENTO_ESTORNADO"]);
+/** O corte do servidor. A tela precisa saber para poder AVISAR que cortou. */
+const LIMITE_TRILHA = 200;
+
+/** "Todos" precisa de um valor: o Select do Radix não aceita item com value="". */
+const TODOS = "__todos__";
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -33,48 +49,172 @@ const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
-/** Uma frase com o que a ação mexeu, extraída do detalhe jsonb. */
-export function resumoDetalhe(item: AuditoriaItem): string | null {
-  const d = (item.detalhe ?? {}) as Record<string, unknown>;
-  const partes: string[] = [];
-  const valor = d.valorRecebido ?? d.valorPago ?? d.valorBaixado;
-  if (typeof valor === "number") partes.push(`R$ ${brl(valor)}`);
-  if (typeof d.descricao === "string") partes.push(d.descricao);
-  if (typeof d.competencia === "string") partes.push(`competência ${d.competencia}`);
-  if (typeof d.motivo === "string" && d.motivo) partes.push(`motivo: ${d.motivo}`);
-  if (Array.isArray(d.contas)) partes.push(`${d.contas.length} conta${d.contas.length === 1 ? "" : "s"}`);
-  return partes.length > 0 ? partes.join(" · ") : null;
-}
-
 /**
  * Trilha de auditoria (E10): quem recebeu, estornou, pagou e baixou — a
  * pergunta "quem fez isso?" respondida sem abrir chamado para o suporte.
+ *
+ * E47 deu à trilha o que as outras visões de dinheiro já tinham: filtro por
+ * ação/autor/período, saída para a entidade tocada e CSV. Os filtros moram na
+ * URL — auditoria é a tela que alguém manda por link ("olha o que aconteceu no
+ * dia 12"), e um filtro que não sobrevive ao copiar-e-colar não serve para isso.
  */
 export default function Auditoria() {
   const { lojaId } = useParams();
   const { activeLojaId } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const trilha = useListAuditoria(activeLojaId!, {
-    query: { queryKey: getListAuditoriaQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  const acao = acaoFiltravel(searchParams.get("acao"));
+  const usuarioId = searchParams.get("autor") ?? "";
+  const de = searchParams.get("de") ?? "";
+  const ate = searchParams.get("ate") ?? "";
+
+  // `undefined` (e não "") para o param sumir da URL da request e da queryKey:
+  // filtro vazio é ausência de filtro, não busca por vazio.
+  const filtros = useMemo(
+    () => ({
+      acao,
+      usuarioId: usuarioId || undefined,
+      de: de || undefined,
+      ate: ate || undefined,
+    }),
+    [acao, usuarioId, de, ate],
+  );
+
+  const intervaloInvertido = !!de && !!ate && de > ate;
+
+  const trilha = useListAuditoria(activeLojaId!, filtros, {
+    query: {
+      queryKey: getListAuditoriaQueryKey(activeLojaId!, filtros),
+      // Intervalo invertido é 400 certo: não vale gastar a request para provar.
+      enabled: !!activeLojaId && !intervaloInvertido,
+    },
   });
+
+  // Os autores saem da própria trilha (não da equipe): quem saiu da loja
+  // continua tendo agido. Sem filtro — a lista de opções não pode encolher
+  // conforme o filtro, senão não dá para trocar de autor depois de escolher um.
+  const autores = useListAutoresAuditoria(activeLojaId!, {
+    query: {
+      queryKey: getListAutoresAuditoriaQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+    },
+  });
+
+  function definir(chave: string, valor: string) {
+    setSearchParams(
+      (atual) => {
+        const proximo = new URLSearchParams(atual);
+        if (valor) proximo.set(chave, valor);
+        else proximo.delete(chave);
+        return proximo;
+      },
+      { replace: true },
+    );
+  }
+
+  const temFiltro = !!(acao || usuarioId || de || ate);
+  const linhas = trilha.data ?? [];
+  const truncou = linhas.length === LIMITE_TRILHA;
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link
-          to={`/loja/${lojaId}/financeiro`}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Financeiro
-        </Link>
-        <h1 className="text-3xl font-serif mt-1">Trilha de auditoria</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando. Os 200
-          registros mais recentes.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link
+            to={`/loja/${lojaId}/financeiro`}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Financeiro
+          </Link>
+          <h1 className="text-3xl font-serif mt-1">Trilha de auditoria</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando.
+          </p>
+        </div>
+        {/* O CSV leva o filtro em vista — e o período INTEIRO dele, sem o
+            corte de 200 da tela. Download nativo, como nas outras exportações. */}
+        <Button variant="outline" asChild>
+          <a href={getExportarAuditoriaUrl(activeLojaId!, filtros)} download>
+            Exportar CSV
+          </a>
+        </Button>
       </div>
 
-      {trilha.isError ? (
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="filtro-acao">Ação</Label>
+          <Select
+            value={acao || TODOS}
+            onValueChange={(v) => definir("acao", v === TODOS ? "" : v)}
+          >
+            <SelectTrigger id="filtro-acao" className="w-56">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todas as ações</SelectItem>
+              {ACOES_FILTRAVEIS.map((a) => (
+                <SelectItem key={a} value={a}>
+                  {ROTULO_ACAO[a]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="filtro-autor">Autor</Label>
+          <Select
+            value={usuarioId || TODOS}
+            onValueChange={(v) => definir("autor", v === TODOS ? "" : v)}
+          >
+            <SelectTrigger id="filtro-autor" className="w-56">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todos os autores</SelectItem>
+              {(autores.data ?? []).map((a) => (
+                <SelectItem key={a.usuarioId} value={a.usuarioId}>
+                  {a.nome} ({a.total})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="filtro-de">De</Label>
+          <Input
+            id="filtro-de"
+            type="date"
+            className="w-40"
+            value={de}
+            onChange={(e) => definir("de", e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="filtro-ate">Até</Label>
+          <Input
+            id="filtro-ate"
+            type="date"
+            className="w-40"
+            value={ate}
+            onChange={(e) => definir("ate", e.target.value)}
+          />
+        </div>
+
+        {temFiltro && (
+          <Button variant="ghost" onClick={() => setSearchParams({}, { replace: true })}>
+            Limpar
+          </Button>
+        )}
+      </div>
+
+      {intervaloInvertido ? (
+        <p className="text-sm text-destructive">
+          O início do período está depois do fim — ajuste as datas.
+        </p>
+      ) : trilha.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar a trilha</AlertTitle>
@@ -91,28 +231,49 @@ export default function Auditoria() {
             <div key={i} className="h-14 bg-muted rounded-md" />
           ))}
         </div>
-      ) : (trilha.data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nenhuma ação registrada ainda — a trilha começa a contar a partir de agora.
+      ) : linhas.length === 0 ? (
+        <p className="text-sm text-muted-foreground" data-testid="trilha-vazia">
+          {temFiltro
+            ? "Nenhuma ação bate com esse filtro."
+            : "Nenhuma ação registrada ainda — a trilha começa a contar a partir de agora."}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y rounded-lg border bg-card">
-          {trilha.data!.map((item) => {
-            const resumo = resumoDetalhe(item);
-            return (
-              <li key={item.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3">
-                <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
-                  {quandoFmt.format(new Date(item.criadoEm)).replace(", ", " às ")}
-                </span>
-                <Badge variant={ACOES_DESTAQUE.has(item.acao) ? "destructive" : "secondary"}>
-                  {ROTULO_ACAO[item.acao] ?? item.acao}
-                </Badge>
-                <span className="text-sm font-medium">{item.usuarioNome}</span>
-                {resumo && <span className="text-sm text-muted-foreground">{resumo}</span>}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {/* Dizer que cortou: uma lista que para em 200 sem avisar faz quem
+              audita concluir que não houve mais nada. O CSV não corta. */}
+          {truncou && (
+            <p className="text-sm text-muted-foreground" data-testid="trilha-truncada">
+              Mostrando as {LIMITE_TRILHA} ações mais recentes do filtro. Estreite o período — ou
+              exporte o CSV, que traz o período inteiro.
+            </p>
+          )}
+          <ul className="flex flex-col divide-y rounded-lg border bg-card">
+            {linhas.map((item) => {
+              const resumo = resumoDetalhe(item);
+              const destino = destinoDaLinha(item, lojaId ?? "");
+              return (
+                <li key={item.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3">
+                  <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                    {quandoFmt.format(new Date(item.criadoEm)).replace(", ", " às ")}
+                  </span>
+                  <Badge variant={acaoEmDestaque(item.acao) ? "destructive" : "secondary"}>
+                    {ROTULO_ACAO[item.acao] ?? item.acao}
+                  </Badge>
+                  <span className="text-sm font-medium">{item.usuarioNome}</span>
+                  {resumo && <span className="text-sm text-muted-foreground">{resumo}</span>}
+                  {destino && (
+                    <Link
+                      to={destino.href}
+                      className="ml-auto text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    >
+                      {destino.rotulo} →
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );
