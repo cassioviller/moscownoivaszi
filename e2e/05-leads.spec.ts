@@ -6,30 +6,35 @@ const estado = lerEstado();
 
 test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 
-test.describe("Leads", () => {
-  test("funil lista os leads existentes", async ({ page }) => {
+/**
+ * E31: o módulo /leads legado foi absorvido por /noivas. Estes testes provam
+ * que os deep-links antigos ainda chegam ao módulo vivo (redirect) e que o
+ * cadastro — que na tela legada era um botão sem handler (achado C4) — funciona
+ * de verdade no fluxo unificado.
+ */
+test.describe("Leads → Noivas (E31)", () => {
+  test("/leads redireciona para /noivas e lista os leads", async ({ page }) => {
     await page.goto("/leads");
+    await expect(page).toHaveURL(/\/noivas(\?|$)/);
     await expect(page.getByText("E2E Noiva Playwright")).toBeVisible();
   });
 
-  test("detalhe do lead abre", async ({ page }) => {
+  test("/leads/:id redireciona para o detalhe da noiva", async ({ page }) => {
     await page.goto(`/leads/${estado.leadId}`);
+    await expect(page).toHaveURL(new RegExp(`/noivas/${estado.leadId}(\\?|$)`));
     await expect(page.getByText("E2E Noiva Playwright")).toBeVisible();
   });
 
-  // FALHA ESPERADA no main (achado C4): o botão "Novo Lead" em
-  // leads/index.tsx:35-38 não tem handler — clicar não faz nada.
-  // Sem esse formulário a operação não consegue registrar noivas.
-  test("botão Novo Lead abre formulário e cadastra", async ({ page }) => {
-    await page.goto("/leads");
-    await page.getByRole("button", { name: "Novo Lead" }).click();
-    await expect(
-      page.getByRole("dialog"),
-      "Novo Lead deveria abrir um formulário (botão sem handler em leads/index.tsx:35)",
-    ).toBeVisible();
+  test("cadastra uma noiva pelo fluxo unificado", async ({ page }) => {
+    await page.goto("/noivas");
+    await page.getByTestId("button-adicionar-noiva").click();
+    await expect(page).toHaveURL(/\/noivas\/nova$/);
 
-    await page.getByLabel(/noiva/i).fill("Noiva Criada Pelo E2E");
-    await page.getByRole("dialog").getByRole("button", { name: /Cadastrar|Salvar/ }).click();
+    await page.getByTestId("input-noiva-nome").fill("Noiva Criada Pelo E2E");
+    await page.getByRole("button", { name: "Adicionar noiva" }).click();
+
+    // O sucesso navega para o detalhe da noiva recém-criada.
+    await expect(page).toHaveURL(/\/noivas\/[^/]+$/);
     await expect(page.getByText("Noiva Criada Pelo E2E").first()).toBeVisible();
   });
 });

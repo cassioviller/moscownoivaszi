@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
-  Users,
   Gem,
   Calendar,
   Shirt,
@@ -37,7 +36,6 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
     titulo: "Relacionamento",
     itens: [
       { icon: Gem, label: "Noivas", href: "/noivas", modulo: "leads" },
-      { icon: Users, label: "Leads", href: "/leads", modulo: "leads" },
       { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
       { icon: CalendarCheck, label: "Atendimentos", href: "/atendimentos", modulo: "agenda" },
     ],

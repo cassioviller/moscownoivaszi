@@ -195,7 +195,7 @@ export default function Dashboard() {
               <ul className="space-y-3">
                 {leadsRecentes.map((lead) => (
                   <li key={lead.id}>
-                    <Link href={`/leads/${lead.id}`}>
+                    <Link href={`/noivas/${lead.id}`}>
                       <div className="flex items-center justify-between hover-elevate rounded-md px-2 py-1 -mx-2 cursor-pointer">
                         <div>
                           <p className="text-sm font-medium">{lead.noivaNome}</p>

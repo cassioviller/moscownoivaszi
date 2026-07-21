@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
@@ -17,8 +17,6 @@ import LookbookPublico from "@/pages/lookbook-publico";
 import SelecionarLoja from "@/pages/selecionar-loja";
 import Dashboard from "@/pages/dashboard";
 
-import Leads from "@/pages/leads";
-import LeadDetail from "@/pages/leads/[id]";
 import Agenda from "@/pages/agenda";
 import AgendaSemana from "@/pages/agenda/semana";
 import Atendimentos from "@/pages/atendimentos";
@@ -116,6 +114,18 @@ function LegacyRedirect() {
   return <Navigate to={`/loja/${activeLojaId}${destino}${location.search}`} replace />;
 }
 
+/**
+ * E31: o módulo `/leads` legado foi absorvido por `/noivas` (que tem busca,
+ * paginação, kanban e o motivo de perda). Redireciona lista e detalhe para o
+ * módulo vivo, preservando a query e os deep-links/E2E antigos.
+ */
+function RedirectLeadParaNoiva() {
+  const { lojaId, id } = useParams();
+  const location = useLocation();
+  const destino = id ? `/loja/${lojaId}/noivas/${id}` : `/loja/${lojaId}/noivas`;
+  return <Navigate to={`${destino}${location.search}`} replace />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -143,8 +153,9 @@ function App() {
             <Route path="/loja/:lojaId" element={<AppLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="leads" element={<Leads />} />
-              <Route path="leads/:id" element={<LeadDetail />} />
+              {/* E31: /leads foi unificado em /noivas — redireciona. */}
+              <Route path="leads" element={<RedirectLeadParaNoiva />} />
+              <Route path="leads/:id" element={<RedirectLeadParaNoiva />} />
               <Route path="noivas" element={<Noivas />} />
               <Route path="noivas/nova" element={<NovaNoiva />} />
               <Route path="noivas/:leadId" element={<NoivaDetalhe />} />
