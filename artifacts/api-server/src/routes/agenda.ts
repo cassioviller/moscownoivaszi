@@ -252,8 +252,17 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     }
   }
 
+  // E36: carimbar o início REAL na primeira entrada em EM_ATENDIMENTO. A coluna
+  // `atendidoEm` existia e ninguém a escrevia; é do relógio do servidor, não do
+  // corpo. Uma vez só — reabrir e reentrar não reescreve o primeiro início, para
+  // a espera medida (atendidoEm − inicio) continuar sendo a do atendimento real.
+  const carimbo: Partial<typeof atendimentosTable.$inferInsert> =
+    parsed.data.situacao === "EM_ATENDIMENTO" && !existente.atendidoEm
+      ? { atendidoEm: new Date() }
+      : {};
+
   const [atendimento] = await db.update(atendimentosTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, ...carimbo, updatedAt: new Date() })
     .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))
     .returning();
     

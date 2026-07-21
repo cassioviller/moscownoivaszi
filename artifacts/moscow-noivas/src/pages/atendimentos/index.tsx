@@ -58,6 +58,19 @@ const DESFECHOS = ["RESERVOU", "VAI_PENSAR", "NAO_SERVIU"] as const;
 const horaFmt = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long" });
 
+/**
+ * O início REAL do atendimento (E36): a que horas de fato começou e o quanto
+ * isso ficou depois do horário marcado. `atendidoEm` era coluna morta; agora
+ * mede a espera da noiva sem depender de ninguém anotar nada.
+ */
+function inicioReal(inicio: string, atendidoEm: string): string {
+  const hora = horaFmt.format(new Date(atendidoEm));
+  const min = Math.round((new Date(atendidoEm).getTime() - new Date(inicio).getTime()) / 60_000);
+  if (min > 2) return `começou ${hora} · ${min} min após o horário`;
+  if (min < -2) return `começou ${hora} · ${Math.abs(min)} min adiantado`;
+  return `começou ${hora} · no horário`;
+}
+
 type Confirmacao = {
   titulo: string;
   descricao: string;
@@ -222,6 +235,12 @@ export default function Atendimentos() {
                 ? ` · ${DESFECHO_LABELS[a.desfecho] ?? a.desfecho}`
                 : ""}
             </Badge>
+
+            {a.atendidoEm && (a.situacao === "EM_ATENDIMENTO" || a.situacao === "CONCLUIDO") && (
+              <span className="text-xs text-muted-foreground" data-testid={`inicio-real-${a.id}`}>
+                {inicioReal(a.inicio, a.atendidoEm)}
+              </span>
+            )}
 
             {wa && (
               <Button asChild variant="outline" size="sm">
