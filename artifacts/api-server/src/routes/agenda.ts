@@ -28,7 +28,8 @@ import {
   UpdateChecklistItemResponse,
   GetDisponibilidadeResponse,
   SetDisponibilidadeBody,
-  SetDisponibilidadeResponse
+  SetDisponibilidadeResponse,
+  ConfirmarAtendimentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import {
@@ -312,6 +313,32 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pr
   const { lojaId, atendimentoId } = req.params;
   await db.delete(atendimentosTable).where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)));
   res.status(204).send();
+});
+
+// E39: marcar que a presença foi confirmada por WhatsApp. Carimba do relógio do
+// servidor, idempotente — reconfirmar não reescreve o primeiro contato.
+router.post("/lojas/:lojaId/atendimentos/:atendimentoId/confirmar", async (req, res): Promise<void> => {
+  const { lojaId, atendimentoId } = req.params;
+  const existente = await db.query.atendimentosTable.findFirst({
+    where: and(
+      eq(atendimentosTable.id, atendimentoId as string),
+      eq(atendimentosTable.lojaId, lojaId as string),
+    ),
+  });
+  if (!existente) {
+    res.status(404).json({ error: "Atendimento not found" });
+    return;
+  }
+  if (!existente.confirmadoEm) {
+    await db.update(atendimentosTable)
+      .set({ confirmadoEm: new Date(), updatedAt: new Date() })
+      .where(eq(atendimentosTable.id, atendimentoId as string));
+  }
+  const full = await db.query.atendimentosTable.findFirst({
+    where: eq(atendimentosTable.id, atendimentoId as string),
+    with: ATENDIMENTO_WITH,
+  });
+  res.json(ConfirmarAtendimentoResponse.parse(full));
 });
 
 // Ajustes

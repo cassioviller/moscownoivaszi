@@ -6,6 +6,7 @@ import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
   useCreateAtendimento,
+  useConfirmarAtendimento,
   useListCabines,
   getListCabinesQueryKey,
   useListLeads,
@@ -79,6 +80,14 @@ export default function Agenda() {
   const leads = useListLeads(activeLojaId!, undefined, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createAtendimento = useCreateAtendimento();
+  // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já
+  // foi contatado. Invalida a agenda para o card mudar de "falta" para "feito".
+  const confirmarAtendimento = useConfirmarAtendimento({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
+    },
+  });
 
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();
@@ -353,36 +362,62 @@ export default function Agenda() {
                 {/* A confirmação por wa.me (E8) saiu do card, que na grade tem
                     largura de coluna: vira uma fila abaixo, só de quem ainda
                     está AGENDADO — que é justamente quem precisa confirmar. */}
-                {doDia.some((a) => a.situacao === "AGENDADO") && (
-                  <div className="space-y-2 border-t pt-4">
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Confirmar presença
-                    </p>
-                    {doDia
-                      .filter((a) => a.situacao === "AGENDADO")
-                      .map((atendimento) => {
-                        const wa = waConfirmacao(atendimento);
-                        return (
-                          <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm">
-                            <span className="min-w-0 truncate">
-                              <span className="tabular-nums text-muted-foreground">
-                                {format(new Date(atendimento.inicio), "HH:mm")}
-                              </span>{" "}
-                              {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
-                            </span>
-                            {wa && (
-                              <Button asChild variant="outline" size="sm">
-                                <a href={wa} target="_blank" rel="noopener noreferrer">
-                                  <MessageCircle className="h-4 w-4 mr-1" />
-                                  Confirmar
-                                </a>
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
+                {doDia.some((a) => a.situacao === "AGENDADO") && (() => {
+                  const agendados = doDia.filter((a) => a.situacao === "AGENDADO");
+                  const faltaConfirmar = agendados.filter((a) => !a.confirmadoEm);
+                  const jaConfirmados = agendados.length - faltaConfirmar.length;
+                  return (
+                    <div className="space-y-2 border-t pt-4">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                        Confirmar presença
+                      </p>
+                      {faltaConfirmar.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Todas as presenças já foram confirmadas.</p>
+                      ) : (
+                        faltaConfirmar.map((atendimento) => {
+                          const wa = waConfirmacao(atendimento);
+                          return (
+                            <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm" data-testid={`confirmar-linha-${atendimento.id}`}>
+                              <span className="min-w-0 truncate">
+                                <span className="tabular-nums text-muted-foreground">
+                                  {format(new Date(atendimento.inicio), "HH:mm")}
+                                </span>{" "}
+                                {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
+                              </span>
+                              {wa && (
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  data-testid={`confirmar-btn-${atendimento.id}`}
+                                >
+                                  {/* Abrir o wa.me (o <a> navega) E carimbar a
+                                      confirmação, para a linha sair da fila. */}
+                                  <a
+                                    href={wa}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() =>
+                                      confirmarAtendimento.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
+                                    }
+                                  >
+                                    <MessageCircle className="h-4 w-4 mr-1" />
+                                    Confirmar
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                      {jaConfirmados > 0 && (
+                        <p className="text-xs text-muted-foreground pt-1">
+                          {jaConfirmados} já confirmada{jaConfirmados === 1 ? "" : "s"}.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             )}
           </CardContent>

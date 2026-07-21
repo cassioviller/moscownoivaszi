@@ -924,6 +924,8 @@ export interface Atendimento {
   inicio: string;
   /** @nullable */
   atendidoEm?: string | null;
+  /** @nullable */
+  confirmadoEm?: string | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;

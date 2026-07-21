@@ -70,6 +70,9 @@ export const atendimentosTable = pgTable("atendimentos", {
   inicio: timestamp("inicio", { withTimezone: true }).notNull(),
   situacao: atendimentoSituacaoEnum("situacao").notNull().default("AGENDADO"),
   atendidoEm: timestamp("atendido_em", { withTimezone: true }),
+  // Quando a recepção confirmou a presença por WhatsApp (E39). Separa "já falei"
+  // de "falta falar" na fila de confirmação — antes o E8 era um clique sem rastro.
+  confirmadoEm: timestamp("confirmado_em", { withTimezone: true }),
   desfecho: atendimentoDesfechoEnum("desfecho"),
   observacao: text("observacao"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

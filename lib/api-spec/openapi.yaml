@@ -1378,6 +1378,28 @@ paths:
       responses:
         "204":
           description: Deleted
+  /lojas/{lojaId}/atendimentos/{atendimentoId}/confirmar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: atendimentoId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: confirmarAtendimento
+      tags: [agenda]
+      summary: Marca que a recepção confirmou a presença por WhatsApp (E39)
+      description: >
+        Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação
+        parar de repetir quem já foi contatado. Idempotente: reconfirmar não
+        reescreve o primeiro carimbo.
+      responses:
+        "200":
+          description: Atendimento confirmado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atendimento"
   /lojas/{lojaId}/ajustes:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3433,6 +3455,7 @@ components:
         bloqueioId: { type: ["string", "null"] }
         inicio: { type: string, format: date-time }
         atendidoEm: { type: ["string", "null"], format: date-time }
+        confirmadoEm: { type: ["string", "null"], format: date-time }
         situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
         desfecho: { type: ["string", "null"], enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU, null] }
         observacao: { type: ["string", "null"] }

@@ -5469,6 +5469,79 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteAtendimentoMutationOptions(options));
     }
 
+export const getConfirmarAtendimentoUrl = (lojaId: string,
+    atendimentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/confirmar`
+}
+
+/**
+ * Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação parar de repetir quem já foi contatado. Idempotente: reconfirmar não reescreve o primeiro carimbo.
+ * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ */
+export const confirmarAtendimento = async (lojaId: string,
+    atendimentoId: string, options?: RequestInit): Promise<Atendimento> => {
+
+  return customFetch<Atendimento>(getConfirmarAtendimentoUrl(lojaId,atendimentoId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmarAtendimentoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
+
+const mutationKey = ['confirmarAtendimento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmarAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
+          const {lojaId,atendimentoId} = props ?? {};
+
+          return  confirmarAtendimento(lojaId,atendimentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmarAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof confirmarAtendimento>>>
+
+    export type ConfirmarAtendimentoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ */
+export const useConfirmarAtendimento = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmarAtendimento>>,
+        TError,
+        {lojaId: string;atendimentoId: string},
+        TContext
+      > => {
+      return useMutation(getConfirmarAtendimentoMutationOptions(options));
+    }
+
 export const getListAjustesUrl = (lojaId: string,) => {
 
 

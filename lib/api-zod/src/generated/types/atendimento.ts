@@ -26,6 +26,8 @@ export interface Atendimento {
   inicio: Date;
   /** @nullable */
   atendidoEm?: Date | null;
+  /** @nullable */
+  confirmadoEm?: Date | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;
