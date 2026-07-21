@@ -498,6 +498,17 @@ export default function Comissoes() {
                         Faltam R$ {brl(linha.faltaProximoDegrau)} para o próximo degrau
                       </p>
                     )}
+                    {/* E51: para onde o mês está indo, não só onde está. É o
+                        que permite à dona da loja agir antes do dia 30. */}
+                    {linha.projecao && (
+                      <p className="text-xs text-muted-foreground" data-testid="projecao-linha">
+                        No ritmo ({linha.projecao.diasDecorridos}/{linha.projecao.diasNoMes} dias):
+                        R$ {brl(linha.projecao.valorTotalProjetado)}
+                        {linha.projecao.percentualProjetado !== null &&
+                          linha.projecao.percentualProjetado !== undefined &&
+                          ` na faixa de ${linha.projecao.percentualProjetado}%`}
+                      </p>
+                    )}
                   </div>
                   <span className="shrink-0 font-serif text-xl tabular-nums">
                     R$ {brl(linha.valorTotal)}

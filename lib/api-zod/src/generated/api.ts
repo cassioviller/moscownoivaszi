@@ -5685,6 +5685,13 @@ export const GetMinhaComissaoResponse = zod.object({
   "valorTotal": zod.number(),
   "faltaProximoDegrau": zod.number().nullish().describe('Quanto falta vender para a próxima faixa; null = topo'),
   "proximoDegrauPercentual": zod.number().nullish(),
+  "projecao": zod.union([zod.object({
+  "diasDecorridos": zod.number(),
+  "diasNoMes": zod.number(),
+  "baseProjetada": zod.number().describe('Base líquida projetada para o mês inteiro'),
+  "percentualProjetado": zod.number().nullish(),
+  "valorTotalProjetado": zod.number().describe('Comissão + bônus sobre a base projetada')
+}),zod.null()]).optional(),
   "fechamentos": zod.array(zod.object({
   "competencia": zod.string(),
   "totalVendas": zod.number(),
@@ -5717,7 +5724,14 @@ export const PreviewComissaoResponseItem = zod.object({
   "valorComissao": zod.number(),
   "valorBonus": zod.number(),
   "valorTotal": zod.number(),
-  "faltaProximoDegrau": zod.number().nullish()
+  "faltaProximoDegrau": zod.number().nullish(),
+  "projecao": zod.union([zod.object({
+  "diasDecorridos": zod.number(),
+  "diasNoMes": zod.number(),
+  "baseProjetada": zod.number().describe('Base líquida projetada para o mês inteiro'),
+  "percentualProjetado": zod.number().nullish(),
+  "valorTotalProjetado": zod.number().describe('Comissão + bônus sobre a base projetada')
+}),zod.null()]).optional()
 })
 export const PreviewComissaoResponse = zod.array(PreviewComissaoResponseItem)
 

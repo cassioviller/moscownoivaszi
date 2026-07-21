@@ -143,6 +143,59 @@ export function proximoDegrau(
   };
 }
 
+/**
+ * Quantos dias de mês já se passaram antes de a projeção valer alguma coisa.
+ *
+ * No dia 2, um run-rate diz "no seu ritmo você fecha em 15x o que vendeu
+ * ontem" — isso não é previsão, é ruído com cara de número. E número na tela é
+ * acreditado, por mais ressalva que tenha ao lado. Abaixo disso a projeção não
+ * existe, e a tela diz que ainda é cedo.
+ */
+export const MIN_DIAS_PROJECAO = 5;
+
+export type ProjecaoCompetencia = {
+  diasDecorridos: number;
+  diasNoMes: number;
+  /** Centavos — a base líquida que o mês deve fechar no ritmo atual. */
+  baseProjetadaC: number;
+};
+
+/**
+ * "No seu ritmo, o mês fecha em quanto?" (E51)
+ *
+ * Run-rate simples: as vendas do mês até agora esticadas para o mês inteiro.
+ * Só faz sentido para a competência CORRENTE — num mês passado não há ritmo a
+ * projetar, o total já é o total, e mostrar projeção ali seria inventar futuro
+ * para algo que acabou. Devolve null nesse caso e antes de `MIN_DIAS_PROJECAO`.
+ *
+ * O ESTORNO não é esticado, e essa é a sutileza: ele é um evento único (um
+ * cancelamento de mês fechado), não um ritmo. Projetá-lo junto multiplicaria um
+ * acidente por 30 e diria à vendedora que ela vai devolver dinheiro que já
+ * devolveu. Estica-se a VENDA; o estorno se abate uma vez, no fim.
+ */
+export function projetarCompetencia(
+  vendasC: number,
+  estornoC: number,
+  competencia: string,
+  agora: Date,
+): ProjecaoCompetencia | null {
+  if (competenciaDe(agora) !== competencia) return null;
+
+  const { inicio, fim } = limitesCompetencia(competencia);
+  const MS_DIA = 86_400_000;
+  const diasNoMes = Math.round((fim.getTime() - inicio.getTime()) / MS_DIA);
+  // Dia do mês no fuso da loja: o mesmo deslocamento de `competenciaDe`.
+  const diasDecorridos = new Date(agora.getTime() - 3 * 60 * 60 * 1000).getUTCDate();
+
+  if (diasDecorridos < MIN_DIAS_PROJECAO) return null;
+
+  return {
+    diasDecorridos,
+    diasNoMes,
+    baseProjetadaC: Math.round((vendasC * diasNoMes) / diasDecorridos) - estornoC,
+  };
+}
+
 // ── Competência (America/Sao_Paulo, offset fixo -03:00 — sem DST desde 2019) ──
 // Este módulo é puro de propósito (unit sem banco), então não importa o
 // inicioDoDia de disponibilidade.ts, que arrasta os tipos de db junto.

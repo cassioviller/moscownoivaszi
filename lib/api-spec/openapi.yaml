@@ -4423,6 +4423,10 @@ components:
         valorTotal: { type: number }
         faltaProximoDegrau: { type: ["number", "null"], description: "Quanto falta vender para a próxima faixa; null = topo" }
         proximoDegrauPercentual: { type: ["number", "null"] }
+        projecao:
+          oneOf:
+            - $ref: "#/components/schemas/ProjecaoComissao"
+            - type: "null"
         fechamentos:
           type: array
           description: "Meses já fechados da pessoa, mais recente primeiro"
@@ -4512,6 +4516,23 @@ components:
         valorBonus: { type: number }
         valorTotal: { type: number }
         faltaProximoDegrau: { type: ["number", "null"] }
+        projecao:
+          oneOf:
+            - $ref: "#/components/schemas/ProjecaoComissao"
+            - type: "null"
+
+    # "No seu ritmo, o mês fecha em quanto?" (E51). Só existe na competência
+    # CORRENTE e depois de alguns dias de mês — antes disso o run-rate é ruído
+    # com cara de número. null = não há projeção a dar.
+    ProjecaoComissao:
+      type: object
+      required: [diasDecorridos, diasNoMes, baseProjetada, valorTotalProjetado]
+      properties:
+        diasDecorridos: { type: integer }
+        diasNoMes: { type: integer }
+        baseProjetada: { type: number, description: "Base líquida projetada para o mês inteiro" }
+        percentualProjetado: { type: ["number", "null"] }
+        valorTotalProjetado: { type: number, description: "Comissão + bônus sobre a base projetada" }
 
     BaixarEstornoComissaoInput:
       type: object

@@ -143,6 +143,50 @@ export default function MinhaComissao() {
             </Card>
           </div>
 
+          {/* E51: "no seu ritmo, o mês fecha em Y%". O card acima diz o que
+              vale HOJE; este diz para onde o mês está indo — que é o que dá
+              tempo de mudar o resultado, em vez de descobrir no dia 30. */}
+          {d.projecao && (
+            <Card data-testid="projecao-comissao">
+              <CardHeader className="pb-2">
+                <CardDescription>No seu ritmo</CardDescription>
+                <CardTitle className="font-serif text-2xl tabular-nums">
+                  R$ {brl(d.projecao.valorTotalProjetado)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-xs text-muted-foreground">
+                <p>
+                  Com {d.projecao.diasDecorridos} de {d.projecao.diasNoMes} dias, o mês caminha
+                  para{" "}
+                  <span className="font-medium tabular-nums">
+                    R$ {brl(d.projecao.baseProjetada)}
+                  </span>{" "}
+                  em vendas
+                  {d.projecao.percentualProjetado !== null &&
+                  d.projecao.percentualProjetado !== undefined ? (
+                    <>
+                      {" "}
+                      — faixa de{" "}
+                      <span className="font-medium">{d.projecao.percentualProjetado}%</span>
+                      {d.percentualAplicado !== null &&
+                        d.percentualAplicado !== undefined &&
+                        d.projecao.percentualProjetado > d.percentualAplicado && (
+                          <> , acima dos {d.percentualAplicado}% de agora</>
+                        )}
+                    </>
+                  ) : (
+                    <> — ainda sem faixa atingida</>
+                  )}
+                  .
+                </p>
+                {/* Projeção não é promessa: é o ritmo de hoje repetido até o
+                    fim do mês. Dizer isso é o que a impede de ser lida como
+                    valor a receber. */}
+                <p>É o ritmo atual repetido até o fim do mês, não uma garantia.</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Meses fechados</CardTitle>

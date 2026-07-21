@@ -1969,6 +1969,17 @@ export type MinhaComissaoFechamentosItem = {
   fechadoEm: string;
 };
 
+export interface ProjecaoComissao {
+  diasDecorridos: number;
+  diasNoMes: number;
+  /** Base líquida projetada para o mês inteiro */
+  baseProjetada: number;
+  /** @nullable */
+  percentualProjetado?: number | null;
+  /** Comissão + bônus sobre a base projetada */
+  valorTotalProjetado: number;
+}
+
 export interface MinhaComissao {
   /** Competência YYYY-MM consultada */
   competencia: string;
@@ -1989,6 +2000,7 @@ export interface MinhaComissao {
   faltaProximoDegrau?: number | null;
   /** @nullable */
   proximoDegrauPercentual?: number | null;
+  projecao?: ProjecaoComissao | null;
   /** Meses já fechados da pessoa, mais recente primeiro */
   fechamentos: MinhaComissaoFechamentosItem[];
 }
@@ -2066,6 +2078,7 @@ export interface ComissaoPreviewLinha {
   valorTotal: number;
   /** @nullable */
   faltaProximoDegrau?: number | null;
+  projecao?: ProjecaoComissao | null;
 }
 
 export interface BaixarEstornoComissaoInput {

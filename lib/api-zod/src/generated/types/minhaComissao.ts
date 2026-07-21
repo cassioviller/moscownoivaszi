@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MinhaComissaoFechamentosItem } from './minhaComissaoFechamentosItem';
+import type { ProjecaoComissao } from './projecaoComissao';
 
 export interface MinhaComissao {
   /** Competência YYYY-MM consultada */
@@ -27,6 +28,7 @@ export interface MinhaComissao {
   faltaProximoDegrau?: number | null;
   /** @nullable */
   proximoDegrauPercentual?: number | null;
+  projecao?: ProjecaoComissao | null;
   /** Meses já fechados da pessoa, mais recente primeiro */
   fechamentos: MinhaComissaoFechamentosItem[];
 }

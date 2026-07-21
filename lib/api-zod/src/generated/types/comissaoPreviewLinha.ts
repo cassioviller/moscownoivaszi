@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ProjecaoComissao } from './projecaoComissao';
 
 export interface ComissaoPreviewLinha {
   vendedoraId: string;
@@ -20,4 +21,5 @@ export interface ComissaoPreviewLinha {
   valorTotal: number;
   /** @nullable */
   faltaProximoDegrau?: number | null;
+  projecao?: ProjecaoComissao | null;
 }

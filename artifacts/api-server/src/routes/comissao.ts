@@ -43,6 +43,7 @@ import {
   limitesCompetencia,
   ordenarFaixas,
   proximoDegrau,
+  projetarCompetencia,
   validarFaixas,
   vencimentoComissao,
   type FaixaCalc,
@@ -561,6 +562,7 @@ router.get("/lojas/:lojaId/minha-comissao", async (req, res): Promise<void> => {
     valorTotal: real(r?.valorTotal ?? 0),
     faltaProximoDegrau: degrau ? real(degrau.faltam) : null,
     proximoDegrauPercentual: degrau?.percentual ?? null,
+    projecao: projecaoDaLinha(brutoC, estorno.totalC, competencia, regra, new Date()),
     fechamentos: fechamentos.map((f) => ({
       competencia: f.competencia,
       totalVendas: f.totalVendas,
@@ -572,6 +574,32 @@ router.get("/lojas/:lojaId/minha-comissao", async (req, res): Promise<void> => {
     })),
   }));
 });
+
+
+/**
+ * A projeção da competência (E51), pronta para o contrato. Nasce do MESMO
+ * `calcularComissao` que calcula o realizado — se a escada mudar, as duas
+ * respostas mudam juntas, e a projeção nunca vira uma segunda implementação
+ * da regra de comissão.
+ */
+function projecaoDaLinha(
+  brutoC: number,
+  estornoC: number,
+  competencia: string,
+  regra: { faixas: FaixaCalc[]; bonusAcumulaFaixas: boolean } | undefined,
+  agora: Date,
+) {
+  const proj = projetarCompetencia(brutoC, estornoC, competencia, agora);
+  if (!proj || !regra) return null;
+  const r = calcularComissao(proj.baseProjetadaC, regra.faixas, regra.bonusAcumulaFaixas);
+  return {
+    diasDecorridos: proj.diasDecorridos,
+    diasNoMes: proj.diasNoMes,
+    baseProjetada: real(Math.max(0, proj.baseProjetadaC)),
+    percentualProjetado: r.percentualAplicado,
+    valorTotalProjetado: real(r.valorTotal),
+  };
+}
 
 // ── Preview (ranking ao vivo) ──
 
@@ -611,8 +639,11 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
         valorComissao: fechamento.valorComissao,
         valorBonus: fechamento.valorBonus,
         valorTotal: fechamento.valorTotal,
-        // Mês fechado não tem degrau a perseguir.
+        // Mês fechado não tem degrau a perseguir — nem ritmo a projetar: o
+        // total já é o total, e projetar ali seria inventar futuro para o que
+        // acabou.
         faltaProximoDegrau: null,
+        projecao: null,
       }))
       .sort((a, b) => b.valorTotal - a.valorTotal);
     // Imutável de verdade: o navegador pode segurar por uma hora sem risco.
@@ -642,6 +673,9 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
     regrasVigentes(db, lojaId, vendedoraIds, competencia),
   ]);
   const nomePorId = new Map(nomes.map((n) => [n.id, n.nome]));
+  // Um instante só para o ranking inteiro: virar o dia no meio do map faria
+  // duas vendedoras serem projetadas com denominadores diferentes.
+  const agora = new Date();
 
   const linhas = vendedoraIds.map((vendedoraId) => {
     const brutoC = vendas.get(vendedoraId) ?? 0;
@@ -660,6 +694,7 @@ router.get("/lojas/:lojaId/comissao/preview", async (req, res): Promise<void> =>
       valorBonus: real(r?.valorBonus ?? 0),
       valorTotal: real(r?.valorTotal ?? 0),
       faltaProximoDegrau: degrau ? real(degrau.faltam) : null,
+      projecao: projecaoDaLinha(brutoC, estorno.totalC, competencia, regra, agora),
     };
   });
   // Candidata sem estorno qualificado (cancelou, mas de um mês que nunca
