@@ -53,7 +53,9 @@ test("detalhe da reserva abre a partir da lista", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Reservas", exact: true })).toBeVisible();
   await page.waitForLoadState("networkidle");
 
-  await expect(page.getByText("E2E Noiva Playwright")).toBeVisible();
+  // A mesma noiva pode ter várias reservas (outros specs criam) — basta que
+  // apareça na lista, daí o .first().
+  await expect(page.getByText("E2E Noiva Playwright").first()).toBeVisible();
   await page.getByRole("link", { name: "Provas & ajustes" }).first().click();
   await expect(page).toHaveURL(/\/reservas\/e2e-bloqueio-1$/);
   // O detalhe resolve as relações do bloqueio (noiva no título, vestido abaixo):

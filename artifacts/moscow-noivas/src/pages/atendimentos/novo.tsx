@@ -117,7 +117,7 @@ export default function NovoAtendimento() {
   const cabines = useListCabines(activeLojaId!, {
     query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
-  const bloqueios = useListBloqueios(activeLojaId!, {
+  const bloqueios = useListBloqueios(activeLojaId!, undefined, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const atendimentos = useListAtendimentos(activeLojaId!, {

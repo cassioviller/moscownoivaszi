@@ -53,7 +53,7 @@ export default function ReservaDetalhe() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const bloqueios = useListBloqueios(activeLojaId!, {
+  const bloqueios = useListBloqueios(activeLojaId!, undefined, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const atendimentos = useListAtendimentos(activeLojaId!, {

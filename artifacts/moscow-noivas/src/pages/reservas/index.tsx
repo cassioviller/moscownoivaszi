@@ -27,7 +27,7 @@ export default function Reservas() {
   const { activeLojaId } = useAuth();
   const [passadas, setPassadas] = useState(false);
 
-  const { data: bloqueios, isLoading, isError, error, refetch } = useListBloqueios(activeLojaId!, {
+  const { data: bloqueios, isLoading, isError, error, refetch } = useListBloqueios(activeLojaId!, undefined, {
     query: {
       queryKey: getListBloqueiosQueryKey(activeLojaId!),
       enabled: !!activeLojaId,

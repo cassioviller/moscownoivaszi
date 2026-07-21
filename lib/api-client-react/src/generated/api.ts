@@ -97,6 +97,7 @@ import type {
   LeadUpdate,
   LeadsPage,
   LinkOrcamentoPublico,
+  ListBloqueiosParams,
   ListComissaoFechamentosParams,
   ListLeadsParams,
   ListLookbooksParams,
@@ -6416,17 +6417,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteReservaMutationOptions(options));
     }
 
-export const getListBloqueiosUrl = (lojaId: string,) => {
+export const getListBloqueiosUrl = (lojaId: string,
+    params?: ListBloqueiosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/bloqueios`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/bloqueios?${stringifiedParams}` : `/api/lojas/${lojaId}/bloqueios`
 }
 
-export const listBloqueios = async (lojaId: string, options?: RequestInit): Promise<BloqueioVestido[]> => {
+export const listBloqueios = async (lojaId: string,
+    params?: ListBloqueiosParams, options?: RequestInit): Promise<BloqueioVestido[]> => {
 
-  return customFetch<BloqueioVestido[]>(getListBloqueiosUrl(lojaId),
+  return customFetch<BloqueioVestido[]>(getListBloqueiosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -6439,23 +6449,25 @@ export const listBloqueios = async (lojaId: string, options?: RequestInit): Prom
 
 
 
-export const getListBloqueiosQueryKey = (lojaId: string,) => {
+export const getListBloqueiosQueryKey = (lojaId: string,
+    params?: ListBloqueiosParams,) => {
     return [
-    `/api/lojas/${lojaId}/bloqueios`
+    `/api/lojas/${lojaId}/bloqueios`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListBloqueiosQueryOptions = <TData = Awaited<ReturnType<typeof listBloqueios>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBloqueios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListBloqueiosQueryOptions = <TData = Awaited<ReturnType<typeof listBloqueios>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListBloqueiosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBloqueios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListBloqueiosQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListBloqueiosQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBloqueios>>> = ({ signal }) => listBloqueios(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBloqueios>>> = ({ signal }) => listBloqueios(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -6470,11 +6482,12 @@ export type ListBloqueiosQueryError = ErrorType<unknown>
 
 
 export function useListBloqueios<TData = Awaited<ReturnType<typeof listBloqueios>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBloqueios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListBloqueiosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBloqueios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListBloqueiosQueryOptions(lojaId,options)
+  const queryOptions = getListBloqueiosQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

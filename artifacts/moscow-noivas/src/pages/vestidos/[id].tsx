@@ -7,8 +7,6 @@ import {
   useListBloqueios,
   getListBloqueiosQueryKey,
   useCreateBloqueio,
-  useListLeads,
-  getListLeadsQueryKey,
   useListAtributos,
   getListAtributosQueryKey,
   useCheckDisponibilidadeVestidos,
@@ -17,7 +15,7 @@ import {
   getGetProximaJanelaVestidoQueryKey,
   getGetVestidoFotoUrl,
 } from "@workspace/api-client-react";
-import type { Atributo, BloqueioVestido, Lead, VestidoAtributo } from "@workspace/api-client-react";
+import type { Atributo, BloqueioVestido, VestidoAtributo } from "@workspace/api-client-react";
 import { Link, useParams } from "react-router";
 import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -50,13 +48,19 @@ function rotularSelecoes(
 /**
  * Período exibido de um bloqueio.
  *
- * DÉBITO (provisório): o backend materializa o envelope físico em
- * ocupacao_inicio/ocupacao_fim, mas o schema BloqueioVestido da API ainda não
- * expõe esses campos. Até lá, derivamos o período das datas conhecidas do
- * bloqueio (inicio/fim para manutenção; retirada/devolução/casamento para
- * reserva) — pode subestimar as janelas de prova/lavagem.
+ * E45: usa o envelope físico materializado (ocupacao_inicio/fim), que o schema
+ * já expõe — inclui as janelas de prova/lavagem que a derivação subestimava, e
+ * é o MESMO que a tela de reserva mostra (fim a divergência). Cai na derivação
+ * só quando o envelope não veio (bloqueio antigo sem materialização).
  */
 function periodoDoBloqueio(b: BloqueioVestido): { inicio: Date | null; fim: Date | null; rotuloFimAberto: string | null } {
+  if (b.ocupacaoInicio) {
+    return {
+      inicio: parseISO(b.ocupacaoInicio),
+      fim: b.ocupacaoFim ? parseISO(b.ocupacaoFim) : null,
+      rotuloFimAberto: b.ocupacaoFim ? null : b.tipo === "MANUTENCAO" ? "sem prazo definido" : "até devolução",
+    };
+  }
   if (b.tipo === "MANUTENCAO") {
     return {
       inicio: b.inicio ? parseISO(b.inicio) : null,
@@ -149,13 +153,10 @@ export default function VestidoDetail() {
     query: { queryKey: getGetVestidoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id }
   });
 
-  // Join client-side entre bloqueios e leads: PROVISÓRIO até o backend expor
-  // filtro por vestido (GET /bloqueios?vestidoId=...) com noivaNome embutido.
-  const bloqueiosQuery = useListBloqueios(activeLojaId!, {
-    query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-  const leadsQuery = useListLeads(activeLojaId!, undefined, {
-    query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E45: só os bloqueios DESTE vestido, com a noiva embutida (lead do join) —
+  // antes baixava a loja inteira e cruzava com todos os leads no cliente.
+  const bloqueiosQuery = useListBloqueios(activeLojaId!, { vestidoId: id }, {
+    query: { queryKey: getListBloqueiosQueryKey(activeLojaId!, { vestidoId: id }), enabled: !!activeLojaId && !!id },
   });
 
   // Catálogo de atributos para rotular as características do vestido.
@@ -186,12 +187,6 @@ export default function VestidoDetail() {
       enabled: !!activeLojaId && !!id,
     },
   });
-
-  const leadsPorId = useMemo(() => {
-    const mapa = new Map<string, Lead>();
-    for (const lead of leadsQuery.data?.itens ?? []) mapa.set(lead.id, lead);
-    return mapa;
-  }, [leadsQuery.data]);
 
   const proximosBloqueios = useMemo(() => {
     const inicioHoje = new Date();
@@ -430,7 +425,7 @@ export default function VestidoDetail() {
               <ul className="space-y-4">
                 {proximosBloqueios.map((bloqueio) => {
                   const reserva = bloqueio.tipo === "RESERVA_CASAMENTO";
-                  const noivaNome = bloqueio.leadId ? leadsPorId.get(bloqueio.leadId)?.noivaNome ?? "—" : "—";
+                  const noivaNome = bloqueio.lead?.noivaNome ?? "—";
                   return (
                     <li key={bloqueio.id} className="flex items-start gap-3 text-sm">
                       <span
@@ -446,7 +441,7 @@ export default function VestidoDetail() {
                         </div>
                         {reserva && (
                           <p className="text-muted-foreground">
-                            Noiva: {leadsQuery.isLoading ? "carregando…" : noivaNome}
+                            Noiva: {noivaNome}
                           </p>
                         )}
                         {bloqueio.observacao && (

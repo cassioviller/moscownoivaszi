@@ -2144,6 +2144,13 @@ export const ListLeadsOrdem = {
   recentes: 'recentes',
 } as const;
 
+export type ListBloqueiosParams = {
+/**
+ * Filtra os bloqueios de um vestido só (E45)
+ */
+vestidoId?: string;
+};
+
 export type GetOrcamentoPublicoParams = {
 token: string;
 };

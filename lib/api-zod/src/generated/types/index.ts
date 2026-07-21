@@ -136,6 +136,7 @@ export * from './leadUpdate';
 export * from './leadUpdateEtapa';
 export * from './leadUpdatePerdidaMotivo';
 export * from './linkOrcamentoPublico';
+export * from './listBloqueiosParams';
 export * from './listComissaoFechamentosParams';
 export * from './listLeadsEtapa';
 export * from './listLeadsOrdem';

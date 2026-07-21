@@ -194,9 +194,14 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
 // Bloqueios
 router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  // E45: filtro opcional por vestido — a ficha do vestido passa a puxar só os
+  // bloqueios dele, em vez de baixar a loja inteira e filtrar no cliente.
+  const vestidoId = typeof req.query.vestidoId === "string" ? req.query.vestidoId : undefined;
   // Joins: telas de reservas/provas exibem vestido "codigo · nome" e a noiva.
   const bloqueios = await db.query.bloqueioVestidosTable.findMany({
-    where: eq(bloqueioVestidosTable.lojaId, lojaId),
+    where: vestidoId
+      ? and(eq(bloqueioVestidosTable.lojaId, lojaId), eq(bloqueioVestidosTable.vestidoId, vestidoId))
+      : eq(bloqueioVestidosTable.lojaId, lojaId),
     with: { vestido: true, lead: true },
   });
   res.json(ListBloqueiosResponse.parse(bloqueios));

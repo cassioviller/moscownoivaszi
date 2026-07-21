@@ -3512,6 +3512,10 @@ export const ListBloqueiosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const ListBloqueiosQueryParams = zod.object({
+  "vestidoId": zod.coerce.string().optional().describe('Filtra os bloqueios de um vestido só (E45)')
+})
+
 export const ListBloqueiosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),

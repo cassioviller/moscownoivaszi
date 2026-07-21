@@ -1613,6 +1613,12 @@ paths:
     get:
       operationId: listBloqueios
       tags: [reservas]
+      parameters:
+        - name: vestidoId
+          in: query
+          required: false
+          description: "Filtra os bloqueios de um vestido só (E45)"
+          schema: { type: string }
       responses:
         "200":
           description: List of bloqueios
