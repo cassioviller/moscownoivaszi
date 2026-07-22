@@ -58,6 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { MessageCircle } from "lucide-react";
 import { dataCurtaFmt } from "../noivas/helpers";
+import { hojeLocal } from "@/lib/financeiro/datas";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import {
@@ -130,9 +131,6 @@ export default function NovoAtendimento() {
   const bloqueios = useListBloqueios(activeLojaId!, undefined, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
-  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
-    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
   const disponibilidade = useGetDisponibilidade(activeLojaId!, {
     query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
@@ -164,6 +162,30 @@ export default function NovoAtendimento() {
   const vendedoraId = form.watch("vendedoraId");
   const dataEscolhida = form.watch("data");
   const horaEscolhida = form.watch("hora");
+
+  // Sobra da rodada 5: esta tela era o último "baixa tudo" do produto — a
+  // agenda INTEIRA da história só para montar os slots. Ela precisa de dois
+  // recortes, cada um com a janela do E83 (dia LOCAL America/Sao_Paulo, a
+  // mesma semântica que o servidor aplica sobre `inicio`):
+  // 1) o DIA escolhido, para a checagem de conflito dos slots — `de=ate=dia`
+  //    cobre exatamente o dia que `slotsOferecidos` avalia;
+  // 2) `de=hoje` sem `ate`, para o card "Próximos atendimentos" — todo
+  //    `inicio >= agora` tem dia local >= hoje, então a janela nunca esconde
+  //    um futuro.
+  const janelaDia = dataEscolhida ? { de: dataEscolhida, ate: dataEscolhida } : undefined;
+  const atendimentosDia = useListAtendimentos(activeLojaId!, janelaDia, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaDia),
+      enabled: !!activeLojaId && !!dataEscolhida,
+    },
+  });
+  const janelaFuturos = { de: hojeLocal() };
+  const atendimentosFuturos = useListAtendimentos(activeLojaId!, janelaFuturos, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaFuturos),
+      enabled: !!activeLojaId,
+    },
+  });
 
   const cabinesAtivas = useMemo(
     () => (cabines.data ?? []).filter((c) => c.ativo),
@@ -232,11 +254,11 @@ export default function NovoAtendimento() {
 
   const proximos = useMemo(() => {
     const agora = Date.now();
-    return (atendimentos.data ?? [])
+    return (atendimentosFuturos.data ?? [])
       .filter((a) => a.situacao === "AGENDADO" && new Date(a.inicio).getTime() >= agora)
       .sort((x, y) => new Date(x.inicio).getTime() - new Date(y.inicio).getTime())
       .slice(0, 10);
-  }, [atendimentos.data]);
+  }, [atendimentosFuturos.data]);
 
   const regra = disponibilidade.data;
 
@@ -256,13 +278,20 @@ export default function NovoAtendimento() {
     [regra],
   );
   const slotsDoDiaEscolhido = useMemo(() => {
-    if (!dataEscolhida || !cabineId || !vendedoraId) return null;
+    // Sem os dados do DIA a grade não abre: oferecer slot contra agenda ainda
+    // não carregada mostraria "livre" o que está ocupado (por isso nada de
+    // keepPreviousData aqui — o dia anterior não vale para o dia novo).
+    if (!dataEscolhida || !cabineId || !vendedoraId || !atendimentosDia.data) return null;
     // Concluído e falta não seguram a cabine — só o que ainda vai acontecer.
-    const ocupadas: Marcacao[] = (atendimentos.data ?? []).filter(
+    const ocupadas: Marcacao[] = atendimentosDia.data.filter(
       (a) => a.situacao === "AGENDADO" || a.situacao === "EM_ATENDIMENTO",
     );
     return slotsOferecidos(dataEscolhida, { cabineId, vendedoraId, tipo }, ocupadas, expediente);
-  }, [dataEscolhida, cabineId, vendedoraId, tipo, atendimentos.data, expediente]);
+  }, [dataEscolhida, cabineId, vendedoraId, tipo, atendimentosDia.data, expediente]);
+  // Seleção completa mas o dia ainda chegando — a mensagem certa é "carregando",
+  // não "escolha cabine, vendedora e data".
+  const carregandoDia =
+    !!dataEscolhida && !!cabineId && !!vendedoraId && !atendimentosDia.data;
   const lojaFechadaNoDia =
     slotsDoDiaEscolhido !== null &&
     slotsDoDiaEscolhido.length > 0 &&
@@ -597,7 +626,9 @@ export default function NovoAtendimento() {
                       <FormLabel>Hora *</FormLabel>
                       {!slotsDoDiaEscolhido ? (
                         <p className="text-sm text-muted-foreground">
-                          Escolha cabine, vendedora e data para ver os horários livres.
+                          {carregandoDia
+                            ? "Carregando horários…"
+                            : "Escolha cabine, vendedora e data para ver os horários livres."}
                         </p>
                       ) : lojaFechadaNoDia ? (
                         <p className="text-sm text-muted-foreground">
