@@ -4724,6 +4724,24 @@ export const GetPortalFotoResponse = zod.unknown()
 
 
 /**
+ * A tabela tem no máximo uma linha por noiva; as telas de mensagens e cobrança cruzam por leadId e só anexam o link quando o portal está VIVO (não expirado, não revogado) — link morto na mensagem é pior que nenhum.
+ * @summary Os portais da loja num lote — para as mensagens oferecerem o link (E84)
+ */
+export const ListPortaisParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListPortaisResponseItem = zod.object({
+  "leadId": zod.string(),
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "revogadoEm": zod.coerce.date().nullable(),
+  "ultimoAcessoEm": zod.coerce.date().nullable()
+})
+export const ListPortaisResponse = zod.array(ListPortaisResponseItem)
+
+
+/**
  * @summary O estado do portal desta noiva, para o card da ficha
  */
 export const GetPortalLeadParams = zod.object({

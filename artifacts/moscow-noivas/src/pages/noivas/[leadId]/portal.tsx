@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
+import { portalVivo, linkDoPortal } from "@/lib/portal";
 import { DoorOpen, Copy, Ban } from "lucide-react";
 
 /**
@@ -20,9 +21,6 @@ import { DoorOpen, Copy, Ban } from "lucide-react";
  * "último acesso há X" é o sinal de que ela abriu; regenerar mata o link
  * antigo na hora.
  */
-
-const linkDoPortal = (token: string) =>
-  `${window.location.origin}/noiva/${token}`;
 
 const dataFmt = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -61,13 +59,12 @@ export function PortalNoiva({ leadId }: { leadId: string }) {
       queryKey: getGetPortalLeadQueryKey(activeLojaId!, leadId),
     });
 
-  // 404 é estado ("nunca gerado"), não erro de rede.
+  // 404 é estado ("nunca gerado"), não erro de rede. A régua do "vivo" é a
+  // MESMA das mensagens (E84): lib/portal.
   const portal = portalQ.data ?? null;
   const nuncaGerado = portalQ.isError;
-  const revogado = !!portal?.revogadoEm;
-  const expirado =
-    !!portal && !revogado && new Date(portal.expiraEm) <= new Date();
-  const vivo = !!portal && !revogado && !expirado;
+  const vivo = portalVivo(portal);
+  const expirado = !!portal && !portal.revogadoEm && !vivo;
 
   async function copiar(token: string) {
     try {

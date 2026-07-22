@@ -40,6 +40,8 @@ export type ConfirmacaoAtendimento = {
   inicio: string | Date;
   lojaNome?: string | null;
   endereco?: string | null;
+  /** E84: o link do portal VIVO da noiva; ausente, a mensagem fica como era. */
+  portalUrl?: string | null;
 };
 
 const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -51,7 +53,14 @@ export type Cobranca = {
   /** Dias de atraso da parcela mais antiga (≥1 — o aging descarta o que vence hoje). */
   diasMaisAntigo: number;
   lojaNome?: string | null;
+  /** E84: o link do portal VIVO da noiva; ausente, a mensagem fica como era. */
+  portalUrl?: string | null;
 };
+
+/** A linha do portal, quando há portal — o mesmo fecho em toda mensagem. */
+function linhaPortal(portalUrl: string | null | undefined): string[] {
+  return portalUrl ? [`Tudo sobre o seu vestido está aqui: ${portalUrl}`] : [];
+}
 
 /**
  * Mensagem de cobrança pronta. Sucede o `msgPadrao` genérico que vivia na tela:
@@ -70,6 +79,7 @@ export function msgCobranca(p: Cobranca): string {
     `Olá, ${quem}! Aqui é ${daLoja}.`,
     `Passando com carinho para lembrar de um valor em aberto: ${brlFmt.format(p.totalVencido)}, ${atraso}.`,
     "Se já tiver acertado, é só desconsiderar. Qualquer dúvida, estou à disposição.",
+    ...linhaPortal(p.portalUrl),
   ].join("\n");
 }
 
@@ -78,6 +88,8 @@ export type OrcamentoVencendo = {
   /** Validade do orçamento (instante). */
   validade: string | Date;
   lojaNome?: string | null;
+  /** E84: o link do portal VIVO da noiva; ausente, a mensagem fica como era. */
+  portalUrl?: string | null;
 };
 
 /**
@@ -92,6 +104,7 @@ export function msgOrcamentoVencendo(p: OrcamentoVencendo): string {
     `Olá, ${quem}! Aqui é ${daLoja}.`,
     `Seu orçamento está guardado até ${ate} — depois disso os valores podem mudar.`,
     "Se quiser conversar sobre qualquer detalhe, estou por aqui.",
+    ...linhaPortal(p.portalUrl),
   ].join("\n");
 }
 
@@ -105,5 +118,6 @@ export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
   ];
   if (p.endereco) linhas.push(`Endereço: ${p.endereco}.`);
   linhas.push("Qualquer imprevisto, é só avisar por aqui.");
+  linhas.push(...linhaPortal(p.portalUrl));
   return linhas.join("\n");
 }

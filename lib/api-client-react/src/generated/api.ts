@@ -130,6 +130,7 @@ import type {
   ListOrcamentosParams,
   ListPagamentosParams,
   ListParcelasParams,
+  ListPortais200Item,
   LoginInput,
   Loja,
   LojaInput,
@@ -8967,6 +8968,84 @@ export function useGetPortalFoto<TData = Awaited<ReturnType<typeof getPortalFoto
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPortalFotoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPortaisUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/portais`
+}
+
+/**
+ * A tabela tem no máximo uma linha por noiva; as telas de mensagens e cobrança cruzam por leadId e só anexam o link quando o portal está VIVO (não expirado, não revogado) — link morto na mensagem é pior que nenhum.
+ * @summary Os portais da loja num lote — para as mensagens oferecerem o link (E84)
+ */
+export const listPortais = async (lojaId: string, options?: RequestInit): Promise<ListPortais200Item[]> => {
+
+  return customFetch<ListPortais200Item[]>(getListPortaisUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPortaisQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/portais`
+    ] as const;
+    }
+
+
+export const getListPortaisQueryOptions = <TData = Awaited<ReturnType<typeof listPortais>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPortais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPortaisQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPortais>>> = ({ signal }) => listPortais(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPortais>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPortaisQueryResult = NonNullable<Awaited<ReturnType<typeof listPortais>>>
+export type ListPortaisQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Os portais da loja num lote — para as mensagens oferecerem o link (E84)
+ */
+
+export function useListPortais<TData = Awaited<ReturnType<typeof listPortais>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPortais>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPortaisQueryOptions(lojaId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

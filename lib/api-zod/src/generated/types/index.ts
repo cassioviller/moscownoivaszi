@@ -192,6 +192,7 @@ export * from './listOrcamentosStatus';
 export * from './listPagamentosParams';
 export * from './listParcelasParams';
 export * from './listParcelasStatus';
+export * from './listPortais200Item';
 export * from './loginInput';
 export * from './loja';
 export * from './lojaComPerfil';

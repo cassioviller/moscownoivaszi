@@ -10,6 +10,8 @@ import {
   getListParcelasQueryKey,
   useListOrcamentos,
   getListOrcamentosQueryKey,
+  useListPortais,
+  getListPortaisQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ import {
 } from "@/lib/whatsapp";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { urlsDePortalPorLead } from "@/lib/portal";
 import { brl } from "@/lib/formatos";
 
 /**
@@ -81,6 +84,14 @@ export default function MensagensDoDia() {
       enabled: !!activeLojaId && veLeads,
     },
   });
+
+  // E84: os portais num lote — cada mensagem leva o link quando o portal da
+  // noiva está vivo. O gate é `leads.ver`: sem ele o mapa fica vazio e as
+  // mensagens saem como sempre saíram.
+  const portais = useListPortais(activeLojaId!, {
+    query: { queryKey: getListPortaisQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
+  });
+  const portalUrls = useMemo(() => urlsDePortalPorLead(portais.data), [portais.data]);
 
   const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
 
@@ -152,6 +163,7 @@ export default function MensagensDoDia() {
                       inicio: a.inicio,
                       lojaNome: lojaAtiva?.nome,
                       endereco: lojaAtiva?.endereco,
+                      portalUrl: portalUrls.get(a.leadId),
                     }),
                   );
                   return (
@@ -223,6 +235,7 @@ export default function MensagensDoDia() {
                       totalVencido: n.totalVencido,
                       diasMaisAntigo: n.diasMaisAntigo,
                       lojaNome: lojaAtiva?.nome,
+                      portalUrl: portalUrls.get(n.leadId),
                     }),
                   );
                   return (
@@ -276,6 +289,7 @@ export default function MensagensDoDia() {
                       noivaNome: o.lead?.noivaNome,
                       validade: o.validade!,
                       lojaNome: lojaAtiva?.nome,
+                      portalUrl: portalUrls.get(o.leadId),
                     }),
                   );
                   return (

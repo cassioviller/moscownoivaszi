@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { msgConfirmacaoAtendimento } from "./whatsapp";
+import { msgConfirmacaoAtendimento, msgCobranca, msgOrcamentoVencendo } from "./whatsapp";
 
 // linkWhatsApp segue testado em financeiro/cobranca.test.ts (via re-export).
 
@@ -35,5 +35,37 @@ describe("msgConfirmacaoAtendimento", () => {
     const msg = msgConfirmacaoAtendimento({ inicio });
     expect(msg).toContain("Olá, noiva!");
     expect(msg).not.toContain(" na :");
+  });
+});
+
+/**
+ * E84: o link do portal entra como ÚLTIMA linha quando existe — e a mensagem
+ * fica exatamente como era quando não existe (nada de "aqui: null").
+ */
+describe("linha do portal (E84)", () => {
+  const url = "https://loja.exemplo/noiva/tok123";
+
+  it("cobrança, confirmação e orçamento levam o link quando há portal", () => {
+    expect(
+      msgCobranca({ totalVencido: 100, diasMaisAntigo: 3, portalUrl: url }),
+    ).toContain(`Tudo sobre o seu vestido está aqui: ${url}`);
+    expect(
+      msgConfirmacaoAtendimento({ inicio: new Date("2026-07-23T17:00:00Z"), portalUrl: url }),
+    ).toContain(url);
+    expect(
+      msgOrcamentoVencendo({ validade: new Date("2026-07-25T12:00:00Z"), portalUrl: url }),
+    ).toContain(url);
+  });
+
+  it("sem portal a mensagem fica como era", () => {
+    for (const msg of [
+      msgCobranca({ totalVencido: 100, diasMaisAntigo: 3 }),
+      msgCobranca({ totalVencido: 100, diasMaisAntigo: 3, portalUrl: null }),
+      msgConfirmacaoAtendimento({ inicio: new Date("2026-07-23T17:00:00Z") }),
+      msgOrcamentoVencendo({ validade: new Date("2026-07-25T12:00:00Z") }),
+    ]) {
+      expect(msg).not.toContain("Tudo sobre o seu vestido");
+      expect(msg).not.toContain("null");
+    }
   });
 });

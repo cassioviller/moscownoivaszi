@@ -21,6 +21,7 @@ import {
   GetPortalFotoQueryParams,
   GetPortalLeadResponse,
   CriarPortalLeadResponse,
+  ListPortaisResponse,
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
@@ -261,6 +262,22 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
 });
 
 // ── Gestão (sessão + módulo leads: o portal é parte do atendimento da noiva) ──
+
+// E84: os portais da loja num lote — mensagens e cobrança cruzam por leadId
+// para anexar o link à mensagem. Uma linha por noiva; quem decide se está
+// vivo é o cliente (a régua é a mesma do card).
+router.get(
+  "/lojas/:lojaId/portais",
+  requireSessaoComLoja,
+  requireModulo("leads", "ver"),
+  async (req, res): Promise<void> => {
+    const lojaId = req.params.lojaId as string;
+    const portais = await db.select().from(portalTokensTable)
+      .where(eq(portalTokensTable.lojaId, lojaId));
+    res.json(ListPortaisResponse.parse(portais));
+  },
+);
+
 router.use("/lojas/:lojaId/leads/:leadId/portal", requireSessaoComLoja);
 
 router.get(

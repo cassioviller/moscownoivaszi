@@ -169,6 +169,27 @@ describe("Portal da noiva (E78)", () => {
     await publico().get(`/api/portal?token=${terceiro.body.token}`).expect(200);
   });
 
+  it("GET /portais devolve o lote da PRÓPRIA loja — a outra não vaza (E84)", async () => {
+    // Segunda loja com portal próprio: o lote de f não pode enxergá-la.
+    const g = await criarFixture();
+    try {
+      const agentG = await loginComLoja(g.superAdminEmail, g.lojaId);
+      const leadG = await criarLead(g);
+      await agentG.post(`/api/lojas/${g.lojaId}/leads/${leadG.id}/portal`).expect(201);
+
+      const res = await agent.get(`/api/lojas/${f.lojaId}/portais`).expect(200);
+      const leads = res.body.map((p: { leadId: string }) => p.leadId);
+      expect(leads).toContain(leadA.id);
+      expect(leads).not.toContain(leadG.id);
+      // O shape do lote é o que as mensagens cruzam.
+      const linha = res.body.find((p: { leadId: string }) => p.leadId === leadA.id);
+      expect(linha.token).toBeTruthy();
+      expect(linha.expiraEm).toBeTruthy();
+    } finally {
+      await limparFixture(g);
+    }
+  });
+
   it("token inventado (ou ausente) é 404 — como nas irmãs públicas", async () => {
     await publico().get(`/api/portal?token=${randomUUID()}`).expect(404);
     // O zod gerado coage ausência para a string "undefined" — cai no mesmo 404.

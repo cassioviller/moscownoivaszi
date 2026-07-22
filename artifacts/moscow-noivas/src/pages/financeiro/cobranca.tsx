@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useListParcelas,
   getListParcelasQueryKey,
+  useListPortais,
+  getListPortaisQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ import {
   type Faixa,
   type NoivaInadimplente,
 } from "@/lib/financeiro/cobranca";
+import { urlsDePortalPorLead } from "@/lib/portal";
 
 /**
  * Cobrança: parcelas PREVISTAS já vencidas, agrupadas por faixa de atraso e por
@@ -49,7 +52,16 @@ const CLASSE_ATRASO: Record<Faixa, string> = {
 };
 
 
-function LinhaNoiva({ noiva, lojaNome }: { noiva: NoivaInadimplente; lojaNome?: string | null }) {
+function LinhaNoiva({
+  noiva,
+  lojaNome,
+  portalUrl,
+}: {
+  noiva: NoivaInadimplente;
+  lojaNome?: string | null;
+  /** E84: o portal VIVO da noiva entra na mensagem; sem ele, nada muda. */
+  portalUrl?: string | null;
+}) {
   const naLoja = useCaminhoDaLoja();
   const wa = linkWhatsApp(
     noiva.whatsapp,
@@ -58,6 +70,7 @@ function LinhaNoiva({ noiva, lojaNome }: { noiva: NoivaInadimplente; lojaNome?: 
       totalVencido: noiva.totalVencido,
       diasMaisAntigo: noiva.diasMaisAntigo,
       lojaNome,
+      portalUrl,
     }),
   );
   const critico = noiva.faixaMaisAntiga === "mais60";
@@ -158,6 +171,13 @@ export default function Cobranca() {
       enabled: !!activeLojaId,
     },
   });
+
+  // E84: os portais da loja num lote — a mensagem de cobrança leva o link
+  // quando o portal da noiva está vivo.
+  const portais = useListPortais(activeLojaId!, {
+    query: { queryKey: getListPortaisQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const portalUrls = useMemo(() => urlsDePortalPorLead(portais.data), [portais.data]);
 
   const aging = useMemo(() => agingDeParcelas(parcelas.data ?? []), [parcelas.data]);
 
@@ -273,7 +293,12 @@ export default function Cobranca() {
               ) : (
                 <ul className="space-y-3">
                   {noivasVisiveis.map((n) => (
-                    <LinhaNoiva key={n.leadId} noiva={n} lojaNome={lojaNome} />
+                    <LinhaNoiva
+                      key={n.leadId}
+                      noiva={n}
+                      lojaNome={lojaNome}
+                      portalUrl={portalUrls.get(n.leadId)}
+                    />
                   ))}
                 </ul>
               )}

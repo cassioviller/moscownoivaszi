@@ -2429,6 +2429,35 @@ paths:
         "410":
           description: Link expirado
 
+  /lojas/{lojaId}/portais:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listPortais
+      tags: [portal]
+      summary: Os portais da loja num lote — para as mensagens oferecerem o link (E84)
+      description: >
+        A tabela tem no máximo uma linha por noiva; as telas de mensagens e
+        cobrança cruzam por leadId e só anexam o link quando o portal está
+        VIVO (não expirado, não revogado) — link morto na mensagem é pior
+        que nenhum.
+      responses:
+        "200":
+          description: Uma linha por noiva com portal (vivo ou não)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [leadId, token, expiraEm, revogadoEm, ultimoAcessoEm]
+                  properties:
+                    leadId: { type: string }
+                    token: { type: string }
+                    expiraEm: { type: string, format: date-time }
+                    revogadoEm: { type: ["string", "null"], format: date-time }
+                    ultimoAcessoEm: { type: ["string", "null"], format: date-time }
+
   /lojas/{lojaId}/leads/{leadId}/portal:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

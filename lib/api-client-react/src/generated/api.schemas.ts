@@ -2555,6 +2555,16 @@ export const GetPortalFotoVariante = {
   thumb: 'thumb',
 } as const;
 
+export type ListPortais200Item = {
+  leadId: string;
+  token: string;
+  expiraEm: string;
+  /** @nullable */
+  revogadoEm: string | null;
+  /** @nullable */
+  ultimoAcessoEm: string | null;
+};
+
 export type ListContratosParams = {
 leadId?: string;
 };
