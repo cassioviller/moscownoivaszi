@@ -1,5 +1,42 @@
 # Rodada 3 — Portal, performance e robustez (E78–E82)
 
+> **Placar final (2026-07-22).** Executada na ordem planejada (E79 → E80 →
+> E78 → E81 → E82), tudo entregue com teste no commit:
+>
+> - **E79 ✅** — cinco recortes no banco: `/leads/parados` (E79.1),
+>   `GET /financeiro/fluxo`, `GET /financeiro/dre` (com o teste de igualdade
+>   fluxo×DRE contra os dois endpoints), `GET /parcelas?status=abertas` +
+>   `?recebidasDe=` (cobrança e projeção, dois recortes para não contar a
+>   PARCIAL em dobro), `bloqueios?leadId=` + `GET /bloqueios/{id}` +
+>   `atendimentos?bloqueioId=&tipo=`. O motor do DRE e o por-meio subiram
+>   para o `financeiro-core`; endpoints antigos preservados.
+> - **E80 ✅** — `perfis.sistema` (migração versionada + Admin marcado);
+>   servidor recusa PATCH/DELETE de perfil do sistema; `ehPerfilAdmin`
+>   mudou-se para a lib e lê a flag. Caça ao flake: 3 rodadas
+>   `--sequence.shuffle.files` sem flake de concorrência (a única falha era
+>   o fiscal spec↔rotas cego a rota multilinha — corrigido; o flake original
+>   de 1/552 não reproduziu).
+> - **E78 ✅** — `portal_tokens` (um token por noiva), `GET /portal` com as
+>   quatro seções, aceite delegando à rotina do E74 extraída para lib,
+>   `/portal/foto` escopada, gestão por lead com gate `leads`, página
+>   `/noiva/:token` e card na ficha. Pendência consciente: mensagens do
+>   wa.me (E69) ainda não linkam o portal — exigiria token em lote nas
+>   listas; fica para a próxima rodada.
+> - **E81 ✅** — specs novos: sino+mensagens (seed compartilhado), portal
+>   (aceite refletindo na gestão + revogação), conciliação por CSV, avaria
+>   vira parcela, restaurar padrão + consolidado. De quebra a suíte velha
+>   voltou a contar a verdade: dashboard pós-E66, menu sem "Leads" (E31),
+>   membro novo cai em /trocar-senha (E57), coletor de erros sabe que o 404
+>   do card do portal é estado, seeds acumulados pedem `.first()`, o E40
+>   ganhou cabine própria e limpeza (o lixo do próprio dia flakeava o
+>   "depois passa"), e o rate limit de login derrubava os ÚLTIMOS specs da
+>   ordem alfabética com 429 — `E2E_SUITE=1` pula os limiters como o vitest
+>   já pulava. Placar final: 127/127 na suíte completa.
+> - **E82 ✅** — títulos: menu "Financeiro" ↔ H1 "Financeiro" (fluxo é a
+>   lente), menu "Seu dia" ↔ H1 "Seu dia, X", h1 "Vestidos" (Catálogo é a
+>   outra tela) — e2e no mesmo commit; `replit.md` atualizado (Product +
+>   Gotchas: poda, versões, portal); este placar.
+
 Plano pós-E77, ancorado no código como está em `598e04e`. As duas rodadas
 anteriores (E1–E30, E31–E57) e a sequência E58–E77 fecharam o funcional; o que
 sobrou tem três naturezas: **um salto de produto** (o portal da noiva), **uma

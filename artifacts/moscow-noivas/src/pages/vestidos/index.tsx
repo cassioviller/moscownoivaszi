@@ -282,7 +282,8 @@ export default function Vestidos() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-serif">Catálogo de Vestidos</h1>
+        {/* E82: o menu diz "Vestidos" (o acervo); "Catálogo" é a OUTRA tela. */}
+        <h1 className="text-3xl font-serif">Vestidos</h1>
         <div className="flex items-center gap-2">
           {/* Cadastro completo (com características do catálogo) na página dedicada;
               o dialog continua como atalho rápido. Link (role=link) não colide com o

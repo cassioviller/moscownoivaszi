@@ -36,6 +36,6 @@ setup("autentica admin e seleciona a loja", async ({ page }) => {
   // este storageState morre no primeiro clique.
   await fecharTourDoAcesso(page);
 
-  await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: /Seu dia/ })).toBeVisible({ timeout: 10_000 });
   await page.context().storageState({ path: path.join(__dirname, ".auth", "admin.json") });
 });

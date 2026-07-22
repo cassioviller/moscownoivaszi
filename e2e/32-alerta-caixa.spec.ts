@@ -74,7 +74,7 @@ test.describe("Alerta de caixa (E46)", () => {
 
   test("o hub de fluxo mostra o mesmo aviso", async ({ page }) => {
     await page.goto("/financeiro");
-    await expect(page.getByRole("heading", { name: "Fluxo de caixa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Financeiro" })).toBeVisible();
     await expect(page.getByTestId("alerta-caixa")).toContainText("Caixa fica negativo em");
   });
 
@@ -90,7 +90,7 @@ test.describe("Alerta de caixa (E46)", () => {
     await page.goto("/dashboard");
     expect((await resposta).status()).toBe(200);
 
-    await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Seu dia/ })).toBeVisible();
     await expect(page.getByTestId("alerta-caixa")).toHaveCount(0);
   });
 });

@@ -109,14 +109,21 @@ export interface ErroApi {
 /**
  * Coleta respostas de erro das chamadas /api feitas pela página — evidência
  * objetiva de contrato quebrado entre frontend e servidor.
+ *
+ * 404s que são ESTADO (não erro) ficam de fora: o card do portal (E78)
+ * pergunta "existe link?" e "nunca gerado" responde 404 por contrato.
  */
+const ERROS_ESPERADOS = [/^GET .*\/leads\/[^/]+\/portal$/];
+
 export function coletarErrosApi(page: Page): ErroApi[] {
   const erros: ErroApi[] = [];
   page.on("response", (res) => {
     const url = res.url();
-    if (url.includes("/api/") && res.status() >= 400) {
-      erros.push({ status: res.status(), url: url.replace(/^https?:\/\/[^/]+/, "") });
-    }
+    if (!url.includes("/api/") || res.status() < 400) return;
+    const caminho = url.replace(/^https?:\/\/[^/]+/, "");
+    const assinatura = `${res.request().method()} ${caminho}`;
+    if (res.status() === 404 && ERROS_ESPERADOS.some((re) => re.test(assinatura))) return;
+    erros.push({ status: res.status(), url: caminho });
   });
   return erros;
 }

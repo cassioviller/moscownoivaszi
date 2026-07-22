@@ -40,11 +40,11 @@ const PROBES: Record<Modulo, (lojaId: string) => string> = {
 // Contratos e Cobrança gateiam por `leads`; Reservas por `vestidos`) e os
 // itens sem módulo, sempre visíveis (Configurações, Minha comissão).
 const ITENS_MENU: Array<{ nome: string; modulo: Modulo | null }> = [
-  { nome: "Visão Geral", modulo: null },
+  { nome: "Seu dia", modulo: null },
   { nome: "Noivas", modulo: "leads" },
-  { nome: "Leads", modulo: "leads" },
   { nome: "Agenda", modulo: "agenda" },
   { nome: "Atendimentos", modulo: "agenda" },
+  { nome: "Mensagens de hoje", modulo: "agenda" },
   { nome: "Provas", modulo: "agenda" },
   { nome: "Ajustes", modulo: "agenda" },
   { nome: "Reservas", modulo: "vestidos" },
@@ -111,7 +111,7 @@ test.describe("Matriz de permissões — sweep por perfil", () => {
     // O tour abre sobre a sidebar na primeira entrada da vendedora e esconde
     // justamente o que este teste confere.
     await fecharTourDoAcesso(page);
-    await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Seu dia/ })).toBeVisible();
 
     for (const item of ITENS_MENU) {
       const link = page.getByRole("link", { name: item.nome, exact: true });
@@ -128,7 +128,7 @@ test.describe("Matriz de permissões — sweep por perfil", () => {
     await sessaoViaAPI(page, estado.adminEmail, estado.senha, estado.lojaId);
     await page.goto("/dashboard");
     await fecharTourDoAcesso(page);
-    await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Seu dia/ })).toBeVisible();
 
     for (const item of ITENS_MENU) {
       await expect(

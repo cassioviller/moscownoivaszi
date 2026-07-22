@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { lerEstado } from "./helpers";
+import { lerEstado, coletarErrosApi, resumoErros } from "./helpers";
 
 const estado = lerEstado();
 
@@ -14,12 +14,8 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  */
 test.describe("Ficha da noiva — histórico de contato (E32)", () => {
   test("registrar contato pela ficha aparece na timeline", async ({ page }) => {
-    const falhas: string[] = [];
-    page.on("response", (r) => {
-      if (r.url().includes("/api/") && r.status() >= 400) {
-        falhas.push(`${r.status()} ${r.request().method()} ${new URL(r.url()).pathname}`);
-      }
-    });
+    // O coletor da casa: já sabe que o 404 do card do portal (E78) é estado.
+    const falhas = coletarErrosApi(page);
 
     await page.goto(`/noivas/${estado.leadId}`);
     await expect(page.getByText("Histórico de contato")).toBeVisible();
@@ -33,6 +29,6 @@ test.describe("Ficha da noiva — histórico de contato (E32)", () => {
     await registrar.click();
 
     await expect(page.getByText(recado)).toBeVisible();
-    expect(falhas, `Chamadas de API falharam: ${falhas.join(", ")}`).toEqual([]);
+    expect(falhas, `Chamadas de API falharam:\n${resumoErros(falhas)}`).toEqual([]);
   });
 });

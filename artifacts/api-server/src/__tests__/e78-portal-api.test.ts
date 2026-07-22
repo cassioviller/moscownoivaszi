@@ -68,7 +68,6 @@ describe("Portal da noiva (E78)", () => {
     });
     await db.insert(lookbookItensTable).values({
       id: randomUUID(),
-      lojaId: f.lojaId,
       lookbookId,
       vestidoId: vestido.id,
       ordem: 0,

@@ -147,13 +147,15 @@ export default function FluxoCaixa() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
+        {/* E82: o H1 conta a mesma história do menu — quem clica em
+            "Financeiro" chega no Financeiro; o fluxo de caixa é a lente. */}
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-serif">Fluxo de caixa</h1>
+          <h1 className="text-3xl font-serif">Financeiro</h1>
           <Badge variant="secondary">Realizado</Badge>
         </div>
         <p className="text-sm text-muted-foreground">
-          O que entrou e saiu do caixa do atelier — pelo que foi registrado aqui, não é o extrato do
-          banco.
+          Fluxo de caixa: o que entrou e saiu do atelier — pelo que foi registrado aqui, não é o
+          extrato do banco.
         </p>
         <div className="flex flex-wrap gap-4 pt-1 text-sm">
           <Link to="projecao" className="text-muted-foreground hover:text-foreground">

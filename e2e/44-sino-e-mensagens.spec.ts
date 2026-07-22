@@ -60,7 +60,8 @@ test.describe("Sino e mensagens de hoje (E68+E69)", () => {
   test("o sino mostra o aviso e o dispensar o cala — até o fato mudar", async ({ page }) => {
     await page.goto(`/loja/${estado.lojaId}/dashboard`);
 
-    const sino = page.getByTestId("sino-notificacoes");
+    // O sino renderiza duas vezes (desktop e mobile) — o teste usa o visível.
+    const sino = page.locator('[data-testid="sino-notificacoes"]:visible');
     await expect(sino).toBeVisible();
     await sino.click();
 

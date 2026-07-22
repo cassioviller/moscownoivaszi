@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, usuariosTable } from "../lib/db/src/index";
-import { lerEstado, sessaoViaAPI, fecharTourDoAcesso, API_URL } from "./helpers";
+import { lerEstado, sessaoViaAPI, API_URL } from "./helpers";
 
 const estado = lerEstado();
 
@@ -43,13 +43,12 @@ test.describe("Auditoria de administração (E56)", () => {
   });
 
   test("remover o membro derruba a sessão dele e aparece na trilha", async ({ page, request }) => {
-    // A membro está dentro, navegando.
+    // A membro está dentro, com sessão viva. E57: a senha foi escolhida pelo
+    // admin, então o sistema a leva à troca antes de qualquer tela — para
+    // este teste basta a SESSÃO valer (a página de troca é autenticada).
     await sessaoViaAPI(page, email, senha, estado.lojaId);
     await page.goto("/dashboard");
-    // O tour do acesso (E24) abre na PRIMEIRA entrada de cada perfil e o
-    // overlay engole os cliques seguintes.
-    await fecharTourDoAcesso(page);
-    await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
+    await expect(page).toHaveURL(/\/trocar-senha/);
 
     // O admin a remove da equipe.
     await request.post(`${API_URL}/api/auth/login`, {

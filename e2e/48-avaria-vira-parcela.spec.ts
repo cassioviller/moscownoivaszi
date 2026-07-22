@@ -64,6 +64,11 @@ test.describe("Avaria vira parcela (E71)", () => {
   });
 
   test.afterAll(async () => {
+    // `contratos.lead_id` NÃO cascateia: parcelas → contrato → lead, na ordem.
+    if (contratoId) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
+      await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
+    }
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
   });
 

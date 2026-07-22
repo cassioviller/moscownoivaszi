@@ -22,7 +22,7 @@ function observarApi(page: Page): string[] {
 }
 
 const TELAS: { rota: string; titulo: string }[] = [
-  { rota: "/financeiro", titulo: "Fluxo de caixa" },
+  { rota: "/financeiro", titulo: "Financeiro" },
   { rota: "/financeiro/dre", titulo: "Resultado do mês" },
   { rota: "/financeiro/projecao", titulo: "Projeção de caixa" },
   { rota: "/financeiro/cobranca", titulo: "Cobrança" },
@@ -46,7 +46,7 @@ for (const { rota, titulo } of TELAS) {
  */
 test("o intervalo do fluxo sobrevive ao deep-link", async ({ page }) => {
   await page.goto("/financeiro?ini=2026-01-01&fim=2026-01-31");
-  await expect(page.getByRole("heading", { name: "Fluxo de caixa" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Financeiro" })).toBeVisible();
   await expect(page.locator("#fluxo-ini")).toHaveValue("2026-01-01");
   await expect(page.locator("#fluxo-fim")).toHaveValue("2026-01-31");
 });

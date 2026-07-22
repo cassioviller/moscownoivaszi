@@ -62,8 +62,17 @@ test.describe("Conciliação por extrato (E70)", () => {
   });
 
   test.afterAll(async () => {
-    // O cascade do lead leva contrato e parcelas.
-    if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+    // `contratos.lead_id` NÃO cascateia: parcelas → contratos → lead, na ordem.
+    if (!leadId) return;
+    const contratos = await db
+      .select({ id: contratosTable.id })
+      .from(contratosTable)
+      .where(eq(contratosTable.leadId, leadId));
+    for (const c of contratos) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, c.id));
+      await db.delete(contratosTable).where(eq(contratosTable.id, c.id));
+    }
+    await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
   });
 
   test("o extrato casa o recebimento e denuncia a tarifa sem par", async ({ page }) => {
@@ -81,7 +90,7 @@ test.describe("Conciliação por extrato (E70)", () => {
     });
 
     // Os três placares aparecem — e o par exato bateu.
-    await expect(page.getByText("Bateu")).toBeVisible();
+    await expect(page.getByText("Bateu", { exact: true })).toBeVisible();
     await expect(page.getByText("No banco, mas não no sistema")).toBeVisible();
     await expect(page.getByText("No sistema, mas não no banco")).toBeVisible();
 

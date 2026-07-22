@@ -18,8 +18,10 @@ test.describe("Orçamentos", () => {
   // "Lead: a1b2c3d4" (orcamentos/index.tsx:38) em vez do nome da noiva.
   test("card do orçamento identifica a noiva pelo nome", async ({ page }) => {
     await page.goto("/orcamentos");
+    // `.first()`: o banco de dev acumula orçamentos da mesma noiva seedada a
+    // cada rodada — um match basta para provar que é o NOME, não o id.
     await expect(
-      page.getByText("E2E Noiva Playwright"),
+      page.getByText("E2E Noiva Playwright").first(),
       "Card deveria mostrar o nome da noiva, não o id truncado (orcamentos/index.tsx:38)",
     ).toBeVisible();
   });

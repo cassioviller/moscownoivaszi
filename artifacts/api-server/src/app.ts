@@ -62,7 +62,7 @@ const loginLimiter = rateLimit({
   limit: 20,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  skip: () => !!process.env.VITEST,
+  skip: () => !!process.env.VITEST || !!process.env.E2E_SUITE,
   message: { error: "Muitas tentativas de login. Tente novamente em alguns minutos." },
 });
 app.use("/api/auth/login", loginLimiter);
@@ -74,7 +74,7 @@ const conviteLimiter = rateLimit({
   limit: 30,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  skip: () => !!process.env.VITEST,
+  skip: () => !!process.env.VITEST || !!process.env.E2E_SUITE,
   message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
 });
 app.use("/api/equipe/convites", conviteLimiter);
@@ -89,7 +89,7 @@ const lookbookLimiter = rateLimit({
   limit: 300,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  skip: () => !!process.env.VITEST,
+  skip: () => !!process.env.VITEST || !!process.env.E2E_SUITE,
   message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
 });
 app.use("/api/lookbooks/publico", lookbookLimiter);

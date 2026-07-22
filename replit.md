@@ -86,17 +86,33 @@ rode o codegen.
 
 - **Jornada da noiva** — leads/noivas, agenda, atendimentos, provas, ajustes,
   reservas de vestido (com motor de disponibilidade), catálogo e acervo.
+  Avarias da devolução viram parcela cobrável (E71); LGPD interna com
+  consentimento carimbado e expurgo que preserva números (E77).
+- **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
+  `portal_tokens`, 30 dias): proposta com aceite (E74), lookbook, próximas
+  provas e extrato de parcelas só-leitura. A vendedora gera/revoga no card da
+  ficha; os links antigos de orçamento/lookbook seguem valendo (compat).
 - **Comercial** — orçamento → contrato (com snapshot dos itens) → plano de
-  parcelas → PDF do contrato.
+  parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
+  aceita pelo link com rastro (instante, versão, hash — E74).
 - **Financeiro** — `/financeiro` é o fluxo de caixa (realizado), com recortes
   (DRE por competência, projeção de saldo) e telas de ação (receber, pagar com
-  saída multi-conta, cobrança por faixa de atraso).
+  saída multi-conta, cobrança por faixa de atraso). Conciliação por extrato
+  OFX/CSV no navegador (E70). E79: os agregados rodam no BANCO
+  (`GET /financeiro/fluxo`, `/financeiro/dre`, recortes de parcelas,
+  `/leads/parados`) — os mesmos motores do `financeiro-core`, sobre linhas já
+  filtradas no SQL.
 - **Comissão** — escada por vendedora, versionada por vigência, com bônus,
   preview ao vivo do mês e fechamento idempotente que gera a conta a pagar.
 - **Recorrências** — o que se repete todo mês (salário, aluguel, assinatura,
   fornecedor fixo) vira conta a pagar por geração idempotente por competência,
   e o período fecha com a contabilidade (export CSV).
-- **Multi-loja** — tudo é escopado por loja; superadmin tem bypass.
+- **Avisos sem cron** — o sino (E68) reúne caixa furando, comissão esquecida,
+  noivas esfriando e presenças por confirmar; "Mensagens de hoje" (E69) é a
+  fila de wa.me pronta (confirmação carimba `confirmadoEm`).
+- **Multi-loja** — tudo é escopado por loja; superadmin tem bypass e o console
+  consolidado da rede (E76). O perfil Admin é flag `perfis.sistema` (E80) —
+  o servidor recusa PATCH/DELETE dele.
 
 ## Gotchas
 
@@ -123,6 +139,16 @@ rode o codegen.
   transitória**: caem no `LegacyRedirect` do `App.tsx`. Código novo linka com
   escopo de loja (`/loja/:lojaId/...`); a sidebar e `useCaminhoDaLoja` mostram o
   padrão.
+- **A poda do backup roda DENTRO do backup** (E59): cada dump bom apaga os
+  além dos 10 mais recentes e as sessões expiradas. Teste que conta dumps ou
+  sessões precisa de fixture própria — o estado global muda sob os pés.
+- **Orçamento versiona no ENVIO** (E75): a noiva vê a última versão enviada,
+  nunca o rascunho vivo; o aceite congela versão+hash. Editar depois de
+  enviado NÃO muda o que ela está vendo — crie/envie nova versão.
+- **O portal expõe dados financeiros num link** (E78): TTL 30d, revogação a um
+  clique, token em QUERY (o logger corta a query), e o extrato sai só do
+  contrato ATIVO da própria noiva. Revogado responde 404 como desconhecido —
+  o link morto não conta que um dia valeu.
 
 ## Pointers
 

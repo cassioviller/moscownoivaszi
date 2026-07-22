@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -11,8 +14,23 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  * atendimento para DENTRO desse intervalo é recusado por sobreposição — mesmo
  * num instante em que não há nenhum outro atendimento —, e para FORA passa.
  * Prova a mudança de "conflito de instante" para "conflito de intervalo".
+ *
+ * Cabine PRÓPRIA por execução (E80): o spec usava a cabine compartilhada e
+ * NÃO limpava o que criava — provas de execuções anteriores do mesmo dia
+ * ocupavam a janela seguinte e o "para depois passa" flakeava.
  */
 test.describe("Prova ocupa intervalo (E40)", () => {
+  const cabineId = `e2e-cabine-e40-${randomUUID().slice(0, 8)}`;
+
+  test.beforeAll(async () => {
+    await db.insert(cabinesTable).values({ id: cabineId, lojaId: estado.lojaId, nome: cabineId });
+  });
+
+  test.afterAll(async () => {
+    await db.delete(atendimentosTable).where(eq(atendimentosTable.cabineId, cabineId));
+    await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
+  });
+
   test("mover para dentro da prova é recusado; para depois dela passa", async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
@@ -22,14 +40,14 @@ test.describe("Prova ocupa intervalo (E40)", () => {
     const equipe = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/equipe`);
     const vendedoraId = ((await equipe.json()) as { usuarioId: string }[])[0]!.usuarioId;
 
-    // Base única por execução, dentro do expediente (10:00–13:00 + offset).
+    // Base fixa dentro do expediente — a cabine é só desta execução.
     const ymd = new Date().toISOString().slice(0, 10);
-    const baseMs = Date.parse(`${ymd}T10:00:00-03:00`) + (Date.now() % (3 * 3600_000));
+    const baseMs = Date.parse(`${ymd}T10:00:00-03:00`);
     const H = 3600_000;
     const iso = (ms: number) => new Date(ms).toISOString();
     const criar = (tipo: "ATENDIMENTO" | "PROVA", inicio: string) =>
       request.post(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos`, {
-        data: { leadId: estado.leadId, cabineId: "e2e-cabine-1", vendedoraId, tipo, inicio },
+        data: { leadId: estado.leadId, cabineId, vendedoraId, tipo, inicio },
       });
 
     // Prova ocupa [base, base+1h). Atendimento avulso 3h depois (sem conflito).
@@ -41,7 +59,7 @@ test.describe("Prova ocupa intervalo (E40)", () => {
 
     const mover = (ms: number) =>
       request.patch(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos/${atendId}`, {
-        data: { cabineId: "e2e-cabine-1", inicio: iso(ms) },
+        data: { cabineId, inicio: iso(ms) },
       });
 
     // base+30min cai DENTRO da prova [base, base+1h) — recusado, embora não haja

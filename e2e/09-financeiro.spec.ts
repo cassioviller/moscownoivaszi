@@ -16,7 +16,7 @@ test.describe("Financeiro", () => {
   test("hub carrega o caixa do período sem erros de API", async ({ page }) => {
     const erros = coletarErrosApi(page);
     await page.goto("/financeiro");
-    await expect(page.getByRole("heading", { name: "Fluxo de caixa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Financeiro" })).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(
       erros,

@@ -73,7 +73,7 @@ test.describe("Recebimentos por meio (E50)", () => {
 
   test("o hub de fluxo mostra o mesmo recorte", async ({ page }) => {
     await page.goto("/financeiro");
-    await expect(page.getByRole("heading", { name: "Fluxo de caixa" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Financeiro" })).toBeVisible();
     await expect(page.getByTestId("recebimentos-por-forma")).toContainText("Pix");
   });
 

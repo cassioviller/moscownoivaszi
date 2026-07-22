@@ -33,7 +33,8 @@ type NavItem = { icon: typeof LayoutDashboard; label: string; href: string; modu
 // Agrupado por contexto: uma lista plana de 17 itens vira uma parede de leitura
 // serial. `modulo` espelha o gate de backend; item sem módulo é sempre visível.
 const grupos: { titulo?: string; itens: NavItem[] }[] = [
-  { itens: [{ icon: LayoutDashboard, label: "Visão Geral", href: "/dashboard" }] },
+  // E82: o menu conta a mesma história do H1 — o dashboard diz "Seu dia".
+  { itens: [{ icon: LayoutDashboard, label: "Seu dia", href: "/dashboard" }] },
   {
     titulo: "Relacionamento",
     itens: [
