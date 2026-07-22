@@ -56,7 +56,7 @@ export default function UtilizacaoVestidos() {
     },
   });
 
-  const { linhas, semUso } = useMemo(() => {
+  const { linhas, semUso, curvaPorVestido } = useMemo(() => {
     const todas = [...(utilizacao.data ?? [])];
     // Receita manda; empate decide por contratos, depois demanda (provas+reservas).
     todas.sort(
@@ -66,7 +66,28 @@ export default function UtilizacaoVestidos() {
         usoTotal(b) - usoTotal(a) ||
         a.nome.localeCompare(b.nome),
     );
-    return { linhas: todas, semUso: todas.filter((v) => usoTotal(v) === 0).length };
+    // E73: curva ABC pela participação ACUMULADA na receita — A carrega até
+    // 80% do faturamento, B até 95%, C é cauda (e quem não faturou nada).
+    const receitaTotal = todas.reduce((soma, v) => soma + v.receita, 0);
+    const curva = new Map<string, "A" | "B" | "C">();
+    let acumulado = 0;
+    for (const v of todas) {
+      acumulado += v.receita;
+      const classe =
+        v.receita <= 0 || receitaTotal === 0
+          ? "C"
+          : acumulado / receitaTotal <= 0.8
+            ? "A"
+            : acumulado / receitaTotal <= 0.95
+              ? "B"
+              : "C";
+      curva.set(v.vestidoId, classe);
+    }
+    return {
+      linhas: todas,
+      semUso: todas.filter((v) => usoTotal(v) === 0).length,
+      curvaPorVestido: curva,
+    };
   }, [utilizacao.data]);
 
   const trocarPeriodo = (novo: Periodo) => {
@@ -145,6 +166,9 @@ export default function UtilizacaoVestidos() {
                   <th className="py-2 px-3 font-normal text-right">Reservas</th>
                   <th className="py-2 px-3 font-normal text-right">Contratos</th>
                   <th className="py-2 pl-3 font-normal text-right">Receita</th>
+                  <th className="py-2 pl-3 font-normal text-right" title="Curva ABC: A carrega 80% da receita, B até 95%, C é cauda">
+                    Curva
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -179,6 +203,20 @@ export default function UtilizacaoVestidos() {
                       <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
                       <td className="py-2.5 pl-3 text-right tabular-nums">
                         {v.receita > 0 ? `R$ ${brl(v.receita)}` : "—"}
+                      </td>
+                      <td className="py-2.5 pl-3 text-right">
+                        <Badge
+                          variant={
+                            curvaPorVestido.get(v.vestidoId) === "A"
+                              ? "default"
+                              : curvaPorVestido.get(v.vestidoId) === "B"
+                                ? "secondary"
+                                : "outline"
+                          }
+                          className="font-normal"
+                        >
+                          {curvaPorVestido.get(v.vestidoId)}
+                        </Badge>
                       </td>
                     </tr>
                   );

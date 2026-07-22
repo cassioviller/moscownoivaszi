@@ -89,6 +89,7 @@ import type {
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
   GetConviteInfoParams,
+  GetDesempenhoVendedoras200Item,
   GetLookbookPublicoFotoParams,
   GetLookbookPublicoParams,
   GetMinhaComissaoParams,
@@ -4815,6 +4816,84 @@ export function useGetSazonalidadeCasamentos<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetSazonalidadeCasamentosQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDesempenhoVendedorasUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/desempenho-vendedoras`
+}
+
+/**
+ * E73: a comissão media o resultado, mas não o CAMINHO — quantos atendimentos cada vendedora conclui, quantos terminam em "reservou" (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os contratos sempre estiveram gravados; faltava cruzar.
+ * @summary Atendimento → contrato por vendedora, com ticket médio
+ */
+export const getDesempenhoVendedoras = async (lojaId: string, options?: RequestInit): Promise<GetDesempenhoVendedoras200Item[]> => {
+
+  return customFetch<GetDesempenhoVendedoras200Item[]>(getGetDesempenhoVendedorasUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDesempenhoVendedorasQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/desempenho-vendedoras`
+    ] as const;
+    }
+
+
+export const getGetDesempenhoVendedorasQueryOptions = <TData = Awaited<ReturnType<typeof getDesempenhoVendedoras>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDesempenhoVendedoras>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDesempenhoVendedorasQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDesempenhoVendedoras>>> = ({ signal }) => getDesempenhoVendedoras(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDesempenhoVendedoras>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDesempenhoVendedorasQueryResult = NonNullable<Awaited<ReturnType<typeof getDesempenhoVendedoras>>>
+export type GetDesempenhoVendedorasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Atendimento → contrato por vendedora, com ticket médio
+ */
+
+export function useGetDesempenhoVendedoras<TData = Awaited<ReturnType<typeof getDesempenhoVendedoras>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDesempenhoVendedoras>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDesempenhoVendedorasQueryOptions(lojaId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

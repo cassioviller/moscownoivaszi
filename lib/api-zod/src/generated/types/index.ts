@@ -122,6 +122,7 @@ export * from './folhaInput';
 export * from './gerarComissaoFechamentoInput';
 export * from './gerarPlanoInput';
 export * from './getConviteInfoParams';
+export * from './getDesempenhoVendedoras200Item';
 export * from './getLookbookPublicoFotoParams';
 export * from './getLookbookPublicoFotoVariante';
 export * from './getLookbookPublicoParams';

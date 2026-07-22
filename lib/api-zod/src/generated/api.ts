@@ -1386,6 +1386,25 @@ export const GetSazonalidadeCasamentosResponseItem = zod.object({
 export const GetSazonalidadeCasamentosResponse = zod.array(GetSazonalidadeCasamentosResponseItem)
 
 
+/**
+ * E73: a comissão media o resultado, mas não o CAMINHO — quantos atendimentos cada vendedora conclui, quantos terminam em "reservou" (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os contratos sempre estiveram gravados; faltava cruzar.
+ * @summary Atendimento → contrato por vendedora, com ticket médio
+ */
+export const GetDesempenhoVendedorasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetDesempenhoVendedorasResponseItem = zod.object({
+  "vendedoraId": zod.string(),
+  "nome": zod.string(),
+  "atendimentosConcluidos": zod.number(),
+  "reservou": zod.number().describe('Desfecho RESERVOU'),
+  "contratos": zod.number().describe('Contratos ATIVOS fechados por ela'),
+  "receita": zod.number().describe('Soma do valorTotal dos contratos ativos')
+})
+export const GetDesempenhoVendedorasResponse = zod.array(GetDesempenhoVendedorasResponseItem)
+
+
 export const GetLeadParams = zod.object({
   "lojaId": zod.coerce.string(),
   "leadId": zod.coerce.string()

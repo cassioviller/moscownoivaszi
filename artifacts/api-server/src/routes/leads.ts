@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable } from "@workspace/db";
+import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable } from "@workspace/db";
 import { eq, and, desc, or, ilike, sql, count, inArray } from "drizzle-orm";
 import {
   ListLeadsResponse,
@@ -15,7 +15,8 @@ import {
   CreateRegistroCobrancaBody,
   CreateRegistroCobrancaResponse,
   GetConversaoLeadsResponse,
-  GetSazonalidadeCasamentosResponse
+  GetSazonalidadeCasamentosResponse,
+  GetDesempenhoVendedorasResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -175,6 +176,65 @@ router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => 
       porOrigem,
       porMotivoPerda: porMotivoPerda.map((m) => ({ motivo: m.motivo ?? null, total: m.total })),
     }),
+  );
+});
+
+// E73: atendimento → contrato por vendedora. A comissão media o resultado;
+// isto mede o CAMINHO — desfechos (E37) cruzados com contratos. Antes do
+// :leadId para o path não virar id.
+router.get("/lojas/:lojaId/leads/desempenho-vendedoras", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+
+  const [porAtendimento, porContrato] = await Promise.all([
+    db
+      .select({
+        vendedoraId: atendimentosTable.vendedoraId,
+        nome: usuariosTable.nome,
+        atendimentosConcluidos: sql<number>`count(*) filter (where ${atendimentosTable.situacao} = 'CONCLUIDO')`.mapWith(Number),
+        reservou: sql<number>`count(*) filter (where ${atendimentosTable.desfecho} = 'RESERVOU')`.mapWith(Number),
+      })
+      .from(atendimentosTable)
+      .innerJoin(usuariosTable, eq(atendimentosTable.vendedoraId, usuariosTable.id))
+      .where(eq(atendimentosTable.lojaId, lojaId))
+      .groupBy(atendimentosTable.vendedoraId, usuariosTable.nome),
+    db
+      .select({
+        vendedoraId: contratosTable.vendedoraId,
+        nome: usuariosTable.nome,
+        contratos: count(),
+        receita: sql<number>`coalesce(sum(${contratosTable.valorTotal}), 0)`.mapWith(Number),
+      })
+      .from(contratosTable)
+      .innerJoin(usuariosTable, eq(contratosTable.vendedoraId, usuariosTable.id))
+      .where(and(eq(contratosTable.lojaId, lojaId), eq(contratosTable.status, "ATIVO")))
+      .groupBy(contratosTable.vendedoraId, usuariosTable.nome),
+  ]);
+
+  const porVendedora = new Map<
+    string,
+    { vendedoraId: string; nome: string; atendimentosConcluidos: number; reservou: number; contratos: number; receita: number }
+  >();
+  for (const a of porAtendimento) {
+    porVendedora.set(a.vendedoraId, { ...a, contratos: 0, receita: 0 });
+  }
+  for (const c of porContrato) {
+    const linha = porVendedora.get(c.vendedoraId) ?? {
+      vendedoraId: c.vendedoraId,
+      nome: c.nome,
+      atendimentosConcluidos: 0,
+      reservou: 0,
+      contratos: 0,
+      receita: 0,
+    };
+    linha.contratos = c.contratos;
+    linha.receita = c.receita;
+    porVendedora.set(c.vendedoraId, linha);
+  }
+
+  res.json(
+    GetDesempenhoVendedorasResponse.parse(
+      [...porVendedora.values()].sort((a, b) => b.receita - a.receita || b.reservou - a.reservou),
+    ),
   );
 });
 

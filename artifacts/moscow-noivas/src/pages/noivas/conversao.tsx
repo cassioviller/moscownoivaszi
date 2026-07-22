@@ -5,7 +5,10 @@ import {
   getGetConversaoLeadsQueryKey,
   useGetSazonalidadeCasamentos,
   getGetSazonalidadeCasamentosQueryKey,
+  useGetDesempenhoVendedoras,
+  getGetDesempenhoVendedorasQueryKey,
 } from "@workspace/api-client-react";
+import { brl } from "@/lib/formatos";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { EstadoErro } from "@/components/estado-erro";
 import { origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
@@ -44,6 +47,14 @@ export default function ConversaoLeads() {
   const sazonalidade = useGetSazonalidadeCasamentos(activeLojaId!, {
     query: {
       queryKey: getGetSazonalidadeCasamentosQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+    },
+  });
+
+  // E73: o caminho de cada vendedora — atendimentos, "reservou" e contratos.
+  const desempenho = useGetDesempenhoVendedoras(activeLojaId!, {
+    query: {
+      queryKey: getGetDesempenhoVendedorasQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },
   });
@@ -193,6 +204,58 @@ export default function ConversaoLeads() {
               )}
             </CardContent>
           </Card>
+
+          {(desempenho.data ?? []).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>O caminho de cada vendedora</CardTitle>
+                <CardDescription>
+                  Do atendimento ao contrato — a comissão mede o resultado; isto mede o
+                  caminho.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs text-muted-foreground">
+                      <th className="py-2 pr-3 font-normal">Vendedora</th>
+                      <th className="py-2 px-3 font-normal text-right">Atendimentos</th>
+                      <th className="py-2 px-3 font-normal text-right">Reservou</th>
+                      <th className="py-2 px-3 font-normal text-right">Contratos</th>
+                      <th className="py-2 px-3 font-normal text-right">Receita</th>
+                      <th className="py-2 pl-3 font-normal text-right">Ticket médio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(desempenho.data ?? []).map((v) => (
+                      <tr key={v.vendedoraId} className="border-b last:border-0">
+                        <td className="py-2.5 pr-3 font-medium">{v.nome}</td>
+                        <td className="py-2.5 px-3 text-right tabular-nums">
+                          {v.atendimentosConcluidos}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums">
+                          {v.reservou}
+                          {v.atendimentosConcluidos > 0 && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              ({pct(v.reservou, v.atendimentosConcluidos)}%)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
+                        <td className="py-2.5 px-3 text-right tabular-nums">
+                          {v.receita > 0 ? `R$ ${brl(v.receita)}` : "—"}
+                        </td>
+                        <td className="py-2.5 pl-3 text-right tabular-nums">
+                          {v.contratos > 0 ? `R$ ${brl(v.receita / v.contratos)}` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

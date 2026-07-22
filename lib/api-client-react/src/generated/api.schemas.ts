@@ -2333,6 +2333,18 @@ export type GetSazonalidadeCasamentos200Item = {
   comContrato: number;
 };
 
+export type GetDesempenhoVendedoras200Item = {
+  vendedoraId: string;
+  nome: string;
+  atendimentosConcluidos: number;
+  /** Desfecho RESERVOU */
+  reservou: number;
+  /** Contratos ATIVOS fechados por ela */
+  contratos: number;
+  /** Soma do valorTotal dos contratos ativos */
+  receita: number;
+};
+
 export type ListBloqueiosParams = {
 /**
  * Filtra os bloqueios de um vestido só (E45)

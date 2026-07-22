@@ -1254,6 +1254,35 @@ paths:
                     competencia: { type: string, description: "YYYY-MM" }
                     total: { type: integer, description: "Leads não perdidos com casamento no mês" }
                     comContrato: { type: integer, description: "Destes, quantos já fecharam contrato" }
+  /lojas/{lojaId}/leads/desempenho-vendedoras:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getDesempenhoVendedoras
+      tags: [leads]
+      summary: Atendimento → contrato por vendedora, com ticket médio
+      description: >
+        E73: a comissão media o resultado, mas não o CAMINHO — quantos
+        atendimentos cada vendedora conclui, quantos terminam em "reservou"
+        (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os
+        contratos sempre estiveram gravados; faltava cruzar.
+      responses:
+        "200":
+          description: Uma linha por vendedora com atividade
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [vendedoraId, nome, atendimentosConcluidos, reservou, contratos, receita]
+                  properties:
+                    vendedoraId: { type: string }
+                    nome: { type: string }
+                    atendimentosConcluidos: { type: integer }
+                    reservou: { type: integer, description: "Desfecho RESERVOU" }
+                    contratos: { type: integer, description: "Contratos ATIVOS fechados por ela" }
+                    receita: { type: number, description: "Soma do valorTotal dos contratos ativos" }
   /lojas/{lojaId}/leads/{leadId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
