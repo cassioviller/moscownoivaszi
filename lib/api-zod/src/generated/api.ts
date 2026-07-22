@@ -634,7 +634,7 @@ export const GetAtividadeEquipeResponse = zod.object({
 })),
   "eventos": zod.array(zod.object({
   "id": zod.string(),
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']),
   "entidade": zod.string(),
   "entidadeId": zod.string(),
   "usuarioId": zod.string().nullish(),
@@ -4682,6 +4682,7 @@ export const GetPortalResponse = zod.object({
 }))
 }),zod.null()]),
   "provas": zod.array(zod.object({
+  "id": zod.string(),
   "inicio": zod.coerce.date(),
   "confirmadoEm": zod.coerce.date().nullish()
 })),
@@ -4706,6 +4707,23 @@ export const AceitarPortalQueryParams = zod.object({
 
 export const AceitarPortalResponse = zod.object({
   "aceitoEm": zod.coerce.date()
+})
+
+
+/**
+ * E85: o aceite (E74) provou que a noiva age quando o link dá o poder. Carimba o MESMO `confirmadoEm` do E39, com a noiva como autora na auditoria ("link público"). Idempotente: já confirmada devolve o carimbo existente. O token escopa — prova de outra noiva é 404 mesmo existindo; atendimento comum é 422 (a fila de confirmação da loja é de presenças, mas o portal só mostra provas).
+ * @summary A noiva confirma a presença pelo portal — um clique, sem wa.me
+ */
+export const ConfirmarProvaPortalParams = zod.object({
+  "atendimentoId": zod.coerce.string()
+})
+
+export const ConfirmarProvaPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const ConfirmarProvaPortalResponse = zod.object({
+  "confirmadoEm": zod.coerce.date()
 })
 
 
@@ -6187,7 +6205,7 @@ export const listAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const ListAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
   "usuarioId": zod.coerce.string().optional().describe('Autor da ação (id; o nome na linha é desnormalizado)'),
   "de": zod.coerce.string().regex(listAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(listAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
@@ -6195,7 +6213,7 @@ export const ListAuditoriaQueryParams = zod.object({
 
 export const ListAuditoriaResponseItem = zod.object({
   "id": zod.string(),
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']),
   "entidade": zod.string(),
   "entidadeId": zod.string(),
   "usuarioId": zod.string().nullish(),
@@ -6235,7 +6253,7 @@ export const exportarAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}
 
 
 export const ExportarAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']).optional(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']).optional(),
   "usuarioId": zod.coerce.string().optional(),
   "de": zod.coerce.string().regex(exportarAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(exportarAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')

@@ -250,6 +250,7 @@ export const AuditoriaItemAcao = {
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
   ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
   LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
 } as const;
 
@@ -1509,6 +1510,7 @@ export type PortalNoivaLookbook = {
 } | null;
 
 export type PortalNoivaProvasItem = {
+  id: string;
   inicio: string;
   /** @nullable */
   confirmadoEm?: string | null;
@@ -2536,6 +2538,14 @@ export type AceitarPortal200 = {
   aceitoEm: string;
 };
 
+export type ConfirmarProvaPortalParams = {
+token: string;
+};
+
+export type ConfirmarProvaPortal200 = {
+  confirmadoEm: string;
+};
+
 export type GetPortalFotoParams = {
 token: string;
 vestidoId: string;
@@ -2806,6 +2816,7 @@ export const ListAuditoriaAcao = {
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
   ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
   LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
 } as const;
 
@@ -2843,6 +2854,7 @@ export const ExportarAuditoriaAcao = {
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
   ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
   LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
 } as const;
 

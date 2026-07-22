@@ -2378,6 +2378,48 @@ paths:
         "422":
           description: Não há proposta ENVIADA — nada a aceitar
 
+  /portal/provas/{atendimentoId}/confirmar:
+    parameters:
+      - name: atendimentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: confirmarProvaPortal
+      tags: [portal]
+      security: []
+      summary: A noiva confirma a presença pelo portal — um clique, sem wa.me
+      description: >
+        E85: o aceite (E74) provou que a noiva age quando o link dá o poder.
+        Carimba o MESMO `confirmadoEm` do E39, com a noiva como autora na
+        auditoria ("link público"). Idempotente: já confirmada devolve o
+        carimbo existente. O token escopa — prova de outra noiva é 404 mesmo
+        existindo; atendimento comum é 422 (a fila de confirmação da loja é
+        de presenças, mas o portal só mostra provas).
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmada (ou o carimbo já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [confirmadoEm]
+                properties:
+                  confirmadoEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido/revogado, ou a prova não é desta noiva
+        "410":
+          description: Link expirado
+        "422":
+          description: Não é uma prova futura AGENDADA — nada a confirmar
+
   /portal/foto:
     get:
       operationId: getPortalFoto
@@ -3211,7 +3253,7 @@ paths:
           description: Uma das ações da união fechada (ACOES_AUDITORIA)
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, LEADS_ANONIMIZADOS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -3280,7 +3322,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, LEADS_ANONIMIZADOS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -4835,7 +4877,7 @@ components:
         id: { type: string }
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, LEADS_ANONIMIZADOS]
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }
@@ -5010,13 +5052,15 @@ components:
                     $ref: "#/components/schemas/LookbookPublicoVestido"
             - type: "null"
         # As próximas provas (futuras, ordenadas). Passadas ficam de fora: o
-        # portal aponta para a frente.
+        # portal aponta para a frente. O `id` existe para o E85: a noiva
+        # confirma a presença por POST /portal/provas/{id}/confirmar.
         provas:
           type: array
           items:
             type: object
-            required: [inicio]
+            required: [id, inicio]
             properties:
+              id: { type: string }
               inicio: { type: string, format: date-time }
               confirmadoEm: { type: ["string", "null"], format: date-time }
         # O extrato DELA, só leitura — pagar continua com a loja. Vazio antes

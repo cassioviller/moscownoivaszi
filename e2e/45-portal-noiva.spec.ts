@@ -8,6 +8,8 @@ import {
   orcamentosTable,
   orcamentoItensTable,
   portalTokensTable,
+  atendimentosTable,
+  cabinesTable,
 } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
@@ -25,6 +27,8 @@ test.describe("Portal da noiva (E78)", () => {
   const noivaNome = `E2E Portal ${stamp}`;
   let leadId: string;
   let orcamentoId: string;
+  let provaId: string;
+  const cabineId = `e2e-cabine-portal-${stamp}`;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
@@ -59,11 +63,25 @@ test.describe("Portal da noiva (E78)", () => {
       valorUnitario: 7500,
       quantidade: 1,
     });
+
+    // Uma prova futura em cabine própria — o E85 confirma por ela.
+    await db.insert(cabinesTable).values({ id: cabineId, lojaId: estado.lojaId, nome: cabineId });
+    provaId = randomUUID();
+    await db.insert(atendimentosTable).values({
+      id: provaId,
+      lojaId: estado.lojaId,
+      leadId,
+      cabineId,
+      vendedoraId: admin!.id,
+      tipo: "PROVA",
+      inicio: new Date(Date.now() + 5 * 86_400_000),
+    });
   });
 
   test.afterAll(async () => {
-    // O cascade do lead leva orçamento, itens e portal_token junto.
+    // O cascade do lead leva orçamento, itens, portal_token e atendimentos.
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+    await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
   });
 
   test("a vendedora gera o link na ficha; a noiva abre sem login e aceita; a gestão reflete", async ({
@@ -98,6 +116,15 @@ test.describe("Portal da noiva (E78)", () => {
     // O aceite (E74) — a página vira comprovante.
     await noiva.getByTestId("aceitar-portal").click();
     await expect(noiva.getByText(/Você aceitou esta proposta em/)).toBeVisible();
+
+    // E85: a prova está lá, e confirmar é um clique — o badge assume o lugar.
+    await noiva.getByTestId(`confirmar-prova-${provaId}`).click();
+    await expect(noiva.getByText("Confirmada")).toBeVisible();
+    const [prova] = await db
+      .select()
+      .from(atendimentosTable)
+      .where(eq(atendimentosTable.id, provaId));
+    expect(prova.confirmadoEm).not.toBeNull();
     await semLogin.close();
 
     // — A gestão reflete: o orçamento aprovou com rastro. —

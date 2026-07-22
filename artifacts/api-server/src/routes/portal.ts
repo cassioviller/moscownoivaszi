@@ -11,14 +11,17 @@ import {
   parcelasTable,
   atendimentosTable,
   vestidoFotosTable,
+  auditLogTable,
 } from "@workspace/db";
-import { eq, and, desc, asc, gte, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, gte, inArray, isNull } from "drizzle-orm";
 import {
   GetPortalQueryParams,
   GetPortalResponse,
   AceitarPortalQueryParams,
   AceitarPortalResponse,
   GetPortalFotoQueryParams,
+  ConfirmarProvaPortalQueryParams,
+  ConfirmarProvaPortalResponse,
   GetPortalLeadResponse,
   CriarPortalLeadResponse,
   ListPortaisResponse,
@@ -106,8 +109,13 @@ router.get("/portal", async (req, res): Promise<void> => {
       .where(and(eq(lookbooksTable.lojaId, portal.lojaId), eq(lookbooksTable.leadId, portal.leadId)))
       .orderBy(desc(lookbooksTable.createdAt))
       .limit(1),
-    // Só as futuras: o portal aponta para a frente.
-    db.select({ inicio: atendimentosTable.inicio, confirmadoEm: atendimentosTable.confirmadoEm })
+    // Só as futuras: o portal aponta para a frente. O id endereça o E85
+    // (confirmar presença por este link).
+    db.select({
+      id: atendimentosTable.id,
+      inicio: atendimentosTable.inicio,
+      confirmadoEm: atendimentosTable.confirmadoEm,
+    })
       .from(atendimentosTable)
       .where(and(
         eq(atendimentosTable.lojaId, portal.lojaId),
@@ -195,6 +203,79 @@ router.post("/portal/aceite", async (req, res): Promise<void> => {
 
   const aceitoEm = await aceitarOrcamentoEnviado(orcamento, linha.lead.noivaNome);
   res.json(AceitarPortalResponse.parse({ aceitoEm }));
+});
+
+// E85: a noiva confirma a presença pelo portal — o MESMO carimbo do E39
+// (confirmadoEm), com a noiva como autora na auditoria, como no aceite. A
+// rota autenticada continua a dela: autoria de sessão é outra rotina.
+router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise<void> => {
+  const parsed = ConfirmarProvaPortalQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  // O token escopa: a prova tem de ser DO lead do portal — de outra noiva é
+  // 404 mesmo existindo, como na foto.
+  const atendimentoId = req.params.atendimentoId as string;
+  const prova = await db.query.atendimentosTable.findFirst({
+    where: and(
+      eq(atendimentosTable.id, atendimentoId),
+      eq(atendimentosTable.lojaId, linha.portal.lojaId),
+      eq(atendimentosTable.leadId, linha.portal.leadId),
+    ),
+  });
+  if (!prova) {
+    res.status(404).json({ error: "PROVA_INEXISTENTE" });
+    return;
+  }
+  // Idempotente ANTES das réguas: a prova confirmada ontem que virou hoje não
+  // pode responder 422 no segundo clique.
+  if (prova.confirmadoEm) {
+    res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: prova.confirmadoEm }));
+    return;
+  }
+  if (prova.tipo !== "PROVA" || prova.situacao !== "AGENDADO" || prova.inicio <= new Date()) {
+    res.status(422).json({ error: "NADA_A_CONFIRMAR", detalhe: "não é uma prova futura agendada" });
+    return;
+  }
+
+  const agora = new Date();
+  await db.transaction(async (tx) => {
+    // UPDATE condicional: dois cliques simultâneos gravam UM carimbo.
+    const [atualizado] = await tx
+      .update(atendimentosTable)
+      .set({ confirmadoEm: agora, updatedAt: agora })
+      .where(and(eq(atendimentosTable.id, prova.id), isNull(atendimentosTable.confirmadoEm)))
+      .returning();
+    if (!atualizado) return;
+
+    // Autoria da NOIVA, sem sessão — o mesmo rastro do aceite (E74).
+    await tx.insert(auditLogTable).values({
+      id: randomUUID(),
+      lojaId: linha.portal.lojaId,
+      usuarioId: null,
+      usuarioNome: `${linha.lead.noivaNome} (link público)`,
+      acao: "PROVA_CONFIRMADA",
+      entidade: "atendimento",
+      entidadeId: prova.id,
+      detalhe: { inicio: prova.inicio.toISOString() },
+    });
+  });
+
+  const [depois] = await db.select({ confirmadoEm: atendimentosTable.confirmadoEm })
+    .from(atendimentosTable)
+    .where(eq(atendimentosTable.id, prova.id));
+  res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: depois.confirmadoEm ?? agora }));
 });
 
 // A foto escopada ao token do PORTAL — espelho de /lookbooks/publico/foto,

@@ -4,6 +4,7 @@ import {
   useGetPortal,
   getGetPortalQueryKey,
   useAceitarPortal,
+  useConfirmarProvaPortal,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,17 @@ export default function NoivaPortal() {
   });
 
   const aceitar = useAceitarPortal({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: getGetPortalQueryKey(params),
+        }),
+    },
+  });
+
+  // E85: confirmar a presença é o mesmo gesto do aceite — o clique dela vira
+  // o carimbo que a fila da vendedora já entende.
+  const confirmarProva = useConfirmarProvaPortal({
     mutation: {
       onSuccess: () =>
         queryClient.invalidateQueries({
@@ -211,27 +223,41 @@ export default function NoivaPortal() {
               </section>
             )}
 
-            {/* — As próximas provas — */}
+            {/* — As próximas provas: confirmar é um clique (E85) — */}
             {dados!.provas.length > 0 && (
               <section className="bg-card border rounded-lg p-6 shadow-sm space-y-4">
                 <h2 className="font-serif text-2xl">Suas próximas provas</h2>
                 <ul className="space-y-2">
-                  {dados!.provas.map((p, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm">
+                  {dados!.provas.map((p) => (
+                    <li key={p.id} className="flex items-center gap-3 text-sm">
                       <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
                       <span className="capitalize">
                         {dataHoraFmt.format(new Date(p.inicio))}
                       </span>
-                      {p.confirmadoEm && (
+                      {p.confirmadoEm ? (
                         <Badge variant="secondary" className="ml-auto">
                           Confirmada
                         </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="ml-auto"
+                          disabled={confirmarProva.isPending}
+                          onClick={() =>
+                            confirmarProva.mutate({ atendimentoId: p.id, params })
+                          }
+                          data-testid={`confirmar-prova-${p.id}`}
+                        >
+                          Confirmar presença
+                        </Button>
                       )}
                     </li>
                   ))}
                 </ul>
                 <p className="text-xs text-muted-foreground">
-                  Precisa remarcar? É só avisar a sua vendedora no WhatsApp.
+                  Confirmar avisa o atelier que você vem. Precisa remarcar? É só avisar a sua
+                  vendedora no WhatsApp.
                 </p>
               </section>
             )}

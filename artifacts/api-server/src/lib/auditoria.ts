@@ -28,6 +28,8 @@ export const ACOES_AUDITORIA = [
   "PERMISSOES_RESTAURADAS",
   // E74: a noiva aceitou pelo link publico — sem sessao, autor desnormalizado.
   "ORCAMENTO_ACEITO",
+  // E85: a noiva confirmou a presença pelo portal — mesma mecânica do aceite.
+  "PROVA_CONFIRMADA",
   "LEADS_ANONIMIZADOS",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
@@ -61,6 +63,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
+  PROVA_CONFIRMADA: "Prova confirmada pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
 };
 

@@ -27,4 +27,5 @@ export {
   GetFluxoCaixaParams,
   GetDreParams,
   ListAtendimentosParams,
+  ConfirmarProvaPortalParams,
 } from "./generated/api";

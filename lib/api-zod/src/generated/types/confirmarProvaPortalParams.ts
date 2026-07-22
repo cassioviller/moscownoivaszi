@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PortalNoivaProvasItem = {
-  id: string;
-  inicio: Date;
-  /** @nullable */
-  confirmadoEm?: Date | null;
+export type ConfirmarProvaPortalParams = {
+token: string;
 };

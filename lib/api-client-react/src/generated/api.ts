@@ -69,6 +69,8 @@ import type {
   ComissaoRegra,
   ComissaoRegraInput,
   ComissaoRegraUpdate,
+  ConfirmarProvaPortal200,
+  ConfirmarProvaPortalParams,
   ContaPagar,
   ContaPagarInput,
   Contrato,
@@ -8897,6 +8899,86 @@ export const useAceitarPortal = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getAceitarPortalMutationOptions(options));
+    }
+
+export const getConfirmarProvaPortalUrl = (atendimentoId: string,
+    params: ConfirmarProvaPortalParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/provas/${atendimentoId}/confirmar?${stringifiedParams}` : `/api/portal/provas/${atendimentoId}/confirmar`
+}
+
+/**
+ * E85: o aceite (E74) provou que a noiva age quando o link dá o poder. Carimba o MESMO `confirmadoEm` do E39, com a noiva como autora na auditoria ("link público"). Idempotente: já confirmada devolve o carimbo existente. O token escopa — prova de outra noiva é 404 mesmo existindo; atendimento comum é 422 (a fila de confirmação da loja é de presenças, mas o portal só mostra provas).
+ * @summary A noiva confirma a presença pelo portal — um clique, sem wa.me
+ */
+export const confirmarProvaPortal = async (atendimentoId: string,
+    params: ConfirmarProvaPortalParams, options?: RequestInit): Promise<ConfirmarProvaPortal200> => {
+
+  return customFetch<ConfirmarProvaPortal200>(getConfirmarProvaPortalUrl(atendimentoId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmarProvaPortalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarProvaPortal>>, TError,{atendimentoId: string;params: ConfirmarProvaPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmarProvaPortal>>, TError,{atendimentoId: string;params: ConfirmarProvaPortalParams}, TContext> => {
+
+const mutationKey = ['confirmarProvaPortal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmarProvaPortal>>, {atendimentoId: string;params: ConfirmarProvaPortalParams}> = (props) => {
+          const {atendimentoId,params} = props ?? {};
+
+          return  confirmarProvaPortal(atendimentoId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmarProvaPortalMutationResult = NonNullable<Awaited<ReturnType<typeof confirmarProvaPortal>>>
+
+    export type ConfirmarProvaPortalMutationError = ErrorType<void>
+
+    /**
+ * @summary A noiva confirma a presença pelo portal — um clique, sem wa.me
+ */
+export const useConfirmarProvaPortal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarProvaPortal>>, TError,{atendimentoId: string;params: ConfirmarProvaPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmarProvaPortal>>,
+        TError,
+        {atendimentoId: string;params: ConfirmarProvaPortalParams},
+        TContext
+      > => {
+      return useMutation(getConfirmarProvaPortalMutationOptions(options));
     }
 
 export const getGetPortalFotoUrl = (params: GetPortalFotoParams,) => {

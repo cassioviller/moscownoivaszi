@@ -169,6 +169,72 @@ describe("Portal da noiva (E78)", () => {
     await publico().get(`/api/portal?token=${terceiro.body.token}`).expect(200);
   });
 
+  it("a noiva confirma a prova pelo portal — carimbo, rastro e escopo (E85)", async () => {
+    // O portal atual (regenerado nos testes anteriores) e as provas dele.
+    const status = await agent.get(`/api/lojas/${f.lojaId}/leads/${leadA.id}/portal`).expect(200);
+    const tokenVivo = status.body.token;
+    const portal = await publico().get(`/api/portal?token=${tokenVivo}`).expect(200);
+    const prova = portal.body.provas[0];
+    expect(prova.id).toBeTruthy();
+    expect(prova.confirmadoEm).toBeFalsy();
+
+    // Confirma: o carimbo é o MESMO confirmadoEm do E39.
+    const res = await publico()
+      .post(`/api/portal/provas/${prova.id}/confirmar?token=${tokenVivo}`)
+      .expect(200);
+    expect(res.body.confirmadoEm).toBeTruthy();
+    const [linha] = await db.select().from(atendimentosTable)
+      .where(eq(atendimentosTable.id, prova.id));
+    expect(linha.confirmadoEm).not.toBeNull();
+
+    // Idempotente: o segundo clique devolve o MESMO carimbo.
+    const denovo = await publico()
+      .post(`/api/portal/provas/${prova.id}/confirmar?token=${tokenVivo}`)
+      .expect(200);
+    expect(denovo.body.confirmadoEm).toBe(res.body.confirmadoEm);
+
+    // O rastro da noiva na trilha.
+    const trilha = await db.select().from(auditLogTable).where(and(
+      eq(auditLogTable.acao, "PROVA_CONFIRMADA"),
+      eq(auditLogTable.entidadeId, prova.id),
+    ));
+    expect(trilha).toHaveLength(1);
+    expect(trilha[0].usuarioNome).toBe(`${leadA.noivaNome} (link público)`);
+
+    // O escopo: prova de OUTRA noiva é 404 mesmo existindo.
+    const b = await criarLead(f);
+    const cabineId = randomUUID();
+    await db.insert(cabinesTable).values({ id: cabineId, lojaId: f.lojaId, nome: "Cabine E85" });
+    const provaDeB = randomUUID();
+    await db.insert(atendimentosTable).values({
+      id: provaDeB,
+      lojaId: f.lojaId,
+      leadId: b.id,
+      cabineId,
+      vendedoraId: f.vendedoraId,
+      tipo: "PROVA",
+      inicio: dataFutura(21),
+    });
+    await publico()
+      .post(`/api/portal/provas/${provaDeB}/confirmar?token=${tokenVivo}`)
+      .expect(404);
+
+    // Atendimento comum (não PROVA) da própria noiva: 422.
+    const comum = randomUUID();
+    await db.insert(atendimentosTable).values({
+      id: comum,
+      lojaId: f.lojaId,
+      leadId: leadA.id,
+      cabineId,
+      vendedoraId: f.vendedoraId,
+      tipo: "ATENDIMENTO",
+      inicio: dataFutura(22),
+    });
+    await publico()
+      .post(`/api/portal/provas/${comum}/confirmar?token=${tokenVivo}`)
+      .expect(422);
+  });
+
   it("GET /portais devolve o lote da PRÓPRIA loja — a outra não vaza (E84)", async () => {
     // Segunda loja com portal próprio: o lote de f não pode enxergá-la.
     const g = await criarFixture();

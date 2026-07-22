@@ -81,6 +81,8 @@ export * from './comissaoPreviewLinha';
 export * from './comissaoRegra';
 export * from './comissaoRegraInput';
 export * from './comissaoRegraUpdate';
+export * from './confirmarProvaPortal200';
+export * from './confirmarProvaPortalParams';
 export * from './conflitoBloqueio';
 export * from './conflitoBloqueioMotivo';
 export * from './conflitoBloqueioTipo';
