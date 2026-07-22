@@ -1403,6 +1403,28 @@ export const GetSazonalidadeCasamentosResponse = zod.array(GetSazonalidadeCasame
 
 
 /**
+ * E79: o sino (E68) e o painel (E66) baixavam a lista COMPLETA de leads só para achar as paradas. A mesma régua do funil-core roda aqui, sobre os leads em negociação, e devolve as contagens + as piores primeiro.
+ * @summary As noivas esfriando — a régua do funil, calculada no banco
+ */
+export const GetLeadsParadosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetLeadsParadosResponse = zod.object({
+  "criticos": zod.number(),
+  "atencao": zod.number(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "noivaNome": zod.string(),
+  "etapa": zod.string(),
+  "dias": zod.number(),
+  "temperatura": zod.enum(['atencao', 'critico']),
+  "casamentoData": zod.coerce.date().nullish()
+})).describe('As piores primeiro, no máximo 10')
+})
+
+
+/**
  * E77: dado pessoal sem propósito é passivo. Anonimiza (nome vira "(anonimizada)", contato e local somem) os leads PERDIDOS cuja perda é mais antiga que `mesesInatividade` (padrão 24). A linha fica — o funil e a conversão continuam contando — e a ação deixa rastro na auditoria. Irreversível por desenho.
  * @summary Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
  */

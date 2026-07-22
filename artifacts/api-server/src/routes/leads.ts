@@ -18,12 +18,14 @@ import {
   GetSazonalidadeCasamentosResponse,
   GetDesempenhoVendedorasResponse,
   ExpurgarLeadsPerdidosBody,
-  ExpurgarLeadsPerdidosResponse
+  ExpurgarLeadsPerdidosResponse,
+  GetLeadsParadosResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
+import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
 
 const router: IRouter = Router();
 
@@ -215,6 +217,58 @@ router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => 
       perdidos: porMotivoPerda.reduce((a, m) => a + m.total, 0),
       porOrigem,
       porMotivoPerda: porMotivoPerda.map((m) => ({ motivo: m.motivo ?? null, total: m.total })),
+    }),
+  );
+});
+
+// E79: a régua do funil roda no banco — o sino e o painel paravam de baixar a
+// lista completa só para achar as paradas. Só leads EM NEGOCIAÇÃO entram (a
+// mesma união do funil-core), e o último contato vem num agregado só.
+router.get("/lojas/:lojaId/leads/parados", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const emNegociacaoLeads = await db
+    .select({
+      id: leadsTable.id,
+      noivaNome: leadsTable.noivaNome,
+      etapa: leadsTable.etapa,
+      createdAt: leadsTable.createdAt,
+      casamentoData: leadsTable.casamentoData,
+    })
+    .from(leadsTable)
+    .where(and(
+      eq(leadsTable.lojaId, lojaId),
+      inArray(leadsTable.etapa, [...ETAPAS_EM_NEGOCIACAO]),
+    ));
+
+  const contatos = await ultimoContatoPorLead(emNegociacaoLeads.map((l) => l.id));
+
+  const parados = emNegociacaoLeads
+    .map((l) => ({
+      lead: l,
+      parado: leadParado({
+        etapa: l.etapa,
+        createdAt: l.createdAt,
+        ultimoContatoEm: contatos.get(l.id) ?? null,
+      }),
+    }))
+    .filter(
+      (x): x is typeof x & { parado: NonNullable<typeof x.parado> } =>
+        x.parado !== null && x.parado.temperatura !== "ok",
+    )
+    .sort((a, b) => b.parado.dias - a.parado.dias);
+
+  res.json(
+    GetLeadsParadosResponse.parse({
+      criticos: parados.filter((p) => p.parado.temperatura === "critico").length,
+      atencao: parados.filter((p) => p.parado.temperatura === "atencao").length,
+      itens: parados.slice(0, 10).map((p) => ({
+        id: p.lead.id,
+        noivaNome: p.lead.noivaNome,
+        etapa: p.lead.etapa,
+        dias: p.parado.dias,
+        temperatura: p.parado.temperatura,
+        casamentoData: p.lead.casamentoData,
+      })),
     }),
   );
 });

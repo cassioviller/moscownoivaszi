@@ -3,8 +3,8 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useGetDashboard,
   getGetDashboardQueryKey,
-  useListLeads,
-  getListLeadsQueryKey,
+  useGetLeadsParados,
+  getGetLeadsParadosQueryKey,
   useListAtendimentos,
   getListAtendimentosQueryKey,
   useGetMinhaComissao,
@@ -29,7 +29,7 @@ import { dataDia, etapaLabel } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { podeNoModulo } from "@/lib/permissoes";
-import { leadParado, rotuloParado, type EtapaLead } from "@/lib/funil";
+
 import { competenciaAtual } from "@/lib/financeiro/datas";
 
 /**
@@ -55,8 +55,10 @@ export default function Dashboard() {
     }
   });
 
-  const leadsQuery = useListLeads(activeLojaId!, undefined, {
-    query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
+  // E79: a régua do funil roda no banco — o painel pede só as contagens e as
+  // 10 piores, não a lista completa de leads.
+  const paradosQuery = useGetLeadsParados(activeLojaId!, {
+    query: { queryKey: getGetLeadsParadosQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
   });
   const atendimentosQuery = useListAtendimentos(activeLojaId!, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId && veAgenda },
@@ -87,23 +89,8 @@ export default function Dashboard() {
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
   }, [atendimentosQuery.data]);
 
-  // As noivas esfriando — mesma régua do funil (funil-core), piores primeiro.
-  const precisamContato = useMemo(() => {
-    return (leadsQuery.data?.itens ?? [])
-      .map((lead) => ({
-        lead,
-        parado: leadParado({
-          etapa: lead.etapa as EtapaLead,
-          createdAt: lead.createdAt,
-          ultimoContatoEm: lead.ultimoContatoEm,
-        }),
-      }))
-      .filter((x): x is typeof x & { parado: NonNullable<typeof x.parado> } =>
-        x.parado !== null && x.parado.temperatura !== "ok",
-      )
-      .sort((a, b) => b.parado.dias - a.parado.dias)
-      .slice(0, 5);
-  }, [leadsQuery.data]);
+  // As noivas esfriando — a mesma régua, calculada no banco (E79).
+  const precisamContato = (paradosQuery.data?.itens ?? []).slice(0, 5);
 
   const primeiroNome = user?.nome?.split(" ")[0];
 
@@ -322,11 +309,11 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {leadsQuery.isError ? (
+              {paradosQuery.isError ? (
                 <div className="text-sm text-muted-foreground text-center py-8">
                   Não foi possível carregar as noivas.
                 </div>
-              ) : leadsQuery.isLoading ? (
+              ) : paradosQuery.isLoading ? (
                 <div className="animate-pulse space-y-3">
                   {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted rounded-md" />)}
                 </div>
@@ -336,22 +323,22 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <ul className="space-y-3">
-                  {precisamContato.map(({ lead, parado }) => (
-                    <li key={lead.id}>
-                      <Link to={`/loja/${activeLojaId}/noivas/${lead.id}`}>
+                  {precisamContato.map((p) => (
+                    <li key={p.id}>
+                      <Link to={`/loja/${activeLojaId}/noivas/${p.id}`}>
                         <div className="flex items-center justify-between hover-elevate rounded-md px-2 py-1 -mx-2 cursor-pointer">
                           <div>
-                            <p className="text-sm font-medium">{lead.noivaNome}</p>
+                            <p className="text-sm font-medium">{p.noivaNome}</p>
                             <p className="text-xs text-muted-foreground">
-                              {etapaLabel(lead.etapa)}
-                              {lead.casamentoData && ` · ${dataDia(lead.casamentoData)}`}
+                              {etapaLabel(p.etapa)}
+                              {p.casamentoData && ` · ${dataDia(p.casamentoData)}`}
                             </p>
                           </div>
                           <Badge
-                            variant={parado.temperatura === "critico" ? "destructive" : "secondary"}
+                            variant={p.temperatura === "critico" ? "destructive" : "secondary"}
                             className="font-normal"
                           >
-                            {rotuloParado(parado)}
+                            {p.dias === 1 ? "Parada há 1 dia" : `Parada há ${p.dias} dias`}
                           </Badge>
                         </div>
                       </Link>

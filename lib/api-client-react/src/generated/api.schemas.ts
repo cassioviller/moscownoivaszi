@@ -2355,6 +2355,31 @@ export type GetSazonalidadeCasamentos200Item = {
   comContrato: number;
 };
 
+export type GetLeadsParados200ItensItemTemperatura = typeof GetLeadsParados200ItensItemTemperatura[keyof typeof GetLeadsParados200ItensItemTemperatura];
+
+
+export const GetLeadsParados200ItensItemTemperatura = {
+  atencao: 'atencao',
+  critico: 'critico',
+} as const;
+
+export type GetLeadsParados200ItensItem = {
+  id: string;
+  noivaNome: string;
+  etapa: string;
+  dias: number;
+  temperatura: GetLeadsParados200ItensItemTemperatura;
+  /** @nullable */
+  casamentoData?: string | null;
+};
+
+export type GetLeadsParados200 = {
+  criticos: number;
+  atencao: number;
+  /** As piores primeiro, no máximo 10 */
+  itens: GetLeadsParados200ItensItem[];
+};
+
 export type ExpurgarLeadsPerdidosBody = {
   /** @minimum 6 */
   mesesInatividade?: number;

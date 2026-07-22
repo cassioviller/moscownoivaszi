@@ -6,8 +6,8 @@ import {
   getGetAlertaCaixaQueryKey,
   useListPendenciasComissao,
   getListPendenciasComissaoQueryKey,
-  useListLeads,
-  getListLeadsQueryKey,
+  useGetLeadsParados,
+  getGetLeadsParadosQueryKey,
   useListAtendimentos,
   getListAtendimentosQueryKey,
 } from "@workspace/api-client-react";
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Bell, X } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { leadParado, type EtapaLead } from "@/lib/funil";
+
 
 /**
  * E68 — o sistema avisa quem não perguntou.
@@ -87,9 +87,10 @@ export function SinoNotificacoes() {
       retry: false,
     },
   });
-  const leads = useListLeads(activeLojaId!, undefined, {
+  // E79: a régua roda no banco — só as contagens viajam.
+  const parados = useGetLeadsParados(activeLojaId!, {
     query: {
-      queryKey: getListLeadsQueryKey(activeLojaId!),
+      queryKey: getGetLeadsParadosQueryKey(activeLojaId!),
       enabled: !!activeLojaId && veLeads,
       refetchInterval: POLL_MS,
       retry: false,
@@ -132,19 +133,12 @@ export function SinoNotificacoes() {
       });
     }
 
-    // Noivas esfriando — a régua do funil (E27/E32), só as críticas.
-    const criticas = (leads.data?.itens ?? []).filter((lead) => {
-      const parado = leadParado({
-        etapa: lead.etapa as EtapaLead,
-        createdAt: lead.createdAt,
-        ultimoContatoEm: lead.ultimoContatoEm,
-      });
-      return parado !== null && parado.temperatura === "critico";
-    });
-    if (criticas.length > 0) {
+    // Noivas esfriando — a contagem vem do banco (E79), a régua é a mesma.
+    const criticos = parados.data?.criticos ?? 0;
+    if (criticos > 0) {
       lista.push({
-        id: `LEADS_CRITICOS:${criticas.length}`,
-        titulo: `${criticas.length} noiva${criticas.length === 1 ? "" : "s"} sem contato há mais de 14 dias`,
+        id: `LEADS_CRITICOS:${criticos}`,
+        titulo: `${criticos} noiva${criticos === 1 ? "" : "s"} sem contato há mais de 14 dias`,
         detalhe: "O funil mostra quem está esfriando.",
         href: `${base}/noivas?vista=funil`,
         urgente: true,
@@ -170,7 +164,7 @@ export function SinoNotificacoes() {
     }
 
     return lista;
-  }, [alertaCaixa.data, pendencias.data, leads.data, atendimentos.data, base]);
+  }, [alertaCaixa.data, pendencias.data, parados.data, atendimentos.data, base]);
 
   const chave = user && activeLojaId ? chaveDispensadas(user.id, activeLojaId) : null;
   const visiveis = useMemo(() => {

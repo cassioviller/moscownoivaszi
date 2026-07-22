@@ -1282,6 +1282,42 @@ paths:
                     competencia: { type: string, description: "YYYY-MM" }
                     total: { type: integer, description: "Leads não perdidos com casamento no mês" }
                     comContrato: { type: integer, description: "Destes, quantos já fecharam contrato" }
+  /lojas/{lojaId}/leads/parados:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getLeadsParados
+      tags: [leads]
+      summary: As noivas esfriando — a régua do funil, calculada no banco
+      description: >
+        E79: o sino (E68) e o painel (E66) baixavam a lista COMPLETA de leads
+        só para achar as paradas. A mesma régua do funil-core roda aqui, sobre
+        os leads em negociação, e devolve as contagens + as piores primeiro.
+      responses:
+        "200":
+          description: Contagens por temperatura + as 10 piores
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [criticos, atencao, itens]
+                properties:
+                  criticos: { type: integer }
+                  atencao: { type: integer }
+                  itens:
+                    type: array
+                    description: As piores primeiro, no máximo 10
+                    items:
+                      type: object
+                      required: [id, noivaNome, etapa, dias, temperatura]
+                      properties:
+                        id: { type: string }
+                        noivaNome: { type: string }
+                        etapa: { type: string }
+                        dias: { type: integer }
+                        temperatura: { type: string, enum: [atencao, critico] }
+                        casamentoData: { type: ["string", "null"], format: date-time }
+
   /lojas/{lojaId}/leads/expurgo:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

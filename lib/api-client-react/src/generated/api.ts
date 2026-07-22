@@ -96,6 +96,7 @@ import type {
   GetConsolidado200Item,
   GetConviteInfoParams,
   GetDesempenhoVendedoras200Item,
+  GetLeadsParados200,
   GetLookbookPublicoFotoParams,
   GetLookbookPublicoParams,
   GetMinhaComissaoParams,
@@ -4900,6 +4901,84 @@ export function useGetSazonalidadeCasamentos<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetSazonalidadeCasamentosQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLeadsParadosUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/parados`
+}
+
+/**
+ * E79: o sino (E68) e o painel (E66) baixavam a lista COMPLETA de leads só para achar as paradas. A mesma régua do funil-core roda aqui, sobre os leads em negociação, e devolve as contagens + as piores primeiro.
+ * @summary As noivas esfriando — a régua do funil, calculada no banco
+ */
+export const getLeadsParados = async (lojaId: string, options?: RequestInit): Promise<GetLeadsParados200> => {
+
+  return customFetch<GetLeadsParados200>(getGetLeadsParadosUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeadsParadosQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/parados`
+    ] as const;
+    }
+
+
+export const getGetLeadsParadosQueryOptions = <TData = Awaited<ReturnType<typeof getLeadsParados>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeadsParados>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeadsParadosQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeadsParados>>> = ({ signal }) => getLeadsParados(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeadsParados>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeadsParadosQueryResult = NonNullable<Awaited<ReturnType<typeof getLeadsParados>>>
+export type GetLeadsParadosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary As noivas esfriando — a régua do funil, calculada no banco
+ */
+
+export function useGetLeadsParados<TData = Awaited<ReturnType<typeof getLeadsParados>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeadsParados>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeadsParadosQueryOptions(lojaId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
