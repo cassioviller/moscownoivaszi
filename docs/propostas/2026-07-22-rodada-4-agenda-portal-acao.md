@@ -1,5 +1,25 @@
 # Rodada 4 — A agenda no banco, o portal no bolso, a noiva no comando (E83–E86)
 
+> **Placar final (2026-07-22).** Executada na ordem planejada, tudo com
+> teste no commit:
+>
+> - **E83 ✅** — `GET /atendimentos?de=&ate=` (janela por dia local, compõe
+>   com tipo/bloqueio) e `GET /orcamentos?status=`. Migraram os cinco
+>   consumidores de poll/dia: sino (24h a cada 5min), mensagens (48h +
+>   parcelas abertas + orçamentos enviados), dashboard (hoje), agenda do
+>   dia e semana. Telas de gestão seguem sem janela, por escolha.
+> - **E84 ✅** — `GET /portais` em lote (gate leads.ver); a régua do "vivo"
+>   virou `lib/portal.ts` e o card da ficha usa a MESMA; as três mensagens
+>   de wa.me fecham com o link do portal vivo. Sem portal, tudo como era.
+> - **E85 ✅** — `POST /portal/provas/{id}/confirmar` carimba o MESMO
+>   `confirmadoEm` do E39 com a noiva na trilha (PROVA_CONFIRMADA, "link
+>   público"); idempotente antes das réguas; token escopa (404 para prova
+>   alheia, 422 para atendimento comum). Botão no portal; sino e fila
+>   esvaziam sem mudança. A ação nova entrou na união da auditoria e o
+>   typecheck cobrou o rótulo nas duas pontas.
+> - **E86 ✅** — este placar; `replit.md` atualizado; suítes completas
+>   verdes (API, front e e2e — placares no commit).
+
 Plano pós-rodada 3, ancorado no código como está em `49362fb`. O E79 tirou o
 financeiro, as reservas e o funil do "baixa a loja inteira" — mas a AGENDA
 ficou: sino, mensagens de hoje, dashboard e as duas telas de agenda pedem

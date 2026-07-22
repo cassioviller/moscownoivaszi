@@ -92,6 +92,10 @@ rode o codegen.
   `portal_tokens`, 30 dias): proposta com aceite (E74), lookbook, próximas
   provas e extrato de parcelas só-leitura. A vendedora gera/revoga no card da
   ficha; os links antigos de orçamento/lookbook seguem valendo (compat).
+  A noiva CONFIRMA a presença da prova por ele (E85 — o mesmo `confirmadoEm`
+  do E39, com rastro "link público" na trilha), e as mensagens de wa.me
+  (cobrança/confirmação/orçamento) fecham com o link quando o portal está
+  vivo (E84, `GET /portais` em lote + `lib/portal.ts` como régua única).
 - **Comercial** — orçamento → contrato (com snapshot dos itens) → plano de
   parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
   aceita pelo link com rastro (instante, versão, hash — E74).
@@ -109,7 +113,9 @@ rode o codegen.
   e o período fecha com a contabilidade (export CSV).
 - **Avisos sem cron** — o sino (E68) reúne caixa furando, comissão esquecida,
   noivas esfriando e presenças por confirmar; "Mensagens de hoje" (E69) é a
-  fila de wa.me pronta (confirmação carimba `confirmadoEm`).
+  fila de wa.me pronta (confirmação carimba `confirmadoEm`). E83: o poll e as
+  telas do dia pedem `GET /atendimentos?de=&ate=` (janela por dia local), não
+  a agenda inteira; a fila usa parcelas ABERTAS e orçamentos ENVIADOS.
 - **Multi-loja** — tudo é escopado por loja; superadmin tem bypass e o console
   consolidado da rede (E76). O perfil Admin é flag `perfis.sistema` (E80) —
   o servidor recusa PATCH/DELETE dele.
