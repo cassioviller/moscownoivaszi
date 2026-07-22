@@ -55,6 +55,15 @@ import { MessageCircle } from "lucide-react";
 import { dataCurtaFmt } from "../noivas/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
+import {
+  slotsOferecidos,
+  instanteDoSlot,
+  DETALHE_RECUSA,
+  EXPEDIENTE_PADRAO,
+  type Expediente,
+  type Marcacao,
+} from "@workspace/agenda-core";
+import { cn } from "@/lib/utils";
 
 const agendarSchema = z
   .object({
@@ -146,7 +155,10 @@ export default function NovoAtendimento() {
   });
   const tipo = form.watch("tipo");
   const leadId = form.watch("leadId");
-
+  const cabineId = form.watch("cabineId");
+  const vendedoraId = form.watch("vendedoraId");
+  const dataEscolhida = form.watch("data");
+  const horaEscolhida = form.watch("hora");
 
   const cabinesAtivas = useMemo(
     () => (cabines.data ?? []).filter((c) => c.ativo),
@@ -173,6 +185,34 @@ export default function NovoAtendimento() {
 
   const regra = disponibilidade.data;
 
+  // E64: a agenda OFERECE — a mesma régua do arraste da grade (agenda-core)
+  // percorre a malha do dia e diz o que está livre, ANTES do submit. O input
+  // de hora livre deixava o conflito estourar como erro da API depois.
+  const expediente = useMemo<Expediente>(
+    () =>
+      regra
+        ? {
+            aberturaHora: regra.atendimentoAberturaHora,
+            fechamentoHora: regra.atendimentoFechamentoHora,
+            dias: regra.diasFuncionamento ?? undefined,
+            provaDuracao: regra.provaDuracao,
+          }
+        : EXPEDIENTE_PADRAO,
+    [regra],
+  );
+  const slotsDoDiaEscolhido = useMemo(() => {
+    if (!dataEscolhida || !cabineId || !vendedoraId) return null;
+    // Concluído e falta não seguram a cabine — só o que ainda vai acontecer.
+    const ocupadas: Marcacao[] = (atendimentos.data ?? []).filter(
+      (a) => a.situacao === "AGENDADO" || a.situacao === "EM_ATENDIMENTO",
+    );
+    return slotsOferecidos(dataEscolhida, { cabineId, vendedoraId, tipo }, ocupadas, expediente);
+  }, [dataEscolhida, cabineId, vendedoraId, tipo, atendimentos.data, expediente]);
+  const lojaFechadaNoDia =
+    slotsDoDiaEscolhido !== null &&
+    slotsDoDiaEscolhido.length > 0 &&
+    slotsDoDiaEscolhido.every((s) => s.recusa === "LOJA_FECHADA");
+
   // E8: confirmação por wa.me com nome/endereço da loja vindos da sessão.
   const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
   const waConfirmacao = (a: {
@@ -192,19 +232,6 @@ export default function NovoAtendimento() {
     );
 
   const onSubmit = async (values: AgendarValues) => {
-    // GAP Onda 3: a grade de horários livres (gradeDoDia/slots do orcamentos)
-    // não tem endpoint no client gerado — usamos input de hora simples e
-    // validamos apenas contra o horário de funcionamento da loja.
-    const hora = Number(values.hora.split(":")[0]);
-    if (
-      regra &&
-      (hora < regra.atendimentoAberturaHora || hora >= regra.atendimentoFechamentoHora)
-    ) {
-      form.setError("hora", {
-        message: `Horário fora do funcionamento da loja (${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h).`,
-      });
-      return;
-    }
     try {
       const criado = await createAtendimento.mutateAsync({
         lojaId: activeLojaId!,
@@ -214,7 +241,8 @@ export default function NovoAtendimento() {
           vendedoraId: values.vendedoraId,
           tipo: values.tipo,
           bloqueioId: values.tipo === "PROVA" ? values.bloqueioId || undefined : undefined,
-          inicio: new Date(`${values.data}T${values.hora}`).toISOString(),
+          // O instante nasce no fuso da LOJA (agenda-core), não no do navegador.
+          inicio: instanteDoSlot(values.data, values.hora).toISOString(),
           observacao: values.observacao || undefined,
         },
       });
@@ -457,26 +485,58 @@ export default function NovoAtendimento() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="hora"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hora *</FormLabel>
-                        <FormControl>
-                          <Input type="time" aria-label="Hora" {...field} />
-                        </FormControl>
-                        {regra && (
-                          <p className="text-xs text-muted-foreground">
-                            Funcionamento: {regra.atendimentoAberturaHora}h às{" "}
-                            {regra.atendimentoFechamentoHora}h.
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
+
+                {/* E64: a grade de horários — livre se clica, ocupado explica. */}
+                <FormField
+                  control={form.control}
+                  name="hora"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Hora *</FormLabel>
+                      {!slotsDoDiaEscolhido ? (
+                        <p className="text-sm text-muted-foreground">
+                          Escolha cabine, vendedora e data para ver os horários livres.
+                        </p>
+                      ) : lojaFechadaNoDia ? (
+                        <p className="text-sm text-muted-foreground">
+                          A loja não abre nesse dia da semana.
+                        </p>
+                      ) : (
+                        <div
+                          className="grid grid-cols-4 sm:grid-cols-6 gap-2"
+                          data-testid="grade-slots"
+                        >
+                          {slotsDoDiaEscolhido.map(({ slot, recusa }) => (
+                            <Button
+                              key={slot}
+                              type="button"
+                              size="sm"
+                              variant={horaEscolhida === slot ? "default" : "outline"}
+                              disabled={recusa !== null}
+                              title={recusa ? DETALHE_RECUSA[recusa] : undefined}
+                              aria-label={`Horário ${slot}${recusa ? ` — ${DETALHE_RECUSA[recusa]}` : ""}`}
+                              className={cn("tabular-nums", recusa && "opacity-40")}
+                              onClick={() =>
+                                form.setValue("hora", slot, { shouldValidate: true })
+                              }
+                              data-testid={`slot-${slot}`}
+                            >
+                              {slot}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {regra && !lojaFechadaNoDia && (
+                        <p className="text-xs text-muted-foreground">
+                          Funcionamento: {regra.atendimentoAberturaHora}h às{" "}
+                          {regra.atendimentoFechamentoHora}h.
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}

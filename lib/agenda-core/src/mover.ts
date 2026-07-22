@@ -1,4 +1,10 @@
-import { dentroDoFuncionamento, diaDaSemanaLocal, SLOT_MINUTOS } from "./slots";
+import {
+  dentroDoFuncionamento,
+  diaDaSemanaLocal,
+  instanteDoSlot,
+  slotsDoDia,
+  SLOT_MINUTOS,
+} from "./slots";
 
 /**
  * A regra de "esse atendimento pode ir para ali?", em UM lugar.
@@ -101,4 +107,39 @@ export function recusaDeMover(
   }
 
   return null;
+}
+
+export type SlotOferecido = {
+  /** "HH:MM" no fuso da loja. */
+  slot: string;
+  /** O instante em que o slot começa. */
+  inicio: Date;
+  /** Por que este slot não pode — null quando está livre. */
+  recusa: MotivoRecusa | null;
+};
+
+/**
+ * E64: a agenda passa a OFERECER, não só recusar.
+ *
+ * O formulário de agendamento usava um input de hora livre e o conflito só
+ * aparecia como erro da API depois do submit. Aqui a mesma régua de
+ * `recusaDeMover` percorre a malha do dia e devolve cada slot com o veredito —
+ * a tela mostra o que está livre e a vendedora clica, em vez de adivinhar.
+ */
+export function slotsOferecidos(
+  diaYMD: string,
+  candidata: { cabineId: string; vendedoraId: string; tipo?: "ATENDIMENTO" | "PROVA" },
+  outras: readonly Marcacao[],
+  expediente: Expediente,
+): SlotOferecido[] {
+  return slotsDoDia(expediente.aberturaHora, expediente.fechamentoHora).map((slot) => {
+    const inicio = instanteDoSlot(diaYMD, slot);
+    const recusa = recusaDeMover(
+      { id: "__nova__", cabineId: candidata.cabineId, vendedoraId: candidata.vendedoraId, tipo: candidata.tipo, inicio },
+      { cabineId: candidata.cabineId, inicio },
+      outras,
+      expediente,
+    );
+    return { slot, inicio, recusa };
+  });
 }
