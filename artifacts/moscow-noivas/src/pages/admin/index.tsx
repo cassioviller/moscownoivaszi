@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -8,19 +9,33 @@ import {
   useListLojas,
   getListLojasQueryKey,
   useCreateLoja,
+  useUpdateLoja,
   useListUsuarios,
   getListUsuariosQueryKey,
   useCreateUsuario,
+  useUpdateUsuario,
+  type Loja,
+  type Usuario,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -42,10 +57,31 @@ const novoUsuarioSchema = z.object({
 });
 type NovoUsuarioValues = z.infer<typeof novoUsuarioSchema>;
 
+const editarLojaSchema = z.object({
+  nome: z.string().min(1, "Nome da loja é obrigatório"),
+  cnpj: z.string(),
+  endereco: z.string(),
+  telefone: z.string(),
+  ativo: z.boolean(),
+});
+type EditarLojaValues = z.infer<typeof editarLojaSchema>;
+
+const editarUsuarioSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("E-mail inválido"),
+  senha: z
+    .string()
+    .refine((v) => v === "" || v.length >= 6, "Senha deve ter no mínimo 6 caracteres"),
+  ativo: z.boolean(),
+  isSuperAdmin: z.boolean(),
+});
+type EditarUsuarioValues = z.infer<typeof editarUsuarioSchema>;
+
 /** Console superadmin — rota top-level /admin, fora do escopo /loja/:lojaId. */
 export default function AdminConsole() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const {
     data: lojas,
@@ -68,6 +104,14 @@ export default function AdminConsole() {
 
   const createLoja = useCreateLoja();
   const createUsuario = useCreateUsuario();
+  const updateLoja = useUpdateLoja();
+  const updateUsuario = useUpdateUsuario();
+
+  const [lojaEmEdicao, setLojaEmEdicao] = useState<Loja | null>(null);
+  const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
+  // Desativar-se ou revogar o próprio superadmin trancaria a porta por dentro:
+  // a tela não oferece, e o hint explica o porquê.
+  const editandoASiMesmo = usuarioEmEdicao?.id === user?.id;
 
   const formLoja = useForm<NovaLojaValues>({
     resolver: zodResolver(novaLojaSchema),
@@ -77,6 +121,78 @@ export default function AdminConsole() {
     resolver: zodResolver(novoUsuarioSchema),
     defaultValues: { nome: "", email: "", senha: "", isSuperAdmin: false },
   });
+  const formEditarLoja = useForm<EditarLojaValues>({
+    resolver: zodResolver(editarLojaSchema),
+    defaultValues: { nome: "", cnpj: "", endereco: "", telefone: "", ativo: true },
+  });
+  const formEditarUsuario = useForm<EditarUsuarioValues>({
+    resolver: zodResolver(editarUsuarioSchema),
+    defaultValues: { nome: "", email: "", senha: "", ativo: true, isSuperAdmin: false },
+  });
+
+  const abrirEdicaoLoja = (loja: Loja) => {
+    formEditarLoja.reset({
+      nome: loja.nome,
+      cnpj: loja.cnpj ?? "",
+      endereco: loja.endereco ?? "",
+      telefone: loja.telefone ?? "",
+      ativo: loja.ativo,
+    });
+    setLojaEmEdicao(loja);
+  };
+
+  const abrirEdicaoUsuario = (usuario: Usuario) => {
+    formEditarUsuario.reset({
+      nome: usuario.nome,
+      email: usuario.email,
+      senha: "",
+      ativo: usuario.ativo,
+      isSuperAdmin: usuario.isSuperAdmin,
+    });
+    setUsuarioEmEdicao(usuario);
+  };
+
+  const onSalvarLoja = async (values: EditarLojaValues) => {
+    if (!lojaEmEdicao) return;
+    try {
+      await updateLoja.mutateAsync({ lojaId: lojaEmEdicao.id, data: values });
+      await queryClient.invalidateQueries({ queryKey: getListLojasQueryKey() });
+      toast({ title: "Loja atualizada" });
+      setLojaEmEdicao(null);
+    } catch (err) {
+      toast({
+        title: "Erro ao salvar a loja",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onSalvarUsuario = async (values: EditarUsuarioValues) => {
+    if (!usuarioEmEdicao) return;
+    try {
+      const { senha, ...resto } = values;
+      await updateUsuario.mutateAsync({
+        usuarioId: usuarioEmEdicao.id,
+        // Senha em branco = não mexer; preenchida entra como reset (e o
+        // servidor cobra a troca na próxima entrada, E57).
+        data: senha === "" ? resto : { ...resto, senha },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListUsuariosQueryKey() });
+      toast({
+        title: "Usuário atualizado",
+        description:
+          senha !== "" ? "A pessoa deverá trocar a senha na próxima entrada." : undefined,
+      });
+      setUsuarioEmEdicao(null);
+    } catch (err) {
+      toast({
+        title: "Erro ao salvar o usuário",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const onCriarLoja = async (values: NovaLojaValues) => {
     try {
@@ -142,10 +258,20 @@ export default function AdminConsole() {
                 {lojas?.map((loja) => (
                   <li
                     key={loja.id}
-                    className="flex items-center justify-between px-4 py-3 text-sm"
+                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
                   >
-                    <span className="font-medium">{loja.nome}</span>
-                    {!loja.ativo && <Badge variant="secondary">inativa</Badge>}
+                    <span className="font-medium truncate">{loja.nome}</span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {!loja.ativo && <Badge variant="secondary">inativa</Badge>}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => abrirEdicaoLoja(loja)}
+                        data-testid={`editar-loja-${loja.id}`}
+                      >
+                        Editar
+                      </Button>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -223,9 +349,19 @@ export default function AdminConsole() {
                           devolve apenas o Usuario, sem os vínculos por loja que a
                           tela do orcamentos exibia ("Loja A, Loja B" / "sem loja"). */}
                     </div>
-                    <Badge variant={u.ativo ? "outline" : "secondary"}>
-                      {u.ativo ? "Ativo" : "Inativo"}
-                    </Badge>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <Badge variant={u.ativo ? "outline" : "secondary"}>
+                        {u.ativo ? "Ativo" : "Inativo"}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => abrirEdicaoUsuario(u)}
+                        data-testid={`editar-usuario-${u.id}`}
+                      >
+                        Editar
+                      </Button>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -314,6 +450,230 @@ export default function AdminConsole() {
       >
         Gerenciar perfis (modelos globais) →
       </Link>
+
+      {/* ── Editar loja ── */}
+      <Dialog
+        open={lojaEmEdicao !== null}
+        onOpenChange={(aberto) => !aberto && setLojaEmEdicao(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar loja</DialogTitle>
+          </DialogHeader>
+          <Form {...formEditarLoja}>
+            <form
+              onSubmit={formEditarLoja.handleSubmit(onSalvarLoja)}
+              className="space-y-4"
+            >
+              <FormField
+                control={formEditarLoja.control}
+                name="nome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome da loja</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={formEditarLoja.control}
+                  name="cnpj"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CNPJ</FormLabel>
+                      <FormControl>
+                        <Input placeholder="00.000.000/0000-00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={formEditarLoja.control}
+                  name="telefone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(11) 99999-9999" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={formEditarLoja.control}
+                name="endereco"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endereço</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formEditarLoja.control}
+                name="ativo"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-md border p-3">
+                    <div className="space-y-0.5 pr-4">
+                      <FormLabel className="mb-0">Loja ativa</FormLabel>
+                      <FormDescription>
+                        Uma loja inativa some da seleção de lojas; ninguém entra nela.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLojaEmEdicao(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateLoja.isPending}>
+                  {updateLoja.isPending ? "Salvando…" : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Editar usuário ── */}
+      <Dialog
+        open={usuarioEmEdicao !== null}
+        onOpenChange={(aberto) => !aberto && setUsuarioEmEdicao(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar usuário</DialogTitle>
+          </DialogHeader>
+          <Form {...formEditarUsuario}>
+            <form
+              onSubmit={formEditarUsuario.handleSubmit(onSalvarUsuario)}
+              className="space-y-4"
+            >
+              <FormField
+                control={formEditarUsuario.control}
+                name="nome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input autoComplete="name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formEditarUsuario.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-mail</FormLabel>
+                    <FormControl>
+                      <Input type="email" autoComplete="off" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formEditarUsuario.control}
+                name="senha"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nova senha (opcional)</FormLabel>
+                    <FormControl>
+                      <Input type="password" autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Em branco, a senha atual segue valendo. Preenchida, a pessoa
+                      será obrigada a trocá-la na próxima entrada.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formEditarUsuario.control}
+                name="ativo"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-md border p-3">
+                    <div className="space-y-0.5 pr-4">
+                      <FormLabel className="mb-0">Usuário ativo</FormLabel>
+                      <FormDescription>
+                        {editandoASiMesmo
+                          ? "Você não pode desativar a si mesmo."
+                          : "Inativo não entra no sistema."}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={editandoASiMesmo}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formEditarUsuario.control}
+                name="isSuperAdmin"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-3 rounded-md border p-3">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(v) => field.onChange(v === true)}
+                        disabled={editandoASiMesmo}
+                      />
+                    </FormControl>
+                    <div className="space-y-0.5">
+                      <FormLabel className="mb-0 font-normal">
+                        Superadmin da plataforma
+                      </FormLabel>
+                      {editandoASiMesmo && (
+                        <FormDescription>
+                          Você não pode revogar o próprio superadmin.
+                        </FormDescription>
+                      )}
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setUsuarioEmEdicao(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateUsuario.isPending}>
+                  {updateUsuario.isPending ? "Salvando…" : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }
