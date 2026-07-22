@@ -22,4 +22,5 @@ export {
   ExportarAuditoriaParams,
   ListOrcamentosParams,
   ListContratosParams,
+  CreateParcelaAvulsaBody,
 } from "./generated/api";

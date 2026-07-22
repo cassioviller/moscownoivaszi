@@ -1175,6 +1175,28 @@ export interface BloqueioVestidoInput {
   reservaId?: string;
 }
 
+export interface Avaria {
+  id: string;
+  lojaId: string;
+  bloqueioId: string;
+  descricao: string;
+  /** @nullable */
+  custoReparo?: number | null;
+  /** A foto vem por /avarias/{id}/foto */
+  temFoto: boolean;
+  /** @nullable */
+  registradoPorNome?: string | null;
+  criadaEm: string;
+}
+
+export interface AvariaInput {
+  /** @minLength 1 */
+  descricao: string;
+  /** @minimum 0 */
+  custoReparo?: number;
+  fotoBase64?: string;
+}
+
 export interface BloqueioVestidoUpdate {
   provaDataReal?: string;
   /** @nullable */
@@ -2339,6 +2361,14 @@ de?: string;
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 ate?: string;
+};
+
+export type CreateParcelaAvulsaBody = {
+  /** @minLength 1 */
+  descricao: string;
+  /** @exclusiveMinimum 0 */
+  valorPrevisto: number;
+  vencimento: string;
 };
 
 export type ExportarContasPagarParams = {

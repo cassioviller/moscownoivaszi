@@ -12,8 +12,13 @@ import {
   CreateBloqueioBody,
   CreateBloqueioResponse,
   UpdateBloqueioBody,
-  UpdateBloqueioResponse
+  UpdateBloqueioResponse,
+  ListAvariasResponse,
+  CreateAvariaBody,
+  CreateAvariaResponse
 } from "@workspace/api-zod";
+import { avariasTable } from "@workspace/db";
+import { identificarImagem } from "../lib/imagem";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 import {
@@ -370,6 +375,105 @@ router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<
   const { lojaId, bloqueioId } = req.params;
   await db.delete(bloqueioVestidosTable).where(and(eq(bloqueioVestidosTable.id, bloqueioId as string), eq(bloqueioVestidosTable.lojaId, lojaId as string)));
   res.status(204).send();
+});
+
+// ───────────────────── Avarias (E71) ─────────────────────
+// A consequência da devolução: o vestido voltou manchado/rasgado e o registro
+// morria numa conversa. Gate `vestidos`, junto do resto do bloqueio.
+router.use("/lojas/:lojaId/avarias", requireModulo("vestidos"));
+
+const AVARIA_FOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+/** Meta da avaria para o contrato — nunca os bytes na listagem. */
+function avariaMeta(a: typeof avariasTable.$inferSelect) {
+  const { fotoBytes, fotoMime, ...meta } = a;
+  return { ...meta, temFoto: fotoBytes !== null };
+}
+
+router.get("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
+  const { lojaId, bloqueioId } = req.params;
+  const avarias = await db
+    .select()
+    .from(avariasTable)
+    .where(and(eq(avariasTable.lojaId, lojaId as string), eq(avariasTable.bloqueioId, bloqueioId as string)))
+    .orderBy(avariasTable.criadaEm);
+  res.json(ListAvariasResponse.parse(avarias.map(avariaMeta)));
+});
+
+router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
+  const { lojaId, bloqueioId } = req.params;
+  const parsed = CreateAvariaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [bloqueio] = await db
+    .select({ id: bloqueioVestidosTable.id })
+    .from(bloqueioVestidosTable)
+    .where(and(eq(bloqueioVestidosTable.id, bloqueioId as string), eq(bloqueioVestidosTable.lojaId, lojaId as string)));
+  if (!bloqueio) {
+    res.status(404).json({ error: "Bloqueio not found" });
+    return;
+  }
+
+  // Mesma borda das fotos de vestido (E3): mime sai do BINÁRIO — um mime
+  // mentiroso viraria o Content-Type servido de volta (stored-XSS).
+  let fotoBytes: Buffer | null = null;
+  let fotoMime: string | null = null;
+  if (parsed.data.fotoBase64) {
+    fotoBytes = Buffer.from(parsed.data.fotoBase64, "base64");
+    if (fotoBytes.length > AVARIA_FOTO_MAX_BYTES) {
+      res.status(422).json({ error: "FOTO_MUITO_GRANDE", detalhe: "Máximo 2MB" });
+      return;
+    }
+    const info = identificarImagem(fotoBytes);
+    if (!info) {
+      res.status(422).json({ error: "FOTO_INVALIDA", detalhe: "Use JPEG, PNG ou WebP" });
+      return;
+    }
+    fotoMime = info.mime;
+  }
+
+  const [avaria] = await db
+    .insert(avariasTable)
+    .values({
+      id: randomUUID(),
+      lojaId: lojaId as string,
+      bloqueioId: bloqueioId as string,
+      descricao: parsed.data.descricao,
+      custoReparo: parsed.data.custoReparo ?? null,
+      fotoBytes,
+      fotoMime,
+      // Autor da SESSÃO, desnormalizado como no audit_log: a linha sobrevive
+      // à saída de quem registrou.
+      registradoPorNome: req.usuario?.nome ?? null,
+    })
+    .returning();
+  res.status(201).json(CreateAvariaResponse.parse(avariaMeta(avaria)));
+});
+
+router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void> => {
+  const { lojaId, avariaId } = req.params;
+  await db
+    .delete(avariasTable)
+    .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));
+  res.status(204).send();
+});
+
+router.get("/lojas/:lojaId/avarias/:avariaId/foto", async (req, res): Promise<void> => {
+  const { lojaId, avariaId } = req.params;
+  const [avaria] = await db
+    .select({ fotoBytes: avariasTable.fotoBytes, fotoMime: avariasTable.fotoMime })
+    .from(avariasTable)
+    .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));
+  if (!avaria?.fotoBytes || !avaria.fotoMime) {
+    res.status(404).json({ error: "Avaria sem foto" });
+    return;
+  }
+  res.setHeader("Content-Type", avaria.fotoMime);
+  res.setHeader("Cache-Control", "private, max-age=60, must-revalidate");
+  res.send(avaria.fotoBytes);
 });
 
 export default router;

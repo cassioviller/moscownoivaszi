@@ -22,6 +22,8 @@ import {
   GerarPlanoParcelasResponse,
   ListContratosResponse,
   ListContratosQueryParams,
+  CreateParcelaAvulsaBody,
+  CreateParcelaAvulsaResponse,
   CreateContratoBody,
   CreateContratoResponse,
   GetContratoResponse,
@@ -692,6 +694,47 @@ const DIA_MS = 86_400_000;
 // a última parcela absorve o resto da divisão (sem drift de arredondamento).
 // Entrada (se > 0) vira a linha `numero 0` no primeiro vencimento e as N
 // parcelas começam um período depois.
+// E71: cobrança que nasce DEPOIS do plano — multa por devolução atrasada,
+// reparo de avaria, ajuste extra. Entra como parcela do contrato e a régua de
+// cobrança, o extrato e o caixa a tratam como qualquer outra.
+router.post("/lojas/:lojaId/contratos/:contratoId/parcelas", async (req, res): Promise<void> => {
+  const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
+  const parsed = CreateParcelaAvulsaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
+    with: { parcelas: true },
+  });
+  if (!contrato) {
+    res.status(422).json({ error: "CONTRATO_INVALIDO", detalhe: "Contrato não encontrado nesta loja" });
+    return;
+  }
+  if (contrato.status !== "ATIVO") {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: `Contrato está ${contrato.status}` });
+    return;
+  }
+
+  // Próximo número livre; a UNIQUE (contrato, numero) segura o duplo POST.
+  const numero = contrato.parcelas.reduce((maior, p) => Math.max(maior, p.numero), 0) + 1;
+  const [parcela] = await db
+    .insert(parcelasTable)
+    .values({
+      id: randomUUID(),
+      lojaId,
+      contratoId,
+      numero,
+      descricao: parsed.data.descricao,
+      valorPrevisto: parsed.data.valorPrevisto,
+      vencimento: parsed.data.vencimento,
+    })
+    .returning();
+  res.status(201).json(CreateParcelaAvulsaResponse.parse(parcela));
+});
+
 router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (req, res): Promise<void> => {
   const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
   const parsed = GerarPlanoParcelasBody.safeParse(req.body);

@@ -12,3 +12,4 @@ export * from "./comissao";
 export * from "./auditoria";
 export * from "./backup";
 export * from "./relations";
+export * from "./avarias";

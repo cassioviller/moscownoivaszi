@@ -41,6 +41,8 @@ import type {
   AtributoUpdate,
   AuditoriaItem,
   AutorAuditoria,
+  Avaria,
+  AvariaInput,
   BackupLog,
   BackupStatus,
   BaixaEstornoComissao,
@@ -72,6 +74,7 @@ import type {
   Convite,
   ConviteInput,
   ConvitePublico,
+  CreateParcelaAvulsaBody,
   DashboardSummary,
   DisponibilidadeVestidos,
   EnviarContabilidadeInput,
@@ -7009,6 +7012,310 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteBloqueioMutationOptions(options));
     }
 
+export const getListAvariasUrl = (lojaId: string,
+    bloqueioId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/bloqueios/${bloqueioId}/avarias`
+}
+
+/**
+ * @summary Avarias registradas na devolução deste bloqueio
+ */
+export const listAvarias = async (lojaId: string,
+    bloqueioId: string, options?: RequestInit): Promise<Avaria[]> => {
+
+  return customFetch<Avaria[]>(getListAvariasUrl(lojaId,bloqueioId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAvariasQueryKey = (lojaId: string,
+    bloqueioId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/bloqueios/${bloqueioId}/avarias`
+    ] as const;
+    }
+
+
+export const getListAvariasQueryOptions = <TData = Awaited<ReturnType<typeof listAvarias>>, TError = ErrorType<unknown>>(lojaId: string,
+    bloqueioId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAvarias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAvariasQueryKey(lojaId,bloqueioId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAvarias>>> = ({ signal }) => listAvarias(lojaId,bloqueioId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && bloqueioId !== null && bloqueioId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAvarias>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAvariasQueryResult = NonNullable<Awaited<ReturnType<typeof listAvarias>>>
+export type ListAvariasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Avarias registradas na devolução deste bloqueio
+ */
+
+export function useListAvarias<TData = Awaited<ReturnType<typeof listAvarias>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    bloqueioId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAvarias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAvariasQueryOptions(lojaId,bloqueioId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAvariaUrl = (lojaId: string,
+    bloqueioId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/bloqueios/${bloqueioId}/avarias`
+}
+
+/**
+ * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
+ * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
+ */
+export const createAvaria = async (lojaId: string,
+    bloqueioId: string,
+    avariaInput: AvariaInput, options?: RequestInit): Promise<Avaria> => {
+
+  return customFetch<Avaria>(getCreateAvariaUrl(lojaId,bloqueioId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(avariaInput)
+  }
+);}
+
+
+
+
+export const getCreateAvariaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAvaria>>, TError,{lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAvaria>>, TError,{lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}, TContext> => {
+
+const mutationKey = ['createAvaria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAvaria>>, {lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}> = (props) => {
+          const {lojaId,bloqueioId,data} = props ?? {};
+
+          return  createAvaria(lojaId,bloqueioId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof createAvaria>>>
+    export type CreateAvariaMutationBody = BodyType<AvariaInput>
+    export type CreateAvariaMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
+ */
+export const useCreateAvaria = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAvaria>>, TError,{lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAvaria>>,
+        TError,
+        {lojaId: string;bloqueioId: string;data: BodyType<AvariaInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAvariaMutationOptions(options));
+    }
+
+export const getDeleteAvariaUrl = (lojaId: string,
+    avariaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/avarias/${avariaId}`
+}
+
+export const deleteAvaria = async (lojaId: string,
+    avariaId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAvariaUrl(lojaId,avariaId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAvariaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext> => {
+
+const mutationKey = ['deleteAvaria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAvaria>>, {lojaId: string;avariaId: string}> = (props) => {
+          const {lojaId,avariaId} = props ?? {};
+
+          return  deleteAvaria(lojaId,avariaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAvaria>>>
+
+    export type DeleteAvariaMutationError = ErrorType<unknown>
+
+    export const useDeleteAvaria = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAvaria>>,
+        TError,
+        {lojaId: string;avariaId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteAvariaMutationOptions(options));
+    }
+
+export const getGetAvariaFotoUrl = (lojaId: string,
+    avariaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/avarias/${avariaId}/foto`
+}
+
+/**
+ * @summary A foto-evidência da avaria
+ */
+export const getAvariaFoto = async (lojaId: string,
+    avariaId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetAvariaFotoUrl(lojaId,avariaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAvariaFotoQueryKey = (lojaId: string,
+    avariaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/avarias/${avariaId}/foto`
+    ] as const;
+    }
+
+
+export const getGetAvariaFotoQueryOptions = <TData = Awaited<ReturnType<typeof getAvariaFoto>>, TError = ErrorType<void>>(lojaId: string,
+    avariaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvariaFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAvariaFotoQueryKey(lojaId,avariaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAvariaFoto>>> = ({ signal }) => getAvariaFoto(lojaId,avariaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && avariaId !== null && avariaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAvariaFoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAvariaFotoQueryResult = NonNullable<Awaited<ReturnType<typeof getAvariaFoto>>>
+export type GetAvariaFotoQueryError = ErrorType<void>
+
+
+/**
+ * @summary A foto-evidência da avaria
+ */
+
+export function useGetAvariaFoto<TData = Awaited<ReturnType<typeof getAvariaFoto>>, TError = ErrorType<void>>(
+ lojaId: string,
+    avariaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvariaFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAvariaFotoQueryOptions(lojaId,avariaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListOrcamentosUrl = (lojaId: string,
     params?: ListOrcamentosParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -8642,6 +8949,80 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getGerarPlanoParcelasMutationOptions(options));
+    }
+
+export const getCreateParcelaAvulsaUrl = (lojaId: string,
+    contratoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/contratos/${contratoId}/parcelas`
+}
+
+/**
+ * E71: a consequência que faltava. Uma cobrança que nasce DEPOIS do plano (multa por devolução atrasada, custo de reparo de avaria) entra como parcela do contrato — e a régua de cobrança, o extrato e o caixa a tratam como qualquer outra. Número é o próximo livre; contrato precisa estar ATIVO.
+ * @summary Parcela avulsa — multa de atraso, reparo de avaria, ajuste extra
+ */
+export const createParcelaAvulsa = async (lojaId: string,
+    contratoId: string,
+    createParcelaAvulsaBody: CreateParcelaAvulsaBody, options?: RequestInit): Promise<Parcela> => {
+
+  return customFetch<Parcela>(getCreateParcelaAvulsaUrl(lojaId,contratoId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createParcelaAvulsaBody)
+  }
+);}
+
+
+
+
+export const getCreateParcelaAvulsaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParcelaAvulsa>>, TError,{lojaId: string;contratoId: string;data: BodyType<CreateParcelaAvulsaBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createParcelaAvulsa>>, TError,{lojaId: string;contratoId: string;data: BodyType<CreateParcelaAvulsaBody>}, TContext> => {
+
+const mutationKey = ['createParcelaAvulsa'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createParcelaAvulsa>>, {lojaId: string;contratoId: string;data: BodyType<CreateParcelaAvulsaBody>}> = (props) => {
+          const {lojaId,contratoId,data} = props ?? {};
+
+          return  createParcelaAvulsa(lojaId,contratoId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateParcelaAvulsaMutationResult = NonNullable<Awaited<ReturnType<typeof createParcelaAvulsa>>>
+    export type CreateParcelaAvulsaMutationBody = BodyType<CreateParcelaAvulsaBody>
+    export type CreateParcelaAvulsaMutationError = ErrorType<void>
+
+    /**
+ * @summary Parcela avulsa — multa de atraso, reparo de avaria, ajuste extra
+ */
+export const useCreateParcelaAvulsa = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParcelaAvulsa>>, TError,{lojaId: string;contratoId: string;data: BodyType<CreateParcelaAvulsaBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createParcelaAvulsa>>,
+        TError,
+        {lojaId: string;contratoId: string;data: BodyType<CreateParcelaAvulsaBody>},
+        TContext
+      > => {
+      return useMutation(getCreateParcelaAvulsaMutationOptions(options));
     }
 
 export const getListContasPagarUrl = (lojaId: string,) => {

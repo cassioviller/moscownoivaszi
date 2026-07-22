@@ -1775,6 +1775,85 @@ paths:
         "204":
           description: Deleted
 
+  /lojas/{lojaId}/bloqueios/{bloqueioId}/avarias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: bloqueioId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listAvarias
+      tags: [reservas]
+      summary: Avarias registradas na devolução deste bloqueio
+      responses:
+        "200":
+          description: Avarias (meta — a foto vem pela rota própria)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Avaria"
+    post:
+      operationId: createAvaria
+      tags: [reservas]
+      summary: Registra uma avaria — descrição, custo estimado e foto-evidência
+      description: >
+        E71: o atraso já era detectado; a avaria morria numa conversa. A foto é
+        opcional, validada por magic bytes como as de vestido (E3), e quando há
+        contrato o custo pode virar parcela avulsa cobrável.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvariaInput"
+      responses:
+        "201":
+          description: Avaria registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Avaria"
+
+  /lojas/{lojaId}/avarias/{avariaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: avariaId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: deleteAvaria
+      tags: [reservas]
+      responses:
+        "204":
+          description: Avaria removida
+
+  /lojas/{lojaId}/avarias/{avariaId}/foto:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: avariaId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getAvariaFoto
+      tags: [reservas]
+      summary: A foto-evidência da avaria
+      responses:
+        "200":
+          description: A imagem, no mime real do binário
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404":
+          description: Avaria sem foto ou inexistente
+
   # ───────────────────────── Orçamentos ─────────────────────────
   /lojas/{lojaId}/orcamentos:
     parameters:
@@ -2239,6 +2318,46 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Parcela"
+
+  /lojas/{lojaId}/contratos/{contratoId}/parcelas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: createParcelaAvulsa
+      tags: [financeiro]
+      summary: Parcela avulsa — multa de atraso, reparo de avaria, ajuste extra
+      description: >
+        E71: a consequência que faltava. Uma cobrança que nasce DEPOIS do plano
+        (multa por devolução atrasada, custo de reparo de avaria) entra como
+        parcela do contrato — e a régua de cobrança, o extrato e o caixa a
+        tratam como qualquer outra. Número é o próximo livre; contrato precisa
+        estar ATIVO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descricao, valorPrevisto, vencimento]
+              properties:
+                descricao: { type: string, minLength: 1 }
+                valorPrevisto: { type: number, exclusiveMinimum: 0 }
+                vencimento: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Parcela criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+        "422":
+          description: Contrato inexistente ou não ATIVO
+
   /lojas/{lojaId}/financeiro/contas-pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -4036,6 +4155,27 @@ components:
         fim: { type: string, format: date-time }
         observacao: { type: string }
         reservaId: { type: string }
+    Avaria:
+      type: object
+      required: [id, lojaId, bloqueioId, descricao, temFoto, criadaEm]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        bloqueioId: { type: string }
+        descricao: { type: string }
+        custoReparo: { type: ["number", "null"] }
+        temFoto: { type: boolean, description: "A foto vem por /avarias/{id}/foto" }
+        registradoPorNome: { type: ["string", "null"] }
+        criadaEm: { type: string, format: date-time }
+    AvariaInput:
+      type: object
+      required: [descricao]
+      properties:
+        descricao: { type: string, minLength: 1 }
+        custoReparo: { type: number, minimum: 0 }
+        # Foto-evidência opcional, base64 — mesma borda das fotos de vestido
+        # (E3): mime e dimensões saem do BINÁRIO, nunca da palavra do cliente.
+        fotoBase64: { type: string }
     BloqueioVestidoUpdate:
       type: object
       properties:

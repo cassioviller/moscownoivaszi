@@ -15,6 +15,13 @@ import {
   useAddChecklistItem,
   useUpdateChecklistItem,
   useRemoveChecklistItem,
+  useListAvarias,
+  getListAvariasQueryKey,
+  useCreateAvaria,
+  useDeleteAvaria,
+  useListContratos,
+  getListContratosQueryKey,
+  useCreateParcelaAvulsa,
   type Ajuste,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,6 +80,95 @@ export default function ReservaDetalhe() {
     () => (bloqueios.data ?? []).find((b) => b.id === bloqueioId) ?? null,
     [bloqueios.data, bloqueioId],
   );
+
+  // E71: as avarias deste bloqueio + o contrato ATIVO da noiva (para o custo
+  // do reparo poder virar parcela cobrável).
+  const avarias = useListAvarias(activeLojaId!, bloqueioId!, {
+    query: {
+      queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+      enabled: !!activeLojaId && !!bloqueioId,
+    },
+  });
+  const contratosDaNoiva = useListContratos(
+    activeLojaId!,
+    { leadId: reserva?.leadId ?? "" },
+    {
+      query: {
+        queryKey: getListContratosQueryKey(activeLojaId!, { leadId: reserva?.leadId ?? "" }),
+        enabled: !!activeLojaId && !!reserva?.leadId,
+      },
+    },
+  );
+  const contratoAtivo = (contratosDaNoiva.data ?? []).find((c) => c.status === "ATIVO") ?? null;
+  const createAvaria = useCreateAvaria();
+  const deleteAvaria = useDeleteAvaria();
+  const createParcelaAvulsa = useCreateParcelaAvulsa();
+
+  const [avariaDescricao, setAvariaDescricao] = useState("");
+  const [avariaCusto, setAvariaCusto] = useState("");
+  const [avariaFotoBase64, setAvariaFotoBase64] = useState<string | null>(null);
+  const [avariaFotoNome, setAvariaFotoNome] = useState<string | null>(null);
+
+  const aoEscolherFotoAvaria = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    if (arquivo.size > 2 * 1024 * 1024) {
+      toast({ title: "Foto acima de 2MB", description: "Escolha uma imagem menor.", variant: "destructive" });
+      return;
+    }
+    const buf = await arquivo.arrayBuffer();
+    let binario = "";
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    setAvariaFotoBase64(btoa(binario));
+    setAvariaFotoNome(arquivo.name);
+  };
+
+  const registrarAvaria = () =>
+    comToast(
+      async () => {
+        const custo = avariaCusto.trim() ? Number(avariaCusto.replace(",", ".")) : undefined;
+        await createAvaria.mutateAsync({
+          lojaId: activeLojaId!,
+          bloqueioId: bloqueioId!,
+          data: {
+            descricao: avariaDescricao.trim(),
+            ...(custo !== undefined && Number.isFinite(custo) ? { custoReparo: custo } : {}),
+            ...(avariaFotoBase64 ? { fotoBase64: avariaFotoBase64 } : {}),
+          },
+        });
+        await queryClient.invalidateQueries({
+          queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+        });
+        setAvariaDescricao("");
+        setAvariaCusto("");
+        setAvariaFotoBase64(null);
+        setAvariaFotoNome(null);
+      },
+      "Avaria registrada",
+      "Erro ao registrar a avaria",
+    );
+
+  const cobrarReparo = (avaria: { descricao: string; custoReparo?: number | null }) =>
+    comToast(
+      async () => {
+        if (!contratoAtivo || !avaria.custoReparo) return;
+        const vencimento = new Date();
+        vencimento.setDate(vencimento.getDate() + 7);
+        await createParcelaAvulsa.mutateAsync({
+          lojaId: activeLojaId!,
+          contratoId: contratoAtivo.id,
+          data: {
+            descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
+            valorPrevisto: avaria.custoReparo,
+            vencimento: vencimento.toISOString(),
+          },
+        });
+      },
+      "Cobrança criada — entrou como parcela do contrato",
+      "Erro ao criar a cobrança",
+    );
   const provas = useMemo(
     () =>
       (atendimentos.data ?? [])
@@ -424,6 +520,121 @@ export default function ReservaDetalhe() {
             </CardContent>
           </Card>
         )}
+      </section>
+
+      {/* E71: avarias da devolução — registro com foto-evidência e, quando há
+          contrato ativo, o custo vira parcela cobrável pela régua de sempre. */}
+      <section className="space-y-3">
+        <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Avarias</h2>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            {(avarias.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma avaria registrada — o vestido voltou como saiu.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {(avarias.data ?? []).map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-sm">{a.descricao}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {a.custoReparo != null && <>reparo estimado R$ {a.custoReparo.toFixed(2).replace(".", ",")} · </>}
+                        {a.registradoPorNome && <>{a.registradoPorNome} · </>}
+                        {dataCurtaFmt.format(new Date(a.criadaEm))}
+                        {a.temFoto && (
+                          <>
+                            {" · "}
+                            <a
+                              href={`/api/lojas/${activeLojaId}/avarias/${a.id}/foto`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline underline-offset-4"
+                            >
+                              ver foto
+                            </a>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    {podeMovimentar && (
+                      <span className="flex items-center gap-1">
+                        {contratoAtivo && a.custoReparo != null && a.custoReparo > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={createParcelaAvulsa.isPending}
+                            onClick={() => cobrarReparo(a)}
+                            data-testid={`cobrar-reparo-${a.id}`}
+                          >
+                            Cobrar reparo
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          aria-label="Remover avaria"
+                          onClick={() =>
+                            comToast(
+                              async () => {
+                                await deleteAvaria.mutateAsync({ lojaId: activeLojaId!, avariaId: a.id });
+                                await queryClient.invalidateQueries({
+                                  queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+                                });
+                              },
+                              "Avaria removida",
+                              "Erro ao remover a avaria",
+                            )
+                          }
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {podeMovimentar && (
+              <div className="space-y-2 border-t pt-4">
+                <Input
+                  placeholder="O que aconteceu com o vestido? (ex.: barra rasgada)"
+                  value={avariaDescricao}
+                  onChange={(e) => setAvariaDescricao(e.target.value)}
+                  aria-label="Descrição da avaria"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    placeholder="Custo do reparo (R$, opcional)"
+                    value={avariaCusto}
+                    onChange={(e) => setAvariaCusto(e.target.value)}
+                    className="w-52"
+                    aria-label="Custo do reparo"
+                  />
+                  <label className="text-sm text-primary underline underline-offset-4 cursor-pointer">
+                    {avariaFotoNome ?? "Anexar foto"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => aoEscolherFotoAvaria(e.target.files?.[0])}
+                    />
+                  </label>
+                  <Button
+                    size="sm"
+                    disabled={!avariaDescricao.trim() || createAvaria.isPending}
+                    onClick={registrarAvaria}
+                    data-testid="registrar-avaria"
+                  >
+                    Registrar avaria
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       {/* Provas da reserva + ajustes de costura com checklist */}

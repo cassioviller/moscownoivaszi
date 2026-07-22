@@ -3847,6 +3847,78 @@ export const DeleteBloqueioParams = zod.object({
 export const DeleteBloqueioResponse = zod.void()
 
 
+/**
+ * @summary Avarias registradas na devolução deste bloqueio
+ */
+export const ListAvariasParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "bloqueioId": zod.coerce.string()
+})
+
+export const ListAvariasResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "bloqueioId": zod.string(),
+  "descricao": zod.string(),
+  "custoReparo": zod.number().nullish(),
+  "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "registradoPorNome": zod.string().nullish(),
+  "criadaEm": zod.coerce.date()
+})
+export const ListAvariasResponse = zod.array(ListAvariasResponseItem)
+
+
+/**
+ * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
+ * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
+ */
+export const CreateAvariaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "bloqueioId": zod.coerce.string()
+})
+
+
+export const createAvariaBodyCustoReparoMin = 0;
+
+
+
+export const CreateAvariaBody = zod.object({
+  "descricao": zod.string().min(1),
+  "custoReparo": zod.number().min(createAvariaBodyCustoReparoMin).optional(),
+  "fotoBase64": zod.string().optional()
+})
+
+export const CreateAvariaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "bloqueioId": zod.string(),
+  "descricao": zod.string(),
+  "custoReparo": zod.number().nullish(),
+  "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "registradoPorNome": zod.string().nullish(),
+  "criadaEm": zod.coerce.date()
+})
+
+
+export const DeleteAvariaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "avariaId": zod.coerce.string()
+})
+
+export const DeleteAvariaResponse = zod.void()
+
+
+/**
+ * @summary A foto-evidência da avaria
+ */
+export const GetAvariaFotoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "avariaId": zod.coerce.string()
+})
+
+export const GetAvariaFotoResponse = zod.unknown()
+
+
 export const ListOrcamentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
@@ -5269,6 +5341,74 @@ export const GerarPlanoParcelasResponseItem = zod.object({
 }),zod.null()]).optional()
 })
 export const GerarPlanoParcelasResponse = zod.array(GerarPlanoParcelasResponseItem)
+
+
+/**
+ * E71: a consequência que faltava. Uma cobrança que nasce DEPOIS do plano (multa por devolução atrasada, custo de reparo de avaria) entra como parcela do contrato — e a régua de cobrança, o extrato e o caixa a tratam como qualquer outra. Número é o próximo livre; contrato precisa estar ATIVO.
+ * @summary Parcela avulsa — multa de atraso, reparo de avaria, ajuste extra
+ */
+export const CreateParcelaAvulsaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+
+export const createParcelaAvulsaBodyValorPrevistoExclusiveMin = 0;
+
+
+
+export const CreateParcelaAvulsaBody = zod.object({
+  "descricao": zod.string().min(1),
+  "valorPrevisto": zod.number().gt(createParcelaAvulsaBodyValorPrevistoExclusiveMin),
+  "vencimento": zod.coerce.date()
+})
+
+export const CreateParcelaAvulsaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "numero": zod.number(),
+  "descricao": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
+  "recebidoEm": zod.coerce.date().nullish(),
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
 
 
 export const ListContasPagarParams = zod.object({
