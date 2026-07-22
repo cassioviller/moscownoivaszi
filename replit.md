@@ -155,6 +155,16 @@ rode o codegen.
   clique, token em QUERY (o logger corta a query), e o extrato sai só do
   contrato ATIVO da própria noiva. Revogado responde 404 como desconhecido —
   o link morto não conta que um dia valeu.
+- **O drill do restore PROVA o dump, não restaura nada** (E89):
+  `pnpm --filter api-server run restore-drill` pega o dump mais recente,
+  restaura num database EFÊMERO `drill_<timestamp>` na mesma instância e
+  confere contra a origem (contagem por tabela, FKs sem órfãs, soma de
+  parcelas) — o efêmero morre no `finally`, sucesso OU falha. Ele NUNCA toca o
+  database de origem (aborta se o alvo não começar com `drill_`, e a leitura
+  da origem é read-only por sessão) e NÃO substitui a guarda de retenção dos
+  dumps — se a poda dos 10 apagar o único dump bom, o drill só conta que o
+  último que sobrou confere. O resultado fica em `restore_drill_log` e aparece
+  em Configurações → Administração ao lado do status do backup.
 
 ## Pointers
 

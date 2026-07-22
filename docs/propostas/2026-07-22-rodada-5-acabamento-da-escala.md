@@ -141,3 +141,57 @@ decisão de negócio. A rodada 6, se houver, nasce de dor nova de uso real —
 não de plano.
 
 <!-- E87, item 4: ajustes/contratos/orçamentos ficaram de fora — uma ordem de grandeza abaixo da agenda (contrato/orçamento ≈ um por noiva; a fila de ajustes mostra só PENDENTE, que se autolimita), e o recorte útil deles seria por status, não por janela de tempo — não vale contrato novo hoje. -->
+
+---
+
+## Placar final (2026-07-22)
+
+Executada na ordem planejada (E87 → E88 → E89 → E90), tudo com teste no
+commit:
+
+- **E87 ✅** (`83d7eb2`) — as três telas de arquivo pedem o recorte: provas
+  usa a janela do E83 (futuras = `de=hoje`, passadas = `ate=ontem` — zero
+  backend); atendimentos nasce com os últimos 90 dias (`de=` sem `ate`, para
+  nunca esconder um futuro) e "carregar mais antigo" dobra a janela;
+  reservas ganhou `futuras=true|false` no contrato de `GET /bloqueios`
+  (corte de `casamentoData` contra hoje em dia LOCAL, passadas desc no
+  servidor; o param é string enum de propósito — `coerce.boolean` engoliria
+  `false`). `keepPreviousData` nos três toggles. Ficaram de fora, pelo
+  motivo do item 4: ajustes/contratos/orçamentos são ≈ um por noiva ou se
+  autolimitam por status (a fila de ajustes só mostra PENDENTE) — o recorte
+  útil deles seria por status, não por janela; não vale contrato novo hoje.
+  Constatação de carona para a rodada 6: `atendimentos/novo.tsx` AINDA baixa
+  a agenda inteira (`useListAtendimentos` sem janela) para montar os slots
+  do agendamento — é o último consumidor do acervo completo.
+- **E88 ✅** (`0170159`) — a poda, com veredito de grep export a export:
+  `tendenciaCaixa`, `horizonteAberto`, `resumoCaixa`, `movimentos` e
+  `recebimentosPorForma` saíram da lib financeira do front — o CSV já nasce
+  dos números do servidor (`useGetDre`/`useGetFluxoCaixa`), e o
+  `financeiro-core` segue sendo a casa dos motores. `round2` virou função
+  única na lib do server (`api-server/src/lib/dinheiro.ts`), importada pelas
+  rotas de orçamento e pela visao-noiva — os dois lugares que têm de fechar
+  no mesmo centavo. O que ficou, ficou com o porquê anotado (espelho do CSV,
+  tipos que são assinatura). `LegacyRedirect` intocado, como manda a spec:
+  bookmark de usuária real ainda cai nas rotas planas.
+- **E89 ✅** (`ad7f1e3`) — o drill do restore rodou DE VERDADE:
+  `pnpm --filter api-server run restore-drill` restaurou o dump mais recente
+  num database efêmero `drill_<timestamp>` e conferiu contra a origem —
+  44 tabelas com contagem batida, 91 FKs sem órfãs, soma de parcelas
+  idêntica; o efêmero morre no `finally`, sucesso ou falha (dump com dado
+  real não sobrevive ao processo). O registro persiste em
+  `restore_drill_log`, sai por `GET /admin/backup`
+  (`BackupStatus.ultimoDrill`) e vira a linha "restaurado e conferido em X"
+  na tela de Configurações — âmbar quando nunca rodou ou falhou.
+- **E90 ✅** — este placar; `replit.md` conta o drill como gotcha (como
+  rodá-lo e o que ele NÃO faz). Suítes completas: typecheck verde,
+  API 583/583, front 160/160, e2e 127/128. A única falha é a já conhecida
+  `26-prova-ocupa-intervalo` ("para depois dela passa" levou 422
+  `VENDEDORA_OCUPADA`) — estado ACUMULADO do banco e2e, não regressão:
+  o spec isola a cabine (E80) mas compartilha a vendedora do seed, e runs
+  anteriores do próprio dia deixaram uma PROVA às 11:15 na `e2e-cabine-1`
+  cujo intervalo de 1h cobre o slot das 11:30 do teste (rows conferidas no
+  banco). Re-rodado INDIVIDUALMENTE, falha do mesmo jeito — é o dado, não a
+  ordem — e o PATCH de atendimentos/motor do E40 não foram tocados nesta
+  rodada (a rodada anterior viu a mesma família em `23-prova-data-real` e
+  neste mesmo spec). Conserto anotado para a rodada 6: vendedora própria
+  por execução (ou limpeza por janela), como a cabine já é.
