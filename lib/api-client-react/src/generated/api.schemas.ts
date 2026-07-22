@@ -1338,6 +1338,7 @@ export interface Orcamento {
   /** @nullable */
   publicoAbertoEm?: string | null;
   createdAt: string;
+  lead?: Lead;
   itens?: OrcamentoItem[];
 }
 

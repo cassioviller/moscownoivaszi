@@ -4,8 +4,6 @@ import {
   useListOrcamentos,
   getListOrcamentosQueryKey,
   useCreateOrcamento,
-  useListLeads,
-  getListLeadsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -32,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ComboboxNoiva } from "@/components/combobox-noiva";
 import { Plus, FileText, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
@@ -62,17 +61,20 @@ export default function Orcamentos() {
   const [filtro, setFiltro] = useState("todos");
 
   const { data: orcamentos, isLoading, isError, refetch } = useListOrcamentos(activeLojaId!, undefined, { query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const leads = useListLeads(activeLojaId!, undefined, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createOrcamento = useCreateOrcamento();
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
   const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
+  // E63: o nome da noiva já vem embutido em cada orçamento — a lista completa
+  // de leads só era baixada para rotular as linhas.
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();
-    for (const lead of leads.data?.itens ?? []) mapa.set(lead.id, lead.noivaNome);
+    for (const o of orcamentos ?? []) {
+      if (o.lead?.noivaNome) mapa.set(o.leadId, o.lead.noivaNome);
+    }
     return mapa;
-  }, [leads.data]);
+  }, [orcamentos]);
 
   const filtrados = useMemo(
     () => (filtro === "todos" ? orcamentos : orcamentos?.filter((o) => o.status === filtro)),
@@ -147,18 +149,13 @@ export default function Orcamentos() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Noiva *</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Escolha a noiva" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(leads.data?.itens ?? []).map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id}>{lead.noivaNome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <ComboboxNoiva
+                        lojaId={activeLojaId!}
+                        value={field.value || null}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

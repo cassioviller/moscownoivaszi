@@ -4111,6 +4111,10 @@ components:
         publicoExpiraEm: { type: ["string", "null"], format: date-time }
         publicoAbertoEm: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
+        # E63: a rota sempre embutiu a noiva (`with: lead`), mas o contrato a
+        # descartava — e a lista baixava TODOS os leads só para rotular linhas.
+        lead:
+          $ref: "#/components/schemas/Lead"
         itens:
           type: array
           items:

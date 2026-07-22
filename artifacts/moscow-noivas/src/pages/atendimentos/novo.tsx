@@ -12,8 +12,6 @@ import {
   useDeleteAtendimento,
   useListCabines,
   getListCabinesQueryKey,
-  useListLeads,
-  getListLeadsQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
   useListBloqueios,
@@ -40,6 +38,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ComboboxNoiva } from "@/components/combobox-noiva";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,9 +107,6 @@ export default function NovoAtendimento() {
     bloqueioId: searchParams.get("reserva") ?? "",
   } as const;
 
-  const leads = useListLeads(activeLojaId!, undefined, {
-    query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
   const equipe = useListEquipe(activeLojaId!, {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
@@ -151,11 +147,6 @@ export default function NovoAtendimento() {
   const tipo = form.watch("tipo");
   const leadId = form.watch("leadId");
 
-  // Noivas agendáveis: fora da etapa PERDIDO (equivalente às "noivas ativas" do orcamentos).
-  const noivas = useMemo(
-    () => (leads.data?.itens ?? []).filter((l) => l.etapa !== "PERDIDO"),
-    [leads.data],
-  );
 
   const cabinesAtivas = useMemo(
     () => (cabines.data ?? []).filter((c) => c.ativo),
@@ -340,26 +331,17 @@ export default function NovoAtendimento() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Noiva *</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={(v) => {
-                          field.onChange(v);
-                          form.setValue("bloqueioId", "");
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger aria-label="Noiva">
-                            <SelectValue placeholder="Selecione a noiva…" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {noivas.map((n) => (
-                            <SelectItem key={n.id} value={n.id}>
-                              {n.noivaNome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <ComboboxNoiva
+                          lojaId={activeLojaId!}
+                          value={field.value || null}
+                          onChange={(v) => {
+                            field.onChange(v);
+                            form.setValue("bloqueioId", "");
+                          }}
+                          placeholder="Selecione a noiva…"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -9,8 +9,6 @@ import {
   useConfirmarAtendimento,
   useListCabines,
   getListCabinesQueryKey,
-  useListLeads,
-  getListLeadsQueryKey,
   useListAjustes,
   getListAjustesQueryKey,
   useGetDisponibilidade,
@@ -44,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ComboboxNoiva } from "@/components/combobox-noiva";
 import { Clock, Plus, AlertCircle, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -77,7 +76,6 @@ export default function Agenda() {
 
   const atendimentos = useListAtendimentos(activeLojaId!, { query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const leads = useListLeads(activeLojaId!, undefined, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createAtendimento = useCreateAtendimento();
   // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já
@@ -89,11 +87,15 @@ export default function Agenda() {
     },
   });
 
+  // E63: o nome vem do próprio atendimento (o GET embute a noiva) — a agenda
+  // parou de baixar a lista completa de leads só para rotular os cards.
   const nomePorLead = useMemo(() => {
     const mapa = new Map<string, string>();
-    for (const lead of leads.data?.itens ?? []) mapa.set(lead.id, lead.noivaNome);
+    for (const a of atendimentos.data ?? []) {
+      if (a.lead?.noivaNome) mapa.set(a.leadId, a.lead.noivaNome);
+    }
     return mapa;
-  }, [leads.data]);
+  }, [atendimentos.data]);
 
   // E8: confirmação por wa.me — a mensagem carrega nome e endereço da loja,
   // que já vêm na sessão (/auth/me); nada de request extra.
@@ -226,18 +228,14 @@ export default function Agenda() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Noiva *</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Escolha a noiva" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(leads.data?.itens ?? []).map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id}>{lead.noivaNome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <ComboboxNoiva
+                        lojaId={activeLojaId!}
+                        value={field.value || null}
+                        onChange={field.onChange}
+                        ariaLabel="Noiva do agendamento"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
