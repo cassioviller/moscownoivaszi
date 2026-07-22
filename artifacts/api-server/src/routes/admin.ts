@@ -28,6 +28,7 @@ import {
   SetPerfilOverrideParams,
   SetPerfilOverrideBody,
   SetPerfilOverrideResponse,
+  DeletePerfilOverrideParams,
   GetBackupStatusResponse,
   RunBackupResponse,
   DownloadBackupParams
@@ -305,6 +306,53 @@ router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
   res.json(
     SetPerfilOverrideResponse.parse({ ...override, acessosModulos: normalizarAcessos(override.acessosModulos) }),
   );
+});
+
+// E60: o caminho de volta — remover o override devolve o perfil ao modelo
+// global. Mesma disciplina do PUT (E56): mudou permissão, cai sessão e fica
+// rastro; o acesso efetivo troca na hora, não no próximo login.
+router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Promise<void> => {
+  const params = DeletePerfilOverrideParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const removido = await db.transaction(async (tx) => {
+    const [linha] = await tx
+      .delete(perfilOverridesLojasTable)
+      .where(and(
+        eq(perfilOverridesLojasTable.lojaId, params.data.lojaId),
+        eq(perfilOverridesLojasTable.perfilId, params.data.perfilId),
+      ))
+      .returning();
+    if (!linha) return false;
+
+    const afetados = await tx
+      .select({ usuarioId: usuariosLojasTable.usuarioId })
+      .from(usuariosLojasTable)
+      .where(and(
+        eq(usuariosLojasTable.lojaId, params.data.lojaId),
+        eq(usuariosLojasTable.perfilId, params.data.perfilId),
+      ));
+    for (const a of afetados) await encerrarSessoesDoUsuario(tx, a.usuarioId);
+
+    await registrarAuditoria(tx, {
+      lojaId: params.data.lojaId,
+      usuario: req.usuario!,
+      acao: "PERMISSOES_RESTAURADAS",
+      entidade: "perfil",
+      entidadeId: params.data.perfilId,
+      detalhe: { sessoesEncerradas: afetados.length },
+    });
+    return true;
+  });
+
+  if (!removido) {
+    res.status(404).json({ error: "Este perfil não tem personalização nesta loja" });
+    return;
+  }
+  res.status(204).send();
 });
 
 // Backup do sistema (E30) — o dump é do banco inteiro, então vive no gate

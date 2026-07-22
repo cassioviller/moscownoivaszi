@@ -330,6 +330,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/PerfilOverrideLoja"
 
+  /admin/lojas/{lojaId}/overrides/{perfilId}:
+    delete:
+      operationId: deletePerfilOverride
+      tags: [admin]
+      summary: Restaura o perfil ao modelo global — remove o override da loja
+      description: >
+        E60: uma vez personalizado, o perfil ficava preso ao override — não
+        havia caminho de volta. Remover o override devolve o perfil ao template
+        global e, como qualquer mudança de permissão (E56), derruba as sessões
+        vivas de quem tem esse perfil na loja e deixa rastro na auditoria.
+      parameters:
+        - $ref: "#/components/parameters/LojaIdParam"
+        - name: perfilId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Override removido; o perfil volta ao modelo global
+        "404":
+          description: Este perfil não tem personalização nesta loja
+
   /admin/backup:
     get:
       operationId: getBackupStatus
@@ -2428,7 +2450,7 @@ paths:
           description: Uma das ações da união fechada (ACOES_AUDITORIA)
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS]
         - name: usuarioId
           in: query
           required: false
@@ -2497,7 +2519,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS]
         - name: usuarioId
           in: query
           required: false
@@ -4007,7 +4029,7 @@ components:
         id: { type: string }
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS]
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS]
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }

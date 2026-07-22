@@ -92,6 +92,7 @@ export function MatrizPermissoes({
   estado,
   salvando,
   onSalvar,
+  onRestaurarPadrao,
 }: {
   perfilNome: string;
   valores: AcessosModulos;
@@ -100,6 +101,8 @@ export function MatrizPermissoes({
   estado?: "padrao" | "personalizado";
   salvando?: boolean;
   onSalvar?: (acessos: AcessosModulos) => void;
+  /** E60: remove o override da loja e volta ao modelo global. Só faz sentido quando estado = personalizado. */
+  onRestaurarPadrao?: () => void;
 }) {
   const modulos = modulosOrdenados(valores);
   const [acessos, setAcessos] = useState<AcessosModulos>(() =>
@@ -162,10 +165,25 @@ export function MatrizPermissoes({
             })}
           </TableBody>
         </Table>
-        {!readonly && onSalvar && (
-          <Button size="sm" onClick={() => onSalvar(acessos)} disabled={salvando}>
-            {salvando ? "Salvando…" : "Salvar"}
-          </Button>
+        {!readonly && (onSalvar || onRestaurarPadrao) && (
+          <div className="flex items-center gap-2">
+            {onSalvar && (
+              <Button size="sm" onClick={() => onSalvar(acessos)} disabled={salvando}>
+                {salvando ? "Salvando…" : "Salvar"}
+              </Button>
+            )}
+            {estado === "personalizado" && onRestaurarPadrao && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRestaurarPadrao}
+                disabled={salvando}
+                data-testid={`restaurar-padrao-${perfilNome}`}
+              >
+                Restaurar padrão
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

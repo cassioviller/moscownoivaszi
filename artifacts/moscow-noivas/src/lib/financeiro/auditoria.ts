@@ -28,6 +28,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   CONVITE_CRIADO: "Convite criado",
   CONVITE_CANCELADO: "Convite cancelado",
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
+  PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -45,6 +46,7 @@ export const ACOES_FILTRAVEIS = [
   "CONVITE_CRIADO",
   "CONVITE_CANCELADO",
   "PERMISSOES_ALTERADAS",
+  "PERMISSOES_RESTAURADAS",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];

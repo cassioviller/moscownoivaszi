@@ -7,6 +7,7 @@ import {
   useListPerfilOverrides,
   getListPerfilOverridesQueryKey,
   useSetPerfilOverride,
+  useDeletePerfilOverride,
   type AcessosModulos,
 } from "@workspace/api-client-react";
 import {
@@ -44,6 +45,26 @@ export default function Permissoes() {
   );
 
   const setOverride = useSetPerfilOverride();
+  const deleteOverride = useDeletePerfilOverride();
+
+  const restaurarPadrao = async (perfilId: string) => {
+    try {
+      await deleteOverride.mutateAsync({ lojaId: activeLojaId!, perfilId });
+      await queryClient.invalidateQueries({
+        queryKey: getListPerfilOverridesQueryKey(activeLojaId!),
+      });
+      toast({
+        title: "Padrão restaurado",
+        description: "O perfil volta a seguir o modelo global.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao restaurar o padrão",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const salvar = async (perfilId: string, acessos: AcessosModulos) => {
     try {
@@ -112,17 +133,14 @@ export default function Permissoes() {
                 valores={efetivo}
                 modo={readonly ? "readonly" : "editavel"}
                 estado={readonly ? undefined : override ? "personalizado" : "padrao"}
-                salvando={setOverride.isPending}
+                salvando={setOverride.isPending || deleteOverride.isPending}
                 onSalvar={(acessos) => salvar(perfil.id, acessos)}
+                onRestaurarPadrao={() => restaurarPadrao(perfil.id)}
               />
             );
           })}
         </div>
       )}
-
-      {/* GAP Onda 2+: "Restaurar padrão" (remover o override da loja e voltar ao
-          modelo global) — o client gerado só expõe PUT /admin/lojas/:lojaId/overrides
-          (useSetPerfilOverride); não há DELETE de override. */}
     </div>
   );
 }

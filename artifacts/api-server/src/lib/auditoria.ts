@@ -25,6 +25,7 @@ export const ACOES_AUDITORIA = [
   "CONVITE_CRIADO",
   "CONVITE_CANCELADO",
   "PERMISSOES_ALTERADAS",
+  "PERMISSOES_RESTAURADAS",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -55,6 +56,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   CONVITE_CRIADO: "Convite criado",
   CONVITE_CANCELADO: "Convite cancelado",
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
+  PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {

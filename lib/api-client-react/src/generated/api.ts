@@ -1534,6 +1534,79 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getSetPerfilOverrideMutationOptions(options));
     }
 
+export const getDeletePerfilOverrideUrl = (lojaId: string,
+    perfilId: string,) => {
+
+
+
+
+  return `/api/admin/lojas/${lojaId}/overrides/${perfilId}`
+}
+
+/**
+ * E60: uma vez personalizado, o perfil ficava preso ao override — não havia caminho de volta. Remover o override devolve o perfil ao template global e, como qualquer mudança de permissão (E56), derruba as sessões vivas de quem tem esse perfil na loja e deixa rastro na auditoria.
+ * @summary Restaura o perfil ao modelo global — remove o override da loja
+ */
+export const deletePerfilOverride = async (lojaId: string,
+    perfilId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePerfilOverrideUrl(lojaId,perfilId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePerfilOverrideMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePerfilOverride>>, TError,{lojaId: string;perfilId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePerfilOverride>>, TError,{lojaId: string;perfilId: string}, TContext> => {
+
+const mutationKey = ['deletePerfilOverride'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePerfilOverride>>, {lojaId: string;perfilId: string}> = (props) => {
+          const {lojaId,perfilId} = props ?? {};
+
+          return  deletePerfilOverride(lojaId,perfilId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePerfilOverrideMutationResult = NonNullable<Awaited<ReturnType<typeof deletePerfilOverride>>>
+
+    export type DeletePerfilOverrideMutationError = ErrorType<void>
+
+    /**
+ * @summary Restaura o perfil ao modelo global — remove o override da loja
+ */
+export const useDeletePerfilOverride = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePerfilOverride>>, TError,{lojaId: string;perfilId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePerfilOverride>>,
+        TError,
+        {lojaId: string;perfilId: string},
+        TContext
+      > => {
+      return useMutation(getDeletePerfilOverrideMutationOptions(options));
+    }
+
 export const getGetBackupStatusUrl = () => {
 
 
