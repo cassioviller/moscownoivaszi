@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SinoNotificacoes } from "@/components/sino-notificacoes";
 import { moduloLiberado } from "@/lib/permissoes";
 
 type NavItem = { icon: typeof LayoutDashboard; label: string; href: string; modulo?: string };
@@ -89,13 +90,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full w-full flex-col bg-sidebar overflow-y-auto">
-      <div className="p-6">
+      <div className="flex items-center justify-between p-6">
         <Link to={`${base}/dashboard`} onClick={onNavigate} className="flex items-center gap-3 group">
           <div className="h-10 w-10 bg-primary text-primary-foreground rounded-lg flex items-center justify-center font-serif text-xl font-bold shadow-sm group-hover:scale-105 transition-transform">
             M
           </div>
           <span className="font-serif text-xl font-medium text-sidebar-foreground">Moscow</span>
         </Link>
+        {/* E68: o sino mora onde toda tela mora. */}
+        <SinoNotificacoes />
       </div>
 
       <div className="px-4 pb-4">

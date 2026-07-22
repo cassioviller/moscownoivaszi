@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { TourAcessoPrimeiraEntrada } from "@/components/tour-acesso";
+import { SinoNotificacoes } from "@/components/sino-notificacoes";
 
 /**
  * Layout das rotas /loja/:lojaId/…: valida a sessão, sincroniza a loja da URL
@@ -75,6 +76,10 @@ export function AppLayout() {
             </SheetContent>
           </Sheet>
           <span className="font-serif text-lg font-medium">Moscow</span>
+          {/* E68: no mobile o sino fica no header — o da sidebar vive no drawer. */}
+          <span className="ml-auto">
+            <SinoNotificacoes />
+          </span>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-muted/20">

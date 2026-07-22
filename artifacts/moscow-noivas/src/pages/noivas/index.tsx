@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -48,7 +48,11 @@ export default function Noivas() {
   const [buscaAplicada, setBuscaAplicada] = useState("");
   const [etapa, setEtapa] = useState<string>(TODAS_ETAPAS);
   const [pagina, setPagina] = useState(1);
-  const [vista, setVista] = useState<"lista" | "funil">("lista");
+  // E68: ?vista=funil deep-linka direto no quadro (o sino aponta para cá).
+  const [searchParams] = useSearchParams();
+  const [vista, setVista] = useState<"lista" | "funil">(
+    searchParams.get("vista") === "funil" ? "funil" : "lista",
+  );
 
   // Debounce: a query só muda quando a digitação assenta (300ms).
   useEffect(() => {
