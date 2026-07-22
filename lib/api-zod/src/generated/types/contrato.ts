@@ -21,6 +21,7 @@ export interface Contrato {
   orcamentoId?: string | null;
   /** @nullable */
   bloqueioVestidoId?: string | null;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   status: ContratoStatus;
   /** @nullable */

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -72,3 +72,28 @@ export const contratoItensTable = pgTable("contrato_itens", {
 export const insertContratoItemSchema = createInsertSchema(contratoItensTable).omit({ createdAt: true });
 export type InsertContratoItem = z.infer<typeof insertContratoItemSchema>;
 export type ContratoItem = typeof contratoItensTable.$inferSelect;
+
+/**
+ * E72: o vínculo forte contrato ↔ reserva física deixa de ser singular.
+ * `contratos.bloqueio_vestido_id` assumia UM vestido por contrato — e a UI
+ * nem o enviava: o contrato nascia sem prender vestido nenhum, e cancelar não
+ * liberava nada. Este N:N é a versão que escala (vestido + véu + segunda
+ * peça); a coluna antiga fica como legado lido, nunca mais escrito.
+ */
+export const contratoBloqueiosTable = pgTable(
+  "contrato_bloqueios",
+  {
+    contratoId: text("contrato_id")
+      .notNull()
+      .references(() => contratosTable.id, { onDelete: "cascade" }),
+    bloqueioId: text("bloqueio_id")
+      .notNull()
+      .references(() => bloqueioVestidosTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.contratoId, t.bloqueioId] }),
+  }),
+);
+
+export type ContratoBloqueio = typeof contratoBloqueiosTable.$inferSelect;

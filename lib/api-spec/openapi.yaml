@@ -4374,7 +4374,12 @@ components:
         lojaId: { type: string }
         leadId: { type: string }
         orcamentoId: { type: ["string", "null"] }
+        # Legado 1:1 — lido, nunca mais escrito. O vínculo vivo é o array (E72).
         bloqueioVestidoId: { type: ["string", "null"] }
+        # E72: as reservas físicas presas por este contrato (contrato_bloqueios).
+        bloqueioVestidoIds:
+          type: array
+          items: { type: string }
         vendedoraId: { type: string }
         status: { type: string, enum: [ATIVO, CANCELADO] }
         cpf: { type: ["string", "null"] }
@@ -4422,7 +4427,14 @@ components:
       properties:
         leadId: { type: string }
         orcamentoId: { type: string }
+        # Legado 1:1 — aceito por compatibilidade; prefira o array (E72).
         bloqueioVestidoId: { type: string }
+        # E72: N reservas físicas (vestido + véu + segunda peça) presas pelo
+        # contrato. Cada uma é validada (loja, data coerente, disponível) e o
+        # cancelamento libera todas.
+        bloqueioVestidoIds:
+          type: array
+          items: { type: string }
         vendedoraId: { type: string }
         cpf: { type: string }
         vestidoDescricao: { type: string }

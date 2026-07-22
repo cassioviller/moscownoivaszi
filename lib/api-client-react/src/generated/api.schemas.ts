@@ -1609,6 +1609,7 @@ export interface Contrato {
   orcamentoId?: string | null;
   /** @nullable */
   bloqueioVestidoId?: string | null;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   status: ContratoStatus;
   /** @nullable */
@@ -1665,6 +1666,7 @@ export interface ContratoInput {
   leadId: string;
   orcamentoId?: string;
   bloqueioVestidoId?: string;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   cpf?: string;
   vestidoDescricao?: string;

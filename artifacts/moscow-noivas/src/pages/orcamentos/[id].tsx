@@ -20,6 +20,8 @@ import {
   getGetLeadQueryKey,
   useListVestidos,
   getListVestidosQueryKey,
+  useListBloqueios,
+  getListBloqueiosQueryKey,
   type OrcamentoItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -105,6 +107,9 @@ export default function OrcamentoDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [contratoOpen, setContratoOpen] = useState(false);
+  // E72: as reservas físicas ativas da noiva entram no contrato (todas
+  // marcadas por padrão) — cancelar o contrato passa a liberar as peças.
+  const [reservasDesmarcadas, setReservasDesmarcadas] = useState<Set<string>>(new Set());
   const [itemEmEdicao, setItemEmEdicao] = useState<OrcamentoItem | null>(null);
   const [itemRemover, setItemRemover] = useState<OrcamentoItem | null>(null);
 
@@ -148,6 +153,24 @@ export default function OrcamentoDetail() {
   const atualizar = useUpdateOrcamento();
   const createContrato = useCreateContrato();
   const criarLink = useCriarLinkOrcamento();
+
+  // E72: as reservas de casamento ativas da noiva — o contrato as prende.
+  const bloqueiosQ = useListBloqueios(activeLojaId!, undefined, {
+    query: {
+      queryKey: getListBloqueiosQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && contratoOpen,
+    },
+  });
+  const reservasDaNoiva = useMemo(
+    () =>
+      (bloqueiosQ.data ?? []).filter(
+        (b) =>
+          b.leadId === orcamento?.leadId &&
+          b.tipo === "RESERVA_CASAMENTO" &&
+          !b.canceladoEm,
+      ),
+    [bloqueiosQ.data, orcamento?.leadId],
+  );
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
@@ -430,6 +453,10 @@ export default function OrcamentoDetail() {
           orcamentoId: orcamento.id,
           vendedoraId: user!.id,
           valorTotal: total,
+          // E72: prende as reservas marcadas — cancelar o contrato as liberta.
+          bloqueioVestidoIds: reservasDaNoiva
+            .filter((r) => !reservasDesmarcadas.has(r.id))
+            .map((r) => r.id),
           cpf: values.cpf || undefined,
           formaPagamento: (values.formaPagamento || undefined) as (typeof FORMAS)[number] | undefined,
           dataCasamento: values.dataCasamento ? diaParaISO(values.dataCasamento) : undefined,
@@ -832,6 +859,32 @@ export default function OrcamentoDetail() {
           </DialogHeader>
           <Form {...contratoForm}>
             <form onSubmit={contratoForm.handleSubmit(onGerarContrato)} className="space-y-4">
+              {/* E72: as reservas ativas da noiva entram no contrato — todas
+                  marcadas por padrão; cancelar o contrato as libera. */}
+              {reservasDaNoiva.length > 0 && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <p className="text-sm font-medium">Peças reservadas que este contrato prende</p>
+                  {reservasDaNoiva.map((r) => (
+                    <label key={r.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={!reservasDesmarcadas.has(r.id)}
+                        onChange={(e) =>
+                          setReservasDesmarcadas((prev) => {
+                            const nova = new Set(prev);
+                            if (e.target.checked) nova.delete(r.id);
+                            else nova.add(r.id);
+                            return nova;
+                          })
+                        }
+                      />
+                      <span>
+                        {r.vestido?.codigo ?? "?"} · {r.vestido?.nome ?? "vestido"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={contratoForm.control}

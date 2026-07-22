@@ -8,9 +8,10 @@ import {
   orcamentosTable,
   orcamentoItensTable,
   leadsTable,
+  contratoBloqueiosTable,
   type InsertContratoItem,
 } from "@workspace/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
@@ -196,11 +197,18 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     }
   }
 
-  // 5. Bloqueio (se informado): da loja, com data coerente e sem conflito.
-  if (contratoData.bloqueioVestidoId) {
+  // 5. Bloqueios (E72): da loja, com data coerente e sem conflito — cada um.
+  // O singular legado entra na mesma lista; o vínculo vivo é o N:N.
+  const bloqueioIds = [
+    ...new Set([
+      ...(contratoData.bloqueioVestidoId ? [contratoData.bloqueioVestidoId] : []),
+      ...(contratoData.bloqueioVestidoIds ?? []),
+    ]),
+  ];
+  for (const bloqueioId of bloqueioIds) {
     const [bloqueio] = await db.select().from(bloqueioVestidosTable)
       .where(and(
-        eq(bloqueioVestidosTable.id, contratoData.bloqueioVestidoId),
+        eq(bloqueioVestidosTable.id, bloqueioId),
         eq(bloqueioVestidosTable.lojaId, lojaId),
       ));
     if (!bloqueio) {
@@ -276,6 +284,13 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       );
     }
 
+    // E72: o vínculo vivo — todas as reservas físicas presas pelo contrato.
+    if (bloqueioIds.length > 0) {
+      await tx.insert(contratoBloqueiosTable).values(
+        bloqueioIds.map((bloqueioId) => ({ contratoId: contrato.id, bloqueioId })),
+      );
+    }
+
     // Fechar contrato avança o funil do lead (nunca regride).
     const etapaNova = avancarEtapaLead(lead.etapa, "CONTRATO_FECHADO");
     if (etapaNova !== lead.etapa) {
@@ -309,7 +324,17 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
     res.status(404).json({ error: "Contrato not found" });
     return;
   }
-  res.json(GetContratoResponse.parse(contrato));
+  // E72: as reservas físicas presas por este contrato.
+  const vinculos = await db
+    .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+    .from(contratoBloqueiosTable)
+    .where(eq(contratoBloqueiosTable.contratoId, contratoId as string));
+  res.json(
+    GetContratoResponse.parse({
+      ...contrato,
+      bloqueioVestidoIds: vinculos.map((v) => v.bloqueioId),
+    }),
+  );
 });
 
 // Rótulos PT-BR das formas de pagamento — o documento é lido pela noiva, não
@@ -493,12 +518,23 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         ));
     }
 
-    // Libera o vestido: soft-cancela o bloqueio vinculado (se houver).
-    if (contrato.bloqueioVestidoId) {
+    // Libera as peças: soft-cancela TODOS os bloqueios vinculados (E72) —
+    // o N:N e o singular legado, se ainda existir fora dele.
+    const vinculos = await tx
+      .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+      .from(contratoBloqueiosTable)
+      .where(eq(contratoBloqueiosTable.contratoId, contratoId));
+    const idsALiberar = [
+      ...new Set([
+        ...vinculos.map((v) => v.bloqueioId),
+        ...(contrato.bloqueioVestidoId ? [contrato.bloqueioVestidoId] : []),
+      ]),
+    ];
+    if (idsALiberar.length > 0) {
       await tx.update(bloqueioVestidosTable)
         .set({ canceladoEm: agora, updatedAt: agora })
         .where(and(
-          eq(bloqueioVestidosTable.id, contrato.bloqueioVestidoId),
+          inArray(bloqueioVestidosTable.id, idsALiberar),
           eq(bloqueioVestidosTable.lojaId, lojaId),
           isNull(bloqueioVestidosTable.canceladoEm),
         ));
