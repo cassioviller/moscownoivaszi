@@ -90,6 +90,7 @@ import type {
   FolhaInput,
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
+  GetConsolidado200Item,
   GetConviteInfoParams,
   GetDesempenhoVendedoras200Item,
   GetLookbookPublicoFotoParams,
@@ -1616,6 +1617,84 @@ export const useDeletePerfilOverride = <TError = ErrorType<void>,
       > => {
       return useMutation(getDeletePerfilOverrideMutationOptions(options));
     }
+
+export const getGetConsolidadoUrl = () => {
+
+
+
+
+  return `/api/admin/consolidado`
+}
+
+/**
+ * E76: a dona de rede navegava loja a loja. Uma linha por loja ativa com o essencial — funil, contratos, o recebido do mês corrente e o que há em aberto para receber. Vive no gate superadmin: é a visão de quem enxerga o banco inteiro.
+ * @summary A rede numa tela — os números de cada loja lado a lado
+ */
+export const getConsolidado = async ( options?: RequestInit): Promise<GetConsolidado200Item[]> => {
+
+  return customFetch<GetConsolidado200Item[]>(getGetConsolidadoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConsolidadoQueryKey = () => {
+    return [
+    `/api/admin/consolidado`
+    ] as const;
+    }
+
+
+export const getGetConsolidadoQueryOptions = <TData = Awaited<ReturnType<typeof getConsolidado>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConsolidado>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConsolidadoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConsolidado>>> = ({ signal }) => getConsolidado({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConsolidado>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConsolidadoQueryResult = NonNullable<Awaited<ReturnType<typeof getConsolidado>>>
+export type GetConsolidadoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary A rede numa tela — os números de cada loja lado a lado
+ */
+
+export function useGetConsolidado<TData = Awaited<ReturnType<typeof getConsolidado>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConsolidado>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConsolidadoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetBackupStatusUrl = () => {
 

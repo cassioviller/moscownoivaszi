@@ -14,9 +14,12 @@ import {
   getListUsuariosQueryKey,
   useCreateUsuario,
   useUpdateUsuario,
+  useGetConsolidado,
+  getGetConsolidadoQueryKey,
   type Loja,
   type Usuario,
 } from "@workspace/api-client-react";
+import { brl } from "@/lib/formatos";
 import { useAuth } from "@/hooks/use-auth";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -41,7 +44,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users, BarChart3 } from "lucide-react";
 import { EstadoErro } from "@/components/estado-erro";
 
 const novaLojaSchema = z.object({
@@ -76,6 +79,61 @@ const editarUsuarioSchema = z.object({
   isSuperAdmin: z.boolean(),
 });
 type EditarUsuarioValues = z.infer<typeof editarUsuarioSchema>;
+
+/**
+ * E76: a rede numa tela — uma linha por loja ativa com o essencial. A dona de
+ * rede parava de navegar loja a loja para saber como o mês está indo.
+ */
+function ConsolidadoRede() {
+  const consolidado = useGetConsolidado({
+    query: { queryKey: getGetConsolidadoQueryKey() },
+  });
+  const linhas = consolidado.data ?? [];
+  if (consolidado.isError || linhas.length < 2) return null;
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-serif flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" /> A rede neste mês
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Uma linha por loja — funil, contratos, o que entrou e o que há em aberto.
+        </p>
+      </div>
+      <Card>
+        <CardContent className="pt-6 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-3 font-normal">Loja</th>
+                <th className="py-2 px-3 font-normal text-right">Noivas no funil</th>
+                <th className="py-2 px-3 font-normal text-right">Contratos ativos</th>
+                <th className="py-2 px-3 font-normal text-right">Recebido no mês</th>
+                <th className="py-2 pl-3 font-normal text-right">A receber (aberto)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhas.map((l) => (
+                <tr key={l.lojaId} className="border-b last:border-0">
+                  <td className="py-2.5 pr-3 font-medium">{l.nome}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums">{l.leadsAtivos}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums">{l.contratosAtivos}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-positivo">
+                    R$ {brl(l.recebidoNoMes)}
+                  </td>
+                  <td className="py-2.5 pl-3 text-right tabular-nums">
+                    R$ {brl(l.aReceberAberto)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
 
 /** Console superadmin — rota top-level /admin, fora do escopo /loja/:lojaId. */
 export default function AdminConsole() {
@@ -226,6 +284,9 @@ export default function AdminConsole() {
 
   return (
     <AdminShell>
+      {/* ── E76: a rede numa tela ── */}
+      <ConsolidadoRede />
+
       {/* ── Lojas ── */}
       <section className="space-y-4">
         <div>

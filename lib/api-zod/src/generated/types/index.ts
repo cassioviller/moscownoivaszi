@@ -123,6 +123,7 @@ export * from './folhaGerada';
 export * from './folhaInput';
 export * from './gerarComissaoFechamentoInput';
 export * from './gerarPlanoInput';
+export * from './getConsolidado200Item';
 export * from './getConviteInfoParams';
 export * from './getDesempenhoVendedoras200Item';
 export * from './getLookbookPublicoFotoParams';

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
 import { 
   ListLojasResponse, 
   CreateLojaBody, 
@@ -31,7 +31,8 @@ import {
   DeletePerfilOverrideParams,
   GetBackupStatusResponse,
   RunBackupResponse,
-  DownloadBackupParams
+  DownloadBackupParams,
+  GetConsolidadoResponse
 } from "@workspace/api-zod";
 import { requireSessao, requireSuperAdmin } from "../middlewares/auth";
 import { hashSenha, encerrarSessoesDoUsuario } from "../lib/auth";
@@ -374,6 +375,61 @@ router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Prom
     return;
   }
   res.status(204).send();
+});
+
+// E76: a rede numa tela. Quatro agregados por loja, cada um numa consulta com
+// GROUP BY — nada de N+1 por loja.
+router.get("/admin/consolidado", async (_req, res): Promise<void> => {
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+
+  const [lojas, leadsPorLoja, contratosPorLoja, recebidoPorLoja, abertoPorLoja] = await Promise.all([
+    db.select({ id: lojasTable.id, nome: lojasTable.nome }).from(lojasTable)
+      .where(eq(lojasTable.ativo, true)).orderBy(lojasTable.nome),
+    db.select({ lojaId: leadsTable.lojaId, total: sql<number>`count(*)`.mapWith(Number) })
+      .from(leadsTable)
+      .where(sql`${leadsTable.etapa} <> 'PERDIDO'`)
+      .groupBy(leadsTable.lojaId),
+    db.select({ lojaId: contratosTable.lojaId, total: sql<number>`count(*)`.mapWith(Number) })
+      .from(contratosTable)
+      .where(eq(contratosTable.status, "ATIVO"))
+      .groupBy(contratosTable.lojaId),
+    db.select({
+      lojaId: parcelasTable.lojaId,
+      total: sql<number>`coalesce(sum(${parcelasTable.valorRecebido}), 0)`.mapWith(Number),
+    })
+      .from(parcelasTable)
+      .where(sql`${parcelasTable.recebidoEm} >= ${inicioMes}`)
+      .groupBy(parcelasTable.lojaId),
+    db.select({
+      lojaId: parcelasTable.lojaId,
+      total: sql<number>`coalesce(sum(${parcelasTable.valorPrevisto} - coalesce(${parcelasTable.valorRecebido}, 0)), 0)`.mapWith(Number),
+    })
+      .from(parcelasTable)
+      .where(sql`${parcelasTable.status} in ('PREVISTA', 'PARCIAL')`)
+      .groupBy(parcelasTable.lojaId),
+  ]);
+
+  const mapa = <T extends { lojaId: string; total: number }>(linhas: T[]) =>
+    new Map(linhas.map((l) => [l.lojaId, l.total]));
+  const leadsM = mapa(leadsPorLoja);
+  const contratosM = mapa(contratosPorLoja);
+  const recebidoM = mapa(recebidoPorLoja);
+  const abertoM = mapa(abertoPorLoja);
+
+  res.json(
+    GetConsolidadoResponse.parse(
+      lojas.map((l) => ({
+        lojaId: l.id,
+        nome: l.nome,
+        leadsAtivos: leadsM.get(l.id) ?? 0,
+        contratosAtivos: contratosM.get(l.id) ?? 0,
+        recebidoNoMes: recebidoM.get(l.id) ?? 0,
+        aReceberAberto: abertoM.get(l.id) ?? 0,
+      })),
+    ),
+  );
 });
 
 // Backup do sistema (E30) — o dump é do banco inteiro, então vive no gate

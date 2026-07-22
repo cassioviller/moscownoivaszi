@@ -2220,6 +2220,17 @@ export interface DashboardSummary {
   atendimentosHoje?: number;
 }
 
+export type GetConsolidado200Item = {
+  lojaId: string;
+  nome: string;
+  leadsAtivos: number;
+  contratosAtivos: number;
+  /** Soma recebida na competência corrente */
+  recebidoNoMes: number;
+  /** Previsto − recebido das parcelas abertas */
+  aReceberAberto: number;
+};
+
 export type CaptarLeadParams = {
 token: string;
 };

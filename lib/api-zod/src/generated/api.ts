@@ -387,6 +387,21 @@ export const DeletePerfilOverrideResponse = zod.void()
 
 
 /**
+ * E76: a dona de rede navegava loja a loja. Uma linha por loja ativa com o essencial — funil, contratos, o recebido do mês corrente e o que há em aberto para receber. Vive no gate superadmin: é a visão de quem enxerga o banco inteiro.
+ * @summary A rede numa tela — os números de cada loja lado a lado
+ */
+export const GetConsolidadoResponseItem = zod.object({
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "leadsAtivos": zod.number(),
+  "contratosAtivos": zod.number(),
+  "recebidoNoMes": zod.number().describe('Soma recebida na competência corrente'),
+  "aReceberAberto": zod.number().describe('Previsto − recebido das parcelas abertas')
+})
+export const GetConsolidadoResponse = zod.array(GetConsolidadoResponseItem)
+
+
+/**
  * A visão do SRE (E30): o backup é o dump do banco INTEIRO, um evento de infraestrutura sem dono de loja — por isso vive no gate superadmin. A tela lê daqui o "último backup: há X horas" e a lista das últimas execuções (ok, erro ou em andamento).
  * @summary Status do backup do sistema — quando foi o último e o histórico recente
  */

@@ -354,6 +354,34 @@ paths:
         "404":
           description: Este perfil não tem personalização nesta loja
 
+  /admin/consolidado:
+    get:
+      operationId: getConsolidado
+      tags: [admin]
+      summary: A rede numa tela — os números de cada loja lado a lado
+      description: >
+        E76: a dona de rede navegava loja a loja. Uma linha por loja ativa com
+        o essencial — funil, contratos, o recebido do mês corrente e o que há
+        em aberto para receber. Vive no gate superadmin: é a visão de quem
+        enxerga o banco inteiro.
+      responses:
+        "200":
+          description: Uma linha por loja ativa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [lojaId, nome, leadsAtivos, contratosAtivos, recebidoNoMes, aReceberAberto]
+                  properties:
+                    lojaId: { type: string }
+                    nome: { type: string }
+                    leadsAtivos: { type: integer }
+                    contratosAtivos: { type: integer }
+                    recebidoNoMes: { type: number, description: "Soma recebida na competência corrente" }
+                    aReceberAberto: { type: number, description: "Previsto − recebido das parcelas abertas" }
+
   /admin/backup:
     get:
       operationId: getBackupStatus
