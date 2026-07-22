@@ -327,9 +327,43 @@ export interface BackupLog {
   erro?: string | null;
 }
 
+export type RestoreDrillLogStatus = typeof RestoreDrillLogStatus[keyof typeof RestoreDrillLogStatus];
+
+
+export const RestoreDrillLogStatus = {
+  em_andamento: 'em_andamento',
+  ok: 'ok',
+  erro: 'erro',
+} as const;
+
+/**
+ * Uma execução do drill de restore (E89): o dump mais recente restaurado num banco efêmero e conferido contra a origem — contagem por tabela, FKs válidas e amostra de agregado. "ok" só quando TUDO conferiu.
+ */
+export interface RestoreDrillLog {
+  id: string;
+  status: RestoreDrillLogStatus;
+  iniciadoEm: string;
+  /** @nullable */
+  concluidoEm?: string | null;
+  /**
+     * Arquivo do dump restaurado no drill
+     * @nullable
+     */
+  dumpArquivo?: string | null;
+  /**
+     * Quantas tabelas tiveram a contagem conferida
+     * @nullable
+     */
+  tabelasConferidas?: number | null;
+  /** @nullable */
+  erro?: string | null;
+}
+
 export interface BackupStatus {
   ultimo: BackupLog | null;
   recentes: BackupLog[];
+  /** Último drill de restore (E89) — a prova de que o backup VOLTA: null enquanto nenhum drill rodou */
+  ultimoDrill: RestoreDrillLog | null;
 }
 
 export type AtributoTipo = typeof AtributoTipo[keyof typeof AtributoTipo];

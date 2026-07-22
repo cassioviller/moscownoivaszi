@@ -209,6 +209,9 @@ importers:
       helmet:
         specifier: ^8.2.0
         version: 8.3.0
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -231,6 +234,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.4
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       '@types/supertest':
         specifier: ^7.2.0
         version: 7.2.1
@@ -257,7 +263,7 @@ importers:
         version: 4.22.4
       vitest:
         specifier: ^4.1.9
-        version: 4.1.10(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 4.1.10(@types/node@25.9.4)(vite@7.3.5(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
 
   artifacts/mockup-sandbox:
     devDependencies:
@@ -648,7 +654,7 @@ importers:
         version: 7.3.5(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
       vitest:
         specifier: ^4.1.9
-        version: 4.1.10(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+        version: 4.1.10(@types/node@25.9.4)(vite@7.3.5(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -3406,6 +3412,7 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -6177,7 +6184,7 @@ snapshots:
       tsx: 4.22.4
       yaml: 2.9.0
 
-  vitest@4.1.10(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0):
+  vitest@4.1.10(@types/node@25.9.4)(vite@7.3.5(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.10
       '@vitest/mocker': 4.1.10(vite@7.3.5(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -6202,17 +6209,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.4
     transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   which@2.0.2:
     dependencies:

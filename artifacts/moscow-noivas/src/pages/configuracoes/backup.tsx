@@ -3,6 +3,7 @@ import {
   getGetBackupStatusQueryKey,
   useRunBackup,
   type BackupLog,
+  type RestoreDrillLog,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -69,6 +70,31 @@ function saude(ultimo: BackupLog | null): Saude {
   return { cor: "bg-red-500", texto: "Backup atrasado" };
 }
 
+/**
+ * A linha do drill (E89): backup que nunca voltou não é backup. Diz quando um
+ * dump foi de fato RESTAURADO num banco efêmero e conferido contra a origem.
+ */
+function linhaDrill(drill: RestoreDrillLog | null | undefined): {
+  texto: string;
+  alerta: boolean;
+} {
+  if (!drill)
+    return { texto: "Restauração nunca conferida — o drill do restore ainda não rodou", alerta: true };
+  if (drill.status === "em_andamento")
+    return { texto: `Drill de restore em andamento desde ${dataLonga(drill.iniciadoEm)}`, alerta: false };
+  if (drill.status === "erro")
+    return {
+      texto: `Último drill de restore FALHOU em ${dataLonga(drill.concluidoEm ?? drill.iniciadoEm)}${drill.erro ? ` — ${drill.erro}` : ""}`,
+      alerta: true,
+    };
+  return {
+    texto: `Restaurado e conferido em ${dataLonga(drill.concluidoEm ?? drill.iniciadoEm)}${
+      drill.tabelasConferidas ? ` · ${drill.tabelasConferidas} tabelas` : ""
+    }${drill.dumpArquivo ? ` · ${drill.dumpArquivo}` : ""}`,
+    alerta: false,
+  };
+}
+
 function seloStatus(status: BackupLog["status"]) {
   if (status === "ok") return <Badge variant="secondary" className="font-normal">ok</Badge>;
   if (status === "em_andamento")
@@ -110,6 +136,7 @@ export function BackupSistema() {
 
   const ultimo = statusQ.data?.ultimo ?? null;
   const s = saude(ultimo);
+  const drill = linhaDrill(statusQ.data?.ultimoDrill);
 
   return (
     <Card className="md:col-span-2">
@@ -164,6 +191,15 @@ export function BackupSistema() {
                 {rodar.isPending ? "Fazendo backup…" : "Fazer backup agora"}
               </Button>
             </div>
+
+            {/* E89: a cópia só vale quando alguém provou que ela VOLTA — a
+                linha do drill mostra a última restauração conferida. */}
+            <p
+              className={`text-xs ${drill.alerta ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+              data-testid="drill-restore"
+            >
+              {drill.texto}
+            </p>
 
             {statusQ.data.recentes.length > 1 && (
               <div className="space-y-2">

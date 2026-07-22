@@ -430,7 +430,16 @@ export const GetBackupStatusResponse = zod.object({
   "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
   "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
   "erro": zod.string().nullish()
-}))
+})),
+  "ultimoDrill": zod.union([zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "dumpArquivo": zod.string().nullish().describe('Arquivo do dump restaurado no drill'),
+  "tabelasConferidas": zod.number().nullish().describe('Quantas tabelas tiveram a contagem conferida'),
+  "erro": zod.string().nullish()
+}).describe('Uma execução do drill de restore (E89): o dump mais recente restaurado num banco efêmero e conferido contra a origem — contagem por tabela, FKs válidas e amostra de agregado. \"ok\" só quando TUDO conferiu.'),zod.null()]).describe('Último drill de restore (E89) — a prova de que o backup VOLTA: null enquanto nenhum drill rodou')
 })
 
 

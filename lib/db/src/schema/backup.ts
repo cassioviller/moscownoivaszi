@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, bigint, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, bigint, integer, index } from "drizzle-orm/pg-core";
 
 /**
  * Registro de backups do sistema (E30). Diferente do audit_log (E10), que é por
@@ -35,3 +35,32 @@ export const backupLogTable = pgTable(
 );
 
 export type BackupLog = typeof backupLogTable.$inferSelect;
+
+/**
+ * Registro dos drills de restore (E89). Backup que nunca voltou não é backup:
+ * cada linha aqui é uma vez em que um dump foi RESTAURADO num banco efêmero e
+ * conferido contra a origem (contagem por tabela, FKs, amostra de agregado).
+ * A tela de Configurações lê a última linha ao lado do status do backup —
+ * "restaurado e conferido em X". Append-only, como o backup_log.
+ */
+export const restoreDrillLogTable = pgTable(
+  "restore_drill_log",
+  {
+    id: text("id").primaryKey(),
+    /** "em_andamento" enquanto o drill roda; "ok" só se TODAS as conferências bateram. */
+    status: text("status").notNull(),
+    iniciadoEm: timestamp("iniciado_em", { withTimezone: true }).notNull().defaultNow(),
+    concluidoEm: timestamp("concluido_em", { withTimezone: true }),
+    /** Nome do arquivo do dump restaurado (o mais recente na hora do drill). */
+    dumpArquivo: text("dump_arquivo"),
+    /** Quantas tabelas tiveram a contagem conferida contra a origem. */
+    tabelasConferidas: integer("tabelas_conferidas"),
+    /** Mensagem do erro/divergência quando status = "erro". */
+    erro: text("erro"),
+  },
+  (t) => ({
+    iniciadoEmIdx: index("restore_drill_log_iniciado_em_idx").on(t.iniciadoEm),
+  }),
+);
+
+export type RestoreDrillLog = typeof restoreDrillLogTable.$inferSelect;

@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BackupLog } from './backupLog';
+import type { RestoreDrillLog } from './restoreDrillLog';
 
 export interface BackupStatus {
   ultimo: BackupLog | null;
   recentes: BackupLog[];
+  /** Último drill de restore (E89) — a prova de que o backup VOLTA: null enquanto nenhum drill rodou */
+  ultimoDrill: RestoreDrillLog | null;
 }

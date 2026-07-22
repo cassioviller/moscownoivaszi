@@ -275,6 +275,8 @@ export * from './reservaInput';
 export * from './reservaStatus';
 export * from './reservaUpdate';
 export * from './reservaUpdateStatus';
+export * from './restoreDrillLog';
+export * from './restoreDrillLogStatus';
 export * from './saldoReferencia';
 export * from './saldoReferenciaInput';
 export * from './selecionarLojaInput';

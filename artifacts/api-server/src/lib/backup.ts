@@ -3,8 +3,8 @@ import { createWriteStream, mkdirSync, statSync, existsSync, unlinkSync } from "
 import { createGzip } from "node:zlib";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { db, backupLogTable, sessoesTable } from "@workspace/db";
-import type { BackupLog } from "@workspace/db";
+import { db, backupLogTable, restoreDrillLogTable, sessoesTable } from "@workspace/db";
+import type { BackupLog, RestoreDrillLog } from "@workspace/db";
 import { eq, desc, and, isNotNull, lt } from "drizzle-orm";
 
 /**
@@ -160,14 +160,25 @@ export function caminhoDoDump(registro: BackupLog): string | null {
 export interface StatusBackup {
   ultimo: BackupLog | null;
   recentes: BackupLog[];
+  /** Último drill de restore (E89) — null enquanto nenhum rodou. */
+  ultimoDrill: RestoreDrillLog | null;
 }
 
-/** Último backup + os 10 mais recentes, do mais novo para o mais antigo. */
+/**
+ * Último backup + os 10 mais recentes, do mais novo para o mais antigo — e o
+ * último drill de restore (E89): a tela responde "quando foi a última cópia?"
+ * e, ao lado, "quando alguém provou que ela VOLTA?".
+ */
 export async function statusBackup(): Promise<StatusBackup> {
   const recentes = await db
     .select()
     .from(backupLogTable)
     .orderBy(desc(backupLogTable.iniciadoEm))
     .limit(10);
-  return { ultimo: recentes[0] ?? null, recentes };
+  const [ultimoDrill] = await db
+    .select()
+    .from(restoreDrillLogTable)
+    .orderBy(desc(restoreDrillLogTable.iniciadoEm))
+    .limit(1);
+  return { ultimo: recentes[0] ?? null, recentes, ultimoDrill: ultimoDrill ?? null };
 }
