@@ -98,6 +98,48 @@ export function resumoCaixa(
   return { entradas: reais(entradasC), saidas: reais(saidasC), saldo: reais(entradasC - saidasC) };
 }
 
+export type ParcelaPagaComMeio = ParcelaPaga & { formaRecebimento?: string | null };
+
+export type LinhaPorMeio = {
+  /** O código cru (chave estável) ou null para o que não tem forma registrada. */
+  forma: string | null;
+  total: number;
+  qtd: number;
+};
+
+export type PorMeio = { total: number; linhas: LinhaPorMeio[] };
+
+/**
+ * As MESMAS entradas do resumo, agrupadas pelo MEIO (E50) — soma em centavos
+ * inteiros, então `total === resumoCaixa(...).entradas` por construção. Maior
+ * total primeiro; o sem-forma (null) sempre por último. O rótulo PT-BR é
+ * vocabulário de tela; aqui fala-se o código cru.
+ */
+export function entradasPorMeio(
+  parcelas: readonly ParcelaPagaComMeio[],
+  intervalo: Intervalo,
+): PorMeio {
+  const porForma = new Map<string | null, { totalC: number; qtd: number }>();
+  let totalC = 0;
+  for (const p of entradasDoIntervalo(parcelas, intervalo)) {
+    const c = centavos(p.valorRecebido ?? 0);
+    totalC += c;
+    const chave = p.formaRecebimento ?? null;
+    const atual = porForma.get(chave) ?? { totalC: 0, qtd: 0 };
+    atual.totalC += c;
+    atual.qtd += 1;
+    porForma.set(chave, atual);
+  }
+  const linhas = [...porForma.entries()]
+    .map(([forma, agg]) => ({ forma, total: reais(agg.totalC), qtd: agg.qtd }))
+    .sort((a, b) => {
+      if (a.forma === null) return 1;
+      if (b.forma === null) return -1;
+      return b.total - a.total;
+    });
+  return { total: reais(totalC), linhas };
+}
+
 export type PontoTendencia = { competencia: string; entradas: number; saidas: number; saldo: number };
 
 /**

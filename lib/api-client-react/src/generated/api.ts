@@ -96,6 +96,8 @@ import type {
   GetConsolidado200Item,
   GetConviteInfoParams,
   GetDesempenhoVendedoras200Item,
+  GetDre200,
+  GetDreParams,
   GetFluxoCaixa200,
   GetFluxoCaixaParams,
   GetLeadsParados200,
@@ -9580,6 +9582,96 @@ export function useGetFluxoCaixa<TData = Awaited<ReturnType<typeof getFluxoCaixa
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFluxoCaixaQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDreUrl = (lojaId: string,
+    params?: GetDreParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/dre?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/dre`
+}
+
+/**
+ * E79: o mesmo movimento do /financeiro/fluxo, para o DRE. O MESMO motor (`dreDoIntervalo`, financeiro-core) roda aqui sobre linhas filtradas pela competência no SQL — fluxo e DRE fecham entre si porque saem do mesmo lugar. `porMeio` reusa a régua do E50: `porMeio.total` e `receitas` são o mesmo dinheiro por construção.
+ * @summary O resultado do mês agregado no banco — regime de caixa
+ */
+export const getDre = async (lojaId: string,
+    params?: GetDreParams, options?: RequestInit): Promise<GetDre200> => {
+
+  return customFetch<GetDre200>(getGetDreUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDreQueryKey = (lojaId: string,
+    params?: GetDreParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/dre`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDreQueryOptions = <TData = Awaited<ReturnType<typeof getDre>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: GetDreParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDre>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDreQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDre>>> = ({ signal }) => getDre(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDre>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDreQueryResult = NonNullable<Awaited<ReturnType<typeof getDre>>>
+export type GetDreQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary O resultado do mês agregado no banco — regime de caixa
+ */
+
+export function useGetDre<TData = Awaited<ReturnType<typeof getDre>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: GetDreParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDre>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDreQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -1,12 +1,8 @@
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  useListParcelas,
-  getListParcelasQueryKey,
-  useListPagamentos,
-  getListPagamentosQueryKey,
-} from "@workspace/api-client-react";
+import { useGetDre, getGetDreQueryKey } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,24 +17,19 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { brl } from "@/lib/formatos";
-import { dreDoIntervalo } from "@/lib/financeiro/dre";
-import { recebimentosPorForma } from "@/lib/financeiro/forma";
+import { rotuloForma } from "@/lib/financeiro/forma";
 import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasDre } from "@/lib/financeiro/exportar";
-import {
-  competenciaAtual,
-  competenciaValida,
-  intervaloDaCompetencia,
-  ultimasCompetencias,
-} from "@/lib/financeiro/datas";
+import { competenciaAtual, competenciaValida, ultimasCompetencias } from "@/lib/financeiro/datas";
 
 /**
  * DRE em REGIME DE CAIXA: só entra no número o dinheiro que se moveu dentro da
  * competência — parcela efetivamente recebida menos pagamento efetivamente
  * feito. O previsto não aparece aqui de propósito; ele vive no fluxo.
  *
- * A agregação inteira é do núcleo (`dreDoIntervalo`), já testado. Esta tela só
- * escolhe o intervalo, busca e desenha.
+ * A agregação roda no banco (E79): GET /financeiro/dre passa o MESMO
+ * `dreDoIntervalo` (financeiro-core) sobre a competência recortada no SQL.
+ * Esta tela só escolhe a competência, busca e desenha.
  */
 
 const MESES_NO_SELETOR = 12;
@@ -70,34 +61,34 @@ export default function DRE() {
 
   const compParam = searchParams.get("comp");
   const competencia = competenciaValida(compParam ?? "") ? compParam! : competenciaAtual();
-  const intervalo = useMemo(() => intervaloDaCompetencia(competencia), [competencia]);
 
-  // Sem janela de propósito: o DRE é por competência, não por vencimento.
-  const parcelas = useListParcelas(activeLojaId!, undefined, {
+  // E79: a agregação inteira roda no banco — o MESMO motor (dreDoIntervalo),
+  // sobre a competência recortada no SQL. A tela pede o mês, não a história.
+  const paramsDre = { competencia };
+  const dreQ = useGetDre(activeLojaId!, paramsDre, {
     query: {
-      queryKey: getListParcelasQueryKey(activeLojaId!),
+      queryKey: getGetDreQueryKey(activeLojaId!, paramsDre),
       enabled: !!activeLojaId,
+      placeholderData: keepPreviousData,
     },
   });
 
-  const paramsPagamentos = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
-  const pagamentos = useListPagamentos(activeLojaId!, paramsPagamentos, {
-    query: {
-      queryKey: getListPagamentosQueryKey(activeLojaId!, paramsPagamentos),
-      enabled: !!activeLojaId,
-    },
-  });
+  const dre = dreQ.data ?? { receitas: 0, despesas: [], totalDespesas: 0, resultado: 0 };
 
-  const dre = useMemo(
-    () => dreDoIntervalo(parcelas.data ?? [], pagamentos.data ?? [], intervalo),
-    [parcelas.data, pagamentos.data, intervalo],
-  );
-
-  // Mesmo filtro do DRE (entradasDoIntervalo): `porForma.total` e
-  // `dre.receitas` são o mesmo dinheiro, visto por outro corte.
+  // Mesmo filtro do DRE no servidor (entradasDoIntervalo): `porForma.total` e
+  // `dre.receitas` são o mesmo dinheiro, visto por outro corte. O rótulo é
+  // vocabulário de TELA, o servidor fala o código cru.
   const porForma = useMemo(
-    () => recebimentosPorForma(parcelas.data ?? [], intervalo),
-    [parcelas.data, intervalo],
+    () => ({
+      total: dreQ.data?.porMeio.total ?? 0,
+      linhas: (dreQ.data?.porMeio.linhas ?? []).map((l) => ({
+        forma: l.forma,
+        rotulo: l.forma ? (rotuloForma(l.forma) ?? l.forma) : "Não informado",
+        total: l.total,
+        qtd: l.qtd,
+      })),
+    }),
+    [dreQ.data],
   );
 
   /** Últimos 12 meses; se a URL apontar para fora da janela, a opção entra mesmo assim. */
@@ -118,8 +109,8 @@ export default function DRE() {
     );
   }
 
-  const carregando = parcelas.isPending || pagamentos.isPending;
-  const erro = parcelas.isError || pagamentos.isError;
+  const carregando = dreQ.isPending;
+  const erro = dreQ.isError;
   const resultadoNegativo = dre.resultado < 0;
   const vazio = dre.receitas === 0 && dre.despesas.length === 0;
 
@@ -183,10 +174,7 @@ export default function DRE() {
       {erro ? (
         <ErroListagem
           mensagem="Falha ao buscar os lançamentos do mês."
-          onRetry={() => {
-            if (parcelas.isError) parcelas.refetch();
-            if (pagamentos.isError) pagamentos.refetch();
-          }}
+          onRetry={() => dreQ.refetch()}
         />
       ) : carregando ? (
         <div className="space-y-4">

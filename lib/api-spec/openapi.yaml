@@ -2635,6 +2635,71 @@ paths:
                         descricao: { type: string }
                         contratoId: { type: ["string", "null"] }
 
+  /lojas/{lojaId}/financeiro/dre:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getDre
+      tags: [financeiro]
+      summary: O resultado do mês agregado no banco — regime de caixa
+      description: >
+        E79: o mesmo movimento do /financeiro/fluxo, para o DRE. O MESMO motor
+        (`dreDoIntervalo`, financeiro-core) roda aqui sobre linhas filtradas
+        pela competência no SQL — fluxo e DRE fecham entre si porque saem do
+        mesmo lugar. `porMeio` reusa a régua do E50: `porMeio.total` e
+        `receitas` são o mesmo dinheiro por construção.
+      parameters:
+        - name: competencia
+          in: query
+          required: false
+          description: "Competência YYYY-MM; ausente cai no mês corrente"
+          schema: { type: string, pattern: '^\d{4}-\d{2}$' }
+      responses:
+        "200":
+          description: Receitas, despesas por categoria, resultado e por meio da competência
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [competencia, intervalo, receitas, despesas, totalDespesas, resultado, porMeio]
+                properties:
+                  competencia: { type: string }
+                  intervalo:
+                    type: object
+                    required: [iniYMD, fimYMD]
+                    properties:
+                      iniYMD: { type: string }
+                      fimYMD: { type: string }
+                  receitas: { type: number }
+                  despesas:
+                    type: array
+                    description: Maior total primeiro
+                    items:
+                      type: object
+                      required: [rotulo, total]
+                      properties:
+                        rotulo: { type: string }
+                        total: { type: number }
+                  totalDespesas: { type: number }
+                  resultado:
+                    type: number
+                    description: receitas − totalDespesas; pode ser negativo
+                  porMeio:
+                    type: object
+                    required: [total, linhas]
+                    properties:
+                      total: { type: number }
+                      linhas:
+                        type: array
+                        items:
+                          type: object
+                          required: [forma, total, qtd]
+                          properties:
+                            forma: { type: ["string", "null"] }
+                            total: { type: number }
+                            qtd: { type: integer }
+
   /lojas/{lojaId}/financeiro/contas-pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

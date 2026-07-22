@@ -2529,6 +2529,48 @@ export type GetFluxoCaixa200 = {
   movimentos: GetFluxoCaixa200MovimentosItem[];
 };
 
+export type GetDreParams = {
+/**
+ * Competência YYYY-MM; ausente cai no mês corrente
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia?: string;
+};
+
+export type GetDre200Intervalo = {
+  iniYMD: string;
+  fimYMD: string;
+};
+
+export type GetDre200DespesasItem = {
+  rotulo: string;
+  total: number;
+};
+
+export type GetDre200PorMeioLinhasItem = {
+  /** @nullable */
+  forma: string | null;
+  total: number;
+  qtd: number;
+};
+
+export type GetDre200PorMeio = {
+  total: number;
+  linhas: GetDre200PorMeioLinhasItem[];
+};
+
+export type GetDre200 = {
+  competencia: string;
+  intervalo: GetDre200Intervalo;
+  receitas: number;
+  /** Maior total primeiro */
+  despesas: GetDre200DespesasItem[];
+  totalDespesas: number;
+  /** receitas − totalDespesas; pode ser negativo */
+  resultado: number;
+  porMeio: GetDre200PorMeio;
+};
+
 export type ExportarContasPagarParams = {
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)

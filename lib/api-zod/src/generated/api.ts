@@ -5594,6 +5594,45 @@ export const GetFluxoCaixaResponse = zod.object({
 })
 
 
+/**
+ * E79: o mesmo movimento do /financeiro/fluxo, para o DRE. O MESMO motor (`dreDoIntervalo`, financeiro-core) roda aqui sobre linhas filtradas pela competência no SQL — fluxo e DRE fecham entre si porque saem do mesmo lugar. `porMeio` reusa a régua do E50: `porMeio.total` e `receitas` são o mesmo dinheiro por construção.
+ * @summary O resultado do mês agregado no banco — regime de caixa
+ */
+export const GetDreParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getDreQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetDreQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(getDreQueryCompetenciaRegExp).optional().describe('Competência YYYY-MM; ausente cai no mês corrente')
+})
+
+export const GetDreResponse = zod.object({
+  "competencia": zod.string(),
+  "intervalo": zod.object({
+  "iniYMD": zod.string(),
+  "fimYMD": zod.string()
+}),
+  "receitas": zod.number(),
+  "despesas": zod.array(zod.object({
+  "rotulo": zod.string(),
+  "total": zod.number()
+})).describe('Maior total primeiro'),
+  "totalDespesas": zod.number(),
+  "resultado": zod.number().describe('receitas − totalDespesas; pode ser negativo'),
+  "porMeio": zod.object({
+  "total": zod.number(),
+  "linhas": zod.array(zod.object({
+  "forma": zod.string().nullable(),
+  "total": zod.number(),
+  "qtd": zod.number()
+}))
+})
+})
+
+
 export const ListContasPagarParams = zod.object({
   "lojaId": zod.coerce.string()
 })

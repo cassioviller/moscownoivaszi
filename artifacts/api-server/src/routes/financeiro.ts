@@ -16,6 +16,7 @@ import {
   hojeLocal,
   resolverIntervalo,
   competenciaAtual,
+  intervaloDaCompetencia,
   ultimasCompetencias,
   ultimoDiaDoMes,
   resumoCaixa,
@@ -23,8 +24,8 @@ import {
   horizonteAberto,
   entradasDoIntervalo,
   saidasDoIntervalo,
-  centavos,
-  reais,
+  entradasPorMeio,
+  dreDoIntervalo,
 } from "@workspace/financeiro-core";
 import {
   PagarContaPagarBody,
@@ -59,7 +60,9 @@ import {
   EnviarContabilidadeBody,
   EnviarContabilidadeResponse,
   GetFluxoCaixaQueryParams,
-  GetFluxoCaixaResponse
+  GetFluxoCaixaResponse,
+  GetDreQueryParams,
+  GetDreResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
@@ -686,28 +689,7 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
   ]);
 
   const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
-
-  // Por MEIO (E50): as MESMAS entradas do resumo, agrupadas — soma em centavos
-  // inteiros, então `porMeio.total === resumo.entradas` por construção.
   const entradas = entradasDoIntervalo(parcelasRecebidas, intervalo);
-  const porForma = new Map<string | null, { totalC: number; qtd: number }>();
-  let totalEntradasC = 0;
-  for (const p of entradas) {
-    const c = centavos(p.valorRecebido ?? 0);
-    totalEntradasC += c;
-    const chave = p.formaRecebimento ?? null;
-    const atual = porForma.get(chave) ?? { totalC: 0, qtd: 0 };
-    atual.totalC += c;
-    atual.qtd += 1;
-    porForma.set(chave, atual);
-  }
-  const linhasPorMeio = [...porForma.entries()]
-    .map(([forma, agg]) => ({ forma, total: reais(agg.totalC), qtd: agg.qtd }))
-    .sort((a, b) => {
-      if (a.forma === null) return 1;
-      if (b.forma === null) return -1;
-      return b.total - a.total;
-    });
 
   const descricaoParcela = (p: (typeof parcelasRecebidas)[number]): string =>
     p.descricao || (p.numero === 0 ? "Entrada/sinal" : `Parcela ${p.numero}`);
@@ -746,13 +728,63 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
     GetFluxoCaixaResponse.parse({
       intervalo,
       resumo,
-      porMeio: { total: reais(totalEntradasC), linhas: linhasPorMeio },
+      // Por MEIO (E50): as MESMAS entradas do resumo — soma em centavos
+      // inteiros no core, então `porMeio.total === resumo.entradas` por construção.
+      porMeio: entradasPorMeio(parcelasRecebidas, intervalo),
       tendencia: tendenciaCaixa(parcelasRecebidas, pagamentos, {
         meses: MESES_TENDENCIA_FLUXO,
         ate: compHoje,
       }),
       horizonte: horizonteAberto(parcelasAbertas, contasAbertas),
       movimentos,
+    }),
+  );
+});
+
+// E79: o DRE agregado no banco — o MESMO `dreDoIntervalo` que a tela rodava
+// sobre a história inteira, agora sobre a competência recortada no SQL. Fluxo
+// e DRE fecham entre si porque saem do mesmo motor (cuidado (a) da proposta).
+router.get("/lojas/:lojaId/financeiro/dre", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = GetDreQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const competencia =
+    query.data.competencia && competenciaValida(query.data.competencia)
+      ? query.data.competencia
+      : competenciaAtual();
+  const intervalo = intervaloDaCompetencia(competencia);
+
+  const [parcelasRecebidas, pagamentos] = await Promise.all([
+    db.select().from(parcelasTable).where(
+      and(
+        eq(parcelasTable.lojaId, lojaId),
+        isNotNull(parcelasTable.recebidoEm),
+        gte(parcelasTable.recebidoEm, inicioDoDia(intervalo.iniYMD)),
+        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(intervalo.fimYMD, 1))),
+      ),
+    ),
+    db.query.pagamentosTable.findMany({
+      where: and(
+        eq(pagamentosTable.lojaId, lojaId),
+        gte(pagamentosTable.data, inicioDoDia(intervalo.iniYMD)),
+        lt(pagamentosTable.data, inicioDoDia(addDias(intervalo.fimYMD, 1))),
+      ),
+      with: { itens: { with: { contaPagar: true } } },
+    }),
+  ]);
+
+  const dre = dreDoIntervalo(parcelasRecebidas, pagamentos, intervalo);
+
+  res.json(
+    GetDreResponse.parse({
+      competencia,
+      intervalo,
+      ...dre,
+      // A régua do E50: `porMeio.total === receitas` por construção.
+      porMeio: entradasPorMeio(parcelasRecebidas, intervalo),
     }),
   );
 });

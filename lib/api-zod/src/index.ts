@@ -25,4 +25,5 @@ export {
   CreateParcelaAvulsaBody,
   ExpurgarLeadsPerdidosBody,
   GetFluxoCaixaParams,
+  GetDreParams,
 } from "./generated/api";
