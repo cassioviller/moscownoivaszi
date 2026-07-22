@@ -183,6 +183,7 @@ export * from './listLookbooksParams';
 export * from './listOrcamentosParams';
 export * from './listPagamentosParams';
 export * from './listParcelasParams';
+export * from './listParcelasStatus';
 export * from './loginInput';
 export * from './loja';
 export * from './lojaComPerfil';

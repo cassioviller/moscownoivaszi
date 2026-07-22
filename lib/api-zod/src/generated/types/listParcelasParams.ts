@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListParcelasStatus } from './listParcelasStatus';
 
 export type ListParcelasParams = {
 /**
@@ -17,4 +18,13 @@ de?: string;
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 ate?: string;
+/**
+ * abertas = só o que ainda tem saldo a receber (PREVISTA/PARCIAL, E49)
+ */
+status?: ListParcelasStatus;
+/**
+ * Só parcelas com recebimento a partir deste dia (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+recebidasDe?: string;
 };

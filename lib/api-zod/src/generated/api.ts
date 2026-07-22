@@ -5210,7 +5210,8 @@ export const CancelarContratoResponse = zod.object({
 
 
 /**
- * @summary Parcelas da loja — opcionalmente recortadas por vencimento
+ * E79: os recortes que cobrança e projeção usam no lugar da lista completa. `status=abertas` devolve só PREVISTA/PARCIAL (a régua única do estaAberta); `recebidasDe` devolve as com dinheiro recebido a partir do dia (para o realizado desde a âncora do saldo conferido).
+ * @summary Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
  */
 export const ListParcelasParams = zod.object({
   "lojaId": zod.coerce.string()
@@ -5218,11 +5219,14 @@ export const ListParcelasParams = zod.object({
 
 export const listParcelasQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const listParcelasQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listParcelasQueryRecebidasDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const ListParcelasQueryParams = zod.object({
   "de": zod.coerce.string().regex(listParcelasQueryDeRegExp).optional().describe('Início do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)'),
-  "ate": zod.coerce.string().regex(listParcelasQueryAteRegExp).optional().describe('Fim do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)')
+  "ate": zod.coerce.string().regex(listParcelasQueryAteRegExp).optional().describe('Fim do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)'),
+  "status": zod.enum(['abertas']).optional().describe('abertas = só o que ainda tem saldo a receber (PREVISTA\/PARCIAL, E49)'),
+  "recebidasDe": zod.coerce.string().regex(listParcelasQueryRecebidasDeRegExp).optional().describe('Só parcelas com recebimento a partir deste dia (inclusivo, dia local)')
 })
 
 export const ListParcelasResponseItem = zod.object({

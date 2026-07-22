@@ -2386,7 +2386,12 @@ paths:
     get:
       operationId: listParcelas
       tags: [financeiro]
-      summary: Parcelas da loja — opcionalmente recortadas por vencimento
+      summary: Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
+      description: >
+        E79: os recortes que cobrança e projeção usam no lugar da lista
+        completa. `status=abertas` devolve só PREVISTA/PARCIAL (a régua única
+        do estaAberta); `recebidasDe` devolve as com dinheiro recebido a partir
+        do dia (para o realizado desde a âncora do saldo conferido).
       parameters:
         - name: de
           in: query
@@ -2399,6 +2404,20 @@ paths:
           in: query
           required: false
           description: Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: status
+          in: query
+          required: false
+          description: "abertas = só o que ainda tem saldo a receber (PREVISTA/PARCIAL, E49)"
+          schema:
+            type: string
+            enum: [abertas]
+        - name: recebidasDe
+          in: query
+          required: false
+          description: Só parcelas com recebimento a partir deste dia (inclusivo, dia local)
           schema:
             type: string
             pattern: '^\d{4}-\d{2}-\d{2}$'

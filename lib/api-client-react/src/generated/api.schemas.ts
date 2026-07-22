@@ -2441,7 +2441,23 @@ de?: string;
  * @pattern ^\d{4}-\d{2}-\d{2}$
  */
 ate?: string;
+/**
+ * abertas = só o que ainda tem saldo a receber (PREVISTA/PARCIAL, E49)
+ */
+status?: ListParcelasStatus;
+/**
+ * Só parcelas com recebimento a partir deste dia (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+recebidasDe?: string;
 };
+
+export type ListParcelasStatus = typeof ListParcelasStatus[keyof typeof ListParcelasStatus];
+
+
+export const ListParcelasStatus = {
+  abertas: 'abertas',
+} as const;
 
 export type CreateParcelaAvulsaBody = {
   /** @minLength 1 */

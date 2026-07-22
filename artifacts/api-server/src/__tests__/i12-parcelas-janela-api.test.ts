@@ -95,4 +95,46 @@ describe("I12 — GET /parcelas: janela de vencimento e noiva embutida", () => {
 
     await agent.get(`/api/lojas/${f.lojaId}/financeiro/parcelas?de=hoje`).expect(400);
   });
+
+  // E79: os recortes que cobrança e projeção usam no lugar da lista completa.
+  // Roda por último de propósito — recebe parcelas e muda o status da fixture.
+  it("status=abertas e recebidasDe recortam pela régua do E49", async () => {
+    const tudo = await agent.get(`/api/lojas/${f.lojaId}/financeiro/parcelas`).expect(200);
+    const [primeira, segunda] = minhas(tudo.body) as Array<{ id: string }>;
+
+    // Quita a primeira e recebe metade da segunda: PAGA + PARCIAL + PREVISTA.
+    const agora = new Date().toISOString();
+    await agent
+      .post(`/api/lojas/${f.lojaId}/parcelas/${primeira.id}/receber`)
+      .send({ valorRecebido: 100, recebidoEm: agora, formaRecebimento: "PIX" })
+      .expect(200);
+    await agent
+      .post(`/api/lojas/${f.lojaId}/parcelas/${segunda.id}/receber`)
+      .send({ valorRecebido: 150, recebidoEm: agora, formaRecebimento: "DINHEIRO" })
+      .expect(200);
+
+    // Abertas: a PARCIAL segue na fila (ainda deve 250) — sumir seria perdoar.
+    const abertas = await agent
+      .get(`/api/lojas/${f.lojaId}/financeiro/parcelas?status=abertas`)
+      .expect(200);
+    const statusAbertas = minhas(abertas.body).map((p: any) => p.status).sort();
+    expect(statusAbertas).toEqual(["PARCIAL", "PREVISTA"]);
+
+    // Recebidas de hoje: a PAGA e a PARCIAL — a PREVISTA nunca viu dinheiro.
+    const hoje = diaLocal(new Date());
+    const recebidas = await agent
+      .get(`/api/lojas/${f.lojaId}/financeiro/parcelas?recebidasDe=${hoje}`)
+      .expect(200);
+    expect(minhas(recebidas.body).map((p: any) => p.status).sort()).toEqual(["PAGA", "PARCIAL"]);
+
+    // A partir de amanhã: ninguém recebeu no futuro.
+    const amanha = diaLocal(dataFutura(1));
+    const nada = await agent
+      .get(`/api/lojas/${f.lojaId}/financeiro/parcelas?recebidasDe=${amanha}`)
+      .expect(200);
+    expect(minhas(nada.body)).toHaveLength(0);
+
+    // Valor fora do enum é 400, como os irmãos.
+    await agent.get(`/api/lojas/${f.lojaId}/financeiro/parcelas?status=pagas`).expect(400);
+  });
 });

@@ -9085,7 +9085,8 @@ export const getListParcelasUrl = (lojaId: string,
 }
 
 /**
- * @summary Parcelas da loja — opcionalmente recortadas por vencimento
+ * E79: os recortes que cobrança e projeção usam no lugar da lista completa. `status=abertas` devolve só PREVISTA/PARCIAL (a régua única do estaAberta); `recebidasDe` devolve as com dinheiro recebido a partir do dia (para o realizado desde a âncora do saldo conferido).
+ * @summary Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
  */
 export const listParcelas = async (lojaId: string,
     params?: ListParcelasParams, options?: RequestInit): Promise<Parcela[]> => {
@@ -9135,7 +9136,7 @@ export type ListParcelasQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Parcelas da loja — opcionalmente recortadas por vencimento
+ * @summary Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
  */
 
 export function useListParcelas<TData = Awaited<ReturnType<typeof listParcelas>>, TError = ErrorType<unknown>>(

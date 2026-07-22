@@ -64,9 +64,12 @@ export default function Projecao() {
   const [valorConferido, setValorConferido] = useState("");
   const criarSaldo = useCreateSaldoReferencia();
 
-  // Sem janela de propósito: a curva precisa do futuro inteiro e do atraso passado.
-  const parcelas = useListParcelas(activeLojaId!, undefined, {
-    query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E79: dois recortes no lugar da história inteira. A curva precisa das
+  // ABERTAS (futuro + atraso, qualquer vencimento) — as pagas de anos atrás
+  // nunca entraram nela.
+  const paramsAbertas = { status: "abertas" as const };
+  const parcelas = useListParcelas(activeLojaId!, paramsAbertas, {
+    query: { queryKey: getListParcelasQueryKey(activeLojaId!, paramsAbertas), enabled: !!activeLojaId },
   });
   const contasPagar = useListContasPagar(activeLojaId!, {
     query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
@@ -79,12 +82,22 @@ export default function Projecao() {
   const ancora = useMemo(() => ancoraAtiva(saldos.data, hoje), [saldos.data, hoje]);
   const ancoraDia = ancora ? diaLocal(ancora.dataReferencia) : null;
 
-  // Query dependente: só o realizado ENTRE a âncora e hoje interessa, e a
-  // janela só existe depois que a âncora chega.
+  // Queries dependentes: só o realizado ENTRE a âncora e hoje interessa, e a
+  // janela só existe depois que a âncora chega. As RECEBIDAS desde a âncora
+  // são o segundo recorte do E79 — separadas das abertas de propósito: uma
+  // PARCIAL recebida ontem está nas duas listas, e somá-la junto contaria o
+  // mesmo dinheiro em dobro no resumo.
   const janela = ancoraDia ? { de: ancoraDia, ate: hoje } : undefined;
   const pagamentos = useListPagamentos(activeLojaId!, janela, {
     query: {
       queryKey: getListPagamentosQueryKey(activeLojaId!, janela),
+      enabled: !!activeLojaId && !!ancoraDia,
+    },
+  });
+  const paramsRecebidas = ancoraDia ? { recebidasDe: ancoraDia } : undefined;
+  const recebidas = useListParcelas(activeLojaId!, paramsRecebidas, {
+    query: {
+      queryKey: getListParcelasQueryKey(activeLojaId!, paramsRecebidas),
       enabled: !!activeLojaId && !!ancoraDia,
     },
   });
@@ -95,8 +108,8 @@ export default function Projecao() {
    * errado. Sem âncora não há nível — a curva mostra só a forma, partindo de 0.
    */
   const saldo = useMemo(
-    () => saldoDeHoje(saldos.data, parcelas.data ?? [], pagamentos.data ?? [], hoje),
-    [saldos.data, parcelas.data, pagamentos.data, hoje],
+    () => saldoDeHoje(saldos.data, recebidas.data ?? [], pagamentos.data ?? [], hoje),
+    [saldos.data, recebidas.data, pagamentos.data, hoje],
   );
   const semAncora = saldo === null;
 
@@ -149,14 +162,20 @@ export default function Projecao() {
   // e a curva inteira nasceria no nível errado — em silêncio. Enquanto não há
   // âncora a query fica desabilitada, e desabilitada não é carregando.
   const isLoading =
-    parcelas.isLoading || contasPagar.isLoading || saldos.isLoading || pagamentos.isLoading;
-  const isError = parcelas.isError || contasPagar.isError || saldos.isError || pagamentos.isError;
+    parcelas.isLoading ||
+    contasPagar.isLoading ||
+    saldos.isLoading ||
+    pagamentos.isLoading ||
+    recebidas.isLoading;
+  const isError =
+    parcelas.isError || contasPagar.isError || saldos.isError || pagamentos.isError || recebidas.isError;
 
   function recarregar() {
     if (parcelas.isError) parcelas.refetch();
     if (contasPagar.isError) contasPagar.refetch();
     if (saldos.isError) saldos.refetch();
     if (pagamentos.isError) pagamentos.refetch();
+    if (recebidas.isError) recebidas.refetch();
   }
 
   const { curva, emAtraso } = projecao;

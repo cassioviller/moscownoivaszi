@@ -104,7 +104,7 @@ router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void>
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
     return;
   }
-  const { de, ate } = parsed.data;
+  const { de, ate, status, recebidasDe } = parsed.data;
   if (de && ate && de > ate) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -115,6 +115,12 @@ router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void>
       eq(parcelasTable.lojaId, lojaId),
       ...(de ? [gte(parcelasTable.vencimento, inicioDoDia(de))] : []),
       ...(ate ? [lt(parcelasTable.vencimento, inicioDoDia(addDias(ate, 1)))] : []),
+      // E79: "aberta" é a régua única do estaAberta (PREVISTA/PARCIAL, E49).
+      ...(status === "abertas" ? [inArray(parcelasTable.status, ["PREVISTA", "PARCIAL"])] : []),
+      // E79: o realizado desde a âncora — quem recebeu a partir do dia.
+      ...(recebidasDe
+        ? [isNotNull(parcelasTable.recebidoEm), gte(parcelasTable.recebidoEm, inicioDoDia(recebidasDe))]
+        : []),
     ),
     with: { contrato: { with: { lead: true } } },
     orderBy: parcelasTable.vencimento,

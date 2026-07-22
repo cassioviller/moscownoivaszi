@@ -149,9 +149,12 @@ export default function Cobranca() {
   // contratoId que vivia aqui, rebuscando TODOS os contratos, morreu com ele.
   // Parcela órfã de contrato vem com `contrato` nulo e o próprio
   // `agingDeParcelas` a descarta (não há quem cobrar).
-  const parcelas = useListParcelas(activeLojaId!, undefined, {
+  // E79: só as ABERTAS — o aging nunca olhou as pagas, então a tela para de
+  // baixar a história inteira só para descartá-la.
+  const paramsAbertas = { status: "abertas" as const };
+  const parcelas = useListParcelas(activeLojaId!, paramsAbertas, {
     query: {
-      queryKey: getListParcelasQueryKey(activeLojaId!),
+      queryKey: getListParcelasQueryKey(activeLojaId!, paramsAbertas),
       enabled: !!activeLojaId,
     },
   });
