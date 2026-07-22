@@ -25,7 +25,9 @@ async function seed() {
     {
       id: adminPerfilId,
       nome: "Admin",
-      acessosModulos: { 
+      // E80: perfil do sistema — flag, não nome. PATCH/DELETE são recusados.
+      sistema: true,
+      acessosModulos: {
         leads: true, 
         vestidos: true, 
         agenda: true, 

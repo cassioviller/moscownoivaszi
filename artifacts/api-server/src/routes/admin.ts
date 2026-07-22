@@ -141,6 +141,14 @@ router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  // E80: o perfil do sistema é intocável pela API — hoje só a UI protegia, e
+  // um curl derrubava o Admin (renome ou permissões a menos = loja trancada).
+  const [alvo] = await db.select({ sistema: perfisTable.sistema }).from(perfisTable)
+    .where(eq(perfisTable.id, params.data.perfilId));
+  if (alvo?.sistema) {
+    res.status(403).json({ error: "PERFIL_SISTEMA", detalhe: "o perfil do sistema não pode ser alterado" });
+    return;
+  }
   const [perfil] = await db.update(perfisTable)
     .set({
       ...parsed.data,
@@ -165,6 +173,13 @@ router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
   const params = DeletePerfilParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  // E80: apagar o perfil do sistema deixaria a loja sem Admin — recusa igual.
+  const [alvo] = await db.select({ sistema: perfisTable.sistema }).from(perfisTable)
+    .where(eq(perfisTable.id, params.data.perfilId));
+  if (alvo?.sistema) {
+    res.status(403).json({ error: "PERFIL_SISTEMA", detalhe: "o perfil do sistema não pode ser removido" });
     return;
   }
   await db.delete(perfisTable).where(eq(perfisTable.id, params.data.perfilId));

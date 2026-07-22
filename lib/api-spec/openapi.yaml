@@ -3686,12 +3686,16 @@ components:
 
     Perfil:
       type: object
-      required: [id, nome, acessosModulos]
+      required: [id, nome, acessosModulos, sistema]
       properties:
         id: { type: string }
         nome: { type: string }
         acessosModulos:
           $ref: "#/components/schemas/AcessosModulos"
+        # E80: o perfil do SISTEMA (Admin) é flag, não nome. Só leitura — não
+        # existe no PerfilInput/PerfilUpdate de propósito: nasce no seed/SQL e
+        # o servidor recusa PATCH/DELETE de quem a carrega.
+        sistema: { type: boolean }
     PerfilInput:
       type: object
       required: [nome, acessosModulos]

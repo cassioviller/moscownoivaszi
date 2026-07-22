@@ -74,3 +74,16 @@ export function resumoAcessos(acessos: Acessos): string {
     .map((m) => MODULOS_ROTULOS[m] ?? m);
   return nomes.join(", ") || "sem acessos";
 }
+
+/**
+ * E80: o perfil do sistema é uma FLAG no banco (`sistema`), não um nome —
+ * renomear o Admin não derruba mais o readonly da matriz. O nome fica como
+ * fallback por uma versão, para linha antiga que ainda não passou pela
+ * migração. (O servidor recusa PATCH/DELETE de quem carrega a flag; isto aqui
+ * só decide o que a interface oferece.)
+ */
+export function ehPerfilAdmin(perfil: { nome: string; sistema?: boolean }): boolean {
+  if (perfil.sistema !== undefined) return perfil.sistema;
+  const n = perfil.nome.trim().toLowerCase();
+  return n === "admin" || n === "administrador" || n === "administradora";
+}

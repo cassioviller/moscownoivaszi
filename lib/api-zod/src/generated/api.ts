@@ -200,7 +200,8 @@ export const ListPerfisResponseItem = zod.object({
   "ver": zod.boolean(),
   "criar": zod.boolean(),
   "editar": zod.boolean()
-})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.'),
+  "sistema": zod.boolean()
 })
 export const ListPerfisResponse = zod.array(ListPerfisResponseItem)
 
@@ -224,7 +225,8 @@ export const CreatePerfilResponse = zod.object({
   "ver": zod.boolean(),
   "criar": zod.boolean(),
   "editar": zod.boolean()
-})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.'),
+  "sistema": zod.boolean()
 })
 
 
@@ -251,7 +253,8 @@ export const UpdatePerfilResponse = zod.object({
   "ver": zod.boolean(),
   "criar": zod.boolean(),
   "editar": zod.boolean()
-})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.'),
+  "sistema": zod.boolean()
 })
 
 

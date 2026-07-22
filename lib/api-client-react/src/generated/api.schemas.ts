@@ -96,6 +96,7 @@ export interface Perfil {
   id: string;
   nome: string;
   acessosModulos: AcessosModulos;
+  sistema: boolean;
 }
 
 export interface PerfilInput {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moduloLiberado, podeNoModulo, resumoAcessos } from "./permissoes";
+import { moduloLiberado, podeNoModulo, resumoAcessos, ehPerfilAdmin } from "./permissoes";
 
 const VER = { ver: true, criar: false, editar: false };
 const TUDO = { ver: true, criar: true, editar: true };
@@ -88,5 +88,22 @@ describe("resumoAcessos", () => {
 
   it("sem mapa (superadmin) não lista módulos", () => {
     expect(resumoAcessos(null)).toBe("sem acessos");
+  });
+});
+
+/**
+ * E80: a flag `sistema` decide; o nome é fallback só para linha antiga que
+ * ainda não passou pela migração. Renomear o Admin não derruba o readonly.
+ */
+describe("ehPerfilAdmin (E80)", () => {
+  it("a flag decide, qualquer que seja o nome", () => {
+    expect(ehPerfilAdmin({ nome: "Gerência", sistema: true })).toBe(true);
+    expect(ehPerfilAdmin({ nome: "Admin", sistema: false })).toBe(false);
+  });
+
+  it("sem a flag, cai no fallback por nome (uma versão de compat)", () => {
+    expect(ehPerfilAdmin({ nome: "Admin" })).toBe(true);
+    expect(ehPerfilAdmin({ nome: " administradora " })).toBe(true);
+    expect(ehPerfilAdmin({ nome: "Vendedora" })).toBe(false);
   });
 });

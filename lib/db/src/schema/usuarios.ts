@@ -36,6 +36,9 @@ export const perfisTable = pgTable("perfis", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(),
   acessosModulos: jsonb("acessos_modulos").notNull(), // { "leads": true, ... }
+  // E80: o perfil do SISTEMA (Admin) é uma flag, não um nome — renomear não
+  // pode derrubar o readonly da matriz nem abrir PATCH/DELETE por curl.
+  sistema: boolean("sistema").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

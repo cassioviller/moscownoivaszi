@@ -71,14 +71,9 @@ function comCoerencia(atual: AcoesModulo, acao: Acao, marcado: boolean): AcoesMo
   return proximo;
 }
 
-/**
- * O schema Perfil não expõe flag de admin; o perfil de acesso total é
- * identificado pelo nome (seed do backend cria "Admin").
- */
-export function ehPerfilAdmin(perfil: { nome: string }): boolean {
-  const n = perfil.nome.trim().toLowerCase();
-  return n === "admin" || n === "administrador" || n === "administradora";
-}
+// E80: mudou-se para a lib (lógica pura, testável) — re-export para os
+// chamadores que sempre a importaram daqui.
+export { ehPerfilAdmin } from "@/lib/permissoes";
 
 /**
  * O componente inicializa o estado local a partir de `valores`; o pai deve
