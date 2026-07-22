@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListBloqueios,
@@ -19,37 +20,38 @@ import { agruparPorMes, mesAbrevFmt, mesAnoFmt } from "./helpers";
  * Livro de reservas (porte da /reservas do feat/orcamentos) — quem casa com
  * qual vestido. Lente "compromisso" (uma linha por noiva), distinta da Agenda:
  * aqui a noiva é a protagonista e a etapa do funil diz como vai cada
- * compromisso. Sem endpoint dedicado: filtra os bloqueios client-side
- * (tipo RESERVA_CASAMENTO, não cancelados), agrupados por mês do casamento.
+ * compromisso. Sem endpoint dedicado: GET /bloqueios com `futuras=` (E87)
+ * devolve só a lente aberta; no cliente sobra o filtro semântico
+ * (tipo RESERVA_CASAMENTO, não cancelados), agrupado por mês do casamento.
  */
 export default function Reservas() {
   const { lojaId } = useParams();
   const { activeLojaId } = useAuth();
   const [passadas, setPassadas] = useState(false);
 
-  const { data: bloqueios, isLoading, isError, error, refetch } = useListBloqueios(activeLojaId!, undefined, {
+  // E87: o corte futuro/passado roda no servidor — `futuras=` recorta por
+  // casamentoData contra hoje (dia local) e já devolve na ordem da lente
+  // (próximas asc, passadas desc). Queries separadas, cache por chave;
+  // keepPreviousData segura a lista anterior no toggle para não piscar.
+  const paramsReservas = { futuras: passadas ? ("false" as const) : ("true" as const) };
+  const { data: bloqueios, isLoading, isError, error, refetch } = useListBloqueios(activeLojaId!, paramsReservas, {
     query: {
-      queryKey: getListBloqueiosQueryKey(activeLojaId!),
+      queryKey: getListBloqueiosQueryKey(activeLojaId!, paramsReservas),
       enabled: !!activeLojaId,
+      placeholderData: keepPreviousData,
     },
   });
 
-  const reservas = useMemo(() => {
-    const lista = (bloqueios ?? []).filter(
-      (b): b is BloqueioVestido =>
-        b.tipo === "RESERVA_CASAMENTO" &&
-        !b.canceladoEm &&
-        !!b.casamentoData &&
-        (diasAteCasamento(b.casamentoData) >= 0) !== passadas,
-    );
-    // Próximas: da mais próxima à mais distante; passadas: da mais recente à mais antiga.
-    lista.sort((a, b) =>
-      passadas
-        ? new Date(b.casamentoData!).getTime() - new Date(a.casamentoData!).getTime()
-        : new Date(a.casamentoData!).getTime() - new Date(b.casamentoData!).getTime(),
-    );
-    return lista;
-  }, [bloqueios, passadas]);
+  const reservas = useMemo(
+    // O que sobra no cliente é semântica, não volume: só reserva de casamento
+    // viva (manutenção não tem casamentoData e o servidor já a descartou).
+    () =>
+      (bloqueios ?? []).filter(
+        (b): b is BloqueioVestido =>
+          b.tipo === "RESERVA_CASAMENTO" && !b.canceladoEm && !!b.casamentoData,
+      ),
+    [bloqueios],
+  );
 
   const meses = useMemo(
     () => agruparPorMes(reservas, (r) => new Date(r.casamentoData!), mesAnoFmt, true),

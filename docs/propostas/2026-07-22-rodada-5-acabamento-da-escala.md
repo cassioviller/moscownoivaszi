@@ -139,3 +139,5 @@ Depois desta rodada, o "sem API externa" está exaurido de trabalho grande:
 o que muda a categoria do produto (WhatsApp API, PIX automático, NF-e) é
 decisão de negócio. A rodada 6, se houver, nasce de dor nova de uso real —
 não de plano.
+
+<!-- E87, item 4: ajustes/contratos/orçamentos ficaram de fora — uma ordem de grandeza abaixo da agenda (contrato/orçamento ≈ um por noiva; a fila de ajustes mostra só PENDENTE, que se autolimita), e o recorte útil deles seria por status, não por janela de tempo — não vale contrato novo hoje. -->

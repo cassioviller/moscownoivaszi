@@ -182,6 +182,7 @@ export * from './listAtendimentosParams';
 export * from './listAtendimentosTipo';
 export * from './listAuditoriaAcao';
 export * from './listAuditoriaParams';
+export * from './listBloqueiosFuturas';
 export * from './listBloqueiosParams';
 export * from './listComissaoFechamentosParams';
 export * from './listContratosParams';

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, gte, lt, asc, desc } from "drizzle-orm";
 import { leadNaLoja, reservaNaLoja } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
@@ -9,6 +9,7 @@ import {
   UpdateReservaBody,
   UpdateReservaResponse,
   ListBloqueiosResponse,
+  ListBloqueiosQueryParams,
   GetBloqueioResponse,
   CreateBloqueioBody,
   CreateBloqueioResponse,
@@ -26,6 +27,8 @@ import {
   verificarDisponibilidade,
   ocupacaoFisica,
   buscarRegra,
+  diaLocal,
+  inicioDoDia,
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
 } from "../lib/disponibilidade";
@@ -203,16 +206,37 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   // E45: filtro opcional por vestido — a ficha do vestido passa a puxar só os
   // bloqueios dele, em vez de baixar a loja inteira e filtrar no cliente.
   // E79: mesmo movimento por noiva — a ficha do orçamento (E72) e o portal.
-  const vestidoId = typeof req.query.vestidoId === "string" ? req.query.vestidoId : undefined;
-  const leadId = typeof req.query.leadId === "string" ? req.query.leadId : undefined;
+  // E87: futuras=true|false recorta por casamentoData contra HOJE em dia local
+  // (fronteira via inicioDoDia, como a janela de/ate do E83) — o livro de
+  // reservas pede só a lente que está aberta; passadas já saem em ordem desc.
+  // Bloqueios sem casamentoData (manutenção) ficam fora do recorte: a
+  // comparação SQL com NULL descarta a linha, e é o comportamento desejado.
+  const query = ListBloqueiosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const { vestidoId, leadId, futuras } = query.data;
+  const hoje = inicioDoDia(diaLocal(new Date()));
   // Joins: telas de reservas/provas exibem vestido "codigo · nome" e a noiva.
   const bloqueios = await db.query.bloqueioVestidosTable.findMany({
     where: and(
       eq(bloqueioVestidosTable.lojaId, lojaId),
       ...(vestidoId ? [eq(bloqueioVestidosTable.vestidoId, vestidoId)] : []),
       ...(leadId ? [eq(bloqueioVestidosTable.leadId, leadId)] : []),
+      ...(futuras === "true" ? [gte(bloqueioVestidosTable.casamentoData, hoje)] : []),
+      ...(futuras === "false" ? [lt(bloqueioVestidosTable.casamentoData, hoje)] : []),
     ),
     with: { vestido: true, lead: true },
+    // Com recorte, a ordem é do servidor: próximas da mais próxima à mais
+    // distante, passadas da mais recente à mais antiga. Sem recorte, mantém-se
+    // a ordem histórica (nenhuma) para não mudar o contrato dos outros usos.
+    orderBy:
+      futuras === "true"
+        ? [asc(bloqueioVestidosTable.casamentoData)]
+        : futuras === "false"
+          ? [desc(bloqueioVestidosTable.casamentoData)]
+          : undefined,
   });
   res.json(ListBloqueiosResponse.parse(bloqueios));
 });

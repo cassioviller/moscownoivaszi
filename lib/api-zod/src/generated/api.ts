@@ -3690,7 +3690,8 @@ export const ListBloqueiosParams = zod.object({
 
 export const ListBloqueiosQueryParams = zod.object({
   "vestidoId": zod.coerce.string().optional().describe('Filtra os bloqueios de um vestido só (E45)'),
-  "leadId": zod.coerce.string().optional().describe('Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira')
+  "leadId": zod.coerce.string().optional().describe('Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira'),
+  "futuras": zod.enum(['true', 'false']).optional().describe('Recorta por casamentoData contra hoje, em dia LOCAL America\/Sao_Paulo (E87) — \'true\' = casamentos de hoje em diante (asc), \'false\' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte.')
 })
 
 export const ListBloqueiosResponseItem = zod.object({

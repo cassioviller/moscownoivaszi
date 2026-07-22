@@ -2494,7 +2494,19 @@ vestidoId?: string;
  * Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira
  */
 leadId?: string;
+/**
+ * Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte.
+ */
+futuras?: ListBloqueiosFuturas;
 };
+
+export type ListBloqueiosFuturas = typeof ListBloqueiosFuturas[keyof typeof ListBloqueiosFuturas];
+
+
+export const ListBloqueiosFuturas = {
+  true: 'true',
+  false: 'false',
+} as const;
 
 export type ListOrcamentosParams = {
 leadId?: string;

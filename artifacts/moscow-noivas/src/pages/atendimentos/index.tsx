@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAtendimentos,
@@ -40,8 +40,12 @@ import { AlertCircle, CalendarDays, MessageCircle, Plus, Search } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
+import { hojeLocal, addDias } from "@/lib/financeiro/datas";
 
 const TODAS = "TODAS";
+
+/** E87: janela padrão da tela — os últimos 90 dias; "carregar mais antigo" dobra. */
+const JANELA_PADRAO_DIAS = 90;
 
 const SITUACAO_LABELS: Record<string, string> = {
   AGENDADO: "Agendado",
@@ -99,9 +103,22 @@ export default function Atendimentos() {
   const [situacaoFiltro, setSituacaoFiltro] = useState(TODAS);
   const [desfechos, setDesfechos] = useState<Record<string, AtendimentoUpdateDesfecho>>({});
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
+  const [janelaDias, setJanelaDias] = useState(JANELA_PADRAO_DIAS);
 
-  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
-    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E87: a tela pede o RECORTE, não o acervo — só ATENDIMENTO, dos últimos 90
+  // dias em diante. `de` sem `ate` de propósito: a janela padrão nunca pode
+  // esconder um atendimento futuro. "Carregar mais antigo" dobra a janela;
+  // keepPreviousData segura a lista atual enquanto a maior chega.
+  const paramsJanela = {
+    tipo: "ATENDIMENTO" as const,
+    de: addDias(hojeLocal(), -janelaDias),
+  };
+  const atendimentos = useListAtendimentos(activeLojaId!, paramsJanela, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsJanela),
+      enabled: !!activeLojaId,
+      placeholderData: keepPreviousData,
+    },
   });
   const equipe = useListEquipe(activeLojaId!, {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
@@ -130,10 +147,11 @@ export default function Atendimentos() {
     ? situacaoFiltro
     : TODAS;
 
+  // Filtros de situação/vendedora/busca seguem no cliente — sobre o RECORTE
+  // que a janela pediu, não sobre o acervo (E87).
   const lista = useMemo(() => {
     const buscaLower = busca.trim().toLowerCase();
     const filtrada = (atendimentos.data ?? [])
-      .filter((a) => a.tipo === "ATENDIMENTO")
       .filter((a) =>
         historico
           ? a.situacao === "CONCLUIDO" || a.situacao === "FALTOU"
@@ -533,7 +551,7 @@ export default function Atendimentos() {
         </div>
       )}
 
-      <div className="border-t pt-5">
+      <div className="border-t pt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
         <Link
           to={
             historico
@@ -544,6 +562,18 @@ export default function Atendimentos() {
         >
           {historico ? "← Voltar à fila de atendimentos" : "Ver atendimentos anteriores"}
         </Link>
+        {/* E87: ver mais longe no passado é uma escolha explícita — dobra a janela. */}
+        <span className="text-xs text-muted-foreground">
+          Mostrando os últimos {janelaDias} dias (e tudo que vem pela frente).
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={atendimentos.isFetching}
+          onClick={() => setJanelaDias((d) => d * 2)}
+        >
+          Carregar mais antigo
+        </Button>
       </div>
 
       <AlertDialog open={!!confirmacao} onOpenChange={(aberto) => !aberto && setConfirmacao(null)}>

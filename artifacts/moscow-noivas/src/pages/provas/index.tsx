@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
-  type Atendimento,
 } from "@workspace/api-client-react";
+import { hojeLocal, addDias } from "@/lib/financeiro/datas";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,17 +28,21 @@ const JANELA_IMINENTE_DIAS = 7;
  * Agenda de provas do atelier (porte da /provas do feat/orcamentos) — todas as
  * provas da loja (Atendimento{tipo:PROVA}) agrupadas por mês, com deep-link para
  * a reserva. O agendamento vive na Agenda e o ciclo (ajustes/checklist) no
- * detalhe da reserva — não aqui, de propósito. Sem endpoint de provas: filtra a
- * lista de atendimentos client-side.
+ * detalhe da reserva — não aqui, de propósito. Sem endpoint de provas: a lista
+ * de atendimentos com tipo=PROVA e a janela de/ate (E83/E87) já é o recorte.
  */
 export default function Provas() {
   const { lojaId } = useParams();
   const { activeLojaId } = useAuth();
   const [passadas, setPassadas] = useState(false);
 
-  // E79: a tela pede só as PROVAS — o recorte por tipo roda no banco; aqui
-  // sobra o corte futuro/passado, que depende do dia de hoje.
-  const paramsProvas = { tipo: "PROVA" as const };
+  // E79: a tela pede só as PROVAS — o recorte por tipo roda no banco.
+  // E87: o corte futuro/passado também — a janela de/ate do E83 recorta no
+  // servidor (futuras = de hoje, passadas = até ontem), em queries separadas
+  // com cache por chave; keepPreviousData segura a lista anterior no toggle.
+  const paramsProvas = passadas
+    ? { tipo: "PROVA" as const, ate: addDias(hojeLocal(), -1) }
+    : { tipo: "PROVA" as const, de: hojeLocal() };
   const { data: atendimentos, isLoading, isError, error, refetch } = useListAtendimentos(
     activeLojaId!,
     paramsProvas,
@@ -45,15 +50,15 @@ export default function Provas() {
       query: {
         queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsProvas),
         enabled: !!activeLojaId,
+        placeholderData: keepPreviousData,
       },
     },
   );
 
   const provas = useMemo(() => {
-    const lista = (atendimentos ?? []).filter(
-      (a): a is Atendimento => (diasAteLocal(a.inicio) >= 0) !== passadas,
-    );
-    // Próximas: da mais próxima à mais distante; passadas: da mais recente à mais antiga.
+    // O servidor já devolve só o recorte pedido; aqui sobra a ordem da lente:
+    // próximas da mais próxima à mais distante; passadas da mais recente à mais antiga.
+    const lista = [...(atendimentos ?? [])];
     lista.sort((a, b) =>
       passadas
         ? new Date(b.inicio).getTime() - new Date(a.inicio).getTime()

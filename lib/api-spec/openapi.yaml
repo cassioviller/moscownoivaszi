@@ -1900,6 +1900,12 @@ paths:
           required: false
           description: "Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira"
           schema: { type: string }
+        # String enum, não boolean: zod.coerce.boolean() engoliria "false" como true.
+        - name: futuras
+          in: query
+          required: false
+          description: "Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte."
+          schema: { type: string, enum: ["true", "false"] }
       responses:
         "200":
           description: List of bloqueios
