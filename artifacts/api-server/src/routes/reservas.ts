@@ -301,16 +301,26 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     return;
   }
 
+  // E61: null é "desfaça" (limpa a data), ausente é "não mexa" — por isso o
+  // teste é contra undefined, não o ??, que engoliria o null.
   const candidato: BloqueioJanelasInput = {
     id: existente.id,
     tipo: existente.tipo,
     casamentoData: existente.casamentoData,
     provaDataReal: dados.provaDataReal ?? existente.provaDataReal,
-    retiradaDataReal: dados.retiradaDataReal ?? existente.retiradaDataReal,
-    devolucaoDataReal: dados.devolucaoDataReal ?? existente.devolucaoDataReal,
+    retiradaDataReal:
+      dados.retiradaDataReal === undefined ? existente.retiradaDataReal : dados.retiradaDataReal,
+    devolucaoDataReal:
+      dados.devolucaoDataReal === undefined ? existente.devolucaoDataReal : dados.devolucaoDataReal,
     inicio: dados.inicio ?? existente.inicio,
     fim: dados.fim ?? existente.fim,
   };
+
+  // Devolução sem retirada é uma história impossível de contar.
+  if (candidato.devolucaoDataReal && !candidato.retiradaDataReal) {
+    res.status(400).json({ error: "Não dá para desfazer a retirada com a devolução registrada" });
+    return;
+  }
 
   const mudouJanelas =
     dados.provaDataReal !== undefined ||

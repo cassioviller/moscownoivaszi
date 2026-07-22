@@ -157,6 +157,7 @@ import type {
   SimularComissaoInput,
   TrocarSenhaInput,
   Usuario,
+  UsuarioComLojas,
   UsuarioInput,
   UsuarioUpdate,
   Vestido,
@@ -1142,9 +1143,9 @@ export const getListUsuariosUrl = () => {
   return `/api/admin/usuarios`
 }
 
-export const listUsuarios = async ( options?: RequestInit): Promise<Usuario[]> => {
+export const listUsuarios = async ( options?: RequestInit): Promise<UsuarioComLojas[]> => {
 
-  return customFetch<Usuario[]>(getListUsuariosUrl(),
+  return customFetch<UsuarioComLojas[]>(getListUsuariosUrl(),
   {
     ...options,
     method: 'GET'

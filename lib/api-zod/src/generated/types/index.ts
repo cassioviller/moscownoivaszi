@@ -234,6 +234,8 @@ export * from './simulacaoComissaoLinha';
 export * from './simularComissaoInput';
 export * from './trocarSenhaInput';
 export * from './usuario';
+export * from './usuarioComLojas';
+export * from './usuarioComLojasLojasItem';
 export * from './usuarioInput';
 export * from './usuarioUpdate';
 export * from './vestido';

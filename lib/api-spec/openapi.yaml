@@ -246,13 +246,15 @@ paths:
       tags: [admin]
       responses:
         "200":
-          description: List of usuarios
+          description: >-
+            List of usuarios. Cada um traz as lojas vinculadas (E61) — o
+            console responde "essa pessoa entra onde?" sem abrir loja a loja.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Usuario"
+                  $ref: "#/components/schemas/UsuarioComLojas"
     post:
       operationId: createUsuario
       tags: [admin]
@@ -3198,6 +3200,21 @@ components:
         email: { type: string, format: email }
         senha: { type: string, minLength: 6 }
         isSuperAdmin: { type: boolean }
+    UsuarioComLojas:
+      allOf:
+        - $ref: "#/components/schemas/Usuario"
+        - type: object
+          required: [lojas]
+          properties:
+            lojas:
+              type: array
+              description: Lojas onde o usuário tem vínculo (via usuarios_lojas)
+              items:
+                type: object
+                required: [id, nome]
+                properties:
+                  id: { type: string }
+                  nome: { type: string }
     UsuarioUpdate:
       type: object
       properties:
@@ -3984,8 +4001,10 @@ components:
       type: object
       properties:
         provaDataReal: { type: string, format: date-time }
-        retiradaDataReal: { type: string, format: date-time }
-        devolucaoDataReal: { type: string, format: date-time }
+        # E61: null EXPLÍCITO desfaz a movimentação registrada errada (a data
+        # volta a "não aconteceu"); campo ausente segue significando "não mexa".
+        retiradaDataReal: { type: ["string", "null"], format: date-time }
+        devolucaoDataReal: { type: ["string", "null"], format: date-time }
         inicio: { type: string, format: date-time }
         fim: { type: string, format: date-time }
         observacao: { type: string }

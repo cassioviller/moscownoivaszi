@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -8,10 +8,13 @@ import {
   useUpdateAtendimento,
   useListEquipe,
   getListEquipeQueryKey,
+  useCreateOrcamento,
+  getListOrcamentosQueryKey,
   type Atendimento,
   type AtendimentoUpdate,
   type AtendimentoUpdateDesfecho,
 } from "@workspace/api-client-react";
+import { ToastAction } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -104,9 +107,14 @@ export default function Atendimentos() {
     query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const updateAtendimento = useUpdateAtendimento();
+  const createOrcamento = useCreateOrcamento();
+  const navigate = useNavigate();
 
   // Atendimento é do módulo `agenda` no backend, não `leads`.
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
+  // Orçamento é do módulo `leads` — o atalho pós-"Reservou" só aparece para
+  // quem pode criá-lo.
+  const podeCriarOrcamento = podeNoModulo(acessosModulos, "leads", "criar");
 
   // Situações válidas DESTA vista (abertas na fila, fechadas no histórico).
   const opcoesSituacao = historico
@@ -165,6 +173,25 @@ export default function Atendimentos() {
     };
   }, [lista, historico]);
 
+  // E61: "Reservou" é o momento mais quente da loja — o orçamento nasce daqui,
+  // já amarrado à noiva e ao atendimento, sem a vendedora caçar outra tela.
+  const abrirOrcamento = async (a: Atendimento) => {
+    try {
+      const criado = await createOrcamento.mutateAsync({
+        lojaId: activeLojaId!,
+        data: { leadId: a.leadId, atendimentoId: a.id },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListOrcamentosQueryKey(activeLojaId!) });
+      navigate(`/loja/${lojaId}/orcamentos/${criado.id}`);
+    } catch (err) {
+      toast({
+        title: "Erro ao criar orçamento",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const aplicar = async (a: Atendimento, data: AtendimentoUpdate, mensagem: string) => {
     try {
       await updateAtendimento.mutateAsync({
@@ -173,6 +200,18 @@ export default function Atendimentos() {
         data,
       });
       await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
+      if (data.desfecho === "RESERVOU" && podeCriarOrcamento) {
+        toast({
+          title: mensagem,
+          description: "Ela reservou — o próximo passo é o orçamento.",
+          action: (
+            <ToastAction altText="Abrir orçamento da noiva" onClick={() => abrirOrcamento(a)}>
+              Abrir orçamento
+            </ToastAction>
+          ),
+        });
+        return;
+      }
       toast({ title: mensagem });
     } catch (err) {
       toast({
@@ -280,8 +319,6 @@ export default function Atendimentos() {
 
             {podeEditar && a.situacao === "EM_ATENDIMENTO" && (
               <>
-                {/* GAP Onda 3 (orçamentos): "Abrir orçamento" a partir do atendimento —
-                    sem endpoint de criação de orçamento por atendimentoId no client gerado. */}
                 <Select
                   value={desfechoEscolhido ?? ""}
                   onValueChange={(v) =>

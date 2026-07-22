@@ -128,6 +128,22 @@ export default function ReservaDetalhe() {
       "Erro ao registrar a movimentação",
     );
 
+  // E61: a data registrada errada tem conserto — null explícito desfaz, e a
+  // disponibilidade do vestido volta a valer a régua anterior.
+  const desfazerMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal") =>
+    comToast(
+      async () => {
+        await updateBloqueio.mutateAsync({
+          lojaId: activeLojaId!,
+          bloqueioId: bloqueioId!,
+          data: { [campo]: null },
+        });
+        await queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) });
+      },
+      "Movimentação desfeita",
+      "Erro ao desfazer a movimentação",
+    );
+
   const alternarAjuste = (ajuste: Ajuste) =>
     comToast(
       async () => {
@@ -322,8 +338,17 @@ export default function ReservaDetalhe() {
               <p className="text-xs text-muted-foreground">
                 A jornada desta noiva está encerrada.
               </p>
-              {/* GAP Onda 4: desfazer devolução — o PATCH /bloqueios não aceita
-                  limpar a data (null é coagido pelo backend); sem endpoint seguro. */}
+              {podeMovimentar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={updateBloqueio.isPending}
+                  onClick={() => desfazerMovimentacao("devolucaoDataReal")}
+                  data-testid="desfazer-devolucao"
+                >
+                  Desfazer devolução
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : reserva.retiradaDataReal ? (
@@ -357,10 +382,17 @@ export default function ReservaDetalhe() {
                   >
                     Registrar devolução
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={updateBloqueio.isPending}
+                    onClick={() => desfazerMovimentacao("retiradaDataReal")}
+                    data-testid="desfazer-retirada"
+                  >
+                    Desfazer retirada
+                  </Button>
                 </div>
               )}
-              {/* GAP Onda 4: desfazer retirada — o PATCH /bloqueios não aceita
-                  limpar a data (null é coagido pelo backend); sem endpoint seguro. */}
             </CardContent>
           </Card>
         ) : (

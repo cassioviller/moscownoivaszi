@@ -137,6 +137,16 @@ export interface UsuarioInput {
   isSuperAdmin?: boolean;
 }
 
+export type UsuarioComLojasLojasItem = {
+  id: string;
+  nome: string;
+};
+
+export type UsuarioComLojas = Usuario & {
+  /** Lojas onde o usuário tem vínculo (via usuarios_lojas) */
+  lojas: UsuarioComLojasLojasItem[];
+};
+
 export interface UsuarioUpdate {
   /** @minLength 1 */
   nome?: string;
@@ -1167,8 +1177,10 @@ export interface BloqueioVestidoInput {
 
 export interface BloqueioVestidoUpdate {
   provaDataReal?: string;
-  retiradaDataReal?: string;
-  devolucaoDataReal?: string;
+  /** @nullable */
+  retiradaDataReal?: string | null;
+  /** @nullable */
+  devolucaoDataReal?: string | null;
   inicio?: string;
   fim?: string;
   observacao?: string;

@@ -173,7 +173,28 @@ router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
 // Usuarios
 router.get("/admin/usuarios", async (_req, res): Promise<void> => {
   const usuarios = await db.select().from(usuariosTable).orderBy(usuariosTable.nome);
-  res.json(ListUsuariosResponse.parse(usuarios));
+  // E61: o console responde "essa pessoa entra onde?" — os vínculos vêm numa
+  // consulta só e são agrupados aqui, não N+1 por usuário.
+  const vinculos = await db
+    .select({
+      usuarioId: usuariosLojasTable.usuarioId,
+      lojaId: lojasTable.id,
+      lojaNome: lojasTable.nome,
+    })
+    .from(usuariosLojasTable)
+    .innerJoin(lojasTable, eq(usuariosLojasTable.lojaId, lojasTable.id))
+    .orderBy(lojasTable.nome);
+  const lojasPorUsuario = new Map<string, { id: string; nome: string }[]>();
+  for (const v of vinculos) {
+    const lista = lojasPorUsuario.get(v.usuarioId) ?? [];
+    lista.push({ id: v.lojaId, nome: v.lojaNome });
+    lojasPorUsuario.set(v.usuarioId, lista);
+  }
+  res.json(
+    ListUsuariosResponse.parse(
+      usuarios.map((u) => ({ ...u, lojas: lojasPorUsuario.get(u.id) ?? [] })),
+    ),
+  );
 });
 
 router.post("/admin/usuarios", async (req, res): Promise<void> => {

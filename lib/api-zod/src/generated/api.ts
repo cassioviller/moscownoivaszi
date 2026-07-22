@@ -269,7 +269,12 @@ export const ListUsuariosResponseItem = zod.object({
   "ativo": zod.boolean(),
   "isSuperAdmin": zod.boolean(),
   "precisaTrocarSenha": zod.boolean().optional()
-})
+}).and(zod.object({
+  "lojas": zod.array(zod.object({
+  "id": zod.string(),
+  "nome": zod.string()
+})).describe('Lojas onde o usuário tem vínculo (via usuarios_lojas)')
+}))
 export const ListUsuariosResponse = zod.array(ListUsuariosResponseItem)
 
 
@@ -3737,8 +3742,8 @@ export const UpdateBloqueioParams = zod.object({
 
 export const UpdateBloqueioBody = zod.object({
   "provaDataReal": zod.coerce.date().optional(),
-  "retiradaDataReal": zod.coerce.date().optional(),
-  "devolucaoDataReal": zod.coerce.date().optional(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().optional(),
   "fim": zod.coerce.date().optional(),
   "observacao": zod.string().optional()

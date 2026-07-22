@@ -345,9 +345,11 @@ export default function AdminConsole() {
                         {u.isSuperAdmin && <Badge className="text-[10px]">Superadmin</Badge>}
                       </span>
                       <span className="text-xs text-muted-foreground">{u.email}</span>
-                      {/* GAP Onda 2+: lojas vinculadas do usuário — listUsuarios
-                          devolve apenas o Usuario, sem os vínculos por loja que a
-                          tela do orcamentos exibia ("Loja A, Loja B" / "sem loja"). */}
+                      <span className="block text-xs text-muted-foreground">
+                        {u.lojas.length > 0
+                          ? u.lojas.map((l) => l.nome).join(", ")
+                          : "Sem loja vinculada"}
+                      </span>
                     </div>
                     <span className="flex items-center gap-2 shrink-0">
                       <Badge variant={u.ativo ? "outline" : "secondary"}>

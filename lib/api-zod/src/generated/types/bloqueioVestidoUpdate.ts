@@ -8,8 +8,10 @@
 
 export interface BloqueioVestidoUpdate {
   provaDataReal?: Date;
-  retiradaDataReal?: Date;
-  devolucaoDataReal?: Date;
+  /** @nullable */
+  retiradaDataReal?: Date | null;
+  /** @nullable */
+  devolucaoDataReal?: Date | null;
   inicio?: Date;
   fim?: Date;
   observacao?: string;
