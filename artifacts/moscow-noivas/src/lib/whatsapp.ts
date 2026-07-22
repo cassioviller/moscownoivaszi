@@ -73,6 +73,28 @@ export function msgCobranca(p: Cobranca): string {
   ].join("\n");
 }
 
+export type OrcamentoVencendo = {
+  noivaNome?: string | null;
+  /** Validade do orçamento (instante). */
+  validade: string | Date;
+  lojaNome?: string | null;
+};
+
+/**
+ * Lembrete de orçamento vencendo (E69) — o empurrão gentil antes da validade
+ * passar em silêncio. Mesmo tom concierge da cobrança: convite, não pressão.
+ */
+export function msgOrcamentoVencendo(p: OrcamentoVencendo): string {
+  const quem = p.noivaNome || "noiva";
+  const daLoja = p.lojaNome ? `da ${p.lojaNome}` : "do atelier";
+  const ate = diaFmt.format(new Date(p.validade));
+  return [
+    `Olá, ${quem}! Aqui é ${daLoja}.`,
+    `Seu orçamento está guardado até ${ate} — depois disso os valores podem mudar.`,
+    "Se quiser conversar sobre qualquer detalhe, estou por aqui.",
+  ].join("\n");
+}
+
 /** Mensagem de confirmação do atendimento/prova — criação e véspera usam a mesma. */
 export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
   const quando = `${diaFmt.format(new Date(p.inicio))} às ${horaFmt.format(new Date(p.inicio))}`;

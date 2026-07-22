@@ -21,6 +21,7 @@ import {
   Sparkles,
   Scissors,
   Bookmark,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -39,6 +40,7 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
       { icon: Gem, label: "Noivas", href: "/noivas", modulo: "leads" },
       { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
       { icon: CalendarCheck, label: "Atendimentos", href: "/atendimentos", modulo: "agenda" },
+      { icon: MessageCircle, label: "Mensagens de hoje", href: "/mensagens", modulo: "agenda" },
     ],
   },
   {

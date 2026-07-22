@@ -21,6 +21,7 @@ import TrocarSenha from "@/pages/trocar-senha";
 import Agenda from "@/pages/agenda";
 import AgendaSemana from "@/pages/agenda/semana";
 import Atendimentos from "@/pages/atendimentos";
+import MensagensDoDia from "@/pages/mensagens";
 import NovoAtendimento from "@/pages/atendimentos/novo";
 import ConfigAtendimentos from "@/pages/atendimentos/config";
 import Ajustes from "@/pages/ajustes";
@@ -183,6 +184,7 @@ function App() {
               <Route path="noivas/:leadId/interesses" element={<InteressesNoiva />} />
               <Route path="agenda" element={<Agenda />} />
               <Route path="agenda/semana" element={<AgendaSemana />} />
+              <Route path="mensagens" element={<MensagensDoDia />} />
               <Route path="atendimentos" element={<Atendimentos />} />
               <Route path="atendimentos/novo" element={<NovoAtendimento />} />
               <Route path="atendimentos/config" element={<ConfigAtendimentos />} />
