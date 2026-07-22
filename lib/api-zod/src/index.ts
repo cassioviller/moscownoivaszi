@@ -20,4 +20,6 @@ export {
   ListBloqueiosParams,
   ListAuditoriaParams,
   ExportarAuditoriaParams,
+  ListOrcamentosParams,
+  ListContratosParams,
 } from "./generated/api";

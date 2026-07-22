@@ -21,6 +21,7 @@ import {
   GerarPlanoParcelasBody,
   GerarPlanoParcelasResponse,
   ListContratosResponse,
+  ListContratosQueryParams,
   CreateContratoBody,
   CreateContratoResponse,
   GetContratoResponse,
@@ -70,8 +71,16 @@ async function contratoAtivo(contratoId: string, lojaId: string): Promise<boolea
 
 router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  const query = ListContratosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  // E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
   const contratos = await db.query.contratosTable.findMany({
-    where: eq(contratosTable.lojaId, lojaId),
+    where: query.data.leadId
+      ? and(eq(contratosTable.lojaId, lojaId), eq(contratosTable.leadId, query.data.leadId))
+      : eq(contratosTable.lojaId, lojaId),
     with: {
       lead: true,
       vendedora: true,

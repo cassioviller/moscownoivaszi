@@ -133,7 +133,7 @@ export default function OrcamentoDetail() {
   );
   // O GetOrcamento não expõe o contrato gerado; buscamos na lista de contratos
   // (client-side, só quando APROVADO) para alternar Gerar/Ver contrato.
-  const contratos = useListContratos(activeLojaId!, {
+  const contratos = useListContratos(activeLojaId!, undefined, {
     query: {
       queryKey: getListContratosQueryKey(activeLojaId!),
       enabled: !!activeLojaId && orcamento?.status === "APROVADO",

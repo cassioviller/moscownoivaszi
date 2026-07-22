@@ -61,7 +61,7 @@ export default function Orcamentos() {
   const [open, setOpen] = useState(false);
   const [filtro, setFiltro] = useState("todos");
 
-  const { data: orcamentos, isLoading, isError, refetch } = useListOrcamentos(activeLojaId!, { query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const { data: orcamentos, isLoading, isError, refetch } = useListOrcamentos(activeLojaId!, undefined, { query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const leads = useListLeads(activeLojaId!, undefined, { query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createOrcamento = useCreateOrcamento();
 

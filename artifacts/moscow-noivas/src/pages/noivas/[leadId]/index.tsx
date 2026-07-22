@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -88,11 +88,19 @@ export default function NoivaDetalhe() {
       enabled: !!activeLojaId && !!leadId,
     },
   });
-  const orcamentos = useListOrcamentos(activeLojaId!, {
-    query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E62: o recorte por noiva acontece no banco (`?leadId=`) — o perfil parou
+  // de baixar os orçamentos e contratos da loja inteira para filtrar aqui.
+  const orcamentos = useListOrcamentos(activeLojaId!, { leadId: leadId! }, {
+    query: {
+      queryKey: getListOrcamentosQueryKey(activeLojaId!, { leadId: leadId! }),
+      enabled: !!activeLojaId && !!leadId,
+    },
   });
-  const contratos = useListContratos(activeLojaId!, {
-    query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  const contratos = useListContratos(activeLojaId!, { leadId: leadId! }, {
+    query: {
+      queryKey: getListContratosQueryKey(activeLojaId!, { leadId: leadId! }),
+      enabled: !!activeLojaId && !!leadId,
+    },
   });
   const createOrcamento = useCreateOrcamento();
   const updateLead = useUpdateLead();
@@ -102,15 +110,8 @@ export default function NoivaDetalhe() {
   const [motivoPerda, setMotivoPerda] = useState<LeadUpdatePerdidaMotivo | "">("");
   const [detalhePerda, setDetalhePerda] = useState("");
 
-  // Sem endpoint "por lead": filtra as listas da loja client-side.
-  const orcamentosDaNoiva = useMemo(
-    () => (orcamentos.data ?? []).filter((o) => o.leadId === leadId),
-    [orcamentos.data, leadId],
-  );
-  const contratosDaNoiva = useMemo(
-    () => (contratos.data ?? []).filter((c) => c.leadId === leadId),
-    [contratos.data, leadId],
-  );
+  const orcamentosDaNoiva = orcamentos.data ?? [];
+  const contratosDaNoiva = contratos.data ?? [];
 
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 

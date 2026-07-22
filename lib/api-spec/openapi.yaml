@@ -1756,9 +1756,16 @@ paths:
     get:
       operationId: listOrcamentos
       tags: [orcamentos]
+      # E62: o perfil da noiva filtra no banco, não baixando a loja inteira
+      # para escolher no navegador. Query dentro do get: para não vazar ao POST.
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          schema: { type: string }
       responses:
         "200":
-          description: List of orcamentos
+          description: List of orcamentos (opcionalmente só os de uma noiva)
           content:
             application/json:
               schema:
@@ -1972,9 +1979,15 @@ paths:
     get:
       operationId: listContratos
       tags: [contratos]
+      # E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          schema: { type: string }
       responses:
         "200":
-          description: List of contratos
+          description: List of contratos (opcionalmente só os de uma noiva)
           content:
             application/json:
               schema:

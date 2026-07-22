@@ -25,7 +25,7 @@ export default function Contratos() {
   const lojaId = lojaIdParam ?? activeLojaId;
   const navigate = useNavigate();
   const [filtro, setFiltro] = useState<string>("todos");
-  const { data: contratos, isLoading, isError, refetch } = useListContratos(activeLojaId!, { query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const { data: contratos, isLoading, isError, refetch } = useListContratos(activeLojaId!, undefined, { query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
 
   const filtroAtivo = FILTROS.find((f) => f.chave === filtro) ?? FILTROS[0];
   const lista = useMemo(

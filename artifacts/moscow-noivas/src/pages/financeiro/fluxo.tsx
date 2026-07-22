@@ -119,7 +119,7 @@ export default function FluxoCaixa() {
   });
 
   // A parcela não traz o contrato aninhado; a noiva vem da lista de contratos.
-  const contratos = useListContratos(activeLojaId!, {
+  const contratos = useListContratos(activeLojaId!, undefined, {
     query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 

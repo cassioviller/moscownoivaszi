@@ -3835,6 +3835,10 @@ export const ListOrcamentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const ListOrcamentosQueryParams = zod.object({
+  "leadId": zod.coerce.string().optional()
+})
+
 export const ListOrcamentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -4150,6 +4154,10 @@ export const GetOrcamentoPublicoResponse = zod.object({
 
 export const ListContratosParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const ListContratosQueryParams = zod.object({
+  "leadId": zod.coerce.string().optional()
 })
 
 export const ListContratosResponseItem = zod.object({

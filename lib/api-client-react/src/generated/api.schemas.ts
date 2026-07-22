@@ -2306,8 +2306,16 @@ export type ListBloqueiosParams = {
 vestidoId?: string;
 };
 
+export type ListOrcamentosParams = {
+leadId?: string;
+};
+
 export type GetOrcamentoPublicoParams = {
 token: string;
+};
+
+export type ListContratosParams = {
+leadId?: string;
 };
 
 export type ListParcelasParams = {

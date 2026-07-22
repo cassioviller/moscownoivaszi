@@ -103,8 +103,10 @@ import type {
   ListAuditoriaParams,
   ListBloqueiosParams,
   ListComissaoFechamentosParams,
+  ListContratosParams,
   ListLeadsParams,
   ListLookbooksParams,
+  ListOrcamentosParams,
   ListPagamentosParams,
   ListParcelasParams,
   LoginInput,
@@ -6928,17 +6930,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteBloqueioMutationOptions(options));
     }
 
-export const getListOrcamentosUrl = (lojaId: string,) => {
+export const getListOrcamentosUrl = (lojaId: string,
+    params?: ListOrcamentosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/orcamentos`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/orcamentos?${stringifiedParams}` : `/api/lojas/${lojaId}/orcamentos`
 }
 
-export const listOrcamentos = async (lojaId: string, options?: RequestInit): Promise<Orcamento[]> => {
+export const listOrcamentos = async (lojaId: string,
+    params?: ListOrcamentosParams, options?: RequestInit): Promise<Orcamento[]> => {
 
-  return customFetch<Orcamento[]>(getListOrcamentosUrl(lojaId),
+  return customFetch<Orcamento[]>(getListOrcamentosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -6951,23 +6962,25 @@ export const listOrcamentos = async (lojaId: string, options?: RequestInit): Pro
 
 
 
-export const getListOrcamentosQueryKey = (lojaId: string,) => {
+export const getListOrcamentosQueryKey = (lojaId: string,
+    params?: ListOrcamentosParams,) => {
     return [
-    `/api/lojas/${lojaId}/orcamentos`
+    `/api/lojas/${lojaId}/orcamentos`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListOrcamentosQueryOptions = <TData = Awaited<ReturnType<typeof listOrcamentos>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrcamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListOrcamentosQueryOptions = <TData = Awaited<ReturnType<typeof listOrcamentos>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListOrcamentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrcamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListOrcamentosQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListOrcamentosQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrcamentos>>> = ({ signal }) => listOrcamentos(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrcamentos>>> = ({ signal }) => listOrcamentos(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -6982,11 +6995,12 @@ export type ListOrcamentosQueryError = ErrorType<unknown>
 
 
 export function useListOrcamentos<TData = Awaited<ReturnType<typeof listOrcamentos>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrcamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListOrcamentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrcamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListOrcamentosQueryOptions(lojaId,options)
+  const queryOptions = getListOrcamentosQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -7755,17 +7769,26 @@ export function useGetOrcamentoPublico<TData = Awaited<ReturnType<typeof getOrca
 
 
 
-export const getListContratosUrl = (lojaId: string,) => {
+export const getListContratosUrl = (lojaId: string,
+    params?: ListContratosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/contratos`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/contratos?${stringifiedParams}` : `/api/lojas/${lojaId}/contratos`
 }
 
-export const listContratos = async (lojaId: string, options?: RequestInit): Promise<Contrato[]> => {
+export const listContratos = async (lojaId: string,
+    params?: ListContratosParams, options?: RequestInit): Promise<Contrato[]> => {
 
-  return customFetch<Contrato[]>(getListContratosUrl(lojaId),
+  return customFetch<Contrato[]>(getListContratosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -7778,23 +7801,25 @@ export const listContratos = async (lojaId: string, options?: RequestInit): Prom
 
 
 
-export const getListContratosQueryKey = (lojaId: string,) => {
+export const getListContratosQueryKey = (lojaId: string,
+    params?: ListContratosParams,) => {
     return [
-    `/api/lojas/${lojaId}/contratos`
+    `/api/lojas/${lojaId}/contratos`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListContratosQueryOptions = <TData = Awaited<ReturnType<typeof listContratos>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContratos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListContratosQueryOptions = <TData = Awaited<ReturnType<typeof listContratos>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListContratosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContratos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListContratosQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListContratosQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContratos>>> = ({ signal }) => listContratos(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContratos>>> = ({ signal }) => listContratos(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -7809,11 +7834,12 @@ export type ListContratosQueryError = ErrorType<unknown>
 
 
 export function useListContratos<TData = Awaited<ReturnType<typeof listContratos>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContratos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListContratosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContratos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListContratosQueryOptions(lojaId,options)
+  const queryOptions = getListContratosQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

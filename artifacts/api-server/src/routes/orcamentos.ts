@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db, orcamentosTable, orcamentoItensTable, leadsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { 
+import {
   ListOrcamentosResponse,
+  ListOrcamentosQueryParams,
   CreateOrcamentoBody,
   CreateOrcamentoResponse,
   GetOrcamentoResponse,
@@ -41,8 +42,16 @@ router.use("/lojas/:lojaId/orcamentos", requireModulo("leads"));
 
 router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  const query = ListOrcamentosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  // E62: o perfil da noiva pede `?leadId=` e o recorte acontece no banco.
   const orcamentos = await db.query.orcamentosTable.findMany({
-    where: eq(orcamentosTable.lojaId, lojaId),
+    where: query.data.leadId
+      ? and(eq(orcamentosTable.lojaId, lojaId), eq(orcamentosTable.leadId, query.data.leadId))
+      : eq(orcamentosTable.lojaId, lojaId),
     with: {
       lead: true,
       vendedora: true,
