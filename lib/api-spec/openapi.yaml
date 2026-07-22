@@ -2106,6 +2106,41 @@ paths:
         "410":
           description: Link expirado
 
+  /orcamentos/publico/aceite:
+    post:
+      operationId: aceitarOrcamentoPublico
+      tags: [orcamentos]
+      security: []
+      summary: A noiva aceita o orçamento pelo link — sem login
+      description: >
+        E74: "ela viu" vira "ela concordou com ESTA versão". Grava instante,
+        número da versão enviada e o hash do conteúdo (E75) no orçamento,
+        avança o status para APROVADO e deixa linha na auditoria. Idempotente:
+        o segundo clique devolve o aceite existente. Não é assinatura
+        certificada — é registro próprio com prova de integridade.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aceite registrado (ou o já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aceitoEm]
+                properties:
+                  aceitoEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Link expirado
+        "422":
+          description: Orçamento não está ENVIADO — nada a aceitar
+
   # ───────────────────────── Contratos ─────────────────────────
   /lojas/{lojaId}/contratos:
     parameters:
@@ -2639,7 +2674,7 @@ paths:
           description: Uma das ações da união fechada (ACOES_AUDITORIA)
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO]
         - name: usuarioId
           in: query
           required: false
@@ -2708,7 +2743,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO]
         - name: usuarioId
           in: query
           required: false
@@ -4256,7 +4291,7 @@ components:
         id: { type: string }
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS]
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO]
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }
@@ -4305,6 +4340,9 @@ components:
         publicoToken: { type: ["string", "null"] }
         publicoExpiraEm: { type: ["string", "null"], format: date-time }
         publicoAbertoEm: { type: ["string", "null"], format: date-time }
+        # E74: o aceite digital — instante e a versão (E75) que a noiva aceitou.
+        aceitoEm: { type: ["string", "null"], format: date-time }
+        aceiteVersao: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
         # E63: a rota sempre embutiu a noiva (`with: lead`), mas o contrato a
         # descartava — e a lista baixava TODOS os leads só para rotular linhas.
@@ -4389,6 +4427,11 @@ components:
         descontoValor: { type: ["number", "null"] }
         totalBruto: { type: number }
         totalLiquido: { type: number }
+        # E75: o que a noiva vê é a última versão ENVIADA, nunca o rascunho
+        # vivo. null = orçamento anterior ao versionamento (mostra o vivo).
+        versaoNumero: { type: ["integer", "null"] }
+        # E74: quando ela já aceitou, a página vira comprovante.
+        aceitoEm: { type: ["string", "null"], format: date-time }
         itens:
           type: array
           items:

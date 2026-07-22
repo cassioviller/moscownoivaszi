@@ -23,5 +23,9 @@ export interface OrcamentoPublico {
   descontoValor?: number | null;
   totalBruto: number;
   totalLiquido: number;
+  /** @nullable */
+  versaoNumero?: number | null;
+  /** @nullable */
+  aceitoEm?: Date | null;
   itens: OrcamentoPublicoItem[];
 }

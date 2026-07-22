@@ -248,6 +248,7 @@ export const AuditoriaItemAcao = {
   CONVITE_CANCELADO: 'CONVITE_CANCELADO',
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
+  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
 } as const;
 
 /**
@@ -1359,6 +1360,10 @@ export interface Orcamento {
   publicoExpiraEm?: string | null;
   /** @nullable */
   publicoAbertoEm?: string | null;
+  /** @nullable */
+  aceitoEm?: string | null;
+  /** @nullable */
+  aceiteVersao?: number | null;
   createdAt: string;
   lead?: Lead;
   itens?: OrcamentoItem[];
@@ -1489,6 +1494,10 @@ export interface OrcamentoPublico {
   descontoValor?: number | null;
   totalBruto: number;
   totalLiquido: number;
+  /** @nullable */
+  versaoNumero?: number | null;
+  /** @nullable */
+  aceitoEm?: string | null;
   itens: OrcamentoPublicoItem[];
 }
 
@@ -2360,6 +2369,14 @@ export type GetOrcamentoPublicoParams = {
 token: string;
 };
 
+export type AceitarOrcamentoPublicoParams = {
+token: string;
+};
+
+export type AceitarOrcamentoPublico200 = {
+  aceitoEm: string;
+};
+
 export type ListContratosParams = {
 leadId?: string;
 };
@@ -2464,6 +2481,7 @@ export const ListAuditoriaAcao = {
   CONVITE_CANCELADO: 'CONVITE_CANCELADO',
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
+  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
 } as const;
 
 export type ExportarAuditoriaParams = {
@@ -2499,6 +2517,7 @@ export const ExportarAuditoriaAcao = {
   CONVITE_CANCELADO: 'CONVITE_CANCELADO',
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
+  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
 } as const;
 
 export type ExportarFolhaParams = {

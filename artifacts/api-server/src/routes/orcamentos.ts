@@ -18,7 +18,9 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { orcamentoVersoesTable } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
 
@@ -35,6 +37,65 @@ async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<vo
   await db.update(leadsTable)
     .set({ etapa: nova, orcamentoAbertoEm: lead.orcamentoAbertoEm ?? new Date(), updatedAt: new Date() })
     .where(eq(leadsTable.id, lead.id));
+}
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/**
+ * E75: marcar ENVIADO congela uma versão — itens, desconto e totais, com hash
+ * sha256 do conteúdo canônico. É a esta versão que o link público e o aceite
+ * da noiva (E74) apontam; a edição posterior não muda o que ela viu.
+ */
+async function criarVersaoEnviada(lojaId: string, orcamentoId: string): Promise<void> {
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+    with: { itens: true },
+  });
+  if (!orcamento) return;
+
+  const itens = orcamento.itens
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .map((it) => ({
+      tipo: it.tipo,
+      descricao: it.descricao,
+      valorUnitario: it.valorUnitario,
+      quantidade: it.quantidade,
+    }));
+  const totalBruto = round2(itens.reduce((acc, it) => acc + it.quantidade * it.valorUnitario, 0));
+  let totalLiquido = totalBruto;
+  if (orcamento.descontoTipo === "PERCENTUAL" && orcamento.descontoValor) {
+    totalLiquido = round2(totalBruto * (1 - orcamento.descontoValor / 100));
+  } else if (orcamento.descontoTipo === "VALOR" && orcamento.descontoValor) {
+    totalLiquido = round2(totalBruto - orcamento.descontoValor);
+  }
+  totalLiquido = Math.max(0, totalLiquido);
+
+  const conteudo = {
+    itens,
+    descontoTipo: orcamento.descontoTipo,
+    descontoValor: orcamento.descontoValor,
+    totalBruto,
+    totalLiquido,
+  };
+  const hash = createHash("sha256").update(JSON.stringify(conteudo)).digest("hex");
+
+  const [{ maior }] = await db
+    .select({ maior: sql<number>`coalesce(max(${orcamentoVersoesTable.numero}), 0)`.mapWith(Number) })
+    .from(orcamentoVersoesTable)
+    .where(eq(orcamentoVersoesTable.orcamentoId, orcamentoId));
+
+  await db.insert(orcamentoVersoesTable).values({
+    id: randomUUID(),
+    lojaId,
+    orcamentoId,
+    numero: maior + 1,
+    itens,
+    descontoTipo: orcamento.descontoTipo,
+    descontoValor: orcamento.descontoValor,
+    totalBruto,
+    totalLiquido,
+    hash,
+  });
 }
 
 router.use(requireSessaoComLoja);
@@ -133,6 +194,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   }
 
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
+  const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
   const [orcamento] = await db.update(orcamentosTable)
     .set({
       ...parsed.data,
@@ -144,6 +206,10 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
     return;
+  }
+  // E75: cada envio congela uma versão — é a ela que o link e o aceite apontam.
+  if (virandoEnviado) {
+    await criarVersaoEnviada(lojaId as string, orcamentoId as string);
   }
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
     where: eq(orcamentosTable.id, orcamento.id),
@@ -242,6 +308,11 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Pro
       updatedAt: new Date(),
     })
     .where(eq(orcamentosTable.id, orcamento.id));
+
+  // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
+  if (orcamento.status === "RASCUNHO") {
+    await criarVersaoEnviada(lojaId, orcamentoId);
+  }
 
   res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });

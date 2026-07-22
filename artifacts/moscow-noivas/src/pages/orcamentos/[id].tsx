@@ -490,6 +490,13 @@ export default function OrcamentoDetail() {
                 ? " · link enviado, ainda não aberto"
                 : ""}
           </p>
+          {/* E74: o aceite digital — mais forte que "ela viu": ela concordou. */}
+          {orcamento.aceitoEm && (
+            <p className="text-sm font-medium text-positivo mt-0.5">
+              Aceito pela noiva em {format(new Date(orcamento.aceitoEm), "dd/MM/yyyy 'às' HH:mm")}
+              {orcamento.aceiteVersao ? ` (versão ${orcamento.aceiteVersao} da proposta)` : ""}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="text-sm px-3 py-1">{statusOrcamentoLabel(orcamento.status)}</Badge>

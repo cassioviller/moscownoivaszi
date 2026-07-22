@@ -1,18 +1,26 @@
 import { useParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetOrcamentoPublico,
   getGetOrcamentoPublicoQueryKey,
+  useAceitarOrcamentoPublico,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2 } from "lucide-react";
+
 import { brl } from "@/lib/formatos";
 
 /**
  * Página PÚBLICA do orçamento (/orcamento/:token) — o que a noiva abre pelo
  * link do WhatsApp, sem login; irmã da /convite/:token do E6. O token fica no
  * path do FRONT (SPA — não passa pelo servidor); para a API vai em query, que
- * não cai em log. Somente leitura: aprovar continua sendo conversa com a
- * vendedora, não um botão.
+ * não cai em log.
+ *
+ * E74: deixou de ser somente-leitura — a noiva ACEITA por aqui. O aceite
+ * grava instante, versão (E75) e hash do conteúdo, e a página vira o
+ * comprovante ("você aceitou em…").
  */
 
 const ERROS: Record<string, string> = {
@@ -33,6 +41,7 @@ const dataFmt = new Intl.DateTimeFormat("pt-BR", {
 
 export default function OrcamentoPublico() {
   const { token } = useParams();
+  const queryClient = useQueryClient();
 
   const params = { token: token! };
   const orcamento = useGetOrcamentoPublico(params, {
@@ -40,6 +49,13 @@ export default function OrcamentoPublico() {
       queryKey: getGetOrcamentoPublicoQueryKey(params),
       enabled: !!token,
       retry: false, // 404/410 são veredito, não falha transitória
+    },
+  });
+
+  const aceitar = useAceitarOrcamentoPublico({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getGetOrcamentoPublicoQueryKey(params) }),
     },
   });
 
@@ -124,6 +140,32 @@ export default function OrcamentoPublico() {
                   {dados!.observacoes}
                 </p>
               )}
+
+              {/* E74: o aceite. Aceita → comprovante; ENVIADO sem aceite → botão. */}
+              {dados!.aceitoEm ? (
+                <div className="flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span>
+                    Você aceitou esta proposta em{" "}
+                    <span className="font-medium">{dataFmt.format(new Date(dados!.aceitoEm))}</span>.
+                    A sua vendedora já foi avisada.
+                  </span>
+                </div>
+              ) : dados!.status === "ENVIADO" ? (
+                <div className="space-y-2 border-t pt-3">
+                  <Button
+                    className="w-full"
+                    disabled={aceitar.isPending}
+                    onClick={() => aceitar.mutate({ params })}
+                    data-testid="aceitar-orcamento"
+                  >
+                    {aceitar.isPending ? "Registrando…" : "Aceitar esta proposta"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Ao aceitar, registramos a data e o conteúdo desta versão da proposta.
+                  </p>
+                </div>
+              ) : null}
 
               <p className="text-xs text-muted-foreground border-t pt-3">
                 {dados!.validade

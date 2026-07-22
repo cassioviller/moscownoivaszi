@@ -22,6 +22,8 @@ import type {
 import type {
   AceitarConviteInput,
   AceitarConviteResultado,
+  AceitarOrcamentoPublico200,
+  AceitarOrcamentoPublicoParams,
   Ajuste,
   AjusteChecklistItem,
   AjusteChecklistItemInput,
@@ -8233,6 +8235,84 @@ export function useGetOrcamentoPublico<TData = Awaited<ReturnType<typeof getOrca
 
 
 
+
+export const getAceitarOrcamentoPublicoUrl = (params: AceitarOrcamentoPublicoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/orcamentos/publico/aceite?${stringifiedParams}` : `/api/orcamentos/publico/aceite`
+}
+
+/**
+ * E74: "ela viu" vira "ela concordou com ESTA versão". Grava instante, número da versão enviada e o hash do conteúdo (E75) no orçamento, avança o status para APROVADO e deixa linha na auditoria. Idempotente: o segundo clique devolve o aceite existente. Não é assinatura certificada — é registro próprio com prova de integridade.
+ * @summary A noiva aceita o orçamento pelo link — sem login
+ */
+export const aceitarOrcamentoPublico = async (params: AceitarOrcamentoPublicoParams, options?: RequestInit): Promise<AceitarOrcamentoPublico200> => {
+
+  return customFetch<AceitarOrcamentoPublico200>(getAceitarOrcamentoPublicoUrl(params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getAceitarOrcamentoPublicoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aceitarOrcamentoPublico>>, TError,{params: AceitarOrcamentoPublicoParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof aceitarOrcamentoPublico>>, TError,{params: AceitarOrcamentoPublicoParams}, TContext> => {
+
+const mutationKey = ['aceitarOrcamentoPublico'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof aceitarOrcamentoPublico>>, {params: AceitarOrcamentoPublicoParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  aceitarOrcamentoPublico(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AceitarOrcamentoPublicoMutationResult = NonNullable<Awaited<ReturnType<typeof aceitarOrcamentoPublico>>>
+
+    export type AceitarOrcamentoPublicoMutationError = ErrorType<void>
+
+    /**
+ * @summary A noiva aceita o orçamento pelo link — sem login
+ */
+export const useAceitarOrcamentoPublico = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aceitarOrcamentoPublico>>, TError,{params: AceitarOrcamentoPublicoParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof aceitarOrcamentoPublico>>,
+        TError,
+        {params: AceitarOrcamentoPublicoParams},
+        TContext
+      > => {
+      return useMutation(getAceitarOrcamentoPublicoMutationOptions(options));
+    }
 
 export const getListContratosUrl = (lojaId: string,
     params?: ListContratosParams,) => {

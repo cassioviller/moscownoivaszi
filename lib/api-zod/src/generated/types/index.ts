@@ -8,6 +8,8 @@
 
 export * from './aceitarConviteInput';
 export * from './aceitarConviteResultado';
+export * from './aceitarOrcamentoPublico200';
+export * from './aceitarOrcamentoPublicoParams';
 export * from './acessosModulos';
 export * from './acoesModulo';
 export * from './ajuste';

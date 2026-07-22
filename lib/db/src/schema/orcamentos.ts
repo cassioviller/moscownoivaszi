@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -27,6 +27,12 @@ export const orcamentosTable = pgTable("orcamentos", {
   publicoToken: text("publico_token"),
   publicoExpiraEm: timestamp("publico_expira_em", { withTimezone: true }),
   publicoAbertoEm: timestamp("publico_aberto_em", { withTimezone: true }),
+  // E74: aceite digital pelo link público — "ela viu" vira "ela concordou com
+  // ESTA versão". O hash prende o aceite ao conteúdo (E75); não é assinatura
+  // certificada, é registro próprio com instante e prova de integridade.
+  aceitoEm: timestamp("aceito_em", { withTimezone: true }),
+  aceiteVersao: integer("aceite_versao"),
+  aceiteHash: text("aceite_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
@@ -52,3 +58,33 @@ export const orcamentoItensTable = pgTable("orcamento_itens", {
 export const insertOrcamentoItemSchema = createInsertSchema(orcamentoItensTable).omit({ createdAt: true });
 export type InsertOrcamentoItem = z.infer<typeof insertOrcamentoItemSchema>;
 export type OrcamentoItem = typeof orcamentoItensTable.$inferSelect;
+
+/**
+ * E75: versões do orçamento — o snapshot de cada ENVIO.
+ *
+ * Edição sobrescrevia: a noiva olhava um link cujo conteúdo mudava embaixo
+ * dela, e o aceite (E74) não teria a que apontar. Marcar ENVIADO congela
+ * itens, desconto e totais numa versão numerada; o link público mostra a
+ * última versão enviada, nunca o rascunho vivo. `hash` (sha256 do conteúdo
+ * canônico) é a integridade que o aceite referencia.
+ */
+export const orcamentoVersoesTable = pgTable("orcamento_versoes", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  orcamentoId: text("orcamento_id")
+    .notNull()
+    .references(() => orcamentosTable.id, { onDelete: "cascade" }),
+  numero: integer("numero").notNull(),
+  /** Itens congelados: [{tipo, descricao, valorUnitario, quantidade}]. */
+  itens: jsonb("itens").notNull(),
+  descontoTipo: descontoTipoEnum("desconto_tipo"),
+  descontoValor: decimal("desconto_valor", { precision: 10, scale: 2, mode: "number" }),
+  totalBruto: decimal("total_bruto", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  totalLiquido: decimal("total_liquido", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  hash: text("hash").notNull(),
+  criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  numeroUnq: uniqueIndex("orcamento_versoes_numero_unq").on(t.orcamentoId, t.numero),
+}));
+
+export type OrcamentoVersao = typeof orcamentoVersoesTable.$inferSelect;

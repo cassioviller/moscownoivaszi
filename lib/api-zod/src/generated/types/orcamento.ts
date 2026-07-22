@@ -32,6 +32,10 @@ export interface Orcamento {
   publicoExpiraEm?: Date | null;
   /** @nullable */
   publicoAbertoEm?: Date | null;
+  /** @nullable */
+  aceitoEm?: Date | null;
+  /** @nullable */
+  aceiteVersao?: number | null;
   createdAt: Date;
   lead?: Lead;
   itens?: OrcamentoItem[];

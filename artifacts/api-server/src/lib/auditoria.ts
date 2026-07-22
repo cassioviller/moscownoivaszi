@@ -26,6 +26,8 @@ export const ACOES_AUDITORIA = [
   "CONVITE_CANCELADO",
   "PERMISSOES_ALTERADAS",
   "PERMISSOES_RESTAURADAS",
+  // E74: a noiva aceitou pelo link publico — sem sessao, autor desnormalizado.
+  "ORCAMENTO_ACEITO",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -57,6 +59,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   CONVITE_CANCELADO: "Convite cancelado",
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
+  ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
