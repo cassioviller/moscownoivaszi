@@ -45,6 +45,7 @@ import Receber from "@/pages/financeiro/receber";
 import Pagar from "@/pages/financeiro/pagar";
 import Folha from "@/pages/financeiro/folha";
 import Auditoria from "@/pages/financeiro/auditoria";
+import Conciliacao from "@/pages/financeiro/conciliacao";
 import Catalogo from "@/pages/catalogo";
 import Noivas from "@/pages/noivas";
 import NovaNoiva from "@/pages/noivas/nova";
@@ -216,6 +217,7 @@ function App() {
                   competência) + o fechamento com a contabilidade. */}
               <Route path="financeiro/folha" element={<Folha />} />
               <Route path="financeiro/auditoria" element={<Auditoria />} />
+              <Route path="financeiro/conciliacao" element={<Conciliacao />} />
               <Route path="comissoes" element={<Comissoes />} />
               <Route path="minha-comissao" element={<MinhaComissao />} />
               <Route path="equipe" element={<Equipe />} />

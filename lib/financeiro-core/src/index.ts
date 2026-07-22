@@ -13,3 +13,4 @@ export * from "./caixa";
 export * from "./saldo";
 export * from "./projecao";
 export * from "./alerta";
+export * from "./extrato";
