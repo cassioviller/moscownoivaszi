@@ -1574,6 +1574,17 @@ paths:
     get:
       operationId: listAtendimentos
       tags: [agenda]
+      parameters:
+        - name: bloqueioId
+          in: query
+          required: false
+          description: "Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva"
+          schema: { type: string }
+        - name: tipo
+          in: query
+          required: false
+          description: "Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira"
+          schema: { type: string, enum: [ATENDIMENTO, PROVA] }
       responses:
         "200":
           description: List of atendimentos
@@ -1870,6 +1881,11 @@ paths:
           required: false
           description: "Filtra os bloqueios de um vestido só (E45)"
           schema: { type: string }
+        - name: leadId
+          in: query
+          required: false
+          description: "Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira"
+          schema: { type: string }
       responses:
         "200":
           description: List of bloqueios
@@ -1903,6 +1919,19 @@ paths:
         required: true
         schema:
           type: string
+    get:
+      operationId: getBloqueio
+      tags: [reservas]
+      summary: Um bloqueio só — a ficha da reserva para de baixar a loja inteira (E79)
+      responses:
+        "200":
+          description: O bloqueio, com vestido e noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueioVestido"
+        "404":
+          description: Não existe ou não é desta loja
     patch:
       operationId: updateBloqueio
       tags: [reservas]

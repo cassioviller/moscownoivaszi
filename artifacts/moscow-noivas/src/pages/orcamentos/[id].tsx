@@ -155,21 +155,18 @@ export default function OrcamentoDetail() {
   const criarLink = useCriarLinkOrcamento();
 
   // E72: as reservas de casamento ativas da noiva — o contrato as prende.
-  const bloqueiosQ = useListBloqueios(activeLojaId!, undefined, {
+  // E79: o recorte por noiva roda no banco; sobra o corte por tipo/cancelado.
+  const paramsBloqueios = { leadId: orcamento?.leadId ?? "" };
+  const bloqueiosQ = useListBloqueios(activeLojaId!, paramsBloqueios, {
     query: {
-      queryKey: getListBloqueiosQueryKey(activeLojaId!),
-      enabled: !!activeLojaId && contratoOpen,
+      queryKey: getListBloqueiosQueryKey(activeLojaId!, paramsBloqueios),
+      enabled: !!activeLojaId && contratoOpen && !!orcamento?.leadId,
     },
   });
   const reservasDaNoiva = useMemo(
     () =>
-      (bloqueiosQ.data ?? []).filter(
-        (b) =>
-          b.leadId === orcamento?.leadId &&
-          b.tipo === "RESERVA_CASAMENTO" &&
-          !b.canceladoEm,
-      ),
-    [bloqueiosQ.data, orcamento?.leadId],
+      (bloqueiosQ.data ?? []).filter((b) => b.tipo === "RESERVA_CASAMENTO" && !b.canceladoEm),
+    [bloqueiosQ.data],
   );
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).

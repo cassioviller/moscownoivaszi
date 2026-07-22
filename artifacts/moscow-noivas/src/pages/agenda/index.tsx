@@ -74,7 +74,7 @@ export default function Agenda() {
   const [searchParams] = useSearchParams();
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
-  const atendimentos = useListAtendimentos(activeLojaId!, { query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const atendimentos = useListAtendimentos(activeLojaId!, undefined, { query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createAtendimento = useCreateAtendimento();

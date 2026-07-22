@@ -35,11 +35,15 @@ export default function Provas() {
   const { activeLojaId } = useAuth();
   const [passadas, setPassadas] = useState(false);
 
+  // E79: a tela pede só as PROVAS — o recorte por tipo roda no banco; aqui
+  // sobra o corte futuro/passado, que depende do dia de hoje.
+  const paramsProvas = { tipo: "PROVA" as const };
   const { data: atendimentos, isLoading, isError, error, refetch } = useListAtendimentos(
     activeLojaId!,
+    paramsProvas,
     {
       query: {
-        queryKey: getListAtendimentosQueryKey(activeLojaId!),
+        queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsProvas),
         enabled: !!activeLojaId,
       },
     },
@@ -47,7 +51,7 @@ export default function Provas() {
 
   const provas = useMemo(() => {
     const lista = (atendimentos ?? []).filter(
-      (a): a is Atendimento => a.tipo === "PROVA" && (diasAteLocal(a.inicio) >= 0) !== passadas,
+      (a): a is Atendimento => (diasAteLocal(a.inicio) >= 0) !== passadas,
     );
     // Próximas: da mais próxima à mais distante; passadas: da mais recente à mais antiga.
     lista.sort((a, b) =>

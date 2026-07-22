@@ -11,4 +11,8 @@ export type ListBloqueiosParams = {
  * Filtra os bloqueios de um vestido só (E45)
  */
 vestidoId?: string;
+/**
+ * Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira
+ */
+leadId?: string;
 };

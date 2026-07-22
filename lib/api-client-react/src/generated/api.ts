@@ -116,6 +116,7 @@ import type {
   LeadUpdate,
   LeadsPage,
   LinkOrcamentoPublico,
+  ListAtendimentosParams,
   ListAuditoriaParams,
   ListBloqueiosParams,
   ListComissaoFechamentosParams,
@@ -5916,17 +5917,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteCabineMutationOptions(options));
     }
 
-export const getListAtendimentosUrl = (lojaId: string,) => {
+export const getListAtendimentosUrl = (lojaId: string,
+    params?: ListAtendimentosParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/atendimentos`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/atendimentos?${stringifiedParams}` : `/api/lojas/${lojaId}/atendimentos`
 }
 
-export const listAtendimentos = async (lojaId: string, options?: RequestInit): Promise<Atendimento[]> => {
+export const listAtendimentos = async (lojaId: string,
+    params?: ListAtendimentosParams, options?: RequestInit): Promise<Atendimento[]> => {
 
-  return customFetch<Atendimento[]>(getListAtendimentosUrl(lojaId),
+  return customFetch<Atendimento[]>(getListAtendimentosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -5939,23 +5949,25 @@ export const listAtendimentos = async (lojaId: string, options?: RequestInit): P
 
 
 
-export const getListAtendimentosQueryKey = (lojaId: string,) => {
+export const getListAtendimentosQueryKey = (lojaId: string,
+    params?: ListAtendimentosParams,) => {
     return [
-    `/api/lojas/${lojaId}/atendimentos`
+    `/api/lojas/${lojaId}/atendimentos`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListAtendimentosQueryOptions = <TData = Awaited<ReturnType<typeof listAtendimentos>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAtendimentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAtendimentosQueryOptions = <TData = Awaited<ReturnType<typeof listAtendimentos>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListAtendimentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAtendimentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListAtendimentosQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListAtendimentosQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAtendimentos>>> = ({ signal }) => listAtendimentos(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAtendimentos>>> = ({ signal }) => listAtendimentos(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -5970,11 +5982,12 @@ export type ListAtendimentosQueryError = ErrorType<unknown>
 
 
 export function useListAtendimentos<TData = Awaited<ReturnType<typeof listAtendimentos>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAtendimentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListAtendimentosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAtendimentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListAtendimentosQueryOptions(lojaId,options)
+  const queryOptions = getListAtendimentosQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -7279,6 +7292,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateBloqueioMutationOptions(options));
     }
+
+export const getGetBloqueioUrl = (lojaId: string,
+    bloqueioId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/bloqueios/${bloqueioId}`
+}
+
+/**
+ * @summary Um bloqueio só — a ficha da reserva para de baixar a loja inteira (E79)
+ */
+export const getBloqueio = async (lojaId: string,
+    bloqueioId: string, options?: RequestInit): Promise<BloqueioVestido> => {
+
+  return customFetch<BloqueioVestido>(getGetBloqueioUrl(lojaId,bloqueioId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBloqueioQueryKey = (lojaId: string,
+    bloqueioId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/bloqueios/${bloqueioId}`
+    ] as const;
+    }
+
+
+export const getGetBloqueioQueryOptions = <TData = Awaited<ReturnType<typeof getBloqueio>>, TError = ErrorType<void>>(lojaId: string,
+    bloqueioId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBloqueio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBloqueioQueryKey(lojaId,bloqueioId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBloqueio>>> = ({ signal }) => getBloqueio(lojaId,bloqueioId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && bloqueioId !== null && bloqueioId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBloqueio>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBloqueioQueryResult = NonNullable<Awaited<ReturnType<typeof getBloqueio>>>
+export type GetBloqueioQueryError = ErrorType<void>
+
+
+/**
+ * @summary Um bloqueio só — a ficha da reserva para de baixar a loja inteira (E79)
+ */
+
+export function useGetBloqueio<TData = Awaited<ReturnType<typeof getBloqueio>>, TError = ErrorType<void>>(
+ lojaId: string,
+    bloqueioId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBloqueio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBloqueioQueryOptions(lojaId,bloqueioId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getUpdateBloqueioUrl = (lojaId: string,
     bloqueioId: string,) => {

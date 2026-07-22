@@ -9,6 +9,7 @@ import {
   UpdateReservaBody,
   UpdateReservaResponse,
   ListBloqueiosResponse,
+  GetBloqueioResponse,
   CreateBloqueioBody,
   CreateBloqueioResponse,
   UpdateBloqueioBody,
@@ -201,15 +202,33 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   // E45: filtro opcional por vestido — a ficha do vestido passa a puxar só os
   // bloqueios dele, em vez de baixar a loja inteira e filtrar no cliente.
+  // E79: mesmo movimento por noiva — a ficha do orçamento (E72) e o portal.
   const vestidoId = typeof req.query.vestidoId === "string" ? req.query.vestidoId : undefined;
+  const leadId = typeof req.query.leadId === "string" ? req.query.leadId : undefined;
   // Joins: telas de reservas/provas exibem vestido "codigo · nome" e a noiva.
   const bloqueios = await db.query.bloqueioVestidosTable.findMany({
-    where: vestidoId
-      ? and(eq(bloqueioVestidosTable.lojaId, lojaId), eq(bloqueioVestidosTable.vestidoId, vestidoId))
-      : eq(bloqueioVestidosTable.lojaId, lojaId),
+    where: and(
+      eq(bloqueioVestidosTable.lojaId, lojaId),
+      ...(vestidoId ? [eq(bloqueioVestidosTable.vestidoId, vestidoId)] : []),
+      ...(leadId ? [eq(bloqueioVestidosTable.leadId, leadId)] : []),
+    ),
     with: { vestido: true, lead: true },
   });
   res.json(ListBloqueiosResponse.parse(bloqueios));
+});
+
+// E79: a ficha da reserva pede UM bloqueio, não a loja inteira.
+router.get("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {
+  const { lojaId, bloqueioId } = req.params as { lojaId: string; bloqueioId: string };
+  const bloqueio = await db.query.bloqueioVestidosTable.findFirst({
+    where: and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)),
+    with: { vestido: true, lead: true },
+  });
+  if (!bloqueio) {
+    res.status(404).json({ error: "Bloqueio not found" });
+    return;
+  }
+  res.json(GetBloqueioResponse.parse(bloqueio));
 });
 
 router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {

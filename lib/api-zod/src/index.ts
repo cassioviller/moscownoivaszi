@@ -26,4 +26,5 @@ export {
   ExpurgarLeadsPerdidosBody,
   GetFluxoCaixaParams,
   GetDreParams,
+  ListAtendimentosParams,
 } from "./generated/api";

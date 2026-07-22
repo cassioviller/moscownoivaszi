@@ -2403,11 +2403,34 @@ export type GetDesempenhoVendedoras200Item = {
 
 export type ExportarDadosLead200 = { [key: string]: unknown };
 
+export type ListAtendimentosParams = {
+/**
+ * Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva
+ */
+bloqueioId?: string;
+/**
+ * Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira
+ */
+tipo?: ListAtendimentosTipo;
+};
+
+export type ListAtendimentosTipo = typeof ListAtendimentosTipo[keyof typeof ListAtendimentosTipo];
+
+
+export const ListAtendimentosTipo = {
+  ATENDIMENTO: 'ATENDIMENTO',
+  PROVA: 'PROVA',
+} as const;
+
 export type ListBloqueiosParams = {
 /**
  * Filtra os bloqueios de um vestido só (E45)
  */
 vestidoId?: string;
+/**
+ * Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira
+ */
+leadId?: string;
 };
 
 export type ListOrcamentosParams = {

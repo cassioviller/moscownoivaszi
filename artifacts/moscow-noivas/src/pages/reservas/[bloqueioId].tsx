@@ -3,7 +3,8 @@ import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  useListBloqueios,
+  useGetBloqueio,
+  getGetBloqueioQueryKey,
   getListBloqueiosQueryKey,
   useUpdateBloqueio,
   useListAtendimentos,
@@ -60,11 +61,20 @@ export default function ReservaDetalhe() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const bloqueios = useListBloqueios(activeLojaId!, undefined, {
-    query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E79: a ficha pede UM bloqueio e as provas DELE — os recortes rodam no
+  // banco; a tela parou de baixar a loja inteira para achar um id.
+  const bloqueios = useGetBloqueio(activeLojaId!, bloqueioId!, {
+    query: {
+      queryKey: getGetBloqueioQueryKey(activeLojaId!, bloqueioId!),
+      enabled: !!activeLojaId && !!bloqueioId,
+    },
   });
-  const atendimentos = useListAtendimentos(activeLojaId!, {
-    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  const paramsProvas = { bloqueioId: bloqueioId!, tipo: "PROVA" as const };
+  const atendimentos = useListAtendimentos(activeLojaId!, paramsProvas, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsProvas),
+      enabled: !!activeLojaId && !!bloqueioId,
+    },
   });
 
   const updateBloqueio = useUpdateBloqueio();
@@ -75,11 +85,7 @@ export default function ReservaDetalhe() {
   const updateItem = useUpdateChecklistItem();
   const removeItem = useRemoveChecklistItem();
 
-  // Sem GET de bloqueio único: encontra na lista da loja.
-  const reserva = useMemo(
-    () => (bloqueios.data ?? []).find((b) => b.id === bloqueioId) ?? null,
-    [bloqueios.data, bloqueioId],
-  );
+  const reserva = bloqueios.data ?? null;
 
   // E71: as avarias deste bloqueio + o contrato ATIVO da noiva (para o custo
   // do reparo poder virar parcela cobrável).
@@ -171,10 +177,11 @@ export default function ReservaDetalhe() {
     );
   const provas = useMemo(
     () =>
-      (atendimentos.data ?? [])
-        .filter((a) => a.bloqueioId === bloqueioId && a.tipo === "PROVA")
-        .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime()),
-    [atendimentos.data, bloqueioId],
+      // O recorte (bloqueio + PROVA) já veio do servidor; sobra ordenar.
+      [...(atendimentos.data ?? [])].sort(
+        (a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime(),
+      ),
+    [atendimentos.data],
   );
   const podeMovimentar = podeNoModulo(acessosModulos, "vestidos", "editar");
   const podeAjustes = podeNoModulo(acessosModulos, "agenda", "ver");
@@ -217,7 +224,11 @@ export default function ReservaDetalhe() {
           bloqueioId: bloqueioId!,
           data: { [campo]: diaParaISO(dataMovimentacaoAtual) },
         });
-        await queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) });
+        // A ficha lê o GET único (E79); a lista segue invalidada pelas irmãs.
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetBloqueioQueryKey(activeLojaId!, bloqueioId!) }),
+          queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
+        ]);
         setDataMovimentacao(null);
       },
       "Movimentação registrada",
@@ -234,7 +245,11 @@ export default function ReservaDetalhe() {
           bloqueioId: bloqueioId!,
           data: { [campo]: null },
         });
-        await queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) });
+        // A ficha lê o GET único (E79); a lista segue invalidada pelas irmãs.
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetBloqueioQueryKey(activeLojaId!, bloqueioId!) }),
+          queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
+        ]);
       },
       "Movimentação desfeita",
       "Erro ao desfazer a movimentação",

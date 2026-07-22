@@ -60,7 +60,7 @@ export default function Dashboard() {
   const paradosQuery = useGetLeadsParados(activeLojaId!, {
     query: { queryKey: getGetLeadsParadosQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
   });
-  const atendimentosQuery = useListAtendimentos(activeLojaId!, {
+  const atendimentosQuery = useListAtendimentos(activeLojaId!, undefined, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId && veAgenda },
   });
 

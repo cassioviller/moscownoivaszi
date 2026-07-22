@@ -171,6 +171,8 @@ export * from './leadUpdate';
 export * from './leadUpdateEtapa';
 export * from './leadUpdatePerdidaMotivo';
 export * from './linkOrcamentoPublico';
+export * from './listAtendimentosParams';
+export * from './listAtendimentosTipo';
 export * from './listAuditoriaAcao';
 export * from './listAuditoriaParams';
 export * from './listBloqueiosParams';

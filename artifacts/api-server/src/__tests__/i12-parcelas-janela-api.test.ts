@@ -100,7 +100,7 @@ describe("I12 — GET /parcelas: janela de vencimento e noiva embutida", () => {
   // Roda por último de propósito — recebe parcelas e muda o status da fixture.
   it("status=abertas e recebidasDe recortam pela régua do E49", async () => {
     const tudo = await agent.get(`/api/lojas/${f.lojaId}/financeiro/parcelas`).expect(200);
-    const [primeira, segunda] = minhas(tudo.body) as Array<{ id: string }>;
+    const [primeira, segunda] = minhas(tudo.body) as unknown as Array<{ id: string }>;
 
     // Quita a primeira e recebe metade da segunda: PAGA + PARCIAL + PREVISTA.
     const agora = new Date().toISOString();

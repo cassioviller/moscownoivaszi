@@ -38,7 +38,7 @@ export default function AgendaSemana() {
   }, [ancoraParam]);
   const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(segunda, i)), [segunda]);
 
-  const atendimentos = useListAtendimentos(activeLojaId!, {
+  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const cabines = useListCabines(activeLojaId!, {

@@ -50,7 +50,7 @@ export default function MensagensDoDia() {
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
   const veLeads = podeNoModulo(acessosModulos, "leads", "ver");
 
-  const atendimentos = useListAtendimentos(activeLojaId!, {
+  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId && veAgenda },
   });
   const confirmarAtendimento = useConfirmarAtendimento({

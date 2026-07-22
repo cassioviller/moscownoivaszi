@@ -100,7 +100,7 @@ export default function Atendimentos() {
   const [desfechos, setDesfechos] = useState<Record<string, AtendimentoUpdateDesfecho>>({});
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
 
-  const atendimentos = useListAtendimentos(activeLojaId!, {
+  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {

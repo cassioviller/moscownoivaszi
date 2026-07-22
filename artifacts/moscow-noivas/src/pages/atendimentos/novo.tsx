@@ -130,7 +130,7 @@ export default function NovoAtendimento() {
   const bloqueios = useListBloqueios(activeLojaId!, undefined, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
-  const atendimentos = useListAtendimentos(activeLojaId!, {
+  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const disponibilidade = useGetDisponibilidade(activeLojaId!, {

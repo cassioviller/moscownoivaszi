@@ -96,7 +96,7 @@ export function SinoNotificacoes() {
       retry: false,
     },
   });
-  const atendimentos = useListAtendimentos(activeLojaId!, {
+  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!),
       enabled: !!activeLojaId && veAgenda,

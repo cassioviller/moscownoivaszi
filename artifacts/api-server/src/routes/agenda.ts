@@ -11,6 +11,7 @@ import {
   UpdateCabineResponse,
   DeleteCabineParams,
   ListAtendimentosResponse,
+  ListAtendimentosQueryParams,
   CreateAtendimentoBody,
   CreateAtendimentoResponse,
   UpdateAtendimentoParams,
@@ -182,8 +183,20 @@ router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void
 // Atendimentos
 router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  // E79: recortes opcionais — a ficha da reserva pede as provas do bloqueio,
+  // a tela de provas pede só PROVA; ninguém baixa a agenda inteira para filtrar.
+  const query = ListAtendimentosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const { bloqueioId, tipo } = query.data;
   const atendimentos = await db.query.atendimentosTable.findMany({
-    where: eq(atendimentosTable.lojaId, lojaId),
+    where: and(
+      eq(atendimentosTable.lojaId, lojaId),
+      ...(bloqueioId ? [eq(atendimentosTable.bloqueioId, bloqueioId)] : []),
+      ...(tipo ? [eq(atendimentosTable.tipo, tipo)] : []),
+    ),
     with: ATENDIMENTO_WITH,
     orderBy: atendimentosTable.inicio,
   });
