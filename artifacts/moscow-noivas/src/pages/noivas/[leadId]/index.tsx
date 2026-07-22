@@ -17,6 +17,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { HistoricoContato } from "@/components/historico-contato";
 import { LookbookNoiva } from "./lookbook";
+import { PortalNoiva } from "./portal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -496,6 +497,9 @@ export default function NoivaDetalhe() {
             )}
           </CardContent>
         </Card>
+
+        {/* Portal (E78): o link único que substitui gradualmente os soltos. */}
+        <PortalNoiva leadId={leadId!} />
 
         {/* Lookbook (E21): a seleção provada vira link para rever em casa. */}
         <LookbookNoiva leadId={leadId!} />

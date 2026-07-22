@@ -14,6 +14,7 @@ import Login from "@/pages/login";
 import Convite from "@/pages/convite";
 import OrcamentoPublico from "@/pages/orcamento-publico";
 import LookbookPublico from "@/pages/lookbook-publico";
+import NoivaPortal from "@/pages/noiva-portal";
 import SelecionarLoja from "@/pages/selecionar-loja";
 import Dashboard from "@/pages/dashboard";
 import TrocarSenha from "@/pages/trocar-senha";
@@ -153,6 +154,8 @@ function App() {
             <Route path="/orcamento/:token" element={<OrcamentoPublico />} />
             {/* Pública: o lookbook dos vestidos provados, sem conta (E21). */}
             <Route path="/lookbook/:token" element={<LookbookPublico />} />
+            {/* Pública: o portal da noiva — um link para tudo dela (E78). */}
+            <Route path="/noiva/:token" element={<NoivaPortal />} />
             {/* E57: fora do AppLayout de propósito — quem precisa trocar a
                 senha não deve ver a sidebar nem alcançar nenhum módulo. */}
             <Route
