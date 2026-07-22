@@ -30,6 +30,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
+  LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -49,6 +50,7 @@ export const ACOES_FILTRAVEIS = [
   "PERMISSOES_ALTERADAS",
   "PERMISSOES_RESTAURADAS",
   "ORCAMENTO_ACEITO",
+  "LEADS_ANONIMIZADOS",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];

@@ -25,6 +25,11 @@ export const leadsTable = pgTable("leads", {
   perdidaMotivo: leadPerdidaMotivoEnum("perdida_motivo"),
   perdidaDetalhe: text("perdida_detalhe"),
   origem: leadOrigemEnum("origem").notNull().default("LOJA"),
+  // E77 (LGPD): quando a própria noiva consentiu com o uso dos dados (form de
+  // captação externa). Null = cadastro interno, consentimento presencial.
+  consentimentoEm: timestamp("consentimento_em", { withTimezone: true }),
+  // E77: carimbo da anonimização — a linha fica (histórico e números), a PII sai.
+  anonimizadaEm: timestamp("anonimizada_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

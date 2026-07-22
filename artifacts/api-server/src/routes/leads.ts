@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable } from "@workspace/db";
+import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable } from "@workspace/db";
 import { eq, and, desc, or, ilike, sql, count, inArray } from "drizzle-orm";
 import {
   ListLeadsResponse,
@@ -16,11 +16,14 @@ import {
   CreateRegistroCobrancaResponse,
   GetConversaoLeadsResponse,
   GetSazonalidadeCasamentosResponse,
-  GetDesempenhoVendedorasResponse
+  GetDesempenhoVendedorasResponse,
+  ExpurgarLeadsPerdidosBody,
+  ExpurgarLeadsPerdidosResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
+import { registrarAuditoria } from "../lib/auditoria";
 
 const router: IRouter = Router();
 
@@ -60,6 +63,43 @@ async function ultimoContatoPorLead(leadIds: string[]): Promise<Map<string, Date
 
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/leads", requireModulo("leads"));
+
+// E77: o direito de acesso — tudo que o sistema sabe sobre a noiva, num JSON
+// para download. Sem schema fechado de propósito: é um retrato, não uma API.
+router.get("/lojas/:lojaId/leads/:leadId/exportar", async (req, res): Promise<void> => {
+  const { lojaId, leadId } = req.params as { lojaId: string; leadId: string };
+  const lead = await db.query.leadsTable.findFirst({
+    where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
+    with: { interesse: { with: { atributos: true } } },
+  });
+  if (!lead) {
+    res.status(404).json({ error: "Lead not found" });
+    return;
+  }
+  const [contatos, orcamentos, contratos] = await Promise.all([
+    db.select().from(registrosCobrancaTable).where(eq(registrosCobrancaTable.leadId, leadId)),
+    db.query.orcamentosTable.findMany({
+      where: and(eq(orcamentosTable.leadId, leadId), eq(orcamentosTable.lojaId, lojaId)),
+      with: { itens: true },
+    }),
+    db.query.contratosTable.findMany({
+      where: and(eq(contratosTable.leadId, leadId), eq(contratosTable.lojaId, lojaId)),
+      with: { itens: true, parcelas: true },
+    }),
+  ]);
+
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="dados-${lead.noivaNome.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.json"`,
+  );
+  res.json({
+    exportadoEm: new Date().toISOString(),
+    lead,
+    contatosRegistrados: contatos,
+    orcamentos,
+    contratos,
+  });
+});
 
 router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -177,6 +217,58 @@ router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => 
       porMotivoPerda: porMotivoPerda.map((m) => ({ motivo: m.motivo ?? null, total: m.total })),
     }),
   );
+});
+
+// E77: dado pessoal sem propósito é passivo. Anonimiza os leads PERDIDOS com
+// perda mais antiga que a janela: a linha fica (funil e conversão continuam
+// contando), a PII sai. Irreversível por desenho; deixa rastro. Antes do
+// :leadId para o path não virar id.
+router.post("/lojas/:lojaId/leads/expurgo", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = ExpurgarLeadsPerdidosBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const meses = parsed.data.mesesInatividade ?? 24;
+  const corte = new Date();
+  corte.setMonth(corte.getMonth() - meses);
+
+  const anonimizadas = await db.transaction(async (tx) => {
+    const linhas = await tx
+      .update(leadsTable)
+      .set({
+        noivaNome: "(anonimizada)",
+        noivoNome: null,
+        whatsapp: null,
+        cerimonialista: null,
+        casamentoLocal: null,
+        perdidaDetalhe: null,
+        anonimizadaEm: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(leadsTable.lojaId, lojaId),
+        eq(leadsTable.etapa, "PERDIDO"),
+        sql`${leadsTable.perdidaEm} < ${corte}`,
+        sql`${leadsTable.anonimizadaEm} is null`,
+      ))
+      .returning({ id: leadsTable.id });
+
+    if (linhas.length > 0) {
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "LEADS_ANONIMIZADOS",
+        entidade: "lead",
+        entidadeId: lojaId,
+        detalhe: { quantidade: linhas.length, mesesInatividade: meses },
+      });
+    }
+    return linhas.length;
+  });
+
+  res.json(ExpurgarLeadsPerdidosResponse.parse({ anonimizadas }));
 });
 
 // E73: atendimento → contrato por vendedora. A comissão media o resultado;

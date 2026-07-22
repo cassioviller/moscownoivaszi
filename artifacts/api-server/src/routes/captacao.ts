@@ -43,7 +43,7 @@ router.post("/captacao/leads", async (req, res): Promise<void> => {
     return;
   }
 
-  const { noivaNome, noivoNome, whatsapp, casamentoData, origem } = body.data;
+  const { noivaNome, noivoNome, whatsapp, casamentoData, origem, consentimento } = body.data;
   const [lead] = await db.insert(leadsTable).values({
     id: randomUUID(),
     lojaId: loja.id,
@@ -52,6 +52,8 @@ router.post("/captacao/leads", async (req, res): Promise<void> => {
     whatsapp: whatsapp?.trim() || null,
     casamentoData: casamentoData ?? null,
     origem: origem ?? "SITE",
+    // E77: o checkbox do formulário vira carimbo — quando ELA consentiu.
+    consentimentoEm: consentimento ? new Date() : null,
   }).returning({ id: leadsTable.id });
 
   req.log.info({ leadId: lead.id, lojaId: loja.id, origem: origem ?? "SITE" }, "lead_captado");

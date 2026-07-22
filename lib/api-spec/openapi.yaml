@@ -1282,6 +1282,38 @@ paths:
                     competencia: { type: string, description: "YYYY-MM" }
                     total: { type: integer, description: "Leads não perdidos com casamento no mês" }
                     comContrato: { type: integer, description: "Destes, quantos já fecharam contrato" }
+  /lojas/{lojaId}/leads/expurgo:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: expurgarLeadsPerdidos
+      tags: [leads]
+      summary: Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
+      description: >
+        E77: dado pessoal sem propósito é passivo. Anonimiza (nome vira
+        "(anonimizada)", contato e local somem) os leads PERDIDOS cuja perda é
+        mais antiga que `mesesInatividade` (padrão 24). A linha fica — o funil
+        e a conversão continuam contando — e a ação deixa rastro na auditoria.
+        Irreversível por desenho.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mesesInatividade: { type: integer, minimum: 6, default: 24 }
+      responses:
+        "200":
+          description: Quantas noivas foram anonimizadas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [anonimizadas]
+                properties:
+                  anonimizadas: { type: integer }
+
   /lojas/{lojaId}/leads/desempenho-vendedoras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -1351,6 +1383,32 @@ paths:
       responses:
         "204":
           description: Deleted
+  /lojas/{lojaId}/leads/{leadId}/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: leadId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: exportarDadosLead
+      tags: [leads]
+      summary: Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)
+      description: >
+        E77: o direito de acesso — a noiva pede, a loja entrega. Lead,
+        interesses, contatos registrados, orçamentos, contratos e parcelas
+        dela, num arquivo só, como download.
+      responses:
+        "200":
+          description: Os dados da noiva, JSON para download
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Noiva não encontrada nesta loja
+
   /lojas/{lojaId}/leads/{leadId}/interesse:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -2702,7 +2760,7 @@ paths:
           description: Uma das ações da união fechada (ACOES_AUDITORIA)
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -2771,7 +2829,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -3974,6 +4032,9 @@ components:
         # De onde o formulário veio. LOJA fica de fora: lead digitado na loja
         # nasce pela rota autenticada.
         origem: { type: string, enum: [SITE, INSTAGRAM, WHATSAPP], default: SITE }
+        # E77 (LGPD): true = a noiva marcou o consentimento no formulário; o
+        # instante fica carimbado no lead.
+        consentimento: { type: boolean }
     CaptacaoLeadResultado:
       type: object
       required: [id]
@@ -4319,7 +4380,7 @@ components:
         id: { type: string }
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO]
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, LEADS_ANONIMIZADOS]
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }

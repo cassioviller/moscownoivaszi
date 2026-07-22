@@ -19,4 +19,5 @@ export interface CaptacaoLeadInput {
   whatsapp?: string;
   casamentoData?: Date;
   origem?: CaptacaoLeadInputOrigem;
+  consentimento?: boolean;
 }

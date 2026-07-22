@@ -268,6 +268,12 @@ export default function NoivaDetalhe() {
               </Link>
             </Button>
           )}
+          {/* E77 (LGPD): o direito de acesso — a noiva pede, a loja entrega. */}
+          <Button asChild variant="ghost" size="sm" data-testid="button-exportar-dados">
+            <a href={`/api/lojas/${lojaId}/leads/${leadId}/exportar`} download>
+              Exportar dados (LGPD)
+            </a>
+          </Button>
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { tipoAtributoLabel } from "@/lib/formatos";
 import { EstadoErro } from "@/components/estado-erro";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
+import { PrivacidadeLgpd } from "./privacidade";
 import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
@@ -167,6 +168,9 @@ export default function Configuracoes() {
 
             {/* Captação externa (E19) — só para quem gere a loja. */}
             {podeCaptacao && <CaptacaoExterna />}
+
+            {/* Privacidade (E77) — anonimização das perdidas antigas. */}
+            {podeCaptacao && <PrivacidadeLgpd />}
           </div>
         </TabsContent>
 

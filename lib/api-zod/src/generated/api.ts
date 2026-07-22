@@ -631,7 +631,7 @@ export const GetAtividadeEquipeResponse = zod.object({
 })),
   "eventos": zod.array(zod.object({
   "id": zod.string(),
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO']),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']),
   "entidade": zod.string(),
   "entidadeId": zod.string(),
   "usuarioId": zod.string().nullish(),
@@ -663,7 +663,8 @@ export const CaptarLeadBody = zod.object({
   "noivoNome": zod.string().max(captarLeadBodyNoivoNomeMax).optional(),
   "whatsapp": zod.string().max(captarLeadBodyWhatsappMax).optional(),
   "casamentoData": zod.coerce.date().optional(),
-  "origem": zod.enum(['SITE', 'INSTAGRAM', 'WHATSAPP']).default(captarLeadBodyOrigemDefault)
+  "origem": zod.enum(['SITE', 'INSTAGRAM', 'WHATSAPP']).default(captarLeadBodyOrigemDefault),
+  "consentimento": zod.boolean().optional()
 })
 
 export const CaptarLeadResponse = zod.object({
@@ -1402,6 +1403,28 @@ export const GetSazonalidadeCasamentosResponse = zod.array(GetSazonalidadeCasame
 
 
 /**
+ * E77: dado pessoal sem propósito é passivo. Anonimiza (nome vira "(anonimizada)", contato e local somem) os leads PERDIDOS cuja perda é mais antiga que `mesesInatividade` (padrão 24). A linha fica — o funil e a conversão continuam contando — e a ação deixa rastro na auditoria. Irreversível por desenho.
+ * @summary Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
+ */
+export const ExpurgarLeadsPerdidosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const expurgarLeadsPerdidosBodyMesesInatividadeDefault = 24;
+export const expurgarLeadsPerdidosBodyMesesInatividadeMin = 6;
+
+
+
+export const ExpurgarLeadsPerdidosBody = zod.object({
+  "mesesInatividade": zod.number().min(expurgarLeadsPerdidosBodyMesesInatividadeMin).default(expurgarLeadsPerdidosBodyMesesInatividadeDefault)
+})
+
+export const ExpurgarLeadsPerdidosResponse = zod.object({
+  "anonimizadas": zod.number()
+})
+
+
+/**
  * E73: a comissão media o resultado, mas não o CAMINHO — quantos atendimentos cada vendedora conclui, quantos terminam em "reservou" (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os contratos sempre estiveram gravados; faltava cruzar.
  * @summary Atendimento → contrato por vendedora, com ticket médio
  */
@@ -1513,6 +1536,18 @@ export const DeleteLeadParams = zod.object({
 })
 
 export const DeleteLeadResponse = zod.void()
+
+
+/**
+ * E77: o direito de acesso — a noiva pede, a loja entrega. Lead, interesses, contatos registrados, orçamentos, contratos e parcelas dela, num arquivo só, como download.
+ * @summary Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)
+ */
+export const ExportarDadosLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const ExportarDadosLeadResponse = zod.record(zod.string(), zod.unknown())
 
 
 export const SetLeadInteresseParams = zod.object({
@@ -5779,7 +5814,7 @@ export const listAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const ListAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
   "usuarioId": zod.coerce.string().optional().describe('Autor da ação (id; o nome na linha é desnormalizado)'),
   "de": zod.coerce.string().regex(listAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(listAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
@@ -5787,7 +5822,7 @@ export const ListAuditoriaQueryParams = zod.object({
 
 export const ListAuditoriaResponseItem = zod.object({
   "id": zod.string(),
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO']),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']),
   "entidade": zod.string(),
   "entidadeId": zod.string(),
   "usuarioId": zod.string().nullish(),
@@ -5827,7 +5862,7 @@ export const exportarAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}
 
 
 export const ExportarAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO']).optional(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'LEADS_ANONIMIZADOS']).optional(),
   "usuarioId": zod.coerce.string().optional(),
   "de": zod.coerce.string().regex(exportarAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(exportarAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')

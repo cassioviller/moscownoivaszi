@@ -23,4 +23,5 @@ export {
   ListOrcamentosParams,
   ListContratosParams,
   CreateParcelaAvulsaBody,
+  ExpurgarLeadsPerdidosBody,
 } from "./generated/api";

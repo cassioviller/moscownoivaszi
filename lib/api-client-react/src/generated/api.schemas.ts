@@ -249,6 +249,7 @@ export const AuditoriaItemAcao = {
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
   ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
 } as const;
 
 /**
@@ -787,6 +788,7 @@ export interface CaptacaoLeadInput {
   whatsapp?: string;
   casamentoData?: string;
   origem?: CaptacaoLeadInputOrigem;
+  consentimento?: boolean;
 }
 
 export interface CaptacaoLeadResultado {
@@ -2353,6 +2355,15 @@ export type GetSazonalidadeCasamentos200Item = {
   comContrato: number;
 };
 
+export type ExpurgarLeadsPerdidosBody = {
+  /** @minimum 6 */
+  mesesInatividade?: number;
+};
+
+export type ExpurgarLeadsPerdidos200 = {
+  anonimizadas: number;
+};
+
 export type GetDesempenhoVendedoras200Item = {
   vendedoraId: string;
   nome: string;
@@ -2364,6 +2375,8 @@ export type GetDesempenhoVendedoras200Item = {
   /** Soma do valorTotal dos contratos ativos */
   receita: number;
 };
+
+export type ExportarDadosLead200 = { [key: string]: unknown };
 
 export type ListBloqueiosParams = {
 /**
@@ -2493,6 +2506,7 @@ export const ListAuditoriaAcao = {
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
   ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
 } as const;
 
 export type ExportarAuditoriaParams = {
@@ -2529,6 +2543,7 @@ export const ExportarAuditoriaAcao = {
   PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
   PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
   ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
 } as const;
 
 export type ExportarFolhaParams = {

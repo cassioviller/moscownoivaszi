@@ -84,8 +84,11 @@ import type {
   ErrorResponse,
   ExportarAuditoriaParams,
   ExportarContasPagarParams,
+  ExportarDadosLead200,
   ExportarFolhaParams,
   ExportarParcelasParams,
+  ExpurgarLeadsPerdidos200,
+  ExpurgarLeadsPerdidosBody,
   FolhaGerada,
   FolhaInput,
   GerarComissaoFechamentoInput,
@@ -4909,6 +4912,78 @@ export function useGetSazonalidadeCasamentos<TData = Awaited<ReturnType<typeof g
 
 
 
+export const getExpurgarLeadsPerdidosUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/expurgo`
+}
+
+/**
+ * E77: dado pessoal sem propósito é passivo. Anonimiza (nome vira "(anonimizada)", contato e local somem) os leads PERDIDOS cuja perda é mais antiga que `mesesInatividade` (padrão 24). A linha fica — o funil e a conversão continuam contando — e a ação deixa rastro na auditoria. Irreversível por desenho.
+ * @summary Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
+ */
+export const expurgarLeadsPerdidos = async (lojaId: string,
+    expurgarLeadsPerdidosBody?: ExpurgarLeadsPerdidosBody, options?: RequestInit): Promise<ExpurgarLeadsPerdidos200> => {
+
+  return customFetch<ExpurgarLeadsPerdidos200>(getExpurgarLeadsPerdidosUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(expurgarLeadsPerdidosBody)
+  }
+);}
+
+
+
+
+export const getExpurgarLeadsPerdidosMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof expurgarLeadsPerdidos>>, TError,{lojaId: string;data?: BodyType<ExpurgarLeadsPerdidosBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof expurgarLeadsPerdidos>>, TError,{lojaId: string;data?: BodyType<ExpurgarLeadsPerdidosBody>}, TContext> => {
+
+const mutationKey = ['expurgarLeadsPerdidos'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof expurgarLeadsPerdidos>>, {lojaId: string;data?: BodyType<ExpurgarLeadsPerdidosBody>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  expurgarLeadsPerdidos(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExpurgarLeadsPerdidosMutationResult = NonNullable<Awaited<ReturnType<typeof expurgarLeadsPerdidos>>>
+    export type ExpurgarLeadsPerdidosMutationBody = BodyType<ExpurgarLeadsPerdidosBody> | undefined
+    export type ExpurgarLeadsPerdidosMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
+ */
+export const useExpurgarLeadsPerdidos = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof expurgarLeadsPerdidos>>, TError,{lojaId: string;data?: BodyType<ExpurgarLeadsPerdidosBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof expurgarLeadsPerdidos>>,
+        TError,
+        {lojaId: string;data?: BodyType<ExpurgarLeadsPerdidosBody>},
+        TContext
+      > => {
+      return useMutation(getExpurgarLeadsPerdidosMutationOptions(options));
+    }
+
 export const getGetDesempenhoVendedorasUrl = (lojaId: string,) => {
 
 
@@ -5195,6 +5270,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteLeadMutationOptions(options));
     }
+
+export const getExportarDadosLeadUrl = (lojaId: string,
+    leadId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/exportar`
+}
+
+/**
+ * E77: o direito de acesso — a noiva pede, a loja entrega. Lead, interesses, contatos registrados, orçamentos, contratos e parcelas dela, num arquivo só, como download.
+ * @summary Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)
+ */
+export const exportarDadosLead = async (lojaId: string,
+    leadId: string, options?: RequestInit): Promise<ExportarDadosLead200> => {
+
+  return customFetch<ExportarDadosLead200>(getExportarDadosLeadUrl(lojaId,leadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarDadosLeadQueryKey = (lojaId: string,
+    leadId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/${leadId}/exportar`
+    ] as const;
+    }
+
+
+export const getExportarDadosLeadQueryOptions = <TData = Awaited<ReturnType<typeof exportarDadosLead>>, TError = ErrorType<void>>(lojaId: string,
+    leadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarDadosLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarDadosLeadQueryKey(lojaId,leadId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarDadosLead>>> = ({ signal }) => exportarDadosLead(lojaId,leadId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && leadId !== null && leadId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarDadosLead>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarDadosLeadQueryResult = NonNullable<Awaited<ReturnType<typeof exportarDadosLead>>>
+export type ExportarDadosLeadQueryError = ErrorType<void>
+
+
+/**
+ * @summary Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)
+ */
+
+export function useExportarDadosLead<TData = Awaited<ReturnType<typeof exportarDadosLead>>, TError = ErrorType<void>>(
+ lojaId: string,
+    leadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarDadosLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarDadosLeadQueryOptions(lojaId,leadId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getSetLeadInteresseUrl = (lojaId: string,
     leadId: string,) => {
