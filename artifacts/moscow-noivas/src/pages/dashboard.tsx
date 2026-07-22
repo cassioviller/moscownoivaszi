@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "@/lib/router-compat";
+import { Link } from "react-router";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -196,7 +196,7 @@ export default function Dashboard() {
       {/* O dinheiro do horizonte — a linha que a dona procura ao abrir. */}
       {veFinanceiro && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link href="/financeiro/receber">
+          <Link to={`/loja/${activeLojaId}/financeiro/receber`}>
             <Card className="hover-elevate cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -211,7 +211,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/financeiro/pagar">
+          <Link to={`/loja/${activeLojaId}/financeiro/pagar`}>
             <Card className="hover-elevate cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -231,7 +231,7 @@ export default function Dashboard() {
 
       {/* A vendedora vê o próprio mês sem sair do painel (E11/E51). */}
       {comissaoDoMes?.temRegra && (
-        <Link href="/minha-comissao">
+        <Link to={`/loja/${activeLojaId}/minha-comissao`}>
           <Card className="hover-elevate cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -273,7 +273,7 @@ export default function Dashboard() {
               ) : deHoje.length === 0 ? (
                 <div className="text-sm text-muted-foreground text-center py-8">
                   Nenhum atendimento hoje.{" "}
-                  <Link href="/agenda" className="text-primary underline underline-offset-4">
+                  <Link to={`/loja/${activeLojaId}/agenda`} className="text-primary underline underline-offset-4">
                     Abrir a agenda
                   </Link>
                 </div>
@@ -338,7 +338,7 @@ export default function Dashboard() {
                 <ul className="space-y-3">
                   {precisamContato.map(({ lead, parado }) => (
                     <li key={lead.id}>
-                      <Link href={`/noivas/${lead.id}`}>
+                      <Link to={`/loja/${activeLojaId}/noivas/${lead.id}`}>
                         <div className="flex items-center justify-between hover-elevate rounded-md px-2 py-1 -mx-2 cursor-pointer">
                           <div>
                             <p className="text-sm font-medium">{lead.noivaNome}</p>

@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useSearchParams } from "@/lib/router-compat";
+import { Link, useSearchParams } from "react-router";
 import { format } from "date-fns";
 import { ptBR } from "react-day-picker/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -289,14 +289,14 @@ export default function Vestidos() {
               botão "Novo Vestido" (role=button) exercitado pelo E2E. */}
           {/* Relatório de utilização (E15): leitura, qualquer perfil que vê o módulo. */}
           <Button variant="ghost" asChild>
-            <Link href="/vestidos/utilizacao">
+            <Link to={`/loja/${activeLojaId}/vestidos/utilizacao`}>
               <BarChart3 className="h-4 w-4 mr-2" />
               Utilização
             </Link>
           </Button>
           {podeCriar && (
             <Button variant="outline" asChild>
-              <Link href="/vestidos/novo">
+              <Link to={`/loja/${activeLojaId}/vestidos/novo`}>
                 <ClipboardPlus className="h-4 w-4 mr-2" />
                 Novo vestido (completo)
               </Link>
@@ -569,7 +569,7 @@ export default function Vestidos() {
           {filtrados.map(vestido => {
             const capa = fotoCapa(vestido);
             return (
-            <Link key={vestido.id} href={`/vestidos/${vestido.id}`}>
+            <Link key={vestido.id} to={`/loja/${activeLojaId}/vestidos/${vestido.id}`}>
               <Card className="hover-elevate cursor-pointer overflow-hidden group">
                 <div className="aspect-[3/4] bg-muted flex items-center justify-center relative">
                   {capa !== null ? (
