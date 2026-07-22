@@ -1228,6 +1228,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConversaoLeads"
+  /lojas/{lojaId}/leads/sazonalidade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getSazonalidadeCasamentos
+      tags: [leads]
+      summary: Casamentos por mês — a demanda de arara dos próximos 12 meses
+      description: >
+        E73: a data do casamento sempre esteve no banco e ninguém somava. Conta
+        os casamentos futuros por competência (leads não perdidos), separando
+        os já contratados — é a curva que diz quando faltará vestido e quando
+        sobrará arara.
+      responses:
+        "200":
+          description: Casamentos por competência, de hoje a +12 meses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [competencia, total, comContrato]
+                  properties:
+                    competencia: { type: string, description: "YYYY-MM" }
+                    total: { type: integer, description: "Leads não perdidos com casamento no mês" }
+                    comContrato: { type: integer, description: "Destes, quantos já fecharam contrato" }
   /lojas/{lojaId}/leads/{leadId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

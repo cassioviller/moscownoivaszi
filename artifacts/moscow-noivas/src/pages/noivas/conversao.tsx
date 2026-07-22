@@ -1,6 +1,11 @@
 import { Link, useParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { useGetConversaoLeads, getGetConversaoLeadsQueryKey } from "@workspace/api-client-react";
+import {
+  useGetConversaoLeads,
+  getGetConversaoLeadsQueryKey,
+  useGetSazonalidadeCasamentos,
+  getGetSazonalidadeCasamentosQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { EstadoErro } from "@/components/estado-erro";
 import { origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
@@ -34,8 +39,21 @@ export default function ConversaoLeads() {
   const q = useGetConversaoLeads(activeLojaId!, {
     query: { queryKey: getGetConversaoLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
+  // E73: a demanda de arara dos próximos 12 meses — a data do casamento
+  // sempre esteve no banco, faltava somar.
+  const sazonalidade = useGetSazonalidadeCasamentos(activeLojaId!, {
+    query: {
+      queryKey: getGetSazonalidadeCasamentosQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+    },
+  });
 
   const dados = q.data;
+  const maiorMes = Math.max(1, ...(sazonalidade.data ?? []).map((m) => m.total));
+
+  const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+  const rotuloMes = (competencia: string) =>
+    mesFmt.format(new Date(`${competencia}-15T12:00:00-03:00`));
   const maiorMotivo = dados ? Math.max(1, ...dados.porMotivoPerda.map((m) => m.total)) : 1;
 
   return (
@@ -137,6 +155,44 @@ export default function ConversaoLeads() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Quando são os casamentos</CardTitle>
+              <CardDescription>
+                Próximos 12 meses — a curva que diz quando faltará vestido e quando
+                sobrará arara. A parte cheia da barra já tem contrato.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(sazonalidade.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum casamento com data marcada nos próximos meses.
+                </p>
+              ) : (
+                (sazonalidade.data ?? []).map((m) => (
+                  <div key={m.competencia} className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="font-medium capitalize">{rotuloMes(m.competencia)}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {m.comContrato} com contrato · {m.total} no total
+                      </span>
+                    </div>
+                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-primary/30"
+                        style={{ width: `${pct(m.total, maiorMes)}%` }}
+                      />
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                        style={{ width: `${pct(m.comContrato, maiorMes)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

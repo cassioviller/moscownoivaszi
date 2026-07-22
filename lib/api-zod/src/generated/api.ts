@@ -1370,6 +1370,22 @@ export const GetConversaoLeadsResponse = zod.object({
 })
 
 
+/**
+ * E73: a data do casamento sempre esteve no banco e ninguém somava. Conta os casamentos futuros por competência (leads não perdidos), separando os já contratados — é a curva que diz quando faltará vestido e quando sobrará arara.
+ * @summary Casamentos por mês — a demanda de arara dos próximos 12 meses
+ */
+export const GetSazonalidadeCasamentosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetSazonalidadeCasamentosResponseItem = zod.object({
+  "competencia": zod.string().describe('YYYY-MM'),
+  "total": zod.number().describe('Leads não perdidos com casamento no mês'),
+  "comContrato": zod.number().describe('Destes, quantos já fecharam contrato')
+})
+export const GetSazonalidadeCasamentosResponse = zod.array(GetSazonalidadeCasamentosResponseItem)
+
+
 export const GetLeadParams = zod.object({
   "lojaId": zod.coerce.string(),
   "leadId": zod.coerce.string()

@@ -124,6 +124,7 @@ export * from './getLookbookPublicoFotoVariante';
 export * from './getLookbookPublicoParams';
 export * from './getMinhaComissaoParams';
 export * from './getOrcamentoPublicoParams';
+export * from './getSazonalidadeCasamentos200Item';
 export * from './getUtilizacaoVestidosParams';
 export * from './getVestidoFotoParams';
 export * from './getVestidoFotoVariante';

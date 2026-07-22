@@ -90,6 +90,7 @@ import type {
   GetLookbookPublicoParams,
   GetMinhaComissaoParams,
   GetOrcamentoPublicoParams,
+  GetSazonalidadeCasamentos200Item,
   GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
   HealthStatus,
@@ -4733,6 +4734,84 @@ export function useGetConversaoLeads<TData = Awaited<ReturnType<typeof getConver
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetConversaoLeadsQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSazonalidadeCasamentosUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/sazonalidade`
+}
+
+/**
+ * E73: a data do casamento sempre esteve no banco e ninguém somava. Conta os casamentos futuros por competência (leads não perdidos), separando os já contratados — é a curva que diz quando faltará vestido e quando sobrará arara.
+ * @summary Casamentos por mês — a demanda de arara dos próximos 12 meses
+ */
+export const getSazonalidadeCasamentos = async (lojaId: string, options?: RequestInit): Promise<GetSazonalidadeCasamentos200Item[]> => {
+
+  return customFetch<GetSazonalidadeCasamentos200Item[]>(getGetSazonalidadeCasamentosUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSazonalidadeCasamentosQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/sazonalidade`
+    ] as const;
+    }
+
+
+export const getGetSazonalidadeCasamentosQueryOptions = <TData = Awaited<ReturnType<typeof getSazonalidadeCasamentos>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSazonalidadeCasamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSazonalidadeCasamentosQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSazonalidadeCasamentos>>> = ({ signal }) => getSazonalidadeCasamentos(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSazonalidadeCasamentos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSazonalidadeCasamentosQueryResult = NonNullable<Awaited<ReturnType<typeof getSazonalidadeCasamentos>>>
+export type GetSazonalidadeCasamentosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Casamentos por mês — a demanda de arara dos próximos 12 meses
+ */
+
+export function useGetSazonalidadeCasamentos<TData = Awaited<ReturnType<typeof getSazonalidadeCasamentos>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSazonalidadeCasamentos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSazonalidadeCasamentosQueryOptions(lojaId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

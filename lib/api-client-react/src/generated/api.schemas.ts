@@ -2300,6 +2300,15 @@ export const ListLeadsOrdem = {
   recentes: 'recentes',
 } as const;
 
+export type GetSazonalidadeCasamentos200Item = {
+  /** YYYY-MM */
+  competencia: string;
+  /** Leads não perdidos com casamento no mês */
+  total: number;
+  /** Destes, quantos já fecharam contrato */
+  comContrato: number;
+};
+
 export type ListBloqueiosParams = {
 /**
  * Filtra os bloqueios de um vestido só (E45)

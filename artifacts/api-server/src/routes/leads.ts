@@ -14,7 +14,8 @@ import {
   ListRegistrosCobrancaResponse,
   CreateRegistroCobrancaBody,
   CreateRegistroCobrancaResponse,
-  GetConversaoLeadsResponse
+  GetConversaoLeadsResponse,
+  GetSazonalidadeCasamentosResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -175,6 +176,29 @@ router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => 
       porMotivoPerda: porMotivoPerda.map((m) => ({ motivo: m.motivo ?? null, total: m.total })),
     }),
   );
+});
+
+// E73: a data do casamento sempre esteve no banco e ninguém somava — a curva
+// que diz quando falta vestido e quando sobra arara. Antes do :leadId para
+// "sazonalidade" não ser lido como um id de lead.
+router.get("/lojas/:lojaId/leads/sazonalidade", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const linhas = await db
+    .select({
+      competencia: sql<string>`to_char(${leadsTable.casamentoData} at time zone 'America/Sao_Paulo', 'YYYY-MM')`,
+      total: count(),
+      comContrato: sql<number>`count(*) filter (where ${leadsTable.contratoFechadoEm} is not null)`.mapWith(Number),
+    })
+    .from(leadsTable)
+    .where(and(
+      eq(leadsTable.lojaId, lojaId),
+      sql`${leadsTable.etapa} <> 'PERDIDO'`,
+      sql`${leadsTable.casamentoData} >= now()`,
+      sql`${leadsTable.casamentoData} < now() + interval '12 months'`,
+    ))
+    .groupBy(sql`1`)
+    .orderBy(sql`1`);
+  res.json(GetSazonalidadeCasamentosResponse.parse(linhas));
 });
 
 router.get("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
