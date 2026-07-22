@@ -1,0 +1,100 @@
+import { test, expect } from "@playwright/test";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { eq, and, like } from "drizzle-orm";
+import { db, leadsTable, contratosTable, parcelasTable } from "../lib/db/src/index";
+import { lerEstado, API_URL } from "./helpers";
+
+const estado = lerEstado();
+
+test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
+
+/**
+ * E81 (fiscal do E71): a avaria registrada na devolução, quando tem custo e a
+ * noiva tem contrato ATIVO, vira parcela cobrável pela régua de sempre — sem
+ * planilha paralela de "me devem".
+ */
+test.describe("Avaria vira parcela (E71)", () => {
+  const stamp = Date.now();
+  const descricaoAvaria = `Barrado rasgado E2E ${stamp}`;
+  let leadId: string;
+  let bloqueioId: string;
+  let contratoId: string;
+
+  test.beforeAll(async ({ request }) => {
+    await request.post(`${API_URL}/api/auth/login`, {
+      data: { email: estado.adminEmail, senha: estado.senha },
+    });
+    await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+
+    const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
+      data: { noivaNome: `E2E Avaria ${stamp}` },
+    });
+    leadId = (await lead.json()).id;
+
+    // Vestido e bloqueio pela API — o envelope de ocupação nasce calculado.
+    const vestido = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/vestidos`, {
+      data: { nome: `Vestido Avaria ${stamp}`, codigo: `AVA-${stamp}`, precoBase: 5000 },
+    });
+    expect(vestido.status(), await vestido.text()).toBe(201);
+    const bloqueio = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/bloqueios`, {
+      data: {
+        vestidoId: (await vestido.json()).id,
+        leadId,
+        tipo: "RESERVA_CASAMENTO",
+        casamentoData: "2027-11-20T12:00:00-03:00",
+      },
+    });
+    expect(bloqueio.status(), await bloqueio.text()).toBe(201);
+    bloqueioId = (await bloqueio.json()).id;
+
+    const admin = await db.query.usuariosTable.findFirst({
+      where: (u, { eq: eq_ }) => eq_(u.email, estado.adminEmail),
+    });
+    contratoId = randomUUID();
+    await db.insert(contratosTable).values({
+      id: contratoId,
+      lojaId: estado.lojaId,
+      leadId,
+      vendedoraId: admin!.id,
+      status: "ATIVO",
+      valorTotal: 5000,
+      fechadoEm: new Date(),
+    });
+  });
+
+  test.afterAll(async () => {
+    if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+  });
+
+  test("registrar a avaria com custo e cobrar o reparo cria a parcela do contrato", async ({
+    page,
+  }) => {
+    await page.goto(`/loja/${estado.lojaId}/reservas/${bloqueioId}`);
+
+    // Registra a avaria com custo.
+    await page.getByLabel("Descrição da avaria").fill(descricaoAvaria);
+    await page.getByLabel("Custo do reparo").fill("350");
+    await page.getByTestId("registrar-avaria").click();
+    await expect(page.getByText(descricaoAvaria)).toBeVisible();
+
+    // Cobrar reparo — o custo entra como parcela do contrato ativo.
+    await page.getByTestId(/^cobrar-reparo-/).click();
+    await expect(
+      page.getByText("Cobrança criada — entrou como parcela do contrato").first(),
+    ).toBeVisible();
+
+    const parcelas = await db
+      .select()
+      .from(parcelasTable)
+      .where(
+        and(
+          eq(parcelasTable.contratoId, contratoId),
+          like(parcelasTable.descricao, `%${descricaoAvaria}%`),
+        ),
+      );
+    expect(parcelas).toHaveLength(1);
+    expect(parcelas[0].valorPrevisto).toBe(350);
+    expect(parcelas[0].status).toBe("PREVISTA");
+  });
+});

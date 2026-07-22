@@ -61,7 +61,9 @@ function extractSpecEndpoints(): Set<string> {
 function extractServerEndpoints(): Set<string> {
   const endpoints = new Set<string>();
   const files = readdirSync(ROUTES_DIR).filter((f) => f.endsWith(".ts"));
-  const routeRegex = /router\.(get|post|put|patch|delete)\("([^"]+)"/g;
+  // \s* depois do parêntese: rota com middleware por linha (E78) quebra a
+  // string para a linha seguinte, e o path não pode escapar do fiscal por isso.
+  const routeRegex = /router\.(get|post|put|patch|delete)\(\s*"([^"]+)"/g;
 
   for (const file of files) {
     const content = readFileSync(path.join(ROUTES_DIR, file), "utf-8");
