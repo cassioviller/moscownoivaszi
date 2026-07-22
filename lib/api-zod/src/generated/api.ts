@@ -381,7 +381,7 @@ export const GetBackupStatusResponse = zod.object({
   "iniciadoEm": zod.coerce.date(),
   "concluidoEm": zod.coerce.date().nullish(),
   "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
-  "arquivo": zod.string().nullish(),
+  "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
   "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
   "erro": zod.string().nullish()
 }),zod.null()]),
@@ -392,7 +392,7 @@ export const GetBackupStatusResponse = zod.object({
   "iniciadoEm": zod.coerce.date(),
   "concluidoEm": zod.coerce.date().nullish(),
   "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
-  "arquivo": zod.string().nullish(),
+  "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
   "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
   "erro": zod.string().nullish()
 }))
@@ -410,10 +410,21 @@ export const RunBackupResponse = zod.object({
   "iniciadoEm": zod.coerce.date(),
   "concluidoEm": zod.coerce.date().nullish(),
   "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
-  "arquivo": zod.string().nullish(),
+  "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
   "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
   "erro": zod.string().nullish()
 })
+
+
+/**
+ * Fecha o ciclo do E30: saber que o backup existe não protege contra a perda da instância — a cópia precisa SAIR dela. Devolve o dump comprimido (.sql.gz) em streaming. 404 quando a execução não existe; 410 quando o registro existe mas o arquivo já foi podado pela retenção (só os dumps mais recentes ficam no disco).
+ * @summary Baixa o arquivo do dump de um backup concluído
+ */
+export const DownloadBackupParams = zod.object({
+  "backupId": zod.coerce.string()
+})
+
+export const DownloadBackupResponse = zod.unknown()
 
 
 export const ListEquipeParams = zod.object({

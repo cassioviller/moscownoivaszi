@@ -362,6 +362,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/BackupLog"
 
+  /admin/backup/{backupId}/download:
+    get:
+      operationId: downloadBackup
+      tags: [admin]
+      summary: Baixa o arquivo do dump de um backup concluído
+      description: >
+        Fecha o ciclo do E30: saber que o backup existe não protege contra a
+        perda da instância — a cópia precisa SAIR dela. Devolve o dump
+        comprimido (.sql.gz) em streaming. 404 quando a execução não existe;
+        410 quando o registro existe mas o arquivo já foi podado pela retenção
+        (só os dumps mais recentes ficam no disco).
+      parameters:
+        - name: backupId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: O dump comprimido, como download
+          content:
+            application/gzip:
+              schema: { type: string, format: binary }
+        "404":
+          description: Execução de backup não encontrada
+        "410":
+          description: O arquivo deste backup já foi removido pela retenção
+
   # ───────────────────────── Equipe ─────────────────────────
   /lojas/{lojaId}/equipe:
     parameters:
@@ -3267,7 +3294,11 @@ components:
         tamanhoBytes:
           type: ["integer", "null"]
           description: "Tamanho do arquivo comprimido — só quando status = ok"
-        arquivo: { type: ["string", "null"] }
+        arquivo:
+          type: ["string", "null"]
+          description: >-
+            Caminho do dump no servidor; null quando o backup falhou OU quando
+            o arquivo já foi removido pela retenção (dump podado não se baixa)
         autorNome:
           type: ["string", "null"]
           description: "Quem disparou o backup manual; null nos agendados"

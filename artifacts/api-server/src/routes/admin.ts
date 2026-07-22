@@ -29,13 +29,17 @@ import {
   SetPerfilOverrideBody,
   SetPerfilOverrideResponse,
   GetBackupStatusResponse,
-  RunBackupResponse
+  RunBackupResponse,
+  DownloadBackupParams
 } from "@workspace/api-zod";
 import { requireSessao, requireSuperAdmin } from "../middlewares/auth";
 import { hashSenha, encerrarSessoesDoUsuario } from "../lib/auth";
 import { registrarAuditoria } from "../lib/auditoria";
 import { normalizarAcessos } from "../lib/permissoes";
-import { executarBackup, statusBackup } from "../lib/backup";
+import { executarBackup, statusBackup, caminhoDoDump } from "../lib/backup";
+import { backupLogTable } from "@workspace/db";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -316,6 +320,31 @@ router.post("/admin/backup", async (req, res): Promise<void> => {
     autorNome: req.usuario?.nome,
   });
   res.json(RunBackupResponse.parse(registro));
+});
+
+// E59: o dump precisa SAIR da instância — backup que mora só no disco que ele
+// protege não é backup. Streaming do .sql.gz; 410 quando a retenção já podou.
+router.get("/admin/backup/:backupId/download", async (req, res): Promise<void> => {
+  const params = DownloadBackupParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [registro] = await db
+    .select()
+    .from(backupLogTable)
+    .where(eq(backupLogTable.id, params.data.backupId));
+  if (!registro) {
+    res.status(404).json({ error: "Execução de backup não encontrada" });
+    return;
+  }
+  const caminho = caminhoDoDump(registro);
+  if (!caminho || !existsSync(caminho)) {
+    res.status(410).json({ error: "O arquivo deste backup já foi removido pela retenção" });
+    return;
+  }
+  res.setHeader("Content-Type", "application/gzip");
+  res.download(caminho, path.basename(caminho));
 });
 
 export default router;

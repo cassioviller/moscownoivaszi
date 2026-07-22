@@ -20,7 +20,10 @@ export interface BackupLog {
      * @nullable
      */
   tamanhoBytes?: number | null;
-  /** @nullable */
+  /**
+     * Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)
+     * @nullable
+     */
   arquivo?: string | null;
   /**
      * Quem disparou o backup manual; null nos agendados

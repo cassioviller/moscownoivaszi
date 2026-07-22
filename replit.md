@@ -18,6 +18,8 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.
+  A tela baixa o dump (E59) e cada backup bom poda os dumps além dos 10 mais
+  recentes e as sessões expiradas — o registro fica, o arquivo sai do disco.
 - Env obrigatória: `DATABASE_URL` (Postgres)
 
 ## Stack

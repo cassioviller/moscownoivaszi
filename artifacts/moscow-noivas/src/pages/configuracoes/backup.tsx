@@ -180,6 +180,18 @@ export function BackupSistema() {
                         {b.status === "ok" && ` · ${tamanho(b.tamanhoBytes)}`}
                         {b.autorNome && ` · ${b.autorNome}`}
                       </span>
+                      {/* E59: a cópia só protege quando sai da instância. Âncora
+                          direta (sessão vai no cookie); dump podado não oferece. */}
+                      {b.status === "ok" && b.arquivo && (
+                        <a
+                          href={`/api/admin/backup/${b.id}/download`}
+                          download
+                          className="ml-auto text-xs text-primary underline underline-offset-4 whitespace-nowrap"
+                          data-testid={`baixar-backup-${b.id}`}
+                        >
+                          Baixar
+                        </a>
+                      )}
                     </li>
                   ))}
                 </ul>

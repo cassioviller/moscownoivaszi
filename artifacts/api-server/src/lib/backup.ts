@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
-import { createWriteStream, mkdirSync, statSync } from "node:fs";
+import { createWriteStream, mkdirSync, statSync, existsSync, unlinkSync } from "node:fs";
 import { createGzip } from "node:zlib";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { db, backupLogTable } from "@workspace/db";
+import { db, backupLogTable, sessoesTable } from "@workspace/db";
 import type { BackupLog } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNotNull, lt } from "drizzle-orm";
 
 /**
  * Motor de backup do sistema (E30). Faz o dump do banco INTEIRO com `pg_dump`
@@ -49,6 +49,16 @@ export async function executarBackup(opcoes: OpcoesBackup): Promise<BackupLog> {
       })
       .where(eq(backupLogTable.id, id))
       .returning();
+    // Housekeeping na carona do backup (E59): sem cron interno, o momento em
+    // que um dump novo nasce é o único gancho garantido para limpar os velhos
+    // e as sessões expiradas. Falha de limpeza não pode derrubar um backup que
+    // já deu certo — por isso fora do try principal e engolida com registro.
+    try {
+      await podarDumpsAntigos();
+      await podarSessoesExpiradas();
+    } catch (e) {
+      console.error("[backup] poda falhou (backup segue ok):", e);
+    }
     return ok;
   } catch (err) {
     const mensagem = err instanceof Error ? err.message : String(err);
@@ -97,6 +107,54 @@ function rodarPgDump(): Promise<string> {
       if (codigo === 0) resolve(arquivo);
     });
   });
+}
+
+/**
+ * Retenção: quantos dumps OK ficam no disco. Espelha o limite da lista de
+ * "execuções recentes" — tudo que a tela oferece para baixar ainda existe.
+ */
+const RETENCAO_DUMPS = 10;
+
+/**
+ * Remove do disco os dumps além dos RETENCAO_DUMPS mais recentes e marca a
+ * linha com `arquivo: null` — o registro histórico fica (quando rodou, quanto
+ * pesou), só o botão de download some. Arquivo já ausente do disco não é erro:
+ * a instância pode ter sido recriada sem a pasta.
+ */
+export async function podarDumpsAntigos(): Promise<number> {
+  const comArquivo = await db
+    .select()
+    .from(backupLogTable)
+    .where(and(eq(backupLogTable.status, "ok"), isNotNull(backupLogTable.arquivo)))
+    .orderBy(desc(backupLogTable.iniciadoEm));
+
+  const excedentes = comArquivo.slice(RETENCAO_DUMPS);
+  for (const registro of excedentes) {
+    const caminho = caminhoDoDump(registro);
+    if (caminho && existsSync(caminho)) unlinkSync(caminho);
+    await db
+      .update(backupLogTable)
+      .set({ arquivo: null })
+      .where(eq(backupLogTable.id, registro.id));
+  }
+  return excedentes.length;
+}
+
+/** Sessões vencidas são lixo que só cresce — a mesma carona limpa. */
+export async function podarSessoesExpiradas(): Promise<void> {
+  await db.delete(sessoesTable).where(lt(sessoesTable.expiraEm, new Date()));
+}
+
+/**
+ * Caminho absoluto do dump de um registro, ou null se não é baixável.
+ * Guarda anti path-traversal: o caminho gravado precisa resolver DENTRO de
+ * `backups/` — uma linha adulterada no banco não vira leitura arbitrária.
+ */
+export function caminhoDoDump(registro: BackupLog): string | null {
+  if (registro.status !== "ok" || !registro.arquivo) return null;
+  const absoluto = path.resolve(process.cwd(), registro.arquivo);
+  if (!absoluto.startsWith(BACKUP_DIR + path.sep)) return null;
+  return absoluto;
 }
 
 export interface StatusBackup {

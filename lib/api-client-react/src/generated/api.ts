@@ -1683,6 +1683,84 @@ export const useRunBackup = <TError = ErrorType<unknown>,
       return useMutation(getRunBackupMutationOptions(options));
     }
 
+export const getDownloadBackupUrl = (backupId: string,) => {
+
+
+
+
+  return `/api/admin/backup/${backupId}/download`
+}
+
+/**
+ * Fecha o ciclo do E30: saber que o backup existe não protege contra a perda da instância — a cópia precisa SAIR dela. Devolve o dump comprimido (.sql.gz) em streaming. 404 quando a execução não existe; 410 quando o registro existe mas o arquivo já foi podado pela retenção (só os dumps mais recentes ficam no disco).
+ * @summary Baixa o arquivo do dump de um backup concluído
+ */
+export const downloadBackup = async (backupId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadBackupUrl(backupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadBackupQueryKey = (backupId: string,) => {
+    return [
+    `/api/admin/backup/${backupId}/download`
+    ] as const;
+    }
+
+
+export const getDownloadBackupQueryOptions = <TData = Awaited<ReturnType<typeof downloadBackup>>, TError = ErrorType<void>>(backupId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadBackupQueryKey(backupId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadBackup>>> = ({ signal }) => downloadBackup(backupId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: backupId !== null && backupId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadBackup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadBackupQueryResult = NonNullable<Awaited<ReturnType<typeof downloadBackup>>>
+export type DownloadBackupQueryError = ErrorType<void>
+
+
+/**
+ * @summary Baixa o arquivo do dump de um backup concluído
+ */
+
+export function useDownloadBackup<TData = Awaited<ReturnType<typeof downloadBackup>>, TError = ErrorType<void>>(
+ backupId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadBackupQueryOptions(backupId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListEquipeUrl = (lojaId: string,) => {
 
 
