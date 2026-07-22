@@ -2292,6 +2292,169 @@ paths:
         "422":
           description: Orçamento não está ENVIADO — nada a aceitar
 
+  # ───────────────────────── Portal da noiva (E78) ─────────────────────────
+  /portal:
+    get:
+      operationId: getPortal
+      tags: [portal]
+      security: []
+      summary: Um link para tudo dela — proposta, lookbook, provas e extrato
+      description: >
+        E78: a noiva recebia até três links soltos (orçamento E13, lookbook
+        E21) e nada de provas/parcelas. O portal é UM token por NOIVA — quem o
+        tem vê a proposta (com aceite E74), o lookbook provado, as próximas
+        provas e, depois do contrato, o extrato de parcelas DELA. Token em
+        QUERY, nunca no path (o logger corta a query). Cada abertura carimba
+        `ultimoAcessoEm`. Seções sem conteúdo vêm nulas/vazias — a página não
+        promete o que não existe.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: O lugar da noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalNoiva"
+        "404":
+          description: Token desconhecido ou revogado
+        "410":
+          description: Link expirado
+
+  /portal/aceite:
+    post:
+      operationId: aceitarPortal
+      tags: [portal]
+      security: []
+      summary: O aceite da proposta, pelo portal
+      description: >
+        Delega à MESMA rotina do E74 (uma transação, um invariante): grava
+        instante, versão e hash, avança para APROVADO e deixa a linha na
+        auditoria como "(link público)". Idempotente. O alvo é o mesmo
+        orçamento que o GET /portal exibe.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aceite registrado (ou o já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aceitoEm]
+                properties:
+                  aceitoEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido ou revogado
+        "410":
+          description: Link expirado
+        "422":
+          description: Não há proposta ENVIADA — nada a aceitar
+
+  /portal/foto:
+    get:
+      operationId: getPortalFoto
+      tags: [portal]
+      security: []
+      description: >
+        Foto de um vestido do lookbook DA noiva, escopada ao token do PORTAL —
+        o espelho de /lookbooks/publico/foto, para o portal não depender do
+        token antigo do lookbook (que pode ter expirado). Vestido fora do
+        lookbook dela é 404, mesmo existindo.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: vestidoId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ordem
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: variante
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [original, thumb]
+        - name: v
+          in: query
+          required: false
+          description: Cache-buster (updatedAt) — com ele a resposta é immutable
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A imagem
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Token desconhecido/revogado ou vestido fora do lookbook
+        "410":
+          description: Link expirado
+
+  /lojas/{lojaId}/leads/{leadId}/portal:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: leadId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getPortalLead
+      tags: [portal]
+      summary: O estado do portal desta noiva, para o card da ficha
+      responses:
+        "200":
+          description: O portal existe (pode estar expirado ou revogado)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalStatus"
+        "404":
+          description: Nunca foi gerado
+    post:
+      operationId: criarPortalLead
+      tags: [portal]
+      summary: Gera (ou regenera) o link do portal — 30 dias
+      description: >
+        Regenerar MATA o link antigo: é a mesma linha (leadId é unique), o
+        token novo substitui o velho. Revogado volta à vida com token novo.
+      responses:
+        "201":
+          description: O link novo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalStatus"
+        "404":
+          description: Lead não é desta loja
+    delete:
+      operationId: revogarPortalLead
+      tags: [portal]
+      summary: Revoga o link a um clique
+      responses:
+        "204":
+          description: Revogado (ou já não existia)
+
   # ───────────────────────── Contratos ─────────────────────────
   /lojas/{lojaId}/contratos:
     parameters:
@@ -4769,6 +4932,71 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OrcamentoPublicoItem"
+
+    # ── Portal da noiva (E78) ──
+    PortalNoiva:
+      # A visão da NOIVA, como no OrcamentoPublico: nomes e valores, nenhum id
+      # interno além do vestidoId (necessário para pedir a foto). NUNCA dados
+      # de outra noiva ou da loja.
+      type: object
+      required: [noivaNome, lojaNome, orcamento, lookbook, provas, parcelas]
+      properties:
+        noivaNome: { type: string }
+        lojaNome: { type: string }
+        # A proposta mais recente ENVIADA/APROVADA — o mesmo shape do link E13,
+        # com aceite E74. null = ainda não há proposta para mostrar.
+        orcamento:
+          anyOf:
+            - $ref: "#/components/schemas/OrcamentoPublico"
+            - type: "null"
+        # O lookbook dos vestidos provados (E21), fotos servidas por
+        # /portal/foto com ESTE token. null = nunca montaram um para ela.
+        lookbook:
+          anyOf:
+            - type: object
+              required: [vestidos]
+              properties:
+                vestidos:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/LookbookPublicoVestido"
+            - type: "null"
+        # As próximas provas (futuras, ordenadas). Passadas ficam de fora: o
+        # portal aponta para a frente.
+        provas:
+          type: array
+          items:
+            type: object
+            required: [inicio]
+            properties:
+              inicio: { type: string, format: date-time }
+              confirmadoEm: { type: ["string", "null"], format: date-time }
+        # O extrato DELA, só leitura — pagar continua com a loja. Vazio antes
+        # do contrato.
+        parcelas:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalParcela"
+    PortalParcela:
+      type: object
+      required: [numero, descricao, valorPrevisto, valorRecebido, vencimento, status]
+      properties:
+        numero: { type: integer }
+        descricao: { type: ["string", "null"] }
+        valorPrevisto: { type: number }
+        valorRecebido: { type: ["number", "null"] }
+        vencimento: { type: string, format: date-time }
+        status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+    PortalStatus:
+      # O card da ficha da vendedora: gerar/copiar/revogar, "último acesso há X".
+      type: object
+      required: [token, expiraEm, criadoEm, revogadoEm, ultimoAcessoEm]
+      properties:
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+        criadoEm: { type: string, format: date-time }
+        revogadoEm: { type: ["string", "null"], format: date-time }
+        ultimoAcessoEm: { type: ["string", "null"], format: date-time }
 
     # ── Contratos ──
     Contrato:

@@ -93,6 +93,9 @@ const lookbookLimiter = rateLimit({
   message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
 });
 app.use("/api/lookbooks/publico", lookbookLimiter);
+// Portal da noiva (E78): mesma régua do lookbook — a página carrega N fotos
+// pelo MESMO prefixo, e o teto de probing derrubaria o primeiro acesso.
+app.use("/api/portal", lookbookLimiter);
 
 app.use("/api", router);
 

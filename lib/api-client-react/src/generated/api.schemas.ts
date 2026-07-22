@@ -1504,6 +1504,56 @@ export interface OrcamentoPublico {
   itens: OrcamentoPublicoItem[];
 }
 
+export type PortalNoivaLookbook = {
+  vestidos: LookbookPublicoVestido[];
+} | null;
+
+export type PortalNoivaProvasItem = {
+  inicio: string;
+  /** @nullable */
+  confirmadoEm?: string | null;
+};
+
+export type PortalParcelaStatus = typeof PortalParcelaStatus[keyof typeof PortalParcelaStatus];
+
+
+export const PortalParcelaStatus = {
+  PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
+  PAGA: 'PAGA',
+  CANCELADA: 'CANCELADA',
+} as const;
+
+export interface PortalParcela {
+  numero: number;
+  /** @nullable */
+  descricao: string | null;
+  valorPrevisto: number;
+  /** @nullable */
+  valorRecebido: number | null;
+  vencimento: string;
+  status: PortalParcelaStatus;
+}
+
+export interface PortalNoiva {
+  noivaNome: string;
+  lojaNome: string;
+  orcamento: OrcamentoPublico | null;
+  lookbook: PortalNoivaLookbook;
+  provas: PortalNoivaProvasItem[];
+  parcelas: PortalParcela[];
+}
+
+export interface PortalStatus {
+  token: string;
+  expiraEm: string;
+  criadoEm: string;
+  /** @nullable */
+  revogadoEm: string | null;
+  /** @nullable */
+  ultimoAcessoEm: string | null;
+}
+
 export type ContratoStatus = typeof ContratoStatus[keyof typeof ContratoStatus];
 
 
@@ -2449,6 +2499,37 @@ token: string;
 export type AceitarOrcamentoPublico200 = {
   aceitoEm: string;
 };
+
+export type GetPortalParams = {
+token: string;
+};
+
+export type AceitarPortalParams = {
+token: string;
+};
+
+export type AceitarPortal200 = {
+  aceitoEm: string;
+};
+
+export type GetPortalFotoParams = {
+token: string;
+vestidoId: string;
+ordem: number;
+variante?: GetPortalFotoVariante;
+/**
+ * Cache-buster (updatedAt) — com ele a resposta é immutable
+ */
+v?: string;
+};
+
+export type GetPortalFotoVariante = typeof GetPortalFotoVariante[keyof typeof GetPortalFotoVariante];
+
+
+export const GetPortalFotoVariante = {
+  original: 'original',
+  thumb: 'thumb',
+} as const;
 
 export type ListContratosParams = {
 leadId?: string;

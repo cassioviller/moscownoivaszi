@@ -24,6 +24,8 @@ import type {
   AceitarConviteResultado,
   AceitarOrcamentoPublico200,
   AceitarOrcamentoPublicoParams,
+  AceitarPortal200,
+  AceitarPortalParams,
   Ajuste,
   AjusteChecklistItem,
   AjusteChecklistItemInput,
@@ -105,6 +107,8 @@ import type {
   GetLookbookPublicoParams,
   GetMinhaComissaoParams,
   GetOrcamentoPublicoParams,
+  GetPortalFotoParams,
+  GetPortalParams,
   GetSazonalidadeCasamentos200Item,
   GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
@@ -154,6 +158,8 @@ import type {
   PerfilOverrideInput,
   PerfilOverrideLoja,
   PerfilUpdate,
+  PortalNoiva,
+  PortalStatus,
   PreviewComissaoParams,
   ProximaJanelaVestido,
   ReaberturaComissao,
@@ -8727,6 +8733,477 @@ export const useAceitarOrcamentoPublico = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getAceitarOrcamentoPublicoMutationOptions(options));
+    }
+
+export const getGetPortalUrl = (params: GetPortalParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal?${stringifiedParams}` : `/api/portal`
+}
+
+/**
+ * E78: a noiva recebia até três links soltos (orçamento E13, lookbook E21) e nada de provas/parcelas. O portal é UM token por NOIVA — quem o tem vê a proposta (com aceite E74), o lookbook provado, as próximas provas e, depois do contrato, o extrato de parcelas DELA. Token em QUERY, nunca no path (o logger corta a query). Cada abertura carimba `ultimoAcessoEm`. Seções sem conteúdo vêm nulas/vazias — a página não promete o que não existe.
+ * @summary Um link para tudo dela — proposta, lookbook, provas e extrato
+ */
+export const getPortal = async (params: GetPortalParams, options?: RequestInit): Promise<PortalNoiva> => {
+
+  return customFetch<PortalNoiva>(getGetPortalUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalQueryKey = (params?: GetPortalParams,) => {
+    return [
+    `/api/portal`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPortalQueryOptions = <TData = Awaited<ReturnType<typeof getPortal>>, TError = ErrorType<void>>(params: GetPortalParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortal>>> = ({ signal }) => getPortal(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalQueryResult = NonNullable<Awaited<ReturnType<typeof getPortal>>>
+export type GetPortalQueryError = ErrorType<void>
+
+
+/**
+ * @summary Um link para tudo dela — proposta, lookbook, provas e extrato
+ */
+
+export function useGetPortal<TData = Awaited<ReturnType<typeof getPortal>>, TError = ErrorType<void>>(
+ params: GetPortalParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAceitarPortalUrl = (params: AceitarPortalParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/aceite?${stringifiedParams}` : `/api/portal/aceite`
+}
+
+/**
+ * Delega à MESMA rotina do E74 (uma transação, um invariante): grava instante, versão e hash, avança para APROVADO e deixa a linha na auditoria como "(link público)". Idempotente. O alvo é o mesmo orçamento que o GET /portal exibe.
+ * @summary O aceite da proposta, pelo portal
+ */
+export const aceitarPortal = async (params: AceitarPortalParams, options?: RequestInit): Promise<AceitarPortal200> => {
+
+  return customFetch<AceitarPortal200>(getAceitarPortalUrl(params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getAceitarPortalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aceitarPortal>>, TError,{params: AceitarPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof aceitarPortal>>, TError,{params: AceitarPortalParams}, TContext> => {
+
+const mutationKey = ['aceitarPortal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof aceitarPortal>>, {params: AceitarPortalParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  aceitarPortal(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AceitarPortalMutationResult = NonNullable<Awaited<ReturnType<typeof aceitarPortal>>>
+
+    export type AceitarPortalMutationError = ErrorType<void>
+
+    /**
+ * @summary O aceite da proposta, pelo portal
+ */
+export const useAceitarPortal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aceitarPortal>>, TError,{params: AceitarPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof aceitarPortal>>,
+        TError,
+        {params: AceitarPortalParams},
+        TContext
+      > => {
+      return useMutation(getAceitarPortalMutationOptions(options));
+    }
+
+export const getGetPortalFotoUrl = (params: GetPortalFotoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/foto?${stringifiedParams}` : `/api/portal/foto`
+}
+
+/**
+ * Foto de um vestido do lookbook DA noiva, escopada ao token do PORTAL — o espelho de /lookbooks/publico/foto, para o portal não depender do token antigo do lookbook (que pode ter expirado). Vestido fora do lookbook dela é 404, mesmo existindo.
+ */
+export const getPortalFoto = async (params: GetPortalFotoParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPortalFotoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalFotoQueryKey = (params?: GetPortalFotoParams,) => {
+    return [
+    `/api/portal/foto`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPortalFotoQueryOptions = <TData = Awaited<ReturnType<typeof getPortalFoto>>, TError = ErrorType<void>>(params: GetPortalFotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalFotoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalFoto>>> = ({ signal }) => getPortalFoto(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalFoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalFotoQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalFoto>>>
+export type GetPortalFotoQueryError = ErrorType<void>
+
+
+
+export function useGetPortalFoto<TData = Awaited<ReturnType<typeof getPortalFoto>>, TError = ErrorType<void>>(
+ params: GetPortalFotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalFoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalFotoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPortalLeadUrl = (lojaId: string,
+    leadId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/portal`
+}
+
+/**
+ * @summary O estado do portal desta noiva, para o card da ficha
+ */
+export const getPortalLead = async (lojaId: string,
+    leadId: string, options?: RequestInit): Promise<PortalStatus> => {
+
+  return customFetch<PortalStatus>(getGetPortalLeadUrl(lojaId,leadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalLeadQueryKey = (lojaId: string,
+    leadId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/${leadId}/portal`
+    ] as const;
+    }
+
+
+export const getGetPortalLeadQueryOptions = <TData = Awaited<ReturnType<typeof getPortalLead>>, TError = ErrorType<void>>(lojaId: string,
+    leadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalLeadQueryKey(lojaId,leadId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalLead>>> = ({ signal }) => getPortalLead(lojaId,leadId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && leadId !== null && leadId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalLead>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalLeadQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalLead>>>
+export type GetPortalLeadQueryError = ErrorType<void>
+
+
+/**
+ * @summary O estado do portal desta noiva, para o card da ficha
+ */
+
+export function useGetPortalLead<TData = Awaited<ReturnType<typeof getPortalLead>>, TError = ErrorType<void>>(
+ lojaId: string,
+    leadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalLead>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalLeadQueryOptions(lojaId,leadId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCriarPortalLeadUrl = (lojaId: string,
+    leadId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/portal`
+}
+
+/**
+ * Regenerar MATA o link antigo: é a mesma linha (leadId é unique), o token novo substitui o velho. Revogado volta à vida com token novo.
+ * @summary Gera (ou regenera) o link do portal — 30 dias
+ */
+export const criarPortalLead = async (lojaId: string,
+    leadId: string, options?: RequestInit): Promise<PortalStatus> => {
+
+  return customFetch<PortalStatus>(getCriarPortalLeadUrl(lojaId,leadId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCriarPortalLeadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof criarPortalLead>>, TError,{lojaId: string;leadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof criarPortalLead>>, TError,{lojaId: string;leadId: string}, TContext> => {
+
+const mutationKey = ['criarPortalLead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof criarPortalLead>>, {lojaId: string;leadId: string}> = (props) => {
+          const {lojaId,leadId} = props ?? {};
+
+          return  criarPortalLead(lojaId,leadId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CriarPortalLeadMutationResult = NonNullable<Awaited<ReturnType<typeof criarPortalLead>>>
+
+    export type CriarPortalLeadMutationError = ErrorType<void>
+
+    /**
+ * @summary Gera (ou regenera) o link do portal — 30 dias
+ */
+export const useCriarPortalLead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof criarPortalLead>>, TError,{lojaId: string;leadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof criarPortalLead>>,
+        TError,
+        {lojaId: string;leadId: string},
+        TContext
+      > => {
+      return useMutation(getCriarPortalLeadMutationOptions(options));
+    }
+
+export const getRevogarPortalLeadUrl = (lojaId: string,
+    leadId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/portal`
+}
+
+/**
+ * @summary Revoga o link a um clique
+ */
+export const revogarPortalLead = async (lojaId: string,
+    leadId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRevogarPortalLeadUrl(lojaId,leadId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRevogarPortalLeadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revogarPortalLead>>, TError,{lojaId: string;leadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revogarPortalLead>>, TError,{lojaId: string;leadId: string}, TContext> => {
+
+const mutationKey = ['revogarPortalLead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revogarPortalLead>>, {lojaId: string;leadId: string}> = (props) => {
+          const {lojaId,leadId} = props ?? {};
+
+          return  revogarPortalLead(lojaId,leadId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevogarPortalLeadMutationResult = NonNullable<Awaited<ReturnType<typeof revogarPortalLead>>>
+
+    export type RevogarPortalLeadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Revoga o link a um clique
+ */
+export const useRevogarPortalLead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revogarPortalLead>>, TError,{lojaId: string;leadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revogarPortalLead>>,
+        TError,
+        {lojaId: string;leadId: string},
+        TContext
+      > => {
+      return useMutation(getRevogarPortalLeadMutationOptions(options));
     }
 
 export const getListContratosUrl = (lojaId: string,

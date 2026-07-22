@@ -4629,6 +4629,139 @@ export const AceitarOrcamentoPublicoResponse = zod.object({
 })
 
 
+/**
+ * E78: a noiva recebia até três links soltos (orçamento E13, lookbook E21) e nada de provas/parcelas. O portal é UM token por NOIVA — quem o tem vê a proposta (com aceite E74), o lookbook provado, as próximas provas e, depois do contrato, o extrato de parcelas DELA. Token em QUERY, nunca no path (o logger corta a query). Cada abertura carimba `ultimoAcessoEm`. Seções sem conteúdo vêm nulas/vazias — a página não promete o que não existe.
+ * @summary Um link para tudo dela — proposta, lookbook, provas e extrato
+ */
+export const GetPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetPortalResponse = zod.object({
+  "noivaNome": zod.string(),
+  "lojaNome": zod.string(),
+  "orcamento": zod.union([zod.object({
+  "lojaNome": zod.string(),
+  "noivaNome": zod.string(),
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']),
+  "validade": zod.coerce.date().nullish(),
+  "observacoes": zod.string().nullish(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
+  "totalBruto": zod.number(),
+  "totalLiquido": zod.number(),
+  "versaoNumero": zod.number().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "itens": zod.array(zod.object({
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+}))
+}),zod.null()]),
+  "lookbook": zod.union([zod.object({
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "atualizadaEm": zod.coerce.date()
+})),
+  "atributos": zod.array(zod.object({
+  "atributo": zod.string(),
+  "valor": zod.string()
+}))
+}))
+}),zod.null()]),
+  "provas": zod.array(zod.object({
+  "inicio": zod.coerce.date(),
+  "confirmadoEm": zod.coerce.date().nullish()
+})),
+  "parcelas": zod.array(zod.object({
+  "numero": zod.number(),
+  "descricao": zod.string().nullable(),
+  "valorPrevisto": zod.number(),
+  "valorRecebido": zod.number().nullable(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA'])
+}))
+})
+
+
+/**
+ * Delega à MESMA rotina do E74 (uma transação, um invariante): grava instante, versão e hash, avança para APROVADO e deixa a linha na auditoria como "(link público)". Idempotente. O alvo é o mesmo orçamento que o GET /portal exibe.
+ * @summary O aceite da proposta, pelo portal
+ */
+export const AceitarPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const AceitarPortalResponse = zod.object({
+  "aceitoEm": zod.coerce.date()
+})
+
+
+/**
+ * Foto de um vestido do lookbook DA noiva, escopada ao token do PORTAL — o espelho de /lookbooks/publico/foto, para o portal não depender do token antigo do lookbook (que pode ter expirado). Vestido fora do lookbook dela é 404, mesmo existindo.
+ */
+export const GetPortalFotoQueryParams = zod.object({
+  "token": zod.coerce.string(),
+  "vestidoId": zod.coerce.string(),
+  "ordem": zod.coerce.number(),
+  "variante": zod.enum(['original', 'thumb']).optional(),
+  "v": zod.coerce.string().optional().describe('Cache-buster (updatedAt) — com ele a resposta é immutable')
+})
+
+export const GetPortalFotoResponse = zod.unknown()
+
+
+/**
+ * @summary O estado do portal desta noiva, para o card da ficha
+ */
+export const GetPortalLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const GetPortalLeadResponse = zod.object({
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "revogadoEm": zod.coerce.date().nullable(),
+  "ultimoAcessoEm": zod.coerce.date().nullable()
+})
+
+
+/**
+ * Regenerar MATA o link antigo: é a mesma linha (leadId é unique), o token novo substitui o velho. Revogado volta à vida com token novo.
+ * @summary Gera (ou regenera) o link do portal — 30 dias
+ */
+export const CriarPortalLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const CriarPortalLeadResponse = zod.object({
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "revogadoEm": zod.coerce.date().nullable(),
+  "ultimoAcessoEm": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Revoga o link a um clique
+ */
+export const RevogarPortalLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const RevogarPortalLeadResponse = zod.void()
+
+
 export const ListContratosParams = zod.object({
   "lojaId": zod.coerce.string()
 })

@@ -1,0 +1,318 @@
+import { Router, type IRouter } from "express";
+import {
+  db,
+  portalTokensTable,
+  lojasTable,
+  leadsTable,
+  lookbooksTable,
+  lookbookItensTable,
+  orcamentosTable,
+  contratosTable,
+  parcelasTable,
+  atendimentosTable,
+  vestidoFotosTable,
+} from "@workspace/db";
+import { eq, and, desc, asc, gte, inArray } from "drizzle-orm";
+import {
+  GetPortalQueryParams,
+  GetPortalResponse,
+  AceitarPortalQueryParams,
+  AceitarPortalResponse,
+  GetPortalFotoQueryParams,
+  GetPortalLeadResponse,
+  CriarPortalLeadResponse,
+} from "@workspace/api-zod";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { gerarTokenConvite } from "../lib/auth";
+import { leadNaLoja } from "../lib/escopo-loja";
+import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
+import { montarOrcamentoPublico, montarVestidosLookbook } from "../lib/visao-noiva";
+import { randomUUID } from "node:crypto";
+
+/**
+ * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
+ * links soltos (orçamento E13, lookbook E21) e nada de provas/parcelas; agora
+ * um token por NOIVA abre a proposta (com aceite E74), o lookbook provado,
+ * as próximas provas e — depois do contrato — o extrato de parcelas DELA.
+ *
+ * Mesmo modelo das irmãs públicas: token 256 bits em QUERY (o logger corta a
+ * query — jamais cai em log), 404 para desconhecido/revogado, 410 para
+ * expirado. Rotas públicas primeiro; gestão atrás de sessão + módulo leads.
+ */
+const PORTAL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+const router: IRouter = Router();
+
+/** Portal válido com noiva e loja, ou o motivo da recusa. */
+async function buscarPorToken(token: string) {
+  const [linha] = await db
+    .select({ portal: portalTokensTable, lojaNome: lojasTable.nome, lead: leadsTable })
+    .from(portalTokensTable)
+    .innerJoin(lojasTable, eq(lojasTable.id, portalTokensTable.lojaId))
+    .innerJoin(leadsTable, eq(leadsTable.id, portalTokensTable.leadId))
+    .where(eq(portalTokensTable.token, token));
+  // Revogado responde como desconhecido (404), não 410: "expirou" convida a
+  // pedir outro; o link morto de propósito não deve dizer que um dia valeu.
+  if (!linha || linha.portal.revogadoEm) return null;
+  return linha;
+}
+
+/**
+ * A proposta que o portal exibe (e que o aceite mira): a mais recente que a
+ * vendedora ENVIOU — aprovada continua aparecendo como comprovante.
+ */
+async function orcamentoDoPortal(lojaId: string, leadId: string) {
+  const [orcamento] = await db
+    .select()
+    .from(orcamentosTable)
+    .where(and(
+      eq(orcamentosTable.lojaId, lojaId),
+      eq(orcamentosTable.leadId, leadId),
+      inArray(orcamentosTable.status, ["ENVIADO", "APROVADO"]),
+    ))
+    .orderBy(desc(orcamentosTable.createdAt))
+    .limit(1);
+  return orcamento ?? null;
+}
+
+router.get("/portal", async (req, res): Promise<void> => {
+  const parsed = GetPortalQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+  const { portal, lojaNome, lead } = linha;
+
+  // "Ela abriu" do card da vendedora — cada abertura move o carimbo.
+  await db.update(portalTokensTable)
+    .set({ ultimoAcessoEm: new Date() })
+    .where(eq(portalTokensTable.id, portal.id));
+
+  const agora = new Date();
+  const [orcamento, lookbook, provas, contrato] = await Promise.all([
+    orcamentoDoPortal(portal.lojaId, portal.leadId),
+    // O lookbook mais recente da noiva — o portal não depende do token antigo.
+    db.select().from(lookbooksTable)
+      .where(and(eq(lookbooksTable.lojaId, portal.lojaId), eq(lookbooksTable.leadId, portal.leadId)))
+      .orderBy(desc(lookbooksTable.createdAt))
+      .limit(1),
+    // Só as futuras: o portal aponta para a frente.
+    db.select({ inicio: atendimentosTable.inicio, confirmadoEm: atendimentosTable.confirmadoEm })
+      .from(atendimentosTable)
+      .where(and(
+        eq(atendimentosTable.lojaId, portal.lojaId),
+        eq(atendimentosTable.leadId, portal.leadId),
+        eq(atendimentosTable.tipo, "PROVA"),
+        gte(atendimentosTable.inicio, agora),
+      ))
+      .orderBy(asc(atendimentosTable.inicio)),
+    db.select().from(contratosTable)
+      .where(and(
+        eq(contratosTable.lojaId, portal.lojaId),
+        eq(contratosTable.leadId, portal.leadId),
+        eq(contratosTable.status, "ATIVO"),
+      ))
+      .orderBy(desc(contratosTable.fechadoEm))
+      .limit(1),
+  ]);
+
+  // O extrato DELA: as parcelas do contrato ativo, por número. O escopo por
+  // contratoId (do contrato DESTA noiva) é o que garante que valores de outra
+  // noiva jamais aparecem.
+  const parcelas = contrato[0]
+    ? await db.select().from(parcelasTable)
+        .where(eq(parcelasTable.contratoId, contrato[0].id))
+        .orderBy(asc(parcelasTable.numero))
+    : [];
+
+  res.json(
+    GetPortalResponse.parse({
+      noivaNome: lead.noivaNome,
+      lojaNome,
+      orcamento: orcamento
+        ? await montarOrcamentoPublico(orcamento, lojaNome, lead.noivaNome)
+        : null,
+      lookbook: lookbook[0]
+        ? { vestidos: await montarVestidosLookbook(lookbook[0].id) }
+        : null,
+      provas,
+      parcelas: parcelas
+        .filter((p) => p.status !== "CANCELADA")
+        .map((p) => ({
+          numero: p.numero,
+          descricao: p.descricao,
+          valorPrevisto: p.valorPrevisto,
+          valorRecebido: p.valorRecebido,
+          vencimento: p.vencimento,
+          status: p.status,
+        })),
+    }),
+  );
+});
+
+// O aceite pelo portal delega à MESMA rotina do E74 (uma transação, um
+// invariante) — o alvo é o mesmo orçamento que o GET exibe.
+router.post("/portal/aceite", async (req, res): Promise<void> => {
+  const parsed = AceitarPortalQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  const orcamento = await orcamentoDoPortal(linha.portal.lojaId, linha.portal.leadId);
+  if (!orcamento) {
+    res.status(422).json({ error: "NAO_ENVIADO", detalhe: "Não há proposta enviada" });
+    return;
+  }
+  // Idempotente: o clique duplo devolve o aceite que já existe.
+  if (orcamento.aceitoEm) {
+    res.json(AceitarPortalResponse.parse({ aceitoEm: orcamento.aceitoEm }));
+    return;
+  }
+  if (orcamento.status !== "ENVIADO") {
+    res.status(422).json({ error: "NAO_ENVIADO", detalhe: `Orçamento está ${orcamento.status}` });
+    return;
+  }
+
+  const aceitoEm = await aceitarOrcamentoEnviado(orcamento, linha.lead.noivaNome);
+  res.json(AceitarPortalResponse.parse({ aceitoEm }));
+});
+
+// A foto escopada ao token do PORTAL — espelho de /lookbooks/publico/foto,
+// para o portal não depender do token antigo do lookbook (pode ter expirado).
+router.get("/portal/foto", async (req, res): Promise<void> => {
+  const parsed = GetPortalFotoQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { token, vestidoId, ordem, variante = "original", v } = parsed.data;
+
+  const linha = await buscarPorToken(token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  // O escopo: o vestido tem de estar no lookbook mais recente DA noiva.
+  const [lookbook] = await db.select({ id: lookbooksTable.id }).from(lookbooksTable)
+    .where(and(
+      eq(lookbooksTable.lojaId, linha.portal.lojaId),
+      eq(lookbooksTable.leadId, linha.portal.leadId),
+    ))
+    .orderBy(desc(lookbooksTable.createdAt))
+    .limit(1);
+  const [pertence] = lookbook
+    ? await db.select({ id: lookbookItensTable.id }).from(lookbookItensTable)
+        .where(and(
+          eq(lookbookItensTable.lookbookId, lookbook.id),
+          eq(lookbookItensTable.vestidoId, vestidoId),
+        ))
+    : [];
+  if (!pertence) {
+    res.status(404).json({ error: "Foto not found" });
+    return;
+  }
+
+  const foto = await db.query.vestidoFotosTable.findFirst({
+    where: and(eq(vestidoFotosTable.vestidoId, vestidoId), eq(vestidoFotosTable.ordem, ordem)),
+  });
+  if (!foto) {
+    res.status(404).json({ error: "Foto not found" });
+    return;
+  }
+
+  // Mesmo contrato de cache das irmãs (E3).
+  const servirThumb = variante === "thumb" && foto.thumbBytes != null;
+  const etag = `"${vestidoId}-${ordem}-${servirThumb ? "t" : "c"}-${foto.updatedAt.getTime()}"`;
+  if (req.headers["if-none-match"] === etag) {
+    res.status(304).end();
+    return;
+  }
+  res.setHeader("Content-Type", servirThumb ? foto.thumbMime ?? foto.mime : foto.mime);
+  res.setHeader(
+    "Cache-Control",
+    v ? "private, max-age=31536000, immutable" : "private, max-age=60, must-revalidate",
+  );
+  res.setHeader("ETag", etag);
+  res.send(servirThumb ? foto.thumbBytes : foto.bytes);
+});
+
+// ── Gestão (sessão + módulo leads: o portal é parte do atendimento da noiva) ──
+router.use("/lojas/:lojaId/leads/:leadId/portal", requireSessaoComLoja);
+
+router.get(
+  "/lojas/:lojaId/leads/:leadId/portal",
+  requireModulo("leads", "ver"),
+  async (req, res): Promise<void> => {
+    const { lojaId, leadId } = req.params as { lojaId: string; leadId: string };
+    const [portal] = await db.select().from(portalTokensTable)
+      .where(and(eq(portalTokensTable.lojaId, lojaId), eq(portalTokensTable.leadId, leadId)));
+    if (!portal) {
+      res.status(404).json({ error: "PORTAL_INEXISTENTE" });
+      return;
+    }
+    res.json(GetPortalLeadResponse.parse(portal));
+  },
+);
+
+router.post(
+  "/lojas/:lojaId/leads/:leadId/portal",
+  requireModulo("leads", "editar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, leadId } = req.params as { lojaId: string; leadId: string };
+    if (!(await leadNaLoja(leadId, lojaId))) {
+      res.status(404).json({ error: "Lead not found" });
+      return;
+    }
+
+    // Regenerar MATA o link antigo: leadId é unique — o token novo substitui
+    // o velho na mesma linha, e revogado volta à vida com token novo.
+    const token = gerarTokenConvite();
+    const expiraEm = new Date(Date.now() + PORTAL_TTL_MS);
+    const [portal] = await db.insert(portalTokensTable)
+      .values({ id: randomUUID(), lojaId, leadId, token, expiraEm })
+      .onConflictDoUpdate({
+        target: portalTokensTable.leadId,
+        set: { token, expiraEm, revogadoEm: null, criadoEm: new Date() },
+      })
+      .returning();
+    res.status(201).json(CriarPortalLeadResponse.parse(portal));
+  },
+);
+
+router.delete(
+  "/lojas/:lojaId/leads/:leadId/portal",
+  requireModulo("leads", "editar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, leadId } = req.params as { lojaId: string; leadId: string };
+    await db.update(portalTokensTable)
+      .set({ revogadoEm: new Date() })
+      .where(and(eq(portalTokensTable.lojaId, lojaId), eq(portalTokensTable.leadId, leadId)));
+    res.status(204).send();
+  },
+);
+
+export default router;

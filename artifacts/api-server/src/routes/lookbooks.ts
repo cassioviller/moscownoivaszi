@@ -24,6 +24,7 @@ import {
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
 import { leadNaLoja } from "../lib/escopo-loja";
+import { montarVestidosLookbook } from "../lib/visao-noiva";
 import { randomUUID } from "node:crypto";
 
 /**
@@ -66,64 +67,12 @@ router.get("/lookbooks/publico", async (req, res): Promise<void> => {
     return;
   }
 
-  const itens = await db
-    .select({
-      vestidoId: lookbookItensTable.vestidoId,
-      nome: vestidosTable.nome,
-      // E44: preço vai junto — é o que a noiva olha para decidir em casa.
-      precoBase: vestidosTable.precoBase,
-      fotoOrdem: vestidoFotosTable.ordem,
-      fotoAtualizadaEm: vestidoFotosTable.updatedAt,
-    })
-    .from(lookbookItensTable)
-    .innerJoin(vestidosTable, eq(vestidosTable.id, lookbookItensTable.vestidoId))
-    .leftJoin(vestidoFotosTable, eq(vestidoFotosTable.vestidoId, lookbookItensTable.vestidoId))
-    .where(eq(lookbookItensTable.lookbookId, linha.lookbook.id))
-    .orderBy(asc(lookbookItensTable.ordem), asc(vestidoFotosTable.ordem));
-
-  const porVestido = new Map<
-    string,
-    { vestidoId: string; nome: string; precoBase: number; fotos: { ordem: number; atualizadaEm: Date }[]; atributos: { atributo: string; valor: string }[] }
-  >();
-  for (const it of itens) {
-    const v = porVestido.get(it.vestidoId) ?? {
-      vestidoId: it.vestidoId,
-      nome: it.nome,
-      precoBase: it.precoBase,
-      fotos: [],
-      atributos: [],
-    };
-    if (it.fotoOrdem !== null && it.fotoAtualizadaEm !== null) {
-      v.fotos.push({ ordem: it.fotoOrdem, atualizadaEm: it.fotoAtualizadaEm });
-    }
-    porVestido.set(it.vestidoId, v);
-  }
-
-  // E44: características legíveis (nome do atributo + valor da opção), já JOINáveis
-  // — antes o payload público as escondia. Uma query só, ordenada pela ordem do
-  // atributo no catálogo.
-  const vestidoIds = [...porVestido.keys()];
-  if (vestidoIds.length > 0) {
-    const attrs = await db
-      .select({
-        vestidoId: vestidoAtributosTable.vestidoId,
-        atributo: atributosTable.nome,
-        valor: atributoOpcoesTable.valor,
-      })
-      .from(vestidoAtributosTable)
-      .innerJoin(atributosTable, eq(atributosTable.id, vestidoAtributosTable.atributoId))
-      .innerJoin(atributoOpcoesTable, eq(atributoOpcoesTable.id, vestidoAtributosTable.opcaoId))
-      .where(inArray(vestidoAtributosTable.vestidoId, vestidoIds))
-      .orderBy(asc(atributosTable.ordem));
-    for (const a of attrs) {
-      porVestido.get(a.vestidoId)?.atributos.push({ atributo: a.atributo, valor: a.valor });
-    }
-  }
-
+  // E44/E78: a montagem (fotos + características legíveis) mora em
+  // lib/visao-noiva — o portal exibe o MESMO lookbook por outra porta.
   res.json(GetLookbookPublicoResponse.parse({
     lojaNome: linha.lojaNome,
     noivaNome: linha.noivaNome,
-    vestidos: [...porVestido.values()],
+    vestidos: await montarVestidosLookbook(linha.lookbook.id),
   }));
 });
 
