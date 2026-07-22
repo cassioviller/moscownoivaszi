@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { escaparCsv, montarCsv, linhasDre, linhasFluxo } from "./exportar";
+import { escaparCsv, montarCsv, linhasDre, linhasFluxo, type Movimento } from "./exportar";
 import type { DRE } from "./dre";
-import type { Movimento } from "./fluxo";
 
 /**
  * O espelho do csv.ts do api-server precisa de fiscal (lição do E12): estas
@@ -46,6 +45,36 @@ describe("linhasDre / linhasFluxo", () => {
     expect(linhas[2]).toEqual(["2026-06", "Despesa — Salários", "-700.00"]);
     expect(linhas[4]).toEqual(["2026-06", "Total de despesas", "-1200.00"]);
     expect(linhas[5]).toEqual(["2026-06", "Resultado", "-200.00"]);
+  });
+
+  // E50 (herdado de por-forma.test.ts no E88, quando `recebimentosPorForma`
+  // saiu do front): o recorte por meio entra logo abaixo do total que detalha
+  // e SOMA o mesmo — é o número que a contadora bate contra o extrato.
+  it("o recorte por meio soma o mesmo que a linha de Recebimentos", () => {
+    const dre: DRE = { receitas: 1000, despesas: [], totalDespesas: 0, resultado: 1000 };
+    const porForma = {
+      total: 1000,
+      linhas: [
+        { forma: "CARTAO_DEBITO", rotulo: "Cartão de débito", total: 700, qtd: 1 },
+        { forma: "PIX", rotulo: "Pix", total: 300, qtd: 1 },
+      ],
+    };
+    const linhas = linhasDre(dre, "2027-03", porForma);
+
+    const recebimentos = linhas.find((l) => l[1] === "Recebimentos")!;
+    const porMeio = linhas.filter((l) => l[1].startsWith("Recebimento — "));
+    expect(porMeio.map((l) => l[1])).toEqual([
+      "Recebimento — Cartão de débito",
+      "Recebimento — Pix",
+    ]);
+    const soma = porMeio.reduce((s, l) => s + Number(l[2]), 0);
+    expect(soma.toFixed(2)).toBe(recebimentos[2]);
+  });
+
+  it("sem o recorte por meio, o CSV segue igual ao de antes", () => {
+    // O parâmetro é opcional: quem não passa não ganha linhas a mais.
+    const dre: DRE = { receitas: 1000, despesas: [], totalDespesas: 0, resultado: 1000 };
+    expect(linhasDre(dre, "2027-03").some((l) => l[1].startsWith("Recebimento — "))).toBe(false);
   });
 
   it("fluxo: um movimento por linha, saída negativa, dia local na data", () => {

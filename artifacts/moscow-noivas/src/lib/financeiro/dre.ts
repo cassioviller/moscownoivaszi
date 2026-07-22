@@ -3,15 +3,11 @@ import { ROTULO_TIPO } from "@workspace/financeiro-core";
 
 /**
  * E79: o DRE mora no motor único (@workspace/financeiro-core) — o MESMO
- * `dreDoIntervalo` que o api-server roda em GET /financeiro/dre. Porta local;
- * dre.test.ts ao lado prova o core.
+ * `dreDoIntervalo` que o api-server roda em GET /financeiro/dre. Desde o E88
+ * a porta re-exporta só o TIPO (a tela consome o endpoint; quem prova o motor
+ * é dre.test.ts, direto no core).
  */
-export {
-  dreDoIntervalo,
-  rotuloCategoria,
-  type DRE,
-  type LinhaDespesa,
-} from "@workspace/financeiro-core";
+export { type DRE } from "@workspace/financeiro-core";
 
 /**
  * Tipado pelo enum gerado: se o backend ganhar um tipo de conta novo, o

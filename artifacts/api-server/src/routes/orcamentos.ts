@@ -23,6 +23,7 @@ import { orcamentoVersoesTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
+import { round2 } from "../lib/dinheiro";
 
 const router: IRouter = Router();
 
@@ -38,8 +39,6 @@ async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<vo
     .set({ etapa: nova, orcamentoAbertoEm: lead.orcamentoAbertoEm ?? new Date(), updatedAt: new Date() })
     .where(eq(leadsTable.id, lead.id));
 }
-
-const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /**
  * E75: marcar ENVIADO congela uma versão — itens, desconto e totais, com hash

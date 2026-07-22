@@ -6,18 +6,13 @@
 export {
   diaLocal,
   diaDeNegocio,
-  inicioDoDia,
   hojeLocal,
   competenciaValida,
   competenciaAtual,
-  primeiroDiaDoMes,
-  ultimoDiaDoMes,
   addDias,
   diasEntre,
   ultimasCompetencias,
   resolverIntervalo,
-  intervaloDaCompetencia,
   instanteNoIntervalo,
   negocioNoIntervalo,
-  type Intervalo,
 } from "@workspace/financeiro-core";

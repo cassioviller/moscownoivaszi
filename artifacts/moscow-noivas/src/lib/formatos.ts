@@ -1,6 +1,7 @@
 /** Helpers de formatação/negócio compartilhados pelas páginas. */
 
-export const ETAPA_LABELS: Record<string, string> = {
+// Interno desde o E88: todo consumidor passa por `etapaLabel`.
+const ETAPA_LABELS: Record<string, string> = {
   NOVO: "Novo",
   INTERESSES_PREENCHIDOS: "Interesses preenchidos",
   ATENDIMENTO_AGENDADO: "Atendimento agendado",

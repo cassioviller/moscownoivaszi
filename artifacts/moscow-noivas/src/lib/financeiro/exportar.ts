@@ -1,17 +1,17 @@
 import type { DRE } from "./dre";
 import type { RecebimentosPorForma } from "./forma";
-import type { Movimento } from "./fluxo";
 import { diaLocal } from "./datas";
 
 /**
- * Exportação CSV no CLIENTE (E22): DRE e fluxo são calculados aqui no front
- * (dreDoIntervalo/resumoCaixa) — exportar do servidor exigiria reimplementar o
- * motor lá e criaria exatamente a divergência que a proposta do motor único
- * quer matar. O CSV nasce dos MESMOS números que a tela mostra.
+ * Exportação CSV no CLIENTE (E22, auditado no E88): desde o E79 os números vêm
+ * do SERVIDOR (GET /financeiro/dre e /financeiro/fluxo) — aqui só se FORMATA o
+ * que a tela já buscou. Fica no front de propósito: o CSV nasce dos MESMOS
+ * números que a tela mostra, sem uma segunda ida ao motor.
  *
  * `escaparCsv`/`montarCsv` são ESPELHO de api-server/src/lib/csv.ts (RFC 4180
- * + neutralização de injeção de fórmula, C5). O teste exportar.test.ts fixa o
- * comportamento — mesma régua provada lá.
+ * + neutralização de injeção de fórmula, C5). Só `baixarCsv` os chama, mas
+ * seguem exportados porque exportar.test.ts fixa o comportamento — mesma
+ * régua provada lá.
  */
 
 const ABRE_COMO_FORMULA = /^[=+\-@\t\r]/;
@@ -62,6 +62,23 @@ export function linhasDre(
   linhas.push([competencia, "Resultado", dre.resultado.toFixed(2)]);
   return linhas;
 }
+
+/**
+ * Uma linha da linha do tempo do fluxo, como a tela monta a partir de
+ * GET /financeiro/fluxo (E79). Morava em fluxo.ts; veio para cá no E88 quando
+ * a poda aposentou o resto daquele módulo — o CSV é o único consumidor.
+ */
+export type Movimento = {
+  id: string;
+  tipo: "ENTRADA" | "SAIDA";
+  data: string;
+  valor: number;
+  /** Quem/o quê, quando dá para nomear (noiva, colaborador, fornecedor). */
+  rotulo: string | null;
+  descricao: string;
+  /** Destino do clique, quando existe uma tela que explica o movimento. */
+  href: string | null;
+};
 
 /** Um movimento por linha, saída com sinal negativo — importável sem retrabalho. */
 export function linhasFluxo(movimentos: readonly Movimento[]): string[][] {

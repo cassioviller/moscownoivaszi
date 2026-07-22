@@ -7,13 +7,16 @@ import {
   diaLocal,
   diasEntre,
   instanteNoIntervalo,
-  intervaloDaCompetencia,
   negocioNoIntervalo,
-  primeiroDiaDoMes,
   resolverIntervalo,
   ultimasCompetencias,
-  ultimoDiaDoMes,
 } from "./datas";
+// Sem porta no front desde o E88 (nenhuma tela consome) — a prova é do core.
+import {
+  intervaloDaCompetencia,
+  primeiroDiaDoMes,
+  ultimoDiaDoMes,
+} from "@workspace/financeiro-core";
 
 describe("dia de instante × dia de negócio", () => {
   it("instante lê o dia no fuso da loja, não em UTC", () => {

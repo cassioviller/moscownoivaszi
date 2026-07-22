@@ -11,6 +11,7 @@ import {
   type Orcamento,
 } from "@workspace/db";
 import { eq, asc, desc, inArray } from "drizzle-orm";
+import { round2 } from "./dinheiro";
 
 /**
  * E78 — as visões que a NOIVA vê, num lugar só. Nasceram nas rotas públicas
@@ -18,8 +19,6 @@ import { eq, asc, desc, inArray } from "drizzle-orm";
  * passou a exibir as MESMAS seções — a noiva e a vendedora (e agora o portal
  * e o link antigo) precisam ver o MESMO número.
  */
-
-const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /**
  * A visão pública do orçamento: a última versão ENVIADA quando existe (E75 —

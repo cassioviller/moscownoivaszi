@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Parcela, Pagamento, PagamentoItem, ContaPagar } from "@workspace/api-client-react";
-import { dreDoIntervalo, rotuloCategoria } from "./dre";
+import { dreDoIntervalo, rotuloCategoria } from "@workspace/financeiro-core";
 
 const MARCO = { iniYMD: "2027-03-01", fimYMD: "2027-03-31" };
 

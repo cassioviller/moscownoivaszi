@@ -3,11 +3,12 @@ import type { Parcela } from "@workspace/api-client-react";
 import {
   estaAberta,
   estaAtrasada,
+  horizonteAberto,
+  resumoCaixa,
   saldoAberto,
   teveRecebimento,
   vencidas,
 } from "@workspace/financeiro-core";
-import { horizonteAberto, resumoCaixa } from "./fluxo";
 import { projetarCaixa } from "./projecao";
 import { agingDeParcelas } from "./cobranca";
 

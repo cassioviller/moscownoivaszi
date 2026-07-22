@@ -6,9 +6,10 @@ import type { RecebimentosPorForma } from "@/lib/financeiro/forma";
  * conciliar: a taxa do cartão contra a maquininha, o Pix contra o extrato, o
  * dinheiro contra a gaveta.
  *
- * Puramente apresentacional: a agregação é de `recebimentosPorForma`, e por
- * isso o total daqui fecha por construção com o "Recebimentos" do DRE e com as
- * entradas do fluxo — as três leituras saem do mesmo filtro.
+ * Puramente apresentacional: a agregação é o `porMeio` do servidor
+ * (`entradasPorMeio`, E79 — o client-side saiu no E88), e por isso o total
+ * daqui fecha por construção com o "Recebimentos" do DRE e com as entradas do
+ * fluxo — as três leituras saem do mesmo filtro.
  *
  * A barra é proporcional ao MAIOR meio, não ao total: comparar os meios entre
  * si é a pergunta ("o cartão pesa mais que o Pix?"), e contra o total quase

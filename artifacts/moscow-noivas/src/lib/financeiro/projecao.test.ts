@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Parcela, ContaPagar } from "@workspace/api-client-react";
-import { montarCurva, normalizarHorizonte, projetarCaixa } from "./projecao";
+import { normalizarHorizonte, projetarCaixa } from "./projecao";
+// Sem porta no front desde o E88 (só `projetarCaixa` a usa) — a prova é do core.
+import { montarCurva } from "@workspace/financeiro-core";
 
 const HOJE = "2027-07-16";
 
