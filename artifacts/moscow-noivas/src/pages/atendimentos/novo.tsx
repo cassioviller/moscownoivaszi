@@ -18,6 +18,11 @@ import {
   getListBloqueiosQueryKey,
   useGetDisponibilidade,
   getGetDisponibilidadeQueryKey,
+  useCreateBloqueio,
+  useListVestidos,
+  getListVestidosQueryKey,
+  useGetLead,
+  getGetLeadQueryKey,
   type Atendimento,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -174,6 +179,56 @@ export default function NovoAtendimento() {
       ),
     [bloqueios.data, leadId],
   );
+
+  // E65: noiva sem reserva deixava a vendedora num beco ("crie a reserva
+  // antes") — a reserva agora nasce aqui mesmo, sem sair do fluxo da prova.
+  const semReserva = tipo === "PROVA" && !!leadId && !bloqueios.isLoading && reservasDaNoiva.length === 0;
+  const [novaReservaVestidoId, setNovaReservaVestidoId] = useState("");
+  const [novaReservaData, setNovaReservaData] = useState("");
+  const vestidosQ = useListVestidos(activeLojaId!, {
+    query: { queryKey: getListVestidosQueryKey(activeLojaId!), enabled: !!activeLojaId && semReserva },
+  });
+  const leadQ = useGetLead(activeLojaId!, leadId, {
+    query: {
+      queryKey: getGetLeadQueryKey(activeLojaId!, leadId),
+      enabled: !!activeLojaId && semReserva,
+    },
+  });
+  const createBloqueio = useCreateBloqueio();
+  // A data do casamento que a ficha da noiva já sabe pré-preenche o campo.
+  const dataReservaEfetiva =
+    novaReservaData || leadQ.data?.casamentoData?.slice(0, 10) || "";
+
+  const criarReservaInline = async () => {
+    if (!novaReservaVestidoId || !dataReservaEfetiva) return;
+    try {
+      const criado = await createBloqueio.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          vestidoId: novaReservaVestidoId,
+          leadId,
+          tipo: "RESERVA_CASAMENTO",
+          casamentoData: `${dataReservaEfetiva}T12:00:00-03:00`,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) });
+      form.setValue("bloqueioId", criado.id, { shouldValidate: true });
+      setNovaReservaVestidoId("");
+      setNovaReservaData("");
+      toast({ title: "Reserva criada", description: "O vestido está reservado para o casamento." });
+    } catch (err) {
+      toast({
+        title: "Não deu para reservar",
+        description:
+          err instanceof Error && err.message.includes("INDISPONIVEL")
+            ? "O vestido não está livre na data do casamento — escolha outro ou confira a ficha dele."
+            : err instanceof Error
+              ? err.message
+              : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const proximos = useMemo(() => {
     const agora = Date.now();
@@ -389,10 +444,56 @@ export default function NovoAtendimento() {
                         ) : bloqueios.isLoading ? (
                           <p className="text-sm text-muted-foreground">Carregando reservas…</p>
                         ) : reservasDaNoiva.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Esta noiva não tem reserva de casamento. Crie a reserva antes de
-                            agendar a prova.
-                          </p>
+                          <div className="space-y-3 rounded-md border p-3">
+                            <p className="text-sm text-muted-foreground">
+                              Esta noiva ainda não tem reserva de casamento — crie agora,
+                              sem sair daqui.
+                            </p>
+                            <Select
+                              value={novaReservaVestidoId}
+                              onValueChange={setNovaReservaVestidoId}
+                            >
+                              <SelectTrigger aria-label="Vestido da reserva">
+                                <SelectValue placeholder="Escolha o vestido…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(vestidosQ.data ?? [])
+                                  .filter((v) => v.status !== "inativo")
+                                  .map((v) => (
+                                    <SelectItem key={v.id} value={v.id}>
+                                      {v.codigo} · {v.nome}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            <div className="flex flex-wrap items-end gap-2">
+                              <label className="flex flex-col gap-1">
+                                <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                                  Data do casamento
+                                </span>
+                                <Input
+                                  type="date"
+                                  value={dataReservaEfetiva}
+                                  onChange={(e) => setNovaReservaData(e.target.value)}
+                                  className="w-44"
+                                  aria-label="Data do casamento da reserva"
+                                />
+                              </label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={
+                                  !novaReservaVestidoId ||
+                                  !dataReservaEfetiva ||
+                                  createBloqueio.isPending
+                                }
+                                onClick={criarReservaInline}
+                                data-testid="criar-reserva-inline"
+                              >
+                                {createBloqueio.isPending ? "Reservando…" : "Criar reserva"}
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
                           <Select value={field.value ?? ""} onValueChange={field.onChange}>
                             <FormControl>
