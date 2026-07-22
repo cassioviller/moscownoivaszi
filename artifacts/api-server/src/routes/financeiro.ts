@@ -10,7 +10,22 @@ import {
   auditLogTable,
 } from "@workspace/db";
 import { eq, and, or, inArray, gte, lt, lte, desc, isNull, isNotNull, count, sql } from "drizzle-orm";
-import { alertaDeCaixa, diaLocal, hojeLocal } from "@workspace/financeiro-core";
+import {
+  alertaDeCaixa,
+  diaLocal,
+  hojeLocal,
+  resolverIntervalo,
+  competenciaAtual,
+  ultimasCompetencias,
+  ultimoDiaDoMes,
+  resumoCaixa,
+  tendenciaCaixa,
+  horizonteAberto,
+  entradasDoIntervalo,
+  saidasDoIntervalo,
+  centavos,
+  reais,
+} from "@workspace/financeiro-core";
 import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
@@ -42,7 +57,9 @@ import {
   ExportarContasPagarQueryParams,
   ExportarParcelasQueryParams,
   EnviarContabilidadeBody,
-  EnviarContabilidadeResponse
+  EnviarContabilidadeResponse,
+  GetFluxoCaixaQueryParams,
+  GetFluxoCaixaResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
@@ -621,6 +638,124 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
  * Uma conta, um lugar, duas telas: sem over-fetch e sem risco de divergirem.
  */
 const HORIZONTE_ALERTA = 30;
+
+// E79: o fluxo agregado no banco. A tela baixava TODAS as parcelas da
+// história; aqui os MESMOS motores (financeiro-core, E25) rodam sobre linhas
+// já filtradas por data — o SQL entrega um superconjunto da janela e os
+// motores recortam com a régua exata (instante no fuso da loja).
+const MESES_TENDENCIA_FLUXO = 6;
+
+router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = GetFluxoCaixaQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const intervalo = resolverIntervalo(query.data.ini ?? null, query.data.fim ?? null);
+  const compHoje = competenciaAtual();
+  const comps = ultimasCompetencias(compHoje, MESES_TENDENCIA_FLUXO);
+  const iniTendencia = `${comps[0]}-01`;
+  const fimTendencia = ultimoDiaDoMes(`${comps[comps.length - 1]}-01`);
+  const janelaIni = intervalo.iniYMD < iniTendencia ? intervalo.iniYMD : iniTendencia;
+  const janelaFim = intervalo.fimYMD > fimTendencia ? intervalo.fimYMD : fimTendencia;
+
+  const [parcelasRecebidas, pagamentos, parcelasAbertas, contasAbertas] = await Promise.all([
+    db.query.parcelasTable.findMany({
+      where: and(
+        eq(parcelasTable.lojaId, lojaId),
+        isNotNull(parcelasTable.recebidoEm),
+        gte(parcelasTable.recebidoEm, inicioDoDia(janelaIni)),
+        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(janelaFim, 1))),
+      ),
+      with: { contrato: { with: { lead: true } } },
+    }),
+    db.query.pagamentosTable.findMany({
+      where: and(
+        eq(pagamentosTable.lojaId, lojaId),
+        gte(pagamentosTable.data, inicioDoDia(janelaIni)),
+        lt(pagamentosTable.data, inicioDoDia(addDias(janelaFim, 1))),
+      ),
+      with: { colaborador: true, itens: { with: { contaPagar: true } } },
+    }),
+    // Horizonte é previsão pelo vencimento — só o ABERTO importa, sem janela.
+    db.select().from(parcelasTable)
+      .where(and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.status, ["PREVISTA", "PARCIAL"]))),
+    db.select().from(contasPagarTable)
+      .where(and(eq(contasPagarTable.lojaId, lojaId), eq(contasPagarTable.status, "PREVISTA"))),
+  ]);
+
+  const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
+
+  // Por MEIO (E50): as MESMAS entradas do resumo, agrupadas — soma em centavos
+  // inteiros, então `porMeio.total === resumo.entradas` por construção.
+  const entradas = entradasDoIntervalo(parcelasRecebidas, intervalo);
+  const porForma = new Map<string | null, { totalC: number; qtd: number }>();
+  let totalEntradasC = 0;
+  for (const p of entradas) {
+    const c = centavos(p.valorRecebido ?? 0);
+    totalEntradasC += c;
+    const chave = p.formaRecebimento ?? null;
+    const atual = porForma.get(chave) ?? { totalC: 0, qtd: 0 };
+    atual.totalC += c;
+    atual.qtd += 1;
+    porForma.set(chave, atual);
+  }
+  const linhasPorMeio = [...porForma.entries()]
+    .map(([forma, agg]) => ({ forma, total: reais(agg.totalC), qtd: agg.qtd }))
+    .sort((a, b) => {
+      if (a.forma === null) return 1;
+      if (b.forma === null) return -1;
+      return b.total - a.total;
+    });
+
+  const descricaoParcela = (p: (typeof parcelasRecebidas)[number]): string =>
+    p.descricao || (p.numero === 0 ? "Entrada/sinal" : `Parcela ${p.numero}`);
+
+  const movimentos = [
+    ...entradas.map((p) => ({
+      id: `parcela-${p.id}`,
+      tipo: "ENTRADA" as const,
+      data: p.recebidoEm!,
+      valor: p.valorRecebido ?? 0,
+      descricao: descricaoParcela(p),
+      rotulo: p.contrato?.lead?.noivaNome ?? null,
+      contratoId: p.contratoId,
+    })),
+    ...saidasDoIntervalo(pagamentos, intervalo).map((pg) => {
+      const contas = (pg.itens ?? [])
+        .map((i) => i.contaPagar)
+        .filter((c): c is NonNullable<typeof c> => !!c);
+      return {
+        id: `pagamento-${pg.id}`,
+        tipo: "SAIDA" as const,
+        data: pg.data,
+        valor: pg.valorPago,
+        descricao: contas.length > 0 ? contas.map((c) => c.descricao).join(" · ") : "Pagamento",
+        rotulo:
+          pg.colaborador?.nome ??
+          contas.find((c) => c.fornecedor)?.fornecedor ??
+          contas.find((c) => c.categoria)?.categoria ??
+          null,
+        contratoId: null,
+      };
+    }),
+  ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+  res.json(
+    GetFluxoCaixaResponse.parse({
+      intervalo,
+      resumo,
+      porMeio: { total: reais(totalEntradasC), linhas: linhasPorMeio },
+      tendencia: tendenciaCaixa(parcelasRecebidas, pagamentos, {
+        meses: MESES_TENDENCIA_FLUXO,
+        ate: compHoje,
+      }),
+      horizonte: horizonteAberto(parcelasAbertas, contasAbertas),
+      movimentos,
+    }),
+  );
+});
 
 router.get("/lojas/:lojaId/financeiro/alerta-caixa", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;

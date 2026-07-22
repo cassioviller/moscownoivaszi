@@ -96,6 +96,8 @@ import type {
   GetConsolidado200Item,
   GetConviteInfoParams,
   GetDesempenhoVendedoras200Item,
+  GetFluxoCaixa200,
+  GetFluxoCaixaParams,
   GetLeadsParados200,
   GetLookbookPublicoFotoParams,
   GetLookbookPublicoParams,
@@ -9499,6 +9501,96 @@ export const useCreateParcelaAvulsa = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreateParcelaAvulsaMutationOptions(options));
     }
+
+export const getGetFluxoCaixaUrl = (lojaId: string,
+    params?: GetFluxoCaixaParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/fluxo?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/fluxo`
+}
+
+/**
+ * E79: a tela baixava TODAS as parcelas da história para os motores agregarem no navegador. Os MESMOS motores (financeiro-core, E25) rodam aqui sobre linhas já filtradas por data no SQL. `porMeio.total` e `resumo.entradas` são o mesmo dinheiro por construção — o invariante que a tela sempre exibiu.
+ * @summary O fluxo de caixa agregado no banco — a tela pede a janela, não a história
+ */
+export const getFluxoCaixa = async (lojaId: string,
+    params?: GetFluxoCaixaParams, options?: RequestInit): Promise<GetFluxoCaixa200> => {
+
+  return customFetch<GetFluxoCaixa200>(getGetFluxoCaixaUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFluxoCaixaQueryKey = (lojaId: string,
+    params?: GetFluxoCaixaParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/fluxo`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFluxoCaixaQueryOptions = <TData = Awaited<ReturnType<typeof getFluxoCaixa>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: GetFluxoCaixaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFluxoCaixa>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFluxoCaixaQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFluxoCaixa>>> = ({ signal }) => getFluxoCaixa(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFluxoCaixa>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFluxoCaixaQueryResult = NonNullable<Awaited<ReturnType<typeof getFluxoCaixa>>>
+export type GetFluxoCaixaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary O fluxo de caixa agregado no banco — a tela pede a janela, não a história
+ */
+
+export function useGetFluxoCaixa<TData = Awaited<ReturnType<typeof getFluxoCaixa>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: GetFluxoCaixaParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFluxoCaixa>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFluxoCaixaQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListContasPagarUrl = (lojaId: string,) => {
 

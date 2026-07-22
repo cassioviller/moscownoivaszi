@@ -5535,6 +5535,65 @@ export const CreateParcelaAvulsaResponse = zod.object({
 })
 
 
+/**
+ * E79: a tela baixava TODAS as parcelas da história para os motores agregarem no navegador. Os MESMOS motores (financeiro-core, E25) rodam aqui sobre linhas já filtradas por data no SQL. `porMeio.total` e `resumo.entradas` são o mesmo dinheiro por construção — o invariante que a tela sempre exibiu.
+ * @summary O fluxo de caixa agregado no banco — a tela pede a janela, não a história
+ */
+export const GetFluxoCaixaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getFluxoCaixaQueryIniRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getFluxoCaixaQueryFimRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetFluxoCaixaQueryParams = zod.object({
+  "ini": zod.coerce.string().regex(getFluxoCaixaQueryIniRegExp).optional(),
+  "fim": zod.coerce.string().regex(getFluxoCaixaQueryFimRegExp).optional()
+})
+
+export const GetFluxoCaixaResponse = zod.object({
+  "intervalo": zod.object({
+  "iniYMD": zod.string(),
+  "fimYMD": zod.string()
+}),
+  "resumo": zod.object({
+  "entradas": zod.number(),
+  "saidas": zod.number(),
+  "saldo": zod.number()
+}),
+  "porMeio": zod.object({
+  "total": zod.number(),
+  "linhas": zod.array(zod.object({
+  "forma": zod.string().nullable(),
+  "total": zod.number(),
+  "qtd": zod.number()
+}))
+}),
+  "tendencia": zod.array(zod.object({
+  "competencia": zod.string(),
+  "entradas": zod.number(),
+  "saidas": zod.number(),
+  "saldo": zod.number()
+})),
+  "horizonte": zod.object({
+  "aReceber": zod.number(),
+  "aReceberAtraso": zod.number(),
+  "aPagar": zod.number(),
+  "aPagarAtraso": zod.number()
+}),
+  "movimentos": zod.array(zod.object({
+  "id": zod.string(),
+  "tipo": zod.enum(['ENTRADA', 'SAIDA']),
+  "data": zod.coerce.date(),
+  "valor": zod.number(),
+  "rotulo": zod.string().nullish(),
+  "descricao": zod.string(),
+  "contratoId": zod.string().nullish()
+})).describe('Linha do tempo do período, mais recente primeiro')
+})
+
+
 export const ListContasPagarParams = zod.object({
   "lojaId": zod.coerce.string()
 })

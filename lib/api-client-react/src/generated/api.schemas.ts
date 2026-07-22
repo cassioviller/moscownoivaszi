@@ -2451,6 +2451,84 @@ export type CreateParcelaAvulsaBody = {
   vencimento: string;
 };
 
+export type GetFluxoCaixaParams = {
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ini?: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+fim?: string;
+};
+
+export type GetFluxoCaixa200Intervalo = {
+  iniYMD: string;
+  fimYMD: string;
+};
+
+export type GetFluxoCaixa200Resumo = {
+  entradas: number;
+  saidas: number;
+  saldo: number;
+};
+
+export type GetFluxoCaixa200PorMeioLinhasItem = {
+  /** @nullable */
+  forma: string | null;
+  total: number;
+  qtd: number;
+};
+
+export type GetFluxoCaixa200PorMeio = {
+  total: number;
+  linhas: GetFluxoCaixa200PorMeioLinhasItem[];
+};
+
+export type GetFluxoCaixa200TendenciaItem = {
+  competencia: string;
+  entradas: number;
+  saidas: number;
+  saldo: number;
+};
+
+export type GetFluxoCaixa200Horizonte = {
+  aReceber: number;
+  aReceberAtraso: number;
+  aPagar: number;
+  aPagarAtraso: number;
+};
+
+export type GetFluxoCaixa200MovimentosItemTipo = typeof GetFluxoCaixa200MovimentosItemTipo[keyof typeof GetFluxoCaixa200MovimentosItemTipo];
+
+
+export const GetFluxoCaixa200MovimentosItemTipo = {
+  ENTRADA: 'ENTRADA',
+  SAIDA: 'SAIDA',
+} as const;
+
+export type GetFluxoCaixa200MovimentosItem = {
+  id: string;
+  tipo: GetFluxoCaixa200MovimentosItemTipo;
+  data: string;
+  valor: number;
+  /** @nullable */
+  rotulo?: string | null;
+  descricao: string;
+  /** @nullable */
+  contratoId?: string | null;
+};
+
+export type GetFluxoCaixa200 = {
+  intervalo: GetFluxoCaixa200Intervalo;
+  resumo: GetFluxoCaixa200Resumo;
+  porMeio: GetFluxoCaixa200PorMeio;
+  tendencia: GetFluxoCaixa200TendenciaItem[];
+  horizonte: GetFluxoCaixa200Horizonte;
+  /** Linha do tempo do período, mais recente primeiro */
+  movimentos: GetFluxoCaixa200MovimentosItem[];
+};
+
 export type ExportarContasPagarParams = {
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)

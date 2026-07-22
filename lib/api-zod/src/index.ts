@@ -24,4 +24,5 @@ export {
   ListContratosParams,
   CreateParcelaAvulsaBody,
   ExpurgarLeadsPerdidosBody,
+  GetFluxoCaixaParams,
 } from "./generated/api";

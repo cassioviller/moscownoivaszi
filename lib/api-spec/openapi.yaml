@@ -2544,6 +2544,97 @@ paths:
         "422":
           description: Contrato inexistente ou não ATIVO
 
+  /lojas/{lojaId}/financeiro/fluxo:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getFluxoCaixa
+      tags: [financeiro]
+      summary: O fluxo de caixa agregado no banco — a tela pede a janela, não a história
+      description: >
+        E79: a tela baixava TODAS as parcelas da história para os motores
+        agregarem no navegador. Os MESMOS motores (financeiro-core, E25) rodam
+        aqui sobre linhas já filtradas por data no SQL. `porMeio.total` e
+        `resumo.entradas` são o mesmo dinheiro por construção — o invariante
+        que a tela sempre exibiu.
+      parameters:
+        - name: ini
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: fim
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      responses:
+        "200":
+          description: Resumo, por meio, tendência, horizonte e movimentos do período
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [intervalo, resumo, porMeio, tendencia, horizonte, movimentos]
+                properties:
+                  intervalo:
+                    type: object
+                    required: [iniYMD, fimYMD]
+                    properties:
+                      iniYMD: { type: string }
+                      fimYMD: { type: string }
+                  resumo:
+                    type: object
+                    required: [entradas, saidas, saldo]
+                    properties:
+                      entradas: { type: number }
+                      saidas: { type: number }
+                      saldo: { type: number }
+                  porMeio:
+                    type: object
+                    required: [total, linhas]
+                    properties:
+                      total: { type: number }
+                      linhas:
+                        type: array
+                        items:
+                          type: object
+                          required: [forma, total, qtd]
+                          properties:
+                            forma: { type: ["string", "null"] }
+                            total: { type: number }
+                            qtd: { type: integer }
+                  tendencia:
+                    type: array
+                    items:
+                      type: object
+                      required: [competencia, entradas, saidas, saldo]
+                      properties:
+                        competencia: { type: string }
+                        entradas: { type: number }
+                        saidas: { type: number }
+                        saldo: { type: number }
+                  horizonte:
+                    type: object
+                    required: [aReceber, aReceberAtraso, aPagar, aPagarAtraso]
+                    properties:
+                      aReceber: { type: number }
+                      aReceberAtraso: { type: number }
+                      aPagar: { type: number }
+                      aPagarAtraso: { type: number }
+                  movimentos:
+                    type: array
+                    description: Linha do tempo do período, mais recente primeiro
+                    items:
+                      type: object
+                      required: [id, tipo, data, valor, descricao]
+                      properties:
+                        id: { type: string }
+                        tipo: { type: string, enum: [ENTRADA, SAIDA] }
+                        data: { type: string, format: date-time }
+                        valor: { type: number }
+                        rotulo: { type: ["string", "null"] }
+                        descricao: { type: string }
+                        contratoId: { type: ["string", "null"] }
+
   /lojas/{lojaId}/financeiro/contas-pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

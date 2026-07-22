@@ -1,16 +1,10 @@
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  useListParcelas,
-  getListParcelasQueryKey,
-  useListPagamentos,
-  getListPagamentosQueryKey,
-  useListContratos,
-  getListContratosQueryKey,
-  useListContasPagar,
-  getListContasPagarQueryKey,
-  type Parcela,
+  useGetFluxoCaixa,
+  getGetFluxoCaixaQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,16 +16,10 @@ import { Download } from "lucide-react";
 import { ErroListagem } from "./helpers";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { brl } from "@/lib/formatos";
-import { resumoCaixa, movimentos, tendenciaCaixa, horizonteAberto } from "@/lib/financeiro/fluxo";
-import { recebimentosPorForma } from "@/lib/financeiro/forma";
+import { rotuloForma } from "@/lib/financeiro/forma";
 import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasFluxo } from "@/lib/financeiro/exportar";
-import {
-  resolverIntervalo,
-  competenciaAtual,
-  ultimasCompetencias,
-  ultimoDiaDoMes,
-} from "@/lib/financeiro/datas";
+import { resolverIntervalo, competenciaAtual } from "@/lib/financeiro/datas";
 
 /**
  * Fluxo de caixa — o hub do financeiro: o que DE FATO entrou e saiu do caixa do
@@ -39,11 +27,10 @@ import {
  * meses e a linha do tempo dos movimentos. Leitura pura: nenhuma ação daqui
  * muda dado. Não é extrato bancário — sem saldo inicial e sem conciliação.
  *
- * Toda a agregação vem do núcleo já testado (`resumoCaixa`, `movimentos`,
- * `tendenciaCaixa`). Esta tela só resolve o intervalo, busca e desenha.
+ * Toda a agregação roda no banco (E79): o endpoint /financeiro/fluxo passa os
+ * MESMOS motores do núcleo (E25) sobre linhas já filtradas por data. Esta tela
+ * só resolve o intervalo, busca e desenha.
  */
-
-const MESES_NA_TENDENCIA = 6;
 
 /**
  * Instantes (recebidoEm, pagamento.data) só têm dia dentro de um fuso: ler em
@@ -87,90 +74,54 @@ export default function FluxoCaixa() {
 
   const competenciaHoje = competenciaAtual();
 
-  /** Janela da tendência: os N meses que terminam no mês corrente. */
-  const janelaTendencia = useMemo(() => {
-    const comps = ultimasCompetencias(competenciaHoje, MESES_NA_TENDENCIA);
-    const primeira = `${comps[0]}-01`;
-    return { de: primeira, ate: ultimoDiaDoMes(`${comps[comps.length - 1]}-01`) };
-  }, [competenciaHoje]);
-
-  // Parcelas vêm inteiras (a rota não filtra); os helpers da lib recortam o
-  // intervalo e as competências a partir daí.
-  // Sem janela de propósito: horizonte e competências olham além do período visível.
-  const parcelas = useListParcelas(activeLojaId!, undefined, {
-    query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-
-  // Pagamentos são filtrados no servidor. Duas janelas porque o período visível
-  // e a janela da tendência são independentes.
-  const paramsPeriodo = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
-  const pagamentos = useListPagamentos(activeLojaId!, paramsPeriodo, {
+  // E79: a agregação inteira roda no banco — os MESMOS motores (E25), sobre
+  // linhas filtradas por data no SQL. A tela pede a janela, não a história.
+  const paramsFluxo = { ini: intervalo.iniYMD, fim: intervalo.fimYMD };
+  const fluxoQ = useGetFluxoCaixa(activeLojaId!, paramsFluxo, {
     query: {
-      queryKey: getListPagamentosQueryKey(activeLojaId!, paramsPeriodo),
+      queryKey: getGetFluxoCaixaQueryKey(activeLojaId!, paramsFluxo),
       enabled: !!activeLojaId,
+      placeholderData: keepPreviousData,
     },
   });
 
-  const pagamentosTendencia = useListPagamentos(activeLojaId!, janelaTendencia, {
-    query: {
-      queryKey: getListPagamentosQueryKey(activeLojaId!, janelaTendencia),
-      enabled: !!activeLojaId,
-    },
-  });
+  const resumo = fluxoQ.data?.resumo ?? { entradas: 0, saidas: 0, saldo: 0 };
+  const horizonte = fluxoQ.data?.horizonte ?? {
+    aReceber: 0,
+    aReceberAtraso: 0,
+    aPagar: 0,
+    aPagarAtraso: 0,
+  };
+  const tendencia = fluxoQ.data?.tendencia ?? [];
 
-  // A parcela não traz o contrato aninhado; a noiva vem da lista de contratos.
-  const contratos = useListContratos(activeLojaId!, undefined, {
-    query: { queryKey: getListContratosQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-
-  const nomeDaNoiva = useMemo(() => {
-    const porContrato = new Map<string, string>();
-    for (const c of contratos.data ?? []) {
-      if (c.lead?.noivaNome) porContrato.set(c.id, c.lead.noivaNome);
-    }
-    return (p: Parcela) => porContrato.get(p.contratoId) ?? null;
-  }, [contratos.data]);
-
-  // Horizonte é previsão pelo vencimento: não depende do intervalo visível, e
-  // por isso as contas vêm inteiras.
-  const contasPagar = useListContasPagar(activeLojaId!, {
-    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-
-  const horizonte = useMemo(
-    () => horizonteAberto(parcelas.data ?? [], contasPagar.data ?? []),
-    [parcelas.data, contasPagar.data],
-  );
-
-  const resumo = useMemo(
-    () => resumoCaixa(parcelas.data ?? [], pagamentos.data ?? [], intervalo),
-    [parcelas.data, pagamentos.data, intervalo],
-  );
-
-  // As MESMAS entradas do resumo, recortadas por meio (E50): `porForma.total`
-  // e `resumo.entradas` são o mesmo dinheiro — se divergirem, um dos dois está
-  // lendo errado.
+  // O shape que a lista por meio (E50) consome — o rótulo é vocabulário de
+  // TELA, o servidor fala o código cru.
   const porForma = useMemo(
-    () => recebimentosPorForma(parcelas.data ?? [], intervalo),
-    [parcelas.data, intervalo],
+    () => ({
+      total: fluxoQ.data?.porMeio.total ?? 0,
+      linhas: (fluxoQ.data?.porMeio.linhas ?? []).map((l) => ({
+        forma: l.forma,
+        rotulo: l.forma ? (rotuloForma(l.forma) ?? l.forma) : "Não informado",
+        total: l.total,
+        qtd: l.qtd,
+      })),
+    }),
+    [fluxoQ.data],
   );
 
+  // O href é decisão de navegação (tela); o servidor entrega o contratoId.
   const linhaDoTempo = useMemo(
     () =>
-      movimentos(parcelas.data ?? [], pagamentos.data ?? [], intervalo, {
-        lojaId: activeLojaId ?? "",
-        nomeDaNoiva,
-      }),
-    [parcelas.data, pagamentos.data, intervalo, activeLojaId, nomeDaNoiva],
-  );
-
-  const tendencia = useMemo(
-    () =>
-      tendenciaCaixa(parcelas.data ?? [], pagamentosTendencia.data ?? [], {
-        meses: MESES_NA_TENDENCIA,
-        ate: competenciaHoje,
-      }),
-    [parcelas.data, pagamentosTendencia.data, competenciaHoje],
+      (fluxoQ.data?.movimentos ?? []).map((m) => ({
+        ...m,
+        rotulo: m.rotulo ?? null,
+        href: m.contratoId
+          ? `/loja/${activeLojaId}/contratos/${m.contratoId}`
+          : m.tipo === "SAIDA"
+            ? `/loja/${activeLojaId}/financeiro/pagar`
+            : null,
+      })),
+    [fluxoQ.data, activeLojaId],
   );
 
   function definirDia(chave: "ini" | "fim", valor: string) {
@@ -185,13 +136,11 @@ export default function FluxoCaixa() {
     );
   }
 
-  // O skeleton cobre tudo que vira número na tela — inclusive o horizonte, que
-  // sem as contas renderizaria R$ 0,00 durante o carregamento. Já o ERRO é
-  // local a cada seção (tendência e "Em aberto" têm o seu): uma falha no
-  // horizonte não deve apagar o caixa do período, que carregou bem.
-  // `contratos` fica de fora: sem ela o movimento perde o nome da noiva, não o valor.
-  const carregando = parcelas.isPending || pagamentos.isPending || contasPagar.isPending;
-  const erro = parcelas.isError || pagamentos.isError;
+  // Uma query, um estado: o endpoint entrega resumo, horizonte, tendência e
+  // movimentos numa tacada (E79). Sem sucesso parcial — ou tudo carregou, ou o
+  // erro de topo cobre a tela.
+  const carregando = fluxoQ.isPending;
+  const erro = fluxoQ.isError;
   const saldoNegativo = resumo.saldo < 0;
   const periodoFmt = `${rotuloDia(intervalo.iniYMD)} – ${rotuloDia(intervalo.fimYMD)}`;
 
@@ -275,10 +224,7 @@ export default function FluxoCaixa() {
       {erro ? (
         <ErroListagem
           mensagem="Falha ao buscar os movimentos do período."
-          onRetry={() => {
-            if (parcelas.isError) parcelas.refetch();
-            if (pagamentos.isError) pagamentos.refetch();
-          }}
+          onRetry={() => fluxoQ.refetch()}
         />
       ) : carregando ? (
         <div className="space-y-4">
@@ -344,15 +290,7 @@ export default function FluxoCaixa() {
 
           {/* — Em aberto: previsão pelo vencimento, fora do caixa realizado. É
               a porta para as telas de ação (receber/pagar). — */}
-          {contasPagar.isError ? (
-            // Sem as contas, "A pagar: R$ 0,00" seria mentira — e a usuária leria
-            // "não devo nada" com boletos vencidos. Melhor dizer que falhou.
-            <ErroListagem
-              mensagem="Falha ao buscar o que está em aberto."
-              onRetry={() => contasPagar.refetch()}
-            />
-          ) : (
-            <>
+          <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Link to="receber" className="rounded-lg border p-4 transition-colors hover:border-primary">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">A receber</p>
@@ -373,7 +311,6 @@ export default function FluxoCaixa() {
                 Previsão pelo vencimento — ainda não passou pelo caixa.
               </p>
             </>
-          )}
 
           {/* — Tendência: o ritmo do caixa como lista quieta (DESIGN §13, sem
               gráfico) — saldo é o ponto; entradas/saídas ficam na sub-linha. — */}
@@ -385,12 +322,6 @@ export default function FluxoCaixa() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {pagamentosTendencia.isError ? (
-                <ErroListagem
-                  mensagem="Falha ao buscar a tendência."
-                  onRetry={() => pagamentosTendencia.refetch()}
-                />
-              ) : (
                 <ol className="divide-y">
                   {tendencia.map((ponto) => {
                     const atual = ponto.competencia === competenciaHoje;
@@ -421,7 +352,6 @@ export default function FluxoCaixa() {
                     );
                   })}
                 </ol>
-              )}
             </CardContent>
           </Card>
 
