@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Bell, X } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
+import { hojeLocal, addDias } from "@/lib/financeiro/datas";
 
 
 /**
@@ -96,9 +97,12 @@ export function SinoNotificacoes() {
       retry: false,
     },
   });
-  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
+  // E83: o poll pede a JANELA (hoje e amanhã cobrem as próximas 24h), não a
+  // agenda inteira — o recorte fino por timestamp continua abaixo, no cliente.
+  const janelaSino = { de: hojeLocal(), ate: addDias(hojeLocal(), 1) };
+  const atendimentos = useListAtendimentos(activeLojaId!, janelaSino, {
     query: {
-      queryKey: getListAtendimentosQueryKey(activeLojaId!),
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaSino),
       enabled: !!activeLojaId && veAgenda,
       refetchInterval: POLL_MS,
       retry: false,

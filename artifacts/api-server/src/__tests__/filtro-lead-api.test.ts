@@ -53,6 +53,26 @@ describe("Filtro ?leadId= em orçamentos e contratos (E62)", () => {
     expect(res.body[0].leadId).toBe(leadA.id);
   });
 
+  it("orçamentos com ?status= recorta no banco e compõe com leadId (E83)", async () => {
+    // A fixture cria os dois APROVADOS (default do helper).
+    const aprovados = await agent
+      .get(`/api/lojas/${f.lojaId}/orcamentos?status=APROVADO`)
+      .expect(200);
+    expect(aprovados.body).toHaveLength(2);
+
+    const enviados = await agent
+      .get(`/api/lojas/${f.lojaId}/orcamentos?status=ENVIADO`)
+      .expect(200);
+    expect(enviados.body).toHaveLength(0);
+
+    const composto = await agent
+      .get(`/api/lojas/${f.lojaId}/orcamentos?status=APROVADO&leadId=${leadA.id}`)
+      .expect(200);
+    expect(composto.body).toHaveLength(1);
+
+    await agent.get(`/api/lojas/${f.lojaId}/orcamentos?status=INVENTADO`).expect(400);
+  });
+
   it("contratos com ?leadId= devolve só os da noiva", async () => {
     const res = await agent
       .get(`/api/lojas/${f.lojaId}/contratos?leadId=${leadB.id}`)

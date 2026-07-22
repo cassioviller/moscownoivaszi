@@ -38,8 +38,13 @@ export default function AgendaSemana() {
   }, [ancoraParam]);
   const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(segunda, i)), [segunda]);
 
-  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
-    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E83: a visão pede a SEMANA visível, não a agenda inteira.
+  const janelaSemana = { de: diaISO(dias[0]), ate: diaISO(dias[6]) };
+  const atendimentos = useListAtendimentos(activeLojaId!, janelaSemana, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaSemana),
+      enabled: !!activeLojaId,
+    },
   });
   const cabines = useListCabines(activeLojaId!, {
     query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },

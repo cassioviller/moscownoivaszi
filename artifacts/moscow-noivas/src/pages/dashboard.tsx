@@ -30,7 +30,7 @@ import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { podeNoModulo } from "@/lib/permissoes";
 
-import { competenciaAtual } from "@/lib/financeiro/datas";
+import { competenciaAtual, hojeLocal } from "@/lib/financeiro/datas";
 
 /**
  * E66 — "meu dia", não "números da loja".
@@ -60,8 +60,14 @@ export default function Dashboard() {
   const paradosQuery = useGetLeadsParados(activeLojaId!, {
     query: { queryKey: getGetLeadsParadosQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
   });
-  const atendimentosQuery = useListAtendimentos(activeLojaId!, undefined, {
-    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId && veAgenda },
+  // E83: "Hoje na loja" pede o DIA, não a agenda inteira — o corte por hora
+  // continua no cliente, sobre o superconjunto do dia local.
+  const janelaHoje = { de: hojeLocal(), ate: hojeLocal() };
+  const atendimentosQuery = useListAtendimentos(activeLojaId!, janelaHoje, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaHoje),
+      enabled: !!activeLojaId && veAgenda,
+    },
   });
 
   // "Minha comissão" mora fora do gate de módulo (E11); quem não tem escada

@@ -1585,6 +1585,20 @@ paths:
           required: false
           description: "Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira"
           schema: { type: string, enum: [ATENDIMENTO, PROVA] }
+        - name: de
+          in: query
+          required: false
+          description: "Início da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história"
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: "Fim da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo)"
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
       responses:
         "200":
           description: List of atendimentos
@@ -2048,6 +2062,11 @@ paths:
           in: query
           required: false
           schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          description: "Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história"
+          schema: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
       responses:
         "200":
           description: List of orcamentos (opcionalmente só os de uma noiva)

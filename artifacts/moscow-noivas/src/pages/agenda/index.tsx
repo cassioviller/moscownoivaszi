@@ -74,7 +74,15 @@ export default function Agenda() {
   const [searchParams] = useSearchParams();
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
-  const atendimentos = useListAtendimentos(activeLojaId!, undefined, { query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  // O dia da grade vive na URL (?dia=YYYY-MM-DD), como a semana do E20 — sem
+  // isso não há deep-link para "a agenda de amanhã" nem teste determinístico.
+  const diaYMD = searchParams.get("dia") ?? diaLocal(new Date());
+
+  // E83: a grade pede o DIA visível, não a agenda inteira.
+  const janelaDia = { de: diaYMD, ate: diaYMD };
+  const atendimentos = useListAtendimentos(activeLojaId!, janelaDia, {
+    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaDia), enabled: !!activeLojaId },
+  });
   const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createAtendimento = useCreateAtendimento();
@@ -115,10 +123,6 @@ export default function Agenda() {
         endereco: lojaAtiva?.endereco,
       }),
     );
-
-  // O dia da grade vive na URL (?dia=YYYY-MM-DD), como a semana do E20 — sem
-  // isso não há deep-link para "a agenda de amanhã" nem teste determinístico.
-  const diaYMD = searchParams.get("dia") ?? diaLocal(new Date());
 
   // O expediente configurado desenha as linhas da grade; loja sem regra usa o
   // mesmo default das colunas do schema.

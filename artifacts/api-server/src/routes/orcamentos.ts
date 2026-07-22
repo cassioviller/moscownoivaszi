@@ -108,11 +108,14 @@ router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     res.status(400).json({ error: "FILTRO_INVALIDO" });
     return;
   }
-  // E62: o perfil da noiva pede `?leadId=` e o recorte acontece no banco.
+  // E62: o perfil da noiva pede `?leadId=`; E83: mensagens pede `?status=` —
+  // os recortes acontecem no banco.
   const orcamentos = await db.query.orcamentosTable.findMany({
-    where: query.data.leadId
-      ? and(eq(orcamentosTable.lojaId, lojaId), eq(orcamentosTable.leadId, query.data.leadId))
-      : eq(orcamentosTable.lojaId, lojaId),
+    where: and(
+      eq(orcamentosTable.lojaId, lojaId),
+      ...(query.data.leadId ? [eq(orcamentosTable.leadId, query.data.leadId)] : []),
+      ...(query.data.status ? [eq(orcamentosTable.status, query.data.status)] : []),
+    ),
     with: {
       lead: true,
       vendedora: true,

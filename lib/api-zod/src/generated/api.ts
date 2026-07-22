@@ -1701,9 +1701,15 @@ export const ListAtendimentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const listAtendimentosQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listAtendimentosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const ListAtendimentosQueryParams = zod.object({
   "bloqueioId": zod.coerce.string().optional().describe('Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva'),
-  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']).optional().describe('Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira')
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']).optional().describe('Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira'),
+  "de": zod.coerce.string().regex(listAtendimentosQueryDeRegExp).optional().describe('Início da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história'),
+  "ate": zod.coerce.string().regex(listAtendimentosQueryAteRegExp).optional().describe('Fim da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo)')
 })
 
 export const ListAtendimentosResponseItem = zod.object({
@@ -4106,7 +4112,8 @@ export const ListOrcamentosParams = zod.object({
 })
 
 export const ListOrcamentosQueryParams = zod.object({
-  "leadId": zod.coerce.string().optional()
+  "leadId": zod.coerce.string().optional(),
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']).optional().describe('Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história')
 })
 
 export const ListOrcamentosResponseItem = zod.object({

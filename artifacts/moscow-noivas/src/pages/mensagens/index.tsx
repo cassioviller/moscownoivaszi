@@ -24,6 +24,7 @@ import {
   msgOrcamentoVencendo,
 } from "@/lib/whatsapp";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
+import { hojeLocal, addDias } from "@/lib/financeiro/datas";
 import { brl } from "@/lib/formatos";
 
 /**
@@ -50,8 +51,15 @@ export default function MensagensDoDia() {
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
   const veLeads = podeNoModulo(acessosModulos, "leads", "ver");
 
-  const atendimentos = useListAtendimentos(activeLojaId!, undefined, {
-    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId && veAgenda },
+  // E83: a fila pede os recortes, não a história — a janela de 48h dos
+  // atendimentos (o corte fino por hora continua no cliente), as parcelas
+  // ABERTAS (o aging nunca olhou as pagas) e os orçamentos ENVIADOS.
+  const janela48h = { de: hojeLocal(), ate: addDias(hojeLocal(), 2) };
+  const atendimentos = useListAtendimentos(activeLojaId!, janela48h, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janela48h),
+      enabled: !!activeLojaId && veAgenda,
+    },
   });
   const confirmarAtendimento = useConfirmarAtendimento({
     mutation: {
@@ -59,11 +67,19 @@ export default function MensagensDoDia() {
         queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
     },
   });
-  const parcelas = useListParcelas(activeLojaId!, undefined, {
-    query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId && veFinanceiro },
+  const paramsAbertas = { status: "abertas" as const };
+  const parcelas = useListParcelas(activeLojaId!, paramsAbertas, {
+    query: {
+      queryKey: getListParcelasQueryKey(activeLojaId!, paramsAbertas),
+      enabled: !!activeLojaId && veFinanceiro,
+    },
   });
-  const orcamentos = useListOrcamentos(activeLojaId!, undefined, {
-    query: { queryKey: getListOrcamentosQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
+  const paramsEnviados = { status: "ENVIADO" as const };
+  const orcamentos = useListOrcamentos(activeLojaId!, paramsEnviados, {
+    query: {
+      queryKey: getListOrcamentosQueryKey(activeLojaId!, paramsEnviados),
+      enabled: !!activeLojaId && veLeads,
+    },
   });
 
   const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);

@@ -188,6 +188,7 @@ export * from './listLeadsOrdem';
 export * from './listLeadsParams';
 export * from './listLookbooksParams';
 export * from './listOrcamentosParams';
+export * from './listOrcamentosStatus';
 export * from './listPagamentosParams';
 export * from './listParcelasParams';
 export * from './listParcelasStatus';

@@ -103,6 +103,34 @@ describe("Recortes de bloqueios e atendimentos (E79)", () => {
     expect(res.body.map((a: { id: string }) => a.id)).toEqual([provaA]);
   });
 
+  it("atendimentos?de&ate recortam por dia local, inclusivos, e compõem com tipo (E83)", async () => {
+    // A fixture escalona: prova A em +7d, prova B em +8d, comum em +9d.
+    const ymd = (offset: number) => {
+      const d = dataFutura(offset);
+      return new Date(d.getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
+    };
+
+    const doisDias = await agent
+      .get(`/api/lojas/${f.lojaId}/atendimentos?de=${ymd(7)}&ate=${ymd(8)}`)
+      .expect(200);
+    expect(doisDias.body).toHaveLength(2);
+
+    // Composição: a janela dos três dias, só PROVA — o comum de +9d cai fora.
+    const provasNaJanela = await agent
+      .get(`/api/lojas/${f.lojaId}/atendimentos?de=${ymd(7)}&ate=${ymd(9)}&tipo=PROVA`)
+      .expect(200);
+    expect(provasNaJanela.body).toHaveLength(2);
+
+    // Janela vazia devolve lista vazia; invertida é 400.
+    const nada = await agent
+      .get(`/api/lojas/${f.lojaId}/atendimentos?de=${ymd(20)}&ate=${ymd(21)}`)
+      .expect(200);
+    expect(nada.body).toHaveLength(0);
+    await agent
+      .get(`/api/lojas/${f.lojaId}/atendimentos?de=${ymd(8)}&ate=${ymd(7)}`)
+      .expect(400);
+  });
+
   it("atendimentos?tipo=PROVA descarta o atendimento comum; tipo inválido é 400", async () => {
     const res = await agent
       .get(`/api/lojas/${f.lojaId}/atendimentos?tipo=PROVA`)

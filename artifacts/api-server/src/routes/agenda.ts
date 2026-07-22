@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
-import { eq, and, max, inArray, gte, lte } from "drizzle-orm";
+import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
@@ -40,6 +40,7 @@ import {
   diaDaSemanaLocal,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
+import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -185,17 +186,25 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   // E79: recortes opcionais — a ficha da reserva pede as provas do bloqueio,
   // a tela de provas pede só PROVA; ninguém baixa a agenda inteira para filtrar.
+  // E83: janela de/ate sobre `inicio` (dia local, inclusivo) — o poll do sino
+  // e as telas do dia pedem a janela, não a história.
   const query = ListAtendimentosQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: "FILTRO_INVALIDO" });
     return;
   }
-  const { bloqueioId, tipo } = query.data;
+  const { bloqueioId, tipo, de, ate } = query.data;
+  if (de && ate && de > ate) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
   const atendimentos = await db.query.atendimentosTable.findMany({
     where: and(
       eq(atendimentosTable.lojaId, lojaId),
       ...(bloqueioId ? [eq(atendimentosTable.bloqueioId, bloqueioId)] : []),
       ...(tipo ? [eq(atendimentosTable.tipo, tipo)] : []),
+      ...(de ? [gte(atendimentosTable.inicio, inicioDoDia(de))] : []),
+      ...(ate ? [lt(atendimentosTable.inicio, inicioDoDia(addDias(ate, 1)))] : []),
     ),
     with: ATENDIMENTO_WITH,
     orderBy: atendimentosTable.inicio,

@@ -2463,6 +2463,16 @@ bloqueioId?: string;
  * Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira
  */
 tipo?: ListAtendimentosTipo;
+/**
+ * Início da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
 };
 
 export type ListAtendimentosTipo = typeof ListAtendimentosTipo[keyof typeof ListAtendimentosTipo];
@@ -2486,7 +2496,21 @@ leadId?: string;
 
 export type ListOrcamentosParams = {
 leadId?: string;
+/**
+ * Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história
+ */
+status?: ListOrcamentosStatus;
 };
+
+export type ListOrcamentosStatus = typeof ListOrcamentosStatus[keyof typeof ListOrcamentosStatus];
+
+
+export const ListOrcamentosStatus = {
+  RASCUNHO: 'RASCUNHO',
+  ENVIADO: 'ENVIADO',
+  APROVADO: 'APROVADO',
+  RECUSADO: 'RECUSADO',
+} as const;
 
 export type GetOrcamentoPublicoParams = {
 token: string;
