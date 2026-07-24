@@ -12,4 +12,6 @@ export type ReservaUpdateStatus = typeof ReservaUpdateStatus[keyof typeof Reserv
 export const ReservaUpdateStatus = {
   EM_MONTAGEM: 'EM_MONTAGEM',
   CONFIRMADA: 'CONFIRMADA',
+  CONCLUIDA: 'CONCLUIDA',
+  CANCELADA: 'CANCELADA',
 } as const;

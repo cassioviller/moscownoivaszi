@@ -6,11 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LojaComPerfil } from './lojaComPerfil';
+import type { SessaoAcessosModulos } from './sessaoAcessosModulos';
 import type { Usuario } from './usuario';
 
 export interface Sessao {
   usuario: Usuario;
   /** @nullable */
   lojaAtivaId?: string | null;
+  /** @nullable */
+  acessosModulos?: SessaoAcessosModulos;
   lojas?: LojaComPerfil[];
 }

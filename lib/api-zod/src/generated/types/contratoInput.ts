@@ -12,6 +12,7 @@ export interface ContratoInput {
   leadId: string;
   orcamentoId?: string;
   bloqueioVestidoId?: string;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   cpf?: string;
   vestidoDescricao?: string;

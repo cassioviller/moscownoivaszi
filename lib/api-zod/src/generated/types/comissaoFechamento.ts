@@ -10,14 +10,19 @@ export interface ComissaoFechamento {
   id: string;
   lojaId: string;
   vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  /** Competência YYYY-MM */
   competencia: string;
+  /** Base líquida, já com o estorno abatido */
   totalVendas: number;
   /** @nullable */
   percentualAplicado?: number | null;
   valorComissao: number;
   valorBonus: number;
+  /** comissão + bônus; é este que vira ContaPagar */
   valorTotal: number;
   /** @nullable */
   contaPagarId?: string | null;
-  fechadoEm: Date;
+  fechadoEm?: Date;
 }

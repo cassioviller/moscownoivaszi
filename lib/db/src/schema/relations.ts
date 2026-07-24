@@ -21,7 +21,7 @@ import {
   ajusteChecklistItensTable,
 } from "./atendimentos";
 import { orcamentosTable, orcamentoItensTable } from "./orcamentos";
-import { contratosTable } from "./contratos";
+import { contratosTable, contratoItensTable } from "./contratos";
 import {
   parcelasTable,
   contasPagarTable,
@@ -209,6 +209,13 @@ export const contratosRelations = relations(contratosTable, ({ one, many }) => (
     references: [usuariosTable.id],
   }),
   parcelas: many(parcelasTable),
+  itens: many(contratoItensTable),
+}));
+
+export const contratoItensRelations = relations(contratoItensTable, ({ one }) => ({
+  loja: one(lojasTable, { fields: [contratoItensTable.lojaId], references: [lojasTable.id] }),
+  contrato: one(contratosTable, { fields: [contratoItensTable.contratoId], references: [contratosTable.id] }),
+  vestido: one(vestidosTable, { fields: [contratoItensTable.vestidoId], references: [vestidosTable.id] }),
 }));
 
 export const parcelasRelations = relations(parcelasTable, ({ one }) => ({

@@ -14,4 +14,9 @@ export interface RegraDisponibilidadeInput {
   lavagemDiasDepois?: number;
   atendimentoAberturaHora?: number;
   atendimentoFechamentoHora?: number;
+  /**
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  diasFuncionamento?: number[];
 }

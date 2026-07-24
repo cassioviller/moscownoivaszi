@@ -9,7 +9,9 @@ import type { ComissaoFaixaInput } from './comissaoFaixaInput';
 
 export interface ComissaoRegraInput {
   vendedoraId: string;
-  vigenciaInicio: Date;
+  /** Omitido = vale a partir de hoje */
+  vigenciaInicio?: Date;
   bonusAcumulaFaixas?: boolean;
+  /** @minItems 1 */
   faixas: ComissaoFaixaInput[];
 }

@@ -5,9 +5,13 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ContratoDescontoTipo } from './contratoDescontoTipo';
 import type { ContratoFormaPagamento } from './contratoFormaPagamento';
+import type { ContratoItem } from './contratoItem';
 import type { ContratoStatus } from './contratoStatus';
+import type { Lead } from './lead';
 import type { Parcela } from './parcela';
+import type { Usuario } from './usuario';
 
 export interface Contrato {
   id: string;
@@ -17,6 +21,7 @@ export interface Contrato {
   orcamentoId?: string | null;
   /** @nullable */
   bloqueioVestidoId?: string | null;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   status: ContratoStatus;
   /** @nullable */
@@ -25,9 +30,15 @@ export interface Contrato {
   vestidoDescricao?: string | null;
   valorTotal: number;
   /** @nullable */
+  descontoTipo?: ContratoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
+  /** @nullable */
   formaPagamento?: ContratoFormaPagamento;
   /** @nullable */
   canceladoMotivo?: string | null;
+  /** @nullable */
+  canceladoEm?: Date | null;
   /** @nullable */
   dataCasamento?: Date | null;
   /** @nullable */
@@ -38,4 +49,7 @@ export interface Contrato {
   observacoes?: string | null;
   fechadoEm: Date;
   parcelas?: Parcela[];
+  itens?: ContratoItem[];
+  lead?: Lead;
+  vendedora?: Usuario;
 }

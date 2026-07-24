@@ -9,9 +9,10 @@ import {
   parcelasTable,
   contasPagarTable,
 } from "@workspace/db";
-import { and, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { and, eq, gte, lte, lt, ne, sql } from "drizzle-orm";
 import { GetDashboardResponse } from "@workspace/api-zod";
 import { requireSessaoComLoja } from "../middlewares/auth";
+import { addDias, hojeLocal, inicioDoDia, previstoNaJanela } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -23,8 +24,14 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
   inicioHoje.setHours(0, 0, 0, 0);
   const fimHoje = new Date(now);
   fimHoje.setHours(23, 59, 59, 999);
-  const em30Dias = new Date(now);
-  em30Dias.setDate(em30Dias.getDate() + 30);
+
+  // Janela do "próximos 30 dias" pela régua do MOTOR (E25): dia de negócio
+  // São Paulo, hoje inclusivo, soma em centavos — antes era sum(float) em SQL
+  // por INSTANTE, que descartava o vencimento de hoje (meio-dia) quando a
+  // consulta rodava à tarde e podia divergir da projeção por centavos.
+  const hoje = hojeLocal();
+  const janela = { iniYMD: hoje, fimYMD: addDias(hoje, 30) };
+  const recorteSql = { de: inicioDoDia(hoje), ate: inicioDoDia(addDias(janela.fimYMD, 1)) };
 
   const [
     leadsAtivos,
@@ -61,26 +68,36 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
           lte(atendimentosTable.inicio, fimHoje),
         ),
       ),
+    // As LINHAS (não a soma): quem soma é o motor, na mesma régua do front.
+    // O recorte SQL só limita o tráfego; o corte exato é do previstoNaJanela.
     db
-      .select({ total: sql<string>`coalesce(sum(${parcelasTable.valorPrevisto}), 0)` })
+      .select({
+        status: parcelasTable.status,
+        vencimento: parcelasTable.vencimento,
+        valorPrevisto: parcelasTable.valorPrevisto,
+      })
       .from(parcelasTable)
       .where(
         and(
           eq(parcelasTable.lojaId, lojaId),
           eq(parcelasTable.status, "PREVISTA"),
-          gte(parcelasTable.vencimento, now),
-          lte(parcelasTable.vencimento, em30Dias),
+          gte(parcelasTable.vencimento, recorteSql.de),
+          lt(parcelasTable.vencimento, recorteSql.ate),
         ),
       ),
     db
-      .select({ total: sql<string>`coalesce(sum(${contasPagarTable.valorPrevisto}), 0)` })
+      .select({
+        status: contasPagarTable.status,
+        vencimento: contasPagarTable.vencimento,
+        valorPrevisto: contasPagarTable.valorPrevisto,
+      })
       .from(contasPagarTable)
       .where(
         and(
           eq(contasPagarTable.lojaId, lojaId),
           eq(contasPagarTable.status, "PREVISTA"),
-          gte(contasPagarTable.vencimento, now),
-          lte(contasPagarTable.vencimento, em30Dias),
+          gte(contasPagarTable.vencimento, recorteSql.de),
+          lt(contasPagarTable.vencimento, recorteSql.ate),
         ),
       ),
   ]);
@@ -91,8 +108,8 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
       totalVestidosAtivos: Number(vestidosAtivos[0]?.count ?? 0),
       totalOrcamentosAbertos: Number(orcamentosAbertos[0]?.count ?? 0),
       totalContratosAtivos: Number(contratosAtivos[0]?.count ?? 0),
-      receberProximos30Dias: Number(receberProximos30Dias[0]?.total ?? 0),
-      pagarProximos30Dias: Number(pagarProximos30Dias[0]?.total ?? 0),
+      receberProximos30Dias: previstoNaJanela(receberProximos30Dias, janela),
+      pagarProximos30Dias: previstoNaJanela(pagarProximos30Dias, janela),
       atendimentosHoje: Number(atendimentosHoje[0]?.count ?? 0),
     }),
   );

@@ -7,8 +7,11 @@
  */
 
 export interface VestidoFotoInput {
-  mime: string;
-  largura: number;
-  altura: number;
+  /** A foto (JPEG/PNG/WebP). Mime e dimensões são derivados do binário no servidor. */
   base64: string;
+  /**
+     * Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback).
+     * @nullable
+     */
+  thumbBase64?: string | null;
 }

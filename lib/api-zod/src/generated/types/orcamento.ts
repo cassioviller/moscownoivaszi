@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { Lead } from './lead';
 import type { OrcamentoDescontoTipo } from './orcamentoDescontoTipo';
 import type { OrcamentoItem } from './orcamentoItem';
 import type { OrcamentoStatus } from './orcamentoStatus';
@@ -25,6 +26,17 @@ export interface Orcamento {
   validade?: Date | null;
   /** @nullable */
   observacoes?: string | null;
+  /** @nullable */
+  publicoToken?: string | null;
+  /** @nullable */
+  publicoExpiraEm?: Date | null;
+  /** @nullable */
+  publicoAbertoEm?: Date | null;
+  /** @nullable */
+  aceitoEm?: Date | null;
+  /** @nullable */
+  aceiteVersao?: number | null;
   createdAt: Date;
+  lead?: Lead;
   itens?: OrcamentoItem[];
 }

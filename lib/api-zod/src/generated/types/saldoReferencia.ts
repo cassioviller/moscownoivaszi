@@ -9,6 +9,7 @@
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
+  /** Instante do dia conferido (meio-dia local America/Sao_Paulo) */
   dataReferencia: Date;
   valor: number;
 }

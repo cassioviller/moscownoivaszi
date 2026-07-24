@@ -2,7 +2,7 @@ import { pgTable, text, timestamp, decimal, primaryKey, unique } from "drizzle-o
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
-import { leadEtapaEnum, leadOrigemEnum } from "./common/enums";
+import { leadEtapaEnum, leadOrigemEnum, leadPerdidaMotivoEnum } from "./common/enums";
 import { atributosTable, atributoOpcoesTable } from "./vestidos";
 
 export const leadsTable = pgTable("leads", {
@@ -19,7 +19,17 @@ export const leadsTable = pgTable("leads", {
   orcamentoAbertoEm: timestamp("orcamento_aberto_em", { withTimezone: true }),
   contratoFechadoEm: timestamp("contrato_fechado_em", { withTimezone: true }),
   perdidaEm: timestamp("perdida_em", { withTimezone: true }),
+  // Motivo estruturado da perda (obrigatório ao marcar PERDIDO via API) e o
+  // detalhe livre. Ao reviver, ficam como histórico — mesmo espírito do
+  // carimbo perdidaEm, que também não se apaga.
+  perdidaMotivo: leadPerdidaMotivoEnum("perdida_motivo"),
+  perdidaDetalhe: text("perdida_detalhe"),
   origem: leadOrigemEnum("origem").notNull().default("LOJA"),
+  // E77 (LGPD): quando a própria noiva consentiu com o uso dos dados (form de
+  // captação externa). Null = cadastro interno, consentimento presencial.
+  consentimentoEm: timestamp("consentimento_em", { withTimezone: true }),
+  // E77: carimbo da anonimização — a linha fica (histórico e números), a PII sai.
+  anonimizadaEm: timestamp("anonimizada_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

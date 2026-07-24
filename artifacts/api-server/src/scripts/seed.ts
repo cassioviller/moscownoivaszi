@@ -1,4 +1,4 @@
-import { db, lojasTable, usuariosTable, perfisTable, usuariosLojasTable, vestidosTable, leadsTable, cabinesTable, atendimentosTable, orcamentosTable, contratosTable, parcelasTable, contasPagarTable, comissaoFaixasTable } from "@workspace/db";
+import { db, lojasTable, usuariosTable, perfisTable, usuariosLojasTable, vestidosTable, leadsTable, cabinesTable, atendimentosTable, orcamentosTable, contratosTable, parcelasTable, contasPagarTable, comissaoRegrasTable, comissaoFaixasTable } from "@workspace/db";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 
@@ -25,7 +25,9 @@ async function seed() {
     {
       id: adminPerfilId,
       nome: "Admin",
-      acessosModulos: { 
+      // E80: perfil do sistema — flag, não nome. PATCH/DELETE são recusados.
+      sistema: true,
+      acessosModulos: {
         leads: true, 
         vestidos: true, 
         agenda: true, 
@@ -50,6 +52,7 @@ async function seed() {
 
   // 3. Usuarios
   const superAdminId = randomUUID();
+  const vendedoraId = randomUUID();
   await db.insert(usuariosTable).values([
     {
       id: superAdminId,
@@ -59,7 +62,7 @@ async function seed() {
       isSuperAdmin: true,
     },
     {
-      id: randomUUID(),
+      id: vendedoraId,
       nome: "Vendedora Maria",
       email: "maria@moscownoivas.com",
       senhaHash: adminSenhaHash,
@@ -67,12 +70,19 @@ async function seed() {
     }
   ]);
 
-  // Link super admin to loja
-  await db.insert(usuariosLojasTable).values({
-    usuarioId: superAdminId,
-    lojaId: lojaId,
-    perfilId: adminPerfilId,
-  });
+  // Link super admin e vendedora à loja
+  await db.insert(usuariosLojasTable).values([
+    {
+      usuarioId: superAdminId,
+      lojaId: lojaId,
+      perfilId: adminPerfilId,
+    },
+    {
+      usuarioId: vendedoraId,
+      lojaId: lojaId,
+      perfilId: vendedoraPerfilId,
+    },
+  ]);
 
   // 4. Vestidos
   await db.insert(vestidosTable).values([
@@ -96,7 +106,7 @@ async function seed() {
       cor: "Branco",
       categoria: "Sereia",
     }
-  ] as any);
+  ]);
 
   // 5. Leads
   const leadId = randomUUID();
@@ -148,7 +158,7 @@ async function seed() {
     valorTotal: 5000.00,
     status: "ATIVO",
     fechadoEm: new Date(),
-  } as any);
+  });
 
   await db.insert(parcelasTable).values({
     id: randomUUID(),
@@ -158,7 +168,7 @@ async function seed() {
     valorPrevisto: 5000.00,
     vencimento: new Date(),
     status: "PREVISTA",
-  } as any);
+  });
 
   await db.insert(contasPagarTable).values({
     id: randomUUID(),
@@ -168,15 +178,25 @@ async function seed() {
     valorPrevisto: 2000.00,
     vencimento: new Date(),
     status: "PREVISTA",
-  } as any);
+  });
 
-  // 8. Comissao
+  // 8. Comissão — o modelo é regra por vendedora + escada de faixas; o `as any`
+  // daqui escondia um insert no formato antigo (minimoVenda), que quebrava em
+  // runtime desde a migração da escada. Um degrau único, topo aberto, 5%.
+  const regraId = randomUUID();
+  await db.insert(comissaoRegrasTable).values({
+    id: regraId,
+    lojaId,
+    vendedoraId: superAdminId,
+    vigenciaInicio: new Date(),
+  });
   await db.insert(comissaoFaixasTable).values({
     id: randomUUID(),
     lojaId,
-    minimoVenda: 0.00,
+    regraId,
+    minAcumulado: 0,
     percentual: 5.00,
-  } as any);
+  });
 
   console.log("Seed completed!");
   process.exit(0);

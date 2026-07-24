@@ -16,7 +16,20 @@ export const leadEtapaEnum = pgEnum("lead_etapa", [
   "PERDIDO",
 ]);
 
-export const leadOrigemEnum = pgEnum("lead_origem", ["LOJA", "WHATSAPP"]);
+// SITE/INSTAGRAM nascem da captação externa (E19) — lead que chega sozinho
+// pelo formulário público, sem ninguém digitar na loja.
+export const leadOrigemEnum = pgEnum("lead_origem", ["LOJA", "WHATSAPP", "SITE", "INSTAGRAM"]);
+
+// Por que a noiva não fechou — estruturado para o funil responder "onde
+// estamos perdendo": preço, data indisponível, concorrente…
+export const leadPerdidaMotivoEnum = pgEnum("lead_perdida_motivo", [
+  "PRECO",
+  "DATA_INDISPONIVEL",
+  "CONCORRENTE",
+  "DESISTENCIA",
+  "SEM_RETORNO",
+  "OUTRO",
+]);
 
 export const bloqueioTipoEnum = pgEnum("bloqueio_tipo", [
   "RESERVA_CASAMENTO",
@@ -28,6 +41,8 @@ export const ajusteStatusEnum = pgEnum("ajuste_status", ["PENDENTE", "FEITO"]);
 export const reservaStatusEnum = pgEnum("reserva_status", [
   "EM_MONTAGEM",
   "CONFIRMADA",
+  "CONCLUIDA",
+  "CANCELADA",
 ]);
 
 export const atendimentoTipoEnum = pgEnum("atendimento_tipo", [
@@ -75,8 +90,17 @@ export const formaPagamentoEnum = pgEnum("forma_pagamento", [
   "OUTRO",
 ]);
 
+/**
+ * PARCIAL (E49) fica ENTRE prevista e paga: a noiva pagou parte, o dinheiro
+ * entrou no caixa e o resto continua devido. Antes o status era binário, então
+ * meio pagamento ou sumia do "a receber" (marcado PAGA, faltando dinheiro) ou
+ * ficava 100% aberto (o que entrou não aparecia no caixa). Não é um estado
+ * gravado à toa: quem decide é o saldo (`valorRecebido` vs `valorPrevisto`), e
+ * a régua de leitura mora em financeiro-core (`estaAberta`/`saldoAberto`).
+ */
 export const parcelaStatusEnum = pgEnum("parcela_status", [
   "PREVISTA",
+  "PARCIAL",
   "PAGA",
   "CANCELADA",
 ]);

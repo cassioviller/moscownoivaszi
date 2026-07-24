@@ -8,7 +8,10 @@
 
 export interface VestidoFotoMeta {
   ordem: number;
+  /** Derivado do binário pelo servidor, nunca do cliente */
   mime: string;
   largura: number;
   altura: number;
+  /** Versão da foto — alimenta o cache-busting (?v=) das URLs */
+  atualizadaEm: Date;
 }

@@ -1,10 +1,19 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { db, usuariosTable, sessoesTable, lojasTable, usuariosLojasTable, perfisTable, perfilOverridesLojasTable } from "@workspace/db";
+import { resolverAcessosEfetivos } from "./permissoes";
 import { eq, and, gt } from "drizzle-orm";
 
 export const SESSAO_TTL_MS = 8 * 60 * 60 * 1000;
 export const COOKIE_NOME = "moscow_sessao";
+// Convite por link vale 7 dias — tempo de a colega ver o WhatsApp, sem o link
+// virar porta permanente.
+export const CONVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Token de convite: mesmo formato do id de sessão (256 bits, base64url). */
+export function gerarTokenConvite(): string {
+  return randomBytes(32).toString("base64url");
+}
 
 export async function hashSenha(senha: string): Promise<string> {
   return bcrypt.hash(senha, 12);
@@ -14,17 +23,63 @@ export async function compararSenha(senha: string, hash: string): Promise<boolea
   return bcrypt.compare(senha, hash);
 }
 
-export async function criarSessao(usuarioId: string) {
+// Hash de sacrifício, criado uma vez sob demanda. Serve para gastar o mesmo
+// tempo de um bcrypt.compare real quando o e-mail NÃO existe.
+let hashDummy: string | null = null;
+function getHashDummy(): string {
+  if (!hashDummy) hashDummy = bcrypt.hashSync(randomBytes(16).toString("hex"), 12);
+  return hashDummy;
+}
+
+/**
+ * Compara a senha em TEMPO CONSTANTE quanto à existência do usuário. Com hash
+ * nulo (usuário inexistente/inativo) ainda roda um bcrypt.compare contra um
+ * dummy — senão o 401 imediato denuncia quais e-mails têm conta, insumo para
+ * phishing e força bruta dirigida. Sempre devolve false para hash nulo.
+ */
+export async function compararSenhaConstante(senha: string, hash: string | null): Promise<boolean> {
+  const alvo = hash ?? getHashDummy();
+  const ok = await bcrypt.compare(senha, alvo);
+  return hash !== null && ok;
+}
+
+/**
+ * `executor` permite criar a sessão DENTRO de uma transação — a troca de
+ * senha (E57) derruba as sessões e emite a nova no mesmo passo, e usar o `db`
+ * global ali criaria a sessão nova fora da transação que a antecede.
+ */
+export async function criarSessao(
+  usuarioId: string,
+  executor: { insert: typeof db.insert } = db,
+) {
   const id = randomBytes(32).toString("base64url");
   const expiraEm = new Date(Date.now() + SESSAO_TTL_MS);
-  
-  const [sessao] = await db.insert(sessoesTable).values({
+
+  const [sessao] = await executor.insert(sessoesTable).values({
     id,
     usuarioId,
     expiraEm,
   }).returning();
-  
+
   return sessao;
+}
+
+/**
+ * Derruba TODAS as sessões vivas de um usuário (E56).
+ *
+ * A permissão é lida da sessão e só se atualizava no próximo `/auth/me`: tirar
+ * alguém da equipe ou rebaixar o perfil não tinha efeito enquanto a aba dela
+ * estivesse aberta — a pessoa seguia com o acesso antigo por até 8 horas. Uma
+ * permissão revogada que continua valendo não é permissão.
+ *
+ * Recebe o executor para rodar DENTRO da transação que mudou o acesso: derrubar
+ * a sessão e mudar o perfil precisam acontecer juntos, ou nenhum dos dois.
+ */
+export async function encerrarSessoesDoUsuario(
+  executor: { delete: typeof db.delete },
+  usuarioId: string,
+): Promise<void> {
+  await executor.delete(sessoesTable).where(eq(sessoesTable.usuarioId, usuarioId));
 }
 
 export async function buscarSessao(id: string) {
@@ -72,6 +127,16 @@ export async function buscarLojasUsuario(usuarioId: string, isSuperAdmin: boolea
   return rows;
 }
 
+/**
+ * Os acessos efetivos do usuário na loja, já normalizados para MÓDULO × AÇÃO.
+ *
+ * Normaliza aqui, na fonte: é o mesmo dado que alimenta o guard das rotas e o
+ * `/me` do frontend, e os dois precisam enxergar exatamente as mesmas
+ * permissões. Traduzir em cada consumidor é como as duas visões divergem.
+ *
+ * Superadmin devolve `null` — ele não tem perfil, tem bypass. `null` significa
+ * "sem restrição", e por isso não pode ser confundido com "sem acesso".
+ */
 export async function getPermissoes(usuarioId: string, lojaId: string, isSuperAdmin: boolean) {
   if (isSuperAdmin) return null; // Bypass
 
@@ -93,5 +158,7 @@ export async function getPermissoes(usuarioId: string, lojaId: string, isSuperAd
     .from(perfilOverridesLojasTable)
     .where(and(eq(perfilOverridesLojasTable.lojaId, lojaId), eq(perfilOverridesLojasTable.perfilId, vinculo.perfilId)));
 
-  return (override?.acessosModulos || vinculo.acessosModulos) as Record<string, boolean | Record<string, boolean>>;
+  // Havendo override, ele SUBSTITUI o template — não se mistura. Um override
+  // meio-aplicado seria impossível de auditar depois ("de onde veio o acesso?").
+  return resolverAcessosEfetivos(vinculo.acessosModulos, override?.acessosModulos ?? null);
 }

@@ -47,3 +47,13 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Playwright E2E
+e2e/.results/
+e2e/.auth/
+e2e/.state.json
+test-results/
+playwright-report/
+
+# Dumps de backup do sistema (E30) — o registro fica no banco, os arquivos não versionam
+backups/

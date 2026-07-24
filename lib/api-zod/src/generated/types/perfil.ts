@@ -5,10 +5,11 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { PerfilAcessosModulos } from './perfilAcessosModulos';
+import type { AcessosModulos } from './acessosModulos';
 
 export interface Perfil {
   id: string;
   nome: string;
-  acessosModulos: PerfilAcessosModulos;
+  acessosModulos: AcessosModulos;
+  sistema: boolean;
 }

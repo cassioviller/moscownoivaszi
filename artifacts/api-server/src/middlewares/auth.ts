@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { buscarSessao, buscarLoja, COOKIE_NOME } from "../lib/auth";
+import { buscarSessao, buscarLoja, getPermissoes, COOKIE_NOME } from "../lib/auth";
+import { acaoDoMetodo, acaoDoRequest, podeNoModulo, type Acao } from "../lib/permissoes";
 
 export async function requireSessao(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies[COOKIE_NOME];
@@ -56,4 +57,34 @@ export async function requireSuperAdmin(req: Request, res: Response, next: NextF
     return;
   }
   next();
+}
+
+/**
+ * Exige que o perfil do usuário na loja ativa possa a AÇÃO neste módulo.
+ * Deve ser montado DEPOIS de requireSessaoComLoja. Superadmin sempre passa.
+ *
+ * Sem `acao`, ela vem do método HTTP (GET→ver, POST→criar, resto→editar), que é
+ * o certo para rotas REST. Passe explicitamente quando a rota mentir sobre o
+ * que faz — um POST que só consulta pede `"ver"`, não `"criar"`.
+ */
+export function requireModulo(modulo: string, acao?: Acao) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const usuario = req.usuario;
+    const lojaId = req.sessao?.lojaAtivaId;
+    if (!usuario || !lojaId) {
+      res.status(401).json({ error: "Selecione uma loja" });
+      return;
+    }
+    if (usuario.isSuperAdmin) {
+      next();
+      return;
+    }
+    const exigida = acao ?? acaoDoRequest(req.method, req.path);
+    const permissoes = await getPermissoes(usuario.id, lojaId, false);
+    if (!permissoes || !podeNoModulo(permissoes, modulo, exigida)) {
+      res.status(403).json({ error: "ACESSO_NEGADO_MODULO", modulo, acao: exigida });
+      return;
+    }
+    next();
+  };
 }

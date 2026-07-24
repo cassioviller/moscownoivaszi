@@ -1,4 +1,5 @@
-import { pgTable, text, boolean, timestamp, jsonb, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, jsonb, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -10,6 +11,19 @@ export const usuariosTable = pgTable("usuarios", {
   senhaHash: text("senha_hash").notNull(),
   ativo: boolean("ativo").notNull().default(true),
   isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+  /**
+   * A senha atual foi escolhida por OUTRA pessoa (E57).
+   *
+   * O cadastro-com-senha chama o campo de "senha inicial", mas nada forçava a
+   * troca: o admin que criou o acesso conhecia a senha da colega para sempre e
+   * podia entrar como ela — inclusive na trilha de auditoria, que registraria
+   * a colega. Marcado no cadastro por admin, limpo quando a própria pessoa
+   * troca. Quem aceita convite escolhe a própria senha e nunca é marcado.
+   */
+  precisaTrocarSenha: boolean("precisa_trocar_senha").notNull().default(false),
+  // Carimbado a cada login (E18). As sessões não servem de fonte: logout e
+  // expiração apagam a linha, e o "último acesso" sumiria junto.
+  ultimoLoginEm: timestamp("ultimo_login_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -22,6 +36,9 @@ export const perfisTable = pgTable("perfis", {
   id: text("id").primaryKey(),
   nome: text("nome").notNull(),
   acessosModulos: jsonb("acessos_modulos").notNull(), // { "leads": true, ... }
+  // E80: o perfil do SISTEMA (Admin) é uma flag, não um nome — renomear não
+  // pode derrubar o readonly da matriz nem abrir PATCH/DELETE por curl.
+  sistema: boolean("sistema").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -56,6 +73,39 @@ export const sessoesTable = pgTable("sessoes", {
 export const insertSessaoSchema = createInsertSchema(sessoesTable);
 export type InsertSessao = z.infer<typeof insertSessaoSchema>;
 export type Sessao = typeof sessoesTable.$inferSelect;
+
+/**
+ * Convite por link (E6): o admin manda o link pelo WhatsApp e a própria pessoa
+ * define a senha — ninguém mais digita a senha do colega. O usuário nasce só
+ * no ACEITE: pré-criá-lo com hash impossível sequestraria o e-mail (unique) se
+ * o convite fosse abandonado. Token cru como as sessões (256 bits aleatórios;
+ * o admin precisa re-copiar o link da listagem). Uso único via UPDATE
+ * condicional no aceite; "reenviar" regenera token+validade (link antigo morre).
+ */
+export const convitesTable = pgTable("convites", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  nome: text("nome").notNull(),
+  email: text("email").notNull(), // normalizado lower/trim na rota
+  perfilId: text("perfil_id").notNull().references(() => perfisTable.id),
+  criadoPorId: text("criado_por_id").references(() => usuariosTable.id, { onDelete: "set null" }),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+  usadoEm: timestamp("usado_em", { withTimezone: true }),
+}, (t) => ({
+  tokenUnq: uniqueIndex("convites_token_unq").on(t.token),
+  // Um convite PENDENTE por e-mail/loja: o 409 nasce do banco, não de
+  // check-then-insert racy. Parcial: aceitos não bloqueiam reconvite futuro.
+  pendenteUnq: uniqueIndex("convites_loja_email_pendente_unq")
+    .on(t.lojaId, t.email)
+    .where(sql`usado_em IS NULL`),
+  lojaIdx: index("convites_loja_id_idx").on(t.lojaId),
+}));
+
+export const insertConviteSchema = createInsertSchema(convitesTable).omit({ criadoEm: true });
+export type InsertConvite = z.infer<typeof insertConviteSchema>;
+export type Convite = typeof convitesTable.$inferSelect;
 
 export const perfilOverridesLojasTable = pgTable("perfil_overrides_lojas", {
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),

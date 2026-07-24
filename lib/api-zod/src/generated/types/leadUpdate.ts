@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LeadUpdateEtapa } from './leadUpdateEtapa';
+import type { LeadUpdatePerdidaMotivo } from './leadUpdatePerdidaMotivo';
 
 export interface LeadUpdate {
   etapa?: LeadUpdateEtapa;
@@ -16,4 +17,7 @@ export interface LeadUpdate {
   casamentoData?: Date;
   casamentoHorario?: string;
   casamentoLocal?: string;
+  /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
+  perdidaMotivo?: LeadUpdatePerdidaMotivo;
+  perdidaDetalhe?: string;
 }

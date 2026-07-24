@@ -7,6 +7,15 @@
       "path": "./lib/db"
     },
     {
+      "path": "./lib/financeiro-core"
+    },
+    {
+      "path": "./lib/funil-core"
+    },
+    {
+      "path": "./lib/agenda-core"
+    },
+    {
       "path": "./lib/api-client-react"
     },
     {

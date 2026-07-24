@@ -12,6 +12,7 @@ tags:
   - name: auth
   - name: admin
   - name: equipe
+  - name: convites
   - name: catalogo
   - name: vestidos
   - name: leads
@@ -85,6 +86,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /auth/senha:
+    post:
+      operationId: trocarSenha
+      tags: [auth]
+      summary: A própria pessoa troca a própria senha (E57)
+      description: >
+        Exige a senha ATUAL: uma sessão sequestrada não pode virar troca de
+        senha. Ao trocar, TODAS as sessões da pessoa caem — inclusive a de quem
+        soubesse a senha antiga — e a de quem trocou é reemitida, para ela não
+        ser deslogada por se proteger. Limpa `precisaTrocarSenha`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrocarSenhaInput"
+      responses:
+        "204":
+          description: Senha trocada
+        "401":
+          description: Não autenticado
+        "422":
+          description: Senha atual incorreta (SENHA_ATUAL_INCORRETA) ou nova igual à atual (SENHA_REPETIDA)
   /auth/selecionar-loja:
     post:
       operationId: selecionarLoja
@@ -222,13 +246,15 @@ paths:
       tags: [admin]
       responses:
         "200":
-          description: List of usuarios
+          description: >-
+            List of usuarios. Cada um traz as lojas vinculadas (E61) — o
+            console responde "essa pessoa entra onde?" sem abrir loja a loja.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Usuario"
+                  $ref: "#/components/schemas/UsuarioComLojas"
     post:
       operationId: createUsuario
       tags: [admin]
@@ -306,6 +332,115 @@ paths:
               schema:
                 $ref: "#/components/schemas/PerfilOverrideLoja"
 
+  /admin/lojas/{lojaId}/overrides/{perfilId}:
+    delete:
+      operationId: deletePerfilOverride
+      tags: [admin]
+      summary: Restaura o perfil ao modelo global — remove o override da loja
+      description: >
+        E60: uma vez personalizado, o perfil ficava preso ao override — não
+        havia caminho de volta. Remover o override devolve o perfil ao template
+        global e, como qualquer mudança de permissão (E56), derruba as sessões
+        vivas de quem tem esse perfil na loja e deixa rastro na auditoria.
+      parameters:
+        - $ref: "#/components/parameters/LojaIdParam"
+        - name: perfilId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Override removido; o perfil volta ao modelo global
+        "404":
+          description: Este perfil não tem personalização nesta loja
+
+  /admin/consolidado:
+    get:
+      operationId: getConsolidado
+      tags: [admin]
+      summary: A rede numa tela — os números de cada loja lado a lado
+      description: >
+        E76: a dona de rede navegava loja a loja. Uma linha por loja ativa com
+        o essencial — funil, contratos, o recebido do mês corrente e o que há
+        em aberto para receber. Vive no gate superadmin: é a visão de quem
+        enxerga o banco inteiro.
+      responses:
+        "200":
+          description: Uma linha por loja ativa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [lojaId, nome, leadsAtivos, contratosAtivos, recebidoNoMes, aReceberAberto]
+                  properties:
+                    lojaId: { type: string }
+                    nome: { type: string }
+                    leadsAtivos: { type: integer }
+                    contratosAtivos: { type: integer }
+                    recebidoNoMes: { type: number, description: "Soma recebida na competência corrente" }
+                    aReceberAberto: { type: number, description: "Previsto − recebido das parcelas abertas" }
+
+  /admin/backup:
+    get:
+      operationId: getBackupStatus
+      tags: [admin]
+      summary: Status do backup do sistema — quando foi o último e o histórico recente
+      description: >
+        A visão do SRE (E30): o backup é o dump do banco INTEIRO, um evento de
+        infraestrutura sem dono de loja — por isso vive no gate superadmin. A
+        tela lê daqui o "último backup: há X horas" e a lista das últimas
+        execuções (ok, erro ou em andamento).
+      responses:
+        "200":
+          description: Último backup + execuções recentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupStatus"
+    post:
+      operationId: runBackup
+      tags: [admin]
+      summary: Dispara um backup manual agora
+      description: >
+        Roda o pg_dump na hora e devolve a linha registrada. Mesmo motor da
+        rotina agendada; muda só o gatilho (manual) e o autor (quem apertou).
+      responses:
+        "200":
+          description: Registro do backup executado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupLog"
+
+  /admin/backup/{backupId}/download:
+    get:
+      operationId: downloadBackup
+      tags: [admin]
+      summary: Baixa o arquivo do dump de um backup concluído
+      description: >
+        Fecha o ciclo do E30: saber que o backup existe não protege contra a
+        perda da instância — a cópia precisa SAIR dela. Devolve o dump
+        comprimido (.sql.gz) em streaming. 404 quando a execução não existe;
+        410 quando o registro existe mas o arquivo já foi podado pela retenção
+        (só os dumps mais recentes ficam no disco).
+      parameters:
+        - name: backupId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: O dump comprimido, como download
+          content:
+            application/gzip:
+              schema: { type: string, format: binary }
+        "404":
+          description: Execução de backup não encontrada
+        "410":
+          description: O arquivo deste backup já foi removido pela retenção
+
   # ───────────────────────── Equipe ─────────────────────────
   /lojas/{lojaId}/equipe:
     parameters:
@@ -369,6 +504,210 @@ paths:
         "204":
           description: Removed
 
+  /lojas/{lojaId}/equipe/convites:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listConvitesEquipe
+      tags: [equipe]
+      description: "Convites PENDENTES (não usados, não expirados). O token sai aqui de propósito: é o admin quem monta e copia o link."
+      responses:
+        "200":
+          description: Convites pendentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Convite"
+    post:
+      operationId: createConviteEquipe
+      tags: [equipe]
+      description: >
+        Convite por link: o admin manda o link pelo WhatsApp e a própria pessoa
+        define a senha — ninguém mais digita a senha do colega. Vale 7 dias,
+        uso único. E-mail já membro da loja → 409 CONVIDADO_JA_E_MEMBRO;
+        convite pendente do mesmo e-mail → 409 CONVITE_PENDENTE.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConviteInput"
+      responses:
+        "201":
+          description: Criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Convite"
+
+  /lojas/{lojaId}/equipe/convites/{conviteId}/reenviar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: conviteId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: reenviarConviteEquipe
+      tags: [equipe]
+      description: "Regenera token e validade — o link antigo morre (desejável se vazou no WhatsApp errado)."
+      responses:
+        "200":
+          description: Convite renovado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Convite"
+
+  /lojas/{lojaId}/equipe/convites/{conviteId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: conviteId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: cancelarConviteEquipe
+      tags: [equipe]
+      responses:
+        "204":
+          description: Cancelado
+
+  # Rotas PÚBLICAS do convite — sem sessão: quem tem o token (256 bits) é a
+  # capability. Token via QUERY/corpo, nunca no path: o log de request grava o
+  # path e o token não pode cair em log.
+  /lojas/{lojaId}/equipe/atividade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getAtividadeEquipe
+      tags: [equipe]
+      summary: Log de atividade da equipe — últimos acessos e ações sensíveis
+      description: >
+        A visão da dona (E18): quando cada membro entrou pela última vez
+        (carimbo de login — sessões somem no logout) e quantas ações sensíveis
+        fez nos últimos 30 dias, mais o feed recente do audit_log da loja.
+        Mesmo gate admin da gestão de equipe.
+      responses:
+        "200":
+          description: Resumo por membro + eventos recentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AtividadeEquipe"
+  /captacao/leads:
+    post:
+      operationId: captarLead
+      tags: [leads]
+      security: []
+      summary: Captação externa (E19) — formulário do site/Instagram cria o lead
+      description: >
+        Rota PÚBLICA: o token da loja (gerido em Configurações, em query — o
+        logger corta a query e ele não cai em log) é a credencial. O lead nasce
+        NOVO com a origem informada; hoje todo lead nasce digitado à mão na
+        loja — este é o primeiro que chega sozinho.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptacaoLeadInput"
+      responses:
+        "201":
+          description: Lead criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptacaoLeadResultado"
+        "404":
+          description: Token desconhecido (captação desligada ou rotacionada)
+  /lojas/{lojaId}/captacao/token:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getCaptacaoToken
+      tags: [leads]
+      description: O token vigente da captação externa (null = desligada). Gate admin.
+      responses:
+        "200":
+          description: Token vigente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptacaoToken"
+    post:
+      operationId: rotacionarCaptacaoToken
+      tags: [leads]
+      description: >
+        Gera (ou rotaciona) o token da captação. O anterior morre na hora —
+        formulário antigo para de criar lead. Gate admin.
+      responses:
+        "200":
+          description: Token novo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptacaoToken"
+  /equipe/convites/info:
+    get:
+      operationId: getConviteInfo
+      tags: [convites]
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "O que a convidada precisa ver antes de aceitar"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvitePublico"
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Convite expirado ou já utilizado
+
+  /equipe/convites/aceitar:
+    post:
+      operationId: aceitarConvite
+      tags: [convites]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AceitarConviteInput"
+      responses:
+        "200":
+          description: >
+            Aceito. E-mail novo: usuário criado com a senha enviada e sessão
+            aberta (cookie). E-mail já cadastrado: só o vínculo com a loja é
+            criado, SEM sessão — o portador do link não provou ser o dono da
+            conta; jaTinhaConta=true manda o front ao login.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AceitarConviteResultado"
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Convite expirado ou já utilizado
+
   # ───────────────────────── Catálogo (Atributos) ─────────────────────────
   /lojas/{lojaId}/atributos:
     parameters:
@@ -431,8 +770,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /atributos/{atributoId}/opcoes:
+  /lojas/{lojaId}/atributos/{atributoId}/opcoes:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: atributoId
         in: path
         required: true
@@ -454,8 +794,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AtributoOpcao"
-  /atributos/opcoes/{opcaoId}:
+  /lojas/{lojaId}/atributos/opcoes/{opcaoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: opcaoId
         in: path
         required: true
@@ -516,6 +857,91 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Vestido"
+  /lojas/{lojaId}/vestidos/disponibilidade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: checkDisponibilidadeVestidos
+      tags: [vestidos]
+      summary: Disponibilidade de todos os vestidos da loja para uma data de casamento
+      parameters:
+        - name: data
+          in: query
+          required: true
+          description: Data do casamento candidata (dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Disponibilidade por vestido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisponibilidadeVestidos"
+  /lojas/{lojaId}/vestidos/utilizacao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getUtilizacaoVestidos
+      tags: [vestidos]
+      summary: Utilização por vestido — provas, reservas e contratos no período
+      description: >
+        O relatório de encalhe e de estrela: TODOS os vestidos do acervo, cada
+        um com quantas provas, reservas ativas e contratos gerou no período (e
+        a receita dos contratos). Zeros aparecem de propósito — o vestido sem
+        uso é a resposta de "o que sai de linha".
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do período (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do período (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Uma linha por vestido do acervo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VestidoUtilizacao"
+        "400":
+          description: Intervalo inválido
+  /lojas/{lojaId}/vestidos/{vestidoId}/proxima-janela:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: vestidoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getProximaJanelaVestido
+      tags: [vestidos]
+      summary: Próxima data de casamento em que uma reserva nova NÃO conflitaria
+      responses:
+        "200":
+          description: Próxima janela livre (null = nada no horizonte, ou vestido inativo)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProximaJanelaVestido"
+        "404":
+          description: Vestido não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /lojas/{lojaId}/vestidos/{vestidoId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -556,8 +982,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /vestidos/{vestidoId}/fotos/{ordem}:
+  /lojas/{lojaId}/vestidos/{vestidoId}/fotos/{ordem}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: vestidoId
         in: path
         required: true
@@ -568,6 +995,33 @@ paths:
         required: true
         schema:
           type: integer
+    get:
+      operationId: getVestidoFoto
+      tags: [vestidos]
+      parameters:
+        - name: variante
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [cheia, thumb]
+            default: cheia
+        - name: v
+          in: query
+          required: false
+          description: "Versão para cache-busting (atualizadaEm em ms). Presente → cache immutable."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Imagem (binário). variante=thumb sem thumb gravada cai na cheia."
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Foto não encontrada
     put:
       operationId: setVestidoFoto
       tags: [vestidos]
@@ -583,13 +1037,146 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VestidoFoto"
+                $ref: "#/components/schemas/VestidoFotoMeta"
     delete:
       operationId: deleteVestidoFoto
       tags: [vestidos]
       responses:
         "204":
           description: Deleted
+
+  # ───────────────────────── Lookbooks (E21) ─────────────────────────
+  /lojas/{lojaId}/lookbooks:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listLookbooks
+      tags: [vestidos]
+      summary: Lookbooks de uma noiva (para recopiar o link ou revogar)
+      parameters:
+        - name: leadId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lookbooks da noiva, mais recente primeiro
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lookbook"
+    post:
+      operationId: createLookbook
+      tags: [vestidos]
+      summary: A seleção do atendimento vira link para a noiva rever em casa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookbookInput"
+      responses:
+        "201":
+          description: Lookbook criado (o token compõe o link público)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lookbook"
+        "422":
+          description: Lead ou vestidos não são desta loja
+  /lojas/{lojaId}/lookbooks/{lookbookId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: lookbookId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: deleteLookbook
+      tags: [vestidos]
+      description: Revoga o lookbook — o link público morre na hora.
+      responses:
+        "204":
+          description: Revogado
+  /lookbooks/publico:
+    get:
+      operationId: getLookbookPublico
+      tags: [vestidos]
+      security: []
+      description: >
+        A página que a noiva abre sem login. Token em QUERY (o logger corta a
+        query — não cai em log). As URLs das fotos saem da rota pública irmã,
+        escopadas ao MESMO token.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: O lookbook da noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LookbookPublico"
+        "404":
+          description: Token desconhecido ou revogado
+        "410":
+          description: Link expirado
+  /lookbooks/publico/foto:
+    get:
+      operationId: getLookbookPublicoFoto
+      tags: [vestidos]
+      security: []
+      description: >
+        Foto de um vestido DO lookbook, sem login — o token escopa: vestido
+        fora da seleção é 404, mesmo existindo. Cache como na rota autenticada
+        (?v= → immutable; sem → ETag).
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: vestidoId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ordem
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: variante
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [cheia, thumb]
+            default: cheia
+        - name: v
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Imagem (binário)
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Token desconhecido ou vestido fora do lookbook
+        "410":
+          description: Link expirado
 
   # ───────────────────────── Leads / Noivas ─────────────────────────
   /lojas/{lojaId}/leads:
@@ -598,15 +1185,43 @@ paths:
     get:
       operationId: listLeads
       tags: [leads]
+      # Params no nível do GET (no path vazariam para o POST — gotcha do codegen).
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: "Busca em nome da noiva/noivo e WhatsApp (dígitos com ou sem máscara)"
+          schema: { type: string, maxLength: 200 }
+        - name: etapa
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [NOVO, INTERESSES_PREENCHIDOS, ATENDIMENTO_AGENDADO, EM_ATENDIMENTO, ORCAMENTO_ABERTO, CONTRATO_FECHADO, EM_PROVAS, RETIRADO, CASAMENTO_REALIZADO, DEVOLVIDO, PERDIDO]
+        - name: pagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: porPagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        # A lista lê como histórico (mais antiga primeiro); a coluna do funil
+        # mostra UMA página, e ali a ordem decide o que existe na tela — uma
+        # noiva recém-chegada no fim de 36 cairia na página 2, invisível
+        # justamente quando é mais urgente. Default preservado: os pickers de
+        # agenda/orçamentos e a lista já contam com a ordem antiga.
+        - name: ordem
+          in: query
+          required: false
+          schema: { type: string, enum: [antigos, recentes], default: antigos }
       responses:
         "200":
-          description: List of leads
+          description: Página de leads (sem pagina/porPagina, vem tudo — os pickers dependem disso)
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Lead"
+                $ref: "#/components/schemas/LeadsPage"
     post:
       operationId: createLead
       tags: [leads]
@@ -623,6 +1238,147 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+  /lojas/{lojaId}/leads/conversao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getConversaoLeads
+      tags: [leads]
+      summary: Relatório de conversão — por origem (E19) e por motivo de perda (E4)
+      description: >
+        Dois agregados sobre os leads da loja: quantos cada origem trouxe e
+        quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas
+        por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+      responses:
+        "200":
+          description: Agregados de conversão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversaoLeads"
+  /lojas/{lojaId}/leads/sazonalidade:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getSazonalidadeCasamentos
+      tags: [leads]
+      summary: Casamentos por mês — a demanda de arara dos próximos 12 meses
+      description: >
+        E73: a data do casamento sempre esteve no banco e ninguém somava. Conta
+        os casamentos futuros por competência (leads não perdidos), separando
+        os já contratados — é a curva que diz quando faltará vestido e quando
+        sobrará arara.
+      responses:
+        "200":
+          description: Casamentos por competência, de hoje a +12 meses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [competencia, total, comContrato]
+                  properties:
+                    competencia: { type: string, description: "YYYY-MM" }
+                    total: { type: integer, description: "Leads não perdidos com casamento no mês" }
+                    comContrato: { type: integer, description: "Destes, quantos já fecharam contrato" }
+  /lojas/{lojaId}/leads/parados:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getLeadsParados
+      tags: [leads]
+      summary: As noivas esfriando — a régua do funil, calculada no banco
+      description: >
+        E79: o sino (E68) e o painel (E66) baixavam a lista COMPLETA de leads
+        só para achar as paradas. A mesma régua do funil-core roda aqui, sobre
+        os leads em negociação, e devolve as contagens + as piores primeiro.
+      responses:
+        "200":
+          description: Contagens por temperatura + as 10 piores
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [criticos, atencao, itens]
+                properties:
+                  criticos: { type: integer }
+                  atencao: { type: integer }
+                  itens:
+                    type: array
+                    description: As piores primeiro, no máximo 10
+                    items:
+                      type: object
+                      required: [id, noivaNome, etapa, dias, temperatura]
+                      properties:
+                        id: { type: string }
+                        noivaNome: { type: string }
+                        etapa: { type: string }
+                        dias: { type: integer }
+                        temperatura: { type: string, enum: [atencao, critico] }
+                        casamentoData: { type: ["string", "null"], format: date-time }
+
+  /lojas/{lojaId}/leads/expurgo:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: expurgarLeadsPerdidos
+      tags: [leads]
+      summary: Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
+      description: >
+        E77: dado pessoal sem propósito é passivo. Anonimiza (nome vira
+        "(anonimizada)", contato e local somem) os leads PERDIDOS cuja perda é
+        mais antiga que `mesesInatividade` (padrão 24). A linha fica — o funil
+        e a conversão continuam contando — e a ação deixa rastro na auditoria.
+        Irreversível por desenho.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mesesInatividade: { type: integer, minimum: 6, default: 24 }
+      responses:
+        "200":
+          description: Quantas noivas foram anonimizadas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [anonimizadas]
+                properties:
+                  anonimizadas: { type: integer }
+
+  /lojas/{lojaId}/leads/desempenho-vendedoras:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getDesempenhoVendedoras
+      tags: [leads]
+      summary: Atendimento → contrato por vendedora, com ticket médio
+      description: >
+        E73: a comissão media o resultado, mas não o CAMINHO — quantos
+        atendimentos cada vendedora conclui, quantos terminam em "reservou"
+        (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os
+        contratos sempre estiveram gravados; faltava cruzar.
+      responses:
+        "200":
+          description: Uma linha por vendedora com atividade
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [vendedoraId, nome, atendimentosConcluidos, reservou, contratos, receita]
+                  properties:
+                    vendedoraId: { type: string }
+                    nome: { type: string }
+                    atendimentosConcluidos: { type: integer }
+                    reservou: { type: integer, description: "Desfecho RESERVOU" }
+                    contratos: { type: integer, description: "Contratos ATIVOS fechados por ela" }
+                    receita: { type: number, description: "Soma do valorTotal dos contratos ativos" }
   /lojas/{lojaId}/leads/{leadId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -663,8 +1419,35 @@ paths:
       responses:
         "204":
           description: Deleted
-  /leads/{leadId}/interesse:
+  /lojas/{lojaId}/leads/{leadId}/exportar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: leadId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: exportarDadosLead
+      tags: [leads]
+      summary: Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)
+      description: >
+        E77: o direito de acesso — a noiva pede, a loja entrega. Lead,
+        interesses, contatos registrados, orçamentos, contratos e parcelas
+        dela, num arquivo só, como download.
+      responses:
+        "200":
+          description: Os dados da noiva, JSON para download
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Noiva não encontrada nesta loja
+
+  /lojas/{lojaId}/leads/{leadId}/interesse:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: leadId
         in: path
         required: true
@@ -686,8 +1469,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LeadInteresse"
-  /leads/{leadId}/cobrancas:
+  /lojas/{lojaId}/leads/{leadId}/cobrancas:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: leadId
         in: path
         required: true
@@ -754,8 +1538,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Cabine"
-  /cabines/{cabineId}:
+  /lojas/{lojaId}/cabines/{cabineId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: cabineId
         in: path
         required: true
@@ -789,6 +1574,31 @@ paths:
     get:
       operationId: listAtendimentos
       tags: [agenda]
+      parameters:
+        - name: bloqueioId
+          in: query
+          required: false
+          description: "Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva"
+          schema: { type: string }
+        - name: tipo
+          in: query
+          required: false
+          description: "Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira"
+          schema: { type: string, enum: [ATENDIMENTO, PROVA] }
+        - name: de
+          in: query
+          required: false
+          description: "Início da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história"
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: "Fim da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo)"
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
       responses:
         "200":
           description: List of atendimentos
@@ -814,8 +1624,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Atendimento"
-  /atendimentos/{atendimentoId}:
+  /lojas/{lojaId}/atendimentos/{atendimentoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: atendimentoId
         in: path
         required: true
@@ -843,13 +1654,31 @@ paths:
       responses:
         "204":
           description: Deleted
-  /atendimentos/{atendimentoId}/ajustes:
+  /lojas/{lojaId}/atendimentos/{atendimentoId}/confirmar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: atendimentoId
         in: path
         required: true
-        schema:
-          type: string
+        schema: { type: string }
+    post:
+      operationId: confirmarAtendimento
+      tags: [agenda]
+      summary: Marca que a recepção confirmou a presença por WhatsApp (E39)
+      description: >
+        Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação
+        parar de repetir quem já foi contatado. Idempotente: reconfirmar não
+        reescreve o primeiro carimbo.
+      responses:
+        "200":
+          description: Atendimento confirmado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atendimento"
+  /lojas/{lojaId}/ajustes:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
     get:
       operationId: listAjustes
       tags: [agenda]
@@ -878,8 +1707,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ajuste"
-  /ajustes/{ajusteId}:
+  /lojas/{lojaId}/ajustes/{ajusteId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: ajusteId
         in: path
         required: true
@@ -901,7 +1731,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Ajuste"
-  /lojas/{lojaId}/disponibilidade:
+    delete:
+      operationId: deleteAjuste
+      tags: [agenda]
+      responses:
+        "204":
+          description: Removed
+  /lojas/{lojaId}/ajustes/{ajusteId}/checklist:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: ajusteId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: addChecklistItem
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjusteChecklistItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjusteChecklistItem"
+  /lojas/{lojaId}/ajustes/checklist/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateChecklistItem
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjusteChecklistItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AjusteChecklistItem"
+    delete:
+      operationId: removeChecklistItem
+      tags: [agenda]
+      responses:
+        "204":
+          description: Removed
+  /lojas/{lojaId}/disponibilidade/regras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -963,23 +1853,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Reserva"
-  /reservas/{reservaId}:
+  /lojas/{lojaId}/reservas/{reservaId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: reservaId
         in: path
         required: true
         schema:
           type: string
-    get:
-      operationId: getReserva
-      tags: [reservas]
-      responses:
-        "200":
-          description: Reserva
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Reserva"
     patch:
       operationId: updateReserva
       tags: [reservas]
@@ -1008,6 +1889,23 @@ paths:
     get:
       operationId: listBloqueios
       tags: [reservas]
+      parameters:
+        - name: vestidoId
+          in: query
+          required: false
+          description: "Filtra os bloqueios de um vestido só (E45)"
+          schema: { type: string }
+        - name: leadId
+          in: query
+          required: false
+          description: "Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira"
+          schema: { type: string }
+        # String enum, não boolean: zod.coerce.boolean() engoliria "false" como true.
+        - name: futuras
+          in: query
+          required: false
+          description: "Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte."
+          schema: { type: string, enum: ["true", "false"] }
       responses:
         "200":
           description: List of bloqueios
@@ -1033,13 +1931,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BloqueioVestido"
-  /bloqueios/{bloqueioId}:
+  /lojas/{lojaId}/bloqueios/{bloqueioId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: bloqueioId
         in: path
         required: true
         schema:
           type: string
+    get:
+      operationId: getBloqueio
+      tags: [reservas]
+      summary: Um bloqueio só — a ficha da reserva para de baixar a loja inteira (E79)
+      responses:
+        "200":
+          description: O bloqueio, com vestido e noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueioVestido"
+        "404":
+          description: Não existe ou não é desta loja
     patch:
       operationId: updateBloqueio
       tags: [reservas]
@@ -1063,6 +1975,85 @@ paths:
         "204":
           description: Deleted
 
+  /lojas/{lojaId}/bloqueios/{bloqueioId}/avarias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: bloqueioId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listAvarias
+      tags: [reservas]
+      summary: Avarias registradas na devolução deste bloqueio
+      responses:
+        "200":
+          description: Avarias (meta — a foto vem pela rota própria)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Avaria"
+    post:
+      operationId: createAvaria
+      tags: [reservas]
+      summary: Registra uma avaria — descrição, custo estimado e foto-evidência
+      description: >
+        E71: o atraso já era detectado; a avaria morria numa conversa. A foto é
+        opcional, validada por magic bytes como as de vestido (E3), e quando há
+        contrato o custo pode virar parcela avulsa cobrável.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvariaInput"
+      responses:
+        "201":
+          description: Avaria registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Avaria"
+
+  /lojas/{lojaId}/avarias/{avariaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: avariaId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: deleteAvaria
+      tags: [reservas]
+      responses:
+        "204":
+          description: Avaria removida
+
+  /lojas/{lojaId}/avarias/{avariaId}/foto:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: avariaId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getAvariaFoto
+      tags: [reservas]
+      summary: A foto-evidência da avaria
+      responses:
+        "200":
+          description: A imagem, no mime real do binário
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404":
+          description: Avaria sem foto ou inexistente
+
   # ───────────────────────── Orçamentos ─────────────────────────
   /lojas/{lojaId}/orcamentos:
     parameters:
@@ -1070,9 +2061,21 @@ paths:
     get:
       operationId: listOrcamentos
       tags: [orcamentos]
+      # E62: o perfil da noiva filtra no banco, não baixando a loja inteira
+      # para escolher no navegador. Query dentro do get: para não vazar ao POST.
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          description: "Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história"
+          schema: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
       responses:
         "200":
-          description: List of orcamentos
+          description: List of orcamentos (opcionalmente só os de uma noiva)
           content:
             application/json:
               schema:
@@ -1095,8 +2098,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
-  /orcamentos/{orcamentoId}:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1134,8 +2138,9 @@ paths:
       responses:
         "204":
           description: Deleted
-  /orcamentos/{orcamentoId}/itens:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/itens:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1157,21 +2162,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrcamentoItem"
-  /orcamentos/itens/{itemId}:
+  /lojas/{lojaId}/orcamentos/itens/{itemId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: itemId
         in: path
         required: true
         schema:
           type: string
+    patch:
+      operationId: updateOrcamentoItem
+      tags: [orcamentos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrcamentoItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrcamentoItem"
     delete:
       operationId: removeOrcamentoItem
       tags: [orcamentos]
       responses:
         "204":
           description: Removed
-  /orcamentos/{orcamentoId}/aprovar:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/aprovar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1187,8 +2210,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
-  /orcamentos/{orcamentoId}/recusar:
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/recusar:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: orcamentoId
         in: path
         required: true
@@ -1204,6 +2228,328 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/link:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: criarLinkOrcamento
+      tags: [orcamentos]
+      description: >
+        Gera (ou regenera) o link público somente-leitura do orçamento. Token
+        novo mata o link anterior — mesmo modelo do reenvio de convite. Gerar
+        link de um RASCUNHO o marca como ENVIADO: compartilhar É enviar.
+      responses:
+        "200":
+          description: Token e validade do link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkOrcamentoPublico"
+        "404":
+          description: Orçamento não encontrado
+        "422":
+          description: Orçamento RECUSADO não gera link
+  /orcamentos/publico:
+    get:
+      operationId: getOrcamentoPublico
+      tags: [orcamentos]
+      security: []
+      description: >
+        Visão pública somente-leitura do orçamento — o que a noiva abre pelo
+        link, sem login. Token em QUERY, nunca no path (o logger corta a query;
+        o token jamais cai em log). A primeira abertura carimba
+        `publicoAbertoEm` no orçamento — o aviso à loja de que ela viu.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orçamento para a noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrcamentoPublico"
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Link expirado
+
+  /orcamentos/publico/aceite:
+    post:
+      operationId: aceitarOrcamentoPublico
+      tags: [orcamentos]
+      security: []
+      summary: A noiva aceita o orçamento pelo link — sem login
+      description: >
+        E74: "ela viu" vira "ela concordou com ESTA versão". Grava instante,
+        número da versão enviada e o hash do conteúdo (E75) no orçamento,
+        avança o status para APROVADO e deixa linha na auditoria. Idempotente:
+        o segundo clique devolve o aceite existente. Não é assinatura
+        certificada — é registro próprio com prova de integridade.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aceite registrado (ou o já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aceitoEm]
+                properties:
+                  aceitoEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido
+        "410":
+          description: Link expirado
+        "422":
+          description: Orçamento não está ENVIADO — nada a aceitar
+
+  # ───────────────────────── Portal da noiva (E78) ─────────────────────────
+  /portal:
+    get:
+      operationId: getPortal
+      tags: [portal]
+      security: []
+      summary: Um link para tudo dela — proposta, lookbook, provas e extrato
+      description: >
+        E78: a noiva recebia até três links soltos (orçamento E13, lookbook
+        E21) e nada de provas/parcelas. O portal é UM token por NOIVA — quem o
+        tem vê a proposta (com aceite E74), o lookbook provado, as próximas
+        provas e, depois do contrato, o extrato de parcelas DELA. Token em
+        QUERY, nunca no path (o logger corta a query). Cada abertura carimba
+        `ultimoAcessoEm`. Seções sem conteúdo vêm nulas/vazias — a página não
+        promete o que não existe.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: O lugar da noiva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalNoiva"
+        "404":
+          description: Token desconhecido ou revogado
+        "410":
+          description: Link expirado
+
+  /portal/aceite:
+    post:
+      operationId: aceitarPortal
+      tags: [portal]
+      security: []
+      summary: O aceite da proposta, pelo portal
+      description: >
+        Delega à MESMA rotina do E74 (uma transação, um invariante): grava
+        instante, versão e hash, avança para APROVADO e deixa a linha na
+        auditoria como "(link público)". Idempotente. O alvo é o mesmo
+        orçamento que o GET /portal exibe.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aceite registrado (ou o já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aceitoEm]
+                properties:
+                  aceitoEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido ou revogado
+        "410":
+          description: Link expirado
+        "422":
+          description: Não há proposta ENVIADA — nada a aceitar
+
+  /portal/provas/{atendimentoId}/confirmar:
+    parameters:
+      - name: atendimentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: confirmarProvaPortal
+      tags: [portal]
+      security: []
+      summary: A noiva confirma a presença pelo portal — um clique, sem wa.me
+      description: >
+        E85: o aceite (E74) provou que a noiva age quando o link dá o poder.
+        Carimba o MESMO `confirmadoEm` do E39, com a noiva como autora na
+        auditoria ("link público"). Idempotente: já confirmada devolve o
+        carimbo existente. O token escopa — prova de outra noiva é 404 mesmo
+        existindo; atendimento comum é 422 (a fila de confirmação da loja é
+        de presenças, mas o portal só mostra provas).
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmada (ou o carimbo já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [confirmadoEm]
+                properties:
+                  confirmadoEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido/revogado, ou a prova não é desta noiva
+        "410":
+          description: Link expirado
+        "422":
+          description: Não é uma prova futura AGENDADA — nada a confirmar
+
+  /portal/foto:
+    get:
+      operationId: getPortalFoto
+      tags: [portal]
+      security: []
+      description: >
+        Foto de um vestido do lookbook DA noiva, escopada ao token do PORTAL —
+        o espelho de /lookbooks/publico/foto, para o portal não depender do
+        token antigo do lookbook (que pode ter expirado). Vestido fora do
+        lookbook dela é 404, mesmo existindo.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: vestidoId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ordem
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: variante
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [original, thumb]
+        - name: v
+          in: query
+          required: false
+          description: Cache-buster (updatedAt) — com ele a resposta é immutable
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A imagem
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Token desconhecido/revogado ou vestido fora do lookbook
+        "410":
+          description: Link expirado
+
+  /lojas/{lojaId}/portais:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listPortais
+      tags: [portal]
+      summary: Os portais da loja num lote — para as mensagens oferecerem o link (E84)
+      description: >
+        A tabela tem no máximo uma linha por noiva; as telas de mensagens e
+        cobrança cruzam por leadId e só anexam o link quando o portal está
+        VIVO (não expirado, não revogado) — link morto na mensagem é pior
+        que nenhum.
+      responses:
+        "200":
+          description: Uma linha por noiva com portal (vivo ou não)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [leadId, token, expiraEm, revogadoEm, ultimoAcessoEm]
+                  properties:
+                    leadId: { type: string }
+                    token: { type: string }
+                    expiraEm: { type: string, format: date-time }
+                    revogadoEm: { type: ["string", "null"], format: date-time }
+                    ultimoAcessoEm: { type: ["string", "null"], format: date-time }
+
+  /lojas/{lojaId}/leads/{leadId}/portal:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: leadId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getPortalLead
+      tags: [portal]
+      summary: O estado do portal desta noiva, para o card da ficha
+      responses:
+        "200":
+          description: O portal existe (pode estar expirado ou revogado)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalStatus"
+        "404":
+          description: Nunca foi gerado
+    post:
+      operationId: criarPortalLead
+      tags: [portal]
+      summary: Gera (ou regenera) o link do portal — 30 dias
+      description: >
+        Regenerar MATA o link antigo: é a mesma linha (leadId é unique), o
+        token novo substitui o velho. Revogado volta à vida com token novo.
+      responses:
+        "201":
+          description: O link novo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalStatus"
+        "404":
+          description: Lead não é desta loja
+    delete:
+      operationId: revogarPortalLead
+      tags: [portal]
+      summary: Revoga o link a um clique
+      responses:
+        "204":
+          description: Revogado (ou já não existia)
 
   # ───────────────────────── Contratos ─────────────────────────
   /lojas/{lojaId}/contratos:
@@ -1212,9 +2558,15 @@ paths:
     get:
       operationId: listContratos
       tags: [contratos]
+      # E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          schema: { type: string }
       responses:
         "200":
-          description: List of contratos
+          description: List of contratos (opcionalmente só os de uma noiva)
           content:
             application/json:
               schema:
@@ -1237,8 +2589,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contrato"
-  /contratos/{contratoId}:
+  /lojas/{lojaId}/contratos/{contratoId}:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: contratoId
         in: path
         required: true
@@ -1270,8 +2623,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contrato"
-  /contratos/{contratoId}/cancelar:
+  /lojas/{lojaId}/contratos/{contratoId}/pdf:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getContratoPdf
+      tags: [contratos]
+      responses:
+        "200":
+          description: Contrato em PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+  /lojas/{lojaId}/contratos/{contratoId}/cancelar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: contratoId
         in: path
         required: true
@@ -1295,12 +2668,47 @@ paths:
                 $ref: "#/components/schemas/Contrato"
 
   # ───────────────────────── Financeiro ─────────────────────────
-  /lojas/{lojaId}/parcelas:
+  /lojas/{lojaId}/financeiro/parcelas:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
       operationId: listParcelas
       tags: [financeiro]
+      summary: Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
+      description: >
+        E79: os recortes que cobrança e projeção usam no lugar da lista
+        completa. `status=abertas` devolve só PREVISTA/PARCIAL (a régua única
+        do estaAberta); `recebidasDe` devolve as com dinheiro recebido a partir
+        do dia (para o realizado desde a âncora do saldo conferido).
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: status
+          in: query
+          required: false
+          description: "abertas = só o que ainda tem saldo a receber (PREVISTA/PARCIAL, E49)"
+          schema:
+            type: string
+            enum: [abertas]
+        - name: recebidasDe
+          in: query
+          required: false
+          description: Só parcelas com recebimento a partir deste dia (inclusivo, dia local)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
       responses:
         "200":
           description: List of parcelas
@@ -1310,8 +2718,9 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Parcela"
-  /parcelas/{parcelaId}/receber:
+  /lojas/{lojaId}/parcelas/{parcelaId}/receber:
     parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
       - name: parcelaId
         in: path
         required: true
@@ -1320,6 +2729,11 @@ paths:
     post:
       operationId: receberParcela
       tags: [financeiro]
+      summary: Recebe (total ou parcialmente) uma parcela
+      description: >
+        Aceita pagamento em partes (E49): o valor informado ACUMULA no
+        `valorRecebido`, e o acumulado decide o status — quitou vira PAGA,
+        sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
       requestBody:
         required: true
         content:
@@ -1328,12 +2742,272 @@ paths:
               $ref: "#/components/schemas/ReceberParcelaInput"
       responses:
         "200":
-          description: Recebida
+          description: Recebida (PAGA se quitou, PARCIAL se sobrou saldo)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Parcela"
-  /lojas/{lojaId}/contas-pagar:
+        "409":
+          description: Parcela já quitada (PARCELA_JA_RECEBIDA)
+        "422":
+          description: >
+            Valor acima do que falta (VALOR_ACIMA_DO_SALDO), parcela cancelada
+            ou contrato não ativo
+  /lojas/{lojaId}/parcelas/{parcelaId}/estornar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: estornarParcela
+      tags: [financeiro]
+      responses:
+        "200":
+          description: Estornada (PAGA volta a PREVISTA, campos de recebimento zerados)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+  /lojas/{lojaId}/parcelas/{parcelaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: parcelaId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: removeParcela
+      tags: [financeiro]
+      responses:
+        "204":
+          description: Removida (apenas PREVISTA de contrato ATIVO)
+  /lojas/{lojaId}/contratos/{contratoId}/parcelas/gerar-plano:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: gerarPlanoParcelas
+      tags: [financeiro]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GerarPlanoInput"
+      responses:
+        "201":
+          description: Plano gerado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Parcela"
+
+  /lojas/{lojaId}/contratos/{contratoId}/parcelas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contratoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: createParcelaAvulsa
+      tags: [financeiro]
+      summary: Parcela avulsa — multa de atraso, reparo de avaria, ajuste extra
+      description: >
+        E71: a consequência que faltava. Uma cobrança que nasce DEPOIS do plano
+        (multa por devolução atrasada, custo de reparo de avaria) entra como
+        parcela do contrato — e a régua de cobrança, o extrato e o caixa a
+        tratam como qualquer outra. Número é o próximo livre; contrato precisa
+        estar ATIVO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descricao, valorPrevisto, vencimento]
+              properties:
+                descricao: { type: string, minLength: 1 }
+                valorPrevisto: { type: number, exclusiveMinimum: 0 }
+                vencimento: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Parcela criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parcela"
+        "422":
+          description: Contrato inexistente ou não ATIVO
+
+  /lojas/{lojaId}/financeiro/fluxo:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getFluxoCaixa
+      tags: [financeiro]
+      summary: O fluxo de caixa agregado no banco — a tela pede a janela, não a história
+      description: >
+        E79: a tela baixava TODAS as parcelas da história para os motores
+        agregarem no navegador. Os MESMOS motores (financeiro-core, E25) rodam
+        aqui sobre linhas já filtradas por data no SQL. `porMeio.total` e
+        `resumo.entradas` são o mesmo dinheiro por construção — o invariante
+        que a tela sempre exibiu.
+      parameters:
+        - name: ini
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: fim
+          in: query
+          required: false
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      responses:
+        "200":
+          description: Resumo, por meio, tendência, horizonte e movimentos do período
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [intervalo, resumo, porMeio, tendencia, horizonte, movimentos]
+                properties:
+                  intervalo:
+                    type: object
+                    required: [iniYMD, fimYMD]
+                    properties:
+                      iniYMD: { type: string }
+                      fimYMD: { type: string }
+                  resumo:
+                    type: object
+                    required: [entradas, saidas, saldo]
+                    properties:
+                      entradas: { type: number }
+                      saidas: { type: number }
+                      saldo: { type: number }
+                  porMeio:
+                    type: object
+                    required: [total, linhas]
+                    properties:
+                      total: { type: number }
+                      linhas:
+                        type: array
+                        items:
+                          type: object
+                          required: [forma, total, qtd]
+                          properties:
+                            forma: { type: ["string", "null"] }
+                            total: { type: number }
+                            qtd: { type: integer }
+                  tendencia:
+                    type: array
+                    items:
+                      type: object
+                      required: [competencia, entradas, saidas, saldo]
+                      properties:
+                        competencia: { type: string }
+                        entradas: { type: number }
+                        saidas: { type: number }
+                        saldo: { type: number }
+                  horizonte:
+                    type: object
+                    required: [aReceber, aReceberAtraso, aPagar, aPagarAtraso]
+                    properties:
+                      aReceber: { type: number }
+                      aReceberAtraso: { type: number }
+                      aPagar: { type: number }
+                      aPagarAtraso: { type: number }
+                  movimentos:
+                    type: array
+                    description: Linha do tempo do período, mais recente primeiro
+                    items:
+                      type: object
+                      required: [id, tipo, data, valor, descricao]
+                      properties:
+                        id: { type: string }
+                        tipo: { type: string, enum: [ENTRADA, SAIDA] }
+                        data: { type: string, format: date-time }
+                        valor: { type: number }
+                        rotulo: { type: ["string", "null"] }
+                        descricao: { type: string }
+                        contratoId: { type: ["string", "null"] }
+
+  /lojas/{lojaId}/financeiro/dre:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getDre
+      tags: [financeiro]
+      summary: O resultado do mês agregado no banco — regime de caixa
+      description: >
+        E79: o mesmo movimento do /financeiro/fluxo, para o DRE. O MESMO motor
+        (`dreDoIntervalo`, financeiro-core) roda aqui sobre linhas filtradas
+        pela competência no SQL — fluxo e DRE fecham entre si porque saem do
+        mesmo lugar. `porMeio` reusa a régua do E50: `porMeio.total` e
+        `receitas` são o mesmo dinheiro por construção.
+      parameters:
+        - name: competencia
+          in: query
+          required: false
+          description: "Competência YYYY-MM; ausente cai no mês corrente"
+          schema: { type: string, pattern: '^\d{4}-\d{2}$' }
+      responses:
+        "200":
+          description: Receitas, despesas por categoria, resultado e por meio da competência
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [competencia, intervalo, receitas, despesas, totalDespesas, resultado, porMeio]
+                properties:
+                  competencia: { type: string }
+                  intervalo:
+                    type: object
+                    required: [iniYMD, fimYMD]
+                    properties:
+                      iniYMD: { type: string }
+                      fimYMD: { type: string }
+                  receitas: { type: number }
+                  despesas:
+                    type: array
+                    description: Maior total primeiro
+                    items:
+                      type: object
+                      required: [rotulo, total]
+                      properties:
+                        rotulo: { type: string }
+                        total: { type: number }
+                  totalDespesas: { type: number }
+                  resultado:
+                    type: number
+                    description: receitas − totalDespesas; pode ser negativo
+                  porMeio:
+                    type: object
+                    required: [total, linhas]
+                    properties:
+                      total: { type: number }
+                      linhas:
+                        type: array
+                        items:
+                          type: object
+                          required: [forma, total, qtd]
+                          properties:
+                            forma: { type: ["string", "null"] }
+                            total: { type: number }
+                            qtd: { type: integer }
+
+  /lojas/{lojaId}/financeiro/contas-pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1364,22 +3038,92 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContaPagar"
-  /contas-pagar/{contaPagarId}:
+  /lojas/{lojaId}/financeiro/contas-pagar/exportar:
     parameters:
-      - name: contaPagarId
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarContasPagar
+      tags: [financeiro]
+      summary: CSV das contas a pagar por vencimento, para a contadora
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /lojas/{lojaId}/financeiro/parcelas/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarParcelas
+      tags: [financeiro]
+      summary: CSV das parcelas (a receber) por vencimento, com a noiva
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /lojas/{lojaId}/contas-pagar/{contaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contaId
         in: path
         required: true
         schema:
           type: string
     delete:
-      operationId: deleteContaPagar
+      operationId: removeContaPagar
       tags: [financeiro]
+      summary: Remove uma conta a pagar ainda PREVISTA
+      description: >
+        Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de
+        caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
       responses:
         "204":
-          description: Deleted
-  /contas-pagar/{contaPagarId}/pagar:
+          description: Removida
+        "404":
+          description: Conta não encontrada
+        "409":
+          description: Conta já paga (CONTA_JA_PAGA)
+  /lojas/{lojaId}/contas-pagar/{contaId}/pagar:
     parameters:
-      - name: contaPagarId
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: contaId
         in: path
         required: true
         schema:
@@ -1400,67 +3144,284 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContaPagar"
-  /lojas/{lojaId}/salarios-recorrentes:
+  /lojas/{lojaId}/financeiro/alerta-caixa:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
-      operationId: listSalariosRecorrentes
+      operationId: getAlertaCaixa
       tags: [financeiro]
+      summary: O veredito da projeção — o caixa fica negativo no horizonte?
+      description: >
+        A mesma conta da tela de Projeção reduzida ao que faz alguém agir: o
+        primeiro dia negativo e o piso da curva, partindo do saldo de HOJE
+        (âncora + realizado desde ela). Existe para o dashboard e o hub de fluxo
+        não terem de baixar parcelas, contas, saldos e pagamentos inteiros só
+        para descobrir isso. Sem saldo de referência devolve `ancorado: false` e
+        nada mais — curva sem nível não sustenta alarme.
       responses:
         "200":
-          description: List of salarios
+          description: Veredito do caixa no horizonte
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertaCaixa"
+  /lojas/{lojaId}/financeiro/pagamentos:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listPagamentos
+      tags: [financeiro]
+      summary: Caixa realizado — saídas efetivamente pagas
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: colaboradorId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of pagamentos
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SalarioRecorrente"
+                  $ref: "#/components/schemas/Pagamento"
+        "400":
+          description: Intervalo inválido
     post:
-      operationId: createSalarioRecorrente
+      operationId: createPagamento
       tags: [financeiro]
+      summary: Uma saída de caixa que quita uma ou mais contas
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SalarioRecorrenteInput"
+              $ref: "#/components/schemas/PagamentoInput"
       responses:
         "201":
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SalarioRecorrente"
-  /salarios-recorrentes/{id}:
+                $ref: "#/components/schemas/Pagamento"
+        "404":
+          description: Alguma conta não existe na loja (CONTA_NAO_ENCONTRADA)
+        "409":
+          description: Alguma conta já está paga (CONTA_JA_PAGA)
+  /lojas/{lojaId}/financeiro/pagamentos/{pagamentoId}/estornar:
     parameters:
-      - name: id
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: pagamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: estornarPagamento
+      tags: [financeiro]
+      summary: Desfaz a saída de caixa e devolve as contas para PREVISTA
+      responses:
+        "204":
+          description: Estornado
+        "404":
+          description: Pagamento não encontrado
+  /lojas/{lojaId}/financeiro/auditoria:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAuditoria
+      tags: [financeiro]
+      summary: Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+      description: >
+        Sem filtro, os 200 registros mais recentes. Os filtros são combináveis
+        (E, não OU) e o corte de 200 continua valendo DEPOIS deles — quem quiser
+        o período inteiro usa o CSV de …/auditoria/exportar.
+      parameters:
+        - name: acao
+          in: query
+          required: false
+          description: Uma das ações da união fechada (ACOES_AUDITORIA)
+          schema:
+            type: string
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+        - name: usuarioId
+          in: query
+          required: false
+          description: Autor da ação (id; o nome na linha é desnormalizado)
+          schema:
+            type: string
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Últimos registros da trilha
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditoriaItem"
+        "400":
+          description: Intervalo inválido
+  /lojas/{lojaId}/financeiro/auditoria/autores:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAutoresAuditoria
+      tags: [financeiro]
+      summary: Quem já deixou linha na trilha — as opções do filtro de autor
+      description: >
+        Sai da PRÓPRIA trilha, não da equipe: `usuarioId` é ON DELETE SET NULL,
+        então quem saiu da loja continua tendo agido, e a lista de equipe é
+        gated por `admin` — uma contadora com acesso só a financeiro ficaria sem
+        filtro. Ordenado pela ação mais recente de cada autor.
+      responses:
+        "200":
+          description: Autores distintos da trilha da loja
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AutorAuditoria"
+  /lojas/{lojaId}/financeiro/auditoria/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarAuditoria
+      tags: [financeiro]
+      summary: CSV da trilha de auditoria — os mesmos filtros da tela
+      description: >
+        Aceita os mesmos filtros do GET /auditoria, mas SEM o corte de 200: a
+        planilha que a contadora concilia não pode ser truncada em silêncio.
+      parameters:
+        - name: acao
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+        - name: usuarioId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Intervalo inválido
+  /lojas/{lojaId}/financeiro/recorrencias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listRecorrencias
+      tags: [financeiro]
+      summary: O que se repete todo mês — salário, aluguel, assinatura, fornecedor
+      responses:
+        "200":
+          description: Recorrências da loja
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recorrencia"
+    post:
+      operationId: createRecorrencia
+      tags: [financeiro]
+      description: >
+        SALARIO exige `usuarioId` (e só um ativo por pessoa); DESPESA e
+        FORNECEDOR exigem `descricao` — sem ela a conta gerada não teria como
+        se chamar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecorrenciaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recorrencia"
+        "400":
+          description: Campos incompatíveis com o tipo (RECORRENCIA_INVALIDA)
+        "409":
+          description: Já existe salário ativo para esta pessoa (SALARIO_ATIVO_EXISTENTE)
+  /lojas/{lojaId}/financeiro/recorrencias/{recorrenciaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: recorrenciaId
         in: path
         required: true
         schema:
           type: string
     patch:
-      operationId: updateSalarioRecorrente
+      operationId: updateRecorrencia
       tags: [financeiro]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SalarioRecorrenteUpdate"
+              $ref: "#/components/schemas/RecorrenciaUpdate"
       responses:
         "200":
           description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SalarioRecorrente"
-    delete:
-      operationId: deleteSalarioRecorrente
-      tags: [financeiro]
-      responses:
-        "204":
-          description: Deleted
-  /lojas/{lojaId}/saldo-referencia:
+                $ref: "#/components/schemas/Recorrencia"
+  /lojas/{lojaId}/financeiro/saldos-referencia:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1492,8 +3453,94 @@ paths:
               schema:
                 $ref: "#/components/schemas/SaldoReferencia"
 
+  # ───────────────────────── Folha / contabilidade ─────────────────────────
+  /lojas/{lojaId}/financeiro/recorrencias/gerar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: gerarRecorrencias
+      tags: [financeiro]
+      summary: Gera as contas da competência a partir das recorrências ativas
+      description: >
+        Salário, aluguel, assinatura e fornecedor fixo pelo mesmo caminho (E48).
+        Idempotente: cada recorrência ativa vira NO MÁXIMO uma conta a pagar por
+        competência. Reexecutar responde `geradas: 0` — é o que torna seguro
+        clicar de novo depois de um erro de rede.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolhaInput"
+      responses:
+        "200":
+          description: Competência gerada (geradas pode ser 0 numa reexecução)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolhaGerada"
+        "400":
+          description: Competência inválida (COMPETENCIA_INVALIDA)
+  /lojas/{lojaId}/financeiro/folha/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarFolha
+      tags: [financeiro]
+      summary: CSV dos itens pagos no período, para a contabilidade
+      description: >
+        SÓ LÊ. Marcar os pagamentos como enviados é o POST
+        …/financeiro/contabilidade/enviar — um GET precisa ser seguro
+        (refresh/prefetch do navegador não pode escrever).
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Intervalo inválido (INTERVALO_INVALIDO)
+  /lojas/{lojaId}/financeiro/contabilidade/enviar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: enviarContabilidade
+      tags: [financeiro]
+      summary: Carimba enviadoContabilidadeEm nos pagamentos do intervalo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnviarContabilidadeInput"
+      responses:
+        "200":
+          description: Marcados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnviarContabilidadeResultado"
+        "400":
+          description: Intervalo inválido (INTERVALO_INVALIDO)
+
   # ───────────────────────── Comissão ─────────────────────────
-  /lojas/{lojaId}/comissao-regras:
+  /lojas/{lojaId}/comissao/regras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
@@ -1524,9 +3571,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ComissaoRegra"
-  /comissao-regras/{id}:
+  /lojas/{lojaId}/comissao/regras/{regraId}:
     parameters:
-      - name: id
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: regraId
         in: path
         required: true
         schema:
@@ -1552,13 +3600,154 @@ paths:
       tags: [comissao]
       responses:
         "204":
-          description: Deleted
-  /lojas/{lojaId}/comissao-fechamentos:
+          description: Deleted (as faixas vão junto)
+  # As faixas não têm rotas próprias: elas só existem dentro de uma regra, e
+  # editá-las uma a uma deixaria a escada inválida no meio do caminho
+  # (sobreposta, com buraco). A regra inteira é substituída de uma vez.
+  # Fora do prefixo /comissao de propósito: o gate requireModulo("comissao") é
+  # da GESTÃO; aqui a vendedora vê só o próprio extrato (filtro pela sessão).
+  /lojas/{lojaId}/minha-comissao:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getMinhaComissao
+      tags: [comissao]
+      summary: Extrato de comissão da própria pessoa logada
+      parameters:
+        - name: competencia
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: Extrato do mês + histórico de fechamentos da pessoa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MinhaComissao"
+        "400":
+          description: Competência inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /lojas/{lojaId}/comissao/preview:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: previewComissao
+      tags: [comissao]
+      parameters:
+        - name: competencia
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
+      responses:
+        "200":
+          description: "Ranking ao vivo: o que seria pago se a competência fechasse agora"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComissaoPreviewLinha"
+  /lojas/{lojaId}/comissao/simular:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: simularComissao
+      tags: [comissao]
+      summary: '"Se a escada fosse esta, quanto teria pago?" — simulação sobre as bases reais'
+      description: >
+        Aplica uma escada HIPOTÉTICA às bases reais das últimas competências da
+        vendedora (a base do fechamento quando o mês já fechou; as vendas
+        brutas quando não), reusando o motor calcularComissao. Não grava nada —
+        é um POST que só consulta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimularComissaoInput"
+      responses:
+        "200":
+          description: Comparação mês a mês entre o pago real e o simulado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulacaoComissao"
+        "422":
+          description: Vendedora fora da loja ou escada inválida
+  /lojas/{lojaId}/comissao/fechamentos/{fechamentoId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: fechamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: reabrirComissaoFechamento
+      tags: [comissao]
+      summary: Reabre um fechamento errado, desfazendo o que ele criou (E54)
+      description: >
+        Transacional e completo: cancela a conta a pagar gerada, apaga o
+        fechamento e devolve a NULL o `comissaoEstornadaEm` dos contratos que
+        ESTE fechamento reconciliou. Recusa se a conta já foi PAGA — reabrir
+        deixaria uma saída de caixa sem contrapartida; o caminho é estornar o
+        pagamento antes. Deixa linha na trilha de auditoria.
+      responses:
+        "200":
+          description: Reaberto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReaberturaComissao"
+        "404":
+          description: Fechamento não encontrado nesta loja
+        "409":
+          description: A conta de comissão já foi paga (COMISSAO_JA_PAGA)
+  /lojas/{lojaId}/comissao/pendencias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listPendenciasComissao
+      tags: [comissao]
+      summary: Competências passadas com venda e sem fechamento (E53)
+      description: >
+        Varredura das últimas competências: onde houve venda e ainda não há
+        fechamento, a pendência aparece. O mês CORRENTE nunca entra — ele ainda
+        pode receber vendas, e o fechamento o recusa. A granularidade é por
+        (competência, vendedora): um mês pode ter fechado para quem já vendia e
+        ganhado depois uma venda de outra pessoa.
+      responses:
+        "200":
+          description: Pendências, da competência mais antiga para a mais recente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendenciaComissao"
+  /lojas/{lojaId}/comissao/fechamentos:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
     get:
       operationId: listComissaoFechamentos
       tags: [comissao]
+      # No `get`, não no path: o POST recebe a competência no corpo, e um param
+      # no nível do path vazaria para ele.
+      parameters:
+        - name: competencia
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}$"
       responses:
         "200":
           description: List of fechamentos
@@ -1586,6 +3775,53 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ComissaoFechamento"
+
+  /lojas/{lojaId}/comissao/estornos/baixas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listBaixasEstornoComissao
+      tags: [comissao]
+      description: >
+        O outro lado do I10: as baixas manuais já feitas, com quem baixou,
+        quando e por quê — o relatório que fecha o ciclo de auditoria.
+        Reconciliações automáticas (estorno absorvido por um fechamento) não
+        entram: não têm autor nem motivo.
+      responses:
+        "200":
+          description: "Baixas manuais, mais recente primeiro"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BaixaEstornoComissao"
+
+  /lojas/{lojaId}/comissao/estornos/baixa:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: baixarEstornoComissao
+      tags: [comissao]
+      description: >
+        Baixa MANUAL do estorno pendente de uma vendedora (I10). Só admin.
+        Quando a venda cancelada não é absorvida por nenhum mês — a vendedora
+        parou de vender — o estorno carrega para sempre. A baixa é uma decisão
+        humana e auditável (registra quem e por quê); nunca automática, que
+        apagaria o rastro de um erro ou fraude.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BaixarEstornoComissaoInput"
+      responses:
+        "200":
+          description: "Estorno pendente baixado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaixarEstornoComissaoResultado"
 
   # ───────────────────────── Dashboard ─────────────────────────
   /lojas/{lojaId}/dashboard:
@@ -1645,6 +3881,9 @@ components:
           $ref: "#/components/schemas/Usuario"
         lojaAtivaId:
           type: ["string", "null"]
+        acessosModulos:
+          type: ["object", "null"]
+          additionalProperties: true
         lojas:
           type: array
           items:
@@ -1687,30 +3926,48 @@ components:
         telefone: { type: string }
         ativo: { type: boolean }
 
+    # Acessos por MÓDULO × AÇÃO. Era plano (`{leads: true}`), que só respondia
+    # "entra ou não entra" — não dava para ver o financeiro sem poder mexer
+    # nele. O servidor normaliza contra MODULOS × ACOES (fail-closed) e garante
+    # `criar || editar ⇒ ver`, então o que sai daqui é sempre o shape completo.
+    AcoesModulo:
+      type: object
+      required: [ver, criar, editar]
+      properties:
+        ver: { type: boolean }
+        criar: { type: boolean }
+        editar: { type: boolean }
+    AcessosModulos:
+      type: object
+      description: "Módulo → ações. Chave desconhecida é descartada pelo servidor."
+      additionalProperties:
+        $ref: "#/components/schemas/AcoesModulo"
+
     Perfil:
       type: object
-      required: [id, nome, acessosModulos]
+      required: [id, nome, acessosModulos, sistema]
       properties:
         id: { type: string }
         nome: { type: string }
         acessosModulos:
-          type: object
-          additionalProperties: { type: boolean }
+          $ref: "#/components/schemas/AcessosModulos"
+        # E80: o perfil do SISTEMA (Admin) é flag, não nome. Só leitura — não
+        # existe no PerfilInput/PerfilUpdate de propósito: nasce no seed/SQL e
+        # o servidor recusa PATCH/DELETE de quem a carrega.
+        sistema: { type: boolean }
     PerfilInput:
       type: object
       required: [nome, acessosModulos]
       properties:
         nome: { type: string, minLength: 1 }
         acessosModulos:
-          type: object
-          additionalProperties: { type: boolean }
+          $ref: "#/components/schemas/AcessosModulos"
     PerfilUpdate:
       type: object
       properties:
         nome: { type: string, minLength: 1 }
         acessosModulos:
-          type: object
-          additionalProperties: { type: boolean }
+          $ref: "#/components/schemas/AcessosModulos"
 
     PerfilOverrideLoja:
       type: object
@@ -1719,17 +3976,21 @@ components:
         lojaId: { type: string }
         perfilId: { type: string }
         acessosModulos:
-          type: object
-          additionalProperties: { type: boolean }
+          $ref: "#/components/schemas/AcessosModulos"
     PerfilOverrideInput:
       type: object
       required: [perfilId, acessosModulos]
       properties:
         perfilId: { type: string }
         acessosModulos:
-          type: object
-          additionalProperties: { type: boolean }
+          $ref: "#/components/schemas/AcessosModulos"
 
+    TrocarSenhaInput:
+      type: object
+      required: [senhaAtual, novaSenha]
+      properties:
+        senhaAtual: { type: string, minLength: 1 }
+        novaSenha: { type: string, minLength: 6 }
     Usuario:
       type: object
       required: [id, nome, email, ativo, isSuperAdmin]
@@ -1739,6 +4000,9 @@ components:
         email: { type: string, format: email }
         ativo: { type: boolean }
         isSuperAdmin: { type: boolean }
+        # E57: a senha atual foi escolhida por outra pessoa; a tela obriga a
+        # trocar antes de deixar usar o sistema.
+        precisaTrocarSenha: { type: boolean }
     UsuarioInput:
       type: object
       required: [nome, email, senha]
@@ -1747,6 +4011,21 @@ components:
         email: { type: string, format: email }
         senha: { type: string, minLength: 6 }
         isSuperAdmin: { type: boolean }
+    UsuarioComLojas:
+      allOf:
+        - $ref: "#/components/schemas/Usuario"
+        - type: object
+          required: [lojas]
+          properties:
+            lojas:
+              type: array
+              description: Lojas onde o usuário tem vínculo (via usuarios_lojas)
+              items:
+                type: object
+                required: [id, nome]
+                properties:
+                  id: { type: string }
+                  nome: { type: string }
     UsuarioUpdate:
       type: object
       properties:
@@ -1775,12 +4054,143 @@ components:
         email: { type: string, format: email }
         senha: { type: string, minLength: 6 }
         perfilId: { type: string }
+    Convite:
+      type: object
+      required: [id, lojaId, token, nome, email, perfilId, criadoEm, expiraEm]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        token: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        perfilId: { type: string }
+        perfilNome: { type: ["string", "null"] }
+        criadoEm: { type: string, format: date-time }
+        expiraEm: { type: string, format: date-time }
+    ConviteInput:
+      type: object
+      required: [nome, email, perfilId]
+      properties:
+        nome: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        perfilId: { type: string }
+    ConvitePublico:
+      type: object
+      required: [lojaNome, nome, emailMascarado, precisaSenha, expiraEm]
+      properties:
+        lojaNome: { type: string }
+        nome: { type: string }
+        emailMascarado: { type: string, description: "m•••a@dominio — nunca o e-mail inteiro" }
+        precisaSenha:
+          type: boolean
+          description: "true = e-mail sem conta, o aceite pede senha; false = conta existente, o aceite só vincula"
+        expiraEm: { type: string, format: date-time }
+    AceitarConviteInput:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+        senha:
+          type: string
+          minLength: 6
+          description: "Obrigatória quando o e-mail ainda não tem conta; ignorada quando já tem"
+    AceitarConviteResultado:
+      type: object
+      required: [jaTinhaConta]
+      properties:
+        jaTinhaConta: { type: boolean }
+    MembroAtividade:
+      type: object
+      required: [usuarioId, nome, email, perfilNome, ativo, acoes30d]
+      properties:
+        usuarioId: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        perfilNome: { type: string }
+        ativo: { type: boolean }
+        # Último LOGIN do usuário (global, não por loja). Null = nunca entrou.
+        ultimoAcesso: { type: ["string", "null"], format: date-time }
+        # Linhas do audit_log desta loja nos últimos 30 dias.
+        acoes30d: { type: integer }
+    AtividadeEquipe:
+      type: object
+      required: [membros, eventos]
+      properties:
+        membros:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembroAtividade"
+        eventos:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditoriaItem"
     MembroEquipeUpdate:
       type: object
       properties:
         nome: { type: string }
         perfilId: { type: string }
         ativo: { type: boolean }
+
+    # ── Backup do sistema (E30) ──
+    BackupLog:
+      type: object
+      required: [id, gatilho, status, iniciadoEm]
+      properties:
+        id: { type: string }
+        gatilho: { type: string, enum: [manual, agendado] }
+        status: { type: string, enum: [em_andamento, ok, erro] }
+        iniciadoEm: { type: string, format: date-time }
+        concluidoEm: { type: ["string", "null"], format: date-time }
+        tamanhoBytes:
+          type: ["integer", "null"]
+          description: "Tamanho do arquivo comprimido — só quando status = ok"
+        arquivo:
+          type: ["string", "null"]
+          description: >-
+            Caminho do dump no servidor; null quando o backup falhou OU quando
+            o arquivo já foi removido pela retenção (dump podado não se baixa)
+        autorNome:
+          type: ["string", "null"]
+          description: "Quem disparou o backup manual; null nos agendados"
+        erro: { type: ["string", "null"] }
+    BackupStatus:
+      type: object
+      required: [ultimo, recentes, ultimoDrill]
+      properties:
+        ultimo:
+          oneOf:
+            - $ref: "#/components/schemas/BackupLog"
+            - type: "null"
+        recentes:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupLog"
+        ultimoDrill:
+          description: >-
+            Último drill de restore (E89) — a prova de que o backup VOLTA:
+            null enquanto nenhum drill rodou
+          oneOf:
+            - $ref: "#/components/schemas/RestoreDrillLog"
+            - type: "null"
+    RestoreDrillLog:
+      type: object
+      description: >-
+        Uma execução do drill de restore (E89): o dump mais recente restaurado
+        num banco efêmero e conferido contra a origem — contagem por tabela,
+        FKs válidas e amostra de agregado. "ok" só quando TUDO conferiu.
+      required: [id, status, iniciadoEm]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [em_andamento, ok, erro] }
+        iniciadoEm: { type: string, format: date-time }
+        concluidoEm: { type: ["string", "null"], format: date-time }
+        dumpArquivo:
+          type: ["string", "null"]
+          description: "Arquivo do dump restaurado no drill"
+        tabelasConferidas:
+          type: ["integer", "null"]
+          description: "Quantas tabelas tiveram a contagem conferida"
+        erro: { type: ["string", "null"] }
 
     # ── Catálogo ──
     Atributo:
@@ -1864,29 +4274,42 @@ components:
         opcaoId: { type: string }
     VestidoFotoMeta:
       type: object
-      required: [ordem, mime, largura, altura]
+      required: [ordem, mime, largura, altura, atualizadaEm]
       properties:
         ordem: { type: integer }
-        mime: { type: string }
+        mime: { type: string, description: "Derivado do binário pelo servidor, nunca do cliente" }
         largura: { type: integer }
         altura: { type: integer }
-    VestidoFoto:
-      type: object
-      required: [ordem, mime, largura, altura, base64]
-      properties:
-        ordem: { type: integer }
-        mime: { type: string }
-        largura: { type: integer }
-        altura: { type: integer }
-        base64: { type: string }
+        atualizadaEm:
+          type: string
+          format: date-time
+          description: "Versão da foto — alimenta o cache-busting (?v=) das URLs"
     VestidoFotoInput:
       type: object
-      required: [mime, largura, altura, base64]
+      required: [base64]
       properties:
-        mime: { type: string }
-        largura: { type: integer }
-        altura: { type: integer }
-        base64: { type: string }
+        base64:
+          type: string
+          description: "A foto (JPEG/PNG/WebP). Mime e dimensões são derivados do binário no servidor."
+        thumbBase64:
+          type: ["string", "null"]
+          description: "Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback)."
+    VestidoUtilizacao:
+      type: object
+      required: [vestidoId, codigo, nome, status, precoBase, provas, reservas, contratos, receita]
+      properties:
+        vestidoId: { type: string }
+        codigo: { type: string }
+        nome: { type: string }
+        status: { type: string }
+        precoBase: { type: number }
+        # Provas agendadas no período (inclui FALTOU — a demanda existiu).
+        provas: { type: integer }
+        # Reservas de casamento ATIVAS com data no período.
+        reservas: { type: integer }
+        # Itens VESTIDO em contratos ATIVOS fechados no período.
+        contratos: { type: integer }
+        receita: { type: number }
     VestidoInput:
       type: object
       required: [codigo, nome, precoBase]
@@ -1935,10 +4358,33 @@ components:
         casamentoData: { type: ["string", "null"], format: date-time }
         casamentoHorario: { type: ["string", "null"] }
         casamentoLocal: { type: ["string", "null"] }
-        origem: { type: string, enum: [LOJA, WHATSAPP] }
+        orcamentoAbertoEm: { type: ["string", "null"], format: date-time }
+        contratoFechadoEm: { type: ["string", "null"], format: date-time }
+        perdidaEm: { type: ["string", "null"], format: date-time }
+        perdidaMotivo:
+          type: ["string", "null"]
+          enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO, null]
+        perdidaDetalhe: { type: ["string", "null"] }
+        origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
         createdAt: { type: string, format: date-time }
+        # Instante do contato mais recente em registros_cobranca (E27). Derivado,
+        # não é coluna de `leads`: é o que permite ao funil marcar "parada há N
+        # dias sem contato" sem uma consulta por card. `null` = nunca contatada,
+        # e aí a contagem do funil corre desde `createdAt`.
+        ultimoContatoEm: { type: ["string", "null"], format: date-time }
         interesse:
           $ref: "#/components/schemas/LeadInteresse"
+    # Envelope da listagem: `total` é o universo do filtro, não da página —
+    # é o que permite "página 2 de 5" sem carregar tudo.
+    LeadsPage:
+      type: object
+      required: [itens, total]
+      properties:
+        total: { type: integer }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
     LeadInput:
       type: object
       required: [noivaNome]
@@ -1950,7 +4396,7 @@ components:
         casamentoData: { type: string, format: date-time }
         casamentoHorario: { type: string }
         casamentoLocal: { type: string }
-        origem: { type: string, enum: [LOJA, WHATSAPP] }
+        origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
     LeadUpdate:
       type: object
       properties:
@@ -1964,6 +4410,11 @@ components:
         casamentoData: { type: string, format: date-time }
         casamentoHorario: { type: string }
         casamentoLocal: { type: string }
+        perdidaMotivo:
+          type: string
+          enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO]
+          description: "Obrigatório quando etapa vira PERDIDO; ignorado nas demais"
+        perdidaDetalhe: { type: string }
     LeadInteresse:
       type: object
       required: [leadId]
@@ -1986,6 +4437,143 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VestidoAtributo"
+    ConversaoLeads:
+      type: object
+      required: [totalLeads, convertidos, perdidos, porOrigem, porMotivoPerda]
+      properties:
+        totalLeads: { type: integer }
+        convertidos: { type: integer, description: "Leads que chegaram a CONTRATO_FECHADO ou além" }
+        perdidos: { type: integer }
+        porOrigem:
+          type: array
+          items:
+            type: object
+            required: [origem, total, convertidos]
+            properties:
+              origem: { type: string, enum: [LOJA, WHATSAPP, SITE, INSTAGRAM] }
+              total: { type: integer }
+              convertidos: { type: integer }
+        porMotivoPerda:
+          type: array
+          items:
+            type: object
+            required: [motivo, total]
+            properties:
+              motivo:
+                type: ["string", "null"]
+                enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO, null]
+                description: "null = perdido sem motivo registrado (dado legado)"
+              total: { type: integer }
+    AlertaCaixa:
+      type: object
+      required: [ancorado, saldoHoje, diaNegativo, menorSaldo, horizonteDias]
+      properties:
+        ancorado:
+          type: boolean
+          description: "false = não há saldo de referência; o resto vem null e não há alerta a dar"
+        saldoHoje:
+          type: ["number", "null"]
+          description: "Saldo de partida: âncora + realizado desde ela"
+        diaNegativo:
+          type: ["string", "null"]
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: "Primeiro dia em que o saldo projetado fica negativo; null se nunca"
+        menorSaldo:
+          type: ["object", "null"]
+          required: [dia, valor]
+          properties:
+            dia:
+              type: ["string", "null"]
+              pattern: '^\d{4}-\d{2}-\d{2}$'
+              description: "null = o piso é o próprio saldo de hoje (nada o derruba)"
+            valor: { type: number }
+        horizonteDias: { type: integer }
+    LookbookInput:
+      type: object
+      required: [leadId, vestidoIds]
+      properties:
+        leadId: { type: string }
+        vestidoIds:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string }
+    Lookbook:
+      type: object
+      required: [id, leadId, token, expiraEm, criadoEm, vestidos]
+      properties:
+        id: { type: string }
+        leadId: { type: string }
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+        criadoEm: { type: string, format: date-time }
+        vestidos:
+          type: array
+          items:
+            type: object
+            required: [vestidoId, nome]
+            properties:
+              vestidoId: { type: string }
+              nome: { type: string }
+    LookbookPublicoFoto:
+      type: object
+      required: [ordem, atualizadaEm]
+      properties:
+        ordem: { type: integer }
+        atualizadaEm: { type: string, format: date-time }
+    LookbookPublicoVestido:
+      type: object
+      required: [vestidoId, nome, precoBase, fotos, atributos]
+      properties:
+        vestidoId: { type: string }
+        nome: { type: string }
+        precoBase: { type: number }
+        fotos:
+          type: array
+          items:
+            $ref: "#/components/schemas/LookbookPublicoFoto"
+        atributos:
+          type: array
+          items:
+            type: object
+            required: [atributo, valor]
+            properties:
+              atributo: { type: string }
+              valor: { type: string }
+    LookbookPublico:
+      type: object
+      required: [lojaNome, noivaNome, vestidos]
+      properties:
+        lojaNome: { type: string }
+        noivaNome: { type: string }
+        vestidos:
+          type: array
+          items:
+            $ref: "#/components/schemas/LookbookPublicoVestido"
+    CaptacaoLeadInput:
+      type: object
+      required: [noivaNome]
+      properties:
+        noivaNome: { type: string, minLength: 1, maxLength: 200 }
+        noivoNome: { type: string, maxLength: 200 }
+        whatsapp: { type: string, maxLength: 30 }
+        casamentoData: { type: string, format: date-time }
+        # De onde o formulário veio. LOJA fica de fora: lead digitado na loja
+        # nasce pela rota autenticada.
+        origem: { type: string, enum: [SITE, INSTAGRAM, WHATSAPP], default: SITE }
+        # E77 (LGPD): true = a noiva marcou o consentimento no formulário; o
+        # instante fica carimbado no lead.
+        consentimento: { type: boolean }
+    CaptacaoLeadResultado:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+    CaptacaoToken:
+      type: object
+      required: [token]
+      properties:
+        token: { type: ["string", "null"] }
     RegistroCobranca:
       type: object
       required: [id, leadId, data, canal]
@@ -1995,6 +4583,12 @@ components:
         data: { type: string, format: date-time }
         canal: { type: string, enum: [WHATSAPP, TELEFONE, PRESENCIAL, OUTRO] }
         observacao: { type: ["string", "null"] }
+        # Quem falou com a noiva. Nulo quando a colaboradora saiu da equipe (a
+        # coluna é ON DELETE SET NULL): o contato aconteceu de qualquer forma, e
+        # perder o autor é melhor do que perder o registro.
+        vendedorNome: { type: ["string", "null"] }
+    # `vendedorId` NÃO entra aqui: quem registrou o contato é fato da SESSÃO, não
+    # algo que o cliente declara — senão dá para atribuir a ligação a outra pessoa.
     RegistroCobrancaInput:
       type: object
       required: [data, canal]
@@ -2034,9 +4628,27 @@ components:
         tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
         bloqueioId: { type: ["string", "null"] }
         inicio: { type: string, format: date-time }
+        atendidoEm: { type: ["string", "null"], format: date-time }
+        confirmadoEm: { type: ["string", "null"], format: date-time }
         situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
         desfecho: { type: ["string", "null"], enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU, null] }
         observacao: { type: ["string", "null"] }
+        # Relações (sempre presentes nos GET; telas de fila/agenda precisam
+        # de noiva, cabine, vendedora e — nas provas — vestido via bloqueio).
+        lead:
+          $ref: "#/components/schemas/Lead"
+        cabine:
+          $ref: "#/components/schemas/Cabine"
+        vendedora:
+          $ref: "#/components/schemas/Usuario"
+        bloqueio:
+          anyOf:
+            - $ref: "#/components/schemas/BloqueioVestido"
+            - type: "null"
+        ajustes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ajuste"
     AtendimentoInput:
       type: object
       required: [leadId, cabineId, vendedoraId, inicio]
@@ -2066,10 +4678,61 @@ components:
         atendimentoId: { type: string }
         descricao: { type: string }
         status: { type: string, enum: [PENDENTE, FEITO] }
-    AjusteInput:
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/AjusteChecklistItem"
+        # Contexto relacional da fila da costureira (ajuste → atendimento →
+        # bloqueio → noiva/vestido/casamento). Schema próprio (sem `ajustes`)
+        # para não ciclar com Atendimento.
+        atendimento:
+          $ref: "#/components/schemas/AjusteAtendimento"
+        # O prazo REAL da costureira (E14): a próxima PROVA do mesmo vestido
+        # depois da prova que criou o ajuste — é para ela que o ajuste precisa
+        # estar pronto. Null = sem prova marcada (o casamento vira a referência).
+        proximaProva: { type: ["string", "null"], format: date-time }
+    AjusteAtendimento:
+      type: object
+      required: [id, leadId, tipo, inicio, situacao]
+      properties:
+        id: { type: string }
+        leadId: { type: string }
+        tipo: { type: string, enum: [ATENDIMENTO, PROVA] }
+        bloqueioId: { type: ["string", "null"] }
+        inicio: { type: string, format: date-time }
+        situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
+        lead:
+          $ref: "#/components/schemas/Lead"
+        bloqueio:
+          anyOf:
+            - $ref: "#/components/schemas/BloqueioVestido"
+            - type: "null"
+    AjusteChecklistItem:
+      type: object
+      required: [id, ajusteId, descricao, feito, ordem]
+      properties:
+        id: { type: string }
+        ajusteId: { type: string }
+        descricao: { type: string }
+        feito: { type: boolean }
+        ordem: { type: integer }
+    AjusteChecklistItemInput:
       type: object
       required: [descricao]
       properties:
+        descricao: { type: string, minLength: 1 }
+        ordem: { type: integer }
+    AjusteChecklistItemUpdate:
+      type: object
+      properties:
+        descricao: { type: string, minLength: 1 }
+        feito: { type: boolean }
+        ordem: { type: integer }
+    AjusteInput:
+      type: object
+      required: [atendimentoId, descricao]
+      properties:
+        atendimentoId: { type: string }
         descricao: { type: string, minLength: 1 }
     AjusteUpdate:
       type: object
@@ -2078,7 +4741,7 @@ components:
         status: { type: string, enum: [PENDENTE, FEITO] }
     RegraDisponibilidade:
       type: object
-      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora]
+      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora, diasFuncionamento]
       properties:
         lojaId: { type: string }
         provaDiasAntes: { type: integer }
@@ -2088,6 +4751,10 @@ components:
         lavagemDiasDepois: { type: integer }
         atendimentoAberturaHora: { type: integer }
         atendimentoFechamentoHora: { type: integer }
+        diasFuncionamento:
+          type: array
+          description: "Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)"
+          items: { type: integer, minimum: 0, maximum: 6 }
     RegraDisponibilidadeInput:
       type: object
       properties:
@@ -2098,6 +4765,9 @@ components:
         lavagemDiasDepois: { type: integer }
         atendimentoAberturaHora: { type: integer }
         atendimentoFechamentoHora: { type: integer }
+        diasFuncionamento:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
 
     # ── Reservas ──
     Reserva:
@@ -2108,11 +4778,15 @@ components:
         lojaId: { type: string }
         leadId: { type: string }
         casamentoData: { type: string, format: date-time }
-        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA] }
-        itens:
+        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA, CONCLUIDA, CANCELADA] }
+        # Nome casa com a relation Drizzle (`bloqueios`); o antigo `itens`
+        # nunca chegou ao cliente (mismatch relation×schema descartava tudo).
+        bloqueios:
           type: array
           items:
             $ref: "#/components/schemas/BloqueioVestido"
+        lead:
+          $ref: "#/components/schemas/Lead"
     ReservaInput:
       type: object
       required: [leadId, casamentoData]
@@ -2122,7 +4796,7 @@ components:
     ReservaUpdate:
       type: object
       properties:
-        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA] }
+        status: { type: string, enum: [EM_MONTAGEM, CONFIRMADA, CONCLUIDA, CANCELADA] }
         casamentoData: { type: string, format: date-time }
     BloqueioVestido:
       type: object
@@ -2137,8 +4811,20 @@ components:
         provaDataReal: { type: ["string", "null"], format: date-time }
         retiradaDataReal: { type: ["string", "null"], format: date-time }
         devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        inicio: { type: ["string", "null"], format: date-time }
+        fim: { type: ["string", "null"], format: date-time }
+        canceladoEm: { type: ["string", "null"], format: date-time }
         observacao: { type: ["string", "null"] }
         reservaId: { type: ["string", "null"] }
+        ocupacaoInicio: { type: ["string", "null"], format: date-time }
+        ocupacaoFim: { type: ["string", "null"], format: date-time }
+        vestido:
+          $ref: "#/components/schemas/Vestido"
+        # Manutenção não tem noiva — lead é null nesses bloqueios.
+        lead:
+          anyOf:
+            - $ref: "#/components/schemas/Lead"
+            - type: "null"
     BloqueioVestidoInput:
       type: object
       required: [vestidoId, tipo]
@@ -2147,15 +4833,109 @@ components:
         leadId: { type: string }
         tipo: { type: string, enum: [RESERVA_CASAMENTO, MANUTENCAO] }
         casamentoData: { type: string, format: date-time }
+        inicio: { type: string, format: date-time }
+        fim: { type: string, format: date-time }
         observacao: { type: string }
         reservaId: { type: string }
+    Avaria:
+      type: object
+      required: [id, lojaId, bloqueioId, descricao, temFoto, criadaEm]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        bloqueioId: { type: string }
+        descricao: { type: string }
+        custoReparo: { type: ["number", "null"] }
+        temFoto: { type: boolean, description: "A foto vem por /avarias/{id}/foto" }
+        registradoPorNome: { type: ["string", "null"] }
+        criadaEm: { type: string, format: date-time }
+    AvariaInput:
+      type: object
+      required: [descricao]
+      properties:
+        descricao: { type: string, minLength: 1 }
+        custoReparo: { type: number, minimum: 0 }
+        # Foto-evidência opcional, base64 — mesma borda das fotos de vestido
+        # (E3): mime e dimensões saem do BINÁRIO, nunca da palavra do cliente.
+        fotoBase64: { type: string }
     BloqueioVestidoUpdate:
       type: object
       properties:
         provaDataReal: { type: string, format: date-time }
-        retiradaDataReal: { type: string, format: date-time }
-        devolucaoDataReal: { type: string, format: date-time }
+        # E61: null EXPLÍCITO desfaz a movimentação registrada errada (a data
+        # volta a "não aconteceu"); campo ausente segue significando "não mexa".
+        retiradaDataReal: { type: ["string", "null"], format: date-time }
+        devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        inicio: { type: string, format: date-time }
+        fim: { type: string, format: date-time }
         observacao: { type: string }
+    ConflitoBloqueio:
+      type: object
+      description: Item de conflito de disponibilidade (mesmo shape nos 409 e no batch)
+      required: [bloqueioId, tipo, motivo, inicio, fim, leadId, reservaId, noivaNome]
+      properties:
+        bloqueioId: { type: string }
+        tipo: { type: string, enum: [RESERVA_CASAMENTO, MANUTENCAO] }
+        motivo: { type: string, enum: [USO, LAVAGEM, PROVA, MANUTENCAO, ATRASO_DEVOLUCAO] }
+        inicio: { type: string, description: "Dia local inclusivo YYYY-MM-DD" }
+        fim: { type: ["string", "null"], description: "Dia local inclusivo YYYY-MM-DD; null = janela aberta" }
+        leadId: { type: ["string", "null"] }
+        reservaId: { type: ["string", "null"] }
+        noivaNome: { type: ["string", "null"] }
+    DisponibilidadeVestidos:
+      type: object
+      required: [data, itens]
+      properties:
+        data: { type: string, description: "Dia local YYYY-MM-DD consultado" }
+        itens:
+          type: array
+          items:
+            type: object
+            required: [vestidoId, disponivel, status, motivo, conflito]
+            properties:
+              vestidoId: { type: string }
+              disponivel: { type: boolean }
+              status: { type: string, enum: [DISPONIVEL, RESERVADO, MANUTENCAO, INATIVO] }
+              motivo: { type: ["string", "null"], description: "Frase pronta em pt-BR (datas dd/MM)" }
+              conflito:
+                anyOf:
+                  - $ref: "#/components/schemas/ConflitoBloqueio"
+                  - type: "null"
+
+    AuditoriaItem:
+      type: object
+      required: [id, acao, entidade, entidadeId, usuarioNome, criadoEm]
+      properties:
+        id: { type: string }
+        acao:
+          type: string
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+        entidade: { type: string }
+        entidadeId: { type: string }
+        usuarioId: { type: ["string", "null"] }
+        usuarioNome: { type: string, description: "Desnormalizado — sobrevive à saída do autor da equipe" }
+        detalhe:
+          type: ["object", "null"]
+          additionalProperties: true
+        criadoEm: { type: string, format: date-time }
+
+    AutorAuditoria:
+      type: object
+      required: [usuarioId, nome, total]
+      properties:
+        usuarioId: { type: string }
+        nome: { type: string, description: "O nome mais recente com que este autor aparece na trilha" }
+        total: { type: integer, description: "Quantas linhas da trilha são dele" }
+
+    ProximaJanelaVestido:
+      type: object
+      required: [proximaData, aPartirDe, horizonteDias]
+      properties:
+        proximaData:
+          type: ["string", "null"]
+          description: "Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo"
+        aPartirDe: { type: string, description: "Dia local de onde a varredura partiu (hoje)" }
+        horizonteDias: { type: integer }
 
     # ── Orçamentos ──
     Orcamento:
@@ -2172,18 +4952,32 @@ components:
         descontoValor: { type: ["number", "null"] }
         validade: { type: ["string", "null"], format: date-time }
         observacoes: { type: ["string", "null"] }
+        # Link público (E13). O token aparece aqui para a vendedora RE-COPIAR
+        # o link sem regenerar (mesmo padrão da listagem de convites) — a rota
+        # é autenticada e gateada por módulo.
+        publicoToken: { type: ["string", "null"] }
+        publicoExpiraEm: { type: ["string", "null"], format: date-time }
+        publicoAbertoEm: { type: ["string", "null"], format: date-time }
+        # E74: o aceite digital — instante e a versão (E75) que a noiva aceitou.
+        aceitoEm: { type: ["string", "null"], format: date-time }
+        aceiteVersao: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
+        # E63: a rota sempre embutiu a noiva (`with: lead`), mas o contrato a
+        # descartava — e a lista baixava TODOS os leads só para rotular linhas.
+        lead:
+          $ref: "#/components/schemas/Lead"
         itens:
           type: array
           items:
             $ref: "#/components/schemas/OrcamentoItem"
     OrcamentoInput:
       type: object
-      required: [leadId, vendedoraId]
+      required: [leadId]
       properties:
         leadId: { type: string }
         atendimentoId: { type: string }
-        vendedoraId: { type: string }
+        # Sem vendedoraId: a autoria vem da sessão autenticada, nunca do corpo
+        # — mesma regra do registro de cobrança.
         descontoTipo: { type: string, enum: [PERCENTUAL, VALOR] }
         descontoValor: { type: number }
         validade: { type: string, format: date-time }
@@ -2216,6 +5010,117 @@ components:
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
         quantidade: { type: integer }
+    OrcamentoItemUpdate:
+      type: object
+      properties:
+        descricao: { type: string, minLength: 1 }
+        valorUnitario: { type: number }
+        quantidade: { type: integer, minimum: 1 }
+    LinkOrcamentoPublico:
+      type: object
+      required: [token, expiraEm]
+      properties:
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+    OrcamentoPublicoItem:
+      type: object
+      required: [tipo, descricao, valorUnitario, quantidade]
+      properties:
+        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        descricao: { type: string }
+        valorUnitario: { type: number }
+        quantidade: { type: integer }
+    OrcamentoPublico:
+      # A visão da NOIVA: nomes e valores, nenhum id interno — o que ela não
+      # precisa navegar, não precisa vazar.
+      type: object
+      required: [lojaNome, noivaNome, status, itens, totalBruto, totalLiquido]
+      properties:
+        lojaNome: { type: string }
+        noivaNome: { type: string }
+        status: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
+        validade: { type: ["string", "null"], format: date-time }
+        observacoes: { type: ["string", "null"] }
+        descontoTipo: { type: ["string", "null"], enum: [PERCENTUAL, VALOR, null] }
+        descontoValor: { type: ["number", "null"] }
+        totalBruto: { type: number }
+        totalLiquido: { type: number }
+        # E75: o que a noiva vê é a última versão ENVIADA, nunca o rascunho
+        # vivo. null = orçamento anterior ao versionamento (mostra o vivo).
+        versaoNumero: { type: ["integer", "null"] }
+        # E74: quando ela já aceitou, a página vira comprovante.
+        aceitoEm: { type: ["string", "null"], format: date-time }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrcamentoPublicoItem"
+
+    # ── Portal da noiva (E78) ──
+    PortalNoiva:
+      # A visão da NOIVA, como no OrcamentoPublico: nomes e valores, nenhum id
+      # interno além do vestidoId (necessário para pedir a foto). NUNCA dados
+      # de outra noiva ou da loja.
+      type: object
+      required: [noivaNome, lojaNome, orcamento, lookbook, provas, parcelas]
+      properties:
+        noivaNome: { type: string }
+        lojaNome: { type: string }
+        # A proposta mais recente ENVIADA/APROVADA — o mesmo shape do link E13,
+        # com aceite E74. null = ainda não há proposta para mostrar.
+        orcamento:
+          anyOf:
+            - $ref: "#/components/schemas/OrcamentoPublico"
+            - type: "null"
+        # O lookbook dos vestidos provados (E21), fotos servidas por
+        # /portal/foto com ESTE token. null = nunca montaram um para ela.
+        lookbook:
+          anyOf:
+            - type: object
+              required: [vestidos]
+              properties:
+                vestidos:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/LookbookPublicoVestido"
+            - type: "null"
+        # As próximas provas (futuras, ordenadas). Passadas ficam de fora: o
+        # portal aponta para a frente. O `id` existe para o E85: a noiva
+        # confirma a presença por POST /portal/provas/{id}/confirmar.
+        provas:
+          type: array
+          items:
+            type: object
+            required: [id, inicio]
+            properties:
+              id: { type: string }
+              inicio: { type: string, format: date-time }
+              confirmadoEm: { type: ["string", "null"], format: date-time }
+        # O extrato DELA, só leitura — pagar continua com a loja. Vazio antes
+        # do contrato.
+        parcelas:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalParcela"
+    PortalParcela:
+      type: object
+      required: [numero, descricao, valorPrevisto, valorRecebido, vencimento, status]
+      properties:
+        numero: { type: integer }
+        descricao: { type: ["string", "null"] }
+        valorPrevisto: { type: number }
+        valorRecebido: { type: ["number", "null"] }
+        vencimento: { type: string, format: date-time }
+        status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+    PortalStatus:
+      # O card da ficha da vendedora: gerar/copiar/revogar, "último acesso há X".
+      type: object
+      required: [token, expiraEm, criadoEm, revogadoEm, ultimoAcessoEm]
+      properties:
+        token: { type: string }
+        expiraEm: { type: string, format: date-time }
+        criadoEm: { type: string, format: date-time }
+        revogadoEm: { type: ["string", "null"], format: date-time }
+        ultimoAcessoEm: { type: ["string", "null"], format: date-time }
 
     # ── Contratos ──
     Contrato:
@@ -2226,14 +5131,24 @@ components:
         lojaId: { type: string }
         leadId: { type: string }
         orcamentoId: { type: ["string", "null"] }
+        # Legado 1:1 — lido, nunca mais escrito. O vínculo vivo é o array (E72).
         bloqueioVestidoId: { type: ["string", "null"] }
+        # E72: as reservas físicas presas por este contrato (contrato_bloqueios).
+        bloqueioVestidoIds:
+          type: array
+          items: { type: string }
         vendedoraId: { type: string }
         status: { type: string, enum: [ATIVO, CANCELADO] }
         cpf: { type: ["string", "null"] }
         vestidoDescricao: { type: ["string", "null"] }
         valorTotal: { type: number }
+        # Desconto congelado do orçamento. valorTotal é o líquido; estes dão a
+        # proveniência e permitem a linha "Desconto" reconciliar itens × total.
+        descontoTipo: { type: ["string", "null"], enum: [PERCENTUAL, VALOR, null] }
+        descontoValor: { type: ["number", "null"] }
         formaPagamento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
         canceladoMotivo: { type: ["string", "null"] }
+        canceladoEm: { type: ["string", "null"], format: date-time }
         dataCasamento: { type: ["string", "null"], format: date-time }
         dataRetirada: { type: ["string", "null"], format: date-time }
         dataDevolucao: { type: ["string", "null"], format: date-time }
@@ -2243,13 +5158,40 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Parcela"
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContratoItem"
+        lead:
+          $ref: "#/components/schemas/Lead"
+        vendedora:
+          $ref: "#/components/schemas/Usuario"
+    ContratoItem:
+      type: object
+      required: [id, lojaId, contratoId, tipo, descricao, valorUnitario, quantidade]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        contratoId: { type: string }
+        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        vestidoId: { type: ["string", "null"] }
+        descricao: { type: string }
+        valorUnitario: { type: number }
+        quantidade: { type: integer }
     ContratoInput:
       type: object
       required: [leadId, vendedoraId, valorTotal]
       properties:
         leadId: { type: string }
         orcamentoId: { type: string }
+        # Legado 1:1 — aceito por compatibilidade; prefira o array (E72).
         bloqueioVestidoId: { type: string }
+        # E72: N reservas físicas (vestido + véu + segunda peça) presas pelo
+        # contrato. Cada uma é validada (loja, data coerente, disponível) e o
+        # cancelamento libera todas.
+        bloqueioVestidoIds:
+          type: array
+          items: { type: string }
         vendedoraId: { type: string }
         cpf: { type: string }
         vestidoDescricao: { type: string }
@@ -2284,6 +5226,18 @@ components:
       required: [motivo]
       properties:
         motivo: { type: string, minLength: 1 }
+        # O que fazer com parcelas já PAGAS: "manter" (noiva perdeu o sinal —
+        # ficam PAGAS no caixa, default) ou "estornar" (valor devolvido —
+        # viram CANCELADA com campos de recebimento zerados).
+        destinoPago: { type: string, enum: [manter, estornar] }
+    GerarPlanoInput:
+      type: object
+      required: [numParcelas, primeiroVencimento]
+      properties:
+        entrada: { type: number, minimum: 0 }
+        numParcelas: { type: integer, minimum: 1, maximum: 360 }
+        primeiroVencimento: { type: string, format: date-time }
+        periodicidadeDias: { type: integer, minimum: 1, maximum: 3650 }
 
     # ── Financeiro ──
     Parcela:
@@ -2297,14 +5251,35 @@ components:
         descricao: { type: ["string", "null"] }
         valorPrevisto: { type: number }
         vencimento: { type: string, format: date-time }
-        status: { type: string, enum: [PREVISTA, PAGA, CANCELADA] }
-        valorRecebido: { type: ["number", "null"] }
+        # PARCIAL (E49): a noiva pagou parte. O dinheiro entrou no caixa e o
+        # resto (valorPrevisto − valorRecebido) segue cobrável.
+        status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
+        valorRecebido: { type: ["number", "null"], description: "Acumulado desta parcela, somando todos os recebimentos" }
         recebidoEm: { type: ["string", "null"], format: date-time }
         formaRecebimento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+        # Quem é a noiva desta parcela, sem rebuscar todos os contratos: a
+        # cobrança junta por aqui. Presente no GET da lista; ausente nas
+        # respostas de receber/estornar (que devolvem a parcela seca).
+        contrato:
+          anyOf:
+            - $ref: "#/components/schemas/ParcelaContrato"
+            - type: "null"
+    ParcelaContrato:
+      type: object
+      required: [leadId]
+      properties:
+        leadId: { type: string }
+        lead:
+          anyOf:
+            - $ref: "#/components/schemas/Lead"
+            - type: "null"
     ReceberParcelaInput:
       type: object
       required: [valorRecebido, recebidoEm]
       properties:
+        # O que entrou AGORA, não o total (E49): receber duas vezes acumula, e o
+        # acumulado é que decide entre PARCIAL e PAGA. Valor acima do que falta
+        # é recusado (422) em vez de aceito — inflaria o caixa realizado.
         valorRecebido: { type: number }
         recebidoEm: { type: string, format: date-time }
         formaRecebimento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
@@ -2323,6 +5298,10 @@ components:
         valorPrevisto: { type: number }
         vencimento: { type: string, format: date-time }
         status: { type: string, enum: [PREVISTA, PAGA] }
+        # Rastro da geração (E48): preenchido só nas contas que nasceram de uma
+        # recorrência. É o que deixa a tela separar o que o motor lançou do que
+        # alguém digitou à mão na mesma competência.
+        recorrenciaId: { type: ["string", "null"] }
     ContaPagarInput:
       type: object
       required: [tipo, descricao, valorPrevisto, vencimento]
@@ -2343,36 +5322,130 @@ components:
         valorPago: { type: number }
         forma: { type: string }
         observacoes: { type: string }
-    SalarioRecorrente:
+    # Uma saída de caixa quita N contas (pagamento_itens já modela o rateio).
+    # Sem valorPago: a saída vale a soma das contas quitadas.
+    PagamentoInput:
       type: object
-      required: [id, lojaId, colaboradorId, valorBase, diaVencimento, ativo]
+      required: [data, contaIds]
+      properties:
+        data: { type: string, format: date-time }
+        contaIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+        valorPago: { type: number, minimum: 0 }
+        forma: { type: string }
+        observacoes: { type: string }
+    PagamentoItem:
+      type: object
+      required: [id, lojaId, pagamentoId, contaPagarId, valor]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        colaboradorId: { type: string }
-        valorBase: { type: number }
+        pagamentoId: { type: string }
+        contaPagarId: { type: string }
+        valor: { type: number }
+        contaPagar:
+          $ref: "#/components/schemas/ContaPagar"
+    # O caixa REALIZADO: até a Onda 3 pagamentos era write-only (gravado no
+    # POST …/pagar e nunca lido de volta). É a fonte do fluxo, do regime-caixa
+    # do DRE, do saldoHoje da projeção e do histórico da folha.
+    Pagamento:
+      type: object
+      required: [id, lojaId, data, valorPago]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        colaboradorId: { type: ["string", "null"] }
+        data: { type: string, format: date-time }
+        valorPago: { type: number }
+        forma: { type: ["string", "null"] }
+        observacoes: { type: ["string", "null"] }
+        enviadoContabilidadeEm: { type: ["string", "null"], format: date-time }
+        colaborador:
+          anyOf:
+            - $ref: "#/components/schemas/Usuario"
+            - type: "null"
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/PagamentoItem"
+    # O que se repete todo mês (E48). `tipo` decide quais campos importam:
+    # SALARIO usa `usuarioId` e deriva a descrição de quem recebe; DESPESA e
+    # FORNECEDOR usam `descricao` (e, se quiserem, categoria/fornecedor).
+    Recorrencia:
+      type: object
+      required: [id, lojaId, tipo, valor, diaVencimento, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        tipo: { type: string, enum: [SALARIO, DESPESA, FORNECEDOR] }
+        usuarioId: { type: ["string", "null"] }
+        descricao: { type: ["string", "null"] }
+        categoria: { type: ["string", "null"] }
+        fornecedor: { type: ["string", "null"] }
+        valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
-    SalarioRecorrenteInput:
+    RecorrenciaInput:
       type: object
-      required: [colaboradorId, valorBase, diaVencimento]
+      required: [tipo, valor, diaVencimento]
       properties:
-        colaboradorId: { type: string }
-        valorBase: { type: number }
+        tipo: { type: string, enum: [SALARIO, DESPESA, FORNECEDOR] }
+        usuarioId: { type: string, description: "Obrigatório para SALARIO" }
+        descricao: { type: string, minLength: 1, description: "Obrigatório para DESPESA/FORNECEDOR" }
+        categoria: { type: string }
+        fornecedor: { type: string }
+        valor: { type: number }
         diaVencimento: { type: integer }
-    SalarioRecorrenteUpdate:
+    RecorrenciaUpdate:
       type: object
       properties:
-        valorBase: { type: number }
+        descricao: { type: string, minLength: 1 }
+        categoria: { type: string }
+        fornecedor: { type: string }
+        valor: { type: number }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
+    FolhaInput:
+      type: object
+      required: [competencia]
+      properties:
+        competencia: { type: string, pattern: '^\d{4}-\d{2}$' }
+    # `geradas` é 0 numa reexecução — o sinal de que a competência já foi
+    # gerada, não um erro.
+    FolhaGerada:
+      type: object
+      required: [geradas, contas]
+      properties:
+        geradas: { type: integer }
+        contas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContaPagar"
+    EnviarContabilidadeInput:
+      type: object
+      required: [de, ate]
+      properties:
+        de: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        ate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+    EnviarContabilidadeResultado:
+      type: object
+      required: [marcados]
+      properties:
+        marcados: { type: integer }
+    # O saldo conferido num DIA — a âncora da projeção. Chavear por competência
+    # não respondia "quanto tem em caixa hoje?"; a data responde.
     SaldoReferencia:
       type: object
       required: [id, lojaId, dataReferencia, valor]
       properties:
         id: { type: string }
         lojaId: { type: string }
-        dataReferencia: { type: string, format: date-time }
+        dataReferencia:
+          type: string
+          format: date-time
+          description: "Instante do dia conferido (meio-dia local America/Sao_Paulo)"
         valor: { type: number }
     SaldoReferenciaInput:
       type: object
@@ -2382,15 +5455,41 @@ components:
         valor: { type: number }
 
     # ── Comissão ──
+    # Regra do produto: a faixa do acumulado FINAL rege o mês inteiro
+    # (RETROATIVO — não é progressivo por degrau). Buraco entre faixas = sem
+    # comissão ali, de propósito. A regra é por VENDEDORA e versionada por
+    # `vigenciaInicio`: fechar um mês antigo usa a regra que valia nele.
+    ComissaoFaixa:
+      type: object
+      required: [id, minAcumulado]
+      properties:
+        id: { type: string }
+        minAcumulado: { type: number, description: "Borda inferior INCLUSIVA" }
+        maxAcumulado:
+          type: ["number", "null"]
+          description: "Borda superior EXCLUSIVA; null = topo aberto"
+        percentual: { type: ["number", "null"], description: "5 = 5%" }
+        bonusFixo: { type: ["number", "null"] }
+    ComissaoFaixaInput:
+      type: object
+      required: [minAcumulado]
+      properties:
+        minAcumulado: { type: number, minimum: 0 }
+        maxAcumulado: { type: ["number", "null"], minimum: 0 }
+        percentual: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        bonusFixo: { type: ["number", "null"], minimum: 0 }
     ComissaoRegra:
       type: object
-      required: [id, lojaId, vendedoraId, vigenciaInicio, bonusAcumulaFaixas, ativo]
+      required: [id, lojaId, vendedoraId, vigenciaInicio, bonusAcumulaFaixas, ativo, faixas]
       properties:
         id: { type: string }
         lojaId: { type: string }
         vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
         vigenciaInicio: { type: string, format: date-time }
-        bonusAcumulaFaixas: { type: boolean }
+        bonusAcumulaFaixas:
+          type: boolean
+          description: "Ligado: os bônus dos degraus vencidos se somam"
         ativo: { type: boolean }
         faixas:
           type: array
@@ -2398,13 +5497,17 @@ components:
             $ref: "#/components/schemas/ComissaoFaixa"
     ComissaoRegraInput:
       type: object
-      required: [vendedoraId, vigenciaInicio, faixas]
+      required: [vendedoraId, faixas]
       properties:
         vendedoraId: { type: string }
-        vigenciaInicio: { type: string, format: date-time }
+        vigenciaInicio:
+          type: string
+          format: date-time
+          description: "Omitido = vale a partir de hoje"
         bonusAcumulaFaixas: { type: boolean }
         faixas:
           type: array
+          minItems: 1
           items:
             $ref: "#/components/schemas/ComissaoFaixaInput"
     ComissaoRegraUpdate:
@@ -2412,48 +5515,198 @@ components:
       properties:
         ativo: { type: boolean }
         bonusAcumulaFaixas: { type: boolean }
-        faixas:
-          type: array
-          items:
-            $ref: "#/components/schemas/ComissaoFaixaInput"
-    ComissaoFaixa:
+
+    MinhaComissao:
       type: object
-      required: [id, regraId, minAcumulado]
+      required: [competencia, temRegra, totalVendas, estornoPendente, valorComissao, valorBonus, valorTotal, fechamentos]
       properties:
-        id: { type: string }
-        regraId: { type: string }
-        minAcumulado: { type: number }
-        maxAcumulado: { type: ["number", "null"] }
-        percentual: { type: ["number", "null"] }
-        bonusFixo: { type: ["number", "null"] }
-    ComissaoFaixaInput:
-      type: object
-      required: [minAcumulado]
-      properties:
-        minAcumulado: { type: number }
-        maxAcumulado: { type: number }
-        percentual: { type: number }
-        bonusFixo: { type: number }
-    ComissaoFechamento:
-      type: object
-      required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal, fechadoEm]
-      properties:
-        id: { type: string }
-        lojaId: { type: string }
-        vendedoraId: { type: string }
-        competencia: { type: string }
-        totalVendas: { type: number }
+        competencia: { type: string, description: "Competência YYYY-MM consultada" }
+        temRegra: { type: boolean, description: "false = sem escada vigente; valores zerados" }
+        totalVendas: { type: number, description: "Base líquida do mês (estorno já abatido)" }
+        estornoPendente: { type: number }
         percentualAplicado: { type: ["number", "null"] }
         valorComissao: { type: number }
         valorBonus: { type: number }
         valorTotal: { type: number }
+        faltaProximoDegrau: { type: ["number", "null"], description: "Quanto falta vender para a próxima faixa; null = topo" }
+        proximoDegrauPercentual: { type: ["number", "null"] }
+        projecao:
+          oneOf:
+            - $ref: "#/components/schemas/ProjecaoComissao"
+            - type: "null"
+        # A colocação SEM os valores das colegas (E55): só o ordinal. null
+        # quando a pessoa não está no ranking do mês ou quando há menos de
+        # duas pessoas — "1º de 1" não é ranking.
+        colocacao:
+          oneOf:
+            - type: object
+              required: [posicao, de]
+              properties:
+                posicao: { type: integer }
+                de: { type: integer, description: "Quantas pessoas no ranking do mês" }
+            - type: "null"
+        fechamentos:
+          type: array
+          description: "Meses já fechados da pessoa, mais recente primeiro"
+          items:
+            type: object
+            required: [competencia, totalVendas, valorComissao, valorBonus, valorTotal, fechadoEm]
+            properties:
+              competencia: { type: string }
+              totalVendas: { type: number }
+              percentualAplicado: { type: ["number", "null"] }
+              valorComissao: { type: number }
+              valorBonus: { type: number }
+              valorTotal: { type: number }
+              fechadoEm: { type: string, format: date-time }
+    SimularComissaoInput:
+      type: object
+      required: [vendedoraId, faixas]
+      properties:
+        vendedoraId: { type: string }
+        faixas:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ComissaoFaixaInput"
+        bonusAcumulaFaixas: { type: boolean, default: false }
+        meses: { type: integer, minimum: 1, maximum: 12, default: 3 }
+    SimulacaoComissaoLinha:
+      type: object
+      required: [competencia, base, fechada, pagoReal, simulado, diferenca]
+      properties:
+        competencia: { type: string }
+        # Base líquida do fechamento quando o mês fechou; vendas brutas quando não.
+        base: { type: number }
+        fechada: { type: boolean }
+        pagoReal: { type: number }
+        pagoRealPercentual: { type: ["number", "null"] }
+        simulado: { type: number }
+        simuladoPercentual: { type: ["number", "null"] }
+        diferenca: { type: number }
+    SimulacaoComissao:
+      type: object
+      required: [vendedoraId, linhas, totalPagoReal, totalSimulado, totalDiferenca]
+      properties:
+        vendedoraId: { type: string }
+        linhas:
+          type: array
+          items:
+            $ref: "#/components/schemas/SimulacaoComissaoLinha"
+        totalPagoReal: { type: number }
+        totalSimulado: { type: number }
+        totalDiferenca: { type: number }
+    ReaberturaComissao:
+      type: object
+      required: [fechamentoId, competencia, vendedoraId, contaPagarRemovida, estornosReabertos]
+      properties:
+        fechamentoId: { type: string }
+        competencia: { type: string }
+        vendedoraId: { type: string }
+        contaPagarRemovida: { type: boolean, description: "false = o fechamento não gerou conta (valor zero)" }
+        estornosReabertos: { type: integer, description: "Contratos cujo estorno voltou a pendente" }
+    PendenciaComissao:
+      type: object
+      required: [competencia, vendedoras, totalVendas]
+      properties:
+        competencia: { type: string, description: "YYYY-MM" }
+        vendedoras: { type: integer, description: "Quantas ainda não têm fechamento no mês" }
+        totalVendas: { type: number, description: "Base que ainda não virou comissão" }
+    ComissaoFechamento:
+      type: object
+      required: [id, lojaId, vendedoraId, competencia, totalVendas, valorComissao, valorBonus, valorTotal]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
+        competencia: { type: string, description: "Competência YYYY-MM" }
+        totalVendas: { type: number, description: "Base líquida, já com o estorno abatido" }
+        percentualAplicado: { type: ["number", "null"] }
+        valorComissao: { type: number }
+        valorBonus: { type: number }
+        valorTotal: { type: number, description: "comissão + bônus; é este que vira ContaPagar" }
         contaPagarId: { type: ["string", "null"] }
         fechadoEm: { type: string, format: date-time }
     GerarComissaoFechamentoInput:
       type: object
       required: [competencia]
       properties:
-        competencia: { type: string }
+        competencia: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+
+    # Ranking ao vivo da competência — o que SERIA pago se fechasse agora.
+    ComissaoPreviewLinha:
+      type: object
+      required: [vendedoraId, totalVendas, estornoPendente, valorComissao, valorBonus, valorTotal]
+      properties:
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
+        totalVendas: { type: number }
+        estornoPendente:
+          type: number
+          description: "Cancelados de meses já fechados, ainda não reconciliados"
+        percentualAplicado: { type: ["number", "null"] }
+        valorComissao: { type: number }
+        valorBonus: { type: number }
+        valorTotal: { type: number }
+        faltaProximoDegrau: { type: ["number", "null"] }
+        projecao:
+          oneOf:
+            - $ref: "#/components/schemas/ProjecaoComissao"
+            - type: "null"
+
+    # "No seu ritmo, o mês fecha em quanto?" (E51). Só existe na competência
+    # CORRENTE e depois de alguns dias de mês — antes disso o run-rate é ruído
+    # com cara de número. null = não há projeção a dar.
+    ProjecaoComissao:
+      type: object
+      required: [diasDecorridos, diasNoMes, baseProjetada, valorTotalProjetado]
+      properties:
+        diasDecorridos: { type: integer }
+        diasNoMes: { type: integer }
+        baseProjetada: { type: number, description: "Base líquida projetada para o mês inteiro" }
+        percentualProjetado: { type: ["number", "null"] }
+        valorTotalProjetado: { type: number, description: "Comissão + bônus sobre a base projetada" }
+
+    BaixarEstornoComissaoInput:
+      type: object
+      required: [vendedoraId, competencia]
+      properties:
+        vendedoraId: { type: string }
+        competencia:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+          description: "A competência em que o estorno aparece pendente (a mesma do preview)"
+        motivo:
+          type: ["string", "null"]
+          description: "Justificativa da baixa — fica no registro de auditoria"
+
+    BaixaEstornoComissao:
+      type: object
+      required: [contratoId, vendedoraId, valor, baixadoEm]
+      properties:
+        contratoId: { type: string }
+        vendedoraId: { type: string }
+        vendedoraNome: { type: ["string", "null"] }
+        noivaNome: { type: ["string", "null"] }
+        valor:
+          type: number
+          description: "O valor do contrato cancelado cujo estorno foi baixado"
+        motivo: { type: ["string", "null"] }
+        baixadoPorNome: { type: ["string", "null"] }
+        baixadoEm: { type: string, format: date-time }
+
+    BaixarEstornoComissaoResultado:
+      type: object
+      required: [vendedoraId, contratosBaixados, valorBaixado]
+      properties:
+        vendedoraId: { type: string }
+        contratosBaixados:
+          type: integer
+          description: "Quantos contratos cancelados tiveram o estorno baixado"
+        valorBaixado:
+          type: number
+          description: "Total do estorno baixado, em reais"
 
     # ── Dashboard ──
     DashboardSummary:

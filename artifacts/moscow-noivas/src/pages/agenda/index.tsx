@@ -1,27 +1,332 @@
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { useListAtendimentos, useListCabines, useGetDisponibilidade, useListAjustes, getListAtendimentosQueryKey, getListCabinesQueryKey, getGetDisponibilidadeQueryKey, getListAjustesQueryKey } from "@workspace/api-client-react";
+import { podeNoModulo } from "@/lib/permissoes";
+import {
+  useListAtendimentos,
+  getListAtendimentosQueryKey,
+  useCreateAtendimento,
+  useConfirmarAtendimento,
+  useListCabines,
+  getListCabinesQueryKey,
+  useListAjustes,
+  getListAjustesQueryKey,
+  useGetDisponibilidade,
+  getGetDisponibilidadeQueryKey,
+} from "@workspace/api-client-react";
+import { GradeDoDia } from "./grade";
+import { EXPEDIENTE_PADRAO } from "@/lib/agenda";
+import { diaLocal } from "@/lib/financeiro/datas";
+import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { format, isSameDay } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ComboboxNoiva } from "@/components/combobox-noiva";
+import { Clock, Plus, AlertCircle, MessageCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
+
+const novoAtendimentoSchema = z.object({
+  leadId: z.string().min(1, "Escolha a noiva"),
+  cabineId: z.string().min(1, "Escolha a cabine"),
+  tipo: z.enum(["ATENDIMENTO", "PROVA"]),
+  inicio: z.string().min(1, "Informe data e hora"),
+  observacao: z.string().optional(),
+});
+
+type NovoAtendimentoValues = z.infer<typeof novoAtendimentoSchema>;
+
+const SITUACAO_LABELS: Record<string, string> = {
+  AGENDADO: "Agendado",
+  EM_ATENDIMENTO: "Em atendimento",
+  CONCLUIDO: "Concluído",
+  FALTOU: "Faltou",
+};
 
 export default function Agenda() {
-  const { activeLojaId } = useAuth();
-  const { data: atendimentos, isLoading: isLoadingAtendimentos } = useListAtendimentos(activeLojaId!, { query: { queryKey: getListAtendimentosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const { data: cabines } = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const primeiroAtendimentoId = atendimentos?.[0]?.id;
-  const { data: ajustes } = useListAjustes(primeiroAtendimentoId!, { query: { queryKey: getListAjustesQueryKey(primeiroAtendimentoId!), enabled: !!primeiroAtendimentoId } });
-  const { data: disponibilidade } = useGetDisponibilidade(activeLojaId!, { query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const { activeLojaId, user, acessosModulos, session } = useAuth();
+  const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
+
+  // O dia da grade vive na URL (?dia=YYYY-MM-DD), como a semana do E20 — sem
+  // isso não há deep-link para "a agenda de amanhã" nem teste determinístico.
+  const diaYMD = searchParams.get("dia") ?? diaLocal(new Date());
+
+  // E83: a grade pede o DIA visível, não a agenda inteira.
+  const janelaDia = { de: diaYMD, ate: diaYMD };
+  const atendimentos = useListAtendimentos(activeLojaId!, janelaDia, {
+    query: { queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaDia), enabled: !!activeLojaId },
+  });
+  const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const createAtendimento = useCreateAtendimento();
+  // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já
+  // foi contatado. Invalida a agenda para o card mudar de "falta" para "feito".
+  const confirmarAtendimento = useConfirmarAtendimento({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
+    },
+  });
+
+  // E63: o nome vem do próprio atendimento (o GET embute a noiva) — a agenda
+  // parou de baixar a lista completa de leads só para rotular os cards.
+  const nomePorLead = useMemo(() => {
+    const mapa = new Map<string, string>();
+    for (const a of atendimentos.data ?? []) {
+      if (a.lead?.noivaNome) mapa.set(a.leadId, a.lead.noivaNome);
+    }
+    return mapa;
+  }, [atendimentos.data]);
+
+  // E8: confirmação por wa.me — a mensagem carrega nome e endereço da loja,
+  // que já vêm na sessão (/auth/me); nada de request extra.
+  const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
+  const waConfirmacao = (a: {
+    lead?: { noivaNome?: string; whatsapp?: string | null } | null;
+    tipo: string;
+    inicio: string;
+  }) =>
+    linkWhatsApp(
+      a.lead?.whatsapp,
+      msgConfirmacaoAtendimento({
+        noivaNome: a.lead?.noivaNome,
+        tipo: a.tipo,
+        inicio: a.inicio,
+        lojaNome: lojaAtiva?.nome,
+        endereco: lojaAtiva?.endereco,
+      }),
+    );
+
+  // O expediente configurado desenha as linhas da grade; loja sem regra usa o
+  // mesmo default das colunas do schema.
+  const disponibilidade = useGetDisponibilidade(activeLojaId!, {
+    query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId, retry: false },
+  });
+  const expediente = disponibilidade.data
+    ? {
+        aberturaHora: disponibilidade.data.atendimentoAberturaHora,
+        fechamentoHora: disponibilidade.data.atendimentoFechamentoHora,
+        // E38: a grade também recusa o drop num dia fechado (LOJA_FECHADA).
+        dias: disponibilidade.data.diasFuncionamento,
+      }
+    : EXPEDIENTE_PADRAO;
+
+  // Atendimentos do dia escolhido, comparados no fuso da loja — `isSameDay` do
+  // date-fns lê o fuso do navegador, que não é necessariamente o da loja.
+  const doDia = useMemo(
+    () =>
+      (atendimentos.data ?? [])
+        .filter((a) => diaLocal(a.inicio) === diaYMD)
+        .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime()),
+    [atendimentos.data, diaYMD],
+  );
+
+  const form = useForm<NovoAtendimentoValues>({
+    resolver: zodResolver(novoAtendimentoSchema),
+    defaultValues: { leadId: "", cabineId: "", tipo: "ATENDIMENTO", inicio: "", observacao: "" },
+  });
+
+  const onSubmit = async (values: NovoAtendimentoValues) => {
+    try {
+      const criado = await createAtendimento.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          leadId: values.leadId,
+          cabineId: values.cabineId,
+          vendedoraId: user!.id,
+          tipo: values.tipo,
+          inicio: new Date(values.inicio).toISOString(),
+          observacao: values.observacao || undefined,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
+      const wa = waConfirmacao(criado);
+      toast({
+        title: "Atendimento agendado",
+        ...(wa
+          ? {
+              description: "Quer já mandar a confirmação para a noiva?",
+              action: (
+                <ToastAction altText="Enviar confirmação por WhatsApp" asChild>
+                  <a href={wa} target="_blank" rel="noopener noreferrer">
+                    WhatsApp
+                  </a>
+                </ToastAction>
+              ),
+            }
+          : {}),
+      });
+      form.reset();
+      setOpen(false);
+    } catch (err) {
+      toast({
+        title: "Erro ao agendar",
+        description: err instanceof Error ? err.message : "Verifique conflito de horário e tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-serif">Agenda</h1>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agendamento
-        </Button>
+        <div className="flex items-center gap-2">
+          {activeLojaId && (
+            <>
+              {/* Visão semanal (E20): a grade semana × cabine. */}
+              <Button asChild variant="ghost">
+                <Link to={`/loja/${activeLojaId}/agenda/semana`}>Semana</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
+              </Button>
+            </>
+          )}
+          {podeCriar && (
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Agendamento
+            </Button>
+          )}
+        </div>
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Agendamento</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="leadId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Noiva *</FormLabel>
+                    <FormControl>
+                      <ComboboxNoiva
+                        lojaId={activeLojaId!}
+                        value={field.value || null}
+                        onChange={field.onChange}
+                        ariaLabel="Noiva do agendamento"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="cabineId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cabine *</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Cabine" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(cabines.data ?? []).filter((c) => c.ativo).map((cabine) => (
+                            <SelectItem key={cabine.id} value={cabine.id}>{cabine.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tipo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ATENDIMENTO">Atendimento</SelectItem>
+                          <SelectItem value="PROVA">Prova</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="inicio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data e hora *</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="observacao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observação</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={createAtendimento.isPending}>
+                  {createAtendimento.isPending ? "Agendando…" : "Agendar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="col-span-2">
@@ -29,27 +334,93 @@ export default function Agenda() {
             <CardTitle>Atendimentos do Dia</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isLoadingAtendimentos ? (
+            {atendimentos.isError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Erro ao carregar os atendimentos</AlertTitle>
+                <AlertDescription className="flex items-center gap-3">
+                  <span>Falha ao buscar a agenda.</span>
+                  <Button variant="outline" size="sm" onClick={() => atendimentos.refetch()}>
+                    Tentar novamente
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : atendimentos.isLoading ? (
               <div className="animate-pulse space-y-4">
                 {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted rounded-md" />)}
               </div>
-            ) : atendimentos?.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">Nenhum atendimento agendado para hoje.</div>
             ) : (
-              atendimentos?.map(atendimento => (
-                <div key={atendimento.id} className="flex items-center justify-between p-4 border rounded-lg hover-elevate">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-                      <Clock className="h-5 w-5" />
+              <>
+                <GradeDoDia
+                  activeLojaId={activeLojaId!}
+                  diaYMD={diaYMD}
+                  atendimentos={doDia}
+                  cabines={cabines.data ?? []}
+                  expediente={expediente}
+                  podeEditar={podeEditar}
+                  nomePorLead={nomePorLead}
+                />
+
+                {/* A confirmação por wa.me (E8) saiu do card, que na grade tem
+                    largura de coluna: vira uma fila abaixo, só de quem ainda
+                    está AGENDADO — que é justamente quem precisa confirmar. */}
+                {doDia.some((a) => a.situacao === "AGENDADO") && (() => {
+                  const agendados = doDia.filter((a) => a.situacao === "AGENDADO");
+                  const faltaConfirmar = agendados.filter((a) => !a.confirmadoEm);
+                  const jaConfirmados = agendados.length - faltaConfirmar.length;
+                  return (
+                    <div className="space-y-2 border-t pt-4">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                        Confirmar presença
+                      </p>
+                      {faltaConfirmar.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Todas as presenças já foram confirmadas.</p>
+                      ) : (
+                        faltaConfirmar.map((atendimento) => {
+                          const wa = waConfirmacao(atendimento);
+                          return (
+                            <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm" data-testid={`confirmar-linha-${atendimento.id}`}>
+                              <span className="min-w-0 truncate">
+                                <span className="tabular-nums text-muted-foreground">
+                                  {format(new Date(atendimento.inicio), "HH:mm")}
+                                </span>{" "}
+                                {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
+                              </span>
+                              {wa && (
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  data-testid={`confirmar-btn-${atendimento.id}`}
+                                >
+                                  {/* Abrir o wa.me (o <a> navega) E carimbar a
+                                      confirmação, para a linha sair da fila. */}
+                                  <a
+                                    href={wa}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() =>
+                                      confirmarAtendimento.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
+                                    }
+                                  >
+                                    <MessageCircle className="h-4 w-4 mr-1" />
+                                    Confirmar
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                      {jaConfirmados > 0 && (
+                        <p className="text-xs text-muted-foreground pt-1">
+                          {jaConfirmados} já confirmada{jaConfirmados === 1 ? "" : "s"}.
+                        </p>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-medium">{atendimento.tipo}</p>
-                      <p className="text-sm text-muted-foreground">{new Date(atendimento.inicio).toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <Badge>{atendimento.situacao}</Badge>
-                </div>
-              ))
+                  );
+                })()}
+              </>
             )}
           </CardContent>
         </Card>
@@ -61,7 +432,7 @@ export default function Agenda() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {cabines?.map(cabine => (
+                {cabines.data?.map(cabine => (
                   <li key={cabine.id} className="flex items-center justify-between text-sm">
                     <span>{cabine.nome}</span>
                     <Badge variant={cabine.ativo ? "default" : "secondary"}>{cabine.ativo ? 'Ativa' : 'Inativa'}</Badge>
@@ -76,11 +447,11 @@ export default function Agenda() {
               <CardTitle>Ajustes Pendentes</CardTitle>
             </CardHeader>
             <CardContent>
-              {ajustes?.length === 0 ? (
+              {(ajustes.data ?? []).filter(a => a.status === 'PENDENTE').length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center">Nenhum ajuste pendente.</p>
               ) : (
                 <ul className="space-y-3">
-                  {ajustes?.filter(a => a.status === 'PENDENTE').map(ajuste => (
+                  {ajustes.data?.filter(a => a.status === 'PENDENTE').map(ajuste => (
                     <li key={ajuste.id} className="text-sm border-b pb-2 last:border-0">
                       {ajuste.descricao}
                     </li>

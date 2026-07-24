@@ -8,11 +8,17 @@
 
 export interface ComissaoFaixa {
   id: string;
-  regraId: string;
+  /** Borda inferior INCLUSIVA */
   minAcumulado: number;
-  /** @nullable */
+  /**
+     * Borda superior EXCLUSIVA; null = topo aberto
+     * @nullable
+     */
   maxAcumulado?: number | null;
-  /** @nullable */
+  /**
+     * 5 = 5%
+     * @nullable
+     */
   percentual?: number | null;
   /** @nullable */
   bonusFixo?: number | null;

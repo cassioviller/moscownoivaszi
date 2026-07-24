@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BloqueioVestidoTipo } from './bloqueioVestidoTipo';
+import type { Lead } from './lead';
+import type { Vestido } from './vestido';
 
 export interface BloqueioVestido {
   id: string;
@@ -23,7 +25,19 @@ export interface BloqueioVestido {
   /** @nullable */
   devolucaoDataReal?: Date | null;
   /** @nullable */
+  inicio?: Date | null;
+  /** @nullable */
+  fim?: Date | null;
+  /** @nullable */
+  canceladoEm?: Date | null;
+  /** @nullable */
   observacao?: string | null;
   /** @nullable */
   reservaId?: string | null;
+  /** @nullable */
+  ocupacaoInicio?: Date | null;
+  /** @nullable */
+  ocupacaoFim?: Date | null;
+  vestido?: Vestido;
+  lead?: Lead | null;
 }

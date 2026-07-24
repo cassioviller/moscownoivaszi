@@ -1,6 +1,6 @@
 import { useGetMe, useLogin, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useStoreStore } from "@/lib/store";
-import { useLocation } from "wouter";
+import { useNavigate, useParams } from "react-router";
 import { useEffect } from "react";
 
 export function useAuth() {
@@ -14,7 +14,8 @@ export function useAuth() {
   const loginMutation = useLogin();
   const logoutMutation = useLogout();
   const { activeLojaId, setActiveLojaId } = useStoreStore();
-  const [, setLocation] = useLocation();
+  const { lojaId: urlLojaId } = useParams();
+  const navigate = useNavigate();
 
   const user = session?.usuario;
 
@@ -28,16 +29,27 @@ export function useAuth() {
   const logout = async () => {
     await logoutMutation.mutateAsync(undefined);
     setActiveLojaId(null);
-    setLocation("/login");
+    navigate("/login");
   };
+
+  // null/undefined = superadmin ou sem loja ativa → sem restrição de módulos.
+  const acessosModulos = (session?.acessosModulos ?? null) as Record<string, unknown> | null;
+
+  // Prioridade: loja da URL (/loja/:lojaId — fonte de verdade pós-unificação) >
+  // store persistido (troca de loja imediata) > sessão do servidor (usuária
+  // retornando com cookie válido e localStorage vazio; o store só sincroniza um
+  // render após o getMe resolver, e sem o fallback o AppLayout redirecionava
+  // para /selecionar-loja antes do sync).
+  const activeLojaIdResolvido = urlLojaId ?? activeLojaId ?? session?.lojaAtivaId ?? null;
 
   return {
     user,
     session,
+    acessosModulos,
     isLoading,
     error,
     login: loginMutation.mutateAsync,
     logout,
-    activeLojaId,
+    activeLojaId: activeLojaIdResolvido,
   };
 }

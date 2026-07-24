@@ -12,4 +12,5 @@ export interface Usuario {
   email: string;
   ativo: boolean;
   isSuperAdmin: boolean;
+  precisaTrocarSenha?: boolean;
 }

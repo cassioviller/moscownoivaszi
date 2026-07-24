@@ -23,12 +23,18 @@ export interface SelecionarLojaInput {
   lojaId: string;
 }
 
+/**
+ * @nullable
+ */
+export type SessaoAcessosModulos = { [key: string]: unknown } | null;
+
 export interface Usuario {
   id: string;
   nome: string;
   email: string;
   ativo: boolean;
   isSuperAdmin: boolean;
+  precisaTrocarSenha?: boolean;
 }
 
 export interface Loja {
@@ -53,6 +59,8 @@ export interface Sessao {
   usuario: Usuario;
   /** @nullable */
   lojaAtivaId?: string | null;
+  /** @nullable */
+  acessosModulos?: SessaoAcessosModulos;
   lojas?: LojaComPerfil[];
 }
 
@@ -73,43 +81,52 @@ export interface LojaUpdate {
   ativo?: boolean;
 }
 
-export type PerfilAcessosModulos = {[key: string]: boolean};
+export interface AcoesModulo {
+  ver: boolean;
+  criar: boolean;
+  editar: boolean;
+}
+
+/**
+ * Módulo → ações. Chave desconhecida é descartada pelo servidor.
+ */
+export interface AcessosModulos {[key: string]: AcoesModulo}
 
 export interface Perfil {
   id: string;
   nome: string;
-  acessosModulos: PerfilAcessosModulos;
+  acessosModulos: AcessosModulos;
+  sistema: boolean;
 }
-
-export type PerfilInputAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilInput {
   /** @minLength 1 */
   nome: string;
-  acessosModulos: PerfilInputAcessosModulos;
+  acessosModulos: AcessosModulos;
 }
-
-export type PerfilUpdateAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilUpdate {
   /** @minLength 1 */
   nome?: string;
-  acessosModulos?: PerfilUpdateAcessosModulos;
+  acessosModulos?: AcessosModulos;
 }
-
-export type PerfilOverrideLojaAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilOverrideLoja {
   lojaId: string;
   perfilId: string;
-  acessosModulos: PerfilOverrideLojaAcessosModulos;
+  acessosModulos: AcessosModulos;
 }
-
-export type PerfilOverrideInputAcessosModulos = {[key: string]: boolean};
 
 export interface PerfilOverrideInput {
   perfilId: string;
-  acessosModulos: PerfilOverrideInputAcessosModulos;
+  acessosModulos: AcessosModulos;
+}
+
+export interface TrocarSenhaInput {
+  /** @minLength 1 */
+  senhaAtual: string;
+  /** @minLength 6 */
+  novaSenha: string;
 }
 
 export interface UsuarioInput {
@@ -120,6 +137,16 @@ export interface UsuarioInput {
   senha: string;
   isSuperAdmin?: boolean;
 }
+
+export type UsuarioComLojasLojasItem = {
+  id: string;
+  nome: string;
+};
+
+export type UsuarioComLojas = Usuario & {
+  /** Lojas onde o usuário tem vínculo (via usuarios_lojas) */
+  lojas: UsuarioComLojasLojasItem[];
+};
 
 export interface UsuarioUpdate {
   /** @minLength 1 */
@@ -150,10 +177,193 @@ export interface MembroEquipeInput {
   perfilId: string;
 }
 
+export interface Convite {
+  id: string;
+  lojaId: string;
+  token: string;
+  nome: string;
+  email: string;
+  perfilId: string;
+  /** @nullable */
+  perfilNome?: string | null;
+  criadoEm: string;
+  expiraEm: string;
+}
+
+export interface ConviteInput {
+  /** @minLength 1 */
+  nome: string;
+  email: string;
+  perfilId: string;
+}
+
+export interface ConvitePublico {
+  lojaNome: string;
+  nome: string;
+  /** m•••a@dominio — nunca o e-mail inteiro */
+  emailMascarado: string;
+  /** true = e-mail sem conta, o aceite pede senha; false = conta existente, o aceite só vincula */
+  precisaSenha: boolean;
+  expiraEm: string;
+}
+
+export interface AceitarConviteInput {
+  token: string;
+  /**
+     * Obrigatória quando o e-mail ainda não tem conta; ignorada quando já tem
+     * @minLength 6
+     */
+  senha?: string;
+}
+
+export interface AceitarConviteResultado {
+  jaTinhaConta: boolean;
+}
+
+export interface MembroAtividade {
+  usuarioId: string;
+  nome: string;
+  email: string;
+  perfilNome: string;
+  ativo: boolean;
+  /** @nullable */
+  ultimoAcesso?: string | null;
+  acoes30d: number;
+}
+
+export type AuditoriaItemAcao = typeof AuditoriaItemAcao[keyof typeof AuditoriaItemAcao];
+
+
+export const AuditoriaItemAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
+  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
+  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
+  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
+  CONVITE_CRIADO: 'CONVITE_CRIADO',
+  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
+  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
+  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
+  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
+  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AuditoriaItemDetalhe = { [key: string]: unknown } | null;
+
+export interface AuditoriaItem {
+  id: string;
+  acao: AuditoriaItemAcao;
+  entidade: string;
+  entidadeId: string;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** Desnormalizado — sobrevive à saída do autor da equipe */
+  usuarioNome: string;
+  /** @nullable */
+  detalhe?: AuditoriaItemDetalhe;
+  criadoEm: string;
+}
+
+export interface AtividadeEquipe {
+  membros: MembroAtividade[];
+  eventos: AuditoriaItem[];
+}
+
 export interface MembroEquipeUpdate {
   nome?: string;
   perfilId?: string;
   ativo?: boolean;
+}
+
+export type BackupLogGatilho = typeof BackupLogGatilho[keyof typeof BackupLogGatilho];
+
+
+export const BackupLogGatilho = {
+  manual: 'manual',
+  agendado: 'agendado',
+} as const;
+
+export type BackupLogStatus = typeof BackupLogStatus[keyof typeof BackupLogStatus];
+
+
+export const BackupLogStatus = {
+  em_andamento: 'em_andamento',
+  ok: 'ok',
+  erro: 'erro',
+} as const;
+
+export interface BackupLog {
+  id: string;
+  gatilho: BackupLogGatilho;
+  status: BackupLogStatus;
+  iniciadoEm: string;
+  /** @nullable */
+  concluidoEm?: string | null;
+  /**
+     * Tamanho do arquivo comprimido — só quando status = ok
+     * @nullable
+     */
+  tamanhoBytes?: number | null;
+  /**
+     * Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)
+     * @nullable
+     */
+  arquivo?: string | null;
+  /**
+     * Quem disparou o backup manual; null nos agendados
+     * @nullable
+     */
+  autorNome?: string | null;
+  /** @nullable */
+  erro?: string | null;
+}
+
+export type RestoreDrillLogStatus = typeof RestoreDrillLogStatus[keyof typeof RestoreDrillLogStatus];
+
+
+export const RestoreDrillLogStatus = {
+  em_andamento: 'em_andamento',
+  ok: 'ok',
+  erro: 'erro',
+} as const;
+
+/**
+ * Uma execução do drill de restore (E89): o dump mais recente restaurado num banco efêmero e conferido contra a origem — contagem por tabela, FKs válidas e amostra de agregado. "ok" só quando TUDO conferiu.
+ */
+export interface RestoreDrillLog {
+  id: string;
+  status: RestoreDrillLogStatus;
+  iniciadoEm: string;
+  /** @nullable */
+  concluidoEm?: string | null;
+  /**
+     * Arquivo do dump restaurado no drill
+     * @nullable
+     */
+  dumpArquivo?: string | null;
+  /**
+     * Quantas tabelas tiveram a contagem conferida
+     * @nullable
+     */
+  tabelasConferidas?: number | null;
+  /** @nullable */
+  erro?: string | null;
+}
+
+export interface BackupStatus {
+  ultimo: BackupLog | null;
+  recentes: BackupLog[];
+  /** Último drill de restore (E89) — a prova de que o backup VOLTA: null enquanto nenhum drill rodou */
+  ultimoDrill: RestoreDrillLog | null;
 }
 
 export type AtributoTipo = typeof AtributoTipo[keyof typeof AtributoTipo];
@@ -222,9 +432,12 @@ export interface VestidoAtributo {
 
 export interface VestidoFotoMeta {
   ordem: number;
+  /** Derivado do binário pelo servidor, nunca do cliente */
   mime: string;
   largura: number;
   altura: number;
+  /** Versão da foto — alimenta o cache-busting (?v=) das URLs */
+  atualizadaEm: string;
 }
 
 export interface Vestido {
@@ -247,19 +460,26 @@ export interface Vestido {
   fotos?: VestidoFotoMeta[];
 }
 
-export interface VestidoFoto {
-  ordem: number;
-  mime: string;
-  largura: number;
-  altura: number;
+export interface VestidoFotoInput {
+  /** A foto (JPEG/PNG/WebP). Mime e dimensões são derivados do binário no servidor. */
   base64: string;
+  /**
+     * Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback).
+     * @nullable
+     */
+  thumbBase64?: string | null;
 }
 
-export interface VestidoFotoInput {
-  mime: string;
-  largura: number;
-  altura: number;
-  base64: string;
+export interface VestidoUtilizacao {
+  vestidoId: string;
+  codigo: string;
+  nome: string;
+  status: string;
+  precoBase: number;
+  provas: number;
+  reservas: number;
+  contratos: number;
+  receita: number;
 }
 
 export interface VestidoInput {
@@ -304,12 +524,29 @@ export const LeadEtapa = {
   PERDIDO: 'PERDIDO',
 } as const;
 
+/**
+ * @nullable
+ */
+export type LeadPerdidaMotivo = typeof LeadPerdidaMotivo[keyof typeof LeadPerdidaMotivo] | null;
+
+
+export const LeadPerdidaMotivo = {
+  PRECO: 'PRECO',
+  DATA_INDISPONIVEL: 'DATA_INDISPONIVEL',
+  CONCORRENTE: 'CONCORRENTE',
+  DESISTENCIA: 'DESISTENCIA',
+  SEM_RETORNO: 'SEM_RETORNO',
+  OUTRO: 'OUTRO',
+} as const;
+
 export type LeadOrigem = typeof LeadOrigem[keyof typeof LeadOrigem];
 
 
 export const LeadOrigem = {
   LOJA: 'LOJA',
   WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
 } as const;
 
 export interface LeadInteresse {
@@ -340,9 +577,26 @@ export interface Lead {
   casamentoHorario?: string | null;
   /** @nullable */
   casamentoLocal?: string | null;
+  /** @nullable */
+  orcamentoAbertoEm?: string | null;
+  /** @nullable */
+  contratoFechadoEm?: string | null;
+  /** @nullable */
+  perdidaEm?: string | null;
+  /** @nullable */
+  perdidaMotivo?: LeadPerdidaMotivo;
+  /** @nullable */
+  perdidaDetalhe?: string | null;
   origem: LeadOrigem;
   createdAt: string;
+  /** @nullable */
+  ultimoContatoEm?: string | null;
   interesse?: LeadInteresse;
+}
+
+export interface LeadsPage {
+  total: number;
+  itens: Lead[];
 }
 
 export type LeadInputOrigem = typeof LeadInputOrigem[keyof typeof LeadInputOrigem];
@@ -351,6 +605,8 @@ export type LeadInputOrigem = typeof LeadInputOrigem[keyof typeof LeadInputOrige
 export const LeadInputOrigem = {
   LOJA: 'LOJA',
   WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
 } as const;
 
 export interface LeadInput {
@@ -382,6 +638,21 @@ export const LeadUpdateEtapa = {
   PERDIDO: 'PERDIDO',
 } as const;
 
+/**
+ * Obrigatório quando etapa vira PERDIDO; ignorado nas demais
+ */
+export type LeadUpdatePerdidaMotivo = typeof LeadUpdatePerdidaMotivo[keyof typeof LeadUpdatePerdidaMotivo];
+
+
+export const LeadUpdatePerdidaMotivo = {
+  PRECO: 'PRECO',
+  DATA_INDISPONIVEL: 'DATA_INDISPONIVEL',
+  CONCORRENTE: 'CONCORRENTE',
+  DESISTENCIA: 'DESISTENCIA',
+  SEM_RETORNO: 'SEM_RETORNO',
+  OUTRO: 'OUTRO',
+} as const;
+
 export interface LeadUpdate {
   etapa?: LeadUpdateEtapa;
   noivaNome?: string;
@@ -391,6 +662,9 @@ export interface LeadUpdate {
   casamentoData?: string;
   casamentoHorario?: string;
   casamentoLocal?: string;
+  /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
+  perdidaMotivo?: LeadUpdatePerdidaMotivo;
+  perdidaDetalhe?: string;
 }
 
 export interface LeadInteresseInput {
@@ -398,6 +672,168 @@ export interface LeadInteresseInput {
   naoQuerUsar?: string;
   tetoOrcamento?: number;
   atributos?: VestidoAtributo[];
+}
+
+export type ConversaoLeadsPorOrigemItemOrigem = typeof ConversaoLeadsPorOrigemItemOrigem[keyof typeof ConversaoLeadsPorOrigemItemOrigem];
+
+
+export const ConversaoLeadsPorOrigemItemOrigem = {
+  LOJA: 'LOJA',
+  WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
+} as const;
+
+export type ConversaoLeadsPorOrigemItem = {
+  origem: ConversaoLeadsPorOrigemItemOrigem;
+  total: number;
+  convertidos: number;
+};
+
+/**
+ * null = perdido sem motivo registrado (dado legado)
+ * @nullable
+ */
+export type ConversaoLeadsPorMotivoPerdaItemMotivo = typeof ConversaoLeadsPorMotivoPerdaItemMotivo[keyof typeof ConversaoLeadsPorMotivoPerdaItemMotivo] | null;
+
+
+export const ConversaoLeadsPorMotivoPerdaItemMotivo = {
+  PRECO: 'PRECO',
+  DATA_INDISPONIVEL: 'DATA_INDISPONIVEL',
+  CONCORRENTE: 'CONCORRENTE',
+  DESISTENCIA: 'DESISTENCIA',
+  SEM_RETORNO: 'SEM_RETORNO',
+  OUTRO: 'OUTRO',
+} as const;
+
+export type ConversaoLeadsPorMotivoPerdaItem = {
+  /**
+     * null = perdido sem motivo registrado (dado legado)
+     * @nullable
+     */
+  motivo: ConversaoLeadsPorMotivoPerdaItemMotivo;
+  total: number;
+};
+
+export interface ConversaoLeads {
+  totalLeads: number;
+  /** Leads que chegaram a CONTRATO_FECHADO ou além */
+  convertidos: number;
+  perdidos: number;
+  porOrigem: ConversaoLeadsPorOrigemItem[];
+  porMotivoPerda: ConversaoLeadsPorMotivoPerdaItem[];
+}
+
+/**
+ * @nullable
+ */
+export type AlertaCaixaMenorSaldo = {
+  /**
+     * null = o piso é o próprio saldo de hoje (nada o derruba)
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  dia: string | null;
+  valor: number;
+} | null;
+
+export interface AlertaCaixa {
+  /** false = não há saldo de referência; o resto vem null e não há alerta a dar */
+  ancorado: boolean;
+  /**
+     * Saldo de partida: âncora + realizado desde ela
+     * @nullable
+     */
+  saldoHoje: number | null;
+  /**
+     * Primeiro dia em que o saldo projetado fica negativo; null se nunca
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  diaNegativo: string | null;
+  /** @nullable */
+  menorSaldo: AlertaCaixaMenorSaldo;
+  horizonteDias: number;
+}
+
+export interface LookbookInput {
+  leadId: string;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     */
+  vestidoIds: string[];
+}
+
+export type LookbookVestidosItem = {
+  vestidoId: string;
+  nome: string;
+};
+
+export interface Lookbook {
+  id: string;
+  leadId: string;
+  token: string;
+  expiraEm: string;
+  criadoEm: string;
+  vestidos: LookbookVestidosItem[];
+}
+
+export interface LookbookPublicoFoto {
+  ordem: number;
+  atualizadaEm: string;
+}
+
+export type LookbookPublicoVestidoAtributosItem = {
+  atributo: string;
+  valor: string;
+};
+
+export interface LookbookPublicoVestido {
+  vestidoId: string;
+  nome: string;
+  precoBase: number;
+  fotos: LookbookPublicoFoto[];
+  atributos: LookbookPublicoVestidoAtributosItem[];
+}
+
+export interface LookbookPublico {
+  lojaNome: string;
+  noivaNome: string;
+  vestidos: LookbookPublicoVestido[];
+}
+
+export type CaptacaoLeadInputOrigem = typeof CaptacaoLeadInputOrigem[keyof typeof CaptacaoLeadInputOrigem];
+
+
+export const CaptacaoLeadInputOrigem = {
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
+  WHATSAPP: 'WHATSAPP',
+} as const;
+
+export interface CaptacaoLeadInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  noivaNome: string;
+  /** @maxLength 200 */
+  noivoNome?: string;
+  /** @maxLength 30 */
+  whatsapp?: string;
+  casamentoData?: string;
+  origem?: CaptacaoLeadInputOrigem;
+  consentimento?: boolean;
+}
+
+export interface CaptacaoLeadResultado {
+  id: string;
+}
+
+export interface CaptacaoToken {
+  /** @nullable */
+  token: string | null;
 }
 
 export type RegistroCobrancaCanal = typeof RegistroCobrancaCanal[keyof typeof RegistroCobrancaCanal];
@@ -417,6 +853,8 @@ export interface RegistroCobranca {
   canal: RegistroCobrancaCanal;
   /** @nullable */
   observacao?: string | null;
+  /** @nullable */
+  vendedorNome?: string | null;
 }
 
 export type RegistroCobrancaInputCanal = typeof RegistroCobrancaInputCanal[keyof typeof RegistroCobrancaInputCanal];
@@ -482,6 +920,105 @@ export const AtendimentoDesfecho = {
   NAO_SERVIU: 'NAO_SERVIU',
 } as const;
 
+export type BloqueioVestidoTipo = typeof BloqueioVestidoTipo[keyof typeof BloqueioVestidoTipo];
+
+
+export const BloqueioVestidoTipo = {
+  RESERVA_CASAMENTO: 'RESERVA_CASAMENTO',
+  MANUTENCAO: 'MANUTENCAO',
+} as const;
+
+export interface BloqueioVestido {
+  id: string;
+  lojaId: string;
+  vestidoId: string;
+  /** @nullable */
+  leadId?: string | null;
+  tipo: BloqueioVestidoTipo;
+  /** @nullable */
+  casamentoData?: string | null;
+  /** @nullable */
+  provaDataReal?: string | null;
+  /** @nullable */
+  retiradaDataReal?: string | null;
+  /** @nullable */
+  devolucaoDataReal?: string | null;
+  /** @nullable */
+  inicio?: string | null;
+  /** @nullable */
+  fim?: string | null;
+  /** @nullable */
+  canceladoEm?: string | null;
+  /** @nullable */
+  observacao?: string | null;
+  /** @nullable */
+  reservaId?: string | null;
+  /** @nullable */
+  ocupacaoInicio?: string | null;
+  /** @nullable */
+  ocupacaoFim?: string | null;
+  vestido?: Vestido;
+  lead?: Lead | null;
+}
+
+export type AjusteStatus = typeof AjusteStatus[keyof typeof AjusteStatus];
+
+
+export const AjusteStatus = {
+  PENDENTE: 'PENDENTE',
+  FEITO: 'FEITO',
+} as const;
+
+export interface AjusteChecklistItem {
+  id: string;
+  ajusteId: string;
+  descricao: string;
+  feito: boolean;
+  ordem: number;
+}
+
+export type AjusteAtendimentoTipo = typeof AjusteAtendimentoTipo[keyof typeof AjusteAtendimentoTipo];
+
+
+export const AjusteAtendimentoTipo = {
+  ATENDIMENTO: 'ATENDIMENTO',
+  PROVA: 'PROVA',
+} as const;
+
+export type AjusteAtendimentoSituacao = typeof AjusteAtendimentoSituacao[keyof typeof AjusteAtendimentoSituacao];
+
+
+export const AjusteAtendimentoSituacao = {
+  AGENDADO: 'AGENDADO',
+  EM_ATENDIMENTO: 'EM_ATENDIMENTO',
+  CONCLUIDO: 'CONCLUIDO',
+  FALTOU: 'FALTOU',
+} as const;
+
+export interface AjusteAtendimento {
+  id: string;
+  leadId: string;
+  tipo: AjusteAtendimentoTipo;
+  /** @nullable */
+  bloqueioId?: string | null;
+  inicio: string;
+  situacao: AjusteAtendimentoSituacao;
+  lead?: Lead;
+  bloqueio?: BloqueioVestido | null;
+}
+
+export interface Ajuste {
+  id: string;
+  lojaId: string;
+  atendimentoId: string;
+  descricao: string;
+  status: AjusteStatus;
+  checklist?: AjusteChecklistItem[];
+  atendimento?: AjusteAtendimento;
+  /** @nullable */
+  proximaProva?: string | null;
+}
+
 export interface Atendimento {
   id: string;
   lojaId: string;
@@ -492,11 +1029,20 @@ export interface Atendimento {
   /** @nullable */
   bloqueioId?: string | null;
   inicio: string;
+  /** @nullable */
+  atendidoEm?: string | null;
+  /** @nullable */
+  confirmadoEm?: string | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;
   /** @nullable */
   observacao?: string | null;
+  lead?: Lead;
+  cabine?: Cabine;
+  vendedora?: Usuario;
+  bloqueio?: BloqueioVestido | null;
+  ajustes?: Ajuste[];
 }
 
 export type AtendimentoInputTipo = typeof AtendimentoInputTipo[keyof typeof AtendimentoInputTipo];
@@ -545,23 +1091,21 @@ export interface AtendimentoUpdate {
   observacao?: string;
 }
 
-export type AjusteStatus = typeof AjusteStatus[keyof typeof AjusteStatus];
-
-
-export const AjusteStatus = {
-  PENDENTE: 'PENDENTE',
-  FEITO: 'FEITO',
-} as const;
-
-export interface Ajuste {
-  id: string;
-  lojaId: string;
-  atendimentoId: string;
+export interface AjusteChecklistItemInput {
+  /** @minLength 1 */
   descricao: string;
-  status: AjusteStatus;
+  ordem?: number;
+}
+
+export interface AjusteChecklistItemUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  feito?: boolean;
+  ordem?: number;
 }
 
 export interface AjusteInput {
+  atendimentoId: string;
   /** @minLength 1 */
   descricao: string;
 }
@@ -588,6 +1132,12 @@ export interface RegraDisponibilidade {
   lavagemDiasDepois: number;
   atendimentoAberturaHora: number;
   atendimentoFechamentoHora: number;
+  /**
+     * Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  diasFuncionamento: number[];
 }
 
 export interface RegraDisponibilidadeInput {
@@ -598,6 +1148,11 @@ export interface RegraDisponibilidadeInput {
   lavagemDiasDepois?: number;
   atendimentoAberturaHora?: number;
   atendimentoFechamentoHora?: number;
+  /**
+     * @items.minimum 0
+     * @items.maximum 6
+     */
+  diasFuncionamento?: number[];
 }
 
 export type ReservaStatus = typeof ReservaStatus[keyof typeof ReservaStatus];
@@ -606,36 +1161,9 @@ export type ReservaStatus = typeof ReservaStatus[keyof typeof ReservaStatus];
 export const ReservaStatus = {
   EM_MONTAGEM: 'EM_MONTAGEM',
   CONFIRMADA: 'CONFIRMADA',
+  CONCLUIDA: 'CONCLUIDA',
+  CANCELADA: 'CANCELADA',
 } as const;
-
-export type BloqueioVestidoTipo = typeof BloqueioVestidoTipo[keyof typeof BloqueioVestidoTipo];
-
-
-export const BloqueioVestidoTipo = {
-  RESERVA_CASAMENTO: 'RESERVA_CASAMENTO',
-  MANUTENCAO: 'MANUTENCAO',
-} as const;
-
-export interface BloqueioVestido {
-  id: string;
-  lojaId: string;
-  vestidoId: string;
-  /** @nullable */
-  leadId?: string | null;
-  tipo: BloqueioVestidoTipo;
-  /** @nullable */
-  casamentoData?: string | null;
-  /** @nullable */
-  provaDataReal?: string | null;
-  /** @nullable */
-  retiradaDataReal?: string | null;
-  /** @nullable */
-  devolucaoDataReal?: string | null;
-  /** @nullable */
-  observacao?: string | null;
-  /** @nullable */
-  reservaId?: string | null;
-}
 
 export interface Reserva {
   id: string;
@@ -643,7 +1171,8 @@ export interface Reserva {
   leadId: string;
   casamentoData: string;
   status: ReservaStatus;
-  itens?: BloqueioVestido[];
+  bloqueios?: BloqueioVestido[];
+  lead?: Lead;
 }
 
 export interface ReservaInput {
@@ -657,6 +1186,8 @@ export type ReservaUpdateStatus = typeof ReservaUpdateStatus[keyof typeof Reserv
 export const ReservaUpdateStatus = {
   EM_MONTAGEM: 'EM_MONTAGEM',
   CONFIRMADA: 'CONFIRMADA',
+  CONCLUIDA: 'CONCLUIDA',
+  CANCELADA: 'CANCELADA',
 } as const;
 
 export interface ReservaUpdate {
@@ -677,15 +1208,131 @@ export interface BloqueioVestidoInput {
   leadId?: string;
   tipo: BloqueioVestidoInputTipo;
   casamentoData?: string;
+  inicio?: string;
+  fim?: string;
   observacao?: string;
   reservaId?: string;
 }
 
+export interface Avaria {
+  id: string;
+  lojaId: string;
+  bloqueioId: string;
+  descricao: string;
+  /** @nullable */
+  custoReparo?: number | null;
+  /** A foto vem por /avarias/{id}/foto */
+  temFoto: boolean;
+  /** @nullable */
+  registradoPorNome?: string | null;
+  criadaEm: string;
+}
+
+export interface AvariaInput {
+  /** @minLength 1 */
+  descricao: string;
+  /** @minimum 0 */
+  custoReparo?: number;
+  fotoBase64?: string;
+}
+
 export interface BloqueioVestidoUpdate {
   provaDataReal?: string;
-  retiradaDataReal?: string;
-  devolucaoDataReal?: string;
+  /** @nullable */
+  retiradaDataReal?: string | null;
+  /** @nullable */
+  devolucaoDataReal?: string | null;
+  inicio?: string;
+  fim?: string;
   observacao?: string;
+}
+
+export type ConflitoBloqueioTipo = typeof ConflitoBloqueioTipo[keyof typeof ConflitoBloqueioTipo];
+
+
+export const ConflitoBloqueioTipo = {
+  RESERVA_CASAMENTO: 'RESERVA_CASAMENTO',
+  MANUTENCAO: 'MANUTENCAO',
+} as const;
+
+export type ConflitoBloqueioMotivo = typeof ConflitoBloqueioMotivo[keyof typeof ConflitoBloqueioMotivo];
+
+
+export const ConflitoBloqueioMotivo = {
+  USO: 'USO',
+  LAVAGEM: 'LAVAGEM',
+  PROVA: 'PROVA',
+  MANUTENCAO: 'MANUTENCAO',
+  ATRASO_DEVOLUCAO: 'ATRASO_DEVOLUCAO',
+} as const;
+
+/**
+ * Item de conflito de disponibilidade (mesmo shape nos 409 e no batch)
+ */
+export interface ConflitoBloqueio {
+  bloqueioId: string;
+  tipo: ConflitoBloqueioTipo;
+  motivo: ConflitoBloqueioMotivo;
+  /** Dia local inclusivo YYYY-MM-DD */
+  inicio: string;
+  /**
+     * Dia local inclusivo YYYY-MM-DD; null = janela aberta
+     * @nullable
+     */
+  fim: string | null;
+  /** @nullable */
+  leadId: string | null;
+  /** @nullable */
+  reservaId: string | null;
+  /** @nullable */
+  noivaNome: string | null;
+}
+
+export type DisponibilidadeVestidosItensItemStatus = typeof DisponibilidadeVestidosItensItemStatus[keyof typeof DisponibilidadeVestidosItensItemStatus];
+
+
+export const DisponibilidadeVestidosItensItemStatus = {
+  DISPONIVEL: 'DISPONIVEL',
+  RESERVADO: 'RESERVADO',
+  MANUTENCAO: 'MANUTENCAO',
+  INATIVO: 'INATIVO',
+} as const;
+
+export type DisponibilidadeVestidosItensItem = {
+  vestidoId: string;
+  disponivel: boolean;
+  status: DisponibilidadeVestidosItensItemStatus;
+  /**
+     * Frase pronta em pt-BR (datas dd/MM)
+     * @nullable
+     */
+  motivo: string | null;
+  conflito: ConflitoBloqueio | null;
+};
+
+export interface DisponibilidadeVestidos {
+  /** Dia local YYYY-MM-DD consultado */
+  data: string;
+  itens: DisponibilidadeVestidosItensItem[];
+}
+
+export interface AutorAuditoria {
+  usuarioId: string;
+  /** O nome mais recente com que este autor aparece na trilha */
+  nome: string;
+  /** Quantas linhas da trilha são dele */
+  total: number;
+}
+
+export interface ProximaJanelaVestido {
+  /**
+     * Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo
+     * @nullable
+     */
+  proximaData: string | null;
+  /** Dia local de onde a varredura partiu (hoje) */
+  aPartirDe: string;
+  horizonteDias: number;
 }
 
 export type OrcamentoStatus = typeof OrcamentoStatus[keyof typeof OrcamentoStatus];
@@ -745,7 +1392,18 @@ export interface Orcamento {
   validade?: string | null;
   /** @nullable */
   observacoes?: string | null;
+  /** @nullable */
+  publicoToken?: string | null;
+  /** @nullable */
+  publicoExpiraEm?: string | null;
+  /** @nullable */
+  publicoAbertoEm?: string | null;
+  /** @nullable */
+  aceitoEm?: string | null;
+  /** @nullable */
+  aceiteVersao?: number | null;
   createdAt: string;
+  lead?: Lead;
   itens?: OrcamentoItem[];
 }
 
@@ -760,7 +1418,6 @@ export const OrcamentoInputDescontoTipo = {
 export interface OrcamentoInput {
   leadId: string;
   atendimentoId?: string;
-  vendedoraId: string;
   descontoTipo?: OrcamentoInputDescontoTipo;
   descontoValor?: number;
   validade?: string;
@@ -811,12 +1468,145 @@ export interface OrcamentoItemInput {
   quantidade?: number;
 }
 
+export interface OrcamentoItemUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  valorUnitario?: number;
+  /** @minimum 1 */
+  quantidade?: number;
+}
+
+export interface LinkOrcamentoPublico {
+  token: string;
+  expiraEm: string;
+}
+
+export type OrcamentoPublicoItemTipo = typeof OrcamentoPublicoItemTipo[keyof typeof OrcamentoPublicoItemTipo];
+
+
+export const OrcamentoPublicoItemTipo = {
+  VESTIDO: 'VESTIDO',
+  SERVICO: 'SERVICO',
+  AJUSTE: 'AJUSTE',
+} as const;
+
+export interface OrcamentoPublicoItem {
+  tipo: OrcamentoPublicoItemTipo;
+  descricao: string;
+  valorUnitario: number;
+  quantidade: number;
+}
+
+export type OrcamentoPublicoStatus = typeof OrcamentoPublicoStatus[keyof typeof OrcamentoPublicoStatus];
+
+
+export const OrcamentoPublicoStatus = {
+  RASCUNHO: 'RASCUNHO',
+  ENVIADO: 'ENVIADO',
+  APROVADO: 'APROVADO',
+  RECUSADO: 'RECUSADO',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OrcamentoPublicoDescontoTipo = typeof OrcamentoPublicoDescontoTipo[keyof typeof OrcamentoPublicoDescontoTipo] | null;
+
+
+export const OrcamentoPublicoDescontoTipo = {
+  PERCENTUAL: 'PERCENTUAL',
+  VALOR: 'VALOR',
+} as const;
+
+export interface OrcamentoPublico {
+  lojaNome: string;
+  noivaNome: string;
+  status: OrcamentoPublicoStatus;
+  /** @nullable */
+  validade?: string | null;
+  /** @nullable */
+  observacoes?: string | null;
+  /** @nullable */
+  descontoTipo?: OrcamentoPublicoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
+  totalBruto: number;
+  totalLiquido: number;
+  /** @nullable */
+  versaoNumero?: number | null;
+  /** @nullable */
+  aceitoEm?: string | null;
+  itens: OrcamentoPublicoItem[];
+}
+
+export type PortalNoivaLookbook = {
+  vestidos: LookbookPublicoVestido[];
+} | null;
+
+export type PortalNoivaProvasItem = {
+  id: string;
+  inicio: string;
+  /** @nullable */
+  confirmadoEm?: string | null;
+};
+
+export type PortalParcelaStatus = typeof PortalParcelaStatus[keyof typeof PortalParcelaStatus];
+
+
+export const PortalParcelaStatus = {
+  PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
+  PAGA: 'PAGA',
+  CANCELADA: 'CANCELADA',
+} as const;
+
+export interface PortalParcela {
+  numero: number;
+  /** @nullable */
+  descricao: string | null;
+  valorPrevisto: number;
+  /** @nullable */
+  valorRecebido: number | null;
+  vencimento: string;
+  status: PortalParcelaStatus;
+}
+
+export interface PortalNoiva {
+  noivaNome: string;
+  lojaNome: string;
+  orcamento: OrcamentoPublico | null;
+  lookbook: PortalNoivaLookbook;
+  provas: PortalNoivaProvasItem[];
+  parcelas: PortalParcela[];
+}
+
+export interface PortalStatus {
+  token: string;
+  expiraEm: string;
+  criadoEm: string;
+  /** @nullable */
+  revogadoEm: string | null;
+  /** @nullable */
+  ultimoAcessoEm: string | null;
+}
+
 export type ContratoStatus = typeof ContratoStatus[keyof typeof ContratoStatus];
 
 
 export const ContratoStatus = {
   ATIVO: 'ATIVO',
   CANCELADO: 'CANCELADO',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ContratoDescontoTipo = typeof ContratoDescontoTipo[keyof typeof ContratoDescontoTipo] | null;
+
+
+export const ContratoDescontoTipo = {
+  PERCENTUAL: 'PERCENTUAL',
+  VALOR: 'VALOR',
 } as const;
 
 /**
@@ -840,6 +1630,7 @@ export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
 
 export const ParcelaStatus = {
   PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
   PAGA: 'PAGA',
   CANCELADA: 'CANCELADA',
 } as const;
@@ -860,6 +1651,11 @@ export const ParcelaFormaRecebimento = {
   OUTRO: 'OUTRO',
 } as const;
 
+export interface ParcelaContrato {
+  leadId: string;
+  lead?: Lead | null;
+}
+
 export interface Parcela {
   id: string;
   lojaId: string;
@@ -870,12 +1666,37 @@ export interface Parcela {
   valorPrevisto: number;
   vencimento: string;
   status: ParcelaStatus;
-  /** @nullable */
+  /**
+     * Acumulado desta parcela, somando todos os recebimentos
+     * @nullable
+     */
   valorRecebido?: number | null;
   /** @nullable */
   recebidoEm?: string | null;
   /** @nullable */
   formaRecebimento?: ParcelaFormaRecebimento;
+  contrato?: ParcelaContrato | null;
+}
+
+export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItemTipo];
+
+
+export const ContratoItemTipo = {
+  VESTIDO: 'VESTIDO',
+  SERVICO: 'SERVICO',
+  AJUSTE: 'AJUSTE',
+} as const;
+
+export interface ContratoItem {
+  id: string;
+  lojaId: string;
+  contratoId: string;
+  tipo: ContratoItemTipo;
+  /** @nullable */
+  vestidoId?: string | null;
+  descricao: string;
+  valorUnitario: number;
+  quantidade: number;
 }
 
 export interface Contrato {
@@ -886,6 +1707,7 @@ export interface Contrato {
   orcamentoId?: string | null;
   /** @nullable */
   bloqueioVestidoId?: string | null;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   status: ContratoStatus;
   /** @nullable */
@@ -894,9 +1716,15 @@ export interface Contrato {
   vestidoDescricao?: string | null;
   valorTotal: number;
   /** @nullable */
+  descontoTipo?: ContratoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
+  /** @nullable */
   formaPagamento?: ContratoFormaPagamento;
   /** @nullable */
   canceladoMotivo?: string | null;
+  /** @nullable */
+  canceladoEm?: string | null;
   /** @nullable */
   dataCasamento?: string | null;
   /** @nullable */
@@ -907,6 +1735,9 @@ export interface Contrato {
   observacoes?: string | null;
   fechadoEm: string;
   parcelas?: Parcela[];
+  itens?: ContratoItem[];
+  lead?: Lead;
+  vendedora?: Usuario;
 }
 
 export type ContratoInputFormaPagamento = typeof ContratoInputFormaPagamento[keyof typeof ContratoInputFormaPagamento];
@@ -933,6 +1764,7 @@ export interface ContratoInput {
   leadId: string;
   orcamentoId?: string;
   bloqueioVestidoId?: string;
+  bloqueioVestidoIds?: string[];
   vendedoraId: string;
   cpf?: string;
   vestidoDescricao?: string;
@@ -968,9 +1800,34 @@ export interface ContratoUpdate {
   observacoes?: string;
 }
 
+export type CancelarContratoInputDestinoPago = typeof CancelarContratoInputDestinoPago[keyof typeof CancelarContratoInputDestinoPago];
+
+
+export const CancelarContratoInputDestinoPago = {
+  manter: 'manter',
+  estornar: 'estornar',
+} as const;
+
 export interface CancelarContratoInput {
   /** @minLength 1 */
   motivo: string;
+  destinoPago?: CancelarContratoInputDestinoPago;
+}
+
+export interface GerarPlanoInput {
+  /** @minimum 0 */
+  entrada?: number;
+  /**
+     * @minimum 1
+     * @maximum 360
+     */
+  numParcelas: number;
+  primeiroVencimento: string;
+  /**
+     * @minimum 1
+     * @maximum 3650
+     */
+  periodicidadeDias?: number;
 }
 
 export type ReceberParcelaInputFormaRecebimento = typeof ReceberParcelaInputFormaRecebimento[keyof typeof ReceberParcelaInputFormaRecebimento];
@@ -1026,6 +1883,8 @@ export interface ContaPagar {
   valorPrevisto: number;
   vencimento: string;
   status: ContaPagarStatus;
+  /** @nullable */
+  recorrenciaId?: string | null;
 }
 
 export type ContaPagarInputTipo = typeof ContaPagarInputTipo[keyof typeof ContaPagarInputTipo];
@@ -1057,30 +1916,127 @@ export interface PagarContaInput {
   observacoes?: string;
 }
 
-export interface SalarioRecorrente {
+export interface PagamentoInput {
+  data: string;
+  /** @minItems 1 */
+  contaIds: string[];
+  /** @minimum 0 */
+  valorPago?: number;
+  forma?: string;
+  observacoes?: string;
+}
+
+export interface PagamentoItem {
   id: string;
   lojaId: string;
-  colaboradorId: string;
-  valorBase: number;
+  pagamentoId: string;
+  contaPagarId: string;
+  valor: number;
+  contaPagar?: ContaPagar;
+}
+
+export interface Pagamento {
+  id: string;
+  lojaId: string;
+  /** @nullable */
+  colaboradorId?: string | null;
+  data: string;
+  valorPago: number;
+  /** @nullable */
+  forma?: string | null;
+  /** @nullable */
+  observacoes?: string | null;
+  /** @nullable */
+  enviadoContabilidadeEm?: string | null;
+  colaborador?: Usuario | null;
+  itens?: PagamentoItem[];
+}
+
+export type RecorrenciaTipo = typeof RecorrenciaTipo[keyof typeof RecorrenciaTipo];
+
+
+export const RecorrenciaTipo = {
+  SALARIO: 'SALARIO',
+  DESPESA: 'DESPESA',
+  FORNECEDOR: 'FORNECEDOR',
+} as const;
+
+export interface Recorrencia {
+  id: string;
+  lojaId: string;
+  tipo: RecorrenciaTipo;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** @nullable */
+  descricao?: string | null;
+  /** @nullable */
+  categoria?: string | null;
+  /** @nullable */
+  fornecedor?: string | null;
+  valor: number;
   diaVencimento: number;
   ativo: boolean;
 }
 
-export interface SalarioRecorrenteInput {
-  colaboradorId: string;
-  valorBase: number;
+export type RecorrenciaInputTipo = typeof RecorrenciaInputTipo[keyof typeof RecorrenciaInputTipo];
+
+
+export const RecorrenciaInputTipo = {
+  SALARIO: 'SALARIO',
+  DESPESA: 'DESPESA',
+  FORNECEDOR: 'FORNECEDOR',
+} as const;
+
+export interface RecorrenciaInput {
+  tipo: RecorrenciaInputTipo;
+  /** Obrigatório para SALARIO */
+  usuarioId?: string;
+  /**
+     * Obrigatório para DESPESA/FORNECEDOR
+     * @minLength 1
+     */
+  descricao?: string;
+  categoria?: string;
+  fornecedor?: string;
+  valor: number;
   diaVencimento: number;
 }
 
-export interface SalarioRecorrenteUpdate {
-  valorBase?: number;
+export interface RecorrenciaUpdate {
+  /** @minLength 1 */
+  descricao?: string;
+  categoria?: string;
+  fornecedor?: string;
+  valor?: number;
   diaVencimento?: number;
   ativo?: boolean;
+}
+
+export interface FolhaInput {
+  /** @pattern ^\d{4}-\d{2}$ */
+  competencia: string;
+}
+
+export interface FolhaGerada {
+  geradas: number;
+  contas: ContaPagar[];
+}
+
+export interface EnviarContabilidadeInput {
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  de: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  ate: string;
+}
+
+export interface EnviarContabilidadeResultado {
+  marcados: number;
 }
 
 export interface SaldoReferencia {
   id: string;
   lojaId: string;
+  /** Instante do dia conferido (meio-dia local America/Sao_Paulo) */
   dataReferencia: string;
   valor: number;
 }
@@ -1092,13 +2048,40 @@ export interface SaldoReferenciaInput {
 
 export interface ComissaoFaixa {
   id: string;
-  regraId: string;
+  /** Borda inferior INCLUSIVA */
   minAcumulado: number;
-  /** @nullable */
+  /**
+     * Borda superior EXCLUSIVA; null = topo aberto
+     * @nullable
+     */
   maxAcumulado?: number | null;
-  /** @nullable */
+  /**
+     * 5 = 5%
+     * @nullable
+     */
   percentual?: number | null;
   /** @nullable */
+  bonusFixo?: number | null;
+}
+
+export interface ComissaoFaixaInput {
+  /** @minimum 0 */
+  minAcumulado: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  maxAcumulado?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  percentual?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
   bonusFixo?: number | null;
 }
 
@@ -1106,36 +2089,36 @@ export interface ComissaoRegra {
   id: string;
   lojaId: string;
   vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
   vigenciaInicio: string;
+  /** Ligado: os bônus dos degraus vencidos se somam */
   bonusAcumulaFaixas: boolean;
   ativo: boolean;
-  faixas?: ComissaoFaixa[];
-}
-
-export interface ComissaoFaixaInput {
-  minAcumulado: number;
-  maxAcumulado?: number;
-  percentual?: number;
-  bonusFixo?: number;
+  faixas: ComissaoFaixa[];
 }
 
 export interface ComissaoRegraInput {
   vendedoraId: string;
-  vigenciaInicio: string;
+  /** Omitido = vale a partir de hoje */
+  vigenciaInicio?: string;
   bonusAcumulaFaixas?: boolean;
+  /** @minItems 1 */
   faixas: ComissaoFaixaInput[];
 }
 
 export interface ComissaoRegraUpdate {
   ativo?: boolean;
   bonusAcumulaFaixas?: boolean;
-  faixas?: ComissaoFaixaInput[];
 }
 
-export interface ComissaoFechamento {
-  id: string;
-  lojaId: string;
-  vendedoraId: string;
+export type MinhaComissaoColocacao = {
+  posicao: number;
+  /** Quantas pessoas no ranking do mês */
+  de: number;
+} | null;
+
+export type MinhaComissaoFechamentosItem = {
   competencia: string;
   totalVendas: number;
   /** @nullable */
@@ -1143,13 +2126,177 @@ export interface ComissaoFechamento {
   valorComissao: number;
   valorBonus: number;
   valorTotal: number;
+  fechadoEm: string;
+};
+
+export interface ProjecaoComissao {
+  diasDecorridos: number;
+  diasNoMes: number;
+  /** Base líquida projetada para o mês inteiro */
+  baseProjetada: number;
+  /** @nullable */
+  percentualProjetado?: number | null;
+  /** Comissão + bônus sobre a base projetada */
+  valorTotalProjetado: number;
+}
+
+export interface MinhaComissao {
+  /** Competência YYYY-MM consultada */
+  competencia: string;
+  /** false = sem escada vigente; valores zerados */
+  temRegra: boolean;
+  /** Base líquida do mês (estorno já abatido) */
+  totalVendas: number;
+  estornoPendente: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  valorTotal: number;
+  /**
+     * Quanto falta vender para a próxima faixa; null = topo
+     * @nullable
+     */
+  faltaProximoDegrau?: number | null;
+  /** @nullable */
+  proximoDegrauPercentual?: number | null;
+  projecao?: ProjecaoComissao | null;
+  colocacao?: MinhaComissaoColocacao;
+  /** Meses já fechados da pessoa, mais recente primeiro */
+  fechamentos: MinhaComissaoFechamentosItem[];
+}
+
+export interface SimularComissaoInput {
+  vendedoraId: string;
+  /** @minItems 1 */
+  faixas: ComissaoFaixaInput[];
+  bonusAcumulaFaixas?: boolean;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  meses?: number;
+}
+
+export interface SimulacaoComissaoLinha {
+  competencia: string;
+  base: number;
+  fechada: boolean;
+  pagoReal: number;
+  /** @nullable */
+  pagoRealPercentual?: number | null;
+  simulado: number;
+  /** @nullable */
+  simuladoPercentual?: number | null;
+  diferenca: number;
+}
+
+export interface SimulacaoComissao {
+  vendedoraId: string;
+  linhas: SimulacaoComissaoLinha[];
+  totalPagoReal: number;
+  totalSimulado: number;
+  totalDiferenca: number;
+}
+
+export interface ReaberturaComissao {
+  fechamentoId: string;
+  competencia: string;
+  vendedoraId: string;
+  /** false = o fechamento não gerou conta (valor zero) */
+  contaPagarRemovida: boolean;
+  /** Contratos cujo estorno voltou a pendente */
+  estornosReabertos: number;
+}
+
+export interface PendenciaComissao {
+  /** YYYY-MM */
+  competencia: string;
+  /** Quantas ainda não têm fechamento no mês */
+  vendedoras: number;
+  /** Base que ainda não virou comissão */
+  totalVendas: number;
+}
+
+export interface ComissaoFechamento {
+  id: string;
+  lojaId: string;
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  /** Competência YYYY-MM */
+  competencia: string;
+  /** Base líquida, já com o estorno abatido */
+  totalVendas: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  /** comissão + bônus; é este que vira ContaPagar */
+  valorTotal: number;
   /** @nullable */
   contaPagarId?: string | null;
-  fechadoEm: string;
+  fechadoEm?: string;
 }
 
 export interface GerarComissaoFechamentoInput {
+  /** @pattern ^\d{4}-\d{2}$ */
   competencia: string;
+}
+
+export interface ComissaoPreviewLinha {
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  totalVendas: number;
+  /** Cancelados de meses já fechados, ainda não reconciliados */
+  estornoPendente: number;
+  /** @nullable */
+  percentualAplicado?: number | null;
+  valorComissao: number;
+  valorBonus: number;
+  valorTotal: number;
+  /** @nullable */
+  faltaProximoDegrau?: number | null;
+  projecao?: ProjecaoComissao | null;
+}
+
+export interface BaixarEstornoComissaoInput {
+  vendedoraId: string;
+  /**
+     * A competência em que o estorno aparece pendente (a mesma do preview)
+     * @pattern ^\d{4}-\d{2}$
+     */
+  competencia: string;
+  /**
+     * Justificativa da baixa — fica no registro de auditoria
+     * @nullable
+     */
+  motivo?: string | null;
+}
+
+export interface BaixaEstornoComissao {
+  contratoId: string;
+  vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
+  /** @nullable */
+  noivaNome?: string | null;
+  /** O valor do contrato cancelado cujo estorno foi baixado */
+  valor: number;
+  /** @nullable */
+  motivo?: string | null;
+  /** @nullable */
+  baixadoPorNome?: string | null;
+  baixadoEm: string;
+}
+
+export interface BaixarEstornoComissaoResultado {
+  vendedoraId: string;
+  /** Quantos contratos cancelados tiveram o estorno baixado */
+  contratosBaixados: number;
+  /** Total do estorno baixado, em reais */
+  valorBaixado: number;
 }
 
 export interface DashboardSummary {
@@ -1161,4 +2308,633 @@ export interface DashboardSummary {
   pagarProximos30Dias: number;
   atendimentosHoje?: number;
 }
+
+export type GetConsolidado200Item = {
+  lojaId: string;
+  nome: string;
+  leadsAtivos: number;
+  contratosAtivos: number;
+  /** Soma recebida na competência corrente */
+  recebidoNoMes: number;
+  /** Previsto − recebido das parcelas abertas */
+  aReceberAberto: number;
+};
+
+export type CaptarLeadParams = {
+token: string;
+};
+
+export type GetConviteInfoParams = {
+token: string;
+};
+
+export type CheckDisponibilidadeVestidosParams = {
+/**
+ * Data do casamento candidata (dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+data: string;
+};
+
+export type GetUtilizacaoVestidosParams = {
+/**
+ * Início do período (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do período (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type GetVestidoFotoParams = {
+variante?: GetVestidoFotoVariante;
+/**
+ * Versão para cache-busting (atualizadaEm em ms). Presente → cache immutable.
+ */
+v?: string;
+};
+
+export type GetVestidoFotoVariante = typeof GetVestidoFotoVariante[keyof typeof GetVestidoFotoVariante];
+
+
+export const GetVestidoFotoVariante = {
+  cheia: 'cheia',
+  thumb: 'thumb',
+} as const;
+
+export type ListLookbooksParams = {
+leadId: string;
+};
+
+export type GetLookbookPublicoParams = {
+token: string;
+};
+
+export type GetLookbookPublicoFotoParams = {
+token: string;
+vestidoId: string;
+ordem: number;
+variante?: GetLookbookPublicoFotoVariante;
+v?: string;
+};
+
+export type GetLookbookPublicoFotoVariante = typeof GetLookbookPublicoFotoVariante[keyof typeof GetLookbookPublicoFotoVariante];
+
+
+export const GetLookbookPublicoFotoVariante = {
+  cheia: 'cheia',
+  thumb: 'thumb',
+} as const;
+
+export type ListLeadsParams = {
+/**
+ * Busca em nome da noiva/noivo e WhatsApp (dígitos com ou sem máscara)
+ * @maxLength 200
+ */
+q?: string;
+etapa?: ListLeadsEtapa;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListLeadsOrdem;
+};
+
+export type ListLeadsEtapa = typeof ListLeadsEtapa[keyof typeof ListLeadsEtapa];
+
+
+export const ListLeadsEtapa = {
+  NOVO: 'NOVO',
+  INTERESSES_PREENCHIDOS: 'INTERESSES_PREENCHIDOS',
+  ATENDIMENTO_AGENDADO: 'ATENDIMENTO_AGENDADO',
+  EM_ATENDIMENTO: 'EM_ATENDIMENTO',
+  ORCAMENTO_ABERTO: 'ORCAMENTO_ABERTO',
+  CONTRATO_FECHADO: 'CONTRATO_FECHADO',
+  EM_PROVAS: 'EM_PROVAS',
+  RETIRADO: 'RETIRADO',
+  CASAMENTO_REALIZADO: 'CASAMENTO_REALIZADO',
+  DEVOLVIDO: 'DEVOLVIDO',
+  PERDIDO: 'PERDIDO',
+} as const;
+
+export type ListLeadsOrdem = typeof ListLeadsOrdem[keyof typeof ListLeadsOrdem];
+
+
+export const ListLeadsOrdem = {
+  antigos: 'antigos',
+  recentes: 'recentes',
+} as const;
+
+export type GetSazonalidadeCasamentos200Item = {
+  /** YYYY-MM */
+  competencia: string;
+  /** Leads não perdidos com casamento no mês */
+  total: number;
+  /** Destes, quantos já fecharam contrato */
+  comContrato: number;
+};
+
+export type GetLeadsParados200ItensItemTemperatura = typeof GetLeadsParados200ItensItemTemperatura[keyof typeof GetLeadsParados200ItensItemTemperatura];
+
+
+export const GetLeadsParados200ItensItemTemperatura = {
+  atencao: 'atencao',
+  critico: 'critico',
+} as const;
+
+export type GetLeadsParados200ItensItem = {
+  id: string;
+  noivaNome: string;
+  etapa: string;
+  dias: number;
+  temperatura: GetLeadsParados200ItensItemTemperatura;
+  /** @nullable */
+  casamentoData?: string | null;
+};
+
+export type GetLeadsParados200 = {
+  criticos: number;
+  atencao: number;
+  /** As piores primeiro, no máximo 10 */
+  itens: GetLeadsParados200ItensItem[];
+};
+
+export type ExpurgarLeadsPerdidosBody = {
+  /** @minimum 6 */
+  mesesInatividade?: number;
+};
+
+export type ExpurgarLeadsPerdidos200 = {
+  anonimizadas: number;
+};
+
+export type GetDesempenhoVendedoras200Item = {
+  vendedoraId: string;
+  nome: string;
+  atendimentosConcluidos: number;
+  /** Desfecho RESERVOU */
+  reservou: number;
+  /** Contratos ATIVOS fechados por ela */
+  contratos: number;
+  /** Soma do valorTotal dos contratos ativos */
+  receita: number;
+};
+
+export type ExportarDadosLead200 = { [key: string]: unknown };
+
+export type ListAtendimentosParams = {
+/**
+ * Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva
+ */
+bloqueioId?: string;
+/**
+ * Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira
+ */
+tipo?: ListAtendimentosTipo;
+/**
+ * Início da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim da janela sobre `inicio` (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ListAtendimentosTipo = typeof ListAtendimentosTipo[keyof typeof ListAtendimentosTipo];
+
+
+export const ListAtendimentosTipo = {
+  ATENDIMENTO: 'ATENDIMENTO',
+  PROVA: 'PROVA',
+} as const;
+
+export type ListBloqueiosParams = {
+/**
+ * Filtra os bloqueios de um vestido só (E45)
+ */
+vestidoId?: string;
+/**
+ * Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira
+ */
+leadId?: string;
+/**
+ * Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte.
+ */
+futuras?: ListBloqueiosFuturas;
+};
+
+export type ListBloqueiosFuturas = typeof ListBloqueiosFuturas[keyof typeof ListBloqueiosFuturas];
+
+
+export const ListBloqueiosFuturas = {
+  true: 'true',
+  false: 'false',
+} as const;
+
+export type ListOrcamentosParams = {
+leadId?: string;
+/**
+ * Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história
+ */
+status?: ListOrcamentosStatus;
+};
+
+export type ListOrcamentosStatus = typeof ListOrcamentosStatus[keyof typeof ListOrcamentosStatus];
+
+
+export const ListOrcamentosStatus = {
+  RASCUNHO: 'RASCUNHO',
+  ENVIADO: 'ENVIADO',
+  APROVADO: 'APROVADO',
+  RECUSADO: 'RECUSADO',
+} as const;
+
+export type GetOrcamentoPublicoParams = {
+token: string;
+};
+
+export type AceitarOrcamentoPublicoParams = {
+token: string;
+};
+
+export type AceitarOrcamentoPublico200 = {
+  aceitoEm: string;
+};
+
+export type GetPortalParams = {
+token: string;
+};
+
+export type AceitarPortalParams = {
+token: string;
+};
+
+export type AceitarPortal200 = {
+  aceitoEm: string;
+};
+
+export type ConfirmarProvaPortalParams = {
+token: string;
+};
+
+export type ConfirmarProvaPortal200 = {
+  confirmadoEm: string;
+};
+
+export type GetPortalFotoParams = {
+token: string;
+vestidoId: string;
+ordem: number;
+variante?: GetPortalFotoVariante;
+/**
+ * Cache-buster (updatedAt) — com ele a resposta é immutable
+ */
+v?: string;
+};
+
+export type GetPortalFotoVariante = typeof GetPortalFotoVariante[keyof typeof GetPortalFotoVariante];
+
+
+export const GetPortalFotoVariante = {
+  original: 'original',
+  thumb: 'thumb',
+} as const;
+
+export type ListPortais200Item = {
+  leadId: string;
+  token: string;
+  expiraEm: string;
+  /** @nullable */
+  revogadoEm: string | null;
+  /** @nullable */
+  ultimoAcessoEm: string | null;
+};
+
+export type ListContratosParams = {
+leadId?: string;
+};
+
+export type ListParcelasParams = {
+/**
+ * Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+/**
+ * abertas = só o que ainda tem saldo a receber (PREVISTA/PARCIAL, E49)
+ */
+status?: ListParcelasStatus;
+/**
+ * Só parcelas com recebimento a partir deste dia (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+recebidasDe?: string;
+};
+
+export type ListParcelasStatus = typeof ListParcelasStatus[keyof typeof ListParcelasStatus];
+
+
+export const ListParcelasStatus = {
+  abertas: 'abertas',
+} as const;
+
+export type CreateParcelaAvulsaBody = {
+  /** @minLength 1 */
+  descricao: string;
+  /** @exclusiveMinimum 0 */
+  valorPrevisto: number;
+  vencimento: string;
+};
+
+export type GetFluxoCaixaParams = {
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ini?: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+fim?: string;
+};
+
+export type GetFluxoCaixa200Intervalo = {
+  iniYMD: string;
+  fimYMD: string;
+};
+
+export type GetFluxoCaixa200Resumo = {
+  entradas: number;
+  saidas: number;
+  saldo: number;
+};
+
+export type GetFluxoCaixa200PorMeioLinhasItem = {
+  /** @nullable */
+  forma: string | null;
+  total: number;
+  qtd: number;
+};
+
+export type GetFluxoCaixa200PorMeio = {
+  total: number;
+  linhas: GetFluxoCaixa200PorMeioLinhasItem[];
+};
+
+export type GetFluxoCaixa200TendenciaItem = {
+  competencia: string;
+  entradas: number;
+  saidas: number;
+  saldo: number;
+};
+
+export type GetFluxoCaixa200Horizonte = {
+  aReceber: number;
+  aReceberAtraso: number;
+  aPagar: number;
+  aPagarAtraso: number;
+};
+
+export type GetFluxoCaixa200MovimentosItemTipo = typeof GetFluxoCaixa200MovimentosItemTipo[keyof typeof GetFluxoCaixa200MovimentosItemTipo];
+
+
+export const GetFluxoCaixa200MovimentosItemTipo = {
+  ENTRADA: 'ENTRADA',
+  SAIDA: 'SAIDA',
+} as const;
+
+export type GetFluxoCaixa200MovimentosItem = {
+  id: string;
+  tipo: GetFluxoCaixa200MovimentosItemTipo;
+  data: string;
+  valor: number;
+  /** @nullable */
+  rotulo?: string | null;
+  descricao: string;
+  /** @nullable */
+  contratoId?: string | null;
+};
+
+export type GetFluxoCaixa200 = {
+  intervalo: GetFluxoCaixa200Intervalo;
+  resumo: GetFluxoCaixa200Resumo;
+  porMeio: GetFluxoCaixa200PorMeio;
+  tendencia: GetFluxoCaixa200TendenciaItem[];
+  horizonte: GetFluxoCaixa200Horizonte;
+  /** Linha do tempo do período, mais recente primeiro */
+  movimentos: GetFluxoCaixa200MovimentosItem[];
+};
+
+export type GetDreParams = {
+/**
+ * Competência YYYY-MM; ausente cai no mês corrente
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia?: string;
+};
+
+export type GetDre200Intervalo = {
+  iniYMD: string;
+  fimYMD: string;
+};
+
+export type GetDre200DespesasItem = {
+  rotulo: string;
+  total: number;
+};
+
+export type GetDre200PorMeioLinhasItem = {
+  /** @nullable */
+  forma: string | null;
+  total: number;
+  qtd: number;
+};
+
+export type GetDre200PorMeio = {
+  total: number;
+  linhas: GetDre200PorMeioLinhasItem[];
+};
+
+export type GetDre200 = {
+  competencia: string;
+  intervalo: GetDre200Intervalo;
+  receitas: number;
+  /** Maior total primeiro */
+  despesas: GetDre200DespesasItem[];
+  totalDespesas: number;
+  /** receitas − totalDespesas; pode ser negativo */
+  resultado: number;
+  porMeio: GetDre200PorMeio;
+};
+
+export type ExportarContasPagarParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ExportarParcelasParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ListPagamentosParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+colaboradorId?: string;
+};
+
+export type ListAuditoriaParams = {
+/**
+ * Uma das ações da união fechada (ACOES_AUDITORIA)
+ */
+acao?: ListAuditoriaAcao;
+/**
+ * Autor da ação (id; o nome na linha é desnormalizado)
+ */
+usuarioId?: string;
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ListAuditoriaAcao = typeof ListAuditoriaAcao[keyof typeof ListAuditoriaAcao];
+
+
+export const ListAuditoriaAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
+  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
+  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
+  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
+  CONVITE_CRIADO: 'CONVITE_CRIADO',
+  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
+  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
+  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
+  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
+  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
+} as const;
+
+export type ExportarAuditoriaParams = {
+acao?: ExportarAuditoriaAcao;
+usuarioId?: string;
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type ExportarAuditoriaAcao = typeof ExportarAuditoriaAcao[keyof typeof ExportarAuditoriaAcao];
+
+
+export const ExportarAuditoriaAcao = {
+  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
+  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
+  CONTA_PAGA: 'CONTA_PAGA',
+  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
+  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
+  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
+  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
+  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
+  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
+  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
+  CONVITE_CRIADO: 'CONVITE_CRIADO',
+  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
+  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
+  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
+  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
+  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
+  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
+} as const;
+
+export type ExportarFolhaParams = {
+/**
+ * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
+export type GetMinhaComissaoParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia: string;
+};
+
+export type PreviewComissaoParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia: string;
+};
+
+export type ListComissaoFechamentosParams = {
+/**
+ * @pattern ^\d{4}-\d{2}$
+ */
+competencia?: string;
+};
 

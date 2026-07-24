@@ -1,21 +1,25 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
+import { Compass } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
+    <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md text-center space-y-6">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent">
+          <Compass className="h-8 w-8 text-primary" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-serif">Não encontramos esta página</h1>
+          <p className="text-muted-foreground">
+            O endereço pode ter mudado de lugar, ou o link não existe mais. Vamos
+            te levar de volta.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        <Button asChild>
+          <Link to="/">Voltar ao início</Link>
+        </Button>
+      </div>
     </div>
   );
 }

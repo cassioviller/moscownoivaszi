@@ -24,4 +24,6 @@ export interface ContaPagar {
   valorPrevisto: number;
   vencimento: Date;
   status: ContaPagarStatus;
+  /** @nullable */
+  recorrenciaId?: string | null;
 }

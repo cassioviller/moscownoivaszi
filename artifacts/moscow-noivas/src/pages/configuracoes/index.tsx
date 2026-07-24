@@ -1,21 +1,55 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useListAtributos, useListCabines, useGetDisponibilidade, useListLojas, useListUsuarios, getListAtributosQueryKey, getListCabinesQueryKey, getGetDisponibilidadeQueryKey, getListLojasQueryKey, getListUsuariosQueryKey } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Settings2, Users } from "lucide-react";
+import { tipoAtributoLabel } from "@/lib/formatos";
+import { EstadoErro } from "@/components/estado-erro";
+import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
+import { CaptacaoExterna } from "./captacao";
+import { PrivacidadeLgpd } from "./privacidade";
+import { BackupSistema } from "./backup";
+import { TourAcessoDialog } from "@/components/tour-acesso";
+import { Button } from "@/components/ui/button";
 
 export default function Configuracoes() {
-  const { activeLojaId, user } = useAuth();
+  const { activeLojaId, user, acessosModulos } = useAuth();
+  // O endpoint do token é gateado por admin no backend — mesma régua aqui.
+  const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
+  // Tour do acesso (E24): reabrível a qualquer momento.
+  const [tourAberto, setTourAberto] = useState(false);
   
   // Loja specific queries
-  const { data: atributos } = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const { data: cabines } = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const { data: disponibilidade } = useGetDisponibilidade(activeLojaId!, { query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const atributosQ = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const cabinesQ = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const disponibilidadeQ = useGetDisponibilidade(activeLojaId!, { query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const { data: atributos } = atributosQ;
+  const { data: cabines } = cabinesQ;
+  const { data: disponibilidade } = disponibilidadeQ;
 
   // Admin/Superadmin queries
-  const { data: lojas } = useListLojas({ query: { queryKey: getListLojasQueryKey(), enabled: !!user?.isSuperAdmin } });
-  const { data: usuarios } = useListUsuarios({ query: { queryKey: getListUsuariosQueryKey(), enabled: !!user?.isSuperAdmin } });
+  const lojasQ = useListLojas({ query: { queryKey: getListLojasQueryKey(), enabled: !!user?.isSuperAdmin } });
+  const usuariosQ = useListUsuarios({ query: { queryKey: getListUsuariosQueryKey(), enabled: !!user?.isSuperAdmin } });
+  const { data: lojas } = lojasQ;
+  const { data: usuarios } = usuariosQ;
+
+  // Erro por aba: qualquer query da aba que falha deixa a tela em branco, então
+  // uma saída única no topo com "Tentar novamente" para todas as da aba.
+  const erroLoja = atributosQ.isError || cabinesQ.isError || disponibilidadeQ.isError;
+  const errLoja = atributosQ.error ?? cabinesQ.error ?? disponibilidadeQ.error;
+  const recarregarLoja = () => {
+    atributosQ.refetch();
+    cabinesQ.refetch();
+    disponibilidadeQ.refetch();
+  };
+  const erroAdmin = lojasQ.isError || usuariosQ.isError;
+  const errAdmin = lojasQ.error ?? usuariosQ.error;
+  const recarregarAdmin = () => {
+    lojasQ.refetch();
+    usuariosQ.refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -30,7 +64,33 @@ export default function Configuracoes() {
         </TabsList>
 
         <TabsContent value="loja" className="space-y-6">
+          {erroLoja && (
+            <EstadoErro
+              titulo="Erro ao carregar as configurações da loja"
+              erro={errLoja}
+              onTentarNovamente={recarregarLoja}
+            />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Seu acesso (E24): o resumo do perfil + tour reabrível. */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Seu acesso</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {user?.isSuperAdmin
+                    ? "Superadmin — acesso total."
+                    : `Seu perfil libera: ${resumoAcessos(acessosModulos)}.`}{" "}
+                  Precisa de algo a mais? Peça ao admin da loja.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setTourAberto(true)}>
+                  Rever o tour
+                </Button>
+                <TourAcessoDialog open={tourAberto} onOpenChange={setTourAberto} />
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Atributos de Vestido</CardTitle>
@@ -44,7 +104,7 @@ export default function Configuracoes() {
                       <li key={attr.id} className="flex justify-between items-center border-b pb-2">
                         <div>
                           <span className="font-medium">{attr.nome}</span>
-                          <span className="text-xs text-muted-foreground ml-2">({attr.tipo})</span>
+                          <span className="text-xs text-muted-foreground ml-2">({tipoAtributoLabel(attr.tipo)})</span>
                         </div>
                         <Badge variant={attr.ativo ? "default" : "secondary"}>{attr.ativo ? 'Ativo' : 'Inativo'}</Badge>
                       </li>
@@ -105,11 +165,24 @@ export default function Configuracoes() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Captação externa (E19) — só para quem gere a loja. */}
+            {podeCaptacao && <CaptacaoExterna />}
+
+            {/* Privacidade (E77) — anonimização das perdidas antigas. */}
+            {podeCaptacao && <PrivacidadeLgpd />}
           </div>
         </TabsContent>
 
         {user?.isSuperAdmin && (
           <TabsContent value="admin" className="space-y-6">
+            {erroAdmin && (
+              <EstadoErro
+                titulo="Erro ao carregar a administração"
+                erro={errAdmin}
+                onTentarNovamente={recarregarAdmin}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -155,6 +228,9 @@ export default function Configuracoes() {
                   </ul>
                 </CardContent>
               </Card>
+
+              {/* Status de backup do sistema (E30) — o dump é do banco inteiro. */}
+              <BackupSistema />
             </div>
           </TabsContent>
         )}

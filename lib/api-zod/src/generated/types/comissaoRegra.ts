@@ -11,8 +11,11 @@ export interface ComissaoRegra {
   id: string;
   lojaId: string;
   vendedoraId: string;
+  /** @nullable */
+  vendedoraNome?: string | null;
   vigenciaInicio: Date;
+  /** Ligado: os bônus dos degraus vencidos se somam */
   bonusAcumulaFaixas: boolean;
   ativo: boolean;
-  faixas?: ComissaoFaixa[];
+  faixas: ComissaoFaixa[];
 }

@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db, orcamentosTable, orcamentoItensTable, leadsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { 
+import {
   ListOrcamentosResponse,
+  ListOrcamentosQueryParams,
   CreateOrcamentoBody,
   CreateOrcamentoResponse,
   GetOrcamentoResponse,
@@ -11,19 +12,109 @@ import {
   DeleteOrcamentoResponse,
   AddOrcamentoItemBody,
   AddOrcamentoItemResponse,
-  RemoveOrcamentoItemResponse
+  UpdateOrcamentoItemBody,
+  UpdateOrcamentoItemResponse,
+  RemoveOrcamentoItemResponse,
+  CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
-import { randomUUID } from "node:crypto";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { randomUUID, createHash } from "node:crypto";
+import { orcamentoVersoesTable } from "@workspace/db";
+import { sql } from "drizzle-orm";
+import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
+import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
+import { round2 } from "../lib/dinheiro";
 
 const router: IRouter = Router();
 
+/** Avança o lead para ORCAMENTO_ABERTO (só se for à frente no funil). */
+async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<void> {
+  const lead = await db.query.leadsTable.findFirst({
+    where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
+  });
+  if (!lead) return;
+  const nova = avancarEtapaLead(lead.etapa, "ORCAMENTO_ABERTO");
+  if (nova === lead.etapa) return;
+  await db.update(leadsTable)
+    .set({ etapa: nova, orcamentoAbertoEm: lead.orcamentoAbertoEm ?? new Date(), updatedAt: new Date() })
+    .where(eq(leadsTable.id, lead.id));
+}
+
+/**
+ * E75: marcar ENVIADO congela uma versão — itens, desconto e totais, com hash
+ * sha256 do conteúdo canônico. É a esta versão que o link público e o aceite
+ * da noiva (E74) apontam; a edição posterior não muda o que ela viu.
+ */
+async function criarVersaoEnviada(lojaId: string, orcamentoId: string): Promise<void> {
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+    with: { itens: true },
+  });
+  if (!orcamento) return;
+
+  const itens = orcamento.itens
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .map((it) => ({
+      tipo: it.tipo,
+      descricao: it.descricao,
+      valorUnitario: it.valorUnitario,
+      quantidade: it.quantidade,
+    }));
+  const totalBruto = round2(itens.reduce((acc, it) => acc + it.quantidade * it.valorUnitario, 0));
+  let totalLiquido = totalBruto;
+  if (orcamento.descontoTipo === "PERCENTUAL" && orcamento.descontoValor) {
+    totalLiquido = round2(totalBruto * (1 - orcamento.descontoValor / 100));
+  } else if (orcamento.descontoTipo === "VALOR" && orcamento.descontoValor) {
+    totalLiquido = round2(totalBruto - orcamento.descontoValor);
+  }
+  totalLiquido = Math.max(0, totalLiquido);
+
+  const conteudo = {
+    itens,
+    descontoTipo: orcamento.descontoTipo,
+    descontoValor: orcamento.descontoValor,
+    totalBruto,
+    totalLiquido,
+  };
+  const hash = createHash("sha256").update(JSON.stringify(conteudo)).digest("hex");
+
+  const [{ maior }] = await db
+    .select({ maior: sql<number>`coalesce(max(${orcamentoVersoesTable.numero}), 0)`.mapWith(Number) })
+    .from(orcamentoVersoesTable)
+    .where(eq(orcamentoVersoesTable.orcamentoId, orcamentoId));
+
+  await db.insert(orcamentoVersoesTable).values({
+    id: randomUUID(),
+    lojaId,
+    orcamentoId,
+    numero: maior + 1,
+    itens,
+    descontoTipo: orcamento.descontoTipo,
+    descontoValor: orcamento.descontoValor,
+    totalBruto,
+    totalLiquido,
+    hash,
+  });
+}
+
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/orcamentos", requireModulo("leads"));
 
 router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  const query = ListOrcamentosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  // E62: o perfil da noiva pede `?leadId=`; E83: mensagens pede `?status=` —
+  // os recortes acontecem no banco.
   const orcamentos = await db.query.orcamentosTable.findMany({
-    where: eq(orcamentosTable.lojaId, lojaId),
+    where: and(
+      eq(orcamentosTable.lojaId, lojaId),
+      ...(query.data.leadId ? [eq(orcamentosTable.leadId, query.data.leadId)] : []),
+      ...(query.data.status ? [eq(orcamentosTable.status, query.data.status)] : []),
+    ),
     with: {
       lead: true,
       vendedora: true,
@@ -42,17 +133,18 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
   
-  const insertData = { ...parsed.data };
-  // @ts-ignore
-  if (insertData.validade) insertData.validade = new Date(insertData.validade);
-
+  // Quem abriu vem da SESSÃO, nunca do corpo: aceitar um `vendedoraId` do
+  // cliente deixava atribuir o orçamento (e a comissão que nasce dele) a
+  // outra pessoa — mesma regra do vendedorId da cobrança.
   const [orcamento] = await db.insert(orcamentosTable).values({
     id: randomUUID(),
     lojaId,
-    // @ts-ignore
+    ...parsed.data,
     vendedoraId: req.usuario!.id,
-    ...insertData,
-  } as any).returning();
+  }).returning();
+
+  // Abrir um orçamento avança o funil do lead (evento de negócio).
+  await marcarOrcamentoAberto(lojaId, orcamento.leadId);
 
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
     where: eq(orcamentosTable.id, orcamento.id),
@@ -86,17 +178,40 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     return;
   }
   
-  const updateData = { ...parsed.data, updatedAt: new Date() };
-  // @ts-ignore
-  if (updateData.validade) updateData.validade = new Date(updateData.validade);
+  const existente = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)),
+  });
+  if (!existente) {
+    res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
 
+  // Mudança de status via PATCH também passa pela máquina de estados.
+  if (parsed.data.status && !transicaoOrcamentoValida(existente.status, parsed.data.status)) {
+    res.status(422).json({
+      error: "TRANSICAO_INVALIDA",
+      detalhe: `Orçamento não pode ir de ${existente.status} para ${parsed.data.status}`,
+    });
+    return;
+  }
+
+  const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
+  const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
   const [orcamento] = await db.update(orcamentosTable)
-    .set(updateData as any)
+    .set({
+      ...parsed.data,
+      ...(virandoAprovado ? { aprovadoEm: new Date() } : {}),
+      updatedAt: new Date(),
+    })
     .where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)))
     .returning();
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
     return;
+  }
+  // E75: cada envio congela uma versão — é a ela que o link e o aceite apontam.
+  if (virandoEnviado) {
+    await criarVersaoEnviada(lojaId as string, orcamentoId as string);
   }
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
     where: eq(orcamentosTable.id, orcamento.id),
@@ -111,15 +226,16 @@ router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promis
   res.status(204).send();
 });
 
-router.post("/orcamentos/:orcamentoId/itens", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const parsed = AddOrcamentoItemBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  
-  const orcamento = await db.query.orcamentosTable.findFirst({ where: eq(orcamentosTable.id, orcamentoId) });
+
+  const orcamento = await db.query.orcamentosTable.findFirst({ where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)) });
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
     return;
@@ -130,47 +246,122 @@ router.post("/orcamentos/:orcamentoId/itens", async (req, res): Promise<void> =>
     lojaId: orcamento.lojaId,
     orcamentoId,
     ...parsed.data,
-  } as any).returning();
+  }).returning();
 
   res.status(201).json(AddOrcamentoItemResponse.parse(item));
 });
 
-router.delete("/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
+router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const itemId = req.params.itemId as string;
-  await db.delete(orcamentoItensTable).where(eq(orcamentoItensTable.id, itemId));
+  const parsed = UpdateOrcamentoItemBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [item] = await db.update(orcamentoItensTable)
+    .set(parsed.data)
+    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
+    .returning();
+  if (!item) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+
+  res.json(UpdateOrcamentoItemResponse.parse(item));
+});
+
+router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const itemId = req.params.itemId as string;
+  await db.delete(orcamentoItensTable).where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   res.status(204).send();
 });
 
-router.post("/orcamentos/:orcamentoId/aprovar", async (req, res): Promise<void> => {
+/**
+ * Link público (E13): gera/regenera o token de leitura da noiva. Token novo
+ * mata o anterior (coluna única, mesmo modelo do reenvio de convite E6) e a
+ * validade recomeça. Gerar link de um RASCUNHO marca ENVIADO — compartilhar
+ * É enviar; RECUSADO não gera (não há o que a noiva rever de um não).
+ */
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
-  const [orcamento] = await db.update(orcamentosTable)
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+  });
+  if (!orcamento) {
+    res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  if (orcamento.status === "RECUSADO") {
+    res.status(422).json({ error: "ORCAMENTO_RECUSADO", detalhe: "Orçamento recusado não gera link" });
+    return;
+  }
+
+  const token = gerarTokenConvite();
+  const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
+  await db.update(orcamentosTable)
+    .set({
+      publicoToken: token,
+      publicoExpiraEm: expiraEm,
+      ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(orcamentosTable.id, orcamento.id));
+
+  // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
+  if (orcamento.status === "RASCUNHO") {
+    await criarVersaoEnviada(lojaId, orcamentoId);
+  }
+
+  res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
+});
+
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const orcamentoId = req.params.orcamentoId as string;
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+  });
+  if (!orcamento) {
+    res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  if (orcamento.status === "APROVADO" || orcamento.status === "RECUSADO") {
+    res.status(422).json({ error: "TRANSICAO_INVALIDA", detalhe: `Orçamento já está ${orcamento.status}` });
+    return;
+  }
+
+  // Aprovar NÃO mexe na etapa do lead — o funil só avança para
+  // CONTRATO_FECHADO quando um contrato é efetivamente fechado.
+  await db.update(orcamentosTable)
     .set({ status: "APROVADO", aprovadoEm: new Date(), updatedAt: new Date() })
-    .where(eq(orcamentosTable.id, orcamentoId))
-    .returning();
-  
-  if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
-    return;
-  }
-
-  await db.update(leadsTable)
-    .set({ etapa: "ORCAMENTO_ABERTO", orcamentoAbertoEm: new Date(), updatedAt: new Date() })
-    .where(eq(leadsTable.id, orcamento.leadId));
+    .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
 
   res.status(204).send();
 });
 
-router.post("/orcamentos/:orcamentoId/recusar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
-  const [orcamento] = await db.update(orcamentosTable)
-    .set({ status: "RECUSADO", updatedAt: new Date() })
-    .where(eq(orcamentosTable.id, orcamentoId))
-    .returning();
-  
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+  });
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
     return;
   }
+  if (orcamento.status === "APROVADO" || orcamento.status === "RECUSADO") {
+    res.status(422).json({ error: "TRANSICAO_INVALIDA", detalhe: `Orçamento já está ${orcamento.status}` });
+    return;
+  }
+
+  await db.update(orcamentosTable)
+    .set({ status: "RECUSADO", updatedAt: new Date() })
+    .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
+
   res.status(204).send();
 });
 

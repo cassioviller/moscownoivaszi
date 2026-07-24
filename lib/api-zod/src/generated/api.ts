@@ -31,9 +31,11 @@ export const LoginResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),
   "lojaAtivaId": zod.string().nullish(),
+  "acessosModulos": zod.record(zod.string(), zod.unknown()).nullish(),
   "lojas": zod.array(zod.object({
   "id": zod.string(),
   "nome": zod.string(),
@@ -58,9 +60,11 @@ export const GetMeResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),
   "lojaAtivaId": zod.string().nullish(),
+  "acessosModulos": zod.record(zod.string(), zod.unknown()).nullish(),
   "lojas": zod.array(zod.object({
   "id": zod.string(),
   "nome": zod.string(),
@@ -76,6 +80,23 @@ export const GetMeResponse = zod.object({
 })
 
 
+/**
+ * Exige a senha ATUAL: uma sessão sequestrada não pode virar troca de senha. Ao trocar, TODAS as sessões da pessoa caem — inclusive a de quem soubesse a senha antiga — e a de quem trocou é reemitida, para ela não ser deslogada por se proteger. Limpa `precisaTrocarSenha`.
+ * @summary A própria pessoa troca a própria senha (E57)
+ */
+
+export const trocarSenhaBodyNovaSenhaMin = 6;
+
+
+
+export const TrocarSenhaBody = zod.object({
+  "senhaAtual": zod.string().min(1),
+  "novaSenha": zod.string().min(trocarSenhaBodyNovaSenhaMin)
+})
+
+export const TrocarSenhaResponse = zod.void()
+
+
 export const SelecionarLojaBody = zod.object({
   "lojaId": zod.string()
 })
@@ -86,9 +107,11 @@ export const SelecionarLojaResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 }),
   "lojaAtivaId": zod.string().nullish(),
+  "acessosModulos": zod.record(zod.string(), zod.unknown()).nullish(),
   "lojas": zod.array(zod.object({
   "id": zod.string(),
   "nome": zod.string(),
@@ -173,7 +196,12 @@ export const DeleteLojaResponse = zod.void()
 export const ListPerfisResponseItem = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.'),
+  "sistema": zod.boolean()
 })
 export const ListPerfisResponse = zod.array(ListPerfisResponseItem)
 
@@ -183,13 +211,22 @@ export const ListPerfisResponse = zod.array(ListPerfisResponseItem)
 
 export const CreatePerfilBody = zod.object({
   "nome": zod.string().min(1),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 export const CreatePerfilResponse = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.'),
+  "sistema": zod.boolean()
 })
 
 
@@ -202,13 +239,22 @@ export const UpdatePerfilParams = zod.object({
 
 export const UpdatePerfilBody = zod.object({
   "nome": zod.string().min(1).optional(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean()).optional()
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).optional().describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 export const UpdatePerfilResponse = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.'),
+  "sistema": zod.boolean()
 })
 
 
@@ -224,8 +270,14 @@ export const ListUsuariosResponseItem = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
-})
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).and(zod.object({
+  "lojas": zod.array(zod.object({
+  "id": zod.string(),
+  "nome": zod.string()
+})).describe('Lojas onde o usuário tem vínculo (via usuarios_lojas)')
+}))
 export const ListUsuariosResponse = zod.array(ListUsuariosResponseItem)
 
 
@@ -246,7 +298,8 @@ export const CreateUsuarioResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 })
 
 
@@ -272,7 +325,8 @@ export const UpdateUsuarioResponse = zod.object({
   "nome": zod.string(),
   "email": zod.string().email(),
   "ativo": zod.boolean(),
-  "isSuperAdmin": zod.boolean()
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
 })
 
 
@@ -290,7 +344,11 @@ export const ListPerfilOverridesParams = zod.object({
 export const ListPerfilOverridesResponseItem = zod.object({
   "lojaId": zod.string(),
   "perfilId": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 export const ListPerfilOverridesResponse = zod.array(ListPerfilOverridesResponseItem)
 
@@ -301,14 +359,116 @@ export const SetPerfilOverrideParams = zod.object({
 
 export const SetPerfilOverrideBody = zod.object({
   "perfilId": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
 
 export const SetPerfilOverrideResponse = zod.object({
   "lojaId": zod.string(),
   "perfilId": zod.string(),
-  "acessosModulos": zod.record(zod.string(), zod.boolean())
+  "acessosModulos": zod.record(zod.string(), zod.object({
+  "ver": zod.boolean(),
+  "criar": zod.boolean(),
+  "editar": zod.boolean()
+})).describe('Módulo → ações. Chave desconhecida é descartada pelo servidor.')
 })
+
+
+/**
+ * E60: uma vez personalizado, o perfil ficava preso ao override — não havia caminho de volta. Remover o override devolve o perfil ao template global e, como qualquer mudança de permissão (E56), derruba as sessões vivas de quem tem esse perfil na loja e deixa rastro na auditoria.
+ * @summary Restaura o perfil ao modelo global — remove o override da loja
+ */
+export const DeletePerfilOverrideParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "perfilId": zod.coerce.string()
+})
+
+export const DeletePerfilOverrideResponse = zod.void()
+
+
+/**
+ * E76: a dona de rede navegava loja a loja. Uma linha por loja ativa com o essencial — funil, contratos, o recebido do mês corrente e o que há em aberto para receber. Vive no gate superadmin: é a visão de quem enxerga o banco inteiro.
+ * @summary A rede numa tela — os números de cada loja lado a lado
+ */
+export const GetConsolidadoResponseItem = zod.object({
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "leadsAtivos": zod.number(),
+  "contratosAtivos": zod.number(),
+  "recebidoNoMes": zod.number().describe('Soma recebida na competência corrente'),
+  "aReceberAberto": zod.number().describe('Previsto − recebido das parcelas abertas')
+})
+export const GetConsolidadoResponse = zod.array(GetConsolidadoResponseItem)
+
+
+/**
+ * A visão do SRE (E30): o backup é o dump do banco INTEIRO, um evento de infraestrutura sem dono de loja — por isso vive no gate superadmin. A tela lê daqui o "último backup: há X horas" e a lista das últimas execuções (ok, erro ou em andamento).
+ * @summary Status do backup do sistema — quando foi o último e o histórico recente
+ */
+export const GetBackupStatusResponse = zod.object({
+  "ultimo": zod.union([zod.object({
+  "id": zod.string(),
+  "gatilho": zod.enum(['manual', 'agendado']),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
+  "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
+  "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
+  "erro": zod.string().nullish()
+}),zod.null()]),
+  "recentes": zod.array(zod.object({
+  "id": zod.string(),
+  "gatilho": zod.enum(['manual', 'agendado']),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
+  "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
+  "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
+  "erro": zod.string().nullish()
+})),
+  "ultimoDrill": zod.union([zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "dumpArquivo": zod.string().nullish().describe('Arquivo do dump restaurado no drill'),
+  "tabelasConferidas": zod.number().nullish().describe('Quantas tabelas tiveram a contagem conferida'),
+  "erro": zod.string().nullish()
+}).describe('Uma execução do drill de restore (E89): o dump mais recente restaurado num banco efêmero e conferido contra a origem — contagem por tabela, FKs válidas e amostra de agregado. \"ok\" só quando TUDO conferiu.'),zod.null()]).describe('Último drill de restore (E89) — a prova de que o backup VOLTA: null enquanto nenhum drill rodou')
+})
+
+
+/**
+ * Roda o pg_dump na hora e devolve a linha registrada. Mesmo motor da rotina agendada; muda só o gatilho (manual) e o autor (quem apertou).
+ * @summary Dispara um backup manual agora
+ */
+export const RunBackupResponse = zod.object({
+  "id": zod.string(),
+  "gatilho": zod.enum(['manual', 'agendado']),
+  "status": zod.enum(['em_andamento', 'ok', 'erro']),
+  "iniciadoEm": zod.coerce.date(),
+  "concluidoEm": zod.coerce.date().nullish(),
+  "tamanhoBytes": zod.number().nullish().describe('Tamanho do arquivo comprimido — só quando status = ok'),
+  "arquivo": zod.string().nullish().describe('Caminho do dump no servidor; null quando o backup falhou OU quando o arquivo já foi removido pela retenção (dump podado não se baixa)'),
+  "autorNome": zod.string().nullish().describe('Quem disparou o backup manual; null nos agendados'),
+  "erro": zod.string().nullish()
+})
+
+
+/**
+ * Fecha o ciclo do E30: saber que o backup existe não protege contra a perda da instância — a cópia precisa SAIR dela. Devolve o dump comprimido (.sql.gz) em streaming. 404 quando a execução não existe; 410 quando o registro existe mas o arquivo já foi podado pela retenção (só os dumps mais recentes ficam no disco).
+ * @summary Baixa o arquivo do dump de um backup concluído
+ */
+export const DownloadBackupParams = zod.object({
+  "backupId": zod.coerce.string()
+})
+
+export const DownloadBackupResponse = zod.unknown()
 
 
 export const ListEquipeParams = zod.object({
@@ -382,6 +542,197 @@ export const RemoveMembroEquipeParams = zod.object({
 })
 
 export const RemoveMembroEquipeResponse = zod.void()
+
+
+/**
+ * Convites PENDENTES (não usados, não expirados). O token sai aqui de propósito: é o admin quem monta e copia o link.
+ */
+export const ListConvitesEquipeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListConvitesEquipeResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "token": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilId": zod.string(),
+  "perfilNome": zod.string().nullish(),
+  "criadoEm": zod.coerce.date(),
+  "expiraEm": zod.coerce.date()
+})
+export const ListConvitesEquipeResponse = zod.array(ListConvitesEquipeResponseItem)
+
+
+/**
+ * Convite por link: o admin manda o link pelo WhatsApp e a própria pessoa define a senha — ninguém mais digita a senha do colega. Vale 7 dias, uso único. E-mail já membro da loja → 409 CONVIDADO_JA_E_MEMBRO; convite pendente do mesmo e-mail → 409 CONVITE_PENDENTE.
+ */
+export const CreateConviteEquipeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+
+
+export const CreateConviteEquipeBody = zod.object({
+  "nome": zod.string().min(1),
+  "email": zod.string().email(),
+  "perfilId": zod.string()
+})
+
+export const CreateConviteEquipeResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "token": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilId": zod.string(),
+  "perfilNome": zod.string().nullish(),
+  "criadoEm": zod.coerce.date(),
+  "expiraEm": zod.coerce.date()
+})
+
+
+/**
+ * Regenera token e validade — o link antigo morre (desejável se vazou no WhatsApp errado).
+ */
+export const ReenviarConviteEquipeParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "conviteId": zod.coerce.string()
+})
+
+export const ReenviarConviteEquipeResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "token": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilId": zod.string(),
+  "perfilNome": zod.string().nullish(),
+  "criadoEm": zod.coerce.date(),
+  "expiraEm": zod.coerce.date()
+})
+
+
+export const CancelarConviteEquipeParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "conviteId": zod.coerce.string()
+})
+
+export const CancelarConviteEquipeResponse = zod.void()
+
+
+/**
+ * A visão da dona (E18): quando cada membro entrou pela última vez (carimbo de login — sessões somem no logout) e quantas ações sensíveis fez nos últimos 30 dias, mais o feed recente do audit_log da loja. Mesmo gate admin da gestão de equipe.
+ * @summary Log de atividade da equipe — últimos acessos e ações sensíveis
+ */
+export const GetAtividadeEquipeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetAtividadeEquipeResponse = zod.object({
+  "membros": zod.array(zod.object({
+  "usuarioId": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string(),
+  "perfilNome": zod.string(),
+  "ativo": zod.boolean(),
+  "ultimoAcesso": zod.coerce.date().nullish(),
+  "acoes30d": zod.number()
+})),
+  "eventos": zod.array(zod.object({
+  "id": zod.string(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']),
+  "entidade": zod.string(),
+  "entidadeId": zod.string(),
+  "usuarioId": zod.string().nullish(),
+  "usuarioNome": zod.string().describe('Desnormalizado — sobrevive à saída do autor da equipe'),
+  "detalhe": zod.record(zod.string(), zod.unknown()).nullish(),
+  "criadoEm": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Rota PÚBLICA: o token da loja (gerido em Configurações, em query — o logger corta a query e ele não cai em log) é a credencial. O lead nasce NOVO com a origem informada; hoje todo lead nasce digitado à mão na loja — este é o primeiro que chega sozinho.
+ * @summary Captação externa (E19) — formulário do site/Instagram cria o lead
+ */
+export const CaptarLeadQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const captarLeadBodyNoivaNomeMax = 200;
+
+export const captarLeadBodyNoivoNomeMax = 200;
+
+export const captarLeadBodyWhatsappMax = 30;
+
+export const captarLeadBodyOrigemDefault = `SITE`;
+
+export const CaptarLeadBody = zod.object({
+  "noivaNome": zod.string().min(1).max(captarLeadBodyNoivaNomeMax),
+  "noivoNome": zod.string().max(captarLeadBodyNoivoNomeMax).optional(),
+  "whatsapp": zod.string().max(captarLeadBodyWhatsappMax).optional(),
+  "casamentoData": zod.coerce.date().optional(),
+  "origem": zod.enum(['SITE', 'INSTAGRAM', 'WHATSAPP']).default(captarLeadBodyOrigemDefault),
+  "consentimento": zod.boolean().optional()
+})
+
+export const CaptarLeadResponse = zod.object({
+  "id": zod.string()
+})
+
+
+/**
+ * O token vigente da captação externa (null = desligada). Gate admin.
+ */
+export const GetCaptacaoTokenParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetCaptacaoTokenResponse = zod.object({
+  "token": zod.string().nullable()
+})
+
+
+/**
+ * Gera (ou rotaciona) o token da captação. O anterior morre na hora — formulário antigo para de criar lead. Gate admin.
+ */
+export const RotacionarCaptacaoTokenParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const RotacionarCaptacaoTokenResponse = zod.object({
+  "token": zod.string().nullable()
+})
+
+
+export const GetConviteInfoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetConviteInfoResponse = zod.object({
+  "lojaNome": zod.string(),
+  "nome": zod.string(),
+  "emailMascarado": zod.string().describe('m•••a@dominio — nunca o e-mail inteiro'),
+  "precisaSenha": zod.boolean().describe('true = e-mail sem conta, o aceite pede senha; false = conta existente, o aceite só vincula'),
+  "expiraEm": zod.coerce.date()
+})
+
+
+export const aceitarConviteBodySenhaMin = 6;
+
+
+
+export const AceitarConviteBody = zod.object({
+  "token": zod.string(),
+  "senha": zod.string().min(aceitarConviteBodySenhaMin).optional().describe('Obrigatória quando o e-mail ainda não tem conta; ignorada quando já tem')
+})
+
+export const AceitarConviteResponse = zod.object({
+  "jaTinhaConta": zod.boolean()
+})
 
 
 export const ListAtributosParams = zod.object({
@@ -473,6 +824,7 @@ export const DeleteAtributoResponse = zod.void()
 
 
 export const CreateAtributoOpcaoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "atributoId": zod.coerce.string()
 })
 
@@ -494,6 +846,7 @@ export const CreateAtributoOpcaoResponse = zod.object({
 
 
 export const UpdateAtributoOpcaoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "opcaoId": zod.coerce.string()
 })
 
@@ -513,6 +866,7 @@ export const UpdateAtributoOpcaoResponse = zod.object({
 
 
 export const DeleteAtributoOpcaoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "opcaoId": zod.coerce.string()
 })
 
@@ -541,9 +895,10 @@ export const ListVestidosResponseItem = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 export const ListVestidosResponse = zod.array(ListVestidosResponseItem)
@@ -589,10 +944,92 @@ export const CreateVestidoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
+})
+
+
+/**
+ * @summary Disponibilidade de todos os vestidos da loja para uma data de casamento
+ */
+export const CheckDisponibilidadeVestidosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const checkDisponibilidadeVestidosQueryDataRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const CheckDisponibilidadeVestidosQueryParams = zod.object({
+  "data": zod.coerce.string().regex(checkDisponibilidadeVestidosQueryDataRegExp).describe('Data do casamento candidata (dia local America\/Sao_Paulo)')
+})
+
+export const CheckDisponibilidadeVestidosResponse = zod.object({
+  "data": zod.string().describe('Dia local YYYY-MM-DD consultado'),
+  "itens": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "disponivel": zod.boolean(),
+  "status": zod.enum(['DISPONIVEL', 'RESERVADO', 'MANUTENCAO', 'INATIVO']),
+  "motivo": zod.string().nullable().describe('Frase pronta em pt-BR (datas dd\/MM)'),
+  "conflito": zod.union([zod.object({
+  "bloqueioId": zod.string(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "motivo": zod.enum(['USO', 'LAVAGEM', 'PROVA', 'MANUTENCAO', 'ATRASO_DEVOLUCAO']),
+  "inicio": zod.string().describe('Dia local inclusivo YYYY-MM-DD'),
+  "fim": zod.string().nullable().describe('Dia local inclusivo YYYY-MM-DD; null = janela aberta'),
+  "leadId": zod.string().nullable(),
+  "reservaId": zod.string().nullable(),
+  "noivaNome": zod.string().nullable()
+}).describe('Item de conflito de disponibilidade (mesmo shape nos 409 e no batch)'),zod.null()])
+}))
+})
+
+
+/**
+ * O relatório de encalhe e de estrela: TODOS os vestidos do acervo, cada um com quantas provas, reservas ativas e contratos gerou no período (e a receita dos contratos). Zeros aparecem de propósito — o vestido sem uso é a resposta de "o que sai de linha".
+ * @summary Utilização por vestido — provas, reservas e contratos no período
+ */
+export const GetUtilizacaoVestidosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getUtilizacaoVestidosQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getUtilizacaoVestidosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetUtilizacaoVestidosQueryParams = zod.object({
+  "de": zod.coerce.string().regex(getUtilizacaoVestidosQueryDeRegExp).optional().describe('Início do período (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(getUtilizacaoVestidosQueryAteRegExp).optional().describe('Fim do período (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const GetUtilizacaoVestidosResponseItem = zod.object({
+  "vestidoId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "status": zod.string(),
+  "precoBase": zod.number(),
+  "provas": zod.number(),
+  "reservas": zod.number(),
+  "contratos": zod.number(),
+  "receita": zod.number()
+})
+export const GetUtilizacaoVestidosResponse = zod.array(GetUtilizacaoVestidosResponseItem)
+
+
+/**
+ * @summary Próxima data de casamento em que uma reserva nova NÃO conflitaria
+ */
+export const GetProximaJanelaVestidoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "vestidoId": zod.coerce.string()
+})
+
+export const GetProximaJanelaVestidoResponse = zod.object({
+  "proximaData": zod.string().nullable().describe('Primeiro dia local (YYYY-MM-DD) em que uma reserva de casamento passaria; null = nada dentro do horizonte ou vestido inativo'),
+  "aPartirDe": zod.string().describe('Dia local de onde a varredura partiu (hoje)'),
+  "horizonteDias": zod.number()
 })
 
 
@@ -619,9 +1056,10 @@ export const GetVestidoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 
@@ -664,9 +1102,10 @@ export const UpdateVestidoResponse = zod.object({
 })).optional(),
   "fotos": zod.array(zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
-  "altura": zod.number()
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
 })
 
@@ -679,28 +1118,44 @@ export const DeleteVestidoParams = zod.object({
 export const DeleteVestidoResponse = zod.void()
 
 
+export const GetVestidoFotoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "vestidoId": zod.coerce.string(),
+  "ordem": zod.coerce.number()
+})
+
+export const getVestidoFotoQueryVarianteDefault = `cheia`;
+
+export const GetVestidoFotoQueryParams = zod.object({
+  "variante": zod.enum(['cheia', 'thumb']).default(getVestidoFotoQueryVarianteDefault),
+  "v": zod.coerce.string().optional().describe('Versão para cache-busting (atualizadaEm em ms). Presente → cache immutable.')
+})
+
+export const GetVestidoFotoResponse = zod.unknown()
+
+
 export const SetVestidoFotoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "vestidoId": zod.coerce.string(),
   "ordem": zod.coerce.number()
 })
 
 export const SetVestidoFotoBody = zod.object({
-  "mime": zod.string(),
-  "largura": zod.number(),
-  "altura": zod.number(),
-  "base64": zod.string()
+  "base64": zod.string().describe('A foto (JPEG\/PNG\/WebP). Mime e dimensões são derivados do binário no servidor.'),
+  "thumbBase64": zod.string().nullish().describe('Miniatura gerada no cliente para os cards. Ausente = sem thumb (a cheia serve de fallback).')
 })
 
 export const SetVestidoFotoResponse = zod.object({
   "ordem": zod.number(),
-  "mime": zod.string(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
   "largura": zod.number(),
   "altura": zod.number(),
-  "base64": zod.string()
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })
 
 
 export const DeleteVestidoFotoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "vestidoId": zod.coerce.string(),
   "ordem": zod.coerce.number()
 })
@@ -708,11 +1163,135 @@ export const DeleteVestidoFotoParams = zod.object({
 export const DeleteVestidoFotoResponse = zod.void()
 
 
+/**
+ * @summary Lookbooks de uma noiva (para recopiar o link ou revogar)
+ */
+export const ListLookbooksParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListLookbooksQueryParams = zod.object({
+  "leadId": zod.coerce.string()
+})
+
+export const ListLookbooksResponseItem = zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string()
+}))
+})
+export const ListLookbooksResponse = zod.array(ListLookbooksResponseItem)
+
+
+/**
+ * @summary A seleção do atendimento vira link para a noiva rever em casa
+ */
+export const CreateLookbookParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const createLookbookBodyVestidoIdsMax = 30;
+
+
+
+export const CreateLookbookBody = zod.object({
+  "leadId": zod.string(),
+  "vestidoIds": zod.array(zod.string()).min(1).max(createLookbookBodyVestidoIdsMax)
+})
+
+export const CreateLookbookResponse = zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string()
+}))
+})
+
+
+/**
+ * Revoga o lookbook — o link público morre na hora.
+ */
+export const DeleteLookbookParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "lookbookId": zod.coerce.string()
+})
+
+export const DeleteLookbookResponse = zod.void()
+
+
+/**
+ * A página que a noiva abre sem login. Token em QUERY (o logger corta a query — não cai em log). As URLs das fotos saem da rota pública irmã, escopadas ao MESMO token.
+ */
+export const GetLookbookPublicoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetLookbookPublicoResponse = zod.object({
+  "lojaNome": zod.string(),
+  "noivaNome": zod.string(),
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "atualizadaEm": zod.coerce.date()
+})),
+  "atributos": zod.array(zod.object({
+  "atributo": zod.string(),
+  "valor": zod.string()
+}))
+}))
+})
+
+
+/**
+ * Foto de um vestido DO lookbook, sem login — o token escopa: vestido fora da seleção é 404, mesmo existindo. Cache como na rota autenticada (?v= → immutable; sem → ETag).
+ */
+export const getLookbookPublicoFotoQueryVarianteDefault = `cheia`;
+
+export const GetLookbookPublicoFotoQueryParams = zod.object({
+  "token": zod.coerce.string(),
+  "vestidoId": zod.coerce.string(),
+  "ordem": zod.coerce.number(),
+  "variante": zod.enum(['cheia', 'thumb']).default(getLookbookPublicoFotoQueryVarianteDefault),
+  "v": zod.coerce.string().optional()
+})
+
+export const GetLookbookPublicoFotoResponse = zod.unknown()
+
+
 export const ListLeadsParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const ListLeadsResponseItem = zod.object({
+export const listLeadsQueryQMax = 200;
+
+
+export const listLeadsQueryPorPaginaMax = 100;
+
+export const listLeadsQueryOrdemDefault = `antigos`;
+
+export const ListLeadsQueryParams = zod.object({
+  "q": zod.coerce.string().max(listLeadsQueryQMax).optional().describe('Busca em nome da noiva\/noivo e WhatsApp (dígitos com ou sem máscara)'),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']).optional(),
+  "pagina": zod.coerce.number().min(1).optional(),
+  "porPagina": zod.coerce.number().min(1).max(listLeadsQueryPorPaginaMax).optional(),
+  "ordem": zod.enum(['antigos', 'recentes']).default(listLeadsQueryOrdemDefault)
+})
+
+export const ListLeadsResponse = zod.object({
+  "total": zod.number(),
+  "itens": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
@@ -723,8 +1302,14 @@ export const ListLeadsResponseItem = zod.object({
   "casamentoData": zod.coerce.date().nullish(),
   "casamentoHorario": zod.string().nullish(),
   "casamentoLocal": zod.string().nullish(),
-  "origem": zod.enum(['LOJA', 'WHATSAPP']),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -735,8 +1320,8 @@ export const ListLeadsResponseItem = zod.object({
   "opcaoId": zod.string()
 })).optional()
 }).optional()
+}))
 })
-export const ListLeadsResponse = zod.array(ListLeadsResponseItem)
 
 
 export const CreateLeadParams = zod.object({
@@ -754,7 +1339,7 @@ export const CreateLeadBody = zod.object({
   "casamentoData": zod.coerce.date().optional(),
   "casamentoHorario": zod.string().optional(),
   "casamentoLocal": zod.string().optional(),
-  "origem": zod.enum(['LOJA', 'WHATSAPP']).optional()
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional()
 })
 
 export const CreateLeadResponse = zod.object({
@@ -768,8 +1353,14 @@ export const CreateLeadResponse = zod.object({
   "casamentoData": zod.coerce.date().nullish(),
   "casamentoHorario": zod.string().nullish(),
   "casamentoLocal": zod.string().nullish(),
-  "origem": zod.enum(['LOJA', 'WHATSAPP']),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -781,6 +1372,109 @@ export const CreateLeadResponse = zod.object({
 })).optional()
 }).optional()
 })
+
+
+/**
+ * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+ * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
+ */
+export const GetConversaoLeadsParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetConversaoLeadsResponse = zod.object({
+  "totalLeads": zod.number(),
+  "convertidos": zod.number().describe('Leads que chegaram a CONTRATO_FECHADO ou além'),
+  "perdidos": zod.number(),
+  "porOrigem": zod.array(zod.object({
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "total": zod.number(),
+  "convertidos": zod.number()
+})),
+  "porMotivoPerda": zod.array(zod.object({
+  "motivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullable().describe('null = perdido sem motivo registrado (dado legado)'),
+  "total": zod.number()
+}))
+})
+
+
+/**
+ * E73: a data do casamento sempre esteve no banco e ninguém somava. Conta os casamentos futuros por competência (leads não perdidos), separando os já contratados — é a curva que diz quando faltará vestido e quando sobrará arara.
+ * @summary Casamentos por mês — a demanda de arara dos próximos 12 meses
+ */
+export const GetSazonalidadeCasamentosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetSazonalidadeCasamentosResponseItem = zod.object({
+  "competencia": zod.string().describe('YYYY-MM'),
+  "total": zod.number().describe('Leads não perdidos com casamento no mês'),
+  "comContrato": zod.number().describe('Destes, quantos já fecharam contrato')
+})
+export const GetSazonalidadeCasamentosResponse = zod.array(GetSazonalidadeCasamentosResponseItem)
+
+
+/**
+ * E79: o sino (E68) e o painel (E66) baixavam a lista COMPLETA de leads só para achar as paradas. A mesma régua do funil-core roda aqui, sobre os leads em negociação, e devolve as contagens + as piores primeiro.
+ * @summary As noivas esfriando — a régua do funil, calculada no banco
+ */
+export const GetLeadsParadosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetLeadsParadosResponse = zod.object({
+  "criticos": zod.number(),
+  "atencao": zod.number(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "noivaNome": zod.string(),
+  "etapa": zod.string(),
+  "dias": zod.number(),
+  "temperatura": zod.enum(['atencao', 'critico']),
+  "casamentoData": zod.coerce.date().nullish()
+})).describe('As piores primeiro, no máximo 10')
+})
+
+
+/**
+ * E77: dado pessoal sem propósito é passivo. Anonimiza (nome vira "(anonimizada)", contato e local somem) os leads PERDIDOS cuja perda é mais antiga que `mesesInatividade` (padrão 24). A linha fica — o funil e a conversão continuam contando — e a ação deixa rastro na auditoria. Irreversível por desenho.
+ * @summary Anonimiza noivas PERDIDAS há mais tempo que a janela (LGPD)
+ */
+export const ExpurgarLeadsPerdidosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const expurgarLeadsPerdidosBodyMesesInatividadeDefault = 24;
+export const expurgarLeadsPerdidosBodyMesesInatividadeMin = 6;
+
+
+
+export const ExpurgarLeadsPerdidosBody = zod.object({
+  "mesesInatividade": zod.number().min(expurgarLeadsPerdidosBodyMesesInatividadeMin).default(expurgarLeadsPerdidosBodyMesesInatividadeDefault)
+})
+
+export const ExpurgarLeadsPerdidosResponse = zod.object({
+  "anonimizadas": zod.number()
+})
+
+
+/**
+ * E73: a comissão media o resultado, mas não o CAMINHO — quantos atendimentos cada vendedora conclui, quantos terminam em "reservou" (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os contratos sempre estiveram gravados; faltava cruzar.
+ * @summary Atendimento → contrato por vendedora, com ticket médio
+ */
+export const GetDesempenhoVendedorasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetDesempenhoVendedorasResponseItem = zod.object({
+  "vendedoraId": zod.string(),
+  "nome": zod.string(),
+  "atendimentosConcluidos": zod.number(),
+  "reservou": zod.number().describe('Desfecho RESERVOU'),
+  "contratos": zod.number().describe('Contratos ATIVOS fechados por ela'),
+  "receita": zod.number().describe('Soma do valorTotal dos contratos ativos')
+})
+export const GetDesempenhoVendedorasResponse = zod.array(GetDesempenhoVendedorasResponseItem)
 
 
 export const GetLeadParams = zod.object({
@@ -799,8 +1493,14 @@ export const GetLeadResponse = zod.object({
   "casamentoData": zod.coerce.date().nullish(),
   "casamentoHorario": zod.string().nullish(),
   "casamentoLocal": zod.string().nullish(),
-  "origem": zod.enum(['LOJA', 'WHATSAPP']),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -827,7 +1527,9 @@ export const UpdateLeadBody = zod.object({
   "whatsapp": zod.string().optional(),
   "casamentoData": zod.coerce.date().optional(),
   "casamentoHorario": zod.string().optional(),
-  "casamentoLocal": zod.string().optional()
+  "casamentoLocal": zod.string().optional(),
+  "perdidaMotivo": zod.enum(['PRECO', 'DATA_INDISPONIVEL', 'CONCORRENTE', 'DESISTENCIA', 'SEM_RETORNO', 'OUTRO']).optional().describe('Obrigatório quando etapa vira PERDIDO; ignorado nas demais'),
+  "perdidaDetalhe": zod.string().optional()
 })
 
 export const UpdateLeadResponse = zod.object({
@@ -841,8 +1543,14 @@ export const UpdateLeadResponse = zod.object({
   "casamentoData": zod.coerce.date().nullish(),
   "casamentoHorario": zod.string().nullish(),
   "casamentoLocal": zod.string().nullish(),
-  "origem": zod.enum(['LOJA', 'WHATSAPP']),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
   "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
   "interesse": zod.object({
   "leadId": zod.string(),
   "algoAMais": zod.string().nullish(),
@@ -864,7 +1572,20 @@ export const DeleteLeadParams = zod.object({
 export const DeleteLeadResponse = zod.void()
 
 
+/**
+ * E77: o direito de acesso — a noiva pede, a loja entrega. Lead, interesses, contatos registrados, orçamentos, contratos e parcelas dela, num arquivo só, como download.
+ * @summary Tudo que o sistema sabe sobre a noiva, num JSON (LGPD)
+ */
+export const ExportarDadosLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const ExportarDadosLeadResponse = zod.record(zod.string(), zod.unknown())
+
+
 export const SetLeadInteresseParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "leadId": zod.coerce.string()
 })
 
@@ -891,6 +1612,7 @@ export const SetLeadInteresseResponse = zod.object({
 
 
 export const ListRegistrosCobrancaParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "leadId": zod.coerce.string()
 })
 
@@ -899,12 +1621,14 @@ export const ListRegistrosCobrancaResponseItem = zod.object({
   "leadId": zod.string(),
   "data": zod.coerce.date(),
   "canal": zod.enum(['WHATSAPP', 'TELEFONE', 'PRESENCIAL', 'OUTRO']),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "vendedorNome": zod.string().nullish()
 })
 export const ListRegistrosCobrancaResponse = zod.array(ListRegistrosCobrancaResponseItem)
 
 
 export const CreateRegistroCobrancaParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "leadId": zod.coerce.string()
 })
 
@@ -919,7 +1643,8 @@ export const CreateRegistroCobrancaResponse = zod.object({
   "leadId": zod.string(),
   "data": zod.coerce.date(),
   "canal": zod.enum(['WHATSAPP', 'TELEFONE', 'PRESENCIAL', 'OUTRO']),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "vendedorNome": zod.string().nullish()
 })
 
 
@@ -956,6 +1681,7 @@ export const CreateCabineResponse = zod.object({
 
 
 export const UpdateCabineParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "cabineId": zod.coerce.string()
 })
 
@@ -973,6 +1699,7 @@ export const UpdateCabineResponse = zod.object({
 
 
 export const DeleteCabineParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "cabineId": zod.coerce.string()
 })
 
@@ -981,6 +1708,17 @@ export const DeleteCabineResponse = zod.void()
 
 export const ListAtendimentosParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const listAtendimentosQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listAtendimentosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListAtendimentosQueryParams = zod.object({
+  "bloqueioId": zod.coerce.string().optional().describe('Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva'),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']).optional().describe('Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira'),
+  "de": zod.coerce.string().regex(listAtendimentosQueryDeRegExp).optional().describe('Início da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história'),
+  "ate": zod.coerce.string().regex(listAtendimentosQueryAteRegExp).optional().describe('Fim da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo)')
 })
 
 export const ListAtendimentosResponseItem = zod.object({
@@ -992,9 +1730,252 @@ export const ListAtendimentosResponseItem = zod.object({
   "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
   "bloqueioId": zod.string().nullish(),
   "inicio": zod.coerce.date(),
+  "atendidoEm": zod.coerce.date().nullish(),
+  "confirmadoEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "cabine": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "ativo": zod.boolean()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "ajustes": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "atendimentoId": zod.string(),
+  "descricao": zod.string(),
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
+})).optional()
 })
 export const ListAtendimentosResponse = zod.array(ListAtendimentosResponseItem)
 
@@ -1022,13 +2003,257 @@ export const CreateAtendimentoResponse = zod.object({
   "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
   "bloqueioId": zod.string().nullish(),
   "inicio": zod.coerce.date(),
+  "atendidoEm": zod.coerce.date().nullish(),
+  "confirmadoEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "cabine": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "ativo": zod.boolean()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "ajustes": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "atendimentoId": zod.string(),
+  "descricao": zod.string(),
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
+})).optional()
 })
 
 
 export const UpdateAtendimentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "atendimentoId": zod.coerce.string()
 })
 
@@ -1050,21 +2275,532 @@ export const UpdateAtendimentoResponse = zod.object({
   "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
   "bloqueioId": zod.string().nullish(),
   "inicio": zod.coerce.date(),
+  "atendidoEm": zod.coerce.date().nullish(),
+  "confirmadoEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
-  "observacao": zod.string().nullish()
+  "observacao": zod.string().nullish(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "cabine": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "ativo": zod.boolean()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "ajustes": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "atendimentoId": zod.string(),
+  "descricao": zod.string(),
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
+})).optional()
 })
 
 
 export const DeleteAtendimentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "atendimentoId": zod.coerce.string()
 })
 
 export const DeleteAtendimentoResponse = zod.void()
 
 
-export const ListAjustesParams = zod.object({
+/**
+ * Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação parar de repetir quem já foi contatado. Idempotente: reconfirmar não reescreve o primeiro carimbo.
+ * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ */
+export const ConfirmarAtendimentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "atendimentoId": zod.coerce.string()
+})
+
+export const ConfirmarAtendimentoResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "leadId": zod.string(),
+  "cabineId": zod.string(),
+  "vendedoraId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "atendidoEm": zod.coerce.date().nullish(),
+  "confirmadoEm": zod.coerce.date().nullish(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
+  "observacao": zod.string().nullish(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "cabine": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "ativo": zod.boolean()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "ajustes": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "atendimentoId": zod.string(),
+  "descricao": zod.string(),
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
+})).optional()
+})
+
+
+export const ListAjustesParams = zod.object({
+  "lojaId": zod.coerce.string()
 })
 
 export const ListAjustesResponseItem = zod.object({
@@ -1072,19 +2808,138 @@ export const ListAjustesResponseItem = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
-  "status": zod.enum(['PENDENTE', 'FEITO'])
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })
 export const ListAjustesResponse = zod.array(ListAjustesResponseItem)
 
 
 export const CreateAjusteParams = zod.object({
-  "atendimentoId": zod.coerce.string()
+  "lojaId": zod.coerce.string()
 })
 
 
 
 
 export const CreateAjusteBody = zod.object({
+  "atendimentoId": zod.string(),
   "descricao": zod.string().min(1)
 })
 
@@ -1093,11 +2948,130 @@ export const CreateAjusteResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
-  "status": zod.enum(['PENDENTE', 'FEITO'])
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })
 
 
 export const UpdateAjusteParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "ajusteId": zod.coerce.string()
 })
 
@@ -1111,13 +3085,197 @@ export const UpdateAjusteResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
-  "status": zod.enum(['PENDENTE', 'FEITO'])
+  "status": zod.enum(['PENDENTE', 'FEITO']),
+  "checklist": zod.array(zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})).optional(),
+  "atendimento": zod.object({
+  "id": zod.string(),
+  "leadId": zod.string(),
+  "tipo": zod.enum(['ATENDIMENTO', 'PROVA']),
+  "bloqueioId": zod.string().nullish(),
+  "inicio": zod.coerce.date(),
+  "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "bloqueio": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+}).optional(),
+  "proximaProva": zod.coerce.date().nullish()
 })
+
+
+export const DeleteAjusteParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "ajusteId": zod.coerce.string()
+})
+
+export const DeleteAjusteResponse = zod.void()
+
+
+export const AddChecklistItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "ajusteId": zod.coerce.string()
+})
+
+
+
+
+export const AddChecklistItemBody = zod.object({
+  "descricao": zod.string().min(1),
+  "ordem": zod.number().optional()
+})
+
+export const AddChecklistItemResponse = zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})
+
+
+export const UpdateChecklistItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+
+
+
+export const UpdateChecklistItemBody = zod.object({
+  "descricao": zod.string().min(1).optional(),
+  "feito": zod.boolean().optional(),
+  "ordem": zod.number().optional()
+})
+
+export const UpdateChecklistItemResponse = zod.object({
+  "id": zod.string(),
+  "ajusteId": zod.string(),
+  "descricao": zod.string(),
+  "feito": zod.boolean(),
+  "ordem": zod.number()
+})
+
+
+export const RemoveChecklistItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+export const RemoveChecklistItemResponse = zod.void()
 
 
 export const GetDisponibilidadeParams = zod.object({
   "lojaId": zod.coerce.string()
 })
+
+export const getDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
+export const getDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
+
+
 
 export const GetDisponibilidadeResponse = zod.object({
   "lojaId": zod.string(),
@@ -1127,13 +3285,19 @@ export const GetDisponibilidadeResponse = zod.object({
   "usoDiasDepois": zod.number(),
   "lavagemDiasDepois": zod.number(),
   "atendimentoAberturaHora": zod.number(),
-  "atendimentoFechamentoHora": zod.number()
+  "atendimentoFechamentoHora": zod.number(),
+  "diasFuncionamento": zod.array(zod.number().min(getDisponibilidadeResponseDiasFuncionamentoItemMin).max(getDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)')
 })
 
 
 export const SetDisponibilidadeParams = zod.object({
   "lojaId": zod.coerce.string()
 })
+
+export const setDisponibilidadeBodyDiasFuncionamentoItemMin = 0;
+export const setDisponibilidadeBodyDiasFuncionamentoItemMax = 6;
+
+
 
 export const SetDisponibilidadeBody = zod.object({
   "provaDiasAntes": zod.number().optional(),
@@ -1142,8 +3306,14 @@ export const SetDisponibilidadeBody = zod.object({
   "usoDiasDepois": zod.number().optional(),
   "lavagemDiasDepois": zod.number().optional(),
   "atendimentoAberturaHora": zod.number().optional(),
-  "atendimentoFechamentoHora": zod.number().optional()
+  "atendimentoFechamentoHora": zod.number().optional(),
+  "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeBodyDiasFuncionamentoItemMin).max(setDisponibilidadeBodyDiasFuncionamentoItemMax)).optional()
 })
+
+export const setDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
+export const setDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
+
+
 
 export const SetDisponibilidadeResponse = zod.object({
   "lojaId": zod.string(),
@@ -1153,7 +3323,8 @@ export const SetDisponibilidadeResponse = zod.object({
   "usoDiasDepois": zod.number(),
   "lavagemDiasDepois": zod.number(),
   "atendimentoAberturaHora": zod.number(),
-  "atendimentoFechamentoHora": zod.number()
+  "atendimentoFechamentoHora": zod.number(),
+  "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeResponseDiasFuncionamentoItemMin).max(setDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)')
 })
 
 
@@ -1166,8 +3337,8 @@ export const ListReservasResponseItem = zod.object({
   "lojaId": zod.string(),
   "leadId": zod.string(),
   "casamentoData": zod.coerce.date(),
-  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA']),
-  "itens": zod.array(zod.object({
+  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA', 'CONCLUIDA', 'CANCELADA']),
+  "bloqueios": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vestidoId": zod.string(),
@@ -1177,9 +3348,98 @@ export const ListReservasResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional()
 })
 export const ListReservasResponse = zod.array(ListReservasResponseItem)
 
@@ -1198,8 +3458,8 @@ export const CreateReservaResponse = zod.object({
   "lojaId": zod.string(),
   "leadId": zod.string(),
   "casamentoData": zod.coerce.date(),
-  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA']),
-  "itens": zod.array(zod.object({
+  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA', 'CONCLUIDA', 'CANCELADA']),
+  "bloqueios": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vestidoId": zod.string(),
@@ -1209,44 +3469,108 @@ export const CreateReservaResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
-})).optional()
-})
-
-
-export const GetReservaParams = zod.object({
-  "reservaId": zod.coerce.string()
-})
-
-export const GetReservaResponse = zod.object({
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
   "leadId": zod.string(),
-  "casamentoData": zod.coerce.date(),
-  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA']),
-  "itens": zod.array(zod.object({
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "lead": zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "vestidoId": zod.string(),
-  "leadId": zod.string().nullish(),
-  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
   "casamentoData": zod.coerce.date().nullish(),
-  "provaDataReal": zod.coerce.date().nullish(),
-  "retiradaDataReal": zod.coerce.date().nullish(),
-  "devolucaoDataReal": zod.coerce.date().nullish(),
-  "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
 })).optional()
+}).optional()
+}).optional()
 })
 
 
 export const UpdateReservaParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "reservaId": zod.coerce.string()
 })
 
 export const UpdateReservaBody = zod.object({
-  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA']).optional(),
+  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA', 'CONCLUIDA', 'CANCELADA']).optional(),
   "casamentoData": zod.coerce.date().optional()
 })
 
@@ -1255,8 +3579,8 @@ export const UpdateReservaResponse = zod.object({
   "lojaId": zod.string(),
   "leadId": zod.string(),
   "casamentoData": zod.coerce.date(),
-  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA']),
-  "itens": zod.array(zod.object({
+  "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA', 'CONCLUIDA', 'CANCELADA']),
+  "bloqueios": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vestidoId": zod.string(),
@@ -1266,13 +3590,103 @@ export const UpdateReservaResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
 })).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional()
 })
 
 
 export const DeleteReservaParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "reservaId": zod.coerce.string()
 })
 
@@ -1281,6 +3695,12 @@ export const DeleteReservaResponse = zod.void()
 
 export const ListBloqueiosParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const ListBloqueiosQueryParams = zod.object({
+  "vestidoId": zod.coerce.string().optional().describe('Filtra os bloqueios de um vestido só (E45)'),
+  "leadId": zod.coerce.string().optional().describe('Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira'),
+  "futuras": zod.enum(['true', 'false']).optional().describe('Recorta por casamentoData contra hoje, em dia LOCAL America\/Sao_Paulo (E87) — \'true\' = casamentos de hoje em diante (asc), \'false\' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte.')
 })
 
 export const ListBloqueiosResponseItem = zod.object({
@@ -1293,8 +3713,67 @@ export const ListBloqueiosResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
 })
 export const ListBloqueiosResponse = zod.array(ListBloqueiosResponseItem)
 
@@ -1308,6 +3787,8 @@ export const CreateBloqueioBody = zod.object({
   "leadId": zod.string().optional(),
   "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
   "casamentoData": zod.coerce.date().optional(),
+  "inicio": zod.coerce.date().optional(),
+  "fim": zod.coerce.date().optional(),
   "observacao": zod.string().optional(),
   "reservaId": zod.string().optional()
 })
@@ -1322,19 +3803,163 @@ export const CreateBloqueioResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * @summary Um bloqueio só — a ficha da reserva para de baixar a loja inteira (E79)
+ */
+export const GetBloqueioParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "bloqueioId": zod.coerce.string()
+})
+
+export const GetBloqueioResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vestidoId": zod.string(),
+  "leadId": zod.string().nullish(),
+  "tipo": zod.enum(['RESERVA_CASAMENTO', 'MANUTENCAO']),
+  "casamentoData": zod.coerce.date().nullish(),
+  "provaDataReal": zod.coerce.date().nullish(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
+  "observacao": zod.string().nullish(),
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
 })
 
 
 export const UpdateBloqueioParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "bloqueioId": zod.coerce.string()
 })
 
 export const UpdateBloqueioBody = zod.object({
   "provaDataReal": zod.coerce.date().optional(),
-  "retiradaDataReal": zod.coerce.date().optional(),
-  "devolucaoDataReal": zod.coerce.date().optional(),
+  "retiradaDataReal": zod.coerce.date().nullish(),
+  "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().optional(),
+  "fim": zod.coerce.date().optional(),
   "observacao": zod.string().optional()
 })
 
@@ -1348,20 +3973,157 @@ export const UpdateBloqueioResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "inicio": zod.coerce.date().nullish(),
+  "fim": zod.coerce.date().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "observacao": zod.string().nullish(),
-  "reservaId": zod.string().nullish()
+  "reservaId": zod.string().nullish(),
+  "ocupacaoInicio": zod.coerce.date().nullish(),
+  "ocupacaoFim": zod.coerce.date().nullish(),
+  "vestido": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "tamanho": zod.string().nullish(),
+  "cor": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "status": zod.string(),
+  "observacoes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "mime": zod.string().describe('Derivado do binário pelo servidor, nunca do cliente'),
+  "largura": zod.number(),
+  "altura": zod.number(),
+  "atualizadaEm": zod.coerce.date().describe('Versão da foto — alimenta o cache-busting (?v=) das URLs')
+})).optional()
+}).optional(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
 })
 
 
 export const DeleteBloqueioParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "bloqueioId": zod.coerce.string()
 })
 
 export const DeleteBloqueioResponse = zod.void()
 
 
+/**
+ * @summary Avarias registradas na devolução deste bloqueio
+ */
+export const ListAvariasParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "bloqueioId": zod.coerce.string()
+})
+
+export const ListAvariasResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "bloqueioId": zod.string(),
+  "descricao": zod.string(),
+  "custoReparo": zod.number().nullish(),
+  "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "registradoPorNome": zod.string().nullish(),
+  "criadaEm": zod.coerce.date()
+})
+export const ListAvariasResponse = zod.array(ListAvariasResponseItem)
+
+
+/**
+ * E71: o atraso já era detectado; a avaria morria numa conversa. A foto é opcional, validada por magic bytes como as de vestido (E3), e quando há contrato o custo pode virar parcela avulsa cobrável.
+ * @summary Registra uma avaria — descrição, custo estimado e foto-evidência
+ */
+export const CreateAvariaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "bloqueioId": zod.coerce.string()
+})
+
+
+export const createAvariaBodyCustoReparoMin = 0;
+
+
+
+export const CreateAvariaBody = zod.object({
+  "descricao": zod.string().min(1),
+  "custoReparo": zod.number().min(createAvariaBodyCustoReparoMin).optional(),
+  "fotoBase64": zod.string().optional()
+})
+
+export const CreateAvariaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "bloqueioId": zod.string(),
+  "descricao": zod.string(),
+  "custoReparo": zod.number().nullish(),
+  "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "registradoPorNome": zod.string().nullish(),
+  "criadaEm": zod.coerce.date()
+})
+
+
+export const DeleteAvariaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "avariaId": zod.coerce.string()
+})
+
+export const DeleteAvariaResponse = zod.void()
+
+
+/**
+ * @summary A foto-evidência da avaria
+ */
+export const GetAvariaFotoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "avariaId": zod.coerce.string()
+})
+
+export const GetAvariaFotoResponse = zod.unknown()
+
+
 export const ListOrcamentosParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const ListOrcamentosQueryParams = zod.object({
+  "leadId": zod.coerce.string().optional(),
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']).optional().describe('Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história')
 })
 
 export const ListOrcamentosResponseItem = zod.object({
@@ -1375,7 +4137,42 @@ export const ListOrcamentosResponseItem = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "aceiteVersao": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
@@ -1396,7 +4193,6 @@ export const CreateOrcamentoParams = zod.object({
 export const CreateOrcamentoBody = zod.object({
   "leadId": zod.string(),
   "atendimentoId": zod.string().optional(),
-  "vendedoraId": zod.string(),
   "descontoTipo": zod.enum(['PERCENTUAL', 'VALOR']).optional(),
   "descontoValor": zod.number().optional(),
   "validade": zod.coerce.date().optional(),
@@ -1414,7 +4210,42 @@ export const CreateOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "aceiteVersao": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
@@ -1428,6 +4259,7 @@ export const CreateOrcamentoResponse = zod.object({
 
 
 export const GetOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "orcamentoId": zod.coerce.string()
 })
 
@@ -1442,7 +4274,42 @@ export const GetOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "aceiteVersao": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
@@ -1456,6 +4323,7 @@ export const GetOrcamentoResponse = zod.object({
 
 
 export const UpdateOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "orcamentoId": zod.coerce.string()
 })
 
@@ -1478,7 +4346,42 @@ export const UpdateOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "aceiteVersao": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
@@ -1492,6 +4395,7 @@ export const UpdateOrcamentoResponse = zod.object({
 
 
 export const DeleteOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "orcamentoId": zod.coerce.string()
 })
 
@@ -1499,6 +4403,7 @@ export const DeleteOrcamentoResponse = zod.void()
 
 
 export const AddOrcamentoItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "orcamentoId": zod.coerce.string()
 })
 
@@ -1524,7 +4429,34 @@ export const AddOrcamentoItemResponse = zod.object({
 })
 
 
+export const UpdateOrcamentoItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+
+
+
+
+export const UpdateOrcamentoItemBody = zod.object({
+  "descricao": zod.string().min(1).optional(),
+  "valorUnitario": zod.number().optional(),
+  "quantidade": zod.number().min(1).optional()
+})
+
+export const UpdateOrcamentoItemResponse = zod.object({
+  "id": zod.string(),
+  "orcamentoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})
+
+
 export const RemoveOrcamentoItemParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "itemId": zod.coerce.string()
 })
 
@@ -1532,6 +4464,7 @@ export const RemoveOrcamentoItemResponse = zod.void()
 
 
 export const AprovarOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "orcamentoId": zod.coerce.string()
 })
 
@@ -1546,7 +4479,42 @@ export const AprovarOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "aceiteVersao": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
@@ -1560,6 +4528,7 @@ export const AprovarOrcamentoResponse = zod.object({
 
 
 export const RecusarOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "orcamentoId": zod.coerce.string()
 })
 
@@ -1574,7 +4543,42 @@ export const RecusarOrcamentoResponse = zod.object({
   "descontoValor": zod.number().nullish(),
   "validade": zod.coerce.date().nullish(),
   "observacoes": zod.string().nullish(),
+  "publicoToken": zod.string().nullish(),
+  "publicoExpiraEm": zod.coerce.date().nullish(),
+  "publicoAbertoEm": zod.coerce.date().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "aceiteVersao": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
@@ -1587,8 +4591,236 @@ export const RecusarOrcamentoResponse = zod.object({
 })
 
 
+/**
+ * Gera (ou regenera) o link público somente-leitura do orçamento. Token novo mata o link anterior — mesmo modelo do reenvio de convite. Gerar link de um RASCUNHO o marca como ENVIADO: compartilhar É enviar.
+ */
+export const CriarLinkOrcamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "orcamentoId": zod.coerce.string()
+})
+
+export const CriarLinkOrcamentoResponse = zod.object({
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date()
+})
+
+
+/**
+ * Visão pública somente-leitura do orçamento — o que a noiva abre pelo link, sem login. Token em QUERY, nunca no path (o logger corta a query; o token jamais cai em log). A primeira abertura carimba `publicoAbertoEm` no orçamento — o aviso à loja de que ela viu.
+ */
+export const GetOrcamentoPublicoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetOrcamentoPublicoResponse = zod.object({
+  "lojaNome": zod.string(),
+  "noivaNome": zod.string(),
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']),
+  "validade": zod.coerce.date().nullish(),
+  "observacoes": zod.string().nullish(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
+  "totalBruto": zod.number(),
+  "totalLiquido": zod.number(),
+  "versaoNumero": zod.number().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "itens": zod.array(zod.object({
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+}))
+})
+
+
+/**
+ * E74: "ela viu" vira "ela concordou com ESTA versão". Grava instante, número da versão enviada e o hash do conteúdo (E75) no orçamento, avança o status para APROVADO e deixa linha na auditoria. Idempotente: o segundo clique devolve o aceite existente. Não é assinatura certificada — é registro próprio com prova de integridade.
+ * @summary A noiva aceita o orçamento pelo link — sem login
+ */
+export const AceitarOrcamentoPublicoQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const AceitarOrcamentoPublicoResponse = zod.object({
+  "aceitoEm": zod.coerce.date()
+})
+
+
+/**
+ * E78: a noiva recebia até três links soltos (orçamento E13, lookbook E21) e nada de provas/parcelas. O portal é UM token por NOIVA — quem o tem vê a proposta (com aceite E74), o lookbook provado, as próximas provas e, depois do contrato, o extrato de parcelas DELA. Token em QUERY, nunca no path (o logger corta a query). Cada abertura carimba `ultimoAcessoEm`. Seções sem conteúdo vêm nulas/vazias — a página não promete o que não existe.
+ * @summary Um link para tudo dela — proposta, lookbook, provas e extrato
+ */
+export const GetPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetPortalResponse = zod.object({
+  "noivaNome": zod.string(),
+  "lojaNome": zod.string(),
+  "orcamento": zod.union([zod.object({
+  "lojaNome": zod.string(),
+  "noivaNome": zod.string(),
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']),
+  "validade": zod.coerce.date().nullish(),
+  "observacoes": zod.string().nullish(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
+  "totalBruto": zod.number(),
+  "totalLiquido": zod.number(),
+  "versaoNumero": zod.number().nullish(),
+  "aceitoEm": zod.coerce.date().nullish(),
+  "itens": zod.array(zod.object({
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+}))
+}),zod.null()]),
+  "lookbook": zod.union([zod.object({
+  "vestidos": zod.array(zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "precoBase": zod.number(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "atualizadaEm": zod.coerce.date()
+})),
+  "atributos": zod.array(zod.object({
+  "atributo": zod.string(),
+  "valor": zod.string()
+}))
+}))
+}),zod.null()]),
+  "provas": zod.array(zod.object({
+  "id": zod.string(),
+  "inicio": zod.coerce.date(),
+  "confirmadoEm": zod.coerce.date().nullish()
+})),
+  "parcelas": zod.array(zod.object({
+  "numero": zod.number(),
+  "descricao": zod.string().nullable(),
+  "valorPrevisto": zod.number(),
+  "valorRecebido": zod.number().nullable(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA'])
+}))
+})
+
+
+/**
+ * Delega à MESMA rotina do E74 (uma transação, um invariante): grava instante, versão e hash, avança para APROVADO e deixa a linha na auditoria como "(link público)". Idempotente. O alvo é o mesmo orçamento que o GET /portal exibe.
+ * @summary O aceite da proposta, pelo portal
+ */
+export const AceitarPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const AceitarPortalResponse = zod.object({
+  "aceitoEm": zod.coerce.date()
+})
+
+
+/**
+ * E85: o aceite (E74) provou que a noiva age quando o link dá o poder. Carimba o MESMO `confirmadoEm` do E39, com a noiva como autora na auditoria ("link público"). Idempotente: já confirmada devolve o carimbo existente. O token escopa — prova de outra noiva é 404 mesmo existindo; atendimento comum é 422 (a fila de confirmação da loja é de presenças, mas o portal só mostra provas).
+ * @summary A noiva confirma a presença pelo portal — um clique, sem wa.me
+ */
+export const ConfirmarProvaPortalParams = zod.object({
+  "atendimentoId": zod.coerce.string()
+})
+
+export const ConfirmarProvaPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const ConfirmarProvaPortalResponse = zod.object({
+  "confirmadoEm": zod.coerce.date()
+})
+
+
+/**
+ * Foto de um vestido do lookbook DA noiva, escopada ao token do PORTAL — o espelho de /lookbooks/publico/foto, para o portal não depender do token antigo do lookbook (que pode ter expirado). Vestido fora do lookbook dela é 404, mesmo existindo.
+ */
+export const GetPortalFotoQueryParams = zod.object({
+  "token": zod.coerce.string(),
+  "vestidoId": zod.coerce.string(),
+  "ordem": zod.coerce.number(),
+  "variante": zod.enum(['original', 'thumb']).optional(),
+  "v": zod.coerce.string().optional().describe('Cache-buster (updatedAt) — com ele a resposta é immutable')
+})
+
+export const GetPortalFotoResponse = zod.unknown()
+
+
+/**
+ * A tabela tem no máximo uma linha por noiva; as telas de mensagens e cobrança cruzam por leadId e só anexam o link quando o portal está VIVO (não expirado, não revogado) — link morto na mensagem é pior que nenhum.
+ * @summary Os portais da loja num lote — para as mensagens oferecerem o link (E84)
+ */
+export const ListPortaisParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListPortaisResponseItem = zod.object({
+  "leadId": zod.string(),
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "revogadoEm": zod.coerce.date().nullable(),
+  "ultimoAcessoEm": zod.coerce.date().nullable()
+})
+export const ListPortaisResponse = zod.array(ListPortaisResponseItem)
+
+
+/**
+ * @summary O estado do portal desta noiva, para o card da ficha
+ */
+export const GetPortalLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const GetPortalLeadResponse = zod.object({
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "revogadoEm": zod.coerce.date().nullable(),
+  "ultimoAcessoEm": zod.coerce.date().nullable()
+})
+
+
+/**
+ * Regenerar MATA o link antigo: é a mesma linha (leadId é unique), o token novo substitui o velho. Revogado volta à vida com token novo.
+ * @summary Gera (ou regenera) o link do portal — 30 dias
+ */
+export const CriarPortalLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const CriarPortalLeadResponse = zod.object({
+  "token": zod.string(),
+  "expiraEm": zod.coerce.date(),
+  "criadoEm": zod.coerce.date(),
+  "revogadoEm": zod.coerce.date().nullable(),
+  "ultimoAcessoEm": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Revoga o link a um clique
+ */
+export const RevogarPortalLeadParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string()
+})
+
+export const RevogarPortalLeadResponse = zod.void()
+
+
 export const ListContratosParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const ListContratosQueryParams = zod.object({
+  "leadId": zod.coerce.string().optional()
 })
 
 export const ListContratosResponseItem = zod.object({
@@ -1597,13 +4829,17 @@ export const ListContratosResponseItem = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
+  "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
   "vestidoDescricao": zod.string().nullish(),
   "valorTotal": zod.number(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
   "formaPagamento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "canceladoMotivo": zod.string().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "dataCasamento": zod.coerce.date().nullish(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
@@ -1617,11 +4853,92 @@ export const ListContratosResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
 })).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional()
 })
 export const ListContratosResponse = zod.array(ListContratosResponseItem)
 
@@ -1634,6 +4951,7 @@ export const CreateContratoBody = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().optional(),
   "bloqueioVestidoId": zod.string().optional(),
+  "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "cpf": zod.string().optional(),
   "vestidoDescricao": zod.string().optional(),
@@ -1657,13 +4975,17 @@ export const CreateContratoResponse = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
+  "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
   "vestidoDescricao": zod.string().nullish(),
   "valorTotal": zod.number(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
   "formaPagamento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "canceladoMotivo": zod.string().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "dataCasamento": zod.coerce.date().nullish(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
@@ -1677,15 +4999,97 @@ export const CreateContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
 })).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional()
 })
 
 
 export const GetContratoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "contratoId": zod.coerce.string()
 })
 
@@ -1695,13 +5099,17 @@ export const GetContratoResponse = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
+  "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
   "vestidoDescricao": zod.string().nullish(),
   "valorTotal": zod.number(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
   "formaPagamento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "canceladoMotivo": zod.string().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "dataCasamento": zod.coerce.date().nullish(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
@@ -1715,15 +5123,97 @@ export const GetContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
 })).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional()
 })
 
 
 export const UpdateContratoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "contratoId": zod.coerce.string()
 })
 
@@ -1743,13 +5233,17 @@ export const UpdateContratoResponse = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
+  "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
   "vestidoDescricao": zod.string().nullish(),
   "valorTotal": zod.number(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
   "formaPagamento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "canceladoMotivo": zod.string().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "dataCasamento": zod.coerce.date().nullish(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
@@ -1763,15 +5257,105 @@ export const UpdateContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
 })).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional()
 })
 
 
+export const GetContratoPdfParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+export const GetContratoPdfResponse = zod.unknown()
+
+
 export const CancelarContratoParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "contratoId": zod.coerce.string()
 })
 
@@ -1779,7 +5363,8 @@ export const CancelarContratoParams = zod.object({
 
 
 export const CancelarContratoBody = zod.object({
-  "motivo": zod.string().min(1)
+  "motivo": zod.string().min(1),
+  "destinoPago": zod.enum(['manter', 'estornar']).optional()
 })
 
 export const CancelarContratoResponse = zod.object({
@@ -1788,13 +5373,17 @@ export const CancelarContratoResponse = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().nullish(),
   "bloqueioVestidoId": zod.string().nullish(),
+  "bloqueioVestidoIds": zod.array(zod.string()).optional(),
   "vendedoraId": zod.string(),
   "status": zod.enum(['ATIVO', 'CANCELADO']),
   "cpf": zod.string().nullish(),
   "vestidoDescricao": zod.string().nullish(),
   "valorTotal": zod.number(),
+  "descontoTipo": zod.union([zod.literal('PERCENTUAL'),zod.literal('VALOR'),zod.literal(null)]).nullish(),
+  "descontoValor": zod.number().nullish(),
   "formaPagamento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
   "canceladoMotivo": zod.string().nullish(),
+  "canceladoEm": zod.coerce.date().nullish(),
   "dataCasamento": zod.coerce.date().nullish(),
   "dataRetirada": zod.coerce.date().nullish(),
   "dataDevolucao": zod.coerce.date().nullish(),
@@ -1808,16 +5397,113 @@ export const CancelarContratoResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
 })).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "vestidoId": zod.string().nullish(),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
+})).optional(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}).optional(),
+  "vendedora": zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}).optional()
 })
 
 
+/**
+ * E79: os recortes que cobrança e projeção usam no lugar da lista completa. `status=abertas` devolve só PREVISTA/PARCIAL (a régua única do estaAberta); `recebidasDe` devolve as com dinheiro recebido a partir do dia (para o realizado desde a âncora do saldo conferido).
+ * @summary Parcelas da loja — opcionalmente recortadas por vencimento, status ou recebimento
+ */
 export const ListParcelasParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const listParcelasQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listParcelasQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listParcelasQueryRecebidasDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListParcelasQueryParams = zod.object({
+  "de": zod.coerce.string().regex(listParcelasQueryDeRegExp).optional().describe('Início do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(listParcelasQueryAteRegExp).optional().describe('Fim do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)'),
+  "status": zod.enum(['abertas']).optional().describe('abertas = só o que ainda tem saldo a receber (PREVISTA\/PARCIAL, E49)'),
+  "recebidasDe": zod.coerce.string().regex(listParcelasQueryRecebidasDeRegExp).optional().describe('Só parcelas com recebimento a partir deste dia (inclusivo, dia local)')
 })
 
 export const ListParcelasResponseItem = zod.object({
@@ -1828,15 +5514,53 @@ export const ListParcelasResponseItem = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
 })
 export const ListParcelasResponse = zod.array(ListParcelasResponseItem)
 
 
+/**
+ * Aceita pagamento em partes (E49): o valor informado ACUMULA no `valorRecebido`, e o acumulado decide o status — quitou vira PAGA, sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
+ * @summary Recebe (total ou parcialmente) uma parcela
+ */
 export const ReceberParcelaParams = zod.object({
+  "lojaId": zod.coerce.string(),
   "parcelaId": zod.coerce.string()
 })
 
@@ -1854,10 +5578,339 @@ export const ReceberParcelaResponse = zod.object({
   "descricao": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA', 'CANCELADA']),
-  "valorRecebido": zod.number().nullish(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
-  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish()
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
+
+
+export const EstornarParcelaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "parcelaId": zod.coerce.string()
+})
+
+export const EstornarParcelaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "numero": zod.number(),
+  "descricao": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
+  "recebidoEm": zod.coerce.date().nullish(),
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
+
+
+export const RemoveParcelaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "parcelaId": zod.coerce.string()
+})
+
+export const RemoveParcelaResponse = zod.void()
+
+
+export const GerarPlanoParcelasParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+export const gerarPlanoParcelasBodyEntradaMin = 0;
+
+export const gerarPlanoParcelasBodyNumParcelasMax = 360;
+
+export const gerarPlanoParcelasBodyPeriodicidadeDiasMax = 3650;
+
+
+
+export const GerarPlanoParcelasBody = zod.object({
+  "entrada": zod.number().min(gerarPlanoParcelasBodyEntradaMin).optional(),
+  "numParcelas": zod.number().min(1).max(gerarPlanoParcelasBodyNumParcelasMax),
+  "primeiroVencimento": zod.coerce.date(),
+  "periodicidadeDias": zod.number().min(1).max(gerarPlanoParcelasBodyPeriodicidadeDiasMax).optional()
+})
+
+export const GerarPlanoParcelasResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "numero": zod.number(),
+  "descricao": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
+  "recebidoEm": zod.coerce.date().nullish(),
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
+export const GerarPlanoParcelasResponse = zod.array(GerarPlanoParcelasResponseItem)
+
+
+/**
+ * E71: a consequência que faltava. Uma cobrança que nasce DEPOIS do plano (multa por devolução atrasada, custo de reparo de avaria) entra como parcela do contrato — e a régua de cobrança, o extrato e o caixa a tratam como qualquer outra. Número é o próximo livre; contrato precisa estar ATIVO.
+ * @summary Parcela avulsa — multa de atraso, reparo de avaria, ajuste extra
+ */
+export const CreateParcelaAvulsaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contratoId": zod.coerce.string()
+})
+
+
+export const createParcelaAvulsaBodyValorPrevistoExclusiveMin = 0;
+
+
+
+export const CreateParcelaAvulsaBody = zod.object({
+  "descricao": zod.string().min(1),
+  "valorPrevisto": zod.number().gt(createParcelaAvulsaBodyValorPrevistoExclusiveMin),
+  "vencimento": zod.coerce.date()
+})
+
+export const CreateParcelaAvulsaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "contratoId": zod.string(),
+  "numero": zod.number(),
+  "descricao": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA']),
+  "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
+  "recebidoEm": zod.coerce.date().nullish(),
+  "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "contrato": zod.union([zod.object({
+  "leadId": zod.string(),
+  "lead": zod.union([zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
+  "noivaNome": zod.string(),
+  "noivoNome": zod.string().nullish(),
+  "cerimonialista": zod.string().nullish(),
+  "whatsapp": zod.string().nullish(),
+  "casamentoData": zod.coerce.date().nullish(),
+  "casamentoHorario": zod.string().nullish(),
+  "casamentoLocal": zod.string().nullish(),
+  "orcamentoAbertoEm": zod.coerce.date().nullish(),
+  "contratoFechadoEm": zod.coerce.date().nullish(),
+  "perdidaEm": zod.coerce.date().nullish(),
+  "perdidaMotivo": zod.union([zod.literal('PRECO'),zod.literal('DATA_INDISPONIVEL'),zod.literal('CONCORRENTE'),zod.literal('DESISTENCIA'),zod.literal('SEM_RETORNO'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "perdidaDetalhe": zod.string().nullish(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']),
+  "createdAt": zod.coerce.date(),
+  "ultimoContatoEm": zod.coerce.date().nullish(),
+  "interesse": zod.object({
+  "leadId": zod.string(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
+  "atributos": zod.array(zod.object({
+  "atributoId": zod.string(),
+  "opcaoId": zod.string()
+})).optional()
+}).optional()
+}),zod.null()]).optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * E79: a tela baixava TODAS as parcelas da história para os motores agregarem no navegador. Os MESMOS motores (financeiro-core, E25) rodam aqui sobre linhas já filtradas por data no SQL. `porMeio.total` e `resumo.entradas` são o mesmo dinheiro por construção — o invariante que a tela sempre exibiu.
+ * @summary O fluxo de caixa agregado no banco — a tela pede a janela, não a história
+ */
+export const GetFluxoCaixaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getFluxoCaixaQueryIniRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getFluxoCaixaQueryFimRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetFluxoCaixaQueryParams = zod.object({
+  "ini": zod.coerce.string().regex(getFluxoCaixaQueryIniRegExp).optional(),
+  "fim": zod.coerce.string().regex(getFluxoCaixaQueryFimRegExp).optional()
+})
+
+export const GetFluxoCaixaResponse = zod.object({
+  "intervalo": zod.object({
+  "iniYMD": zod.string(),
+  "fimYMD": zod.string()
+}),
+  "resumo": zod.object({
+  "entradas": zod.number(),
+  "saidas": zod.number(),
+  "saldo": zod.number()
+}),
+  "porMeio": zod.object({
+  "total": zod.number(),
+  "linhas": zod.array(zod.object({
+  "forma": zod.string().nullable(),
+  "total": zod.number(),
+  "qtd": zod.number()
+}))
+}),
+  "tendencia": zod.array(zod.object({
+  "competencia": zod.string(),
+  "entradas": zod.number(),
+  "saidas": zod.number(),
+  "saldo": zod.number()
+})),
+  "horizonte": zod.object({
+  "aReceber": zod.number(),
+  "aReceberAtraso": zod.number(),
+  "aPagar": zod.number(),
+  "aPagarAtraso": zod.number()
+}),
+  "movimentos": zod.array(zod.object({
+  "id": zod.string(),
+  "tipo": zod.enum(['ENTRADA', 'SAIDA']),
+  "data": zod.coerce.date(),
+  "valor": zod.number(),
+  "rotulo": zod.string().nullish(),
+  "descricao": zod.string(),
+  "contratoId": zod.string().nullish()
+})).describe('Linha do tempo do período, mais recente primeiro')
+})
+
+
+/**
+ * E79: o mesmo movimento do /financeiro/fluxo, para o DRE. O MESMO motor (`dreDoIntervalo`, financeiro-core) roda aqui sobre linhas filtradas pela competência no SQL — fluxo e DRE fecham entre si porque saem do mesmo lugar. `porMeio` reusa a régua do E50: `porMeio.total` e `receitas` são o mesmo dinheiro por construção.
+ * @summary O resultado do mês agregado no banco — regime de caixa
+ */
+export const GetDreParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const getDreQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetDreQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(getDreQueryCompetenciaRegExp).optional().describe('Competência YYYY-MM; ausente cai no mês corrente')
+})
+
+export const GetDreResponse = zod.object({
+  "competencia": zod.string(),
+  "intervalo": zod.object({
+  "iniYMD": zod.string(),
+  "fimYMD": zod.string()
+}),
+  "receitas": zod.number(),
+  "despesas": zod.array(zod.object({
+  "rotulo": zod.string(),
+  "total": zod.number()
+})).describe('Maior total primeiro'),
+  "totalDespesas": zod.number(),
+  "resultado": zod.number().describe('receitas − totalDespesas; pode ser negativo'),
+  "porMeio": zod.object({
+  "total": zod.number(),
+  "linhas": zod.array(zod.object({
+  "forma": zod.string().nullable(),
+  "total": zod.number(),
+  "qtd": zod.number()
+}))
+})
 })
 
 
@@ -1876,7 +5929,8 @@ export const ListContasPagarResponseItem = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 })
 export const ListContasPagarResponse = zod.array(ListContasPagarResponseItem)
 
@@ -1910,19 +5964,64 @@ export const CreateContaPagarResponse = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 })
 
 
-export const DeleteContaPagarParams = zod.object({
-  "contaPagarId": zod.coerce.string()
+/**
+ * @summary CSV das contas a pagar por vencimento, para a contadora
+ */
+export const ExportarContasPagarParams = zod.object({
+  "lojaId": zod.coerce.string()
 })
 
-export const DeleteContaPagarResponse = zod.void()
+export const exportarContasPagarQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarContasPagarQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarContasPagarQueryParams = zod.object({
+  "de": zod.coerce.string().regex(exportarContasPagarQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarContasPagarQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarContasPagarResponse = zod.unknown()
+
+
+/**
+ * @summary CSV das parcelas (a receber) por vencimento, com a noiva
+ */
+export const ExportarParcelasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarParcelasQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarParcelasQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarParcelasQueryParams = zod.object({
+  "de": zod.coerce.string().regex(exportarParcelasQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarParcelasQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarParcelasResponse = zod.unknown()
+
+
+/**
+ * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
+ * @summary Remove uma conta a pagar ainda PREVISTA
+ */
+export const RemoveContaPagarParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "contaId": zod.coerce.string()
+})
+
+export const RemoveContaPagarResponse = zod.void()
 
 
 export const PagarContaPagarParams = zod.object({
-  "contaPagarId": zod.coerce.string()
+  "lojaId": zod.coerce.string(),
+  "contaId": zod.coerce.string()
 })
 
 export const PagarContaPagarBody = zod.object({
@@ -1943,70 +6042,321 @@ export const PagarContaPagarResponse = zod.object({
   "fornecedor": zod.string().nullish(),
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
-  "status": zod.enum(['PREVISTA', 'PAGA'])
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
 })
 
 
-export const ListSalariosRecorrentesParams = zod.object({
+/**
+ * A mesma conta da tela de Projeção reduzida ao que faz alguém agir: o primeiro dia negativo e o piso da curva, partindo do saldo de HOJE (âncora + realizado desde ela). Existe para o dashboard e o hub de fluxo não terem de baixar parcelas, contas, saldos e pagamentos inteiros só para descobrir isso. Sem saldo de referência devolve `ancorado: false` e nada mais — curva sem nível não sustenta alarme.
+ * @summary O veredito da projeção — o caixa fica negativo no horizonte?
+ */
+export const GetAlertaCaixaParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const ListSalariosRecorrentesResponseItem = zod.object({
+export const getAlertaCaixaResponseDiaNegativoRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAlertaCaixaResponseMenorSaldoDiaRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetAlertaCaixaResponse = zod.object({
+  "ancorado": zod.boolean().describe('false = não há saldo de referência; o resto vem null e não há alerta a dar'),
+  "saldoHoje": zod.number().nullable().describe('Saldo de partida: âncora + realizado desde ela'),
+  "diaNegativo": zod.string().regex(getAlertaCaixaResponseDiaNegativoRegExp).nullable().describe('Primeiro dia em que o saldo projetado fica negativo; null se nunca'),
+  "menorSaldo": zod.object({
+  "dia": zod.string().regex(getAlertaCaixaResponseMenorSaldoDiaRegExp).nullable().describe('null = o piso é o próprio saldo de hoje (nada o derruba)'),
+  "valor": zod.number()
+}).nullable(),
+  "horizonteDias": zod.number()
+})
+
+
+/**
+ * @summary Caixa realizado — saídas efetivamente pagas
+ */
+export const ListPagamentosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const listPagamentosQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listPagamentosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListPagamentosQueryParams = zod.object({
+  "de": zod.coerce.string().regex(listPagamentosQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(listPagamentosQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "colaboradorId": zod.coerce.string().optional()
+})
+
+export const ListPagamentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "colaboradorId": zod.string(),
-  "valorBase": zod.number(),
+  "colaboradorId": zod.string().nullish(),
+  "data": zod.coerce.date(),
+  "valorPago": zod.number(),
+  "forma": zod.string().nullish(),
+  "observacoes": zod.string().nullish(),
+  "enviadoContabilidadeEm": zod.coerce.date().nullish(),
+  "colaborador": zod.union([zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "pagamentoId": zod.string(),
+  "contaPagarId": zod.string(),
+  "valor": zod.number(),
+  "contaPagar": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "colaboradorId": zod.string().nullish(),
+  "competencia": zod.string().nullish(),
+  "descricao": zod.string(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
+}).optional()
+})).optional()
+})
+export const ListPagamentosResponse = zod.array(ListPagamentosResponseItem)
+
+
+/**
+ * @summary Uma saída de caixa que quita uma ou mais contas
+ */
+export const CreatePagamentoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+export const createPagamentoBodyValorPagoMin = 0;
+
+
+
+export const CreatePagamentoBody = zod.object({
+  "data": zod.coerce.date(),
+  "contaIds": zod.array(zod.string()).min(1),
+  "valorPago": zod.number().min(createPagamentoBodyValorPagoMin).optional(),
+  "forma": zod.string().optional(),
+  "observacoes": zod.string().optional()
+})
+
+export const CreatePagamentoResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "colaboradorId": zod.string().nullish(),
+  "data": zod.coerce.date(),
+  "valorPago": zod.number(),
+  "forma": zod.string().nullish(),
+  "observacoes": zod.string().nullish(),
+  "enviadoContabilidadeEm": zod.coerce.date().nullish(),
+  "colaborador": zod.union([zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "email": zod.string().email(),
+  "ativo": zod.boolean(),
+  "isSuperAdmin": zod.boolean(),
+  "precisaTrocarSenha": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "itens": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "pagamentoId": zod.string(),
+  "contaPagarId": zod.string(),
+  "valor": zod.number(),
+  "contaPagar": zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "colaboradorId": zod.string().nullish(),
+  "competencia": zod.string().nullish(),
+  "descricao": zod.string(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
+}).optional()
+})).optional()
+})
+
+
+/**
+ * @summary Desfaz a saída de caixa e devolve as contas para PREVISTA
+ */
+export const EstornarPagamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "pagamentoId": zod.coerce.string()
+})
+
+export const EstornarPagamentoResponse = zod.void()
+
+
+/**
+ * Sem filtro, os 200 registros mais recentes. Os filtros são combináveis (E, não OU) e o corte de 200 continua valendo DEPOIS deles — quem quiser o período inteiro usa o CSV de …/auditoria/exportar.
+ * @summary Trilha de auditoria das ações sensíveis (mais recentes primeiro)
+ */
+export const ListAuditoriaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const listAuditoriaQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListAuditoriaQueryParams = zod.object({
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']).optional().describe('Uma das ações da união fechada (ACOES_AUDITORIA)'),
+  "usuarioId": zod.coerce.string().optional().describe('Autor da ação (id; o nome na linha é desnormalizado)'),
+  "de": zod.coerce.string().regex(listAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(listAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ListAuditoriaResponseItem = zod.object({
+  "id": zod.string(),
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']),
+  "entidade": zod.string(),
+  "entidadeId": zod.string(),
+  "usuarioId": zod.string().nullish(),
+  "usuarioNome": zod.string().describe('Desnormalizado — sobrevive à saída do autor da equipe'),
+  "detalhe": zod.record(zod.string(), zod.unknown()).nullish(),
+  "criadoEm": zod.coerce.date()
+})
+export const ListAuditoriaResponse = zod.array(ListAuditoriaResponseItem)
+
+
+/**
+ * Sai da PRÓPRIA trilha, não da equipe: `usuarioId` é ON DELETE SET NULL, então quem saiu da loja continua tendo agido, e a lista de equipe é gated por `admin` — uma contadora com acesso só a financeiro ficaria sem filtro. Ordenado pela ação mais recente de cada autor.
+ * @summary Quem já deixou linha na trilha — as opções do filtro de autor
+ */
+export const ListAutoresAuditoriaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListAutoresAuditoriaResponseItem = zod.object({
+  "usuarioId": zod.string(),
+  "nome": zod.string().describe('O nome mais recente com que este autor aparece na trilha'),
+  "total": zod.number().describe('Quantas linhas da trilha são dele')
+})
+export const ListAutoresAuditoriaResponse = zod.array(ListAutoresAuditoriaResponseItem)
+
+
+/**
+ * Aceita os mesmos filtros do GET /auditoria, mas SEM o corte de 200: a planilha que a contadora concilia não pode ser truncada em silêncio.
+ * @summary CSV da trilha de auditoria — os mesmos filtros da tela
+ */
+export const ExportarAuditoriaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarAuditoriaQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarAuditoriaQueryParams = zod.object({
+  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']).optional(),
+  "usuarioId": zod.coerce.string().optional(),
+  "de": zod.coerce.string().regex(exportarAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarAuditoriaResponse = zod.unknown()
+
+
+/**
+ * @summary O que se repete todo mês — salário, aluguel, assinatura, fornecedor
+ */
+export const ListRecorrenciasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListRecorrenciasResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().nullish(),
+  "descricao": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valor": zod.number(),
   "diaVencimento": zod.number(),
   "ativo": zod.boolean()
 })
-export const ListSalariosRecorrentesResponse = zod.array(ListSalariosRecorrentesResponseItem)
+export const ListRecorrenciasResponse = zod.array(ListRecorrenciasResponseItem)
 
 
-export const CreateSalarioRecorrenteParams = zod.object({
+/**
+ * SALARIO exige `usuarioId` (e só um ativo por pessoa); DESPESA e FORNECEDOR exigem `descricao` — sem ela a conta gerada não teria como se chamar.
+ */
+export const CreateRecorrenciaParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const CreateSalarioRecorrenteBody = zod.object({
-  "colaboradorId": zod.string(),
-  "valorBase": zod.number(),
+
+
+
+export const CreateRecorrenciaBody = zod.object({
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().optional().describe('Obrigatório para SALARIO'),
+  "descricao": zod.string().min(1).optional().describe('Obrigatório para DESPESA\/FORNECEDOR'),
+  "categoria": zod.string().optional(),
+  "fornecedor": zod.string().optional(),
+  "valor": zod.number(),
   "diaVencimento": zod.number()
 })
 
-export const CreateSalarioRecorrenteResponse = zod.object({
+export const CreateRecorrenciaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "colaboradorId": zod.string(),
-  "valorBase": zod.number(),
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().nullish(),
+  "descricao": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valor": zod.number(),
   "diaVencimento": zod.number(),
   "ativo": zod.boolean()
 })
 
 
-export const UpdateSalarioRecorrenteParams = zod.object({
-  "id": zod.coerce.string()
+export const UpdateRecorrenciaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "recorrenciaId": zod.coerce.string()
 })
 
-export const UpdateSalarioRecorrenteBody = zod.object({
-  "valorBase": zod.number().optional(),
+
+
+
+export const UpdateRecorrenciaBody = zod.object({
+  "descricao": zod.string().min(1).optional(),
+  "categoria": zod.string().optional(),
+  "fornecedor": zod.string().optional(),
+  "valor": zod.number().optional(),
   "diaVencimento": zod.number().optional(),
   "ativo": zod.boolean().optional()
 })
 
-export const UpdateSalarioRecorrenteResponse = zod.object({
+export const UpdateRecorrenciaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "colaboradorId": zod.string(),
-  "valorBase": zod.number(),
+  "tipo": zod.enum(['SALARIO', 'DESPESA', 'FORNECEDOR']),
+  "usuarioId": zod.string().nullish(),
+  "descricao": zod.string().nullish(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valor": zod.number(),
   "diaVencimento": zod.number(),
   "ativo": zod.boolean()
 })
-
-
-export const DeleteSalarioRecorrenteParams = zod.object({
-  "id": zod.coerce.string()
-})
-
-export const DeleteSalarioRecorrenteResponse = zod.void()
 
 
 export const ListSaldoReferenciaParams = zod.object({
@@ -2016,7 +6366,7 @@ export const ListSaldoReferenciaParams = zod.object({
 export const ListSaldoReferenciaResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "dataReferencia": zod.coerce.date(),
+  "dataReferencia": zod.coerce.date().describe('Instante do dia conferido (meio-dia local America\/Sao_Paulo)'),
   "valor": zod.number()
 })
 export const ListSaldoReferenciaResponse = zod.array(ListSaldoReferenciaResponseItem)
@@ -2034,8 +6384,83 @@ export const CreateSaldoReferenciaBody = zod.object({
 export const CreateSaldoReferenciaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
-  "dataReferencia": zod.coerce.date(),
+  "dataReferencia": zod.coerce.date().describe('Instante do dia conferido (meio-dia local America\/Sao_Paulo)'),
   "valor": zod.number()
+})
+
+
+/**
+ * Salário, aluguel, assinatura e fornecedor fixo pelo mesmo caminho (E48). Idempotente: cada recorrência ativa vira NO MÁXIMO uma conta a pagar por competência. Reexecutar responde `geradas: 0` — é o que torna seguro clicar de novo depois de um erro de rede.
+ * @summary Gera as contas da competência a partir das recorrências ativas
+ */
+export const GerarRecorrenciasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const gerarRecorrenciasBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GerarRecorrenciasBody = zod.object({
+  "competencia": zod.string().regex(gerarRecorrenciasBodyCompetenciaRegExp)
+})
+
+export const GerarRecorrenciasResponse = zod.object({
+  "geradas": zod.number(),
+  "contas": zod.array(zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "tipo": zod.enum(['DESPESA', 'FORNECEDOR', 'SALARIO', 'COMISSAO']),
+  "colaboradorId": zod.string().nullish(),
+  "competencia": zod.string().nullish(),
+  "descricao": zod.string(),
+  "categoria": zod.string().nullish(),
+  "fornecedor": zod.string().nullish(),
+  "valorPrevisto": zod.number(),
+  "vencimento": zod.coerce.date(),
+  "status": zod.enum(['PREVISTA', 'PAGA']),
+  "recorrenciaId": zod.string().nullish()
+}))
+})
+
+
+/**
+ * SÓ LÊ. Marcar os pagamentos como enviados é o POST …/financeiro/contabilidade/enviar — um GET precisa ser seguro (refresh/prefetch do navegador não pode escrever).
+ * @summary CSV dos itens pagos no período, para a contabilidade
+ */
+export const ExportarFolhaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarFolhaQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarFolhaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarFolhaQueryParams = zod.object({
+  "de": zod.coerce.string().regex(exportarFolhaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(exportarFolhaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')
+})
+
+export const ExportarFolhaResponse = zod.unknown()
+
+
+/**
+ * @summary Carimba enviadoContabilidadeEm nos pagamentos do intervalo
+ */
+export const EnviarContabilidadeParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const enviarContabilidadeBodyDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const enviarContabilidadeBodyAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const EnviarContabilidadeBody = zod.object({
+  "de": zod.string().regex(enviarContabilidadeBodyDeRegExp),
+  "ate": zod.string().regex(enviarContabilidadeBodyAteRegExp)
+})
+
+export const EnviarContabilidadeResponse = zod.object({
+  "marcados": zod.number()
 })
 
 
@@ -2047,17 +6472,17 @@ export const ListComissaoRegrasResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
   "vigenciaInicio": zod.coerce.date(),
-  "bonusAcumulaFaixas": zod.boolean(),
+  "bonusAcumulaFaixas": zod.boolean().describe('Ligado: os bônus dos degraus vencidos se somam'),
   "ativo": zod.boolean(),
   "faixas": zod.array(zod.object({
   "id": zod.string(),
-  "regraId": zod.string(),
-  "minAcumulado": zod.number(),
-  "maxAcumulado": zod.number().nullish(),
-  "percentual": zod.number().nullish(),
+  "minAcumulado": zod.number().describe('Borda inferior INCLUSIVA'),
+  "maxAcumulado": zod.number().nullish().describe('Borda superior EXCLUSIVA; null = topo aberto'),
+  "percentual": zod.number().nullish().describe('5 = 5%'),
   "bonusFixo": zod.number().nullish()
-})).optional()
+}))
 })
 export const ListComissaoRegrasResponse = zod.array(ListComissaoRegrasResponseItem)
 
@@ -2066,92 +6491,276 @@ export const CreateComissaoRegraParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createComissaoRegraBodyFaixasItemMinAcumuladoMin = 0;
+
+export const createComissaoRegraBodyFaixasItemMaxAcumuladoMin = 0;
+
+export const createComissaoRegraBodyFaixasItemPercentualMin = 0;
+export const createComissaoRegraBodyFaixasItemPercentualMax = 100;
+
+export const createComissaoRegraBodyFaixasItemBonusFixoMin = 0;
+
+
+
+
 export const CreateComissaoRegraBody = zod.object({
   "vendedoraId": zod.string(),
-  "vigenciaInicio": zod.coerce.date(),
+  "vigenciaInicio": zod.coerce.date().optional().describe('Omitido = vale a partir de hoje'),
   "bonusAcumulaFaixas": zod.boolean().optional(),
   "faixas": zod.array(zod.object({
-  "minAcumulado": zod.number(),
-  "maxAcumulado": zod.number().optional(),
-  "percentual": zod.number().optional(),
-  "bonusFixo": zod.number().optional()
-}))
+  "minAcumulado": zod.number().min(createComissaoRegraBodyFaixasItemMinAcumuladoMin),
+  "maxAcumulado": zod.number().min(createComissaoRegraBodyFaixasItemMaxAcumuladoMin).nullish(),
+  "percentual": zod.number().min(createComissaoRegraBodyFaixasItemPercentualMin).max(createComissaoRegraBodyFaixasItemPercentualMax).nullish(),
+  "bonusFixo": zod.number().min(createComissaoRegraBodyFaixasItemBonusFixoMin).nullish()
+})).min(1)
 })
 
 export const CreateComissaoRegraResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
   "vigenciaInicio": zod.coerce.date(),
-  "bonusAcumulaFaixas": zod.boolean(),
+  "bonusAcumulaFaixas": zod.boolean().describe('Ligado: os bônus dos degraus vencidos se somam'),
   "ativo": zod.boolean(),
   "faixas": zod.array(zod.object({
   "id": zod.string(),
-  "regraId": zod.string(),
-  "minAcumulado": zod.number(),
-  "maxAcumulado": zod.number().nullish(),
-  "percentual": zod.number().nullish(),
+  "minAcumulado": zod.number().describe('Borda inferior INCLUSIVA'),
+  "maxAcumulado": zod.number().nullish().describe('Borda superior EXCLUSIVA; null = topo aberto'),
+  "percentual": zod.number().nullish().describe('5 = 5%'),
   "bonusFixo": zod.number().nullish()
-})).optional()
+}))
 })
 
 
 export const UpdateComissaoRegraParams = zod.object({
-  "id": zod.coerce.string()
+  "lojaId": zod.coerce.string(),
+  "regraId": zod.coerce.string()
 })
 
 export const UpdateComissaoRegraBody = zod.object({
   "ativo": zod.boolean().optional(),
-  "bonusAcumulaFaixas": zod.boolean().optional(),
-  "faixas": zod.array(zod.object({
-  "minAcumulado": zod.number(),
-  "maxAcumulado": zod.number().optional(),
-  "percentual": zod.number().optional(),
-  "bonusFixo": zod.number().optional()
-})).optional()
+  "bonusAcumulaFaixas": zod.boolean().optional()
 })
 
 export const UpdateComissaoRegraResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
   "vigenciaInicio": zod.coerce.date(),
-  "bonusAcumulaFaixas": zod.boolean(),
+  "bonusAcumulaFaixas": zod.boolean().describe('Ligado: os bônus dos degraus vencidos se somam'),
   "ativo": zod.boolean(),
   "faixas": zod.array(zod.object({
   "id": zod.string(),
-  "regraId": zod.string(),
-  "minAcumulado": zod.number(),
-  "maxAcumulado": zod.number().nullish(),
-  "percentual": zod.number().nullish(),
+  "minAcumulado": zod.number().describe('Borda inferior INCLUSIVA'),
+  "maxAcumulado": zod.number().nullish().describe('Borda superior EXCLUSIVA; null = topo aberto'),
+  "percentual": zod.number().nullish().describe('5 = 5%'),
   "bonusFixo": zod.number().nullish()
-})).optional()
+}))
 })
 
 
 export const DeleteComissaoRegraParams = zod.object({
-  "id": zod.coerce.string()
+  "lojaId": zod.coerce.string(),
+  "regraId": zod.coerce.string()
 })
 
 export const DeleteComissaoRegraResponse = zod.void()
 
 
-export const ListComissaoFechamentosParams = zod.object({
+/**
+ * @summary Extrato de comissão da própria pessoa logada
+ */
+export const GetMinhaComissaoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
-export const ListComissaoFechamentosResponseItem = zod.object({
-  "id": zod.string(),
-  "lojaId": zod.string(),
-  "vendedoraId": zod.string(),
+export const getMinhaComissaoQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetMinhaComissaoQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(getMinhaComissaoQueryCompetenciaRegExp)
+})
+
+export const GetMinhaComissaoResponse = zod.object({
+  "competencia": zod.string().describe('Competência YYYY-MM consultada'),
+  "temRegra": zod.boolean().describe('false = sem escada vigente; valores zerados'),
+  "totalVendas": zod.number().describe('Base líquida do mês (estorno já abatido)'),
+  "estornoPendente": zod.number(),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number(),
+  "faltaProximoDegrau": zod.number().nullish().describe('Quanto falta vender para a próxima faixa; null = topo'),
+  "proximoDegrauPercentual": zod.number().nullish(),
+  "projecao": zod.union([zod.object({
+  "diasDecorridos": zod.number(),
+  "diasNoMes": zod.number(),
+  "baseProjetada": zod.number().describe('Base líquida projetada para o mês inteiro'),
+  "percentualProjetado": zod.number().nullish(),
+  "valorTotalProjetado": zod.number().describe('Comissão + bônus sobre a base projetada')
+}),zod.null()]).optional(),
+  "colocacao": zod.union([zod.object({
+  "posicao": zod.number(),
+  "de": zod.number().describe('Quantas pessoas no ranking do mês')
+}),zod.null()]).optional(),
+  "fechamentos": zod.array(zod.object({
   "competencia": zod.string(),
   "totalVendas": zod.number(),
   "percentualAplicado": zod.number().nullish(),
   "valorComissao": zod.number(),
   "valorBonus": zod.number(),
   "valorTotal": zod.number(),
-  "contaPagarId": zod.string().nullish(),
   "fechadoEm": zod.coerce.date()
+})).describe('Meses já fechados da pessoa, mais recente primeiro')
+})
+
+
+export const PreviewComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const previewComissaoQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const PreviewComissaoQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(previewComissaoQueryCompetenciaRegExp)
+})
+
+export const PreviewComissaoResponseItem = zod.object({
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "totalVendas": zod.number(),
+  "estornoPendente": zod.number().describe('Cancelados de meses já fechados, ainda não reconciliados'),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number(),
+  "faltaProximoDegrau": zod.number().nullish(),
+  "projecao": zod.union([zod.object({
+  "diasDecorridos": zod.number(),
+  "diasNoMes": zod.number(),
+  "baseProjetada": zod.number().describe('Base líquida projetada para o mês inteiro'),
+  "percentualProjetado": zod.number().nullish(),
+  "valorTotalProjetado": zod.number().describe('Comissão + bônus sobre a base projetada')
+}),zod.null()]).optional()
+})
+export const PreviewComissaoResponse = zod.array(PreviewComissaoResponseItem)
+
+
+/**
+ * Aplica uma escada HIPOTÉTICA às bases reais das últimas competências da vendedora (a base do fechamento quando o mês já fechou; as vendas brutas quando não), reusando o motor calcularComissao. Não grava nada — é um POST que só consulta.
+ * @summary "Se a escada fosse esta, quanto teria pago?" — simulação sobre as bases reais
+ */
+export const SimularComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const simularComissaoBodyFaixasItemMinAcumuladoMin = 0;
+
+export const simularComissaoBodyFaixasItemMaxAcumuladoMin = 0;
+
+export const simularComissaoBodyFaixasItemPercentualMin = 0;
+export const simularComissaoBodyFaixasItemPercentualMax = 100;
+
+export const simularComissaoBodyFaixasItemBonusFixoMin = 0;
+
+
+export const simularComissaoBodyBonusAcumulaFaixasDefault = false;
+export const simularComissaoBodyMesesDefault = 3;
+export const simularComissaoBodyMesesMax = 12;
+
+
+
+export const SimularComissaoBody = zod.object({
+  "vendedoraId": zod.string(),
+  "faixas": zod.array(zod.object({
+  "minAcumulado": zod.number().min(simularComissaoBodyFaixasItemMinAcumuladoMin),
+  "maxAcumulado": zod.number().min(simularComissaoBodyFaixasItemMaxAcumuladoMin).nullish(),
+  "percentual": zod.number().min(simularComissaoBodyFaixasItemPercentualMin).max(simularComissaoBodyFaixasItemPercentualMax).nullish(),
+  "bonusFixo": zod.number().min(simularComissaoBodyFaixasItemBonusFixoMin).nullish()
+})).min(1),
+  "bonusAcumulaFaixas": zod.boolean().default(simularComissaoBodyBonusAcumulaFaixasDefault),
+  "meses": zod.number().min(1).max(simularComissaoBodyMesesMax).default(simularComissaoBodyMesesDefault)
+})
+
+export const SimularComissaoResponse = zod.object({
+  "vendedoraId": zod.string(),
+  "linhas": zod.array(zod.object({
+  "competencia": zod.string(),
+  "base": zod.number(),
+  "fechada": zod.boolean(),
+  "pagoReal": zod.number(),
+  "pagoRealPercentual": zod.number().nullish(),
+  "simulado": zod.number(),
+  "simuladoPercentual": zod.number().nullish(),
+  "diferenca": zod.number()
+})),
+  "totalPagoReal": zod.number(),
+  "totalSimulado": zod.number(),
+  "totalDiferenca": zod.number()
+})
+
+
+/**
+ * Transacional e completo: cancela a conta a pagar gerada, apaga o fechamento e devolve a NULL o `comissaoEstornadaEm` dos contratos que ESTE fechamento reconciliou. Recusa se a conta já foi PAGA — reabrir deixaria uma saída de caixa sem contrapartida; o caminho é estornar o pagamento antes. Deixa linha na trilha de auditoria.
+ * @summary Reabre um fechamento errado, desfazendo o que ele criou (E54)
+ */
+export const ReabrirComissaoFechamentoParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "fechamentoId": zod.coerce.string()
+})
+
+export const ReabrirComissaoFechamentoResponse = zod.object({
+  "fechamentoId": zod.string(),
+  "competencia": zod.string(),
+  "vendedoraId": zod.string(),
+  "contaPagarRemovida": zod.boolean().describe('false = o fechamento não gerou conta (valor zero)'),
+  "estornosReabertos": zod.number().describe('Contratos cujo estorno voltou a pendente')
+})
+
+
+/**
+ * Varredura das últimas competências: onde houve venda e ainda não há fechamento, a pendência aparece. O mês CORRENTE nunca entra — ele ainda pode receber vendas, e o fechamento o recusa. A granularidade é por (competência, vendedora): um mês pode ter fechado para quem já vendia e ganhado depois uma venda de outra pessoa.
+ * @summary Competências passadas com venda e sem fechamento (E53)
+ */
+export const ListPendenciasComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListPendenciasComissaoResponseItem = zod.object({
+  "competencia": zod.string().describe('YYYY-MM'),
+  "vendedoras": zod.number().describe('Quantas ainda não têm fechamento no mês'),
+  "totalVendas": zod.number().describe('Base que ainda não virou comissão')
+})
+export const ListPendenciasComissaoResponse = zod.array(ListPendenciasComissaoResponseItem)
+
+
+export const ListComissaoFechamentosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const listComissaoFechamentosQueryCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const ListComissaoFechamentosQueryParams = zod.object({
+  "competencia": zod.coerce.string().regex(listComissaoFechamentosQueryCompetenciaRegExp).optional()
+})
+
+export const ListComissaoFechamentosResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "competencia": zod.string().describe('Competência YYYY-MM'),
+  "totalVendas": zod.number().describe('Base líquida, já com o estorno abatido'),
+  "percentualAplicado": zod.number().nullish(),
+  "valorComissao": zod.number(),
+  "valorBonus": zod.number(),
+  "valorTotal": zod.number().describe('comissão + bônus; é este que vira ContaPagar'),
+  "contaPagarId": zod.string().nullish(),
+  "fechadoEm": zod.coerce.date().optional()
 })
 export const ListComissaoFechamentosResponse = zod.array(ListComissaoFechamentosResponseItem)
 
@@ -2160,24 +6769,71 @@ export const GerarComissaoFechamentoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const gerarComissaoFechamentoBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
 export const GerarComissaoFechamentoBody = zod.object({
-  "competencia": zod.string()
+  "competencia": zod.string().regex(gerarComissaoFechamentoBodyCompetenciaRegExp)
 })
 
 export const GerarComissaoFechamentoResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "vendedoraId": zod.string(),
-  "competencia": zod.string(),
-  "totalVendas": zod.number(),
+  "vendedoraNome": zod.string().nullish(),
+  "competencia": zod.string().describe('Competência YYYY-MM'),
+  "totalVendas": zod.number().describe('Base líquida, já com o estorno abatido'),
   "percentualAplicado": zod.number().nullish(),
   "valorComissao": zod.number(),
   "valorBonus": zod.number(),
-  "valorTotal": zod.number(),
+  "valorTotal": zod.number().describe('comissão + bônus; é este que vira ContaPagar'),
   "contaPagarId": zod.string().nullish(),
-  "fechadoEm": zod.coerce.date()
+  "fechadoEm": zod.coerce.date().optional()
 })
 export const GerarComissaoFechamentoResponse = zod.array(GerarComissaoFechamentoResponseItem)
+
+
+/**
+ * O outro lado do I10: as baixas manuais já feitas, com quem baixou, quando e por quê — o relatório que fecha o ciclo de auditoria. Reconciliações automáticas (estorno absorvido por um fechamento) não entram: não têm autor nem motivo.
+ */
+export const ListBaixasEstornoComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListBaixasEstornoComissaoResponseItem = zod.object({
+  "contratoId": zod.string(),
+  "vendedoraId": zod.string(),
+  "vendedoraNome": zod.string().nullish(),
+  "noivaNome": zod.string().nullish(),
+  "valor": zod.number().describe('O valor do contrato cancelado cujo estorno foi baixado'),
+  "motivo": zod.string().nullish(),
+  "baixadoPorNome": zod.string().nullish(),
+  "baixadoEm": zod.coerce.date()
+})
+export const ListBaixasEstornoComissaoResponse = zod.array(ListBaixasEstornoComissaoResponseItem)
+
+
+/**
+ * Baixa MANUAL do estorno pendente de uma vendedora (I10). Só admin. Quando a venda cancelada não é absorvida por nenhum mês — a vendedora parou de vender — o estorno carrega para sempre. A baixa é uma decisão humana e auditável (registra quem e por quê); nunca automática, que apagaria o rastro de um erro ou fraude.
+ */
+export const BaixarEstornoComissaoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const baixarEstornoComissaoBodyCompetenciaRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const BaixarEstornoComissaoBody = zod.object({
+  "vendedoraId": zod.string(),
+  "competencia": zod.string().regex(baixarEstornoComissaoBodyCompetenciaRegExp).describe('A competência em que o estorno aparece pendente (a mesma do preview)'),
+  "motivo": zod.string().nullish().describe('Justificativa da baixa — fica no registro de auditoria')
+})
+
+export const BaixarEstornoComissaoResponse = zod.object({
+  "vendedoraId": zod.string(),
+  "contratosBaixados": zod.number().describe('Quantos contratos cancelados tiveram o estorno baixado'),
+  "valorBaixado": zod.number().describe('Total do estorno baixado, em reais')
+})
 
 
 export const GetDashboardParams = zod.object({

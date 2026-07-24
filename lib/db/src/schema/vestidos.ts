@@ -65,6 +65,10 @@ export const vestidoFotosTable = pgTable("vestido_fotos", {
   mime: text("mime").notNull(),
   largura: integer("largura").notNull(),
   altura: integer("altura").notNull(),
+  // Thumb gerada no CLIENTE (canvas) e enviada junto — os cards da lista deixam
+  // de puxar a foto cheia do Postgres. Nullable: legado sem thumb cai na cheia.
+  thumbBytes: bytea("thumb_bytes"),
+  thumbMime: text("thumb_mime"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({

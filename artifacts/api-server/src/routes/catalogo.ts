@@ -17,12 +17,13 @@ import {
   UpdateAtributoOpcaoResponse,
   DeleteAtributoOpcaoParams
 } from "@workspace/api-zod";
-import { requireSessaoComLoja } from "../middlewares/auth";
+import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
+router.use("/lojas/:lojaId/atributos", requireModulo("vestidos"));
 
 router.get("/lojas/:lojaId/atributos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -90,7 +91,7 @@ router.delete("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<
   res.status(204).send();
 });
 
-router.post("/atributos/:atributoId/opcoes", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/atributos/:atributoId/opcoes", async (req, res): Promise<void> => {
   const params = CreateAtributoOpcaoParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -99,6 +100,14 @@ router.post("/atributos/:atributoId/opcoes", async (req, res): Promise<void> => 
   const parsed = CreateAtributoOpcaoBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const atributo = await db.query.atributosTable.findFirst({
+    where: and(eq(atributosTable.id, params.data.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
+  });
+  if (!atributo) {
+    res.status(404).json({ error: "Atributo not found" });
     return;
   }
 
@@ -111,7 +120,7 @@ router.post("/atributos/:atributoId/opcoes", async (req, res): Promise<void> => 
   res.status(201).json(CreateAtributoOpcaoResponse.parse(opcao));
 });
 
-router.patch("/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
+router.patch("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
   const params = UpdateAtributoOpcaoParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -120,6 +129,21 @@ router.patch("/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
   const parsed = UpdateAtributoOpcaoBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const existing = await db.query.atributoOpcoesTable.findFirst({
+    where: eq(atributoOpcoesTable.id, params.data.opcaoId),
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Opção not found" });
+    return;
+  }
+  const atributo = await db.query.atributosTable.findFirst({
+    where: and(eq(atributosTable.id, existing.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
+  });
+  if (!atributo) {
+    res.status(404).json({ error: "Opção not found" });
     return;
   }
 
@@ -136,13 +160,25 @@ router.patch("/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
   res.json(UpdateAtributoOpcaoResponse.parse(opcao));
 });
 
-router.delete("/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
+router.delete("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
   const params = DeleteAtributoOpcaoParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  await db.delete(atributoOpcoesTable).where(eq(atributoOpcoesTable.id, params.data.opcaoId));
+  const existing = await db.query.atributoOpcoesTable.findFirst({
+    where: eq(atributoOpcoesTable.id, params.data.opcaoId),
+  });
+  if (existing) {
+    const atributo = await db.query.atributosTable.findFirst({
+      where: and(eq(atributosTable.id, existing.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
+    });
+    if (!atributo) {
+      res.status(404).json({ error: "Opção not found" });
+      return;
+    }
+    await db.delete(atributoOpcoesTable).where(eq(atributoOpcoesTable.id, params.data.opcaoId));
+  }
   res.status(204).send();
 });
 
