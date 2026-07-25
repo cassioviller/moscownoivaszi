@@ -33,6 +33,24 @@ export type ObrigacaoPrevista = {
 };
 
 /**
+ * As duas listas de status, para quem precisa filtrar ANTES de ter o objeto —
+ * isto é, no SQL (C4/E94).
+ *
+ * Os predicados abaixo (`estaAberta`/`teveRecebimento`) só servem depois do
+ * SELECT, em memória. Quem monta um `WHERE` precisa da lista, e por não existir
+ * uma cada rota reescrevia a sua à mão: o `/financeiro/fluxo` acertou
+ * (`["PREVISTA","PARCIAL"]`), o `/alerta-caixa` escreveu `eq(status,'PAGA')` e
+ * `eq(status,'PREVISTA')` e perdeu a parcela meio recebida das DUAS pernas, e o
+ * dashboard repetiu o mesmo esquecimento numa terceira query. Três cópias da
+ * mesma regra, uma delas certa.
+ *
+ * Exportar a lista e derivar o predicado dela é o que impede a quarta cópia:
+ * agora só existe um lugar onde a resposta muda.
+ */
+export const STATUS_ABERTO = ["PREVISTA", "PARCIAL"] as const;
+export const STATUS_COM_RECEBIMENTO = ["PAGA", "PARCIAL"] as const;
+
+/**
  * Uma obrigação segue ABERTA enquanto sobra saldo — PREVISTA ou PARCIAL (E49).
  *
  * Antes "aberta" era `status === "PREVISTA"`, e a parcela meio paga sumia do
@@ -40,7 +58,7 @@ export type ObrigacaoPrevista = {
  * de "o que falta" passa por aqui: uma régua só, num lugar só.
  */
 export function estaAberta(obrigacao: { status: string }): boolean {
-  return obrigacao.status === "PREVISTA" || obrigacao.status === "PARCIAL";
+  return (STATUS_ABERTO as readonly string[]).includes(obrigacao.status);
 }
 
 /**
@@ -49,7 +67,7 @@ export function estaAberta(obrigacao: { status: string }): boolean {
  * realizado só conhece o que de fato entrou.
  */
 export function teveRecebimento(obrigacao: { status: string }): boolean {
-  return obrigacao.status === "PAGA" || obrigacao.status === "PARCIAL";
+  return (STATUS_COM_RECEBIMENTO as readonly string[]).includes(obrigacao.status);
 }
 
 /** Centavos que ainda faltam. Nunca negativo — pagar a mais não vira crédito. */

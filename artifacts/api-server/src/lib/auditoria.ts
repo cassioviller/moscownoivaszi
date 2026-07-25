@@ -16,6 +16,12 @@ export const ACOES_AUDITORIA = [
   "PAGAMENTO_ESTORNADO",
   "ESTORNO_COMISSAO_BAIXADO",
   "COMISSAO_FECHAMENTO_REABERTO",
+  // B3/E94: cancelar contrato é a MAIOR ação de dinheiro do sistema — anula as
+  // parcelas previstas e, com `destinoPago: "estornar"`, zera o recebido das
+  // PAGAS, tirando da receita dinheiro que já tinha entrado. Ela não deixava
+  // rastro nenhum, enquanto a ação irmã e menor (estornar UMA parcela) sempre
+  // deixou. Quem conferisse o caixa via a receita cair sem nada que explicasse.
+  "CONTRATO_CANCELADO",
   // Administração (E56): mexer em quem entra e no que cada um pode é ação
   // sensível — a trilha era 100% financeira, e o feed do E18 mostrava "sem
   // ações sensíveis" justamente para quem só administra.
@@ -55,6 +61,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PAGAMENTO_ESTORNADO: "Pagamento estornado",
   ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
   COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
+  CONTRATO_CANCELADO: "Contrato cancelado",
   MEMBRO_ADICIONADO: "Membro adicionado",
   MEMBRO_ALTERADO: "Membro alterado",
   MEMBRO_REMOVIDO: "Membro removido",

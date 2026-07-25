@@ -74,6 +74,12 @@ const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_JA_RECEBIDA: "Esta parcela já foi recebida.",
   PARCELA_CANCELADA: "Parcela cancelada não pode ser recebida.",
   CONTRATO_NAO_ATIVO: "Contrato cancelado — sem movimentação de parcelas.",
+  // B6/E94: a rota passou a recusar o recebimento quando a parcela mudou entre
+  // a leitura e a gravação — é o que impede dois lançamentos simultâneos de
+  // perderem um. Sem esta linha, trocaríamos perda de dinheiro por um "HTTP
+  // 409" na cara da vendedora. A ação que resolve é reabrir e conferir, e a
+  // lista atrás do diálogo já foi invalidada pelo movimento que venceu.
+  PARCELA_MUDOU: "Alguém acabou de receber nesta parcela — confira o valor e lance de novo.",
 };
 
 

@@ -2772,6 +2772,13 @@ paths:
         Aceita pagamento em partes (E49): o valor informado ACUMULA no
         `valorRecebido`, e o acumulado decide o status — quitou vira PAGA,
         sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
+
+
+        E94/B6: o acúmulo é condicionado ao estado LIDO. Se outra pessoa
+        receber nesta mesma parcela entre a leitura e a gravação, a chamada é
+        recusada com 409 `PARCELA_MUDOU` em vez de sobrescrever o valor dela —
+        dois lançamentos simultâneos deixavam de somar e o menor ia para a
+        gaveta. Quem recebe o 409 relê o saldo e lança de novo.
       requestBody:
         required: true
         content:
@@ -2786,7 +2793,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/Parcela"
         "409":
-          description: Parcela já quitada (PARCELA_JA_RECEBIDA)
+          description: >
+            Parcela já quitada (PARCELA_JA_RECEBIDA) ou alterada por outra
+            pessoa durante a operação (PARCELA_MUDOU)
         "422":
           description: >
             Valor acima do que falta (VALOR_ACIMA_DO_SALDO), parcela cancelada
@@ -3188,17 +3197,28 @@ paths:
     delete:
       operationId: removeContaPagar
       tags: [financeiro]
-      summary: Remove uma conta a pagar ainda PREVISTA
+      summary: Remove uma conta a pagar ainda PREVISTA e sem dono
       description: >
         Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de
         caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
+
+
+        E94/B8: a conta nascida de um fechamento de comissão
+        (`origemComissaoFechamentoId`) também é recusada, com
+        `CONTA_DE_COMISSAO`. A FK do fechamento é ON DELETE SET NULL, então
+        apagá-la zerava o vínculo em silêncio: a vendedora não recebia,
+        `pendencias` não acusava (o fechamento continua existindo) e reabrir não
+        reparava, porque as guardas do reabrir dependem do vínculo. O caminho
+        para desfazer é reabrir o fechamento.
       responses:
         "204":
           description: Removida
         "404":
           description: Conta não encontrada
         "409":
-          description: Conta já paga (CONTA_JA_PAGA)
+          description: >
+            Conta já paga (CONTA_JA_PAGA) ou gerada por fechamento de comissão
+            (CONTA_DE_COMISSAO)
   /lojas/{lojaId}/contas-pagar/{contaId}/pagar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3338,7 +3358,7 @@ paths:
           description: Uma das ações da união fechada (ACOES_AUDITORIA)
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, CONTRATO_CANCELADO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -3407,7 +3427,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, CONTRATO_CANCELADO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -4990,7 +5010,7 @@ components:
         id: { type: string }
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, CONTRATO_CANCELADO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }

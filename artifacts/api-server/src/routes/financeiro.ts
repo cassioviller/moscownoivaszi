@@ -26,6 +26,8 @@ import {
   saidasDoIntervalo,
   entradasPorMeio,
   dreDoIntervalo,
+  STATUS_ABERTO,
+  STATUS_COM_RECEBIMENTO,
 } from "@workspace/financeiro-core";
 import {
   PagarContaPagarBody,
@@ -210,6 +212,102 @@ router.get("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<v
 // Pagamento auditável: valor, data e forma persistem em pagamentos +
 // pagamento_itens (contaPagarId é UNIQUE — cinto de segurança contra pagamento
 // duplo no nível do banco); a conta só muda de status.
+
+type ContaPagar = typeof contasPagarTable.$inferSelect;
+
+/**
+ * A quitação de contas — o ÚNICO caminho pelo qual uma conta a pagar vira PAGA.
+ *
+ * A2/E94: existiam duas portas para o mesmo fato. A single-conta gravava
+ * `CONTA_PAGA` em `entidade: "conta_pagar"`; a multi-conta gravava
+ * `PAGAMENTO_REGISTRADO` em `entidade: "pagamento"`. Quem consultasse a trilha
+ * "por conta a pagar" só encontrava metade dos pagamentos — o histórico de quem
+ * pagou o quê dependia de por qual porta se entrou. E a divisão era pior do que
+ * parecia: a UI usa exclusivamente a multi-conta (`usePagarContaPagar` não
+ * aparece em nenhum arquivo do front, e `pagar.tsx` documenta a escolha), mas a
+ * suíte testava sobretudo a single. A porta viva era a menos exercitada.
+ *
+ * Agora as duas chamam isto, e a trilha é uma só: `PAGAMENTO_REGISTRADO`
+ * indexado pelo pagamento, que é o fato de caixa. `CONTA_PAGA` continua na
+ * união de ações porque as linhas antigas existem e a tela precisa saber
+ * rotulá-las — só não nasce mais nenhuma.
+ *
+ * Pagar uma conta sozinha é `contas` de tamanho 1: o rateio de uma conta só
+ * devolve o valor inteiro, então não há caso especial a manter.
+ */
+async function quitarContas(params: {
+  lojaId: string;
+  contas: readonly ContaPagar[];
+  usuario: { id: string; nome: string };
+  data: string;
+  /** Ausente = a saída vale a soma das contas. */
+  valorPago?: number;
+  forma?: string | null;
+  observacoes?: string | null;
+}): Promise<string> {
+  const { lojaId, contas, usuario } = params;
+
+  const previstoCentavos = contas.map((c) => Math.round(c.valorPrevisto * 100));
+  const somaCentavos = previstoCentavos.reduce((s, v) => s + v, 0);
+  const pagoCentavos =
+    params.valorPago !== undefined ? Math.round(params.valorPago * 100) : somaCentavos;
+  const valorPago = pagoCentavos / 100;
+
+  // O item guarda o que a conta REALMENTE consumiu da saída, não o previsto:
+  // sum(itens.valor) === pagamento.valorPago é o invariante que o fluxo e o DRE
+  // dependem. Num pagamento com desconto o abatimento rateia proporcional ao
+  // previsto, em centavos, e a última conta absorve o resto da divisão — mesma
+  // convenção do gerar-plano de parcelas.
+  const rateioCentavos = previstoCentavos.map((v) =>
+    somaCentavos === 0 ? 0 : Math.round((v * pagoCentavos) / somaCentavos),
+  );
+  const distribuido = rateioCentavos.reduce((s, v) => s + v, 0);
+  if (rateioCentavos.length > 0) rateioCentavos[rateioCentavos.length - 1] += pagoCentavos - distribuido;
+
+  // Colaborador da saída só quando TODAS as contas são do mesmo — uma saída
+  // que mistura pessoas não pertence a ninguém.
+  const colaboradores = new Set(contas.map((c) => c.colaboradorId));
+  const colaboradorId = colaboradores.size === 1 ? (contas[0].colaboradorId ?? null) : null;
+
+  const pagamentoId = randomUUID();
+  await db.transaction(async (tx) => {
+    await tx.insert(pagamentosTable).values({
+      id: pagamentoId,
+      lojaId,
+      colaboradorId,
+      data: params.data,
+      valorPago,
+      forma: params.forma ?? null,
+      observacoes: params.observacoes ?? null,
+    });
+    await tx.insert(pagamentoItensTable).values(
+      contas.map((c, i) => ({
+        id: randomUUID(),
+        lojaId,
+        pagamentoId,
+        contaPagarId: c.id,
+        valor: rateioCentavos[i] / 100,
+      })),
+    );
+    await tx.update(contasPagarTable)
+      .set({ status: "PAGA" })
+      .where(inArray(contasPagarTable.id, contas.map((c) => c.id)));
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario,
+      acao: "PAGAMENTO_REGISTRADO",
+      entidade: "pagamento",
+      entidadeId: pagamentoId,
+      detalhe: {
+        valorPago,
+        forma: params.forma ?? null,
+        contas: contas.map((c) => ({ id: c.id, descricao: c.descricao })),
+      },
+    });
+  });
+  return pagamentoId;
+}
+
 router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const contaId = req.params.contaId as string;
@@ -230,44 +328,19 @@ router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", async (req, res): Prom
     return;
   }
 
-  const contaPaga = await db.transaction(async (tx) => {
-    const pagamentoId = randomUUID();
-    await tx.insert(pagamentosTable).values({
-      id: pagamentoId,
-      lojaId,
-      colaboradorId: conta.colaboradorId,
-      data: parsed.data.data,
-      valorPago: parsed.data.valorPago,
-      forma: parsed.data.forma ?? null,
-      observacoes: parsed.data.observacoes ?? null,
-    });
-    await tx.insert(pagamentoItensTable).values({
-      id: randomUUID(),
-      lojaId,
-      pagamentoId,
-      contaPagarId: conta.id,
-      valor: parsed.data.valorPago,
-    });
-    const [atualizada] = await tx.update(contasPagarTable)
-      .set({ status: "PAGA" })
-      .where(eq(contasPagarTable.id, conta.id))
-      .returning();
-    await registrarAuditoria(tx, {
-      lojaId,
-      usuario: req.usuario!,
-      acao: "CONTA_PAGA",
-      entidade: "conta_pagar",
-      entidadeId: conta.id,
-      detalhe: {
-        pagamentoId,
-        descricao: conta.descricao,
-        valorPago: parsed.data.valorPago,
-        forma: parsed.data.forma ?? null,
-      },
-    });
-    return atualizada;
+  // A2/E94: uma porta só. Ver `quitarContas`.
+  await quitarContas({
+    lojaId,
+    contas: [conta],
+    usuario: req.usuario!,
+    data: parsed.data.data,
+    valorPago: parsed.data.valorPago,
+    forma: parsed.data.forma ?? null,
+    observacoes: parsed.data.observacoes ?? null,
   });
 
+  const [contaPaga] = await db.select().from(contasPagarTable)
+    .where(eq(contasPagarTable.id, conta.id));
   res.json(PagarContaPagarResponse.parse(contaPaga));
 });
 
@@ -286,6 +359,32 @@ router.delete("/lojas/:lojaId/contas-pagar/:contaId", async (req, res): Promise<
   }
   if (conta.status === "PAGA") {
     res.status(409).json({ error: "CONTA_JA_PAGA", detalhe: "Estorne o pagamento antes de remover a conta" });
+    return;
+  }
+
+  /**
+   * B8/E94 — a conta que NASCEU de um fechamento de comissão não se apaga por
+   * aqui; ela se desfaz reabrindo o fechamento que a criou.
+   *
+   * O dano era silencioso e completo. A FK é
+   * `comissao_fechamentos.conta_pagar_id → contas_pagar.id` com **ON DELETE SET
+   * NULL**: apagar a conta zerava o vínculo sem erro nenhum. Depois disso a Ana
+   * não recebe; `pendencias` não acusa, porque o fechamento continua existindo
+   * e a competência segue "fechada" para aquela vendedora; e reabrir não repara,
+   * porque as duas guardas do reabrir (a que recusa comissão já paga e a que
+   * apaga a conta) dependem de `contaPagarId` não ser nulo. Não sobrava nem o
+   * caminho de conserto.
+   *
+   * A régua é a ORIGEM, não o tipo: uma despesa que alguém classificou à mão
+   * como COMISSAO continua removível — o que não se remove é o que outra parte
+   * do sistema está segurando pela mão.
+   */
+  if (conta.origemComissaoFechamentoId) {
+    res.status(409).json({
+      error: "CONTA_DE_COMISSAO",
+      detalhe:
+        "Esta conta veio de um fechamento de comissão — reabra o fechamento para desfazê-la.",
+    });
     return;
   }
 
@@ -348,63 +447,16 @@ router.post("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<vo
     return;
   }
 
-  const previstoCentavos = contas.map((c) => Math.round(c.valorPrevisto * 100));
-  const somaCentavos = previstoCentavos.reduce((s, v) => s + v, 0);
-  const pagoCentavos =
-    parsed.data.valorPago !== undefined ? Math.round(parsed.data.valorPago * 100) : somaCentavos;
-  const valorPago = pagoCentavos / 100;
-
-  // O item guarda o que a conta REALMENTE consumiu da saída, não o previsto:
-  // sum(itens.valor) === pagamento.valorPago é o invariante que o fluxo e o DRE
-  // dependem (a rota single-conta já o mantém). Num pagamento com desconto o
-  // abatimento rateia proporcional ao previsto, em centavos, e a última conta
-  // absorve o resto da divisão — mesma convenção do gerar-plano de parcelas.
-  const rateioCentavos = previstoCentavos.map((v) =>
-    somaCentavos === 0 ? 0 : Math.round((v * pagoCentavos) / somaCentavos),
-  );
-  const distribuido = rateioCentavos.reduce((s, v) => s + v, 0);
-  if (rateioCentavos.length > 0) rateioCentavos[rateioCentavos.length - 1] += pagoCentavos - distribuido;
-
-  // Colaborador da saída só quando TODAS as contas são do mesmo — uma saída
-  // que mistura pessoas não pertence a ninguém.
-  const colaboradores = new Set(contas.map((c) => c.colaboradorId));
-  const colaboradorId = colaboradores.size === 1 ? (contas[0].colaboradorId ?? null) : null;
-
-  const pagamentoId = randomUUID();
-  await db.transaction(async (tx) => {
-    await tx.insert(pagamentosTable).values({
-      id: pagamentoId,
-      lojaId,
-      colaboradorId,
-      data: parsed.data.data,
-      valorPago,
-      forma: parsed.data.forma ?? null,
-      observacoes: parsed.data.observacoes ?? null,
-    });
-    await tx.insert(pagamentoItensTable).values(
-      contas.map((c, i) => ({
-        id: randomUUID(),
-        lojaId,
-        pagamentoId,
-        contaPagarId: c.id,
-        valor: rateioCentavos[i] / 100,
-      })),
-    );
-    await tx.update(contasPagarTable)
-      .set({ status: "PAGA" })
-      .where(inArray(contasPagarTable.id, contaIds));
-    await registrarAuditoria(tx, {
-      lojaId,
-      usuario: req.usuario!,
-      acao: "PAGAMENTO_REGISTRADO",
-      entidade: "pagamento",
-      entidadeId: pagamentoId,
-      detalhe: {
-        valorPago,
-        forma: parsed.data.forma ?? null,
-        contas: contas.map((c) => ({ id: c.id, descricao: c.descricao })),
-      },
-    });
+  // A2/E94: o rateio, a saída e a trilha moram em `quitarContas` — esta rota e
+  // a `/contas-pagar/:id/pagar` são a MESMA operação vista por duas portas.
+  const pagamentoId = await quitarContas({
+    lojaId,
+    contas,
+    usuario: req.usuario!,
+    data: parsed.data.data,
+    valorPago: parsed.data.valorPago,
+    forma: parsed.data.forma ?? null,
+    observacoes: parsed.data.observacoes ?? null,
   });
 
   const criado = await db.query.pagamentosTable.findFirst({
@@ -753,8 +805,10 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
       with: { colaborador: true, itens: { with: { contaPagar: true } } },
     }),
     // Horizonte é previsão pelo vencimento — só o ABERTO importa, sem janela.
+    // A lista vem do core (C4): esta query estava certa e a do alerta não, o
+    // que só era possível porque cada uma escrevia a sua.
     db.select().from(parcelasTable)
-      .where(and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.status, ["PREVISTA", "PARCIAL"]))),
+      .where(and(eq(parcelasTable.lojaId, lojaId), inArray(parcelasTable.status, [...STATUS_ABERTO]))),
     db.select().from(contasPagarTable)
       .where(and(eq(contasPagarTable.lojaId, lojaId), eq(contasPagarTable.status, "PREVISTA"))),
   ]);
@@ -899,8 +953,18 @@ router.get("/lojas/:lojaId/financeiro/alerta-caixa", async (req, res): Promise<v
   const curvaAte = inicioDoDia(addDias(hoje, HORIZONTE_ALERTA + 1));
 
   const [parcelas, contas, pagamentos] = await Promise.all([
-    // As duas pernas da parcela numa consulta só — as PAGAS alimentam o saldo,
-    // as PREVISTAS alimentam a curva, e cada motor aplica o próprio filtro.
+    // As duas pernas da parcela numa consulta só — o que TEVE RECEBIMENTO
+    // alimenta o saldo (pela data em que o dinheiro entrou) e o que segue
+    // ABERTO alimenta a curva (pelo vencimento), e cada motor aplica o próprio
+    // filtro.
+    //
+    // C4/E94: aqui estava escrito `eq(status,'PAGA')` e `eq(status,'PREVISTA')`,
+    // e a PARCIAL não é nenhuma das duas — uma parcela meio recebida não
+    // chegava ao motor NEM como dinheiro que entrou NEM como dinheiro que vai
+    // entrar. O motor sempre soube tratá-la; ele só nunca recebia a linha, e o
+    // sino anunciava um furo que a projeção (que já usava as duas listas) não
+    // via. Uma PARCIAL pode casar as duas pernas ao mesmo tempo: o `or` a traz
+    // uma vez e cada motor decide o que fazer com ela.
     db
       .select({
         status: parcelasTable.status,
@@ -915,12 +979,12 @@ router.get("/lojas/:lojaId/financeiro/alerta-caixa", async (req, res): Promise<v
           eq(parcelasTable.lojaId, lojaId),
           or(
             and(
-              eq(parcelasTable.status, "PAGA"),
+              inArray(parcelasTable.status, [...STATUS_COM_RECEBIMENTO]),
               gte(parcelasTable.recebidoEm, saldoDe),
               lt(parcelasTable.recebidoEm, saldoAte),
             ),
             and(
-              eq(parcelasTable.status, "PREVISTA"),
+              inArray(parcelasTable.status, [...STATUS_ABERTO]),
               gte(parcelasTable.vencimento, curvaDe),
               lt(parcelasTable.vencimento, curvaAte),
             ),

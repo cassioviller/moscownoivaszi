@@ -81,4 +81,62 @@ describe("resumoDetalhe", () => {
     expect(resumoDetalhe(linha({ detalhe: { contratoId: "ctr-1" } }))).toBeNull();
     expect(resumoDetalhe(linha({ detalhe: null }))).toBeNull();
   });
+
+  /**
+   * A2/E94: unificadas as duas portas de pagar, o detalhe deixou de trazer
+   * `descricao` e passou a trazer `contas: [{id, descricao}]`. Este resumo só
+   * sabia CONTAR as contas, e a linha que dizia "R$ 500,00 · Aluguel" virou
+   * "R$ 500,00 · 1 conta" — a trilha ficou uniforme e menos legível, o que não
+   * era o objetivo. Foi o E2E que pegou; nenhum teste de unidade olhava aqui.
+   */
+  it("a saída de uma conta só diz QUAL conta, não '1 conta'", () => {
+    const r = resumoDetalhe(
+      linha({ detalhe: { valorPago: 500, contas: [{ id: "c1", descricao: "Aluguel" }] } }),
+    );
+    expect(r).toBe("R$ 500,00 · Aluguel");
+  });
+
+  it("a saída multi-conta lista as contas", () => {
+    const r = resumoDetalhe(
+      linha({
+        detalhe: {
+          valorPago: 160,
+          contas: [
+            { id: "c1", descricao: "Luz" },
+            { id: "c2", descricao: "Água" },
+          ],
+        },
+      }),
+    );
+    expect(r).toBe("R$ 160,00 · Luz, Água");
+  });
+
+  it("a saída que quita muitas contas corta em vez de esticar a linha", () => {
+    const contas = ["Luz", "Água", "Internet", "Aluguel", "Contadora"].map((descricao, i) => ({
+      id: `c${i}`,
+      descricao,
+    }));
+    expect(resumoDetalhe(linha({ detalhe: { contas } }))).toBe(
+      "Luz, Água, Internet e mais 2",
+    );
+  });
+
+  it("conta sem descrição legível volta a ser contada, não vira frase vazia", () => {
+    expect(resumoDetalhe(linha({ detalhe: { contas: [{ id: "c1" }, { id: "c2" }] } }))).toBe(
+      "2 contas",
+    );
+  });
+
+  it("o cancelamento de contrato mostra o que foi estornado e o motivo (B3)", () => {
+    const r = resumoDetalhe(
+      linha({
+        detalhe: {
+          motivo: "Noiva desistiu",
+          destinoPago: "estornar",
+          totalEstornado: 2_000,
+        },
+      }),
+    );
+    expect(r).toBe("R$ 2.000,00 · motivo: Noiva desistiu");
+  });
 });

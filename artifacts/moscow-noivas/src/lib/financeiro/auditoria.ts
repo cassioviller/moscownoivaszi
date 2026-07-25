@@ -22,6 +22,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   PAGAMENTO_ESTORNADO: "Pagamento estornado",
   ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
   COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
+  CONTRATO_CANCELADO: "Contrato cancelado",
   MEMBRO_ADICIONADO: "Membro adicionado",
   MEMBRO_ALTERADO: "Membro alterado",
   MEMBRO_REMOVIDO: "Membro removido",
@@ -43,6 +44,7 @@ export const ACOES_FILTRAVEIS = [
   "PAGAMENTO_ESTORNADO",
   "ESTORNO_COMISSAO_BAIXADO",
   "COMISSAO_FECHAMENTO_REABERTO",
+  "CONTRATO_CANCELADO",
   "MEMBRO_ADICIONADO",
   "MEMBRO_ALTERADO",
   "MEMBRO_REMOVIDO",
@@ -75,16 +77,45 @@ export function acaoEmDestaque(acao: string): boolean {
   return ACOES_DESTAQUE.has(acao);
 }
 
+/** Quantas contas de uma saída cabem na linha antes de virar "e mais N". */
+const CONTAS_NA_LINHA = 3;
+
+/**
+ * As descrições das contas que uma saída quitou.
+ *
+ * A2/E94: quando havia duas portas de pagar, a single gravava `descricao` no
+ * detalhe e a linha da trilha dizia "R$ 500,00 · Aluguel". Unificadas as portas
+ * em `PAGAMENTO_REGISTRADO`, o detalhe passou a trazer `contas: [{id,
+ * descricao}]` — e este resumo só sabia contá-las, então a mesma ação virou
+ * "R$ 500,00 · 1 conta". A trilha ficou uniforme e MENOS legível, que não era o
+ * objetivo. Agora as descrições aparecem, e a saída que quita muitas contas
+ * corta com "e mais N" em vez de esticar a linha.
+ */
+function descricoesDasContas(contas: unknown[]): string | null {
+  const nomes = contas
+    .map((c) => (c as { descricao?: unknown } | null)?.descricao)
+    .filter((d): d is string => typeof d === "string" && d.length > 0);
+  if (nomes.length === 0) {
+    return `${contas.length} conta${contas.length === 1 ? "" : "s"}`;
+  }
+  if (nomes.length <= CONTAS_NA_LINHA) return nomes.join(", ");
+  const restantes = nomes.length - CONTAS_NA_LINHA;
+  return `${nomes.slice(0, CONTAS_NA_LINHA).join(", ")} e mais ${restantes}`;
+}
+
 /** Uma frase com o que a ação mexeu, extraída do detalhe jsonb. */
 export function resumoDetalhe(item: AuditoriaItem): string | null {
   const d = (item.detalhe ?? {}) as Record<string, unknown>;
   const partes: string[] = [];
-  const valor = d.valorRecebido ?? d.valorPago ?? d.valorBaixado;
+  const valor = d.valorRecebido ?? d.valorPago ?? d.valorBaixado ?? d.totalEstornado;
   if (typeof valor === "number") partes.push(brl(valor));
   if (typeof d.descricao === "string") partes.push(d.descricao);
   if (typeof d.competencia === "string") partes.push(`competência ${d.competencia}`);
   if (typeof d.motivo === "string" && d.motivo) partes.push(`motivo: ${d.motivo}`);
-  if (Array.isArray(d.contas)) partes.push(`${d.contas.length} conta${d.contas.length === 1 ? "" : "s"}`);
+  if (Array.isArray(d.contas)) {
+    const contas = descricoesDasContas(d.contas);
+    if (contas) partes.push(contas);
+  }
   return partes.length > 0 ? partes.join(" · ") : null;
 }
 

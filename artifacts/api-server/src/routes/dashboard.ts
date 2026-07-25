@@ -9,10 +9,16 @@ import {
   parcelasTable,
   contasPagarTable,
 } from "@workspace/db";
-import { and, eq, gte, lte, lt, ne, sql } from "drizzle-orm";
+import { and, eq, gte, lte, lt, ne, inArray, sql } from "drizzle-orm";
 import { GetDashboardResponse } from "@workspace/api-zod";
 import { requireSessaoComLoja } from "../middlewares/auth";
-import { addDias, hojeLocal, inicioDoDia, previstoNaJanela } from "@workspace/financeiro-core";
+import {
+  addDias,
+  hojeLocal,
+  inicioDoDia,
+  previstoNaJanela,
+  STATUS_ABERTO,
+} from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -70,17 +76,24 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
       ),
     // As LINHAS (não a soma): quem soma é o motor, na mesma régua do front.
     // O recorte SQL só limita o tráfego; o corte exato é do previstoNaJanela.
+    // C4/E94: este `where` dizia `eq(status,'PREVISTA')` — a terceira cópia à
+    // mão da mesma regra, e a segunda errada. A parcela meio recebida sumia do
+    // "a receber" do dashboard inteira, e não só pelo saldo que falta.
+    // `valorRecebido` entra junto por necessidade: `previstoNaJanela` soma
+    // `saldoAberto` (previsto − recebido), e sem a coluna uma PARCIAL de
+    // 10.000 com 4.000 já pagos apareceria valendo 10.000.
     db
       .select({
         status: parcelasTable.status,
         vencimento: parcelasTable.vencimento,
         valorPrevisto: parcelasTable.valorPrevisto,
+        valorRecebido: parcelasTable.valorRecebido,
       })
       .from(parcelasTable)
       .where(
         and(
           eq(parcelasTable.lojaId, lojaId),
-          eq(parcelasTable.status, "PREVISTA"),
+          inArray(parcelasTable.status, [...STATUS_ABERTO]),
           gte(parcelasTable.vencimento, recorteSql.de),
           lt(parcelasTable.vencimento, recorteSql.ate),
         ),
@@ -95,6 +108,8 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
       .where(
         and(
           eq(contasPagarTable.lojaId, lojaId),
+          // Conta a pagar não tem PARCIAL (`conta_pagar_status` é
+          // PREVISTA|PAGA), então aqui o `eq` é a régua inteira, não um recorte.
           eq(contasPagarTable.status, "PREVISTA"),
           gte(contasPagarTable.vencimento, recorteSql.de),
           lt(contasPagarTable.vencimento, recorteSql.ate),

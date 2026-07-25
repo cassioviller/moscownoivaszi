@@ -11,7 +11,7 @@ import {
   contratoBloqueiosTable,
   type InsertContratoItem,
 } from "@workspace/db";
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, inArray, sql } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
@@ -36,6 +36,7 @@ import {
   ReceberParcelaBody,
   ReceberParcelaResponse
 } from "@workspace/api-zod";
+import { estaAberta, STATUS_ABERTO } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
@@ -489,6 +490,27 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
   }
 
   const agora = new Date();
+  // Lidas ANTES de qualquer escrita: é o único momento em que ainda dá para
+  // saber o que o cancelamento vai desfazer, e é isso que a trilha guarda (B3).
+  const parcelasAntes = await db
+    .select()
+    .from(parcelasTable)
+    .where(eq(parcelasTable.contratoId, contrato.id));
+
+  // Dinheiro que já entrou nesta venda, venha de parcela quitada ou meio paga.
+  const comRecebimento = parcelasAntes.filter((p) => (p.valorRecebido ?? 0) > 0);
+  const idsComRecebimento = comRecebimento.map((p) => p.id);
+  const totalRecebidoAntes = reais(
+    comRecebimento.reduce((s, p) => s + cent(p.valorRecebido ?? 0), 0),
+  );
+  const abertasAntes = parcelasAntes.filter((p) => estaAberta(p));
+  const totalAbertoAntes = reais(
+    abertasAntes.reduce(
+      (s, p) => s + Math.max(0, cent(p.valorPrevisto) - cent(p.valorRecebido ?? 0)),
+      0,
+    ),
+  );
+
   await db.transaction(async (tx) => {
     // `comissaoEstornadaEm` NÃO é gravado aqui: ele marca quando o estorno foi
     // RECONCILIADO num fechamento, e não quando o contrato caiu (isso é o
@@ -504,18 +526,29 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
       })
       .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
 
-    // Parcelas PREVISTAS sempre são canceladas.
+    // Parcelas em ABERTO sempre são canceladas — PREVISTA e PARCIAL (E49).
+    //
+    // E94: aqui estava `eq(status, "PREVISTA")`, a mesma omissão do C4 uma
+    // rota adiante. A parcela meio recebida sobrevivia ao cancelamento como
+    // PARCIAL, isto é: seguia ABERTA (`estaAberta`), continuava no horizonte,
+    // no aging e na cobrança de um contrato que não existe mais. O saldo que
+    // falta nela morreu junto com o contrato, sob qualquer `destinoPago`.
     await tx.update(parcelasTable)
       .set({ status: "CANCELADA" })
       .where(and(
         eq(parcelasTable.contratoId, contrato.id),
-        eq(parcelasTable.status, "PREVISTA"),
+        inArray(parcelasTable.status, [...STATUS_ABERTO]),
       ));
 
-    // Sobre as PAGAS decide o destinoPago: "manter" (default — noiva perdeu
-    // o sinal, valor fica no caixa) ou "estornar" (valor devolvido — viram
-    // CANCELADA com os campos de recebimento zerados, saindo da receita).
-    if (parsed.data.destinoPago === "estornar") {
+    // Sobre o que JÁ ENTROU decide o destinoPago: "manter" (default — noiva
+    // perdeu o sinal, valor fica no caixa) ou "estornar" (valor devolvido — os
+    // campos de recebimento são zerados e a receita devolve o dinheiro).
+    //
+    // A PARCIAL entra aqui também: sob "estornar" a loja está dizendo que
+    // devolveu o dinheiro, e os R$ 4.000 de uma parcela meio paga são tão
+    // devolvidos quanto os R$ 10.000 de uma quitada. Ela já virou CANCELADA no
+    // UPDATE acima; este segundo passo zera o que ela tinha recebido.
+    if (parsed.data.destinoPago === "estornar" && idsComRecebimento.length > 0) {
       await tx.update(parcelasTable)
         .set({
           status: "CANCELADA",
@@ -525,7 +558,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
         })
         .where(and(
           eq(parcelasTable.contratoId, contrato.id),
-          eq(parcelasTable.status, "PAGA"),
+          inArray(parcelasTable.id, idsComRecebimento),
         ));
     }
 
@@ -550,6 +583,42 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
           isNull(bloqueioVestidosTable.canceladoEm),
         ));
     }
+
+    /**
+     * B3/E94 — a trilha do cancelamento, DENTRO da transação.
+     *
+     * Esta é a maior ação de dinheiro do sistema e era a única sem rastro: ela
+     * anula as parcelas em aberto e, com `destinoPago: "estornar"`, zera o
+     * recebido das que já tinham entrado — tirando da receita dinheiro que a
+     * loja contou. A ação irmã e MENOR, estornar uma parcela sozinha, sempre
+     * gravou. Quem conferisse o caixa via a receita cair sem uma linha que
+     * explicasse por quê, e o `motivo` digitado morria no contrato, invisível
+     * para a trilha e para o CSV da contadora.
+     *
+     * Os totais são lidos ANTES das escritas de propósito: depois delas o
+     * `valorRecebido` já é nulo, e o que o cancelamento desfez seria
+     * irrecuperável — que é exatamente o que a trilha existe para impedir.
+     */
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "CONTRATO_CANCELADO",
+      entidade: "contrato",
+      entidadeId: contrato.id,
+      detalhe: {
+        motivo: parsed.data.motivo,
+        destinoPago: parsed.data.destinoPago ?? "manter",
+        valorTotal: contrato.valorTotal,
+        // O que o cancelamento desfez, nas duas pernas: o que já tinha entrado
+        // (e voltou, se estornou) e o que deixou de ser cobrável.
+        totalRecebido: totalRecebidoAntes,
+        totalEstornado: parsed.data.destinoPago === "estornar" ? totalRecebidoAntes : 0,
+        parcelasEstornadas:
+          parsed.data.destinoPago === "estornar" ? idsComRecebimento.length : 0,
+        parcelasAnuladas: abertasAntes.length,
+        totalAnulado: totalAbertoAntes,
+      },
+    });
   });
 
   const fullContrato = await db.query.contratosTable.findFirst({
@@ -620,6 +689,25 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
   const quitada = totalRecebidoC >= cent(existente.valorPrevisto);
 
   const parcela = await db.transaction(async (tx) => {
+    /**
+     * B6/E94 — UPDATE condicional ao estado LIDO, o mesmo idioma de
+     * `convites.ts:111` e `portal.ts:255`.
+     *
+     * Tudo acima desta linha — `jaRecebidoC`, a checagem do saldo, o
+     * `totalRecebidoC` — foi calculado a partir de um SELECT feito fora da
+     * transação. Entre aquele SELECT e este UPDATE cabe outro recebimento
+     * inteiro: a recepção lança R$ 300 e a vendedora R$ 700 no mesmo segundo,
+     * as duas leem `valorRecebido = 0`, uma grava 300 e a outra 700, e a
+     * última a escrever vence. R$ 300 entraram na gaveta e não existem no
+     * sistema.
+     *
+     * Nenhuma constraint do banco resolve isto — o valor certo depende do que
+     * foi lido, não de uma unicidade. O que resolve é escrever apenas se a
+     * parcela ainda estiver como a lemos: `IS NOT DISTINCT FROM` porque
+     * `valorRecebido` é nulo enquanto nada entrou, e `= NULL` nunca é
+     * verdadeiro. O `status` entra junto para fechar a janela em que um
+     * cancelamento de contrato passa por aqui no meio.
+     */
     const [atualizada] = await tx.update(parcelasTable)
       .set({
         status: quitada ? "PAGA" : "PARCIAL",
@@ -629,8 +717,16 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
         valorRecebido: reais(totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento,
       })
-      .where(eq(parcelasTable.id, existente.id))
+      .where(and(
+        eq(parcelasTable.id, existente.id),
+        eq(parcelasTable.status, existente.status),
+        sql`${parcelasTable.valorRecebido} is not distinct from ${existente.valorRecebido}::numeric`,
+      ))
       .returning();
+    // Zero linhas: alguém recebeu nesta parcela entre o nosso SELECT e agora.
+    // Sair sem auditar é parte do conserto — trilha de um recebimento que não
+    // aconteceu faz a conferência bater com dinheiro inexistente.
+    if (!atualizada) return null;
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
       usuario: req.usuario!,
@@ -651,6 +747,13 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
     });
     return atualizada;
   });
+  if (!parcela) {
+    res.status(409).json({
+      error: "PARCELA_MUDOU",
+      detalhe: "Esta parcela mudou enquanto você digitava — confira o valor e tente de novo.",
+    });
+    return;
+  }
   res.json(ReceberParcelaResponse.parse(parcela));
 });
 

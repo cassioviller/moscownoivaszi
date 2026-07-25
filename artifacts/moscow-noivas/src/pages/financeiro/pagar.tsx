@@ -86,6 +86,9 @@ import { CACHE_ESTAVEL } from "@/lib/cache";
 const MENSAGENS_ERRO: Record<string, string> = {
   CONTA_JA_PAGA: "Conta já paga — estorne o pagamento antes.",
   CONTA_NAO_ENCONTRADA: "Alguma conta não existe mais nesta loja.",
+  // B8/E94: a conta de comissão se desfaz reabrindo o fechamento que a criou —
+  // apagá-la por aqui zerava o vínculo em silêncio e a vendedora não recebia.
+  CONTA_DE_COMISSAO: "Esta conta veio de um fechamento de comissão — reabra o fechamento em Comissões para desfazê-la.",
   PAGAMENTO_NAO_ENCONTRADO: "Pagamento não encontrado.",
   INTERVALO_INVALIDO: "Intervalo inválido.",
 };

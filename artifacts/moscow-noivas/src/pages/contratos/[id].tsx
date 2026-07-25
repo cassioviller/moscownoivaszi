@@ -71,6 +71,9 @@ const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PREVISTA: "Só parcelas em aberto podem ser removidas.",
   PARCELA_JA_RECEBIDA: "Esta parcela já foi recebida.",
   PARCELA_CANCELADA: "Parcela cancelada não pode ser recebida.",
+  // B6/E94 — ver o comentário em financeiro/receber.tsx: as duas telas recebem
+  // pela mesma rota, então as duas precisam saber traduzir o 409.
+  PARCELA_MUDOU: "Alguém acabou de receber nesta parcela — confira o valor e lance de novo.",
 };
 
 function mensagemApi(err: unknown, fallback: string): string {
@@ -146,6 +149,28 @@ export default function ContratoDetail() {
   );
   const hoje = hojeLocal();
   const atrasada = (p: Parcela) => estaAtrasada(p, hoje);
+
+  /**
+   * F33/E94 — o que o cancelamento vai desfazer, calculado ANTES de ele
+   * acontecer.
+   *
+   * O diálogo pedia uma decisão de dinheiro ("mantém no caixa" ou "estorna")
+   * sem mostrar dinheiro nenhum: dois rótulos genéricos e um campo de motivo. A
+   * pessoa escolhia entre duas frases sem saber que havia R$ 2.000 recebidos em
+   * 12/06, nem que sobravam R$ 8.000 a cobrar. Os dados sempre estiveram em
+   * mãos — `contrato.parcelas` traz `valorRecebido` e `recebidoEm` de cada uma;
+   * só não eram lidos aqui.
+   */
+  const oQueSeraDesfeito = useMemo(() => {
+    const comRecebimento = parcelas.filter((p) => (p.valorRecebido ?? 0) > 0);
+    const abertas = parcelas.filter((p) => estaAberta(p));
+    return {
+      comRecebimento,
+      recebido: reais(somaCentavos(comRecebimento, (p) => p.valorRecebido ?? 0)),
+      abertas: abertas.length,
+      aberto: reais(somaCentavos(abertas, (p) => saldoAberto(p))),
+    };
+  }, [parcelas]);
 
   const totalPlanoCentavos = useMemo(
     () => somaCentavos(parcelas.filter((p) => p.status !== "CANCELADA"), (p) => p.valorPrevisto),
@@ -598,8 +623,45 @@ export default function ContratoDetail() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              As parcelas em aberto serão anuladas e o vestido será liberado. Sobre o que já foi recebido:
+              {oQueSeraDesfeito.abertas > 0 ? (
+                <>
+                  <strong className="text-foreground">
+                    {oQueSeraDesfeito.abertas}{" "}
+                    {oQueSeraDesfeito.abertas === 1 ? "parcela" : "parcelas"} em aberto,{" "}
+                    {brl(oQueSeraDesfeito.aberto)}
+                  </strong>{" "}
+                  deixarão de ser cobradas, e o vestido será liberado.
+                </>
+              ) : (
+                <>Não há parcelas em aberto. O vestido será liberado.</>
+              )}
             </p>
+
+            {/* F33: o que já entrou, item a item — a decisão abaixo é sobre ESTE
+                dinheiro, e ela era pedida sem mostrá-lo. */}
+            {oQueSeraDesfeito.comRecebimento.length > 0 && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2" data-testid="cancelar-recebido">
+                <p className="text-sm font-medium">
+                  Já recebido nesta venda: {brl(oQueSeraDesfeito.recebido)}
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  {oQueSeraDesfeito.comRecebimento.map((p) => (
+                    <li key={p.id} className="flex justify-between gap-3">
+                      <span>
+                        {p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`}
+                        {p.recebidoEm &&
+                          ` — ${new Date(p.recebidoEm).toLocaleDateString("pt-BR")}`}
+                      </span>
+                      <span className="tabular-nums">{brl(p.valorRecebido ?? 0)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {oQueSeraDesfeito.comRecebimento.length > 0 && (
+              <p className="text-sm text-muted-foreground">Sobre o que já foi recebido:</p>
+            )}
             <RadioGroup value={destinoPago} onValueChange={(v) => setDestinoPago(v as "manter" | "estornar")}>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="manter" id="destino-manter" />
@@ -610,7 +672,7 @@ export default function ContratoDetail() {
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="estornar" id="destino-estornar" />
                 <Label htmlFor="destino-estornar" className="font-normal">
-                  Devolvi o valor — estorna do caixa
+                  Devolvi o valor — estorna {brl(oQueSeraDesfeito.recebido)} do caixa
                 </Label>
               </div>
             </RadioGroup>

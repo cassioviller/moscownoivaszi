@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable } from "@workspace/db";
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, sql, count, inArray } from "drizzle-orm";
+import { STATUS_ABERTO } from "@workspace/financeiro-core";
 import { 
   ListLojasResponse, 
   CreateLojaBody, 
@@ -473,7 +474,9 @@ router.get("/admin/consolidado", async (_req, res): Promise<void> => {
       total: sql<number>`coalesce(sum(${parcelasTable.valorPrevisto} - coalesce(${parcelasTable.valorRecebido}, 0)), 0)`.mapWith(Number),
     })
       .from(parcelasTable)
-      .where(sql`${parcelasTable.status} in ('PREVISTA', 'PARCIAL')`)
+      // A lista vem do core (C4/E94) — era a quarta cópia à mão da mesma
+      // regra, aqui em SQL cru, onde nem o typecheck a alcançava.
+      .where(inArray(parcelasTable.status, [...STATUS_ABERTO]))
       .groupBy(parcelasTable.lojaId),
   ]);
 

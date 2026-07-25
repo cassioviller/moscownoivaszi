@@ -9921,6 +9921,8 @@ export const getReceberParcelaUrl = (lojaId: string,
 
 /**
  * Aceita pagamento em partes (E49): o valor informado ACUMULA no `valorRecebido`, e o acumulado decide o status — quitou vira PAGA, sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
+ *
+ * E94/B6: o acúmulo é condicionado ao estado LIDO. Se outra pessoa receber nesta mesma parcela entre a leitura e a gravação, a chamada é recusada com 409 `PARCELA_MUDOU` em vez de sobrescrever o valor dela — dois lançamentos simultâneos deixavam de somar e o menor ia para a gaveta. Quem recebe o 409 relê o saldo e lança de novo.
  * @summary Recebe (total ou parcialmente) uma parcela
  */
 export const receberParcela = async (lojaId: string,
