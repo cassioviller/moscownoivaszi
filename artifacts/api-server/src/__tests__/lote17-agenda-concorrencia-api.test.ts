@@ -70,8 +70,10 @@ describe("Lote 17 — agendamento sob concorrência", () => {
   });
 
   afterAll(async () => {
-    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
+    // limparFixture ANTES (E91): `atendimentos.vendedora_id` é RESTRICT, e a
+    // segunda vendedora agendou — ela só sai depois do cascade da loja.
     await limparFixture(f);
+    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
     await fecharPool();
   });
 

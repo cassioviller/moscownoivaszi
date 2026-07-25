@@ -64,7 +64,10 @@ export const atendimentosTable = pgTable("atendimentos", {
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
   leadId: text("lead_id").notNull().references(() => leadsTable.id, { onDelete: "cascade" }),
   cabineId: text("cabine_id").notNull().references(() => cabinesTable.id, { onDelete: "cascade" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): o atendimento é O QUE ACONTECEU com a noiva — a prova, o
+  // desfecho, o `atendidoEm`. Com `cascade`, excluir a vendedora apagava o
+  // histórico da ficha da noiva junto com o cadastro dela. Inative, não exclua.
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   tipo: atendimentoTipoEnum("tipo").notNull().default("ATENDIMENTO"),
   bloqueioId: text("bloqueio_id").references(() => bloqueioVestidosTable.id, { onDelete: "cascade" }),
   inicio: timestamp("inicio", { withTimezone: true }).notNull(),

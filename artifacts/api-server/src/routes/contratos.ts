@@ -37,6 +37,7 @@ import {
   ReceberParcelaResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { vendedoraNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -112,6 +113,16 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     .where(and(eq(leadsTable.id, contratoData.leadId), eq(leadsTable.lojaId, lojaId)));
   if (!lead) {
     res.status(422).json({ error: "LEAD_INVALIDO", detalhe: "Lead não encontrado nesta loja" });
+    return;
+  }
+
+  // 1b. B4 — a vendedora do CORPO precisa ser desta loja. A FK só garante que o
+  // id existe; sem esta linha, um contrato de A nascia com a vendedora de B, o
+  // `GET /contratos` devolvia `with: { vendedora: true }` (e-mail, isSuperAdmin)
+  // para dentro de A, e o fechamento de comissão gerava conta a pagar nominal a
+  // quem nunca teve regra na loja.
+  if (!(await vendedoraNaLoja(contratoData.vendedoraId, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "Vendedora não é desta loja" });
     return;
   }
 

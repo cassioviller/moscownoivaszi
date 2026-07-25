@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable } from "@workspace/db";
+import { eq, and, sql, count } from "drizzle-orm";
 import { 
   ListLojasResponse, 
   CreateLojaBody, 
@@ -253,10 +253,22 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
     updateData.precisaTrocarSenha = true;
   }
 
-  const [usuario] = await db.update(usuariosTable)
-    .set(updateData)
-    .where(eq(usuariosTable.id, params.data.usuarioId))
-    .returning();
+  // B12 — trocar a credencial ou inativar tem de DERRUBAR as sessões vivas, na
+  // MESMA transação. Sem isso, o superadmin reseta a senha de quem foi
+  // desligado às pressas e a aba já aberta segue valendo por até 8h
+  // (SESSAO_TTL_MS): a pessoa continua fechando contrato e recebendo parcela
+  // com a identidade dela na trilha, enquanto o admin acredita ter fechado a
+  // porta. É a mesma regra de `/auth/senha` e dos overrides de perfil.
+  const mudouAcesso = parsed.data.senha !== undefined || parsed.data.ativo === false;
+
+  const usuario = await db.transaction(async (tx) => {
+    const [linha] = await tx.update(usuariosTable)
+      .set(updateData)
+      .where(eq(usuariosTable.id, params.data.usuarioId))
+      .returning();
+    if (linha && mudouAcesso) await encerrarSessoesDoUsuario(tx, params.data.usuarioId);
+    return linha;
+  });
   if (!usuario) {
     res.status(404).json({ error: "Usuario not found" });
     return;
@@ -270,7 +282,46 @@ router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  // B2 🔴 — a exclusão passa a ser RECUSADA quando a pessoa tem histórico.
+  //
+  // As FKs de vendedora eram ON DELETE CASCADE: este `delete` apagava os
+  // contratos dela, as parcelas PAGAS (com `recebidoEm`), o snapshot de itens,
+  // os orçamentos, os atendimentos e os fechamentos de comissão — o caixa
+  // realizado mudava para trás, sem confirmação e sem trilha. O DDL do E91 as
+  // trocou por `restrict`; aqui damos o 409 LEGÍVEL antes de o banco levantar o
+  // 23503 genérico ("Operação viola vínculos existentes"), e a mensagem ensina
+  // o caminho certo: inativar preserva tudo.
+  const usuarioId = params.data.usuarioId;
+  const [[c1], [c2], [c3], [c4]] = await Promise.all([
+    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(comissaoFechamentosTable).where(eq(comissaoFechamentosTable.vendedoraId, usuarioId)),
+  ]);
+  const contratos = c1.n, orcamentos = c2.n, atendimentos = c3.n, comissoes = c4.n;
+
+  const historico = [
+    contratos > 0 ? `${contratos} contrato(s)` : null,
+    orcamentos > 0 ? `${orcamentos} orçamento(s)` : null,
+    atendimentos > 0 ? `${atendimentos} atendimento(s)` : null,
+    comissoes > 0 ? `${comissoes} fechamento(s) de comissão` : null,
+  ].filter(Boolean);
+
+  if (historico.length > 0) {
+    res.status(409).json({
+      error: "USUARIO_COM_HISTORICO",
+      detalhe: `Esta pessoa tem ${historico.join(", ")} — excluir apagaria esse histórico (inclusive parcelas já recebidas). Inative em vez de excluir.`,
+    });
+    return;
+  }
+
   await db.delete(usuariosTable).where(eq(usuariosTable.id, params.data.usuarioId));
+  // Sem loja, não há `registrarAuditoria` (a trilha é por loja). O log fica
+  // greppável para quem for reconstituir "quem sumiu do cadastro".
+  req.log.warn(
+    { usuarioId: params.data.usuarioId, porUsuarioId: req.usuario!.id },
+    "usuario_excluido",
+  );
   res.status(204).send();
 });
 

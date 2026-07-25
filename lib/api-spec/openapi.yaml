@@ -281,6 +281,10 @@ paths:
     patch:
       operationId: updateUsuario
       tags: [admin]
+      description: >
+        Resetar a senha ou marcar `ativo: false` DERRUBA as sessões vivas da
+        pessoa, na mesma transação (E91/B12) — antes a aba já aberta seguia
+        valendo por até 8h depois de o acesso ter sido cortado.
       requestBody:
         required: true
         content:
@@ -297,9 +301,15 @@ paths:
     delete:
       operationId: deleteUsuario
       tags: [admin]
+      description: >
+        Recusado com 409 quando a pessoa tem histórico (contrato, orçamento,
+        atendimento ou fechamento de comissão) — excluir apagaria contratos e
+        parcelas PAGAS (E91/B2). O caminho para quem sai do ateliê é INATIVAR.
       responses:
         "204":
           description: Deleted
+        "409":
+          description: Pessoa com histórico (USUARIO_COM_HISTORICO) — inative
   /admin/lojas/{lojaId}/overrides:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -484,6 +494,11 @@ paths:
     patch:
       operationId: updateMembroEquipe
       tags: [equipe]
+      description: >
+        `usuarios` é tabela GLOBAL: o vínculo `usuarios_lojas` é conferido ANTES
+        de qualquer escrita (E91/B1) e a resposta é 404 quando a pessoa não é
+        desta loja. Sem isso, um admin da loja A inativava a dona da loja B.
+        Trocar o perfil ou inativar derruba as sessões vivas, na mesma transação.
       requestBody:
         required: true
         content:
@@ -497,12 +512,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MembroEquipe"
+        "404":
+          description: Não há vínculo desta pessoa com esta loja — nada foi escrito
     delete:
       operationId: removeMembroEquipe
       tags: [equipe]
+      description: >
+        Mesma prova de pertencimento do PATCH (E91/B1) — antes o 204 saía mesmo
+        sem remover nada, e as sessões da pessoa caíam de qualquer jeito.
       responses:
         "204":
           description: Removed
+        "404":
+          description: Não há vínculo desta pessoa com esta loja
 
   /lojas/{lojaId}/equipe/convites:
     parameters:
@@ -2085,6 +2107,11 @@ paths:
     post:
       operationId: createOrcamento
       tags: [orcamentos]
+      description: >
+        `vendedoraId` vem da SESSÃO, nunca do corpo. O `leadId` do corpo é
+        provado contra a loja da URL (E91/B4): a FK só garante que o id existe,
+        não a que loja pertence — e o GET enriquecido devolveria a ficha da
+        noiva de outra loja.
       requestBody:
         required: true
         content:
@@ -2098,6 +2125,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
+        "422":
+          description: Noiva não é desta loja (REFERENCIA_INVALIDA)
   /lojas/{lojaId}/orcamentos/{orcamentoId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -2576,6 +2605,10 @@ paths:
     post:
       operationId: createContrato
       tags: [contratos]
+      description: >
+        Todo id do corpo é provado contra a loja da URL antes de escrever
+        (E91/B4) — inclusive `vendedoraId`, que antes entrava cru e gerava
+        comissão nominal a quem não é da loja.
       requestBody:
         required: true
         content:
@@ -2589,6 +2622,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Contrato"
+        "422":
+          description: >
+            Referência de outra loja (REFERENCIA_INVALIDA), lead/orçamento
+            inválido ou valores que não fecham
+
   /lojas/{lojaId}/contratos/{contratoId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3025,6 +3063,8 @@ paths:
     post:
       operationId: createContaPagar
       tags: [financeiro]
+      description: >
+        `colaboradorId`, quando vem, é provado contra a loja da URL (E91/B4).
       requestBody:
         required: true
         content:
@@ -3038,6 +3078,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContaPagar"
+        "422":
+          description: Colaborador não é desta loja (REFERENCIA_INVALIDA)
   /lojas/{lojaId}/financeiro/contas-pagar/exportar:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -3397,6 +3439,8 @@ paths:
           description: Campos incompatíveis com o tipo (RECORRENCIA_INVALIDA)
         "409":
           description: Já existe salário ativo para esta pessoa (SALARIO_ATIVO_EXISTENTE)
+        "422":
+          description: Colaborador do salário não é desta loja (REFERENCIA_INVALIDA)
   /lojas/{lojaId}/financeiro/recorrencias/{recorrenciaId}:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

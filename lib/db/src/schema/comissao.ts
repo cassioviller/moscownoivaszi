@@ -17,7 +17,9 @@ import { contasPagarTable } from "./financeiro";
 export const comissaoRegrasTable = pgTable("comissao_regras", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): a escada versionada é o que EXPLICA cada fechamento
+  // passado. Apagá-la junto com a pessoa deixaria o valor pago sem régua.
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   /** A regra passa a valer deste dia em diante; a mais recente já iniciada vence. */
   vigenciaInicio: timestamp("vigencia_inicio", { withTimezone: true }).notNull(),
   /** Ligado: os bônus dos degraus já vencidos se somam. Desligado: só o da faixa final. */
@@ -72,7 +74,9 @@ export type ComissaoFaixa = typeof comissaoFaixasTable.$inferSelect;
 export const comissaoFechamentosTable = pgTable("comissao_fechamentos", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): o fechamento é dinheiro que a loja PAGOU. Ele não pode
+  // sumir porque o cadastro de quem recebeu foi excluído.
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   competencia: text("competencia").notNull(), // "YYYY-MM"
   /** Base líquida já com o estorno §6.4 abatido. Nunca negativa. */
   totalVendas: decimal("total_vendas", { precision: 10, scale: 2, mode: "number" }).notNull(),

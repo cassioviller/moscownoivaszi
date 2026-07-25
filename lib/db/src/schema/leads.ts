@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, primaryKey, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, index, primaryKey, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -32,7 +32,10 @@ export const leadsTable = pgTable("leads", {
   anonimizadaEm: timestamp("anonimizada_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // B10/E91: o funil, a busca e "leads parados" abrem por loja + etapa.
+  lojaEtapaIdx: index("leads_loja_etapa_idx").on(t.lojaId, t.etapa),
+}));
 
 export const insertLeadSchema = createInsertSchema(leadsTable).omit({ createdAt: true, updatedAt: true });
 export type InsertLead = z.infer<typeof insertLeadSchema>;

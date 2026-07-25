@@ -81,8 +81,11 @@ describe("Colocação no extrato pessoal (E55)", () => {
   });
 
   afterAll(async () => {
-    await db.delete(usuariosTable).where(eq(usuariosTable.id, segunda.id));
+    // limparFixture ANTES: as FKs de vendedora são RESTRICT desde o E91 — a
+    // segunda vendedora tem contrato e atendimento, e só sai depois que o
+    // cascade da loja levar o que ela produziu.
     await limparFixture(f);
+    await db.delete(usuariosTable).where(eq(usuariosTable.id, segunda.id));
     await fecharPool();
   });
 

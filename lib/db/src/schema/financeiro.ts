@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer, unique, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, index, unique, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -26,6 +26,12 @@ export const parcelasTable = pgTable("parcelas", {
   // simultâneos passam ambos e dobram o plano. Um contrato não tem dois números
   // iguais — o segundo insert do número 0 colide e vira 409.
   numeroUnico: unique().on(t.contratoId, t.numero),
+  // B10/E91: toda query começa em `loja_id = ?` e segue por uma faixa de data.
+  // O Postgres NÃO cria índice para FK — sem estes dois, o fluxo, o DRE, o
+  // alerta de caixa (chamado pelo sino a cada poll) e o dashboard varrem a
+  // tabela inteira de TODAS as lojas para responder por uma.
+  lojaVencimentoIdx: index("parcelas_loja_vencimento_idx").on(t.lojaId, t.vencimento),
+  lojaRecebidoEmIdx: index("parcelas_loja_recebido_em_idx").on(t.lojaId, t.recebidoEm),
 }));
 
 export const insertParcelaSchema = createInsertSchema(parcelasTable).omit({ createdAt: true });
@@ -59,6 +65,8 @@ export const contasPagarTable = pgTable("contas_pagar", {
   recorrenciaUnica: uniqueIndex("contas_pagar_recorrencia_unica")
     .on(t.lojaId, t.competencia, t.recorrenciaId)
     .where(sql`${t.recorrenciaId} is not null`),
+  // B10/E91: o recorte de "o que vence" abre por loja + vencimento.
+  lojaVencimentoIdx: index("contas_pagar_loja_vencimento_idx").on(t.lojaId, t.vencimento),
 }));
 
 export const insertContaPagarSchema = createInsertSchema(contasPagarTable).omit({ createdAt: true });
@@ -75,7 +83,10 @@ export const pagamentosTable = pgTable("pagamentos", {
   observacoes: text("observacoes"),
   enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // B10/E91: a saída de caixa é lida por loja + dia em fluxo, DRE e alerta.
+  lojaDataIdx: index("pagamentos_loja_data_idx").on(t.lojaId, t.data),
+}));
 
 export const insertPagamentoSchema = createInsertSchema(pagamentosTable).omit({ createdAt: true });
 export type InsertPagamento = z.infer<typeof insertPagamentoSchema>;
@@ -87,7 +98,10 @@ export const pagamentoItensTable = pgTable("pagamento_itens", {
   pagamentoId: text("pagamento_id").notNull().references(() => pagamentosTable.id, { onDelete: "cascade" }),
   contaPagarId: text("conta_pagar_id").notNull().unique().references(() => contasPagarTable.id, { onDelete: "cascade" }),
   valor: decimal("valor", { precision: 10, scale: 2, mode: "number" }).notNull(),
-});
+}, (t) => ({
+  // B10/E91: toda montagem de extrato faz o join por `pagamento_id`.
+  pagamentoIdx: index("pagamento_itens_pagamento_idx").on(t.pagamentoId),
+}));
 
 export const insertPagamentoItemSchema = createInsertSchema(pagamentoItensTable);
 export type InsertPagamentoItem = z.infer<typeof insertPagamentoItemSchema>;

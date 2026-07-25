@@ -25,12 +25,22 @@ export async function cabineNaLoja(cabineId: string, lojaId: string): Promise<bo
   return !!r;
 }
 
-/** Vendedora pertence à loja pelo vínculo `usuarios_lojas`, não por uma coluna. */
-export async function vendedoraNaLoja(usuarioId: string, lojaId: string): Promise<boolean> {
+/**
+ * Usuário pertence à loja pelo vínculo `usuarios_lojas`, não por uma coluna.
+ *
+ * É a MESMA pergunta para vendedora, colaborador e membro da equipe — a tabela
+ * `usuarios` é GLOBAL, e o que amarra alguém a uma loja é só este vínculo. Toda
+ * escrita que recebe um id de gente (do corpo OU do path) passa por aqui antes
+ * de escrever: sem isso, o id existe, a FK aceita, e a loja A mexe na loja B.
+ */
+export async function usuarioNaLoja(usuarioId: string, lojaId: string): Promise<boolean> {
   const [r] = await db.select({ id: usuariosLojasTable.usuarioId }).from(usuariosLojasTable)
     .where(and(eq(usuariosLojasTable.usuarioId, usuarioId), eq(usuariosLojasTable.lojaId, lojaId))).limit(1);
   return !!r;
 }
+
+/** Alias histórico de `usuarioNaLoja` — a pergunta é a mesma. */
+export const vendedoraNaLoja = usuarioNaLoja;
 
 export async function reservaNaLoja(reservaId: string, lojaId: string): Promise<boolean> {
   const [r] = await db.select({ id: reservasTable.id }).from(reservasTable)

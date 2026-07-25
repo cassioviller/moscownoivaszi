@@ -65,6 +65,7 @@ import {
   GetDreResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { usuarioNaLoja } from "../lib/escopo-loja";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { registrarAuditoria, acaoValida, quandoLocalSP, ROTULO_ACAO } from "../lib/auditoria";
 import {
@@ -133,6 +134,13 @@ router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<
   const parsed = CreateContaPagarBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  // B4 — o `colaboradorId` vem do CORPO. Sem esta checagem, a loja A lança uma
+  // conta a pagar nominal a alguém da loja B (e o extrato/folha passam a listar
+  // uma pessoa que não é da equipe). A FK só garante que o id existe.
+  if (parsed.data.colaboradorId && !(await usuarioNaLoja(parsed.data.colaboradorId, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "Colaborador não é desta loja" });
     return;
   }
   const [conta] = await db.insert(contasPagarTable).values({
@@ -555,6 +563,13 @@ router.post("/lojas/:lojaId/financeiro/recorrencias", async (req, res): Promise<
   // não empilhar. Despesa não tem esse limite de propósito: a loja com duas
   // salas tem dois aluguéis, e o motor não tem como saber que não são o mesmo.
   if (tipo === "SALARIO") {
+    // B4 — o colaborador do salário vem do CORPO: sem esta prova, a loja A cria
+    // uma recorrência de SALÁRIO para alguém da loja B e passa a gerar conta a
+    // pagar todo mês em nome de quem não é da equipe.
+    if (!(await usuarioNaLoja(usuarioId!, lojaId))) {
+      res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "Colaborador não é desta loja" });
+      return;
+    }
     const jaAtivo = await db.select({ id: recorrenciasTable.id })
       .from(recorrenciasTable)
       .where(and(

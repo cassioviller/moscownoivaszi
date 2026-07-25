@@ -18,6 +18,7 @@ import {
   GetAtividadeEquipeResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { usuarioNaLoja } from "../lib/escopo-loja";
 import { registrarAuditoria } from "../lib/auditoria";
 import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
 import { ehViolacaoUnica } from "../lib/erros";
@@ -322,6 +323,20 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
     return;
   }
 
+  // B1 🔴 — a PROVA DE PERTENCIMENTO vem ANTES de qualquer escrita.
+  //
+  // `usuarios` é tabela GLOBAL: o `requireModulo("admin")` acima só diz que
+  // quem chama administra a loja da URL, não que o `usuarioId` do path é dessa
+  // loja. O UPDATE de `nome`/`ativo` ia direto pelo id e a conferência só
+  // acontecia no SELECT final, DEPOIS do commit — o 404 era cosmético. Com
+  // isso, um admin da loja A mandava `{"ativo": false}` no id da dona da loja B
+  // e a derrubava (login recusado, sessões vivas encerradas), com a trilha
+  // ficando na loja A, onde a vítima nunca olha.
+  if (!(await usuarioNaLoja(params.data.usuarioId, params.data.lojaId))) {
+    res.status(404).json({ error: "Membro da equipe não encontrado" });
+    return;
+  }
+
   // Trocar o perfil ou inativar muda o ACESSO; renomear, não. Só o primeiro
   // caso derruba sessão — obrigar a pessoa a logar de novo porque alguém
   // corrigiu um acento no nome dela seria castigo sem motivo.
@@ -395,7 +410,16 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
     res.status(400).json({ error: params.error.message });
     return;
   }
-  
+
+  // B1 🔴 — mesma prova de pertencimento do PATCH. O `delete` do vínculo já era
+  // escopado, mas `encerrarSessoesDoUsuario` rodava incondicionalmente sobre o
+  // id do path: um DoS de sessão repetível contra qualquer conta do sistema,
+  // com a rota respondendo 204 mesmo sem ter removido nada.
+  if (!(await usuarioNaLoja(params.data.usuarioId, params.data.lojaId))) {
+    res.status(404).json({ error: "Membro da equipe não encontrado" });
+    return;
+  }
+
   await db.transaction(async (tx) => {
     // Defensivo: remover o membro também derruba convites pendentes do e-mail
     // dele nesta loja — senão o link ainda no WhatsApp recriaria o vínculo.

@@ -75,7 +75,21 @@ rode o codegen.
   `vendedorId` de propósito — um cliente que declara o próprio autor pode
   atribuir a ação a outra pessoa. Mesma lógica de sempre: a autoridade é o
   servidor. Corolário: campos de autoria são ON DELETE SET NULL, porque perder
-  quem fez é recuperável e perder o registro do que aconteceu não é.
+  quem fez é recuperável e perder o registro do que aconteceu não é. Onde a
+  coluna é `notNull` e `set null` não existe — `contratos`, `orcamentos`,
+  `atendimentos`, `comissao_regras` e `comissao_fechamentos`, todas por
+  `vendedora_id` — a regra vira ON DELETE **RESTRICT** (E91): o banco RECUSA a
+  exclusão em vez de apagar o histórico junto com a pessoa. Quem sai do ateliê é
+  INATIVADO (`usuarios.ativo`), e `DELETE /admin/usuarios/:id` responde 409
+  `USUARIO_COM_HISTORICO` dizendo isso.
+- **Nenhum id entra sem prova de loja** (E91). `usuarios` é tabela GLOBAL e a FK
+  do banco só garante que um id EXISTE, não a que loja pertence. Toda escrita
+  que recebe id de outra entidade — do CORPO ou do PATH — passa por
+  `api-server/src/lib/escopo-loja.ts` (`leadNaLoja`, `cabineNaLoja`,
+  `usuarioNaLoja`/`vendedoraNaLoja`, `reservaNaLoja`) ANTES de escrever: id do
+  corpo que não é da loja vira 422 `REFERENCIA_INVALIDA`, id do path vira 404.
+  Régua única — quem precisar de uma pergunta nova a acrescenta lá, não escreve
+  a checagem à mão na rota.
 - **Permissão é MÓDULO × AÇÃO** (`{leads: {ver, criar, editar}}`), com o shape
   vindo do CÓDIGO e nunca do banco (`api-server/src/lib/permissoes.ts`): chave
   desconhecida é descartada, ausente é `false`. O guard deriva a ação do método
@@ -118,7 +132,10 @@ rode o codegen.
   a agenda inteira; a fila usa parcelas ABERTAS e orçamentos ENVIADOS.
 - **Multi-loja** — tudo é escopado por loja; superadmin tem bypass e o console
   consolidado da rede (E76). O perfil Admin é flag `perfis.sistema` (E80) —
-  o servidor recusa PATCH/DELETE dele.
+  o servidor recusa PATCH/DELETE dele. Gerir equipe é ato sobre a tabela GLOBAL
+  `usuarios`: `PATCH`/`DELETE /lojas/:lojaId/equipe/:usuarioId` provam o vínculo
+  `usuarios_lojas` antes de escrever e respondem 404 sem ele (E91) — sem essa
+  prova, um admin inativava a dona da loja vizinha por curl.
 
 ## Gotchas
 
@@ -140,7 +157,10 @@ rode o codegen.
   também o ganha e o codegen colide.
 - **Os testes de API tocam o banco de verdade** (`DATABASE_URL`). Eles usam
   fixtures isoladas por loja (`criarFixture`/`limparFixture`); competências dos
-  testes são datas PASSADAS de propósito — o fechamento recusa mês corrente.
+  testes são datas PASSADAS de propósito — o fechamento recusa mês corrente. A
+  ORDEM da limpeza é significativa desde o E91: contratos → loja → usuários →
+  perfil. Com as FKs de vendedora em `restrict`, apagar a pessoa primeiro passa
+  a falhar em toda fixture que fechou contrato.
 - **Rotas planas (`/financeiro`, `/contratos/:id`) são compatibilidade
   transitória**: caem no `LegacyRedirect` do `App.tsx`. Código novo linka com
   escopo de loja (`/loja/:lojaId/...`); a sidebar e `useCaminhoDaLoja` mostram o

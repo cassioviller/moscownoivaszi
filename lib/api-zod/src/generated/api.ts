@@ -303,6 +303,9 @@ export const CreateUsuarioResponse = zod.object({
 })
 
 
+/**
+ * Resetar a senha ou marcar `ativo: false` DERRUBA as sessões vivas da pessoa, na mesma transação (E91/B12) — antes a aba já aberta seguia valendo por até 8h depois de o acesso ter sido cortado.
+ */
 export const UpdateUsuarioParams = zod.object({
   "usuarioId": zod.coerce.string()
 })
@@ -330,6 +333,9 @@ export const UpdateUsuarioResponse = zod.object({
 })
 
 
+/**
+ * Recusado com 409 quando a pessoa tem histórico (contrato, orçamento, atendimento ou fechamento de comissão) — excluir apagaria contratos e parcelas PAGAS (E91/B2). O caminho para quem sai do ateliê é INATIVAR.
+ */
 export const DeleteUsuarioParams = zod.object({
   "usuarioId": zod.coerce.string()
 })
@@ -514,6 +520,9 @@ export const AddMembroEquipeResponse = zod.object({
 })
 
 
+/**
+ * `usuarios` é tabela GLOBAL: o vínculo `usuarios_lojas` é conferido ANTES de qualquer escrita (E91/B1) e a resposta é 404 quando a pessoa não é desta loja. Sem isso, um admin da loja A inativava a dona da loja B. Trocar o perfil ou inativar derruba as sessões vivas, na mesma transação.
+ */
 export const UpdateMembroEquipeParams = zod.object({
   "lojaId": zod.coerce.string(),
   "usuarioId": zod.coerce.string()
@@ -536,6 +545,9 @@ export const UpdateMembroEquipeResponse = zod.object({
 })
 
 
+/**
+ * Mesma prova de pertencimento do PATCH (E91/B1) — antes o 204 saía mesmo sem remover nada, e as sessões da pessoa caíam de qualquer jeito.
+ */
 export const RemoveMembroEquipeParams = zod.object({
   "lojaId": zod.coerce.string(),
   "usuarioId": zod.coerce.string()
@@ -4186,6 +4198,9 @@ export const ListOrcamentosResponseItem = zod.object({
 export const ListOrcamentosResponse = zod.array(ListOrcamentosResponseItem)
 
 
+/**
+ * `vendedoraId` vem da SESSÃO, nunca do corpo. O `leadId` do corpo é provado contra a loja da URL (E91/B4): a FK só garante que o id existe, não a que loja pertence — e o GET enriquecido devolveria a ficha da noiva de outra loja.
+ */
 export const CreateOrcamentoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
@@ -4943,6 +4958,9 @@ export const ListContratosResponseItem = zod.object({
 export const ListContratosResponse = zod.array(ListContratosResponseItem)
 
 
+/**
+ * Todo id do corpo é provado contra a loja da URL antes de escrever (E91/B4) — inclusive `vendedoraId`, que antes entrava cru e gerava comissão nominal a quem não é da loja.
+ */
 export const CreateContratoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
@@ -5935,6 +5953,9 @@ export const ListContasPagarResponseItem = zod.object({
 export const ListContasPagarResponse = zod.array(ListContasPagarResponseItem)
 
 
+/**
+ * `colaboradorId`, quando vem, é provado contra a loja da URL (E91/B4).
+ */
 export const CreateContaPagarParams = zod.object({
   "lojaId": zod.coerce.string()
 })

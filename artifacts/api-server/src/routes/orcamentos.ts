@@ -18,6 +18,7 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { leadNaLoja } from "../lib/escopo-loja";
 import { randomUUID, createHash } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
@@ -133,6 +134,15 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
   
+  // B4 — o `leadId` vem do CORPO e precisa ser desta loja. Sem isto, um
+  // `POST /lojas/A/orcamentos` com a noiva da loja B criava a linha em A, e o
+  // `GET /lojas/A/orcamentos` (que faz `with: { lead: true }`) devolvia a ficha
+  // inteira dela — nome, whatsapp, data e local do casamento — para a loja A.
+  if (!(await leadNaLoja(parsed.data.leadId, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "Noiva não é desta loja" });
+    return;
+  }
+
   // Quem abriu vem da SESSÃO, nunca do corpo: aceitar um `vendedoraId` do
   // cliente deixava atribuir o orçamento (e a comissão que nasce dele) a
   // outra pessoa — mesma regra do vendedorId da cobrança.
