@@ -40,7 +40,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 |---|---|---|---|---|
 | E91 | Fronteira da loja: nenhum id entra sem prova (B1 🔴, B2 🔴, B4, B10, B12) | M | ✅ | `d67103d` · [notas](execucao/E91.md) |
 | E92 | Consertos de uma linha (E1 🔴, E2 🔴, +15) | P | ✅ | `6cbd004` · [notas](execucao/E92.md) |
-| E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ⬜ | — |
+| E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ✅ | `1917f16` · [notas](execucao/E93.md) |
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ⬜ | — |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ⬜ | — |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D5, D6) | M | ⬜ | — |
@@ -128,3 +128,60 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   já converte por dentro. Um par de cor ficou aberto de propósito
   (`text-primary` sobre fundo claro, 2,78): fechá-lo exige dividir o token e
   decidir 61 call-sites, que é a decisão do E8 e mora no E99.
+
+### Sessão 2 — 2026-07-25
+
+- **E93 executado** (notas completas em `execucao/E93.md`). O épico anterior
+  consertava coisas que uma asserção pega; o D1 não. O defeito era um **loop de
+  render** — aba a 100% de CPU, tela em branco — e para isso não existe valor
+  errado a comparar. Duas consequências de método. Primeira: a decisão saiu dos
+  dois `useEffect` e virou **função pura** (`lib/loja-ativa.ts`), quatro
+  entradas, quatro veredictos, legível sem simular o React na cabeça. Segunda:
+  a prova de que o loop morreu é um **navegador**. O app não tem infra de
+  render (sem jsdom, sem testing-library), mas tem 49 specs de Playwright — o
+  backlog pedia um teste de render, entreguei o equivalente honesto um nível
+  acima em `e2e/50-loja-da-url.spec.ts`, e ele foi **vermelho antes**: revertendo
+  só `use-auth.tsx` e `app-layout.tsx`, os três casos falham e o console cospe
+  literalmente `Maximum update depth exceeded` — o mesmo erro que a trilha D
+  previu por leitura sem nunca ter reproduzido. **A resposta do "quem ganha" era
+  obrigatória, não preferência:** `requireSessaoComLoja` responde 403 a toda
+  request cujo `:lojaId` difira do da SESSÃO, então um bookmark para B com a
+  sessão em A só funciona se alguém disser ao servidor "agora é B" — a URL
+  ganha, e a divergência virou AÇÃO (`selecionarLoja`). Duas armadilhas só
+  apareceram no navegador e estão comentadas no `app-layout.tsx` porque eu as
+  errei primeiro: sem o veredicto `seguir-a-sessao`, duas abas trocariam o loop
+  de render por um loop de REDE (pior: invisível no profiler e escrevendo na
+  sessão a cada volta); e a marca de "já reivindiquei" precisa valer `null`
+  enquanto a troca está EM VOO, senão a tela redireciona para a loja antiga no
+  meio da própria troca. **A ordem D9 → D3 era o cuidado central e se provou
+  sozinha:** `receber.tsx` invalidava só as parcelas, e o dano era invisível
+  porque o `staleTime: 0` refazia tudo na navegação seguinte — o bug estava
+  mascarado pela ineficiência que o D3 vinha remover, e na ordem trocada duas
+  melhorias corretas produziriam um defeito que nenhuma das duas tinha (o
+  alerta de caixa anunciando o furo na data antiga depois de receber R$ 5.000).
+  Mesmo par no D13: `staleTime` não desliga `refetchOnWindowFocus`, e a tela do
+  effect era justamente onde a pessoa fica parada digitando. O D2 recortou as
+  janelas (`de`/`ate`/`status` em `listContasPagar`, novo no `openapi.yaml`) e
+  trouxe uma coisa que o backlog não pedia: `conta.pagamento`, porque recortar
+  `listPagamentos` pela janela de vencimentos NÃO era opção — a saída que quita
+  uma conta de julho pode ter data de agosto, e perdê-la faria o botão de
+  estorno sumir em silêncio numa tela de dinheiro. Na conciliação, `de`/`ate`
+  seria o parâmetro errado (recorta por vencimento; a tela compara por
+  `recebidoEm`, e apagaria justamente as pagas em atraso) — o certo é
+  `recebidasDe`. Fixture E2E ganhou a segunda loja, sem a qual o cenário do D1
+  é indizível.
+- **Três regressões do E92 achadas ao rodar a suíte E2E completa** — que o E92
+  não rodou, ele conferiu telas à mão. Nenhuma de comportamento, todas de
+  expectativa que envelheceu junto com a cópia: `brl()` usa espaço RÍGIDO
+  (U+00A0) e o Playwright normaliza espaço em seletor de **string** mas não em
+  **regex** (por isso só `35-recebimento-parcial` quebrou, e não os outros dois
+  specs com `R$`); o toast de login virou "Não consegui entrar"; e
+  `rotuloCompetencia()` foi para minúscula com `capitalizar()` no call-site,
+  contra um `toContainText` case-sensitive. **Regra nova: épico que mexe em
+  cópia ou formatação compartilhada roda o E2E completo antes do commit** — "vi
+  as telas" é régua forte para cor e alvo de toque, mas não cobre asserção de
+  texto em 49 specs.
+- Correção de rota registrada: os dois testes marcados "FALHA ESPERADA no main"
+  em `02-selecionar-loja.spec.ts` passam — e passam **sem** o D1, conferido
+  revertendo-o. Os consertos vieram da Onda 0 e do `fix/auditoria`; os
+  comentários envelheceram e mandariam o próximo executor caçar bug morto.
