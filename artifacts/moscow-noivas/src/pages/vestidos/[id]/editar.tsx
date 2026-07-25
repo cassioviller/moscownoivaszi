@@ -24,6 +24,7 @@ import { ArrowLeft, AlertCircle, Image as ImageIcon, Trash2, Upload } from "luci
 import { VestidoForm, type VestidoFormValues } from "../vestido-form";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /** Redesenha a imagem num canvas com lado maior ≤ max e devolve o JPEG em base64. */
 function reduzir(img: HTMLImageElement, max: number, qualidade: number): string {
@@ -201,7 +202,7 @@ export default function EditarVestido() {
     query: { queryKey: getGetVestidoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id },
   });
   const catalogoQuery = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const updateVestido = useUpdateVestido();
 

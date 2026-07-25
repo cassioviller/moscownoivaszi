@@ -17,7 +17,6 @@ import {
   useListPendenciasComissao,
   getListPendenciasComissaoQueryKey,
   useReabrirComissaoFechamento,
-  getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
   useSimularComissao,
@@ -67,9 +66,10 @@ import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { rotuloCompetencia } from "@/lib/financeiro/datas";
 import { capitalizar } from "@/lib/formatos";
-import { ErroListagem } from "@/pages/financeiro/helpers";
+import { ErroListagem, invalidarCaixa } from "@/pages/financeiro/helpers";
 import { mensagemApi } from "@/lib/erro-api";
 import { serieDeComissao } from "@/lib/comissao-serie";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /**
  * Comissões: a escada de cada vendedora, o ranking ao vivo do mês e o
@@ -135,7 +135,7 @@ export default function Comissoes() {
     query: { queryKey: getListComissaoRegrasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const paramsPreview = { competencia };
   const preview = usePreviewComissao(activeLojaId!, paramsPreview, {
@@ -144,13 +144,12 @@ export default function Comissoes() {
       enabled: !!activeLojaId,
     },
   });
-  const paramsFech = { competencia };
-  const fechamentos = useListComissaoFechamentos(activeLojaId!, paramsFech, {
-    query: {
-      queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech),
-      enabled: !!activeLojaId,
-    },
-  });
+  // D10 (E93): aqui havia uma SEGUNDA chamada ao mesmo endpoint, com
+  // {competencia} — um recorte estrito do que o `historico` abaixo já traz em
+  // mãos. Um request a menos no mount, uma invalidação a menos por ação, e a
+  // lista de fechados parou de piscar a cada troca de competência no seletor
+  // (o histórico não muda quando a competência muda).
+  //
   // Sem filtro: a série (E52) é sobre o histórico, não sobre a competência em
   // vista. A lista é pequena por natureza — uma linha por vendedora por mês.
   const historico = useListComissaoFechamentos(activeLojaId!, undefined, {
@@ -230,11 +229,12 @@ export default function Comissoes() {
         fechamentoId: fechamentoReabrindo.id,
       });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech) }),
         queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!) }),
         queryClient.invalidateQueries({ queryKey: getListPendenciasComissaoQueryKey(activeLojaId!) }),
         queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) }),
-        queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
+        // D9: fechar/reabrir MEXE em conta a pagar — a curva do alerta de caixa
+        // (dashboard e sino) muda com ela, não só a lista de contas.
+        invalidarCaixa(queryClient, activeLojaId!),
       ]);
       setFechamentoReabrindo(null);
       toast({
@@ -343,8 +343,9 @@ export default function Comissoes() {
     try {
       const criados = await gerarFechamento.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech) }),
-        queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
+        // D9: fechar/reabrir MEXE em conta a pagar — a curva do alerta de caixa
+        // (dashboard e sino) muda com ela, não só a lista de contas.
+        invalidarCaixa(queryClient, activeLojaId!),
         // O histórico alimenta a série (E52) e a varredura alimenta o alerta
         // (E53): fechar acabou de mudar os dois, e um alerta que sobrevive à
         // ação que o resolve é pior do que alerta nenhum.
@@ -460,7 +461,12 @@ export default function Comissoes() {
       .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [regras.data, nomePorUsuario]);
 
-  const jaFechada = (fechamentos.data?.length ?? 0) > 0;
+  // Os fechamentos DESTA competência, recortados do histórico já carregado.
+  const fechamentosDaCompetencia = useMemo(
+    () => (historico.data ?? []).filter((f) => f.competencia === competencia),
+    [historico.data, competencia],
+  );
+  const jaFechada = fechamentosDaCompetencia.length > 0;
 
   return (
     <div className="space-y-6">
@@ -710,7 +716,7 @@ export default function Comissoes() {
           </CardHeader>
           <CardContent>
             <ul className="divide-y">
-              {fechamentos.data?.map((f) => (
+              {fechamentosDaCompetencia.map((f) => (
                 <li key={f.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div>
                     <p className="font-medium">

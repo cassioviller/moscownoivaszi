@@ -7,9 +7,16 @@
  * conta sozinha é o mesmo caminho com `contaIds` de tamanho 1 — não existe rota
  * "single" nesta tela, para que todo pagamento tenha um `pagamentoId` estornável.
  *
- * `listContasPagar` não devolve o pagamento que quitou a conta, então o
- * `pagamentoId` vem de `listPagamentos` (sem intervalo: a saída pode ter data
- * fora da janela de vencimentos exibida) via seus `itens[].contaPagarId`.
+ * E93/D2: a tela pede a JANELA que ela mostra (`{de, ate}` por vencimento) e
+ * nada mais. Ela baixava a carteira inteira de contas E a de pagamentos — esta
+ * segunda só para achar o `pagamentoId` que torna a saída estornável, porque o
+ * `listContasPagar` não o devolvia. Agora devolve (`conta.pagamento`), com a
+ * fatia RATEADA e quantas contas a mesma saída quitou, e o segundo request
+ * simplesmente deixou de existir. Recortar `listPagamentos` pela janela de
+ * VENCIMENTOS não era opção: a saída que quita uma conta de julho pode ter
+ * data de agosto (atraso) ou de junho (adiantamento), e perdê-la fazia o botão
+ * "Estornar pagamento" sumir e o card "Pago" cair para o previsto — em
+ * silêncio, numa tela de dinheiro.
  *
  * As contas SALARIO aparecem aqui como qualquer outra, mas nascem na tela
  * irmã (financeiro/folha): é lá que o salário-base vira folha da competência
@@ -20,8 +27,6 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useListContasPagar,
   getListContasPagarQueryKey,
-  useListPagamentos,
-  getListPagamentosQueryKey,
   useCreatePagamento,
   useEstornarPagamento,
   useCreateContaPagar,
@@ -74,8 +79,9 @@ import { brl, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, useCaminhoDaLoja } from "./helpers";
+import { ResumoCard, dataFmt, useCaminhoDaLoja, invalidarCaixa } from "./helpers";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   CONTA_JA_PAGA: "Conta já paga — estorne o pagamento antes.",
@@ -135,14 +141,17 @@ export default function Pagar() {
   const [contaRemover, setContaRemover] = useState<ContaPagar | null>(null);
   const [pagamentoEstornar, setPagamentoEstornar] = useState<{ pagamentoId: string; contas: number } | null>(null);
 
-  const contas = useListContasPagar(activeLojaId!, {
-    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-  const pagamentos = useListPagamentos(activeLojaId!, undefined, {
-    query: { queryKey: getListPagamentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // D2: o recorte acontece no SERVIDOR; o filtro client-side abaixo permanece
+  // como cinto de segurança da mesma regra.
+  const janelaVencimento = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
+  const contas = useListContasPagar(activeLojaId!, janelaVencimento, {
+    query: {
+      queryKey: getListContasPagarQueryKey(activeLojaId!, janelaVencimento),
+      enabled: !!activeLojaId,
+    },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const criarPagamento = useCreatePagamento();
   const estornarPagamento = useEstornarPagamento();
@@ -166,30 +175,6 @@ export default function Pagar() {
     return mapa;
   }, [equipe.data]);
 
-  /**
-   * contaPagarId → a saída que quitou a conta. `valor` é a fatia rateada desta
-   * conta (PagamentoItem.valor), não o previsto: quando a saída diverge da soma
-   * das contas, é este o dinheiro que de fato saiu do caixa.
-   */
-  const pagamentoPorConta = useMemo(() => {
-    const mapa = new Map<
-      string,
-      { pagamentoId: string; contas: number; forma: string | null; valor: number }
-    >();
-    for (const pagamento of pagamentos.data ?? []) {
-      const itens = pagamento.itens ?? [];
-      for (const item of itens) {
-        mapa.set(item.contaPagarId, {
-          pagamentoId: pagamento.id,
-          contas: itens.length,
-          forma: pagamento.forma ?? null,
-          valor: item.valor,
-        });
-      }
-    }
-    return mapa;
-  }, [pagamentos.data]);
-
   const naJanela = useMemo(
     () => (contas.data ?? []).filter((c) => negocioNoIntervalo(c.vencimento, intervalo)),
     [contas.data, intervalo.iniYMD, intervalo.fimYMD],
@@ -202,13 +187,12 @@ export default function Pagar() {
       aPagar: reais(somaCentavos(previstas, (c) => c.valorPrevisto)),
       // O que saiu do caixa é a fatia rateada, não o previsto: com valorPago
       // divergente as duas coisas diferem, e o fluxo/DRE contam a rateada.
-      // Sem o item (pagamento fora da lista), o previsto é a melhor estimativa.
-      pago: reais(
-        somaCentavos(pagas, (c) => pagamentoPorConta.get(c.id)?.valor ?? c.valorPrevisto),
-      ),
+      // O servidor manda a fatia junto com a conta (D2), então o fallback para
+      // o previsto virou só a rede de segurança de uma conta PAGA sem item.
+      pago: reais(somaCentavos(pagas, (c) => c.pagamento?.valor ?? c.valorPrevisto)),
       emAtraso: vencidas(naJanela, hoje).total,
     };
-  }, [naJanela, hoje, pagamentoPorConta]);
+  }, [naJanela, hoje]);
 
   const lista = useMemo(() => {
     const filtrada = naJanela.filter((c) => {
@@ -235,11 +219,10 @@ export default function Pagar() {
     [contasSelecionadas],
   );
 
-  const invalidarTudo = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
-      queryClient.invalidateQueries({ queryKey: getListPagamentosQueryKey(activeLojaId!) }),
-    ]);
+  // D9: a saída de caixa muda o fluxo, o DRE e o alerta tanto quanto muda esta
+  // lista — invalidar só os dois lados da própria operação deixava o número do
+  // dashboard e do sino velho. Ver `lib/financeiro/cache.ts`.
+  const invalidarTudo = () => invalidarCaixa(queryClient, activeLojaId!);
 
   const alternarSelecao = (contaId: string) =>
     setSelecionadas((atual) =>
@@ -535,7 +518,7 @@ export default function Pagar() {
               {lista.map((c) => {
                 const atrasada = estaAtrasada(c, hoje);
                 const detalhe = detalheConta(c);
-                const pagamento = pagamentoPorConta.get(c.id);
+                const pagamento = c.pagamento;
                 return (
                   <div key={c.id} className="flex flex-col gap-2 px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
@@ -602,7 +585,7 @@ export default function Pagar() {
                           disabled={estornarPagamento.isPending}
                           onClick={() =>
                             setPagamentoEstornar({
-                              pagamentoId: pagamento.pagamentoId,
+                              pagamentoId: pagamento.id,
                               contas: pagamento.contas,
                             })
                           }

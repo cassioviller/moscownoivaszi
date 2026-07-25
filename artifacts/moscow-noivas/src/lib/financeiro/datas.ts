@@ -13,6 +13,7 @@ export {
   diasEntre,
   ultimasCompetencias,
   resolverIntervalo,
+  intervaloDaCompetencia,
   instanteNoIntervalo,
   negocioNoIntervalo,
 } from "@workspace/financeiro-core";

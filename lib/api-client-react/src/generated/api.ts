@@ -126,6 +126,7 @@ import type {
   ListAuditoriaParams,
   ListBloqueiosParams,
   ListComissaoFechamentosParams,
+  ListContasPagarParams,
   ListContratosParams,
   ListLeadsParams,
   ListLookbooksParams,
@@ -10436,17 +10437,30 @@ export function useGetDre<TData = Awaited<ReturnType<typeof getDre>>, TError = E
 
 
 
-export const getListContasPagarUrl = (lojaId: string,) => {
+export const getListContasPagarUrl = (lojaId: string,
+    params?: ListContasPagarParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/financeiro/contas-pagar`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/contas-pagar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/contas-pagar`
 }
 
-export const listContasPagar = async (lojaId: string, options?: RequestInit): Promise<ContaPagar[]> => {
+/**
+ * E93/D2: os recortes que faltavam para terminar o E79 do lado das saídas. Sem parâmetro a resposta é a carteira INTEIRA da loja, que cresce monotonicamente com a idade dela (aluguel + salários + fornecedores + comissões ≈ 30–50 linhas/mês) — quatro telas baixavam tudo para desenhar uma janela. Mesma forma de `listParcelas`: `de`/`ate` recortam por VENCIMENTO (dia local, inclusivo nas duas pontas) e `status=abertas` devolve só as PREVISTA, que é o que a projeção de caixa precisa em qualquer vencimento. Cada conta PAGA vem com `pagamento`, a saída que a quitou — sem ele a tela precisava baixar `listPagamentos` inteiro só para achar o `pagamentoId` que torna a saída estornável.
+ * @summary Contas a pagar da loja — opcionalmente recortadas por vencimento ou status
+ */
+export const listContasPagar = async (lojaId: string,
+    params?: ListContasPagarParams, options?: RequestInit): Promise<ContaPagar[]> => {
 
-  return customFetch<ContaPagar[]>(getListContasPagarUrl(lojaId),
+  return customFetch<ContaPagar[]>(getListContasPagarUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -10459,23 +10473,25 @@ export const listContasPagar = async (lojaId: string, options?: RequestInit): Pr
 
 
 
-export const getListContasPagarQueryKey = (lojaId: string,) => {
+export const getListContasPagarQueryKey = (lojaId: string,
+    params?: ListContasPagarParams,) => {
     return [
-    `/api/lojas/${lojaId}/financeiro/contas-pagar`
+    `/api/lojas/${lojaId}/financeiro/contas-pagar`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListContasPagarQueryOptions = <TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListContasPagarQueryOptions = <TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ListContasPagarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListContasPagarQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListContasPagarQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContasPagar>>> = ({ signal }) => listContasPagar(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContasPagar>>> = ({ signal }) => listContasPagar(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -10485,16 +10501,20 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListContasPagarQueryResult = NonNullable<Awaited<ReturnType<typeof listContasPagar>>>
-export type ListContasPagarQueryError = ErrorType<unknown>
+export type ListContasPagarQueryError = ErrorType<void>
 
 
+/**
+ * @summary Contas a pagar da loja — opcionalmente recortadas por vencimento ou status
+ */
 
-export function useListContasPagar<TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListContasPagar<TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ListContasPagarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListContasPagarQueryOptions(lojaId,options)
+  const queryOptions = getListContasPagarQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

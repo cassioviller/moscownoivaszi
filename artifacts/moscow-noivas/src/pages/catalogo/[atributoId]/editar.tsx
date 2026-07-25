@@ -29,6 +29,7 @@ import {
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const editarAtributoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -53,7 +54,7 @@ export default function EditarAtributo() {
 
   // O client gerado não expõe GET de atributo individual — busca na listagem.
   const { data: atributos, isLoading, isError, error, refetch } = useListAtributos(activeLojaId!, {
-    query: {
+    query: { ...CACHE_ESTAVEL,
       queryKey: getListAtributosQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },

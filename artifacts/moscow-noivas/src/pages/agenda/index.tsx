@@ -47,6 +47,7 @@ import { Clock, Plus, AlertCircle, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const novoAtendimentoSchema = z.object({
   leadId: z.string().min(1, "Escolha a noiva"),
@@ -83,7 +84,7 @@ export default function Agenda() {
   const atendimentos = useListAtendimentos(activeLojaId!, janelaDia, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaDia), enabled: !!activeLojaId },
   });
-  const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const cabines = useListCabines(activeLojaId!, { query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const createAtendimento = useCreateAtendimento();
   // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já

@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /**
  * Interesses da noiva (porte da /noivas/[leadId]/interesses): atributos do
@@ -38,7 +39,7 @@ export default function InteressesNoiva() {
     },
   });
   const catalogo = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   const podeSalvar = podeNoModulo(acessosModulos, "leads", "editar");

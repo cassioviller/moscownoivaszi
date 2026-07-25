@@ -1,4 +1,6 @@
 import { useParams } from "react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { chavesDoCaixa } from "@/lib/financeiro/cache";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +34,17 @@ export const dataFmt = new Intl.DateTimeFormat("pt-BR", {
 export function useCaminhoDaLoja(): (caminho: string) => string {
   const { lojaId } = useParams();
   return (caminho) => `/loja/${lojaId}${caminho}`;
+}
+
+/**
+ * Um movimento de caixa invalida TUDO o que ele muda (D9/E93) — a lista das
+ * chaves e o porquê moram em `lib/financeiro/cache.ts`, com teste. Chamada por
+ * receber, estornar, pagar, estornar-pagamento, lançar e remover conta.
+ */
+export function invalidarCaixa(queryClient: QueryClient, lojaId: string): Promise<void> {
+  return Promise.all(
+    chavesDoCaixa(lojaId).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  ).then(() => undefined);
 }
 
 export function ResumoCard({

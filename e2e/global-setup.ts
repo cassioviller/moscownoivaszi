@@ -57,6 +57,16 @@ export default async function globalSetup() {
   const [loja] = await db.select().from(lojasTable).limit(1);
   if (!loja) throw new Error("[e2e-setup] nenhuma loja no banco");
 
+  // E93/D1: uma SEGUNDA loja da mesma pessoa. Sem ela a fixture não conseguia
+  // exprimir a divergência "URL em B, sessão em A" — que é o estado exato em
+  // que os dois efeitos de sincronização se reativavam até o React abortar.
+  // Um bookmark e duas abas são os dois caminhos normais até aqui, e nenhum
+  // deles era testável com uma loja só.
+  const [lojaB] = await db.select().from(lojasTable).where(eq(lojasTable.id, "e2e-loja-b"));
+  await garantir(lojaB, () =>
+    db.insert(lojasTable).values({ id: "e2e-loja-b", nome: "E2E Segunda Loja" }),
+  );
+
   const [maria] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, MARIA_EMAIL));
   if (!maria) throw new Error("[e2e-setup] vendedora maria não existe");
 
@@ -69,6 +79,21 @@ export default async function globalSetup() {
       usuarioId: maria.id,
       lojaId: loja.id,
       perfilId: perfilVendedora?.id ?? "perfil-vendedora",
+    }),
+  );
+
+  // 1b. Vínculo da admin com a segunda loja (E93/D1). A admin é superadmin e
+  // `buscarLojasUsuario` já lhe devolveria as duas — mas o vínculo explícito é
+  // o que o E91 passou a cobrar em toda escrita, e é ele que faz o cenário do
+  // bookmark valer para gente comum e não só para quem tem a chave-mestra.
+  const [perfilAdmin] = await db.select().from(perfisTable).where(eq(perfisTable.sistema, true));
+  const [vinculoAdminB] = await db.select().from(usuariosLojasTable)
+    .where(and(eq(usuariosLojasTable.usuarioId, admin.id), eq(usuariosLojasTable.lojaId, "e2e-loja-b")));
+  await garantir(vinculoAdminB, () =>
+    db.insert(usuariosLojasTable).values({
+      usuarioId: admin.id,
+      lojaId: "e2e-loja-b",
+      perfilId: perfilAdmin?.id ?? perfilVendedora?.id ?? "perfil-admin",
     }),
   );
 
@@ -191,6 +216,9 @@ export default async function globalSetup() {
   const state = {
     lojaId: loja.id,
     lojaNome: loja.nome,
+    // E93/D1: a segunda loja da admin — o "B" do bookmark com a sessão em A.
+    lojaBId: "e2e-loja-b",
+    lojaBNome: "E2E Segunda Loja",
     adminEmail: ADMIN_EMAIL,
     mariaEmail: MARIA_EMAIL,
     senha: SENHA,

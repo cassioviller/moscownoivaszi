@@ -14,8 +14,6 @@ import {
   useCriarLinkOrcamento,
   useListContratos,
   getListContratosQueryKey,
-  useListLeads,
-  getListLeadsQueryKey,
   useGetLead,
   getGetLeadQueryKey,
   useListVestidos,
@@ -116,9 +114,6 @@ export default function OrcamentoDetail() {
   const { data: orcamento, isLoading, isError, refetch } = useGetOrcamento(activeLojaId!, id!, {
     query: { queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id }
   });
-  const leads = useListLeads(activeLojaId!, undefined, {
-    query: { queryKey: getListLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
   // O teto de orçamento vive no interesse da noiva (E32/E33), que a LISTA de
   // leads não traz — só o GetLead completo. Busca-se pelo leadId do orçamento.
   const leadCompleto = useGetLead(activeLojaId!, orcamento?.leadId as string, {
@@ -172,10 +167,12 @@ export default function OrcamentoDetail() {
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
-  const lead = useMemo(
-    () => leads.data?.itens.find((l) => l.id === orcamento?.leadId),
-    [leads.data, orcamento?.leadId],
-  );
+  // D4 (E93): aqui havia um `useListLeads` SEM paginação — e sem
+  // `pagina`/`porPagina` a rota devolve a loja inteira
+  // (api-server/src/routes/leads.ts:135). Abrir UM orçamento numa loja com
+  // 2.000 noivas baixava as 2.000 para achar um nome que o `getLead` da linha
+  // acima já traz completo, com o teto de orçamento junto.
+  const lead = leadCompleto.data;
 
   const contratoExistente = useMemo(
     () => contratos.data?.find((c) => c.orcamentoId === orcamento?.id),

@@ -31,6 +31,7 @@ import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, dataDia } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
 function rotularSelecoes(
@@ -162,7 +163,7 @@ export default function VestidoDetail() {
 
   // Catálogo de atributos para rotular as características do vestido.
   const catalogoQuery = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   // "Estado atual" do vestido: consulta batch de disponibilidade com a data de

@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const TODAS = "TODAS";
 
@@ -132,7 +133,7 @@ export default function Atendimentos() {
     },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const updateAtendimento = useUpdateAtendimento();
   const createOrcamento = useCreateOrcamento();

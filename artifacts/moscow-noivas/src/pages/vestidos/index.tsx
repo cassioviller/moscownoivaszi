@@ -48,6 +48,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const novoVestidoSchema = z.object({
   codigo: z.string().min(1, { message: "Código é obrigatório" }),
@@ -136,7 +137,7 @@ export default function Vestidos() {
   // Catálogo de atributos (E41): vira filtro por decote/volume etc. — a lista de
   // vestidos já traz os `atributos` de cada um, aqui vêm os nomes e opções.
   const { data: atributos } = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   // Filtros client-side simples (busca + selects) — só a data vai para a URL.

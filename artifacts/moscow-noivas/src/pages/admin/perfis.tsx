@@ -14,6 +14,7 @@ import {
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
 import { EstadoErro } from "@/components/estado-erro";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /** Templates globais de perfil — rota top-level /admin/perfis (fora de /loja). */
 export default function AdminPerfis() {
@@ -27,7 +28,7 @@ export default function AdminPerfis() {
     error,
     refetch,
   } = useListPerfis({
-    query: { queryKey: getListPerfisQueryKey() },
+    query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey() },
   });
   const updatePerfil = useUpdatePerfil();
 

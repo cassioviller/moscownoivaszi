@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { VestidoForm, type VestidoFormValues } from "./vestido-form";
 import { podeNoModulo } from "@/lib/permissoes";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /** Cadastro completo de vestido (com características do catálogo) — portado de vestidos/novo do orcamentos. */
 export default function NovoVestido() {
@@ -27,7 +28,7 @@ export default function NovoVestido() {
   const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
 
   const catalogoQuery = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const createVestido = useCreateVestido();
 

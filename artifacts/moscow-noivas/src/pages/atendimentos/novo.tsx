@@ -70,6 +70,7 @@ import {
   type Marcacao,
 } from "@workspace/agenda-core";
 import { cn } from "@/lib/utils";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const agendarSchema = z
   .object({
@@ -123,10 +124,10 @@ export default function NovoAtendimento() {
   } as const;
 
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const cabines = useListCabines(activeLojaId!, {
-    query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const bloqueios = useListBloqueios(activeLojaId!, undefined, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },

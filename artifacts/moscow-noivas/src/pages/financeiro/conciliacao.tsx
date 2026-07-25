@@ -54,11 +54,44 @@ export default function Conciliacao() {
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
-  const parcelas = useListParcelas(activeLojaId!, undefined, {
-    query: { queryKey: getListParcelasQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  /**
+   * A janela de comparação é a do PRÓPRIO extrato (±2 dias de tolerância):
+   * movimentos do sistema fora dela não são pendência — só não estão no
+   * arquivo.
+   *
+   * E93/D2: ela é derivada ANTES das queries, não depois. A tela pedia TODAS
+   * as parcelas e TODOS os pagamentos da loja no MOUNT, antes de o arquivo ser
+   * escolhido — numa loja com 200 contratos são ~2.400 parcelas mais a
+   * carteira inteira de saídas, baixadas para comparar com um extrato de 30
+   * dias, e a metade das vezes ninguém chega a subir arquivo nenhum. A tela
+   * sempre soube a janela; só a pedia tarde demais.
+   */
+  const janela = useMemo(() => {
+    if (!transacoes || transacoes.length === 0) return undefined;
+    const dias = transacoes.map((t) => t.data).sort();
+    return { de: addDias(dias[0], -2), ate: addDias(dias[dias.length - 1], 2) };
+  }, [transacoes]);
+
+  /**
+   * ATENÇÃO ao parâmetro: `de`/`ate` de `listParcelas` recortam por
+   * VENCIMENTO, e esta tela compara por `recebidoEm`. Usá-los aqui apagaria da
+   * conciliação toda parcela recebida num mês diferente do de vencimento — ou
+   * seja, exatamente as pagas em atraso, que são as que dão trabalho de
+   * conferir. O recorte certo é `recebidasDe` (E79), que filtra pelo dia do
+   * RECEBIMENTO; o teto fica com o filtro do cliente, logo abaixo.
+   */
+  const paramsRecebidas = janela ? { recebidasDe: janela.de } : undefined;
+  const parcelas = useListParcelas(activeLojaId!, paramsRecebidas, {
+    query: {
+      queryKey: getListParcelasQueryKey(activeLojaId!, paramsRecebidas),
+      enabled: !!activeLojaId && !!paramsRecebidas,
+    },
   });
-  const pagamentos = useListPagamentos(activeLojaId!, undefined, {
-    query: { queryKey: getListPagamentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  const pagamentos = useListPagamentos(activeLojaId!, janela, {
+    query: {
+      queryKey: getListPagamentosQueryKey(activeLojaId!, janela),
+      enabled: !!activeLojaId && !!janela,
+    },
   });
 
   const aoEscolherArquivo = async (arquivo: File | undefined) => {
@@ -78,13 +111,9 @@ export default function Conciliacao() {
     setNomeArquivo(arquivo.name);
   };
 
-  // A janela de comparação é a do PRÓPRIO extrato (±2 dias de tolerância):
-  // movimentos do sistema fora dela não são pendência — só não estão no arquivo.
   const conciliacao = useMemo(() => {
-    if (!transacoes || transacoes.length === 0) return null;
-    const dias = transacoes.map((t) => t.data).sort();
-    const inicio = addDias(dias[0], -2);
-    const fim = addDias(dias[dias.length - 1], 2);
+    if (!transacoes || transacoes.length === 0 || !janela) return null;
+    const { de: inicio, ate: fim } = janela;
 
     const movimentos: MovimentoSistema[] = [];
     for (const p of parcelas.data ?? []) {
@@ -111,7 +140,7 @@ export default function Conciliacao() {
       });
     }
     return conciliarExtrato(transacoes, movimentos);
-  }, [transacoes, parcelas.data, pagamentos.data]);
+  }, [transacoes, janela, parcelas.data, pagamentos.data]);
 
   return (
     <div className="space-y-6">

@@ -13,6 +13,7 @@ import { PrivacidadeLgpd } from "./privacidade";
 import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 export default function Configuracoes() {
   const { activeLojaId, user, acessosModulos } = useAuth();
@@ -22,8 +23,8 @@ export default function Configuracoes() {
   const [tourAberto, setTourAberto] = useState(false);
   
   // Loja specific queries
-  const atributosQ = useListAtributos(activeLojaId!, { query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const cabinesQ = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const atributosQ = useListAtributos(activeLojaId!, { query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const cabinesQ = useListCabines(activeLojaId!, { query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const disponibilidadeQ = useGetDisponibilidade(activeLojaId!, { query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const { data: atributos } = atributosQ;
   const { data: cabines } = cabinesQ;

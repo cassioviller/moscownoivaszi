@@ -1867,6 +1867,18 @@ export const ContaPagarStatus = {
   PAGA: 'PAGA',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ContaPagarPagamento = {
+  id: string;
+  data: string;
+  /** @nullable */
+  forma?: string | null;
+  valor: number;
+  contas: number;
+} | null;
+
 export interface ContaPagar {
   id: string;
   lojaId: string;
@@ -1885,6 +1897,8 @@ export interface ContaPagar {
   status: ContaPagarStatus;
   /** @nullable */
   recorrenciaId?: string | null;
+  /** @nullable */
+  pagamento?: ContaPagarPagamento;
 }
 
 export type ContaPagarInputTipo = typeof ContaPagarInputTipo[keyof typeof ContaPagarInputTipo];
@@ -2781,6 +2795,30 @@ export type GetDre200 = {
   resultado: number;
   porMeio: GetDre200PorMeio;
 };
+
+export type ListContasPagarParams = {
+/**
+ * Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+/**
+ * abertas = só o que ainda não foi pago (PREVISTA)
+ */
+status?: ListContasPagarStatus;
+};
+
+export type ListContasPagarStatus = typeof ListContasPagarStatus[keyof typeof ListContasPagarStatus];
+
+
+export const ListContasPagarStatus = {
+  abertas: 'abertas',
+} as const;
 
 export type ExportarContasPagarParams = {
 /**

@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /**
  * Permissões por perfil na loja ativa: matriz FLAT (um boolean por módulo).
@@ -32,7 +33,7 @@ export default function Permissoes() {
   const podeGerir = podeNoModulo(acessosModulos, "admin", "editar");
 
   const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
-    query: { queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId && podeGerir },
+    query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId && podeGerir },
   });
   const { data: overrides, isLoading: loadingOverrides } = useListPerfilOverrides(
     activeLojaId!,

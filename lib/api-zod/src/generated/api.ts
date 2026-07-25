@@ -5932,8 +5932,22 @@ export const GetDreResponse = zod.object({
 })
 
 
+/**
+ * E93/D2: os recortes que faltavam para terminar o E79 do lado das saídas. Sem parâmetro a resposta é a carteira INTEIRA da loja, que cresce monotonicamente com a idade dela (aluguel + salários + fornecedores + comissões ≈ 30–50 linhas/mês) — quatro telas baixavam tudo para desenhar uma janela. Mesma forma de `listParcelas`: `de`/`ate` recortam por VENCIMENTO (dia local, inclusivo nas duas pontas) e `status=abertas` devolve só as PREVISTA, que é o que a projeção de caixa precisa em qualquer vencimento. Cada conta PAGA vem com `pagamento`, a saída que a quitou — sem ele a tela precisava baixar `listPagamentos` inteiro só para achar o `pagamentoId` que torna a saída estornável.
+ * @summary Contas a pagar da loja — opcionalmente recortadas por vencimento ou status
+ */
 export const ListContasPagarParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const listContasPagarQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listContasPagarQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListContasPagarQueryParams = zod.object({
+  "de": zod.coerce.string().regex(listContasPagarQueryDeRegExp).optional().describe('Início do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)'),
+  "ate": zod.coerce.string().regex(listContasPagarQueryAteRegExp).optional().describe('Fim do intervalo de vencimento (inclusivo, dia local America\/Sao_Paulo)'),
+  "status": zod.enum(['abertas']).optional().describe('abertas = só o que ainda não foi pago (PREVISTA)')
 })
 
 export const ListContasPagarResponseItem = zod.object({
@@ -5948,7 +5962,14 @@ export const ListContasPagarResponseItem = zod.object({
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA']),
-  "recorrenciaId": zod.string().nullish()
+  "recorrenciaId": zod.string().nullish(),
+  "pagamento": zod.object({
+  "id": zod.string(),
+  "data": zod.coerce.date(),
+  "forma": zod.string().nullish(),
+  "valor": zod.number(),
+  "contas": zod.number()
+}).nullish()
 })
 export const ListContasPagarResponse = zod.array(ListContasPagarResponseItem)
 
@@ -5986,7 +6007,14 @@ export const CreateContaPagarResponse = zod.object({
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA']),
-  "recorrenciaId": zod.string().nullish()
+  "recorrenciaId": zod.string().nullish(),
+  "pagamento": zod.object({
+  "id": zod.string(),
+  "data": zod.coerce.date(),
+  "forma": zod.string().nullish(),
+  "valor": zod.number(),
+  "contas": zod.number()
+}).nullish()
 })
 
 
@@ -6064,7 +6092,14 @@ export const PagarContaPagarResponse = zod.object({
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA']),
-  "recorrenciaId": zod.string().nullish()
+  "recorrenciaId": zod.string().nullish(),
+  "pagamento": zod.object({
+  "id": zod.string(),
+  "data": zod.coerce.date(),
+  "forma": zod.string().nullish(),
+  "valor": zod.number(),
+  "contas": zod.number()
+}).nullish()
 })
 
 
@@ -6144,7 +6179,14 @@ export const ListPagamentosResponseItem = zod.object({
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA']),
-  "recorrenciaId": zod.string().nullish()
+  "recorrenciaId": zod.string().nullish(),
+  "pagamento": zod.object({
+  "id": zod.string(),
+  "data": zod.coerce.date(),
+  "forma": zod.string().nullish(),
+  "valor": zod.number(),
+  "contas": zod.number()
+}).nullish()
 }).optional()
 })).optional()
 })
@@ -6206,7 +6248,14 @@ export const CreatePagamentoResponse = zod.object({
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA']),
-  "recorrenciaId": zod.string().nullish()
+  "recorrenciaId": zod.string().nullish(),
+  "pagamento": zod.object({
+  "id": zod.string(),
+  "data": zod.coerce.date(),
+  "forma": zod.string().nullish(),
+  "valor": zod.number(),
+  "contas": zod.number()
+}).nullish()
 }).optional()
 })).optional()
 })
@@ -6439,7 +6488,14 @@ export const GerarRecorrenciasResponse = zod.object({
   "valorPrevisto": zod.number(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PAGA']),
-  "recorrenciaId": zod.string().nullish()
+  "recorrenciaId": zod.string().nullish(),
+  "pagamento": zod.object({
+  "id": zod.string(),
+  "data": zod.coerce.date(),
+  "forma": zod.string().nullish(),
+  "valor": zod.number(),
+  "contas": zod.number()
+}).nullish()
 }))
 })
 

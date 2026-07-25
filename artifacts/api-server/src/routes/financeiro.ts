@@ -45,6 +45,7 @@ import {
   ListParcelasResponse,
   ListParcelasQueryParams,
   ListContasPagarResponse,
+  ListContasPagarQueryParams,
   CreateContaPagarBody,
   CreateContaPagarResponse,
   ListRecorrenciasResponse,
@@ -151,10 +152,59 @@ router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<
   res.status(201).json(CreateContaPagarResponse.parse(conta));
 });
 
+// E93/D2: `de`/`ate` recortam por vencimento (dia local, inclusivo nas duas
+// pontas) e `status=abertas` devolve só as PREVISTA — a mesma forma que
+// `listParcelas` já tinha. Sem parâmetro a resposta continua sendo a carteira
+// inteira, para não quebrar quem ainda a pede assim.
+//
+// O `with: pagamentoItens` existe para que a conta PAGA carregue a saída que a
+// quitou: sem ele, a tela de contas a pagar baixava `listPagamentos` INTEIRO
+// (a carteira de saídas de todos os tempos) só para achar o `pagamentoId` que
+// torna a saída estornável e a fatia rateada que de fato saiu do caixa.
 router.get("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const contas = await db.select().from(contasPagarTable).where(eq(contasPagarTable.lojaId, lojaId)).orderBy(contasPagarTable.vencimento);
-  res.json(ListContasPagarResponse.parse(contas));
+  const parsed = ListContasPagarQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
+    return;
+  }
+  const { de, ate, status } = parsed.data;
+  if (de && ate && de > ate) {
+    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
+    return;
+  }
+
+  const contas = await db.query.contasPagarTable.findMany({
+    where: and(
+      eq(contasPagarTable.lojaId, lojaId),
+      ...(de ? [gte(contasPagarTable.vencimento, inicioDoDia(de))] : []),
+      ...(ate ? [lt(contasPagarTable.vencimento, inicioDoDia(addDias(ate, 1)))] : []),
+      ...(status === "abertas" ? [eq(contasPagarTable.status, "PREVISTA")] : []),
+    ),
+    with: { pagamentoItens: { with: { pagamento: { with: { itens: true } } } } },
+    orderBy: contasPagarTable.vencimento,
+  });
+
+  res.json(
+    ListContasPagarResponse.parse(
+      contas.map(({ pagamentoItens, ...conta }) => {
+        // contaPagarId é UNIQUE em pagamento_itens — no máximo um item por conta.
+        const item = pagamentoItens[0];
+        return {
+          ...conta,
+          pagamento: item
+            ? {
+                id: item.pagamento.id,
+                data: item.pagamento.data,
+                forma: item.pagamento.forma,
+                valor: item.valor,
+                contas: item.pagamento.itens.length,
+              }
+            : null,
+        };
+      }),
+    ),
+  );
 });
 
 // Pagamento auditável: valor, data e forma persistem em pagamentos +

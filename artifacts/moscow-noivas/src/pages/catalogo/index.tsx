@@ -9,6 +9,7 @@ import { Plus, AlertCircle } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { tipoAtributoLabel } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 export default function Catalogo() {
   const { lojaId } = useParams();
@@ -20,7 +21,7 @@ export default function Catalogo() {
   const podeGerir = podeNoModulo(acessosModulos, "vestidos", "editar");
 
   const { data: atributos, isLoading, isError, error, refetch } = useListAtributos(activeLojaId!, {
-    query: {
+    query: { ...CACHE_ESTAVEL,
       queryKey: getListAtributosQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@ta
 import { ThemeProvider } from "next-themes";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { deveDeslogar } from "@/lib/auth-erro";
+import { PISO_DE_FRESCOR } from "@/lib/cache";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -84,6 +85,17 @@ const derrubarSessao = (error: unknown, chave?: readonly unknown[]) => {
 queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: (error, query) => derrubarSessao(error, query.queryKey) }),
   mutationCache: new MutationCache({ onError: (error) => derrubarSessao(error) }),
+  // D3 (E93): o cache era 100% default — `staleTime: 0` para tudo. Com o
+  // `refetchOnWindowFocus` e o `refetchOnMount` que vêm ligados, isso significa
+  // "refaz sempre": cada alt-tab de volta do WhatsApp Web disparava 8 requests
+  // no dashboard e 7 em /comissoes, de dados que não mudaram. Um piso de 30 s
+  // não é política de frescor — é o reconhecimento de que voltar para a aba não
+  // é um evento de negócio. Quem PRECISA de frescor pede explicitamente: o sino
+  // tem `refetchInterval: 5min` e todo movimento de caixa invalida o que muda
+  // (D9, `lib/financeiro/cache.ts`). A ordem importa: este piso só é seguro
+  // porque a invalidação foi consertada ANTES dele — sem ela, ele converteria
+  // um incômodo de rede em dado financeiro velho e persistente na tela.
+  defaultOptions: { queries: { staleTime: PISO_DE_FRESCOR } },
 });
 
 function TelaCarregando() {

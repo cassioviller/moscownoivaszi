@@ -5,6 +5,9 @@ import path from "node:path";
 export interface E2EState {
   lojaId: string;
   lojaNome: string;
+  /** E93/D1: a segunda loja da admin — o "B" do bookmark com a sessão em A. */
+  lojaBId: string;
+  lojaBNome: string;
   adminEmail: string;
   mariaEmail: string;
   senha: string;

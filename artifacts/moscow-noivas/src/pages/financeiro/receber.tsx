@@ -1,8 +1,9 @@
 /**
  * Contas a receber — a carteira de entrada da loja: o que vem das noivas.
  *
- * A API devolve TODAS as parcelas da loja (`listParcelas` não tem params), então
- * filtro e intervalo são resolvidos no cliente. O intervalo mira o VENCIMENTO
+ * O intervalo é recortado no SERVIDOR (`listParcelas` recebe `de`/`ate` por
+ * vencimento desde o E79) e refiltrado aqui como cinto de segurança; o filtro
+ * por status é do cliente. O intervalo mira o VENCIMENTO
  * (data de negócio) em todos os filtros, inclusive "recebidas": a pergunta da
  * tela é "o que vence nesta janela", não "o que entrou no caixa" — essa é a do
  * fluxo de caixa. Atraso é sempre derivado (`estaAtrasada`), nunca lido do status.
@@ -65,7 +66,7 @@ import {
 } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, useCaminhoDaLoja } from "./helpers";
+import { ResumoCard, dataFmt, useCaminhoDaLoja, invalidarCaixa } from "./helpers";
 import { mensagemApi } from "@/lib/erro-api";
 
 const MENSAGENS_ERRO: Record<string, string> = {
@@ -160,8 +161,10 @@ export default function Receber() {
     return filtrada.sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   }, [naJanela, filtro, hoje]);
 
-  const invalidarParcelas = () =>
-    queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) });
+  // D9: um recebimento não muda só as parcelas — muda o fluxo, o DRE, o alerta
+  // de caixa (montado no dashboard e no sino) e o realizado. A lista mora em
+  // `lib/financeiro/cache.ts`.
+  const invalidarMovimento = () => invalidarCaixa(queryClient, activeLojaId!);
 
   const rotuloParcela = (p: Parcela) =>
     p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`;
@@ -200,7 +203,7 @@ export default function Receber() {
           ...(formaRecebimento ? { formaRecebimento } : {}),
         },
       });
-      await invalidarParcelas();
+      await invalidarMovimento();
       toast({ title: "Recebimento registrado" });
       setParcelaReceber(null);
     } catch (err) {
@@ -216,7 +219,7 @@ export default function Receber() {
     if (!parcelaEstornar) return;
     try {
       await estornar.mutateAsync({ lojaId: activeLojaId!, parcelaId: parcelaEstornar.id });
-      await invalidarParcelas();
+      await invalidarMovimento();
       toast({ title: "Recebimento estornado" });
       setParcelaEstornar(null);
     } catch (err) {

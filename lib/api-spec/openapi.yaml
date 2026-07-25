@@ -3051,6 +3051,41 @@ paths:
     get:
       operationId: listContasPagar
       tags: [financeiro]
+      summary: Contas a pagar da loja — opcionalmente recortadas por vencimento ou status
+      description: >
+        E93/D2: os recortes que faltavam para terminar o E79 do lado das
+        saídas. Sem parâmetro a resposta é a carteira INTEIRA da loja, que
+        cresce monotonicamente com a idade dela (aluguel + salários +
+        fornecedores + comissões ≈ 30–50 linhas/mês) — quatro telas baixavam
+        tudo para desenhar uma janela. Mesma forma de `listParcelas`:
+        `de`/`ate` recortam por VENCIMENTO (dia local, inclusivo nas duas
+        pontas) e `status=abertas` devolve só as PREVISTA, que é o que a
+        projeção de caixa precisa em qualquer vencimento.
+        Cada conta PAGA vem com `pagamento`, a saída que a quitou — sem ele a
+        tela precisava baixar `listPagamentos` inteiro só para achar o
+        `pagamentoId` que torna a saída estornável.
+      parameters:
+        - name: de
+          in: query
+          required: false
+          description: Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: ate
+          in: query
+          required: false
+          description: Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+        - name: status
+          in: query
+          required: false
+          description: "abertas = só o que ainda não foi pago (PREVISTA)"
+          schema:
+            type: string
+            enum: [abertas]
       responses:
         "200":
           description: List of contas a pagar
@@ -3060,6 +3095,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ContaPagar"
+        "400":
+          description: Intervalo inválido (INTERVALO_INVALIDO)
     post:
       operationId: createContaPagar
       tags: [financeiro]
@@ -5346,6 +5383,20 @@ components:
         # recorrência. É o que deixa a tela separar o que o motor lançou do que
         # alguém digitou à mão na mesma competência.
         recorrenciaId: { type: ["string", "null"] }
+        # E93/D2: a saída de caixa que quitou esta conta. Só o LISTAR preenche
+        # (é um join), e só em conta PAGA. `valor` é a fatia RATEADA desta
+        # conta (pagamento_itens.valor), não o previsto: quando a saída diverge
+        # da soma das contas, é este o dinheiro que de fato saiu. `contas` é
+        # quantas contas a mesma saída quitou — a tela avisa antes de estornar.
+        pagamento:
+          type: ["object", "null"]
+          required: [id, data, valor, contas]
+          properties:
+            id: { type: string }
+            data: { type: string, format: date-time }
+            forma: { type: ["string", "null"] }
+            valor: { type: number }
+            contas: { type: integer }
     ContaPagarInput:
       type: object
       required: [tipo, descricao, valorPrevisto, vencimento]

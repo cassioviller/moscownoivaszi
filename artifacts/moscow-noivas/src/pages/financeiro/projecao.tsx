@@ -72,8 +72,15 @@ export default function Projecao() {
   const parcelas = useListParcelas(activeLojaId!, paramsAbertas, {
     query: { queryKey: getListParcelasQueryKey(activeLojaId!, paramsAbertas), enabled: !!activeLojaId },
   });
-  const contasPagar = useListContasPagar(activeLojaId!, {
-    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E93/D2: o mesmo recorte do lado das saídas — `projetarCaixa` só olha as
+  // PREVISTA (as pagas já saíram do caixa e nunca entraram na curva), então
+  // baixar a carteira inteira era baixar o histórico da loja para desenhar o
+  // futuro dela.
+  const contasPagar = useListContasPagar(activeLojaId!, paramsAbertas, {
+    query: {
+      queryKey: getListContasPagarQueryKey(activeLojaId!, paramsAbertas),
+      enabled: !!activeLojaId,
+    },
   });
   const saldos = useListSaldoReferencia(activeLojaId!, {
     query: { queryKey: getListSaldoReferenciaQueryKey(activeLojaId!), enabled: !!activeLojaId },

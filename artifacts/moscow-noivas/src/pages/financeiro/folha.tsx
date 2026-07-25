@@ -58,12 +58,14 @@ import {
   competenciaAtual,
   rotuloCompetencia,
   resolverIntervalo,
+  intervaloDaCompetencia,
   diaLocal,
   instanteNoIntervalo,
 } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, ResumoCard, dataFmt, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem, ResumoCard, dataFmt, useCaminhoDaLoja, invalidarCaixa } from "./helpers";
 import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   COMPETENCIA_INVALIDA: "Competência inválida (use AAAA-MM).",
@@ -92,8 +94,20 @@ export default function Folha() {
     [intervalo.iniYMD, intervalo.fimYMD],
   );
 
-  const contas = useListContasPagar(activeLojaId!, {
-    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E93/D2: a tela só olha as contas GERADAS por esta competência, e o
+  // vencimento de uma conta gerada cai sempre dentro dela
+  // (`vencimentoDaCompetencia`, api-server/src/lib/recorrencias.ts) — então a
+  // janela do mês é um recorte EXATO, não uma aproximação. Antes vinha a
+  // carteira inteira da loja para desenhar um mês.
+  const janelaCompetencia = useMemo(() => {
+    const { iniYMD, fimYMD } = intervaloDaCompetencia(competencia);
+    return { de: iniYMD, ate: fimYMD };
+  }, [competencia]);
+  const contas = useListContasPagar(activeLojaId!, janelaCompetencia, {
+    query: {
+      queryKey: getListContasPagarQueryKey(activeLojaId!, janelaCompetencia),
+      enabled: !!activeLojaId,
+    },
   });
   const pagamentos = useListPagamentos(activeLojaId!, params, {
     query: { queryKey: getListPagamentosQueryKey(activeLojaId!, params), enabled: !!activeLojaId },
@@ -102,7 +116,7 @@ export default function Folha() {
     query: { queryKey: getListRecorrenciasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   const gerarRecorrencias = useGerarRecorrencias();
@@ -319,9 +333,9 @@ export default function Folha() {
   const onGerar = async () => {
     try {
       const res = await gerarRecorrencias.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
-      await queryClient.invalidateQueries({
-        queryKey: getListContasPagarQueryKey(activeLojaId!),
-      });
+      // D9: lançar a folha põe contas PREVISTAS na curva — o alerta de caixa
+      // (dashboard e sino) muda junto, não só esta lista.
+      await invalidarCaixa(queryClient, activeLojaId!);
       // Zero não é falha: é a competência já estar gerada.
       toast({
         title: res.geradas === 0 ? "Competência já estava gerada" : "Contas lançadas",

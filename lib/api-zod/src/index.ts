@@ -7,6 +7,7 @@ export {
   CheckDisponibilidadeVestidosParams,
   ListPagamentosParams,
   ListParcelasParams,
+  ListContasPagarParams,
   ExportarFolhaParams,
   ListComissaoFechamentosParams,
   PreviewComissaoParams,

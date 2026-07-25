@@ -63,6 +63,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { EstadoErro } from "@/components/estado-erro";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { AtividadeEquipe } from "./atividade";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const novoMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -116,10 +117,10 @@ export default function Equipe() {
     error: errEquipe,
     refetch: refetchEquipe,
   } = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
-    query: { queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId },
   });
 
   const addMembro = useAddMembroEquipe();

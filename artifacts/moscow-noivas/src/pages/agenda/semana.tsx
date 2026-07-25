@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -47,7 +48,7 @@ export default function AgendaSemana() {
     },
   });
   const cabines = useListCabines(activeLojaId!, {
-    query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   const daSemana = useMemo(() => {
