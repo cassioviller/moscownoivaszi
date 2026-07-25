@@ -41,7 +41,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E91 | Fronteira da loja: nenhum id entra sem prova (B1 🔴, B2 🔴, B4, B10, B12) | M | ✅ | `d67103d` · [notas](execucao/E91.md) |
 | E92 | Consertos de uma linha (E1 🔴, E2 🔴, +15) | P | ✅ | `6cbd004` · [notas](execucao/E92.md) |
 | E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ✅ | `1917f16` · [notas](execucao/E93.md) |
-| E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ⬜ | — |
+| E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ⬜ | — |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D5, D6) | M | ⬜ | — |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ⬜ | — |
@@ -185,3 +185,43 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   em `02-selecionar-loja.spec.ts` passam — e passam **sem** o D1, conferido
   revertendo-o. Os consertos vieram da Onda 0 e do `fix/auditoria`; os
   comentários envelheceram e mandariam o próximo executor caçar bug morto.
+- **E94 executado** (notas completas em `execucao/E94.md`). Quatro subagentes
+  mapearam o terreno em paralelo antes de uma linha de código, e o mapa
+  **contradisse o backlog em cinco pontos** — três deles mudavam o conserto: o
+  C4 não usa `inArray` nem está na linha citada; o `financeiro-core` não tinha
+  listas de status para "exportar", só predicados que rodam DEPOIS do SELECT; o
+  B6 mora em `contratos.ts` e a rota TEM transação (o problema é a leitura fora
+  dela); e o `origemComissaoFechamentoId` não é FK — quem zera é a FK inversa.
+  Mais um achado que o diagnóstico não viu: `dashboard.ts:83` tem o MESMO bug do
+  C4. **A régua estava escrita à mão em quatro lugares, duas certas e duas
+  erradas** — que é o resultado esperado de quatro cópias, e por isso o conserto
+  não podia ser trocar `eq` por `inArray` nas duas erradas: as listas saíram
+  para o core e os predicados passaram a derivar delas. **A "primeira ação" do
+  backlog partia de premissa errada:** ela mandava ver o caso PARCIAL falhar no
+  teste de unidade, e ele passou de primeira — o motor sempre esteve certo, ele
+  só nunca recebia a linha. Cada conserto foi medido vermelho antes pelo teste
+  certo: C4 `expected 1000 to be 5000`, B6 `expected 400 to be 600` (R$ 200
+  perdidos numa corrida de dois recebimentos), B8 `expected 204 to be 409`.
+  **Errei um teste e o código estava certo:** meu primeiro assert do B6 foi
+  "exatamente um vence", e ele falhou com três requests — quem lê o estado já
+  commitado e soma em cima venceu legitimamente, e proibir isso seria testar o
+  escalonador do Postgres. O invariante que ficou é "o gravado é a soma exata do
+  que a API confirmou", que vale para N requests. Dentro do B3 apareceu a mesma
+  omissão do C4 uma rota adiante: o cancelamento só tocava PREVISTA e PAGA, e a
+  parcela PARCIAL sobrevivia cobrável num contrato que não existe mais, com o
+  dinheiro dela nunca voltando no estorno.
+- **O E2E pegou o que 625 testes de API e o typecheck não pegavam**, e desta vez
+  não era expectativa velha: unificar as duas portas de pagar (A2) deixou a
+  trilha uniforme e **menos legível** — "R$ 500,00 · Aluguel" virou "R$ 500,00 ·
+  1 conta", porque o `resumoDetalhe` da tela lia `detalhe.descricao` e só sabia
+  CONTAR o novo `detalhe.contas`. É a segunda vez na rodada que a suíte completa
+  salva o commit, e ela **estreita a regra escrita no E93**: aqui não houve
+  mudança de cópia nenhuma. A régua mais honesta é **mudou o que a trilha grava,
+  ou o formato do que alguma tela lê, roda o E2E completo**.
+- **Uma promessa do backlog não tinha lastro no dado (F33).** O item afirmava
+  que o aviso "junho já foi enviado à contabilidade" só precisava usar
+  `enviadoContabilidadeEm`. Essa coluna é de `pagamentos` — as SAÍDAS, a folha —
+  e não há equivalente para entradas nem endpoint que responda pela competência
+  delas. Entregue a metade que os dados sustentam (o diálogo passou a mostrar o
+  que será desfeito, item a item, com datas e valores); a outra metade fica
+  aberta como decisão de produto com custo de migração, não como "falta usar".
