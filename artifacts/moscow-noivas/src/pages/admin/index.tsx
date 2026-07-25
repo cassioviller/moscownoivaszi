@@ -120,10 +120,10 @@ function ConsolidadoRede() {
                   <td className="py-2.5 px-3 text-right tabular-nums">{l.leadsAtivos}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{l.contratosAtivos}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-positivo">
-                    R$ {brl(l.recebidoNoMes)}
+                    {brl(l.recebidoNoMes)}
                   </td>
                   <td className="py-2.5 pl-3 text-right tabular-nums">
-                    R$ {brl(l.aReceberAberto)}
+                    {brl(l.aReceberAberto)}
                   </td>
                 </tr>
               ))}

@@ -41,11 +41,11 @@ export function AlertaCaixa() {
       <AlertDescription className="space-y-1">
         <p>
           Pelo que está previsto para os próximos {data.horizonteDias} dias, partindo dos{" "}
-          <span className="tabular-nums">R$ {brl(data.saldoHoje ?? 0)}</span> de hoje
+          <span className="tabular-nums">{brl(data.saldoHoje ?? 0)}</span> de hoje
           {data.menorSaldo && (
             <>
               , o caixa chega a{" "}
-              <span className="font-semibold tabular-nums">R$ {brl(data.menorSaldo.valor)}</span>
+              <span className="font-semibold tabular-nums">{brl(data.menorSaldo.valor)}</span>
               {data.menorSaldo.dia && <> em {dataDia(data.menorSaldo.dia)}</>}
             </>
           )}

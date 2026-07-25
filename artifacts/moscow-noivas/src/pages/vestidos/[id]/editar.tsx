@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, AlertCircle, Image as ImageIcon, Trash2, Upload } from "lucide-react";
 import { VestidoForm, type VestidoFormValues } from "../vestido-form";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Redesenha a imagem num canvas com lado maior ≤ max e devolve o JPEG em base64. */
 function reduzir(img: HTMLImageElement, max: number, qualidade: number): string {
@@ -283,7 +284,7 @@ export default function EditarVestido() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar o vestido</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada ao buscar o vestido."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar o vestido.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

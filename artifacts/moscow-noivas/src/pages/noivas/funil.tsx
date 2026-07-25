@@ -292,7 +292,10 @@ function ColunaFunil({
       ].join(" ")}
     >
       <div className="flex items-baseline justify-between gap-2 border-b px-3 py-2">
-        <span className="truncate text-sm font-medium">{etapaLabel(etapa)}</span>
+        {/* E92/E23: <h2>, não <span>. A <h1> "Noivas" continua no topo em
+            qualquer das duas vistas; o que faltava era o degrau abaixo dela —
+            no funil, a etapa É a seção. */}
+        <h2 className="truncate text-sm font-medium">{etapaLabel(etapa)}</h2>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{total}</span>
       </div>
 

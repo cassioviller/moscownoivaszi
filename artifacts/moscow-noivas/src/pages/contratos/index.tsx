@@ -98,7 +98,7 @@ export default function Contratos() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="font-semibold">R$ {brl(contrato.valorTotal)}</div>
+                    <div className="font-semibold">{brl(contrato.valorTotal)}</div>
                     <Badge variant={contrato.status === 'ATIVO' ? 'default' : 'destructive'}>{statusContratoLabel(contrato.status)}</Badge>
                   </div>
                 </CardContent>

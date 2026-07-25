@@ -25,6 +25,7 @@ import { Plus, AlertCircle, Search, LayoutGrid, Columns3, BarChart3 } from "luci
 import { etapaLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { FunilNoivas } from "./funil";
+import { mensagemApi } from "@/lib/erro-api";
 import {
   dataCurtaFmt,
   diasAteCasamento,
@@ -178,7 +179,7 @@ export default function Noivas() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar as noivas</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar as noivas.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

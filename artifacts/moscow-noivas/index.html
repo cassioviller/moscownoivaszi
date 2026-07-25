@@ -1,5 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- E92/E1: pt-BR não é decoração. É o atributo que faz o navegador desenhar os
+     25 `type="date"`, o `type="month"` e o `type="time"` como DD/MM/AAAA,
+     "julho de 2026" e relógio de 24h — com `en` o filtro de "Contas a receber"
+     dizia `De 07/01/2026 Até 07/31/2026`, que em português se lê ao contrário.
+     O VALOR do input é ISO em qualquer idioma; só o desenho muda. -->
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />

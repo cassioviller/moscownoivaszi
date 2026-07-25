@@ -90,6 +90,28 @@ rode o codegen.
   corpo que não é da loja vira 422 `REFERENCIA_INVALIDA`, id do path vira 404.
   Régua única — quem precisar de uma pergunta nova a acrescenta lá, não escreve
   a checagem à mão na rota.
+- **Todo dinheiro na tela sai de `brl()`, e ele já traz o `R$`** (E92).
+  `moscow-noivas/src/lib/formatos.ts` é a régua única: `Intl.NumberFormat` com
+  `style: "currency"`, o que põe um espaço RÍGIDO (U+00A0) entre o símbolo e o
+  número — sem ele o navegador quebra a linha ali e o card de dinheiro dobra de
+  altura em 390px. Nenhuma tela escreve `R$` à mão (eram 98 cópias, e a única
+  que esquecia era o dashboard). Negativo sai `-R$ 500,00`, não `R$ -500,00`.
+- **O erro da API vira frase de gente em `lib/erro-api.ts`** (E92), nunca
+  `err.message` — a mensagem que o cliente gerado monta é `HTTP 404 Not Found`,
+  e era isso que a vendedora lia no toast. A ordem é: código que a tela conhece
+  → `detalhe` do servidor → régua por faixa (401 sessão, 403 permissão, 5xx e
+  rede "não consegui falar com o sistema") → o `fallback` da TELA.
+- **A cor da marca é `--primary: 350 25% 65%` e não muda para consertar
+  contraste** (E92) — quem muda é o que vai EM CIMA dela. `index.css` traz a
+  razão WCAG ao lado de cada token, e `lib/aparencia.test.ts` lê o arquivo de
+  verdade e reprova qualquer par de texto abaixo de 4,5:1, nos dois modos. No
+  ESCURO os preenchimentos (`--primary`, `--destructive`) são mais CLAROS com
+  texto escuro em cima, pelo mesmo motivo que `--positivo` já era.
+- **Competência vira frase por `rotuloCompetencia()`** (`lib/financeiro/datas.ts`,
+  E92), em minúscula ("julho de 2026"); quem abre frase com ela usa
+  `capitalizar()` de `lib/formatos.ts`. **Nunca `className="capitalize"` sobre
+  uma frase**: o CSS sobe a inicial de toda palavra e produz "Julho De 2026 — O
+  Que Seria Pago Se Fechasse Agora."
 - **Permissão é MÓDULO × AÇÃO** (`{leads: {ver, criar, editar}}`), com o shape
   vindo do CÓDIGO e nunca do banco (`api-server/src/lib/permissoes.ts`): chave
   desconhecida é descartada, ausente é `false`. O guard deriva a ação do método
@@ -161,6 +183,14 @@ rode o codegen.
   ORDEM da limpeza é significativa desde o E91: contratos → loja → usuários →
   perfil. Com as FKs de vendedora em `restrict`, apagar a pessoa primeiro passa
   a falhar em toda fixture que fechou contrato.
+- **O navegador desenha `<input type="date|month|time">` na locale da INTERFACE
+  dele, NÃO no `lang` do documento** (medido no E92, em dois builds de
+  Chromium). `<html lang="pt-BR">` está lá porque é WCAG 3.1.1 nível A e porque
+  o leitor de tela lia "noiva" com fonemas ingleses — mas ele NÃO garante
+  DD/MM/AAAA. Quem opera com o navegador em inglês continua vendo `07/31/2026`
+  num filtro de dinheiro. Teste de UI que dependa do formato desses campos
+  precisa fixar `--lang` no browser; a captura sem isso mede o navegador, não o
+  app.
 - **Rotas planas (`/financeiro`, `/contratos/:id`) são compatibilidade
   transitória**: caem no `LegacyRedirect` do `App.tsx`. Código novo linka com
   escopo de loja (`/loja/:lojaId/...`); a sidebar e `useCaminhoDaLoja` mostram o

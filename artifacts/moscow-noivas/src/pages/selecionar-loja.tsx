@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Search, SearchX, Store } from "lucide-react";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Normaliza texto para comparação case/acento-insensível. */
 function normalizar(texto: string): string {
@@ -54,7 +55,7 @@ export default function SelecionarLoja() {
     } catch (error: any) {
       toast({
         title: "Erro ao selecionar loja",
-        description: error?.message || "Não foi possível entrar na loja. Tente novamente.",
+        description: mensagemApi(error, "Não foi possível entrar na loja. Tente novamente."),
         variant: "destructive",
       });
     }

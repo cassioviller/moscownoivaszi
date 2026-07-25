@@ -64,8 +64,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { brl } from "@/lib/formatos";
 import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
-import { parseValor } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, mensagemApi } from "@/pages/financeiro/helpers";
+import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { rotuloCompetencia } from "@/lib/financeiro/datas";
+import { capitalizar } from "@/lib/formatos";
+import { ErroListagem } from "@/pages/financeiro/helpers";
+import { mensagemApi } from "@/lib/erro-api";
 import { serieDeComissao } from "@/lib/comissao-serie";
 
 /**
@@ -100,9 +103,6 @@ const MOTIVO_FAIXA: Record<string, string> = {
 /** Quantos meses fechados a série mostra — um ano dá para ver sazonalidade. */
 const MESES_NA_SERIE = 12;
 
-const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
-const rotuloCompetencia = (c: string) => mesFmt.format(new Date(`${c}-01T12:00:00.000Z`));
-
 const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 /** Uma faixa em edição — strings, porque vêm do teclado. */
@@ -113,12 +113,12 @@ const FAIXA_VAZIA: FaixaForm = { minAcumulado: "", maxAcumulado: "", percentual:
 function descreverFaixa(f: ComissaoFaixa): string {
   const ate = f.maxAcumulado === null || f.maxAcumulado === undefined
     ? "acima"
-    : `até R$ ${brl(f.maxAcumulado)}`;
+    : `até ${brl(f.maxAcumulado)}`;
   const paga = [
     f.percentual ? `${f.percentual}%` : null,
-    f.bonusFixo ? `+ R$ ${brl(f.bonusFixo)}` : null,
+    f.bonusFixo ? `+ ${brl(f.bonusFixo)}` : null,
   ].filter(Boolean).join(" ");
-  return `De R$ ${brl(f.minAcumulado)} ${ate} → ${paga}`;
+  return `De ${brl(f.minAcumulado)} ${ate} → ${paga}`;
 }
 
 export default function Comissoes() {
@@ -188,7 +188,12 @@ export default function Comissoes() {
   // confiança antes de uma ação irreversível.
   const resumoFechamento = useMemo(() => {
     const linhas = (preview.data ?? []).filter((l) => l.valorTotal > 0);
-    return { qtd: linhas.length, total: linhas.reduce((soma, l) => soma + l.valorTotal, 0) };
+    // C11: soma em CENTAVOS INTEIROS. Em float, seis vendedoras a R$ 1.234,57
+    // fecham com um centavo a menos que a soma das linhas — e um total que não
+    // bate com o que está impresso acima dele vira desconfiança no número.
+    // somaCentavos recebe o valor em REAIS e converte por dentro — passar
+    // centavos() aqui dobraria a conversão.
+    return { qtd: linhas.length, total: reais(somaCentavos(linhas, (l) => l.valorTotal)) };
   }, [preview.data]);
 
   // A série do custo de comissão (E52): agregação pura sobre o histórico já
@@ -379,7 +384,7 @@ export default function Comissoes() {
       setMotivoBaixa("");
       toast({
         title: "Estorno baixado",
-        description: `R$ ${brl(r.valorBaixado)} de ${estornoBaixando.nome} — o valor deixa de carregar.`,
+        description: `${brl(r.valorBaixado)} de ${estornoBaixando.nome} — o valor deixa de carregar.`,
       });
     } catch (err) {
       toast({
@@ -484,13 +489,13 @@ export default function Comissoes() {
               <div key={p.competencia} className="flex flex-wrap items-baseline gap-x-2">
                 <button
                   type="button"
-                  className="font-medium capitalize underline underline-offset-4"
+                  className="font-medium underline underline-offset-4"
                   onClick={() => trocarCompetencia(p.competencia)}
                 >
-                  {rotuloCompetencia(p.competencia)}
+                  {capitalizar(rotuloCompetencia(p.competencia))}
                 </button>
                 <span className="text-xs">
-                  R$ {brl(p.totalVendas)} em vendas · {p.vendedoras}{" "}
+                  {brl(p.totalVendas)} em vendas · {p.vendedoras}{" "}
                   {p.vendedoras === 1 ? "vendedora" : "vendedoras"} sem fechamento
                 </span>
               </div>
@@ -510,8 +515,8 @@ export default function Comissoes() {
             </SelectTrigger>
             <SelectContent>
               {competenciasDisponiveis.map((c) => (
-                <SelectItem key={c} value={c} className="capitalize">
-                  {rotuloCompetencia(c)}
+                <SelectItem key={c} value={c}>
+                  {capitalizar(rotuloCompetencia(c))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -529,7 +534,7 @@ export default function Comissoes() {
               <AlertDialogDescription>
                 {resumoFechamento.qtd === 0
                   ? "Nenhuma comissão a lançar nesta competência — o fechamento apenas trava o mês."
-                  : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando R$ ${brl(resumoFechamento.total)}.`}
+                  : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando ${brl(resumoFechamento.total)}.`}
                 {" "}O mês fica fechado e a ação não pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -548,8 +553,8 @@ export default function Comissoes() {
       <Card>
         <CardHeader>
           <CardTitle>Como está o mês</CardTitle>
-          <CardDescription className="capitalize">
-            {rotuloCompetencia(competencia)} — o que seria pago se fechasse agora.
+          <CardDescription>
+            {capitalizar(rotuloCompetencia(competencia))} — o que seria pago se fechasse agora.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -574,18 +579,18 @@ export default function Comissoes() {
                       <p className="text-xs text-muted-foreground">Sem vendas nesta competência</p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Vendeu R$ {brl(linha.totalVendas)}
+                        Vendeu {brl(linha.totalVendas)}
                         {linha.percentualAplicado !== null && linha.percentualAplicado !== undefined
                           ? ` · ${linha.percentualAplicado}%`
                           : " · sem faixa atingida"}
-                        {!!linha.valorBonus && ` · bônus R$ ${brl(linha.valorBonus)}`}
+                        {!!linha.valorBonus && ` · bônus ${brl(linha.valorBonus)}`}
                       </p>
                     )}
                     {!!linha.estornoPendente && (
                       <p className="text-xs text-destructive">
                         {soEstorno
-                          ? `R$ ${brl(linha.estornoPendente)} de estorno esperando — segue pendente até ela voltar a vender`
-                          : `R$ ${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
+                          ? `${brl(linha.estornoPendente)} de estorno esperando — segue pendente até ela voltar a vender`
+                          : `${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
                       </p>
                     )}
                     {soEstorno && podeBaixarEstorno && (
@@ -606,7 +611,7 @@ export default function Comissoes() {
                     )}
                     {linha.faltaProximoDegrau !== null && linha.faltaProximoDegrau !== undefined && (
                       <p className="text-xs text-muted-foreground">
-                        Faltam R$ {brl(linha.faltaProximoDegrau)} para o próximo degrau
+                        Faltam {brl(linha.faltaProximoDegrau)} para o próximo degrau
                       </p>
                     )}
                     {/* E51: para onde o mês está indo, não só onde está. É o
@@ -614,7 +619,7 @@ export default function Comissoes() {
                     {linha.projecao && (
                       <p className="text-xs text-muted-foreground" data-testid="projecao-linha">
                         No ritmo ({linha.projecao.diasDecorridos}/{linha.projecao.diasNoMes} dias):
-                        R$ {brl(linha.projecao.valorTotalProjetado)}
+                        {brl(linha.projecao.valorTotalProjetado)}
                         {linha.projecao.percentualProjetado !== null &&
                           linha.projecao.percentualProjetado !== undefined &&
                           ` na faixa de ${linha.projecao.percentualProjetado}%`}
@@ -622,11 +627,24 @@ export default function Comissoes() {
                     )}
                   </div>
                   <span className="shrink-0 font-serif text-xl tabular-nums">
-                    R$ {brl(linha.valorTotal)}
+                    {brl(linha.valorTotal)}
                   </span>
                 </li>
                 );
               })}
+              {/* E92/E13: "quanto vou pagar de comissão este mês?" é A pergunta
+                  de gestão desta tela, e a única forma de ver a resposta era
+                  clicar em "Fechar competência" e ler o texto do alerta — ou
+                  seja, encostar o dedo no gatilho da ação que não se desfaz.
+                  Mesmo tratamento do "Total de despesas" do DRE. */}
+              <li className="flex items-center justify-between gap-4 pt-3">
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Total do mês
+                </span>
+                <span className="shrink-0 font-serif text-2xl font-semibold tabular-nums">
+                  {brl(resumoFechamento.total)}
+                </span>
+              </li>
             </ul>
           )}
         </CardContent>
@@ -644,7 +662,7 @@ export default function Comissoes() {
               <span className="font-medium">
                 {serie.taxaEfetivaMedia !== null ? `${serie.taxaEfetivaMedia}%` : "—"}
               </span>{" "}
-              (R$ {brl(serie.custoTotal)} sobre R$ {brl(serie.totalVendas)} vendidos).
+              ({brl(serie.custoTotal)} sobre {brl(serie.totalVendas)} vendidos).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -652,13 +670,13 @@ export default function Comissoes() {
               {serie.pontos.map((p) => (
                 <li key={p.competencia} className="space-y-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <span className="text-sm capitalize">{rotuloCompetencia(p.competencia)}</span>
+                    <span className="text-sm">{capitalizar(rotuloCompetencia(p.competencia))}</span>
                     <span className="text-xs text-muted-foreground">
-                      base R$ {brl(p.totalVendas)} · {p.vendedoras}{" "}
+                      base {brl(p.totalVendas)} · {p.vendedoras}{" "}
                       {p.vendedoras === 1 ? "vendedora" : "vendedoras"}
                     </span>
                     <span className="shrink-0 tabular-nums">
-                      R$ {brl(p.custoComissao)}
+                      {brl(p.custoComissao)}
                       {p.taxaEfetiva !== null && (
                         <span className="ml-2 text-xs text-muted-foreground">
                           {p.taxaEfetiva}%
@@ -699,15 +717,15 @@ export default function Comissoes() {
                       {f.vendedoraNome ?? nomePorUsuario.get(f.vendedoraId) ?? "Vendedora"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Base R$ {brl(f.totalVendas)}
+                      Base {brl(f.totalVendas)}
                       {f.percentualAplicado !== null && f.percentualAplicado !== undefined && ` · ${f.percentualAplicado}%`}
-                      {" · comissão "}R$ {brl(f.valorComissao)}
-                      {!!f.valorBonus && ` · bônus R$ ${brl(f.valorBonus)}`}
+                      {" · comissão "}{brl(f.valorComissao)}
+                      {!!f.valorBonus && ` · bônus ${brl(f.valorBonus)}`}
                       {f.fechadoEm && ` · fechado em ${diaFmt.format(new Date(f.fechadoEm))}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="font-serif text-xl tabular-nums">R$ {brl(f.valorTotal)}</span>
+                    <span className="font-serif text-xl tabular-nums">{brl(f.valorTotal)}</span>
                     {/* E54: fechou errado, dá para desfazer sem SQL. Só admin —
                         a mesma régua da baixa de estorno, que também mexe em
                         dinheiro já apurado. */}
@@ -745,7 +763,7 @@ export default function Comissoes() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reabrir o fechamento de {fechamentoReabrindo?.nome}?</AlertDialogTitle>
             <AlertDialogDescription>
-              O fechamento de {rotuloCompetencia(competencia)} some, e com ele a conta a pagar de R${" "}
+              O fechamento de {rotuloCompetencia(competencia)} some, e com ele a conta a pagar de{" "}
               {brl(fechamentoReabrindo?.valor ?? 0)}. Estornos que este mês tinha reconciliado voltam
               a pendentes. A competência fica aberta para ser fechada de novo, e a reabertura fica
               registrada na trilha de auditoria.
@@ -784,7 +802,7 @@ export default function Comissoes() {
                     </p>
                   </div>
                   <span className="shrink-0 font-serif text-xl tabular-nums text-destructive">
-                    R$ {brl(b.valor)}
+                    {brl(b.valor)}
                   </span>
                 </li>
               ))}
@@ -1029,20 +1047,20 @@ export default function Comissoes() {
                   {simulacao.linhas.map((l) => (
                     <tr key={l.competencia} className="border-b last:border-0">
                       <td className="py-1.5 pr-2">
-                        {rotuloCompetencia(l.competencia)}
+                        {capitalizar(rotuloCompetencia(l.competencia))}
                         {!l.fechada && (
                           <span className="ml-1 text-xs text-muted-foreground">(sem fechamento)</span>
                         )}
                       </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.base)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.pagoReal)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.simulado)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.base)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.pagoReal)}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.simulado)}</td>
                       <td
                         className={`py-1.5 pl-2 text-right tabular-nums ${
                           l.diferenca > 0 ? "text-destructive" : l.diferenca < 0 ? "text-positivo" : ""
                         }`}
                       >
-                        {l.diferenca > 0 ? "+" : ""}R$ {brl(l.diferenca)}
+                        {l.diferenca > 0 ? "+" : ""}{brl(l.diferenca)}
                       </td>
                     </tr>
                   ))}
@@ -1051,8 +1069,8 @@ export default function Comissoes() {
                   <tr className="font-medium">
                     <td className="py-2 pr-2">Total</td>
                     <td />
-                    <td className="px-2 py-2 text-right tabular-nums">R$ {brl(simulacao.totalPagoReal)}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">R$ {brl(simulacao.totalSimulado)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalPagoReal)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalSimulado)}</td>
                     <td
                       className={`py-2 pl-2 text-right tabular-nums ${
                         simulacao.totalDiferenca > 0
@@ -1062,7 +1080,7 @@ export default function Comissoes() {
                             : ""
                       }`}
                     >
-                      {simulacao.totalDiferenca > 0 ? "+" : ""}R$ {brl(simulacao.totalDiferenca)}
+                      {simulacao.totalDiferenca > 0 ? "+" : ""}{brl(simulacao.totalDiferenca)}
                     </td>
                   </tr>
                 </tfoot>
@@ -1087,7 +1105,7 @@ export default function Comissoes() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Dar baixa em R$ {estornoBaixando ? brl(estornoBaixando.valor) : ""} de {estornoBaixando?.nome}?
+              Dar baixa em {estornoBaixando ? brl(estornoBaixando.valor) : ""} de {estornoBaixando?.nome}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               O estorno deixa de carregar para os próximos meses. Use quando a vendedora

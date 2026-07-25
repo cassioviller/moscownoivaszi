@@ -100,11 +100,11 @@ export default function OrcamentoPublico() {
                       <p className="text-sm">{it.descricao}</p>
                       <p className="text-xs text-muted-foreground">
                         {ROTULO_TIPO[it.tipo] ?? it.tipo}
-                        {it.quantidade > 1 && ` · ${it.quantidade}× R$ ${brl(it.valorUnitario)}`}
+                        {it.quantidade > 1 && ` · ${it.quantidade}× ${brl(it.valorUnitario)}`}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm tabular-nums">
-                      R$ {brl(it.quantidade * it.valorUnitario)}
+                      {brl(it.quantidade * it.valorUnitario)}
                     </span>
                   </li>
                 ))}
@@ -115,14 +115,14 @@ export default function OrcamentoPublico() {
                   <>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Soma dos itens</span>
-                      <span className="tabular-nums">R$ {brl(dados!.totalBruto)}</span>
+                      <span className="tabular-nums">{brl(dados!.totalBruto)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Desconto</span>
                       <span className="tabular-nums">
                         {dados!.descontoTipo === "PERCENTUAL"
                           ? `${dados!.descontoValor}%`
-                          : `R$ ${brl(dados!.descontoValor)}`}
+                          : `${brl(dados!.descontoValor)}`}
                       </span>
                     </div>
                   </>
@@ -130,7 +130,7 @@ export default function OrcamentoPublico() {
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
                   <span className="font-serif text-xl tabular-nums">
-                    R$ {brl(dados!.totalLiquido)}
+                    {brl(dados!.totalLiquido)}
                   </span>
                 </div>
               </div>

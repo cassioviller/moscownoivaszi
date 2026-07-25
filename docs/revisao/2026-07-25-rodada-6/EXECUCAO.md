@@ -39,7 +39,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | Épico | O que resolve | Esforço | Estado | Commit |
 |---|---|---|---|---|
 | E91 | Fronteira da loja: nenhum id entra sem prova (B1 🔴, B2 🔴, B4, B10, B12) | M | ✅ | `d67103d` · [notas](execucao/E91.md) |
-| E92 | Consertos de uma linha (E1 🔴, E2 🔴, +14) | P | ⬜ | — |
+| E92 | Consertos de uma linha (E1 🔴, E2 🔴, +15) | P | ✅ | `PENDENTE` · [notas](execucao/E92.md) |
 | E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ⬜ | — |
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ⬜ | — |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ⬜ | — |
@@ -93,3 +93,38 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   da fixture passando a ter vínculo com a loja — os testes já o tratavam como
   gente da loja (fecha contrato, tem escada de comissão), o E91 só passou a
   cobrar a prova disso. Nenhuma asserção de teste pré-existente mudou.
+- **E92 executado** (notas completas em `execucao/E92.md`). Dezessete achados,
+  quase todos de uma linha, e uma descoberta que corrige o diagnóstico de um dos
+  🔴. **E2:** onze pares de cor saíram da reprovação da WCAG AA sem que o rosa da
+  marca mudasse um pixel — `--primary-foreground` deixou de ser branco (2,78 →
+  4,58), `--muted-foreground` foi de 45% para 40% (4,16 → 5,03), e o vermelho
+  destrutivo escureceu no claro (3,71 → 6,13) e clareou no escuro (2,93 → 5,84),
+  que é o mesmo tratamento que `--positivo` já tinha. `lib/aparencia.test.ts` lê
+  o `index.css` de verdade e roda a fórmula da WCAG sobre 16 pares, mais um caso
+  que reproduz os números que a trilha E mediu no Chrome — a régua não deriva em
+  silêncio, e um teste afirma que `--primary` claro continua `350 25% 65%`.
+  **E1: o `lang` não era a causa.** Medi em dois builds de Chromium: o navegador
+  desenha `<input type=date|month|time>` a partir da locale da INTERFACE, não do
+  atributo `lang` — quatro `<div lang=...>` diferentes na mesma página renderizam
+  idênticos, e o mesmo binário com `--lang=pt-BR` renderiza `31/07/2026`,
+  "julho de 2026" e 24h. A trilha E navegou com o Chromium em inglês; a
+  vendedora com o Chrome em português já via a data certa. A troca fica (é WCAG
+  3.1.1 nível A, e o leitor de tela lia "noiva" com fonemas ingleses), mas a
+  data invertida num filtro de dinheiro segue possível para quem opera em
+  inglês — anotado para o E98/E99. O resto: `brl()` virou a régua única do
+  dinheiro (105 chamadas perderam o `R$` escrito à mão, com espaço RÍGIDO, e o
+  dashboard ficou certo de graça); `mensagemApi` subiu para `lib/erro-api.ts`
+  com régua por faixa de status e a perna do `err.message` morta — o "HTTP 404
+  Not Found" saiu do toast de login e de 20 telas; `rotuloCompetencia()`
+  estava QUADRUPLICADA e virou uma, em minúscula, com `capitalizar()` no lugar
+  dos nove `className="capitalize"` que produziam "Julho De 2026 — O Que Seria
+  Pago"; alvos de toque de 44px no celular (Atendimentos 89 → 60, Equipe 8 →
+  3); `Badge` virou `<span>` e o erro de HTML inválido sumiu do console. **Vi as
+  telas**: 9 rotas em claro, escuro e 390px, com o app de pé e um proxy próprio
+  na frente do Vite (o `E2E_API_PROXY` devolve 404 em POST, como a trilha E já
+  havia registrado). Foi a tela que pegou o único bug real do épico: o C11
+  escrito como `somaCentavos(…, (l) => centavos(l.valorTotal))` passava no
+  typecheck e mostrava R$ 617.106,00 onde deviam ser R$ 6.171,06 — `somaCentavos`
+  já converte por dentro. Um par de cor ficou aberto de propósito
+  (`text-primary` sobre fundo claro, 2,78): fechá-lo exige dividir o token e
+  decidir 61 call-sites, que é a decisão do E8 e mora no E99.

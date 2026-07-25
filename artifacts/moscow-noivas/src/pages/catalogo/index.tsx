@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { tipoAtributoLabel } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 export default function Catalogo() {
   const { lojaId } = useParams();
@@ -51,7 +52,7 @@ export default function Catalogo() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar o catálogo</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar o catálogo.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

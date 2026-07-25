@@ -7,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "E-mail inválido" }),
@@ -34,10 +35,16 @@ export default function Login() {
       } else {
         navigate("/selecionar-loja");
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
-        title: "Erro ao fazer login",
-        description: error?.message || "Verifique suas credenciais.",
+        title: "Não consegui entrar",
+        // Aqui um 401 não é "sua sessão expirou" — a pessoa nem tinha sessão.
+        description: mensagemApi(
+          error,
+          "Não consegui entrar agora. Tente de novo em um instante.",
+          {},
+          { 401: "E-mail ou senha não conferem." },
+        ),
         variant: "destructive",
       });
     }
@@ -61,7 +68,15 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="seu@email.com" {...field} />
+                      {/* E92/E20: sem type/autoComplete o gerenciador de senhas
+                          não oferecia preenchimento — e o teclado vinha sem o @. */}
+                      <Input
+                        type="email"
+                        autoComplete="email"
+                        inputMode="email"
+                        placeholder="seu@email.com"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -74,7 +89,12 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

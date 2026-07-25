@@ -111,7 +111,7 @@ function LinhaNoiva({
             <span
               className={`font-semibold tabular-nums whitespace-nowrap ${critico ? "text-destructive" : ""}`}
             >
-              R$ {brl(noiva.totalVencido)}
+              {brl(noiva.totalVencido)}
             </span>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -254,7 +254,7 @@ export default function Cobranca() {
                     <CardTitle
                       className={`text-2xl tabular-nums ${f === "mais60" && resumo.total > 0 ? "text-destructive" : ""}`}
                     >
-                      R$ {brl(resumo.total)}
+                      {brl(resumo.total)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { dataCurtaFmt } from "../noivas/helpers";
+import { mensagemApi } from "@/lib/erro-api";
 import {
   ROTULO_SITUACAO,
   agruparPorMes,
@@ -93,7 +94,7 @@ export default function Provas() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar as provas</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar as provas.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

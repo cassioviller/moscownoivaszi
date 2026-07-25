@@ -18,6 +18,7 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { dataCurtaFmt, diasAteCasamento } from "../noivas/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Ajustes — a fila da costureira (E14). O prazo que manda é a PRÓXIMA PROVA:
@@ -169,7 +170,7 @@ export default function Ajustes() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar os ajustes</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar os ajustes.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

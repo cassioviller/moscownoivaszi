@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/form";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const editarAtributoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -78,7 +79,7 @@ export default function EditarAtributo() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar o atributo</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar o atributo.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

@@ -30,6 +30,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, dataDia } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
 function rotularSelecoes(
@@ -314,7 +315,7 @@ export default function VestidoDetail() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Preço Base</p>
-                <p className="font-medium text-lg">R$ {brl(vestido.precoBase)}</p>
+                <p className="font-medium text-lg">{brl(vestido.precoBase)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Categoria</p>
@@ -399,12 +400,10 @@ export default function VestidoDetail() {
             {bloqueiosQuery.isError ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro ao carregar os bloqueios</AlertTitle>
+                <AlertTitle>Erro ao carregar as reservas</AlertTitle>
                 <AlertDescription className="flex items-center gap-3">
                   <span>
-                    {bloqueiosQuery.error instanceof Error
-                      ? bloqueiosQuery.error.message
-                      : "Falha inesperada ao buscar os bloqueios."}
+                    {mensagemApi(bloqueiosQuery.error, "Falha inesperada ao buscar as reservas.")}
                   </span>
                   <Button variant="outline" size="sm" onClick={() => bloqueiosQuery.refetch()}>
                     Tentar novamente

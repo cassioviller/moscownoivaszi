@@ -17,10 +17,9 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
-import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
+import { competenciaAtual, rotuloCompetencia, ultimasCompetencias } from "@/lib/financeiro/datas";
+import { capitalizar } from "@/lib/formatos";
 
-const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
-const rotuloCompetencia = (c: string) => mesFmt.format(new Date(`${c}-01T12:00:00.000Z`));
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
   day: "2-digit",
@@ -61,13 +60,13 @@ export default function MinhaComissao() {
           value={competencia}
           onValueChange={(v) => setSearchParams(v === competenciaAtual() ? {} : { competencia: v })}
         >
-          <SelectTrigger className="w-56 capitalize" aria-label="Competência">
+          <SelectTrigger className="w-56" aria-label="Competência">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {competencias.map((c) => (
-              <SelectItem key={c} value={c} className="capitalize">
-                {rotuloCompetencia(c)}
+              <SelectItem key={c} value={c}>
+                {capitalizar(rotuloCompetencia(c))}
               </SelectItem>
             ))}
           </SelectContent>
@@ -98,12 +97,12 @@ export default function MinhaComissao() {
               <CardHeader className="pb-2">
                 <CardDescription>Vendas do mês</CardDescription>
                 <CardTitle className="font-serif text-2xl tabular-nums">
-                  R$ {brl(d.totalVendas)}
+                  {brl(d.totalVendas)}
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
                 {d.estornoPendente > 0
-                  ? `Já com R$ ${brl(d.estornoPendente)} de estorno abatido (cancelamento de mês já pago).`
+                  ? `Já com ${brl(d.estornoPendente)} de estorno abatido (cancelamento de mês já pago).`
                   : "Contratos fechados nesta competência."}
               </CardContent>
             </Card>
@@ -111,14 +110,14 @@ export default function MinhaComissao() {
               <CardHeader className="pb-2">
                 <CardDescription>Comissão prevista</CardDescription>
                 <CardTitle className="font-serif text-2xl tabular-nums">
-                  R$ {brl(d.valorTotal)}
+                  {brl(d.valorTotal)}
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
                 {!d.temRegra
                   ? "Sem escada de comissão vigente — fale com a administração."
                   : d.percentualAplicado !== null && d.percentualAplicado !== undefined
-                    ? `Faixa de ${d.percentualAplicado}%${d.valorBonus ? ` + bônus R$ ${brl(d.valorBonus)}` : ""} — se o mês fechasse agora.`
+                    ? `Faixa de ${d.percentualAplicado}%${d.valorBonus ? ` + bônus ${brl(d.valorBonus)}` : ""} — se o mês fechasse agora.`
                     : "Nenhuma faixa atingida ainda."}
               </CardContent>
             </Card>
@@ -127,7 +126,7 @@ export default function MinhaComissao() {
                 <CardDescription>Próximo degrau</CardDescription>
                 <CardTitle className="font-serif text-2xl tabular-nums">
                   {d.faltaProximoDegrau !== null && d.faltaProximoDegrau !== undefined
-                    ? `R$ ${brl(d.faltaProximoDegrau)}`
+                    ? `${brl(d.faltaProximoDegrau)}`
                     : d.temRegra
                       ? "No topo"
                       : "—"}
@@ -164,7 +163,7 @@ export default function MinhaComissao() {
               <CardHeader className="pb-2">
                 <CardDescription>No seu ritmo</CardDescription>
                 <CardTitle className="font-serif text-2xl tabular-nums">
-                  R$ {brl(d.projecao.valorTotalProjetado)}
+                  {brl(d.projecao.valorTotalProjetado)}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-xs text-muted-foreground">
@@ -172,7 +171,7 @@ export default function MinhaComissao() {
                   Com {d.projecao.diasDecorridos} de {d.projecao.diasNoMes} dias, o mês caminha
                   para{" "}
                   <span className="font-medium tabular-nums">
-                    R$ {brl(d.projecao.baseProjetada)}
+                    {brl(d.projecao.baseProjetada)}
                   </span>{" "}
                   em vendas
                   {d.projecao.percentualProjetado !== null &&
@@ -218,18 +217,18 @@ export default function MinhaComissao() {
                       className="flex flex-wrap items-center justify-between gap-3 py-3"
                     >
                       <div className="min-w-0">
-                        <p className="font-medium capitalize">{rotuloCompetencia(f.competencia)}</p>
+                        <p className="font-medium">{capitalizar(rotuloCompetencia(f.competencia))}</p>
                         <p className="text-xs text-muted-foreground">
-                          Vendeu R$ {brl(f.totalVendas)}
+                          Vendeu {brl(f.totalVendas)}
                           {f.percentualAplicado !== null && f.percentualAplicado !== undefined
                             ? ` · ${f.percentualAplicado}%`
                             : ""}
-                          {!!f.valorBonus && ` · bônus R$ ${brl(f.valorBonus)}`}
+                          {!!f.valorBonus && ` · bônus ${brl(f.valorBonus)}`}
                           {` · fechado em ${quandoFmt.format(new Date(f.fechadoEm))}`}
                         </p>
                       </div>
                       <span className="shrink-0 font-serif text-xl tabular-nums">
-                        R$ {brl(f.valorTotal)}
+                        {brl(f.valorTotal)}
                       </span>
                     </li>
                   ))}

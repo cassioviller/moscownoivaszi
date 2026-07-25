@@ -9,6 +9,7 @@ import {
   instanteNoIntervalo,
   negocioNoIntervalo,
   resolverIntervalo,
+  rotuloCompetencia,
   ultimasCompetencias,
 } from "./datas";
 // Sem porta no front desde o E88 (nenhuma tela consome) — a prova é do core.
@@ -130,5 +131,30 @@ describe("pertencimento ao intervalo", () => {
 
   it("instante da 1h do primeiro dia do mês seguinte fica fora", () => {
     expect(instanteNoIntervalo("2027-04-01T12:00:00.000Z", intervalo)).toBe(false);
+  });
+});
+
+/**
+ * E92/E15+E16: esta função estava triplicada (comissoes, dre, fluxo — mais uma
+ * quarta cópia em minha-comissao) e a folha nem a usava: mostrava "A
+ * competência 2026-07", o formato do BANCO, três centímetros abaixo de um
+ * seletor que dizia "July 2026". Três grafias do mesmo mês na mesma dobra.
+ */
+describe("rotuloCompetencia", () => {
+  it("'2026-07' vira 'julho de 2026' — nunca '2026-07', nunca 'July 2026'", () => {
+    expect(rotuloCompetencia("2026-07")).toBe("julho de 2026");
+    expect(rotuloCompetencia("2026-01")).toBe("janeiro de 2026");
+    expect(rotuloCompetencia("2026-12")).toBe("dezembro de 2026");
+  });
+
+  it("minúscula: o mês só sobe quando ABRE a frase, e quem decide é a tela", () => {
+    // "Nenhum movimento de caixa em julho de 2026." — capital aqui seria erro.
+    expect(rotuloCompetencia("2026-07")[0]).toBe("j");
+  });
+
+  it("o meio-dia UTC impede o mês de escorregar para o anterior", () => {
+    // Com meia-noite UTC, quem lê em SP (UTC-3) cai em 31/12 e o rótulo vira
+    // "dezembro de 2025".
+    expect(rotuloCompetencia("2026-01")).toBe("janeiro de 2026");
   });
 });

@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Utilização por vestido (E15) — o relatório da dona: quantas provas, reservas
@@ -132,7 +133,7 @@ export default function UtilizacaoVestidos() {
           <AlertTitle>Erro ao carregar a utilização</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>
-              {utilizacao.error instanceof Error ? utilizacao.error.message : "Falha inesperada."}
+              {mensagemApi(utilizacao.error, "Falha inesperada ao buscar a utilização.")}
             </span>
             <Button variant="outline" size="sm" onClick={() => utilizacao.refetch()}>
               Tentar novamente
@@ -202,7 +203,7 @@ export default function UtilizacaoVestidos() {
                       <td className="py-2.5 px-3 text-right tabular-nums">{v.reservas}</td>
                       <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
                       <td className="py-2.5 pl-3 text-right tabular-nums">
-                        {v.receita > 0 ? `R$ ${brl(v.receita)}` : "—"}
+                        {v.receita > 0 ? `${brl(v.receita)}` : "—"}
                       </td>
                       <td className="py-2.5 pl-3 text-right">
                         <Badge

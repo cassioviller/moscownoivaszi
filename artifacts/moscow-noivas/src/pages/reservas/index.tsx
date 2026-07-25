@@ -15,6 +15,7 @@ import { AlertCircle } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";
 import { diasAteCasamento, casamentoUrgente } from "../noivas/helpers";
 import { agruparPorMes, mesAbrevFmt, mesAnoFmt } from "./helpers";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Livro de reservas (porte da /reservas do feat/orcamentos) — quem casa com
@@ -79,7 +80,7 @@ export default function Reservas() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar as reservas</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar as reservas.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

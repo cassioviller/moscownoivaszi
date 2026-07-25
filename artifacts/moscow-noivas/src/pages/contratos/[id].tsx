@@ -399,7 +399,7 @@ export default function ContratoDetail() {
           <CardContent className="space-y-4">
             <div>
               <span className="text-muted-foreground text-sm">Valor Total</span>
-              <p className="text-2xl font-semibold text-primary">R$ {brl(contrato.valorTotal)}</p>
+              <p className="text-2xl font-semibold text-primary">{brl(contrato.valorTotal)}</p>
             </div>
             <div>
               <span className="text-muted-foreground text-sm">Forma de Pagamento Base</span>
@@ -426,7 +426,7 @@ export default function ContratoDetail() {
                   {contrato.itens.map((item) => (
                     <li key={item.id} className="flex justify-between text-sm">
                       <span>{item.quantidade}× {item.descricao}</span>
-                      <span className="font-medium">R$ {brl(item.quantidade * item.valorUnitario)}</span>
+                      <span className="font-medium">{brl(item.quantidade * item.valorUnitario)}</span>
                     </li>
                   ))}
                 </ul>
@@ -441,11 +441,11 @@ export default function ContratoDetail() {
                     <div className="mt-2 space-y-1 border-t pt-2 text-sm">
                       <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal</span>
-                        <span>R$ {brl(reais(brutoC))}</span>
+                        <span>{brl(reais(brutoC))}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
                         <span>Desconto{rotulo}</span>
-                        <span>− R$ {brl(reais(abatimentoC))}</span>
+                        <span>− {brl(reais(abatimentoC))}</span>
                       </div>
                     </div>
                   );
@@ -478,11 +478,11 @@ export default function ContratoDetail() {
                           </div>
                           <div className="text-right">
                             <p className={`font-semibold text-sm ${atrasada(parcela) ? "text-destructive" : ""}`}>
-                              R$ {brl(parcela.valorPrevisto)}
+                              {brl(parcela.valorPrevisto)}
                             </p>
                             {parcela.status === "PARCIAL" && (
                               <p className="text-[10px] text-muted-foreground tabular-nums">
-                                faltam R$ {brl(saldoAberto(parcela))}
+                                faltam {brl(saldoAberto(parcela))}
                               </p>
                             )}
                             <Badge variant={st.variante} className="text-[10px]">
@@ -519,14 +519,14 @@ export default function ContratoDetail() {
                 <div className="flex justify-between items-center pt-1">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">Total do plano</span>
                   <span className={`font-semibold text-sm ${planoDivergente ? "text-destructive" : ""}`}>
-                    R$ {brl(reais(totalPlanoCentavos))}
+                    {brl(reais(totalPlanoCentavos))}
                   </span>
                 </div>
                 {planoDivergente && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      O total do plano difere do valor total do contrato (R$ {brl(contrato.valorTotal)}).
+                      O total do plano difere do valor total do contrato ({brl(contrato.valorTotal)}).
                     </AlertDescription>
                   </Alert>
                 )}
@@ -541,6 +541,7 @@ export default function ContratoDetail() {
                     <Label htmlFor="plano-entrada">Entrada (opcional)</Label>
                     <Input
                       id="plano-entrada"
+                      inputMode="decimal"
                       placeholder="0,00"
                       value={entrada}
                       onChange={(e) => setEntrada(e.target.value)}
@@ -643,6 +644,7 @@ export default function ContratoDetail() {
               <Label htmlFor="receber-valor">Valor recebido</Label>
               <Input
                 id="receber-valor"
+                inputMode="decimal"
                 placeholder="0,00"
                 value={valorRecebido}
                 onChange={(e) => setValorRecebido(e.target.value)}
@@ -689,8 +691,8 @@ export default function ContratoDetail() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmacao?.tipo === "estornar"
-                ? `O recebimento de ${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (R$ ${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será desfeito e a parcela volta a ficar em aberto.`
-                : `${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (R$ ${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será removida do plano. Esta ação não pode ser desfeita.`}
+                ? `O recebimento de ${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será desfeito e a parcela volta a ficar em aberto.`
+                : `${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será removida do plano. Esta ação não pode ser desfeita.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

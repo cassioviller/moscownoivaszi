@@ -85,7 +85,11 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation();
   const { lojaId } = useParams();
-  const { logout, user, acessosModulos } = useAuth();
+  const { logout, user, acessosModulos, session } = useAuth();
+  // E92/F44: com uma loja só, "Trocar de Loja" é o item mais destacado de uma
+  // sidebar inteira apontando para uma tela com um botão. Some para quem não
+  // tem para onde trocar — e o superadmin, que tem, continua vendo.
+  const podeTrocarDeLoja = (session?.lojas?.length ?? 0) > 1;
   const base = `/loja/${lojaId}`;
 
   const podeVer = (item: NavItem) =>
@@ -104,16 +108,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <SinoNotificacoes />
       </div>
 
-      <div className="px-4 pb-4">
-        <Link
-          to="/selecionar-loja"
-          onClick={onNavigate}
-          className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground text-sm font-medium hover:bg-sidebar-accent transition-colors border border-sidebar-border"
-        >
-          <Store className="h-4 w-4" />
-          <span>Trocar de Loja</span>
-        </Link>
-      </div>
+      {podeTrocarDeLoja && (
+        <div className="px-4 pb-4">
+          <Link
+            to="/selecionar-loja"
+            onClick={onNavigate}
+            className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground text-sm font-medium hover:bg-sidebar-accent transition-colors border border-sidebar-border"
+          >
+            <Store className="h-4 w-4" />
+            <span>Trocar de loja</span>
+          </Link>
+        </div>
+      )}
 
       <nav className="flex-1 px-4 space-y-4 pb-4">
         {grupos.map((grupo, i) => {

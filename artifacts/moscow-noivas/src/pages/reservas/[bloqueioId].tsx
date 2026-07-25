@@ -43,10 +43,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { diaParaISO } from "@/lib/formatos";
+import { brl, diaParaISO } from "@/lib/formatos";
 import { dataCurtaFmt, isoParaDia } from "../noivas/helpers";
 import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -352,7 +353,7 @@ export default function ReservaDetalhe() {
         <AlertTitle>Erro ao carregar a reserva</AlertTitle>
         <AlertDescription className="flex items-center gap-3">
           <span>
-            {bloqueios.error instanceof Error ? bloqueios.error.message : "Falha inesperada."}
+            {mensagemApi(bloqueios.error, "Falha inesperada ao buscar a reserva.")}
           </span>
           <Button variant="outline" size="sm" onClick={() => bloqueios.refetch()}>
             Tentar novamente
@@ -554,7 +555,7 @@ export default function ReservaDetalhe() {
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-sm">{a.descricao}</p>
                       <p className="text-xs text-muted-foreground">
-                        {a.custoReparo != null && <>reparo estimado R$ {a.custoReparo.toFixed(2).replace(".", ",")} · </>}
+                        {a.custoReparo != null && <>reparo estimado {brl(a.custoReparo)} · </>}
                         {a.registradoPorNome && <>{a.registradoPorNome} · </>}
                         {dataCurtaFmt.format(new Date(a.criadaEm))}
                         {a.temFoto && (

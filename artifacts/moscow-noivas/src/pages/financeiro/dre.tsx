@@ -16,11 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import { brl, capitalizar } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasDre } from "@/lib/financeiro/exportar";
-import { competenciaAtual, competenciaValida, ultimasCompetencias } from "@/lib/financeiro/datas";
+import { competenciaAtual, competenciaValida, rotuloCompetencia, ultimasCompetencias } from "@/lib/financeiro/datas";
 
 /**
  * DRE em REGIME DE CAIXA: só entra no número o dinheiro que se moveu dentro da
@@ -39,11 +39,6 @@ const mesFmt = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
-
-/** "2026-07" → "julho de 2026". Meio-dia UTC evita escorregar de mês. */
-function rotuloCompetencia(competencia: string): string {
-  return mesFmt.format(new Date(`${competencia}-01T12:00:00.000Z`));
-}
 
 /** Desloca uma competência em `n` meses. */
 function deslocarCompetencia(competencia: string, n: number): string {
@@ -145,8 +140,8 @@ export default function DRE() {
           </SelectTrigger>
           <SelectContent>
             {competencias.map((c) => (
-              <SelectItem key={c} value={c} className="capitalize">
-                {rotuloCompetencia(c)}
+              <SelectItem key={c} value={c}>
+                {capitalizar(rotuloCompetencia(c))}
               </SelectItem>
             ))}
           </SelectContent>
@@ -197,7 +192,7 @@ export default function DRE() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold tabular-nums text-positivo">
-                R$ {brl(dre.receitas)}
+                {brl(dre.receitas)}
               </p>
             </CardContent>
           </Card>
@@ -231,7 +226,7 @@ export default function DRE() {
                     >
                       <span className="min-w-0 truncate">{despesa.rotulo}</span>
                       <span className="shrink-0 tabular-nums text-destructive">
-                        − R$ {brl(despesa.total)}
+                        − {brl(despesa.total)}
                       </span>
                     </li>
                   ))}
@@ -240,7 +235,7 @@ export default function DRE() {
                       Total de despesas
                     </span>
                     <span className="shrink-0 font-semibold tabular-nums text-destructive">
-                      − R$ {brl(dre.totalDespesas)}
+                      − {brl(dre.totalDespesas)}
                     </span>
                   </li>
                 </ul>
@@ -259,7 +254,7 @@ export default function DRE() {
                   resultadoNegativo ? "text-destructive" : "text-positivo"
                 }`}
               >
-                R$ {brl(dre.resultado)}
+                {brl(dre.resultado)}
               </p>
             </CardContent>
           </Card>

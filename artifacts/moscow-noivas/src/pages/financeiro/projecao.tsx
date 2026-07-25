@@ -27,7 +27,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ErroListagem, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem, useCaminhoDaLoja } from "./helpers";
+import { mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, diaParaISO } from "@/lib/formatos";
 import { diaLocal, hojeLocal } from "@/lib/financeiro/datas";
@@ -139,7 +140,7 @@ export default function Projecao() {
       });
       toast({
         title: "Saldo conferido",
-        description: `R$ ${brl(conferencia.valor)} no início de ${formatarDia(diaConferido, diaLongo)}.`,
+        description: `${brl(conferencia.valor)} no início de ${formatarDia(diaConferido, diaLongo)}.`,
       });
       setConferirOpen(false);
       setValorConferido("");
@@ -251,7 +252,7 @@ export default function Projecao() {
                 </p>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-3xl font-serif tabular-nums">R$ {brl(saldo.valor)}</p>
+                  <p className="text-3xl font-serif tabular-nums">{brl(saldo.valor)}</p>
                   {/* Mostra a conta, não só o resultado: o número de hoje é uma
                       inferência a partir do último dia conferido, e quem lê
                       precisa saber de quando vem a certeza. */}
@@ -263,7 +264,7 @@ export default function Projecao() {
                         {" "}
                         e {saldo.movimentoDesdeAncora > 0 ? "somado de" : "descontado de"}{" "}
                         <span className="tabular-nums">
-                          R$ {brl(Math.abs(saldo.movimentoDesdeAncora))}
+                          {brl(Math.abs(saldo.movimentoDesdeAncora))}
                         </span>{" "}
                         que o caixa andou desde então
                       </>
@@ -290,7 +291,7 @@ export default function Projecao() {
                   {emAtraso.aReceber !== 0 && (
                     <span>
                       <span className="font-semibold text-positivo tabular-nums">
-                        R$ {brl(emAtraso.aReceber)}
+                        {brl(emAtraso.aReceber)}
                       </span>{" "}
                       a receber
                     </span>
@@ -298,7 +299,7 @@ export default function Projecao() {
                   {emAtraso.aPagar !== 0 && (
                     <span>
                       <span className="font-semibold text-destructive tabular-nums">
-                        R$ {brl(emAtraso.aPagar)}
+                        {brl(emAtraso.aPagar)}
                       </span>{" "}
                       a pagar
                     </span>
@@ -327,7 +328,7 @@ export default function Projecao() {
                   <>Caixa positivo em todo o horizonte.</>
                 )}{" "}
                 Menor saldo:{" "}
-                <span className="font-semibold tabular-nums">R$ {brl(curva.menorSaldo.valor)}</span>
+                <span className="font-semibold tabular-nums">{brl(curva.menorSaldo.valor)}</span>
                 {curva.menorSaldo.dia ? (
                   <> em {formatarDia(curva.menorSaldo.dia, diaFmt)}</>
                 ) : (
@@ -439,14 +440,14 @@ function CurvaLista({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {l.entradas !== 0 && <span className="text-positivo">+R$ {brl(l.entradas)} </span>}
-                  {l.saidas !== 0 && <span className="text-destructive">−R$ {brl(l.saidas)}</span>}
+                  {l.entradas !== 0 && <span className="text-positivo">+{brl(l.entradas)} </span>}
+                  {l.saidas !== 0 && <span className="text-destructive">−{brl(l.saidas)}</span>}
                 </p>
               </div>
               <span
                 className={`shrink-0 text-sm font-medium tabular-nums ${negativo ? "text-destructive" : ""}`}
               >
-                R$ {brl(l.saldoApos)}
+                {brl(l.saldoApos)}
               </span>
             </div>
             <div className="mt-1.5 flex h-1.5" aria-hidden="true">

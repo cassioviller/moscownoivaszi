@@ -74,7 +74,8 @@ import { brl, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { ResumoCard, dataFmt, useCaminhoDaLoja } from "./helpers";
+import { mensagemApi } from "@/lib/erro-api";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   CONTA_JA_PAGA: "Conta já paga — estorne o pagamento antes.",
@@ -297,7 +298,7 @@ export default function Pagar() {
         title: contasSelecionadas.length > 1 ? "Pagamento registrado" : "Conta paga",
         description:
           contasSelecionadas.length > 1
-            ? `Uma saída de R$ ${brl(valor)} quitou ${contasSelecionadas.length} contas.`
+            ? `Uma saída de ${brl(valor)} quitou ${contasSelecionadas.length} contas.`
             : undefined,
       });
       setPagarOpen(false);
@@ -484,7 +485,7 @@ export default function Pagar() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-3">
           <span className="text-sm">
             {contasSelecionadas.length}{" "}
-            {contasSelecionadas.length === 1 ? "conta selecionada" : "contas selecionadas"} · R${" "}
+            {contasSelecionadas.length === 1 ? "conta selecionada" : "contas selecionadas"} ·{" "}
             {brl(reais(totalSelecionadoCentavos))}
           </span>
           <div className="flex gap-2">
@@ -568,7 +569,7 @@ export default function Pagar() {
                           <Badge variant="secondary">Prevista</Badge>
                         )}
                         <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
-                          R$ {brl(c.valorPrevisto)}
+                          {brl(c.valorPrevisto)}
                         </span>
                       </div>
                     </div>
@@ -638,13 +639,13 @@ export default function Pagar() {
                 <li key={c.id} className="flex justify-between gap-3">
                   <span className="truncate">{c.descricao}</span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
-                    R$ {brl(c.valorPrevisto)}
+                    {brl(c.valorPrevisto)}
                   </span>
                 </li>
               ))}
               <li className="flex justify-between gap-3 border-t pt-1 font-medium">
                 <span>Previsto</span>
-                <span className="tabular-nums">R$ {brl(reais(totalSelecionadoCentavos))}</span>
+                <span className="tabular-nums">{brl(reais(totalSelecionadoCentavos))}</span>
               </li>
             </ul>
             <div className="space-y-1">
@@ -662,7 +663,7 @@ export default function Pagar() {
                 if (diff === 0) return null;
                 return (
                   <p className="text-xs text-muted-foreground">
-                    {diff > 0 ? "Desconto" : "Acréscimo"} de R$ {brl(reais(Math.abs(diff)))} sobre o
+                    {diff > 0 ? "Desconto" : "Acréscimo"} de {brl(reais(Math.abs(diff)))} sobre o
                     previsto.
                   </p>
                 );

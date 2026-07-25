@@ -243,7 +243,7 @@ export default function MensagensDoDia() {
                       <span className="min-w-0 truncate text-sm">
                         {n.noivaNome ?? "Noiva"}{" "}
                         <span className="text-muted-foreground">
-                          · R$ {brl(n.totalVencido)} · há {n.diasMaisAntigo} dia
+                          · {brl(n.totalVencido)} · há {n.diasMaisAntigo} dia
                           {n.diasMaisAntigo === 1 ? "" : "s"}
                         </span>
                       </span>

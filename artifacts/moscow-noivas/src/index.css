@@ -122,7 +122,8 @@
   --sidebar-foreground: 20 20% 25%;
   --sidebar-border: 30 15% 92%;
   --sidebar-primary: 350 25% 65%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  /* Mesmo par, mesma conta que --primary-foreground: 2,78 → 4,58 (E92/E2). */
+  --sidebar-primary-foreground: 20 20% 20%;
   --sidebar-accent: 350 15% 95%;
   --sidebar-accent-foreground: 350 25% 45%;
   --sidebar-ring: 350 25% 65%;
@@ -131,21 +132,32 @@
   --popover-foreground: 20 20% 20%;
   --popover-border: 30 15% 90%;
 
-  /* Dusty Rose */
+  /* Dusty Rose. O rosa É a marca e não muda (E92/E2) — o que mudou foi o que
+     vai EM CIMA dele: branco sobre este rosa dava 2,78:1, e a WCAG AA pede
+     4,5:1 para texto. O rótulo de TODO botão de ação do sistema estava nesse
+     número. Texto escuro sobre o mesmo rosa dá 4,58:1. */
   --primary: 350 25% 65%;
-  --primary-foreground: 0 0% 100%;
+  --primary-foreground: 20 20% 20%;
 
   /* Muted Gold / Taupe */
   --secondary: 40 15% 85%;
   --secondary-foreground: 20 20% 20%;
 
   --muted: 30 15% 95%;
-  --muted-foreground: 30 10% 45%;
+  /* 45% dava 4,46:1 sobre --background e 4,16:1 sobre --muted: os dois abaixo
+     de AA, e este token carrega quase toda a informação secundária do app,
+     quase sempre em 12px. 40% leva os dois para 5,40 e 5,03 (E92/E2). */
+  --muted-foreground: 30 10% 40%;
 
   --accent: 350 15% 95%;
   --accent-foreground: 350 30% 40%;
 
-  --destructive: 0 50% 60%;
+  /* Escurecido no E92/E2: em 60% de luminosidade o vermelho reprovava dos DOIS
+     lados — branco em cima dele (badge "Atrasada", toast) e ele como texto
+     sobre o card (valores em atraso) davam 3,71:1. Em 45% os dois viram
+     6,13:1, e de quebra o alarme deixa de ser um avermelhado quase igual ao
+     rosa da marca. */
+  --destructive: 0 55% 45%;
   --destructive-foreground: 0 0% 100%;
 
   /* Verde sálvia, sóbrio para casar com a paleta quente — não um verde neon. */
@@ -204,8 +216,8 @@
   --sidebar: 20 15% 12%;
   --sidebar-foreground: 30 20% 90%;
   --sidebar-border: 20 10% 18%;
-  --sidebar-primary: 350 25% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary: 350 25% 68%;
+  --sidebar-primary-foreground: 20 20% 20%;
   --sidebar-accent: 20 15% 20%;
   --sidebar-accent-foreground: 30 20% 95%;
   --sidebar-ring: 350 20% 60%;
@@ -214,8 +226,12 @@
   --popover-foreground: 30 20% 95%;
   --popover-border: 20 10% 20%;
 
-  --primary: 350 25% 60%;
-  --primary-foreground: 0 0% 100%;
+  /* Mais claro no fundo escuro pelo mesmo motivo que --positivo já era (ver
+     abaixo): em 60% nem branco (3,32:1) nem texto escuro (3,84:1) passavam em
+     cima dele. Em 68% o texto escuro dá 5,07:1 e o token como TEXTO sobre o
+     card sobe de 4,56 para 6,03 (E92/E2). */
+  --primary: 350 25% 68%;
+  --primary-foreground: 20 20% 20%;
 
   --secondary: 20 10% 25%;
   --secondary-foreground: 30 20% 95%;
@@ -226,8 +242,12 @@
   --accent: 20 15% 22%;
   --accent-foreground: 30 20% 95%;
 
-  --destructive: 0 40% 50%;
-  --destructive-foreground: 0 0% 100%;
+  /* No escuro o vermelho tinha o problema espelhado do claro: branco em cima
+     passava (5,17:1) mas ELE como texto sobre o card dava 2,96:1 — os valores
+     em atraso, ilegíveis. Clareando para 70% o texto vira 5,84:1, e aí quem
+     precisa escurecer é o que vai em cima (4,91:1). (E92/E2) */
+  --destructive: 0 50% 70%;
+  --destructive-foreground: 20 20% 20%;
 
   /* Mais claro no fundo escuro para manter o contraste legível. */
   --positivo: 150 34% 60%;

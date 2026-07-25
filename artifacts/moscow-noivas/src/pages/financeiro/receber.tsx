@@ -65,7 +65,8 @@ import {
 } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { ResumoCard, dataFmt, useCaminhoDaLoja } from "./helpers";
+import { mensagemApi } from "@/lib/erro-api";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PAGA: "Este recebimento não está pago — nada a estornar.",
@@ -343,14 +344,14 @@ export default function Receber() {
                       <Badge variant={status.variante}>{status.rotulo}</Badge>
                       <div className="flex flex-col items-end">
                         <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
-                          R$ {brl(p.valorPrevisto)}
+                          {brl(p.valorPrevisto)}
                         </span>
                         {/* Mostra a conta, não só o resultado: numa parcela
                             meio recebida o valor da parcela sozinho não diz o
                             que ainda falta — e é o que falta que se cobra. */}
                         {p.status === "PARCIAL" && (
                           <span className="text-xs text-muted-foreground tabular-nums">
-                            R$ {brl(p.valorRecebido ?? 0)} recebido · faltam R${" "}
+                            {brl(p.valorRecebido ?? 0)} recebido · faltam{" "}
                             {brl(saldoAberto(p))}
                           </span>
                         )}
@@ -396,8 +397,12 @@ export default function Receber() {
           <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="valorRecebido">Valor recebido</Label>
+              {/* E92/E20: o campo de dinheiro MAIS usado do sistema subia o
+                  teclado QWERTY no celular. Nunca type="number" para dinheiro:
+                  vira roleta e muda o valor quando o dedo rola a página. */}
               <Input
                 id="valorRecebido"
+                inputMode="decimal"
                 value={valorRecebido}
                 onChange={(e) => setValorRecebido(e.target.value)}
                 placeholder="0,00"

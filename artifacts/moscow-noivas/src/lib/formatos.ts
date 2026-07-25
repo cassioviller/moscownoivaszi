@@ -15,6 +15,15 @@ const ETAPA_LABELS: Record<string, string> = {
   PERDIDO: "Perdido",
 };
 
+/**
+ * Sobe só a PRIMEIRA letra da frase (E92/E15). O `capitalize` do CSS sobe a
+ * inicial de toda palavra — em inglês isso é Title Case, em português é texto
+ * de máquina: "Julho De 2026 — O Que Seria Pago Se Fechasse Agora."
+ */
+export function capitalizar(frase: string): string {
+  return frase.charAt(0).toLocaleUpperCase("pt-BR") + frase.slice(1);
+}
+
 export function etapaLabel(etapa: string): string {
   return ETAPA_LABELS[etapa] ?? etapa;
 }
@@ -89,10 +98,33 @@ export function dataDia(iso: string): string {
   return dataDiaFmt.format(new Date(soDia ? `${iso}T12:00:00Z` : iso));
 }
 
+/**
+ * O ÚNICO jeito de escrever dinheiro na tela. Devolve o valor JÁ com o `R$`.
+ *
+ * E92/E5+E7: antes ela devolvia só o número e cada tela escrevia `R$ {brl(x)}`
+ * à mão — 98 vezes. Duas consequências: (a) o espaço entre `R$` e o número era
+ * um espaço COMUM, e em 390px o navegador quebrava linha ali, partindo o card
+ * "A receber" em `R$` em cima e `13.500,00` embaixo; (b) o dashboard, a tela
+ * mais lida do sistema, era a única que esquecia o prefixo, e mostrava
+ * `700,00` ao lado de `143` noivas sem dizer qual dos dois é dinheiro.
+ *
+ * `style: "currency"` resolve os dois de uma vez: o separador que o ICU põe em
+ * pt-BR é U+00A0 (espaço rígido, onde o navegador não quebra), e o símbolo
+ * passa a sair de uma régua só. De quebra, negativo vira `-R$ 500,00` em vez
+ * de `R$ -500,00`. Mesma escolha que `lib/whatsapp.ts` já fazia.
+ *
+ * maximumFractionDigits continua explícito: sem ele, um valor com mais de 2
+ * casas (rateio de parcela, base de desconto) renderizava "R$ 1.234,567".
+ */
+const brlFmt = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function brl(valor: number): string {
-  // maximumFractionDigits é obrigatório: sem ele, um valor com >2 casas (rateio
-  // de parcela, base de desconto) renderiza "R$ 1.234,567" numa tela de dinheiro.
-  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return brlFmt.format(valor);
 }
 
 /**

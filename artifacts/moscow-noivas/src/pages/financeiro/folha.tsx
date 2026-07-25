@@ -56,12 +56,14 @@ import { brl } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import {
   competenciaAtual,
+  rotuloCompetencia,
   resolverIntervalo,
   diaLocal,
   instanteNoIntervalo,
 } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem, ResumoCard, dataFmt, useCaminhoDaLoja } from "./helpers";
+import { mensagemApi } from "@/lib/erro-api";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   COMPETENCIA_INVALIDA: "Competência inválida (use AAAA-MM).",
@@ -417,7 +419,7 @@ export default function Folha() {
         <div className="h-40 animate-pulse rounded-lg bg-muted" />
       ) : contasGeradas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          A competência {competencia} ainda não foi gerada.
+          A competência {rotuloCompetencia(competencia)} ainda não foi gerada.
         </p>
       ) : (
         <Card>
@@ -441,7 +443,7 @@ export default function Folha() {
                     <Badge variant={c.status === "PAGA" ? "default" : "secondary"}>
                       {c.status === "PAGA" ? "Paga" : "Prevista"}
                     </Badge>
-                    <span className="font-serif tabular-nums">R$ {brl(c.valorPrevisto)}</span>
+                    <span className="font-serif tabular-nums">{brl(c.valorPrevisto)}</span>
                   </div>
                 </div>
                 );
@@ -491,7 +493,7 @@ export default function Folha() {
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="tabular-nums">R$ {brl(s.valor)}</span>
+                    <span className="tabular-nums">{brl(s.valor)}</span>
                     {podeEditar && (
                       <>
                         <Button variant="ghost" size="sm" onClick={() => abrirEdicao(s)}>
@@ -589,7 +591,7 @@ export default function Folha() {
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="tabular-nums">R$ {brl(r.valor)}</span>
+                    <span className="tabular-nums">{brl(r.valor)}</span>
                     {podeEditar && (
                       <>
                         <Button variant="ghost" size="sm" onClick={() => abrirEdicao(r)}>
@@ -795,7 +797,7 @@ export default function Folha() {
                     ) : (
                       <Badge variant="secondary">Pendente</Badge>
                     )}
-                    <span className="tabular-nums">R$ {brl(p.valorPago)}</span>
+                    <span className="tabular-nums">{brl(p.valorPago)}</span>
                   </div>
                 </li>
               ))}

@@ -80,7 +80,7 @@ export function resumoDetalhe(item: AuditoriaItem): string | null {
   const d = (item.detalhe ?? {}) as Record<string, unknown>;
   const partes: string[] = [];
   const valor = d.valorRecebido ?? d.valorPago ?? d.valorBaixado;
-  if (typeof valor === "number") partes.push(`R$ ${brl(valor)}`);
+  if (typeof valor === "number") partes.push(brl(valor));
   if (typeof d.descricao === "string") partes.push(d.descricao);
   if (typeof d.competencia === "string") partes.push(`competência ${d.competencia}`);
   if (typeof d.motivo === "string" && d.motivo) partes.push(`motivo: ${d.motivo}`);

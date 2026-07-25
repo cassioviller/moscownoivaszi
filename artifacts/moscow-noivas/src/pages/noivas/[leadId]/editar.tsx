@@ -15,6 +15,7 @@ import { diaParaISO } from "@/lib/formatos";
 import { NoivaForm, type NoivaFormValues } from "../noiva-form";
 import { isoParaDia } from "../helpers";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Editar dados da noiva (porte da /noivas/[leadId]/editar) — volta ao perfil. */
 export default function EditarNoiva() {
@@ -83,7 +84,7 @@ export default function EditarNoiva() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar a noiva</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar a noiva.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>

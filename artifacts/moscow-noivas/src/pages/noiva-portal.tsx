@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, CalendarDays } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import { brl, capitalizar } from "@/lib/formatos";
 
 /**
  * O portal da noiva (/noiva/:token, E78) — UM link para tudo dela: a
@@ -141,11 +141,11 @@ export default function NoivaPortal() {
                         <p className="text-xs text-muted-foreground">
                           {ROTULO_TIPO[it.tipo] ?? it.tipo}
                           {it.quantidade > 1 &&
-                            ` · ${it.quantidade}× R$ ${brl(it.valorUnitario)}`}
+                            ` · ${it.quantidade}× ${brl(it.valorUnitario)}`}
                         </p>
                       </div>
                       <span className="shrink-0 text-sm tabular-nums">
-                        R$ {brl(it.quantidade * it.valorUnitario)}
+                        {brl(it.quantidade * it.valorUnitario)}
                       </span>
                     </li>
                   ))}
@@ -157,7 +157,7 @@ export default function NoivaPortal() {
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Soma dos itens</span>
                         <span className="tabular-nums">
-                          R$ {brl(orc.totalBruto)}
+                          {brl(orc.totalBruto)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
@@ -165,7 +165,7 @@ export default function NoivaPortal() {
                         <span className="tabular-nums">
                           {orc.descontoTipo === "PERCENTUAL"
                             ? `${orc.descontoValor}%`
-                            : `R$ ${brl(orc.descontoValor)}`}
+                            : `${brl(orc.descontoValor)}`}
                         </span>
                       </div>
                     </>
@@ -173,7 +173,7 @@ export default function NoivaPortal() {
                   <div className="flex justify-between font-medium">
                     <span>Total</span>
                     <span className="font-serif text-xl tabular-nums">
-                      R$ {brl(orc.totalLiquido)}
+                      {brl(orc.totalLiquido)}
                     </span>
                   </div>
                 </div>
@@ -231,9 +231,7 @@ export default function NoivaPortal() {
                   {dados!.provas.map((p) => (
                     <li key={p.id} className="flex items-center gap-3 text-sm">
                       <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="capitalize">
-                        {dataHoraFmt.format(new Date(p.inicio))}
-                      </span>
+                      <span>{capitalizar(dataHoraFmt.format(new Date(p.inicio)))}</span>
                       {p.confirmadoEm ? (
                         <Badge variant="secondary" className="ml-auto">
                           Confirmada
@@ -301,7 +299,7 @@ export default function NoivaPortal() {
                       <figcaption className="space-y-1 p-3 text-center">
                         <p className="font-serif text-lg">{v.nome}</p>
                         <p className="text-sm font-medium text-primary">
-                          R$ {brl(v.precoBase)}
+                          {brl(v.precoBase)}
                         </p>
                         {v.atributos.length > 0 && (
                           <p className="text-xs text-muted-foreground">
@@ -349,7 +347,7 @@ export default function NoivaPortal() {
                             paga ? "text-muted-foreground line-through" : ""
                           }`}
                         >
-                          R$ {brl(p.valorPrevisto)}
+                          {brl(p.valorPrevisto)}
                         </span>
                       </li>
                     );

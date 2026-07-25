@@ -220,7 +220,7 @@ export default function Conciliacao() {
                       <span
                         className={`tabular-nums font-medium whitespace-nowrap ${t.valor > 0 ? "text-positivo" : "text-destructive"}`}
                       >
-                        {t.valor > 0 ? "+" : "−"}R$ {brl(Math.abs(t.valor))}
+                        {t.valor > 0 ? "+" : "−"}{brl(Math.abs(t.valor))}
                       </span>
                     </li>
                   ))}
@@ -250,7 +250,7 @@ export default function Conciliacao() {
                         </Badge>
                       </span>
                       <span className="tabular-nums font-medium whitespace-nowrap">
-                        R$ {brl(m.valor)}
+                        {brl(m.valor)}
                       </span>
                     </li>
                   ))}
@@ -276,7 +276,7 @@ export default function Conciliacao() {
                         {movimento.descricao}
                       </span>
                       <span className="tabular-nums whitespace-nowrap">
-                        R$ {brl(movimento.valor)}
+                        {brl(movimento.valor)}
                       </span>
                     </li>
                   ))}

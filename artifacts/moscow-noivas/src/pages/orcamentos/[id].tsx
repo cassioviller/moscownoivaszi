@@ -600,10 +600,10 @@ export default function OrcamentoDetail() {
                         </Link>
                       )}
                     </p>
-                    <p className="text-sm text-muted-foreground">Qtd: {item.quantidade} x R$ {brl(item.valorUnitario)}</p>
+                    <p className="text-sm text-muted-foreground">Qtd: {item.quantidade} x {brl(item.valorUnitario)}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">R$ {brl(item.quantidade * item.valorUnitario)}</span>
+                    <span className="font-semibold">{brl(item.quantidade * item.valorUnitario)}</span>
                     {editavel && (
                       <>
                         <Button
@@ -634,13 +634,13 @@ export default function OrcamentoDetail() {
           )}
 
           <div className="flex justify-end gap-6 text-sm border-t pt-3">
-            <span className="text-muted-foreground">Subtotal: R$ {brl(totais.bruto)}</span>
+            <span className="text-muted-foreground">Subtotal: {brl(totais.bruto)}</span>
             {orcamento.descontoTipo && orcamento.descontoValor ? (
               <span className="text-muted-foreground">
-                Desconto: {orcamento.descontoTipo === "PERCENTUAL" ? `${orcamento.descontoValor}%` : `R$ ${brl(orcamento.descontoValor)}`}
+                Desconto: {orcamento.descontoTipo === "PERCENTUAL" ? `${orcamento.descontoValor}%` : `${brl(orcamento.descontoValor)}`}
               </span>
             ) : null}
-            <span className="font-semibold text-primary">Total: R$ {brl(totais.liquido)}</span>
+            <span className="font-semibold text-primary">Total: {brl(totais.liquido)}</span>
           </div>
 
           {acimaDoTeto && (
@@ -649,7 +649,7 @@ export default function OrcamentoDetail() {
               data-testid="aviso-acima-teto"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />
-              R$ {brl(excedenteTeto)} acima do teto de R$ {brl(teto!)} que a noiva definiu
+              {brl(excedenteTeto)} acima do teto de {brl(teto!)} que a noiva definiu
             </p>
           )}
 
@@ -859,7 +859,7 @@ export default function OrcamentoDetail() {
       <Dialog open={contratoOpen} onOpenChange={setContratoOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gerar contrato — R$ {brl(totais.liquido)}</DialogTitle>
+            <DialogTitle>Gerar contrato — {brl(totais.liquido)}</DialogTitle>
           </DialogHeader>
           <Form {...contratoForm}>
             <form onSubmit={contratoForm.handleSubmit(onGerarContrato)} className="space-y-4">

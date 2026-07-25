@@ -11,7 +11,7 @@ import {
 import { brl } from "@/lib/formatos";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { EstadoErro } from "@/components/estado-erro";
-import { origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
+import { capitalizar, origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
 
 /**
  * Relatório de conversão (E34): o consumidor que faltava para o motivo de perda
@@ -184,7 +184,7 @@ export default function ConversaoLeads() {
                 (sazonalidade.data ?? []).map((m) => (
                   <div key={m.competencia} className="space-y-1">
                     <div className="flex items-baseline justify-between gap-3 text-sm">
-                      <span className="font-medium capitalize">{rotuloMes(m.competencia)}</span>
+                      <span className="font-medium">{capitalizar(rotuloMes(m.competencia))}</span>
                       <span className="text-muted-foreground tabular-nums">
                         {m.comContrato} com contrato · {m.total} no total
                       </span>
@@ -244,10 +244,10 @@ export default function ConversaoLeads() {
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
                         <td className="py-2.5 px-3 text-right tabular-nums">
-                          {v.receita > 0 ? `R$ ${brl(v.receita)}` : "—"}
+                          {v.receita > 0 ? `${brl(v.receita)}` : "—"}
                         </td>
                         <td className="py-2.5 pl-3 text-right tabular-nums">
-                          {v.contratos > 0 ? `R$ ${brl(v.receita / v.contratos)}` : "—"}
+                          {v.contratos > 0 ? `${brl(v.receita / v.contratos)}` : "—"}
                         </td>
                       </tr>
                     ))}

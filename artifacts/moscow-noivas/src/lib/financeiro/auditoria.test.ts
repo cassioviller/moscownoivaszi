@@ -72,7 +72,9 @@ describe("resumoDetalhe", () => {
     const r = resumoDetalhe(
       linha({ detalhe: { valorPago: 1234.5, descricao: "Aluguel", competencia: "2026-07" } }),
     );
-    expect(r).toBe("R$ 1.234,50 · Aluguel · competência 2026-07");
+    // O espaço entre R$ e o número é RÍGIDO (U+00A0) desde o E92: brl() é a
+    // régua única do dinheiro e o navegador não pode quebrar linha ali.
+    expect(r).toBe("R$\u00a01.234,50 · Aluguel · competência 2026-07");
   });
 
   it("sem nada reconhecível, não inventa frase", () => {

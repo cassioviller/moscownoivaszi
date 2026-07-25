@@ -47,6 +47,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novoVestidoSchema = z.object({
   codigo: z.string().min(1, { message: "Código é obrigatório" }),
@@ -542,7 +543,7 @@ export default function Vestidos() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro ao carregar os vestidos</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada ao buscar o catálogo."}</span>
+            <span>{mensagemApi(error, "Falha inesperada ao buscar o catálogo.")}</span>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               Tentar novamente
             </Button>
@@ -566,7 +567,16 @@ export default function Vestidos() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <section aria-labelledby="acervo-titulo" className="space-y-4">
+          {/* E92/E23: o degrau que faltava entre a <h1> da página e os <h3> dos
+              cards. Diz também QUANTOS vestidos a grade está mostrando — o
+              número que o filtro acabou de mudar. */}
+          <h2 id="acervo-titulo" className="text-sm font-medium text-muted-foreground">
+            Acervo · {filtrados.length}{" "}
+            {filtrados.length === 1 ? "vestido" : "vestidos"}
+            {temFiltrosAtivos ? " no filtro" : ""}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filtrados.map(vestido => {
             const capa = fotoCapa(vestido);
             return (
@@ -594,7 +604,7 @@ export default function Vestidos() {
                   <div className="font-mono text-xs text-muted-foreground mb-1">{vestido.codigo}</div>
                   <h3 className="font-medium truncate">{vestido.nome}</h3>
                   <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="font-semibold text-primary">R$ {brl(vestido.precoBase)}</span>
+                    <span className="font-semibold text-primary">{brl(vestido.precoBase)}</span>
                     <span className="text-muted-foreground">Tam: {vestido.tamanho || '-'}</span>
                   </div>
                 </CardContent>
@@ -602,7 +612,8 @@ export default function Vestidos() {
             </Link>
             );
           })}
-        </div>
+          </div>
+        </section>
       )}
     </div>
   );

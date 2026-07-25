@@ -50,7 +50,7 @@ export function ResumoCard({
         {/* Destaque só fica vermelho quando HÁ o quê alarmar (valor > 0). "Em
             atraso: R$ 0,00" é a boa notícia — vermelho ali seria alarme falso. */}
         <p className={`text-2xl font-serif tabular-nums ${destaque && valor > 0 ? "text-destructive" : ""}`}>
-          R$ {brl(valor)}
+          {brl(valor)}
         </p>
       </CardContent>
     </Card>
@@ -73,19 +73,9 @@ export function ErroListagem({ mensagem, onRetry }: { mensagem: string; onRetry:
 }
 
 /**
- * Traduz o erro da API. O mapa de códigos é por tela — cada uma conhece as
- * falhas do seu endpoint — mas a ordem de fallback é a mesma em todas:
- * código conhecido → detalhe do servidor → mensagem crua → texto da tela.
+ * E92/E4: a régua de erro subiu para `@/lib/erro-api`. Ela deixou de ser
+ * "coisa do financeiro" quando as telas de noiva, vestido e reserva passaram a
+ * precisar dela — e lá tem teste próprio, então a perna que devolvia
+ * `err.message` (e com ela o "HTTP 404 Not Found" no toast) não volta sem a
+ * suíte reclamar.
  */
-export function mensagemApi(
-  err: unknown,
-  fallback: string,
-  mensagens: Record<string, string> = {},
-): string {
-  const e = err as { data?: { error?: string; detalhe?: string } } | undefined;
-  const codigo = e?.data?.error;
-  if (codigo && mensagens[codigo]) return mensagens[codigo];
-  if (e?.data?.detalhe) return e.data.detalhe;
-  if (err instanceof Error && err.message) return err.message;
-  return fallback;
-}

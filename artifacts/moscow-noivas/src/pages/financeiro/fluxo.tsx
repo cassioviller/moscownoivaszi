@@ -15,11 +15,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { ErroListagem } from "./helpers";
 import { AlertaCaixa } from "@/components/alerta-caixa";
-import { brl } from "@/lib/formatos";
+import { brl, capitalizar } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasFluxo } from "@/lib/financeiro/exportar";
-import { resolverIntervalo, competenciaAtual } from "@/lib/financeiro/datas";
+import { resolverIntervalo, competenciaAtual, rotuloCompetencia } from "@/lib/financeiro/datas";
 
 /**
  * Fluxo de caixa — o hub do financeiro: o que DE FATO entrou e saiu do caixa do
@@ -49,13 +49,6 @@ const diaFmt = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
-
-const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
-
-/** "2026-07" → "julho de 2026". */
-function rotuloCompetencia(competencia: string): string {
-  return mesFmt.format(new Date(`${competencia}-01T12:00:00.000Z`));
-}
 
 function rotuloDia(dia: string): string {
   return diaFmt.format(new Date(`${dia}T12:00:00.000Z`));
@@ -167,6 +160,11 @@ export default function FluxoCaixa() {
           <Link to="cobranca" className="text-muted-foreground hover:text-foreground">
             Cobrança →
           </Link>
+          {/* E92/F31: a folha do mês era a única tela do financeiro sem porta
+              de entrada aqui — só se chegava nela pela sidebar. */}
+          <Link to="folha" className="text-muted-foreground hover:text-foreground">
+            Recorrências do mês →
+          </Link>
           <Link to="auditoria" className="text-muted-foreground hover:text-foreground">
             Auditoria →
           </Link>
@@ -244,7 +242,7 @@ export default function FluxoCaixa() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-semibold tabular-nums text-positivo">
-                  R$ {brl(resumo.entradas)}
+                  {brl(resumo.entradas)}
                 </p>
               </CardContent>
             </Card>
@@ -254,7 +252,7 @@ export default function FluxoCaixa() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-semibold tabular-nums text-destructive">
-                  R$ {brl(resumo.saidas)}
+                  {brl(resumo.saidas)}
                 </p>
               </CardContent>
             </Card>
@@ -268,7 +266,7 @@ export default function FluxoCaixa() {
                     saldoNegativo ? "text-destructive" : "text-positivo"
                   }`}
                 >
-                  R$ {brl(resumo.saldo)}
+                  {brl(resumo.saldo)}
                 </p>
               </CardContent>
             </Card>
@@ -296,16 +294,16 @@ export default function FluxoCaixa() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Link to="receber" className="rounded-lg border p-4 transition-colors hover:border-primary">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">A receber</p>
-                  <p className="text-xl font-semibold tabular-nums">R$ {brl(horizonte.aReceber)}</p>
+                  <p className="text-xl font-semibold tabular-nums">{brl(horizonte.aReceber)}</p>
                   {horizonte.aReceberAtraso > 0 && (
-                    <p className="text-xs text-destructive">R$ {brl(horizonte.aReceberAtraso)} em atraso</p>
+                    <p className="text-xs text-destructive">{brl(horizonte.aReceberAtraso)} em atraso</p>
                   )}
                 </Link>
                 <Link to="pagar" className="rounded-lg border p-4 transition-colors hover:border-primary">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">A pagar</p>
-                  <p className="text-xl font-semibold tabular-nums">R$ {brl(horizonte.aPagar)}</p>
+                  <p className="text-xl font-semibold tabular-nums">{brl(horizonte.aPagar)}</p>
                   {horizonte.aPagarAtraso > 0 && (
-                    <p className="text-xs text-destructive">R$ {brl(horizonte.aPagarAtraso)} em atraso</p>
+                    <p className="text-xs text-destructive">{brl(horizonte.aPagarAtraso)} em atraso</p>
                   )}
                 </Link>
               </div>
@@ -335,12 +333,12 @@ export default function FluxoCaixa() {
                       >
                         <div className="flex min-w-0 flex-col">
                           <span
-                            className={`text-sm capitalize ${atual ? "font-medium text-primary" : ""}`}
+                            className={`text-sm ${atual ? "font-medium text-primary" : ""}`}
                           >
-                            {rotuloCompetencia(ponto.competencia)}
+                            {capitalizar(rotuloCompetencia(ponto.competencia))}
                           </span>
                           <span className="text-xs tabular-nums text-muted-foreground">
-                            + R$ {brl(ponto.entradas)} · − R$ {brl(ponto.saidas)}
+                            + {brl(ponto.entradas)} · − {brl(ponto.saidas)}
                           </span>
                         </div>
                         <span
@@ -348,7 +346,7 @@ export default function FluxoCaixa() {
                             neg ? "text-destructive" : "text-foreground"
                           }`}
                         >
-                          R$ {brl(ponto.saldo)}
+                          {brl(ponto.saldo)}
                         </span>
                       </li>
                     );
@@ -398,7 +396,7 @@ export default function FluxoCaixa() {
                             entrada ? "text-positivo" : "text-destructive"
                           }`}
                         >
-                          {entrada ? "+" : "−"} R$ {brl(m.valor)}
+                          {entrada ? "+" : "−"} {brl(m.valor)}
                         </span>
                       </li>
                     );

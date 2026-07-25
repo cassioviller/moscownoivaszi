@@ -70,11 +70,22 @@ const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long"
  * isso ficou depois do horário marcado. `atendidoEm` era coluna morta; agora
  * mede a espera da noiva sem depender de ninguém anotar nada.
  */
+/**
+ * "540 min adiantado" (E92/E16): ninguém pensa em 540 minutos — são 9 horas. A
+ * partir de 90 min a diferença sai em h/min.
+ */
+function duracaoHumana(min: number): string {
+  if (min < 90) return `${min} min`;
+  const horas = Math.floor(min / 60);
+  const resto = min % 60;
+  return resto === 0 ? `${horas}h` : `${horas}h${String(resto).padStart(2, "0")}`;
+}
+
 function inicioReal(inicio: string, atendidoEm: string): string {
   const hora = horaFmt.format(new Date(atendidoEm));
   const min = Math.round((new Date(atendidoEm).getTime() - new Date(inicio).getTime()) / 60_000);
-  if (min > 2) return `começou ${hora} · ${min} min após o horário`;
-  if (min < -2) return `começou ${hora} · ${Math.abs(min)} min adiantado`;
+  if (min > 2) return `começou ${hora} · ${duracaoHumana(min)} após o horário`;
+  if (min < -2) return `começou ${hora} · ${duracaoHumana(Math.abs(min))} adiantado`;
   return `começou ${hora} · no horário`;
 }
 

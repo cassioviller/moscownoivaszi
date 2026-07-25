@@ -27,12 +27,17 @@ const buttonVariants = cva(
         ghost: "border border-transparent",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // E92/E11: abaixo de `md` o alvo tem 44px — a régua da WCAG 2.5.5, da
+      // Apple e do Google. A vendedora está de pé, com a noiva ao lado e uma
+      // das mãos ocupada; na tela de equipe "Editar" e "Remover" eram dois
+      // quadrados de 36px separados por 4px, e um deles apaga uma pessoa. O
+      // desktop, onde há mouse, continua exatamente como estava.
       size: {
         // @replit changed sizes
         default: "min-h-9 px-4 py-2",
-        sm: "min-h-8 rounded-md px-3 text-xs",
+        sm: "min-h-11 md:min-h-8 rounded-md px-3 text-xs",
         lg: "min-h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        icon: "h-11 w-11 md:h-9 md:w-9",
       },
     },
     defaultVariants: {

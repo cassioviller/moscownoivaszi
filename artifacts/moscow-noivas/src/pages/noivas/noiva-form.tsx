@@ -130,7 +130,16 @@ export function NoivaForm({
             <FormItem>
               <FormLabel>WhatsApp</FormLabel>
               <FormControl>
-                <Input placeholder="(11) 99999-9999" data-testid="input-noiva-whatsapp" {...field} />
+                {/* E92/E20: o teclado numérico de telefone. O WhatsApp digitado
+                    torto quebra em silêncio os links wa.me da fila de mensagens. */}
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(11) 99999-9999"
+                  data-testid="input-noiva-whatsapp"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

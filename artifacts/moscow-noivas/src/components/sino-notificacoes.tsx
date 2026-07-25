@@ -161,8 +161,10 @@ export function SinoNotificacoes() {
       lista.push({
         id: `CONFIRMAR:${semConfirmar.map((a) => a.id).sort().join(",")}`,
         titulo: `${semConfirmar.length} presença${semConfirmar.length === 1 ? "" : "s"} por confirmar nas próximas 24h`,
-        detalhe: "A fila da agenda tem o WhatsApp pronto.",
-        href: `${base}/agenda`,
+        // E92/F8: o aviso apontava para a AGENDA, que mostra os horários; quem
+        // vai confirmar presença quer a FILA pronta de wa.me, que é /mensagens.
+        detalhe: "A fila de mensagens de hoje tem o WhatsApp pronto.",
+        href: `${base}/mensagens`,
         urgente: false,
       });
     }
