@@ -38,7 +38,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 
 | Épico | O que resolve | Esforço | Estado | Commit |
 |---|---|---|---|---|
-| E91 | Fronteira da loja: nenhum id entra sem prova (B1 🔴, B2 🔴, B4, B10, B12) | M | ✅ | `9f0f39d` · [notas](execucao/E91.md) |
+| E91 | Fronteira da loja: nenhum id entra sem prova (B1 🔴, B2 🔴, B4, B10, B12) | M | ✅ | `d67103d` · [notas](execucao/E91.md) |
 | E92 | Consertos de uma linha (E1 🔴, E2 🔴, +14) | P | ⬜ | — |
 | E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ⬜ | — |
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ⬜ | — |
