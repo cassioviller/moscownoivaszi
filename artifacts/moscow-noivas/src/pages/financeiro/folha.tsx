@@ -388,7 +388,10 @@ export default function Folha() {
           >
             ← Contas a pagar
           </Link>
-          <h1 className="text-3xl font-serif">Recorrências do mês</h1>
+          {/* F31/E103: o link dizia "Folha do mês" e este H1 dizia
+              "Recorrências do mês" — quem procurava "folha" não achava, e quem
+              achava lia outro nome. A loja chama de folha. */}
+          <h1 className="text-3xl font-serif">Folha do mês</h1>
           <p className="text-sm text-muted-foreground">
             O que se repete todo mês — salário, aluguel, assinatura, fornecedor fixo — vira conta a
             pagar, e o período fecha com a contabilidade.

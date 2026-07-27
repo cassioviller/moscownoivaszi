@@ -25,15 +25,19 @@ test.describe("Onda 5 — folha", () => {
   test("/financeiro/folha monta e carrega dados sem erro de API", async ({ page }) => {
     const falhas = observarApi(page);
     await page.goto("/financeiro/folha");
-    await expect(page.getByRole("heading", { name: "Recorrências do mês", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(falhas, `Chamadas de API falharam: ${falhas.join(", ")}`).toEqual([]);
   });
 
+  // E103/F31: o H1 dizia "Recorrências do mês" e o link dizia "Folha do mês" —
+  // quem procurava "folha" não achava, e quem achava lia outro nome. A loja
+  // chama de folha, e a tela entrou na sidebar (era alcançável só por um botão
+  // secundário dentro de contas a pagar).
   test("a folha é alcançável a partir de contas a pagar", async ({ page }) => {
     await page.goto("/financeiro/pagar");
     await page.getByRole("link", { name: /Folha/ }).first().click();
-    await expect(page.getByRole("heading", { name: "Recorrências do mês", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
   });
 
   test("nenhum 'Invalid Date' ou 'NaN' nas recorrências", async ({ page }) => {

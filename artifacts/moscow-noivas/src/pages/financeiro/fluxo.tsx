@@ -163,7 +163,7 @@ export default function FluxoCaixa() {
           {/* E92/F31: a folha do mês era a única tela do financeiro sem porta
               de entrada aqui — só se chegava nela pela sidebar. */}
           <Link to="folha" className="text-muted-foreground hover:text-foreground">
-            Recorrências do mês →
+            Folha do mês →
           </Link>
           <Link to="auditoria" className="text-muted-foreground hover:text-foreground">
             Auditoria →

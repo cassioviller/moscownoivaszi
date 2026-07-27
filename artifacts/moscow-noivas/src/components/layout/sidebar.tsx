@@ -9,6 +9,7 @@ import {
   FileText,
   ScrollText,
   CircleDollarSign,
+  CalendarClock,
   Percent,
   Wallet,
   UsersRound,
@@ -75,6 +76,11 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
       { icon: FileText, label: "Orçamentos", href: "/orcamentos", modulo: "leads" },
       { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "leads" },
       { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro", modulo: "financeiro" },
+      // F31/E103: a tela mais crítica do fechamento do mês NÃO estava na
+      // sidebar nem na barra do hub — chegava-se a ela só por um botão
+      // secundário dentro de "Contas a pagar". Fechar o mês são oito telas sem
+      // ordem declarada, e a que a loja mais precisa achar era a escondida.
+      { icon: CalendarClock, label: "Folha do mês", href: "/financeiro/folha", modulo: "financeiro" },
       { icon: Percent, label: "Comissões", href: "/comissoes", modulo: "comissao" },
       // Sem `modulo` de propósito: é o extrato da PRÓPRIA pessoa (a rota
       // filtra pela sessão) — a vendedora sem o módulo comissao precisa ver.
