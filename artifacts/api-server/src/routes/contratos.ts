@@ -47,6 +47,7 @@ import {
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -101,7 +102,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateContratoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -191,6 +192,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       res.status(422).json({
         error: "VALOR_TOTAL_NAO_BATE",
         detalhe: `Itens menos desconto (${reais(liquidoC)}) difere do valor total (${contratoData.valorTotal})`,
+        // D6/E96: o número sozinho não diz onde mexer. Depois do E95 este 422
+        // deixou de ser alcançável por arredondamento, mas continua valendo
+        // para total digitado à mão — e aí o campo é o endereço do conserto.
+        campos: [{ campo: "valorTotal", motivo: `O orçamento fecha em ${reais(liquidoC)}` }],
       });
       return;
     }
@@ -206,6 +211,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       res.status(422).json({
         error: "PARCELAS_NAO_BATEM",
         detalhe: `Soma das parcelas (${reais(somaC)}) difere do valor total (${contratoData.valorTotal})`,
+        campos: [{ campo: "entrada", motivo: `As parcelas somam ${reais(somaC)}` }],
       });
       return;
     }
@@ -455,7 +461,7 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
   const { lojaId, contratoId } = req.params;
   const parsed = UpdateContratoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -475,7 +481,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
   const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
   const parsed = CancelarContratoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -641,7 +647,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Prom
   const { lojaId, parcelaId } = req.params;
   const parsed = ReceberParcelaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -852,7 +858,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas", async (req, res): P
   const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
   const parsed = CreateParcelaAvulsaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -890,7 +896,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
   const { lojaId, contratoId } = req.params as { lojaId: string; contratoId: string };
   const parsed = GerarPlanoParcelasBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

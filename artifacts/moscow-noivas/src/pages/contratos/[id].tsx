@@ -59,6 +59,7 @@ import {
   teveRecebimento,
 } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
+import { mensagemApi } from "@/lib/erro-api";
 // E95: o `parseValor` desta tela era uma QUARTA cópia da mesma função, letra
 // por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
@@ -80,14 +81,15 @@ const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_MUDOU: "Alguém acabou de receber nesta parcela — confira o valor e lance de novo.",
 };
 
-function mensagemApi(err: unknown, fallback: string): string {
-  const e = err as { data?: { error?: string; detalhe?: string } } | undefined;
-  const codigo = e?.data?.error;
-  if (codigo && MENSAGENS_ERRO[codigo]) return MENSAGENS_ERRO[codigo];
-  if (e?.data?.detalhe) return e.data.detalhe;
-  if (err instanceof Error && err.message) return err.message;
-  return fallback;
-}
+// E96: aqui vivia uma CÓPIA LOCAL do `mensagemApi`, e ela era a única tela que
+// não adotou a função do E92 — cinco outras (folha, pagar, receber, comissões,
+// trocar-senha) já a importam passando o dicionário local, que é o desenho
+// certo: função uma, dicionário de cada tela. A cópia ainda tinha a perna que o
+// E92 matou (`return err.message`), então esta tela seguia capaz de mostrar
+// "HTTP 422 Unprocessable Entity" na cara de quem recebe dinheiro.
+//
+// O backlog do E96 apontava este arquivo como a REFERÊNCIA a copiar. O que ele
+// tinha de bom era o dicionário; a função era o desvio.
 
 export default function ContratoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -223,7 +225,7 @@ export default function ContratoDetail() {
     } catch (err) {
       toast({
         title: "Erro ao cancelar",
-        description: mensagemApi(err, "Tente novamente."),
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -262,7 +264,7 @@ export default function ContratoDetail() {
     } catch (err) {
       toast({
         title: "Erro ao gerar o plano",
-        description: mensagemApi(err, "Tente novamente."),
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -299,7 +301,7 @@ export default function ContratoDetail() {
     } catch (err) {
       toast({
         title: "Erro ao receber",
-        description: mensagemApi(err, "Tente novamente."),
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -320,7 +322,7 @@ export default function ContratoDetail() {
     } catch (err) {
       toast({
         title: tipo === "estornar" ? "Erro ao estornar" : "Erro ao remover",
-        description: mensagemApi(err, "Tente novamente."),
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }

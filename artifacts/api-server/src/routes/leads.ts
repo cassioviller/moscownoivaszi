@@ -26,6 +26,7 @@ import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -170,7 +171,7 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateLeadBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -281,7 +282,7 @@ router.post("/lojas/:lojaId/leads/expurgo", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = ExpurgarLeadsPerdidosBody.safeParse(req.body ?? {});
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const meses = parsed.data.mesesInatividade ?? 24;
@@ -438,7 +439,7 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
   const { lojaId, leadId } = req.params;
   const parsed = UpdateLeadBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -513,7 +514,7 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
   const leadId = req.params.leadId as string;
   const parsed = SetLeadInteresseBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -611,7 +612,7 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
   const leadId = req.params.leadId as string;
   const parsed = CreateRegistroCobrancaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

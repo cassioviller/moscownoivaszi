@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
 import { montarOrcamentoPublico } from "../lib/visao-noiva";
+import { erroDeValidacao } from "../lib/erros";
 
 /**
  * Rota PÚBLICA do orçamento (E13) — sem sessão: quem tem o token (256 bits
@@ -24,7 +25,7 @@ const router: IRouter = Router();
 router.get("/orcamentos/publico", async (req, res): Promise<void> => {
   const parsed = GetOrcamentoPublicoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -62,7 +63,7 @@ router.get("/orcamentos/publico", async (req, res): Promise<void> => {
 router.post("/orcamentos/publico/aceite", async (req, res): Promise<void> => {
   const parsed = AceitarOrcamentoPublicoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

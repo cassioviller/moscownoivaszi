@@ -21,13 +21,14 @@ import {
   COOKIE_NOME
 } from "../lib/auth";
 import { requireSessao } from "../middlewares/auth";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -104,7 +105,7 @@ router.get("/auth/me", requireSessao, async (req, res): Promise<void> => {
 router.post("/auth/senha", requireSessao, async (req, res): Promise<void> => {
   const parsed = TrocarSenhaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const usuarioId = req.usuario!.id;
@@ -144,7 +145,7 @@ router.post("/auth/senha", requireSessao, async (req, res): Promise<void> => {
 router.post("/auth/selecionar-loja", requireSessao, async (req, res): Promise<void> => {
   const parsed = SelecionarLojaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

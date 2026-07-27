@@ -32,6 +32,7 @@ import { leadNaLoja } from "../lib/escopo-loja";
 import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
 import { montarOrcamentoPublico, montarVestidosLookbook } from "../lib/visao-noiva";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 /**
  * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
@@ -82,7 +83,7 @@ async function orcamentoDoPortal(lojaId: string, leadId: string) {
 router.get("/portal", async (req, res): Promise<void> => {
   const parsed = GetPortalQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -173,7 +174,7 @@ router.get("/portal", async (req, res): Promise<void> => {
 router.post("/portal/aceite", async (req, res): Promise<void> => {
   const parsed = AceitarPortalQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -211,7 +212,7 @@ router.post("/portal/aceite", async (req, res): Promise<void> => {
 router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise<void> => {
   const parsed = ConfirmarProvaPortalQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -283,7 +284,7 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
 router.get("/portal/foto", async (req, res): Promise<void> => {
   const parsed = GetPortalFotoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { token, vestidoId, ordem, variante = "original", v } = parsed.data;

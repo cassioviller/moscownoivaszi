@@ -58,6 +58,87 @@ export function ehCorpoGrandeDemais(err: unknown): boolean {
   return false;
 }
 
+/** Um campo que não passou, com o motivo já em português. */
+export type CampoInvalido = { campo: string; motivo: string };
+
+/** O corpo de um 400 de validação. `error` é o código que a tela traduz. */
+export type CorpoInvalido = { error: "CORPO_INVALIDO"; campos: CampoInvalido[] };
+
+type IssueZod = {
+  path?: unknown[];
+  code?: string;
+  expected?: string;
+  minimum?: number | bigint;
+  maximum?: number | bigint;
+  type?: string;
+  origin?: string;
+};
+
+/**
+ * Motivo em português a partir do CÓDIGO da issue — nunca do `message` do Zod.
+ *
+ * A mensagem do Zod é escrita para quem programa e em inglês ("Expected string,
+ * received number"); esta função é escrita para quem vende vestido. Traduzir a
+ * frase seria adivinhação: o código é o dado estável.
+ */
+function motivoDaIssue(issue: IssueZod): string {
+  const limite = (v: number | bigint | undefined) => (v === undefined ? "" : String(v));
+  const ehTexto = issue.origin === "string" || issue.type === "string";
+
+  switch (issue.code) {
+    case "invalid_type":
+      // Zod v4 diz `expected` e omite `received` quando o valor não veio.
+      return issue.expected === "undefined" ? "Campo inválido" : "Campo obrigatório ou com tipo errado";
+    case "too_small":
+      if (ehTexto) return `Precisa ter pelo menos ${limite(issue.minimum)} caractere(s)`;
+      return `Precisa ser pelo menos ${limite(issue.minimum)}`;
+    case "too_big":
+      if (ehTexto) return `Passa do limite de ${limite(issue.maximum)} caractere(s)`;
+      return `Precisa ser no máximo ${limite(issue.maximum)}`;
+    case "invalid_format":
+      return "Formato inválido";
+    case "invalid_value":
+    case "invalid_enum_value":
+      return "Valor não é um dos aceitos";
+    case "unrecognized_keys":
+      return "Campo desconhecido";
+    case "not_multiple_of":
+      return "Valor não é um múltiplo permitido";
+    default:
+      return "Valor inválido";
+  }
+}
+
+/**
+ * B13/E96 — o 400 de validação com código estável e endereço do erro.
+ *
+ * Noventa e cinco rotas devolviam `{ error: parsed.error.message }`, e o
+ * `message` de um ZodError é o **JSON serializado do array de issues**: a tela
+ * recebia `[{"code":"invalid_type","path":["valorTotal"],...}]` e não tinha o
+ * que fazer com aquilo além de despejá-lo num toast vermelho. A vendedora lia
+ * um array de objetos em inglês com a noiva do lado.
+ *
+ * O que sai agora é `{ error: "CORPO_INVALIDO", campos: [{campo, motivo}] }` —
+ * o código a tela traduz, e `campo` é o caminho (`itens.0.valorUnitario`) que
+ * ela usa para marcar o input em vez de abrir um toast.
+ *
+ * Aceita `unknown` de propósito: há dois zod no build (zod e zod/v4), então
+ * `instanceof` mente — a checagem é a mesma duck-typing de `ehZodError`.
+ */
+export function erroDeValidacao(err: unknown): CorpoInvalido {
+  if (!ehZodError(err)) {
+    return { error: "CORPO_INVALIDO", campos: [] };
+  }
+  const issues = (err as { issues: IssueZod[] }).issues;
+  const campos = issues.map((issue) => ({
+    // Caminho vazio = o corpo inteiro (não é objeto, veio nulo). A tela sabe
+    // que sem campo o recado é geral.
+    campo: (issue.path ?? []).map(String).join("."),
+    motivo: motivoDaIssue(issue),
+  }));
+  return { error: "CORPO_INVALIDO", campos };
+}
+
 export function classificarErro(err: unknown): Classificacao {
   if (ehCorpoGrandeDemais(err)) {
     return {

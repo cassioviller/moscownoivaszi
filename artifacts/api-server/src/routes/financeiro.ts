@@ -80,6 +80,7 @@ import {
 import { montarContasDaCompetencia, TIPOS_RECORRENCIA } from "../lib/recorrencias";
 import { montarCsv } from "../lib/csv";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -136,7 +137,7 @@ router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<
   const lojaId = req.params.lojaId as string;
   const parsed = CreateContaPagarBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   // B4 — o `colaboradorId` vem do CORPO. Sem esta checagem, a loja A lança uma
@@ -314,7 +315,7 @@ router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", async (req, res): Prom
   const contaId = req.params.contaId as string;
   const parsed = PagarContaPagarBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -428,7 +429,7 @@ router.post("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<vo
   const lojaId = req.params.lojaId as string;
   const parsed = CreatePagamentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const contaIds = [...new Set(parsed.data.contaIds)];
@@ -641,7 +642,7 @@ router.post("/lojas/:lojaId/financeiro/recorrencias", async (req, res): Promise<
   const lojaId = req.params.lojaId as string;
   const parsed = CreateRecorrenciaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { tipo, usuarioId, descricao, categoria, fornecedor, valor, diaVencimento } = parsed.data;
@@ -705,7 +706,7 @@ router.patch("/lojas/:lojaId/financeiro/recorrencias/:recorrenciaId", async (req
   const recorrenciaId = req.params.recorrenciaId as string;
   const parsed = UpdateRecorrenciaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -733,7 +734,7 @@ router.post("/lojas/:lojaId/financeiro/saldos-referencia", async (req, res): Pro
   const lojaId = req.params.lojaId as string;
   const parsed = CreateSaldoReferenciaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   // Conferir de novo o mesmo dia é corrigir o número, não empilhar outro saldo.

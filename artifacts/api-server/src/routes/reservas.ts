@@ -33,6 +33,7 @@ import {
   type ConflitoDetalhe,
 } from "../lib/disponibilidade";
 import { transicaoReservaValida } from "../lib/estados";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -66,7 +67,7 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateReservaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   if (!(await leadNaLoja(parsed.data.leadId, lojaId))) {
@@ -91,7 +92,7 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
   const { lojaId, reservaId } = req.params as { lojaId: string; reservaId: string };
   const parsed = UpdateReservaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const dados = parsed.data;
@@ -259,7 +260,7 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateBloqueioBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const dados = parsed.data;
@@ -337,7 +338,7 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
   const { lojaId, bloqueioId } = req.params as { lojaId: string; bloqueioId: string };
   const parsed = UpdateBloqueioBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const dados = parsed.data;
@@ -447,7 +448,7 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
   const { lojaId, bloqueioId } = req.params;
   const parsed = CreateAvariaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

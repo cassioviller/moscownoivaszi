@@ -12,7 +12,7 @@ import {
 } from "@workspace/db";
 import { eq, and, gte, lt, lte, inArray, isNull, isNotNull, desc } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/pg-core";
-import { ehViolacaoUnica } from "../lib/erros";
+import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
 import { registrarAuditoria } from "../lib/auditoria";
 import {
   ListComissaoRegrasResponse,
@@ -314,7 +314,7 @@ router.post("/lojas/:lojaId/comissao/regras", async (req, res): Promise<void> =>
   const lojaId = req.params.lojaId as string;
   const parsed = CreateComissaoRegraBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { vendedoraId, faixas, bonusAcumulaFaixas = false } = parsed.data;
@@ -395,7 +395,7 @@ router.patch("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promis
   const { lojaId, regraId } = req.params as { lojaId: string; regraId: string };
   const parsed = UpdateComissaoRegraBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [atualizada] = await db
@@ -443,7 +443,7 @@ router.post("/lojas/:lojaId/comissao/simular", async (req, res): Promise<void> =
   const lojaId = req.params.lojaId as string;
   const parsed = SimularComissaoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { vendedoraId, faixas, bonusAcumulaFaixas = false, meses = 3 } = parsed.data;
@@ -924,7 +924,7 @@ router.get("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<void
   const lojaId = req.params.lojaId as string;
   const q = ListComissaoFechamentosQueryParams.safeParse(req.query);
   if (!q.success) {
-    res.status(400).json({ error: q.error.message });
+    res.status(400).json(erroDeValidacao(q.error));
     return;
   }
   const filtros = [eq(comissaoFechamentosTable.lojaId, lojaId)];
@@ -955,7 +955,7 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
   const lojaId = req.params.lojaId as string;
   const parsed = GerarComissaoFechamentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { competencia } = parsed.data;
@@ -1145,7 +1145,7 @@ router.post("/lojas/:lojaId/comissao/estornos/baixa",
     const lojaId = req.params.lojaId as string;
     const parsed = BaixarEstornoComissaoBody.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json(erroDeValidacao(parsed.error));
       return;
     }
     const { vendedoraId, competencia, motivo } = parsed.data;

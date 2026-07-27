@@ -32,6 +32,7 @@ import {
   liquidoEmCentavos,
   reais,
 } from "@workspace/financeiro-core";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -156,7 +157,7 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateOrcamentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
@@ -217,7 +218,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   const { lojaId, orcamentoId } = req.params;
   const parsed = UpdateOrcamentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
@@ -279,7 +280,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
   const orcamentoId = req.params.orcamentoId as string;
   const parsed = AddOrcamentoItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -304,7 +305,7 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
   const itemId = req.params.itemId as string;
   const parsed = UpdateOrcamentoItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { hashSenha, criarSessao, COOKIE_NOME } from "../lib/auth";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 /**
  * Rotas PÚBLICAS do convite — sem sessão: quem tem o token (256 bits
@@ -31,7 +32,7 @@ function mascararEmail(email: string): string {
 router.get("/equipe/convites/info", async (req, res): Promise<void> => {
   const parsed = GetConviteInfoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -71,7 +72,7 @@ router.get("/equipe/convites/info", async (req, res): Promise<void> => {
 router.post("/equipe/convites/aceitar", async (req, res): Promise<void> => {
   const parsed = AceitarConviteBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { token, senha } = parsed.data;

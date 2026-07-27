@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -42,7 +43,7 @@ router.post("/lojas/:lojaId/atributos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateAtributoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -58,12 +59,12 @@ router.post("/lojas/:lojaId/atributos", async (req, res): Promise<void> => {
 router.patch("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<void> => {
   const params = UpdateAtributoParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateAtributoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -84,7 +85,7 @@ router.patch("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<v
 router.delete("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<void> => {
   const params = DeleteAtributoParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   await db.delete(atributosTable).where(and(eq(atributosTable.id, params.data.atributoId), eq(atributosTable.lojaId, params.data.lojaId)));
@@ -94,12 +95,12 @@ router.delete("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<
 router.post("/lojas/:lojaId/atributos/:atributoId/opcoes", async (req, res): Promise<void> => {
   const params = CreateAtributoOpcaoParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = CreateAtributoOpcaoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -123,12 +124,12 @@ router.post("/lojas/:lojaId/atributos/:atributoId/opcoes", async (req, res): Pro
 router.patch("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
   const params = UpdateAtributoOpcaoParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateAtributoOpcaoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -163,7 +164,7 @@ router.patch("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promi
 router.delete("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promise<void> => {
   const params = DeleteAtributoOpcaoParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const existing = await db.query.atributoOpcoesTable.findFirst({

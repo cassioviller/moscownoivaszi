@@ -45,6 +45,7 @@ import {
   type Janela,
 } from "../lib/disponibilidade";
 import { identificarImagem } from "../lib/imagem";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -85,7 +86,7 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateVestidoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -383,7 +384,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
   const { lojaId, vestidoId } = req.params;
   const parsed = UpdateVestidoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -444,7 +445,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
   }
   const query = GetVestidoFotoQueryParams.safeParse(req.query);
   if (!query.success) {
-    res.status(400).json({ error: query.error.message });
+    res.status(400).json(erroDeValidacao(query.error));
     return;
   }
   const { variante = "cheia", v } = query.data;
@@ -486,7 +487,7 @@ router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
   const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
   const parsed = SetVestidoFotoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

@@ -44,6 +44,7 @@ import { backupLogTable } from "@workspace/db";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -60,7 +61,7 @@ router.get("/admin/lojas", async (_req, res): Promise<void> => {
 router.post("/admin/lojas", async (req, res): Promise<void> => {
   const parsed = CreateLojaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [loja] = await db.insert(lojasTable).values({
@@ -73,12 +74,12 @@ router.post("/admin/lojas", async (req, res): Promise<void> => {
 router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   const params = UpdateLojaParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateLojaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [loja] = await db.update(lojasTable)
@@ -95,7 +96,7 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
 router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   const params = DeleteLojaParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   await db.delete(lojasTable).where(eq(lojasTable.id, params.data.lojaId));
@@ -120,7 +121,7 @@ router.get("/admin/perfis", async (_req, res): Promise<void> => {
 router.post("/admin/perfis", async (req, res): Promise<void> => {
   const parsed = CreatePerfilBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [perfil] = await db.insert(perfisTable).values({
@@ -134,12 +135,12 @@ router.post("/admin/perfis", async (req, res): Promise<void> => {
 router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
   const params = UpdatePerfilParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdatePerfilBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   // E80: o perfil do sistema é intocável pela API — hoje só a UI protegia, e
@@ -173,7 +174,7 @@ router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
 router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
   const params = DeletePerfilParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   // E80: apagar o perfil do sistema deixaria a loja sem Admin — recusa igual.
@@ -217,7 +218,7 @@ router.get("/admin/usuarios", async (_req, res): Promise<void> => {
 router.post("/admin/usuarios", async (req, res): Promise<void> => {
   const parsed = CreateUsuarioBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const senhaHash = await hashSenha(parsed.data.senha);
@@ -236,12 +237,12 @@ router.post("/admin/usuarios", async (req, res): Promise<void> => {
 router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   const params = UpdateUsuarioParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateUsuarioBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
@@ -280,7 +281,7 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
 router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   const params = DeleteUsuarioParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   // B2 🔴 — a exclusão passa a ser RECUSADA quando a pessoa tem histórico.
@@ -330,7 +331,7 @@ router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
 router.get("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => {
   const params = ListPerfilOverridesParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const overrides = await db.select().from(perfilOverridesLojasTable).where(eq(perfilOverridesLojasTable.lojaId, params.data.lojaId));
@@ -344,12 +345,12 @@ router.get("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
 router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => {
   const params = SetPerfilOverrideParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = SetPerfilOverrideBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -403,7 +404,7 @@ router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
 router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Promise<void> => {
   const params = DeletePerfilOverrideParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
 
@@ -521,7 +522,7 @@ router.post("/admin/backup", async (req, res): Promise<void> => {
 router.get("/admin/backup/:backupId/download", async (req, res): Promise<void> => {
   const params = DownloadBackupParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const [registro] = await db

@@ -3955,12 +3955,28 @@ components:
           type: string
       required:
         - status
+    # E96: `error` é um CÓDIGO estável que a tela traduz; `detalhe` é frase em
+    # português escrita por nós; `campos` só aparece na validação de corpo e diz
+    # ONDE o erro está, para a tela marcar o campo em vez de abrir um toast.
+    # Nunca sai daqui texto do Zod em inglês.
     ErrorResponse:
       type: object
       required: [error]
       properties:
         error:
           type: string
+        detalhe:
+          type: string
+        campos:
+          type: array
+          items:
+            type: object
+            required: [campo, motivo]
+            properties:
+              campo:
+                type: string
+              motivo:
+                type: string
 
     # ── Auth ──
     LoginInput:

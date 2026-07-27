@@ -42,6 +42,7 @@ import {
 } from "@workspace/agenda-core";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -138,7 +139,7 @@ router.post("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateCabineBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [cabine] = await db.insert(cabinesTable).values({
@@ -152,12 +153,12 @@ router.post("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
 router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = UpdateCabineParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateCabineBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [cabine] = await db.update(cabinesTable)
@@ -174,7 +175,7 @@ router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void>
 router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = DeleteCabineParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   await db.delete(cabinesTable).where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)));
@@ -216,7 +217,7 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateAtendimentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -261,7 +262,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
   const { lojaId, atendimentoId } = req.params;
   const parsed = UpdateAtendimentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -427,7 +428,7 @@ router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateAjusteBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
@@ -450,7 +451,7 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
   const { lojaId, ajusteId } = req.params;
   const parsed = UpdateAjusteBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [ajuste] = await db.update(ajustesTable)
@@ -480,7 +481,7 @@ router.post("/lojas/:lojaId/ajustes/:ajusteId/checklist", async (req, res): Prom
   const { lojaId, ajusteId } = req.params;
   const parsed = AddChecklistItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -525,7 +526,7 @@ router.patch("/lojas/:lojaId/ajustes/checklist/:itemId", async (req, res): Promi
   const { lojaId, itemId } = req.params;
   const parsed = UpdateChecklistItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -571,7 +572,7 @@ router.put("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
   const lojaId = req.params.lojaId as string;
   const parsed = SetDisponibilidadeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

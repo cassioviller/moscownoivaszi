@@ -62,7 +62,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
-import { mensagemApi } from "@/lib/erro-api";
+import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
 import { ancoraDeNegocio, montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
@@ -71,6 +71,28 @@ import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
 // E95: não existe aritmética de dinheiro neste arquivo. O `round2` que morava
 // aqui era a terceira cópia de uma conta que o servidor faz em centavos —
 // todo número da tela sai agora da mesma função que o servidor vai validar.
+
+/**
+ * F17/E96 — o clique que fecha a venda deixa de mostrar texto de servidor.
+ *
+ * Era aqui o pior 422 do sistema: a vendedora, com a noiva do lado, lia
+ * *"Itens menos desconto (950.48) difere do valor total (950.47)"* num diálogo
+ * que continuava aberto e sem nenhum ajuste que resolvesse. Nove `catch` desta
+ * tela despejavam `err.message` — ela ficou inteira de fora da varredura do E92.
+ */
+const MENSAGENS_ERRO: Record<string, string> = {
+  // Depois do E95 este par não diverge mais por arredondamento — sobra o total
+  // digitado à mão. A frase diz o que fazer, não o que aconteceu.
+  VALOR_TOTAL_NAO_BATE: "O valor do contrato não bate com os itens do orçamento. Confira o desconto e os itens.",
+  PARCELAS_NAO_BATEM: "A soma das parcelas não fecha com o total. Revise a entrada e o número de parcelas.",
+  CORPO_INVALIDO: "Alguns campos precisam de ajuste — veja o que está marcado em vermelho.",
+  REFERENCIA_INVALIDA: "Essa noiva não é desta loja.",
+  ORCAMENTO_NAO_APROVADO: "Aprove o orçamento antes de gerar o contrato.",
+  ORCAMENTO_RECUSADO: "Orçamento recusado não gera link para a noiva.",
+  TRANSICAO_INVALIDA: "Esse orçamento não pode ir para esse status agora.",
+  JA_TEM_CONTRATO: "Este orçamento já virou contrato.",
+  CONTRATO_NAO_ATIVO: "O contrato foi cancelado — não há o que movimentar.",
+};
 
 const novoItemSchema = z.object({
   tipo: z.enum(["VESTIDO", "SERVICO", "AJUSTE"]),
@@ -387,7 +409,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       await copiarLinkNoiva(r.token);
     } catch (err) {
-      toast({ title: "Erro ao gerar o link", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao gerar o link", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -418,7 +440,7 @@ export default function OrcamentoDetail() {
       await invalidar();
       itemForm.reset({ tipo: values.tipo, vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
-      toast({ title: "Erro ao adicionar item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -453,7 +475,7 @@ export default function OrcamentoDetail() {
       toast({ title: "Item atualizado" });
       setItemEmEdicao(null);
     } catch (err) {
-      toast({ title: "Erro ao atualizar item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao atualizar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -462,7 +484,7 @@ export default function OrcamentoDetail() {
       await removeItem.mutateAsync({ lojaId: activeLojaId!, itemId });
       await invalidar();
     } catch (err) {
-      toast({ title: "Erro ao remover item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao remover item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -481,7 +503,7 @@ export default function OrcamentoDetail() {
       await invalidar();
       toast({ title: "Validade salva" });
     } catch (err) {
-      toast({ title: "Erro ao salvar a validade", description: mensagemApi(err, "Tente novamente."), variant: "destructive" });
+      toast({ title: "Erro ao salvar a validade", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -500,7 +522,7 @@ export default function OrcamentoDetail() {
       await invalidar();
       toast({ title: "Desconto aplicado" });
     } catch (err) {
-      toast({ title: "Erro ao aplicar desconto", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao aplicar desconto", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -510,7 +532,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: status === "ENVIADO" ? "Orçamento marcado como enviado" : "Orçamento voltou para rascunho" });
     } catch (err) {
-      toast({ title: "Erro ao mudar o status", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao mudar o status", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -520,7 +542,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Orçamento aprovado" });
     } catch (err) {
-      toast({ title: "Erro ao aprovar", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao aprovar", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -530,7 +552,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Orçamento recusado" });
     } catch (err) {
-      toast({ title: "Erro ao recusar", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      toast({ title: "Erro ao recusar", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -576,9 +598,13 @@ export default function OrcamentoDetail() {
       setContratoOpen(false);
       navigate(`/loja/${activeLojaId}/contratos/${contrato.id}`);
     } catch (err) {
+      // D6: se o servidor disse ONDE, o recado vai para o campo — o diálogo
+      // continua aberto por cima do toast, e um toast atrás dele é um recado
+      // que a pessoa não lê.
+      if (aplicarErroDoServidor(contratoForm, err)) return;
       toast({
         title: "Erro ao gerar contrato",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }

@@ -55,7 +55,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ✅ | `1917f16` · [notas](execucao/E93.md) |
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
-| E96 | O erro do servidor chega ao campo (F17 🔴, B13, D5, D6) | M | ⬜ | — |
+| E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `PENDENTE` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ⬜ | — |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | ⬜ | — |
@@ -92,6 +92,8 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S8 | **`contratos.ts` mantém `cent`/`reais` locais**, idênticos aos do `financeiro-core`, com dezenas de call-sites — a mesma classe do `parseValor` quadruplicado que o E95 fechou, em volume maior. | 🟡 | [E95](execucao/E95.md) vp |
 | S9 | **O teto de orçamento (E33) compara em reais.** `acimaDoTeto` faz `totais.liquido > teto` em float enquanto o excedente já saiu para centavos. Um centavo no limiar, sem consequência de dinheiro — mas é régua pela metade. | 🔵 | [E95](execucao/E95.md) vp |
 | S10 | **A tela de contrato gera o carnê às cegas.** O `gerar-plano` de lá não tem prévia, e desde o E95 existe a função para mostrá-la — é o F16 aplicado à tela irmã. | 🟡 | [E95](execucao/E95.md) vp |
+| S11 | **D5 não se faz como está escrito — veredito medido, item aberto.** Derivar os resolvers dos 12 formulários do `api-zod` esbarra em duas coisas: o schema gerado descreve o PAYLOAD e o formulário valida a SUPERFÍCIE DE ENTRADA (`entrada`/`numParcelas` não existem no corpo da API), e importar o barril de 261 KB / 539 schemas num bundle que já tem 1,1 MB sem code splitting troca dívida de duplicação por dívida de peso. A duplicação real medida é **um** enum de cada lado, não doze. Caminho barato: teste de paridade dos dois enums, ou reavaliar depois do code splitting do E104. | 🟠 | [E96](execucao/E96.md) |
+| S12 | **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
 
@@ -327,3 +329,30 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   `Date`. As notas do E94 afirmam typecheck limpo. Consertado aqui (uma linha),
   porque não dá para medir o E95 sobre uma base vermelha.
 
+- **E96 executado** (notas completas em `execucao/E96.md`). O 400 de validação
+  parou de falar inglês: `erroDeValidacao` devolve `{error: "CORPO_INVALIDO",
+  campos: [{campo, motivo}]}` nas **95** rotas, e o `campo` é o caminho do Zod
+  (`parcelas.0.valorPrevisto`) — que é exatamente o formato de `path` do
+  react-hook-form, e por isso serve de endereço no cliente sem tradução. Do lado
+  da tela, `aplicarErroDoServidor` marca o campo e só cai no toast quando não há
+  campo a marcar.
+- **Três correções ao diagnóstico, e as três são sobre varredura declarada como
+  completa.** (1) Os "95 lugares" não são 95 `parsed.error.message`: são 72
+  `parsed`, 21 `params`, 1 `query` e 1 `q` — quem procurasse pelo nome que o
+  backlog cita deixaria 23 rotas vazando, justamente as de id na URL. (2) O
+  arquivo que o backlog aponta como REFERÊNCIA (`contratos/[id].tsx`) era o
+  único desviante: tinha uma cópia local do `mensagemApi` com a perna que o E92
+  matou, enquanto cinco outras telas já usavam a função compartilhada. (3) A
+  tela de orçamento tinha NOVE `catch` com `err.message`, e as notas do E92
+  afirmam que ele saiu "de 20 telas" — esta ficou inteira de fora.
+- **A varredura virou teste**, e é o item de melhor relação valor/custo do
+  épico: um unitário lê os fontes e reprova `error: <x>.error.message`. Sem ele
+  a regressão volta na primeira rota nova, porque o sintoma é uma tela feia e
+  não um vermelho.
+- **Um item do backlog foi medido e recusado com evidência (D5 → sobra S11).**
+  Derivar os resolvers do `api-zod` esbarra em duas coisas que o plano não viu:
+  o schema gerado descreve o PAYLOAD e o formulário valida a SUPERFÍCIE DE
+  ENTRADA — `entrada` e `numParcelas` nem existem no corpo da API —, e o barril
+  gerado tem 261 KB e 539 schemas para um bundle que já é 1,1 MB num chunk só.
+  A duplicação real medida é **um** enum de cada lado, não doze. O cuidado (a)
+  autorizava exatamente isto: medir, registrar o veredito e parar.

@@ -21,7 +21,7 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { usuarioNaLoja } from "../lib/escopo-loja";
 import { registrarAuditoria } from "../lib/auditoria";
 import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
-import { ehViolacaoUnica } from "../lib/erros";
+import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -35,7 +35,7 @@ router.use("/lojas/:lojaId/equipe", requireModulo("admin"));
 router.get("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
   const params = ListEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   
@@ -104,12 +104,12 @@ router.get("/lojas/:lojaId/equipe/atividade", async (req, res): Promise<void> =>
 router.post("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
   const params = AddMembroEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = AddMembroEquipeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -199,7 +199,7 @@ router.post("/lojas/:lojaId/equipe/convites", async (req, res): Promise<void> =>
   const lojaId = req.params.lojaId as string;
   const parsed = CreateConviteEquipeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const email = parsed.data.email.toLowerCase().trim();
@@ -314,12 +314,12 @@ router.delete("/lojas/:lojaId/equipe/convites/:conviteId", async (req, res): Pro
 router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void> => {
   const params = UpdateMembroEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateMembroEquipeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -407,7 +407,7 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
 router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void> => {
   const params = RemoveMembroEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
 

@@ -21,8 +21,17 @@ import { ApiError } from "@workspace/api-client-react";
  *   4. `fallback` da tela.
  */
 
+/** Um campo que o servidor recusou, com o motivo já em português. */
+export type CampoInvalido = { campo: string; motivo: string };
+
 /** O que o servidor manda no corpo de erro. `detalhe` é texto para humano. */
-type CorpoErro = { data?: { error?: string; detalhe?: string } };
+type CorpoErro = { data?: { error?: string; detalhe?: string; campos?: CampoInvalido[] } };
+
+/** Os campos que o servidor apontou, ou lista vazia. */
+export function camposDoErro(err: unknown): CampoInvalido[] {
+  const campos = (err as CorpoErro | undefined)?.data?.campos;
+  return Array.isArray(campos) ? campos.filter((c) => c && typeof c.campo === "string") : [];
+}
 
 /**
  * O que dizer por faixa de status quando a tela não tem nada mais específico.
@@ -63,4 +72,46 @@ export function mensagemApi(
   if (err instanceof Error) return SEM_RESPOSTA;
 
   return fallback;
+}
+
+/**
+ * D6/E96 — o erro do servidor chega ao CAMPO que o causou.
+ *
+ * Antes, todo 400/422 virava toast destrutivo: a mensagem aparecia no canto da
+ * tela enquanto o input errado seguia sem marca nenhuma, e num formulário de
+ * doze campos a pessoa tinha de adivinhar qual. Pior no diálogo de gerar
+ * contrato, que continua aberto por cima do toast.
+ *
+ * Esta função é o único tratamento: marca cada campo que o servidor apontou e
+ * devolve `true`. Só quando não há campo — erro de regra, de rede, de
+ * permissão — ela devolve `false` e a tela abre o toast, que aí é o lugar certo.
+ *
+ * O `campo` do servidor é o caminho do Zod (`itens.0.valorUnitario`), que é
+ * exatamente o formato de `path` do react-hook-form. Se NENHUM dos campos
+ * apontados existe neste formulário, ela devolve `false` de propósito: marcar
+ * um input que a pessoa não está vendo esconde o recado, e o toast passa a ser
+ * o lugar certo. Silenciar seria a única saída errada.
+ */
+export function aplicarErroDoServidor(
+  form: {
+    setError: (campo: string, erro: { type: string; message: string }) => void;
+    getValues: () => Record<string, unknown>;
+  },
+  err: unknown,
+): boolean {
+  const campos = camposDoErro(err);
+  if (campos.length === 0) return false;
+
+  const conhecidos = Object.keys(form.getValues());
+  let marcou = false;
+  for (const { campo, motivo } of campos) {
+    const raiz = campo.split(".")[0];
+    if (campo && conhecidos.includes(raiz)) {
+      form.setError(campo, { type: "server", message: motivo });
+      marcou = true;
+    }
+  }
+  // Nenhum dos campos existe neste formulário: o recado é geral, e some se
+  // ficarmos calados. Devolver false manda a tela abrir o toast.
+  return marcou;
 }
