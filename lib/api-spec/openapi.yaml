@@ -5271,6 +5271,21 @@ components:
       properties:
         noivaNome: { type: string }
         lojaNome: { type: string }
+        # E100/F36: as duas perguntas que ela abre o link para responder —
+        # "quanto falta" e "quando é a próxima". Estavam a uma soma de
+        # distância num carnê de oito linhas lido no celular, e cada uma delas
+        # voltava como mensagem de WhatsApp para a vendedora.
+        # `null` quando não há contrato ativo: um "falta pagar R$ 0,00"
+        # afirmaria algo sobre um acordo que não existe.
+        resumoPagamento:
+          anyOf:
+            - type: object
+              required: [faltaPagar]
+              properties:
+                faltaPagar: { type: number }
+                proximaEm: { type: ["string", "null"], format: date-time }
+                proximaValor: { type: ["number", "null"] }
+            - type: "null"
         # A proposta mais recente ENVIADA/APROVADA — o mesmo shape do link E13,
         # com aceite E74. null = ainda não há proposta para mostrar.
         orcamento:

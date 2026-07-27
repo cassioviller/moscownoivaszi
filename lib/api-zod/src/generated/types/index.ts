@@ -255,6 +255,7 @@ export * from './perfilUpdate';
 export * from './portalNoiva';
 export * from './portalNoivaLookbook';
 export * from './portalNoivaProvasItem';
+export * from './portalNoivaResumoPagamento';
 export * from './portalParcela';
 export * from './portalParcelaStatus';
 export * from './portalStatus';

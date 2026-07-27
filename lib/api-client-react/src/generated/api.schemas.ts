@@ -1560,6 +1560,14 @@ export interface OrcamentoPublico {
   itens: OrcamentoPublicoItem[];
 }
 
+export type PortalNoivaResumoPagamento = {
+  faltaPagar: number;
+  /** @nullable */
+  proximaEm?: string | null;
+  /** @nullable */
+  proximaValor?: number | null;
+} | null;
+
 export type PortalNoivaLookbook = {
   vestidos: LookbookPublicoVestido[];
 } | null;
@@ -1595,6 +1603,7 @@ export interface PortalParcela {
 export interface PortalNoiva {
   noivaNome: string;
   lojaNome: string;
+  resumoPagamento?: PortalNoivaResumoPagamento;
   orcamento: OrcamentoPublico | null;
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];

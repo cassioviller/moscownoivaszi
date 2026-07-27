@@ -319,6 +319,37 @@ export default function NoivaPortal() {
             {dados!.parcelas.length > 0 && (
               <section className="bg-card border rounded-lg p-6 shadow-sm space-y-4">
                 <h2 className="font-serif text-2xl">Suas parcelas</h2>
+
+                {/* F36/E100 — as duas respostas que ela abre o link para
+                    procurar, ACIMA do extrato. Elas estavam a uma soma de
+                    distância num carnê de oito linhas lido no celular, e cada
+                    uma voltava como mensagem de WhatsApp para a vendedora — o
+                    custo exato que o E78 existia para reduzir. */}
+                {dados!.resumoPagamento && (
+                  <div className="bg-muted/40 flex flex-wrap gap-x-8 gap-y-2 rounded-md p-4">
+                    <div>
+                      <p className="text-muted-foreground text-xs uppercase tracking-wider">
+                        Falta pagar
+                      </p>
+                      <p className="font-serif text-2xl tabular-nums">
+                        {brl(dados!.resumoPagamento.faltaPagar)}
+                      </p>
+                    </div>
+                    {dados!.resumoPagamento.proximaEm && (
+                      <div>
+                        <p className="text-muted-foreground text-xs uppercase tracking-wider">
+                          Próxima parcela
+                        </p>
+                        <p className="text-lg tabular-nums">
+                          {brl(dados!.resumoPagamento.proximaValor ?? 0)}
+                          <span className="text-muted-foreground">
+                            {" "}em {dataFmt.format(new Date(dados!.resumoPagamento.proximaEm))}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <ul className="divide-y">
                   {dados!.parcelas.map((p) => {
                     const paga = p.status === "PAGA";

@@ -4983,6 +4983,11 @@ export const GetPortalQueryParams = zod.object({
 export const GetPortalResponse = zod.object({
   "noivaNome": zod.string(),
   "lojaNome": zod.string(),
+  "resumoPagamento": zod.union([zod.object({
+  "faltaPagar": zod.number(),
+  "proximaEm": zod.coerce.date().nullish(),
+  "proximaValor": zod.number().nullish()
+}),zod.null()]).optional(),
   "orcamento": zod.union([zod.object({
   "lojaNome": zod.string(),
   "noivaNome": zod.string(),

@@ -8,11 +8,13 @@
 import type { OrcamentoPublico } from './orcamentoPublico';
 import type { PortalNoivaLookbook } from './portalNoivaLookbook';
 import type { PortalNoivaProvasItem } from './portalNoivaProvasItem';
+import type { PortalNoivaResumoPagamento } from './portalNoivaResumoPagamento';
 import type { PortalParcela } from './portalParcela';
 
 export interface PortalNoiva {
   noivaNome: string;
   lojaNome: string;
+  resumoPagamento?: PortalNoivaResumoPagamento;
   orcamento: OrcamentoPublico | null;
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];

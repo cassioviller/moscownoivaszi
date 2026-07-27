@@ -33,6 +33,7 @@ import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
 import { montarOrcamentoPublico, montarVestidosLookbook } from "../lib/visao-noiva";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+import { centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
 
 /**
  * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
@@ -144,10 +145,37 @@ router.get("/portal", async (req, res): Promise<void> => {
         .orderBy(asc(parcelasTable.numero))
     : [];
 
+  /**
+   * F36/E100 — as duas respostas que ela abre o link para procurar.
+   *
+   * O extrato lista oito linhas num celular e não dizia "falta pagar R$ X" nem
+   * "a próxima vence em DD/MM" — a uma soma de distância. Cada pergunta que o
+   * portal não responde volta como mensagem de WhatsApp para a vendedora, que é
+   * exatamente o custo que o E78 existia para reduzir.
+   *
+   * Em centavos, pelo mesmo motor do resto do sistema: `saldoAberto` desconta o
+   * que já entrou numa parcela PARCIAL — mostrar o previsto cheio cobraria de
+   * novo o que ela já pagou, na tela dela.
+   */
+  const abertas = parcelas.filter((p) => estaAberta(p));
+  const faltaPagarC = abertas.reduce((s, p) => s + centavos(saldoAberto(p)), 0);
+  const proxima = [...abertas].sort(
+    (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime(),
+  )[0];
+
   res.json(
     GetPortalResponse.parse({
       noivaNome: lead.noivaNome,
       lojaNome,
+      // Só quando há contrato: sem ele, um "falta pagar R$ 0,00" afirmaria algo
+      // sobre um acordo que não existe.
+      resumoPagamento: contrato[0]
+        ? {
+            faltaPagar: reais(faltaPagarC),
+            proximaEm: proxima?.vencimento ?? null,
+            proximaValor: proxima ? saldoAberto(proxima) : null,
+          }
+        : null,
       orcamento: orcamento
         ? await montarOrcamentoPublico(orcamento, lojaNome, lead.noivaNome)
         : null,
