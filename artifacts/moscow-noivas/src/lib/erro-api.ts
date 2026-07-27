@@ -93,8 +93,17 @@ export function mensagemApi(
  * o lugar certo. Silenciar seria a única saída errada.
  */
 export function aplicarErroDoServidor(
+  /**
+   * Tipado com `any` no caminho do campo de propósito. O `setError` do
+   * react-hook-form recebe um `FieldPath<T>` — uma união de literais derivada do
+   * schema —, e com `strictFunctionTypes` ligado (E104/A13) um parâmetro
+   * `string` é checado de forma CONTRAVARIANTE contra ele e não passa. Esta
+   * função é genérica por natureza: ela recebe caminhos que vêm do SERVIDOR, e
+   * o servidor não conhece o tipo do formulário.
+   */
   form: {
-    setError: (campo: string, erro: { type: string; message: string }) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setError: (campo: any, erro: { type: string; message: string }) => void;
     getValues: () => Record<string, unknown>;
   },
   err: unknown,

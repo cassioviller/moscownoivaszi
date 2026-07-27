@@ -63,7 +63,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
-| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | ⬜ | — |
+| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `PENDENTE`; falta D8 · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 

@@ -119,7 +119,12 @@ const ATENDIMENTO_WITH = {
   vendedora: true,
   bloqueio: { with: { vestido: true } },
   ajustes: {
-    with: { checklist: { orderBy: (t: typeof ajusteChecklistItensTable, { asc }: any) => [asc(t.ordem)] } },
+    // E104/A13: sem anotação explícita nos parâmetros. Com `strictFunctionTypes`
+    // ligado, um callback com parâmetro anotado é checado de forma
+    // CONTRAVARIANTE contra o que o drizzle espera, e a query relacional inteira
+    // deixa de tipar. Deixar o TS inferir é o que faz a flag valer sem
+    // desligá-la de novo.
+    with: { checklist: { orderBy: (t: any, { asc }: any) => [asc(t.ordem)] } },
   },
 } as const;
 
@@ -445,7 +450,8 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, 
 // Contexto relacional da fila da costureira: ajuste → atendimento →
 // bloqueio → {noiva, vestido, casamentoData} + checklist ordenado.
 const AJUSTE_WITH = {
-  checklist: { orderBy: (t: typeof ajusteChecklistItensTable, { asc }: any) => [asc(t.ordem)] },
+  // Ver a nota do ATENDIMENTO_WITH: sem anotação de parâmetro (E104/A13).
+  checklist: { orderBy: (t: any, { asc }: any) => [asc(t.ordem)] },
   atendimento: { with: { lead: true, bloqueio: { with: { vestido: true } } } },
 } as const;
 

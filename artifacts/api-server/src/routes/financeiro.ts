@@ -69,7 +69,10 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { usuarioNaLoja } from "../lib/escopo-loja";
-import { addDias, inicioDoDia } from "../lib/disponibilidade";
+// C10/E104: `addDias`/`inicioDoDia` são régua de DATA DE NEGÓCIO e moram no
+// financeiro-core. Vinham do módulo de disponibilidade de VESTIDOS, que é outro
+// assunto — a duplicação sobreviveu porque as duas cópias estavam certas.
+import { addDias, inicioDoDia } from "@workspace/financeiro-core";
 import { registrarAuditoria, acaoValida, quandoLocalSP, ROTULO_ACAO } from "../lib/auditoria";
 import {
   competenciaValida,
