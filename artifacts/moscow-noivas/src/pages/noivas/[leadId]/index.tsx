@@ -40,11 +40,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, Plus, Pencil } from "lucide-react";
+import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
+import { proximoPasso } from "@/lib/proximo-passo";
 import {
   dataLongaFmt,
   diasAteCasamento,
@@ -116,6 +117,8 @@ export default function NoivaDetalhe() {
   const contratosDaNoiva = contratos.data ?? [];
 
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  // F1: agendar é do módulo AGENDA — quem só edita a ficha não marca horário.
+  const podeAgendar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const novoOrcamento = async () => {
     try {
@@ -218,6 +221,16 @@ export default function NoivaDetalhe() {
   const urgente = dias !== null && casamentoUrgente(dias);
   const digits = whatsappDigits(lead.whatsapp);
 
+  // F5/E98: o que falta, em uma frase — em vez de ler oito cards para descobrir.
+  const contratoAtivo = contratosDaNoiva.find((c) => c.status === "ATIVO") ?? null;
+  const passo = proximoPasso({
+    etapa: lead.etapa,
+    leadId: leadId!,
+    temContratoAtivo: !!contratoAtivo,
+    contratoAtivoId: contratoAtivo?.id,
+    temOrcamento: orcamentosDaNoiva.length > 0,
+  });
+
   return (
     <div className="space-y-6">
       <Link
@@ -242,6 +255,20 @@ export default function NoivaDetalhe() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* F1/E98 — o link que faltava no caminho mais percorrido do app.
+              A ficha sabe o `leadId` e o formulário de agendar já aceita
+              `?noiva=` (`reservas/[bloqueioId].tsx` usa o mesmo deep-link há
+              tempos), mas daqui não havia caminho: agendar custava uma
+              navegação de sidebar mais uma busca por nome — com a noiva do
+              lado, esperando. Zero código do lado do formulário. */}
+          {podeAgendar && lead.etapa !== "PERDIDO" && (
+            <Button asChild data-testid="button-agendar-da-ficha">
+              <Link to={`/loja/${lojaId}/atendimentos/novo?noiva=${leadId}`}>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Agendar atendimento
+              </Link>
+            </Button>
+          )}
           {podeEditar && lead.etapa === "PERDIDO" && (
             <Button
               variant="outline"
@@ -278,6 +305,27 @@ export default function NoivaDetalhe() {
           </Button>
         </div>
       </div>
+
+      {/* F5/E98 — o que falta, em uma frase e um botão.
+
+          A ficha mostra oito cards, e quando a noiva é nova quase todos estão
+          vazios: a vendedora lia os oito para descobrir que o passo era marcar
+          o primeiro atendimento. A regra é pura e testada
+          (`lib/proximo-passo.ts`), e devolve `null` quando não há o que fazer —
+          uma faixa que aparece sempre vira moldura e ninguém lê. */}
+      {passo && (
+        <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+          <div className="min-w-0">
+            <p className="font-medium">{passo.titulo}</p>
+            {passo.detalhe && (
+              <p className="text-muted-foreground text-sm">{passo.detalhe}</p>
+            )}
+          </div>
+          <Button asChild size="sm" className="shrink-0" data-testid="button-proximo-passo">
+            <Link to={`/loja/${lojaId}${passo.href}`}>{passo.rotuloAcao}</Link>
+          </Button>
+        </div>
+      )}
 
       <AlertDialog
         open={perdendo}

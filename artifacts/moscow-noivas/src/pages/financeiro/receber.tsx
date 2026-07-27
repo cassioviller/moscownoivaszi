@@ -114,10 +114,25 @@ export default function Receber() {
   // Estorno
   const [parcelaEstornar, setParcelaEstornar] = useState<Parcela | null>(null);
 
-  // A tela é "o que vence nesta janela" — o recorte agora acontece no servidor
-  // (de/ate por vencimento, dia local). O filtro client-side abaixo permanece
-  // como cinto de segurança da mesma regra.
-  const janelaVencimento = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
+  /**
+   * A tela é "o que vence nesta janela" — o recorte acontece no servidor
+   * (de/ate por vencimento, dia local). O filtro client-side abaixo permanece
+   * como cinto de segurança da mesma regra.
+   *
+   * **F29/E98 — menos "Atrasadas".** Este filtro rodava sobre a janela do mês
+   * corrente, então quem clicava lia os atrasos de julho achando que lia a
+   * inadimplência inteira: uma parcela vencida em março simplesmente não
+   * existia na tela. É a pergunta de dinheiro mais perigosa do sistema para se
+   * responder pela metade — e a régua certa já existia no produto, em
+   * `/cobranca`, que pede `status: "abertas"` SEM janela.
+   *
+   * Atrasado não tem janela por definição: se venceu e não foi pago, é atraso,
+   * seja de ontem ou de dois anos.
+   */
+  const semJanela = filtro === "atrasadas";
+  const janelaVencimento = semJanela
+    ? { status: "abertas" as const }
+    : { de: intervalo.iniYMD, ate: intervalo.fimYMD };
   const parcelas = useListParcelas(activeLojaId!, janelaVencimento, {
     query: {
       queryKey: getListParcelasQueryKey(activeLojaId!, janelaVencimento),
@@ -140,8 +155,11 @@ export default function Receber() {
   };
 
   const naJanela = useMemo(
-    () => (parcelas.data ?? []).filter((p) => negocioNoIntervalo(p.vencimento, intervalo)),
-    [parcelas.data, intervalo.iniYMD, intervalo.fimYMD],
+    () =>
+      semJanela
+        ? (parcelas.data ?? [])
+        : (parcelas.data ?? []).filter((p) => negocioNoIntervalo(p.vencimento, intervalo)),
+    [parcelas.data, intervalo.iniYMD, intervalo.fimYMD, semJanela],
   );
 
   // Abertas contam o SALDO (E49): a parcela meio recebida entra aqui com o
@@ -316,6 +334,16 @@ export default function Receber() {
         ))}
       </div>
 
+      {/* Sem esta linha os campos de data pareceriam quebrados: eles continuam
+          na tela e deixam de valer. Dizer isso é mais barato do que escondê-los
+          — a pessoa precisa saber por que o número mudou. */}
+      {semJanela && (
+        <p className="text-muted-foreground text-sm">
+          Atraso não tem janela: isto mostra <strong>tudo que venceu e não foi pago</strong>, de
+          qualquer mês. O período acima não se aplica a este filtro.
+        </p>
+      )}
+
       {parcelas.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -340,9 +368,27 @@ export default function Receber() {
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
                   <div className="flex items-baseline justify-between gap-3">
+                    {/* E3/E98 — a tela mais trabalhosa do sistema mostrava
+                        quatro linhas visualmente IDÊNTICAS ("Entrada · vence
+                        16/07 · R$ 1.000,00"), e o nome da noiva só existia no
+                        CSV. Quem recebe precisava abrir o contrato de cada uma
+                        para saber de quem era. O dado sempre veio junto — o
+                        `contrato.lead` do GET (o spec até documenta que ele
+                        existe "para a cobrança juntar por aqui"); esta tela só
+                        não o lia. O nome vira a linha 1 e o link. */}
                     <div className="flex min-w-0 flex-col">
-                      <span className="truncate">{rotuloParcela(p)}</span>
-                      <span className="text-xs text-muted-foreground">
+                      {p.contrato?.leadId ? (
+                        <Link
+                          to={naLoja(`/noivas/${p.contrato.leadId}`)}
+                          className="truncate font-medium underline-offset-2 hover:underline"
+                        >
+                          {p.contrato.lead?.noivaNome ?? "Noiva"}
+                        </Link>
+                      ) : (
+                        <span className="truncate font-medium">{rotuloParcela(p)}</span>
+                      )}
+                      <span className="text-muted-foreground text-xs">
+                        {p.contrato?.leadId ? <>{rotuloParcela(p)} · </> : null}
                         Vence {dataFmt.format(new Date(p.vencimento))} ·{" "}
                         <Link to={naLoja(`/contratos/${p.contratoId}`)} className="underline underline-offset-2 hover:text-primary">
                           contrato

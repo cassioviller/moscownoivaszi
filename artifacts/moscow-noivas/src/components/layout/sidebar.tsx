@@ -28,7 +28,21 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
 import { moduloLiberado } from "@/lib/permissoes";
 
-type NavItem = { icon: typeof LayoutDashboard; label: string; href: string; modulo?: string };
+type NavItem = {
+  icon: typeof LayoutDashboard;
+  label: string;
+  href: string;
+  modulo?: string;
+  /**
+   * F9/E98 — gate de OU. "Mensagens de hoje" é construída por PARTES: os três
+   * blocos (confirmar presença, cobrar, orçamento vencendo) são gateados
+   * separadamente lá dentro, e cada um funciona sozinho. O item de menu, porém,
+   * exigia `agenda` — então quem cuida do financeiro nunca alcançava a tela que
+   * lista as noivas em atraso, embora o bloco dela fosse visível para essa
+   * pessoa. O menu era mais restritivo que a própria tela.
+   */
+  modulos?: string[];
+};
 
 // Agrupado por contexto: uma lista plana de 17 itens vira uma parede de leitura
 // serial. `modulo` espelha o gate de backend; item sem módulo é sempre visível.
@@ -41,7 +55,7 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
       { icon: Gem, label: "Noivas", href: "/noivas", modulo: "leads" },
       { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
       { icon: CalendarCheck, label: "Atendimentos", href: "/atendimentos", modulo: "agenda" },
-      { icon: MessageCircle, label: "Mensagens de hoje", href: "/mensagens", modulo: "agenda" },
+      { icon: MessageCircle, label: "Mensagens de hoje", href: "/mensagens", modulos: ["agenda", "financeiro", "leads"] },
     ],
   },
   {
@@ -92,8 +106,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const podeTrocarDeLoja = (session?.lojas?.length ?? 0) > 1;
   const base = `/loja/${lojaId}`;
 
-  const podeVer = (item: NavItem) =>
-    !item.modulo || !acessosModulos || moduloLiberado(acessosModulos[item.modulo]);
+  const podeVer = (item: NavItem) => {
+    if (!acessosModulos) return true;
+    if (item.modulos) return item.modulos.some((m) => moduloLiberado(acessosModulos[m]));
+    return !item.modulo || moduloLiberado(acessosModulos[item.modulo]);
+  };
 
   return (
     <div className="flex h-full w-full flex-col bg-sidebar overflow-y-auto">
