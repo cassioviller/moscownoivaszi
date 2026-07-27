@@ -5708,15 +5708,13 @@ export const gerarPlanoParcelasBodyEntradaMin = 0;
 
 export const gerarPlanoParcelasBodyNumParcelasMax = 360;
 
-export const gerarPlanoParcelasBodyPeriodicidadeDiasMax = 3650;
-
 
 
 export const GerarPlanoParcelasBody = zod.object({
   "entrada": zod.number().min(gerarPlanoParcelasBodyEntradaMin).optional(),
   "numParcelas": zod.number().min(1).max(gerarPlanoParcelasBodyNumParcelasMax),
   "primeiroVencimento": zod.coerce.date(),
-  "periodicidadeDias": zod.number().min(1).max(gerarPlanoParcelasBodyPeriodicidadeDiasMax).optional()
+  "vencimentoEntrada": zod.coerce.date().optional()
 })
 
 export const GerarPlanoParcelasResponseItem = zod.object({
@@ -6060,7 +6058,9 @@ export const ExportarParcelasResponse = zod.unknown()
 
 /**
  * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
- * @summary Remove uma conta a pagar ainda PREVISTA
+ *
+ * E94/B8: a conta nascida de um fechamento de comissão (`origemComissaoFechamentoId`) também é recusada, com `CONTA_DE_COMISSAO`. A FK do fechamento é ON DELETE SET NULL, então apagá-la zerava o vínculo em silêncio: a vendedora não recebia, `pendencias` não acusava (o fechamento continua existindo) e reabrir não reparava, porque as guardas do reabrir dependem do vínculo. O caminho para desfazer é reabrir o fechamento.
+ * @summary Remove uma conta a pagar ainda PREVISTA e sem dono
  */
 export const RemoveContaPagarParams = zod.object({
   "lojaId": zod.coerce.string(),

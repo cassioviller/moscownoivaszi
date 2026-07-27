@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { ratearRestante } from "../lib/parcelas";
+import { ratearRestante } from "@workspace/financeiro-core";
 
 /**
  * Testes de PROPRIEDADE do rateio (E16): C6 provou que centavo morde — aqui a

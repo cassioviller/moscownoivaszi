@@ -16,7 +16,6 @@ import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
 import { gerarContratoPdf } from "../lib/contrato-pdf";
-import { ratearRestante } from "../lib/parcelas";
 import {
   EstornarParcelaResponse,
   GerarPlanoParcelasBody,
@@ -36,7 +35,15 @@ import {
   ReceberParcelaBody,
   ReceberParcelaResponse
 } from "@workspace/api-zod";
-import { estaAberta, STATUS_ABERTO } from "@workspace/financeiro-core";
+import {
+  ancoraDeNegocio,
+  brutoEmCentavos,
+  diaDeNegocio,
+  estaAberta,
+  liquidoEmCentavos,
+  montarPlanoParcelas,
+  STATUS_ABERTO,
+} from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
@@ -51,16 +58,11 @@ router.use("/lojas/:lojaId/parcelas", requireModulo("leads"));
 const cent = (reais: number) => Math.round(reais * 100);
 const reais = (centavos: number) => centavos / 100;
 
-/**
- * Líquido em centavos a partir do bruto e do desconto do orçamento, calculado
- * EXATAMENTE como o frontend (`orcamentos/[id].tsx`) — senão um contrato válido
- * seria recusado por um centavo de arredondamento divergente.
- */
-function liquidoEmCentavos(brutoC: number, tipo: string | null, valor: number | null): number {
-  if (!tipo || !valor) return brutoC;
-  if (tipo === "PERCENTUAL") return Math.round((brutoC * (100 - valor)) / 100);
-  return Math.max(0, brutoC - cent(valor)); // VALOR
-}
+// O líquido do orçamento é `liquidoEmCentavos`, do financeiro-core. Ele morava
+// aqui, e o comentário desta função afirmava que a conta era feita "EXATAMENTE
+// como o frontend" — não era: a tela, a rota de orçamento e a visão da noiva
+// calculavam em reais float. A função documentava o invariante que quebrava,
+// e por isso o E95 a tirou daqui em vez de consertar o comentário.
 
 type ItemSnapshot = Pick<
   InsertContratoItem,
@@ -183,7 +185,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     // parcelas e PDF, com a soma dos itens sem fechar com o total.
     descontoTipo = orcamento.descontoTipo;
     descontoValor = orcamento.descontoValor;
-    const brutoC = itens.reduce((acc, it) => acc + cent(it.valorUnitario) * it.quantidade, 0);
+    const brutoC = brutoEmCentavos(itens);
     const liquidoC = liquidoEmCentavos(brutoC, orcamento.descontoTipo, orcamento.descontoValor);
     if (liquidoC !== cent(contratoData.valorTotal)) {
       res.status(422).json({
@@ -838,10 +840,9 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
   res.status(204).send();
 });
 
-const DIA_MS = 86_400_000;
-
-// Gera o plano de pagamento de um contrato sem parcelas. Cálculo em centavos;
-// a última parcela absorve o resto da divisão (sem drift de arredondamento).
+// Gera o plano de pagamento de um contrato sem parcelas. Valores e datas saem
+// de `montarPlanoParcelas` (financeiro-core) — a mesma função que a tela de
+// orçamento usa para montar o carnê e para mostrar a prévia dele.
 // Entrada (se > 0) vira a linha `numero 0` no primeiro vencimento e as N
 // parcelas começam um período depois.
 // E71: cobrança que nasce DEPOIS do plano — multa por devolução atrasada,
@@ -910,44 +911,37 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     return;
   }
 
-  const totalCentavos = Math.round(Number(contrato.valorTotal) * 100);
-  const entradaCentavos = Math.round((parsed.data.entrada ?? 0) * 100);
+  const totalCentavos = cent(Number(contrato.valorTotal));
+  const entradaCentavos = cent(parsed.data.entrada ?? 0);
   if (entradaCentavos > totalCentavos) {
     res.status(422).json({ error: "ENTRADA_MAIOR", detalhe: "Entrada maior que o valor total do contrato" });
     return;
   }
 
-  const n = parsed.data.numParcelas;
-  const periodicidadeDias = parsed.data.periodicidadeDias ?? 30;
-  const venc0 = new Date(parsed.data.primeiroVencimento);
-  const restante = totalCentavos - entradaCentavos;
-  const valores = ratearRestante(restante, n);
+  // E95: o carnê sai do MESMO `montarPlanoParcelas` que a tela de orçamento
+  // usa. Antes esta rota espaçava por 30 dias corridos e a tela por mês, e
+  // `primeiroVencimento` significava a ENTRADA aqui e a PARCELA 1 lá — o mesmo
+  // campo mudando de sentido conforme houvesse entrada. A régua agora é uma:
+  // mensal por dia fixo, e `primeiroVencimento` é sempre a parcela 1.
+  const plano = montarPlanoParcelas({
+    totalCentavos,
+    entradaCentavos,
+    numParcelas: parsed.data.numParcelas,
+    primeiroVencimento: diaDeNegocio(parsed.data.primeiroVencimento),
+    vencimentoEntrada: parsed.data.vencimentoEntrada
+      ? diaDeNegocio(parsed.data.vencimentoEntrada)
+      : undefined,
+  });
 
-  const linhas: (typeof parcelasTable.$inferInsert)[] = [];
-  if (entradaCentavos > 0) {
-    linhas.push({
-      id: randomUUID(),
-      lojaId,
-      contratoId: contrato.id,
-      numero: 0,
-      descricao: "Entrada",
-      valorPrevisto: entradaCentavos / 100,
-      vencimento: venc0,
-    });
-  }
-  const offsetInicial = entradaCentavos > 0 ? 1 : 0;
-  for (let i = 0; i < n; i++) {
-    const valor = valores[i];
-    linhas.push({
-      id: randomUUID(),
-      lojaId,
-      contratoId: contrato.id,
-      numero: i + 1,
-      descricao: `Parcela ${i + 1}/${n}`,
-      valorPrevisto: valor / 100,
-      vencimento: new Date(venc0.getTime() + (i + offsetInicial) * periodicidadeDias * DIA_MS),
-    });
-  }
+  const linhas: (typeof parcelasTable.$inferInsert)[] = plano.map((p) => ({
+    id: randomUUID(),
+    lojaId,
+    contratoId: contrato.id,
+    numero: p.numero,
+    descricao: p.descricao,
+    valorPrevisto: reais(p.valorCentavos),
+    vencimento: ancoraDeNegocio(p.vencimento),
+  }));
 
   // createMany atômico: sem plano parcial.
   const criadas = await db.insert(parcelasTable).values(linhas).returning();

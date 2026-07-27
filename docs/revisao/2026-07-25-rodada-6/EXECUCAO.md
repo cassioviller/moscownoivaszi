@@ -54,7 +54,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E92 | Consertos de uma linha (E1 🔴, E2 🔴, +15) | P | ✅ | `6cbd004` · [notas](execucao/E92.md) |
 | E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ✅ | `1917f16` · [notas](execucao/E93.md) |
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
-| E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ⬜ | — |
+| E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `PENDENTE` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D5, D6) | M | ⬜ | — |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ⬜ | — |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
@@ -88,6 +88,10 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S4 | **`DELETE /contas-pagar/:id` não grava auditoria.** Apagar uma conta prevista é sumir com uma obrigação sem rastro — mesma classe do B3, um degrau abaixo (não move caixa realizado). | 🟡 | [E94](execucao/E94.md) vp1 |
 | S5 | **A parcela PARCIAL sob `destinoPago: "manter"` é ambígua.** Ela vira CANCELADA, o que tira do horizonte o saldo que falta (certo) mas também tira do caixa realizado o que já entrou — e sob "manter" a loja está dizendo que ficou com o dinheiro. Representar "cancelada, mas o recebido permanece no caixa" exige decidir se o motor passa a olhar `valorRecebido` em vez do status: mudança de régua com alcance grande. Sob "estornar" não há ambiguidade. | decisão de produto | [E94](execucao/E94.md) vp2 |
 | S6 | **O estorno avulso de parcela tem a mesma leitura-fora-da-transação do B6**, mas o `SET` dele é absoluto (sempre PREVISTA/null): dois estornos simultâneos convergem. Pior caso é auditar duas vezes, não perder valor. | 🔵 | [E94](execucao/E94.md) vp3 |
+| S7 | **`e2e/25-confirmar-presenca` colide consigo mesma entre execuções.** Ela cria o atendimento sempre na cabine fixa `e2e-cabine-1`, às `14:mm:ss` de HOJE, num banco que persiste — quanto mais vezes a suíte roda no mesmo dia, maior a chance de 409 `Registro duplicado ou conflito de dados`. Mesma classe que a sobra da rodada 5 resolveu noutro spec ("recurso próprio por execução"). Um vermelho desses se lê como regressão de dinheiro e não é. | 🟠 (infra de teste) | [E95](execucao/E95.md) |
+| S8 | **`contratos.ts` mantém `cent`/`reais` locais**, idênticos aos do `financeiro-core`, com dezenas de call-sites — a mesma classe do `parseValor` quadruplicado que o E95 fechou, em volume maior. | 🟡 | [E95](execucao/E95.md) vp |
+| S9 | **O teto de orçamento (E33) compara em reais.** `acimaDoTeto` faz `totais.liquido > teto` em float enquanto o excedente já saiu para centavos. Um centavo no limiar, sem consequência de dinheiro — mas é régua pela metade. | 🔵 | [E95](execucao/E95.md) vp |
+| S10 | **A tela de contrato gera o carnê às cegas.** O `gerar-plano` de lá não tem prévia, e desde o E95 existe a função para mostrá-la — é o F16 aplicado à tela irmã. | 🟡 | [E95](execucao/E95.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
 
@@ -285,3 +289,41 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   delas. Entregue a metade que os dados sustentam (o diálogo passou a mostrar o
   que será desfeito, item a item, com datas e valores); a outra metade fica
   aberta como decisão de produto com custo de migração, não como "falta usar".
+### Sessão 3 — 2026-07-27
+
+- **Auditoria do sistema de anotação** antes de executar (commit `2c19a55`):
+  quatro costuras entre camadas que já existiam. A regra do E2E subiu para o
+  METODO (regra 11) junto com a crítica 8 que a prova; o achado do
+  `E2E_API_PROXY` foi para o `replit.md`, como a regra 8 mandava desde que foi
+  escrita a partir dele; esta tabela de **Sobras** nasceu (crítica 9 + regra 12),
+  porque o `DELETE /admin/lojas` — o achado mais grave da rodada — estava escrito
+  em três lugares e era trabalho em nenhum; e o repo ganhou `CLAUDE.md` na raiz,
+  que é o que faz o método ser lido no começo de toda sessão em vez de por acaso.
+- **E95 executado** (notas completas em `execucao/E95.md`). Duas decisões de
+  produto foram tomadas antes do código, como a regra 5 manda: **carnê mensal
+  por dia fixo, com `primeiroVencimento` sempre significando a parcela 1**, e
+  **validade padrão de 30 dias**. O mapeamento prévio contradisse o backlog em
+  quatro pontos — o pior deles: a semântica do servidor não era "a entrada", era
+  CONDICIONAL (`offsetInicial = entrada > 0 ? 1 : 0`), o mesmo campo mudando de
+  sentido conforme outro campo. E o comentário do `liquidoEmCentavos` afirmava,
+  por escrito, o invariante que a função quebrava — *"calculado EXATAMENTE como
+  o frontend"* —, o que é pior que comentário nenhum: desliga a suspeita de quem
+  lê. Por isso ela saiu do arquivo em vez de o comentário ser corrigido.
+- **Errei um mapeamento e o compilador me corrigiu.** Afirmei — inclusive ao
+  dono, por escrito, como argumento para a decisão — que o `gerar-plano` não
+  tinha um único consumidor no frontend. Tem: `contratos/[id].tsx` chama o hook
+  gerado `useGerarPlanoParcelas`. Procurei pela string da ROTA, e num repo com
+  codegen o frontend não fala esse vocabulário — ele fala o do símbolo gerado. A
+  decisão de mérito não mudou, mas o alcance dela sim: o campo "A cada (dias)"
+  daquela tela saiu, e isso precisou ser comunicado. **Regra candidata para a R7:
+  "quem chama X" se prova pelo símbolo ou pelo compilador, nunca pela URL.**
+- **O E2E completo passou (131), e a única falha da primeira execução não era do
+  épico** — `25-confirmar-presenca` colide consigo mesma entre execuções (S7). O
+  método pede a suíte completa antes do commit justamente para separar isso; o
+  custo é que um flake de infraestrutura chega vestido de regressão de dinheiro.
+- Um achado fora de qualquer trilha, encontrado ao rodar a suíte: **o typecheck
+  do `api-server` estava VERMELHO no `main` desde o E94** — `quitarContas`
+  declarava `data: string` enquanto os dois call-sites passam `Date` e a coluna é
+  `Date`. As notas do E94 afirmam typecheck limpo. Consertado aqui (uma linha),
+  porque não dá para medir o E95 sobre uma base vermelha.
+

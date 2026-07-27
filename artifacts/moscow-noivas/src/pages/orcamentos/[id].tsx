@@ -27,7 +27,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { addMonths, format } from "date-fns";
+import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,11 +62,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
+import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
+import { ancoraDeNegocio, montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
+import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
 
-function round2(v: number): number {
-  return Math.round(v * 100) / 100;
-}
+// E95: não existe aritmética de dinheiro neste arquivo. O `round2` que morava
+// aqui era a terceira cópia de uma conta que o servidor faz em centavos —
+// todo número da tela sai agora da mesma função que o servidor vai validar.
 
 const novoItemSchema = z.object({
   tipo: z.enum(["VESTIDO", "SERVICO", "AJUSTE"]),
@@ -97,6 +101,65 @@ const gerarContratoSchema = z.object({
 type GerarContratoValues = z.infer<typeof gerarContratoSchema>;
 
 const FORMAS = ["PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "DINHEIRO", "BOLETO", "TRANSFERENCIA", "OUTRO"] as const;
+
+const diaCurto = (dia: string) => format(ancoraDeNegocio(dia), "dd/MM/yyyy");
+
+/**
+ * F16 — o carnê que vai ser criado, à vista, antes de criar.
+ *
+ * A noiva pergunta "quanto fica por mês?" e a vendedora dividia de cabeça: o
+ * plano só aparecia DEPOIS do contrato gerado, numa outra tela. E como a tela
+ * montava as parcelas com uma conta própria, o que ela teria mostrado nem era
+ * o que o servidor gravaria.
+ *
+ * As linhas aqui são o MESMO array que o `POST /contratos` recebe — não há
+ * segunda conta entre o que a noiva vê e o que vai para o banco.
+ */
+function PreviaDoCarne({ erro, linhas }: { erro: string | null; linhas: ParcelaPlanejada[] | null }) {
+  if (erro) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{erro}</AlertDescription>
+      </Alert>
+    );
+  }
+  if (!linhas || linhas.length === 0) return null;
+
+  const entrada = linhas.find((l) => l.numero === 0);
+  const parcelas = linhas.filter((l) => l.numero > 0);
+  const primeira = parcelas[0];
+  const ultima = parcelas[parcelas.length - 1];
+  // A última só difere das irmãs quando a divisão não é exata — e é por isso
+  // que ela merece ser dita: é o centavo que a noiva confere no carnê.
+  const ultimaDifere = !!primeira && !!ultima && ultima.valorCentavos !== primeira.valorCentavos;
+
+  return (
+    <div className="bg-muted/40 space-y-2 rounded-md border p-3">
+      <p className="text-sm font-medium">
+        {entrada ? `Entrada de ${brl(reais(entrada.valorCentavos))} em ${diaCurto(entrada.vencimento)}` : null}
+        {entrada && parcelas.length > 0 ? " · " : null}
+        {parcelas.length > 0 ? (
+          <>
+            {parcelas.length}× de {brl(reais(primeira.valorCentavos))}
+            {ultimaDifere ? ` (a última de ${brl(reais(ultima.valorCentavos))})` : null}
+            {parcelas.length > 1 ? `, de ${diaCurto(primeira.vencimento)} a ${diaCurto(ultima.vencimento)}` : ` em ${diaCurto(primeira.vencimento)}`}
+          </>
+        ) : null}
+      </p>
+      <ul className="max-h-40 space-y-0.5 overflow-y-auto text-sm">
+        {linhas.map((l) => (
+          <li key={l.numero} className="flex justify-between gap-4">
+            <span className="text-muted-foreground">{l.descricao}</span>
+            <span className="tabular-nums">
+              {brl(reais(l.valorCentavos))} · {diaCurto(l.vencimento)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function OrcamentoDetail() {
   const { activeLojaId, user, acessosModulos } = useAuth();
@@ -180,14 +243,9 @@ export default function OrcamentoDetail() {
   );
 
   const totais = useMemo(() => {
-    const bruto = round2((orcamento?.itens ?? []).reduce((acc, it) => acc + it.quantidade * it.valorUnitario, 0));
-    let liquido = bruto;
-    if (orcamento?.descontoTipo === "PERCENTUAL" && orcamento.descontoValor) {
-      liquido = round2(bruto * (1 - orcamento.descontoValor / 100));
-    } else if (orcamento?.descontoTipo === "VALOR" && orcamento.descontoValor) {
-      liquido = round2(bruto - orcamento.descontoValor);
-    }
-    return { bruto, liquido: Math.max(0, liquido) };
+    const brutoC = brutoEmCentavos(orcamento?.itens ?? []);
+    const liquidoC = liquidoEmCentavos(brutoC, orcamento?.descontoTipo, orcamento?.descontoValor);
+    return { bruto: reais(brutoC), liquido: reais(liquidoC), brutoC, liquidoC };
   }, [orcamento]);
 
   // Teto de orçamento da noiva (E33): o número que ela deu em Interesses e que
@@ -195,7 +253,7 @@ export default function OrcamentoDetail() {
   // envio — a conversa difícil na hora de ajustar, não depois do "achei caro".
   const teto = leadCompleto.data?.interesse?.tetoOrcamento ?? null;
   const acimaDoTeto = teto != null && teto > 0 && totais.liquido > teto;
-  const excedenteTeto = acimaDoTeto ? round2(totais.liquido - teto) : 0;
+  const excedenteTeto = acimaDoTeto ? reais(totais.liquidoC - centavos(teto)) : 0;
 
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
@@ -212,9 +270,61 @@ export default function OrcamentoDetail() {
     defaultValues: { cpf: "", formaPagamento: "", dataCasamento: "", entrada: "0", numParcelas: "1", primeiroVencimento: "" },
   });
 
+  // F16/C2: o carnê que a tela vai criar, calculado ao vivo enquanto a
+  // vendedora digita — e é o MESMO objeto que ela envia. Antes, a noiva
+  // perguntava "quanto fica por mês?" e a vendedora dividia de cabeça; o plano
+  // só aparecia depois do contrato gerado.
+  const entradaDigitada = contratoForm.watch("entrada");
+  const numParcelasDigitado = contratoForm.watch("numParcelas");
+  const primeiroVencimento = contratoForm.watch("primeiroVencimento");
+  const plano = useMemo((): { erro: string | null; linhas: ParcelaPlanejada[] | null } => {
+    const totalC = totais.liquidoC;
+    if (totalC <= 0) return { erro: "Adicione itens antes de gerar o contrato.", linhas: null };
+
+    const entrada = parseValor(entradaDigitada ?? "");
+    if (entrada !== null && !Number.isFinite(entrada)) {
+      return { erro: "Entrada inválida — use apenas números.", linhas: null };
+    }
+    const entradaC = entrada === null ? 0 : centavos(entrada);
+    if (entradaC < 0) return { erro: "A entrada não pode ser negativa.", linhas: null };
+    if (entradaC > totalC) return { erro: "A entrada não pode superar o total.", linhas: null };
+
+    const numParcelas = Math.trunc(Number(numParcelasDigitado) || 0);
+    if (totalC - entradaC > 0 && numParcelas < 1) {
+      return { erro: "Informe o número de parcelas.", linhas: null };
+    }
+    // Sem a data ainda não há carnê a mostrar — e isso não é erro, é formulário
+    // pela metade: o toast só aparece se ela tentar enviar assim.
+    if (!primeiroVencimento) return { erro: null, linhas: null };
+
+    try {
+      return {
+        erro: null,
+        linhas: montarPlanoParcelas({
+          totalCentavos: totalC,
+          entradaCentavos: entradaC,
+          numParcelas,
+          primeiroVencimento,
+          // C6: o dia de HOJE no fuso da loja, não o instante. `new Date()`
+          // das 21h à meia-noite carimbava a entrada no dia seguinte — e no
+          // dia 31, no mês e na competência seguintes.
+          vencimentoEntrada: hojeLocal(),
+        }),
+      };
+    } catch {
+      return { erro: "Não consegui montar o carnê com esses valores.", linhas: null };
+    }
+  }, [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento]);
+
   // Desconto (aplicado via PATCH; estado local só para os inputs).
   const [descontoTipo, setDescontoTipo] = useState<string>("");
   const [descontoValor, setDescontoValor] = useState<string>("");
+  // F18: a validade vem do servidor (que agora sempre a carimba) e a tela deixa
+  // mudá-la. `diaDeNegocio` e não `diaLocal`: é uma data de negócio, ancorada
+  // ao meio-dia — lê-la como instante joga o dia para trás em alguns fusos.
+  const [validadeEditada, setValidadeEditada] = useState<string | null>(null);
+  const validade = validadeEditada ?? (orcamento?.validade ? diaDeNegocio(orcamento.validade) : "");
+  const setValidade = setValidadeEditada;
 
   if (isError) {
     return (
@@ -282,9 +392,13 @@ export default function OrcamentoDetail() {
   };
 
   const onAddItem = async (values: NovoItemValues) => {
-    const valorUnitario = Number(values.valorUnitario);
+    // C3: `Number("5.800")` é 5,8 — quem digita cinco mil e oitocentos criava
+    // um item de R$ 5,80 sem aviso nenhum. `parseValor` lê ponto de milhar e
+    // vírgula decimal como pt-BR, e separa "não digitou" (null) de "digitou
+    // bobagem" (NaN).
+    const valorUnitario = parseValor(values.valorUnitario);
     const quantidade = Number(values.quantidade) || 1;
-    if (!Number.isFinite(valorUnitario) || valorUnitario <= 0) {
+    if (valorUnitario === null || !Number.isFinite(valorUnitario) || valorUnitario <= 0) {
       toast({ title: "Valor unitário inválido", variant: "destructive" });
       return;
     }
@@ -319,9 +433,9 @@ export default function OrcamentoDetail() {
 
   const onEditarItem = async (values: EditarItemValues) => {
     if (!itemEmEdicao) return;
-    const valorUnitario = Number(values.valorUnitario);
+    const valorUnitario = parseValor(values.valorUnitario);
     const quantidade = Math.trunc(Number(values.quantidade) || 1);
-    if (!Number.isFinite(valorUnitario) || valorUnitario <= 0) {
+    if (valorUnitario === null || !Number.isFinite(valorUnitario) || valorUnitario <= 0) {
       toast({ title: "Valor unitário inválido", variant: "destructive" });
       return;
     }
@@ -349,6 +463,25 @@ export default function OrcamentoDetail() {
       await invalidar();
     } catch (err) {
       toast({ title: "Erro ao remover item", description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    }
+  };
+
+  const onSalvarValidade = async () => {
+    if (!validade) {
+      toast({ title: "Informe até quando a proposta vale", variant: "destructive" });
+      return;
+    }
+    try {
+      await atualizar.mutateAsync({
+        lojaId: activeLojaId!,
+        orcamentoId: id!,
+        data: { validade: diaParaISO(validade) },
+      });
+      setValidadeEditada(null);
+      await invalidar();
+      toast({ title: "Validade salva" });
+    } catch (err) {
+      toast({ title: "Erro ao salvar a validade", description: mensagemApi(err, "Tente novamente."), variant: "destructive" });
     }
   };
 
@@ -402,42 +535,23 @@ export default function OrcamentoDetail() {
   };
 
   const onGerarContrato = async (values: GerarContratoValues) => {
-    const total = totais.liquido;
-    const entrada = round2(Number(values.entrada) || 0);
-    const numParcelas = Math.max(0, Math.trunc(Number(values.numParcelas) || 0));
-    const restante = round2(total - entrada);
-
-    if (total <= 0) {
-      toast({ title: "Orçamento sem itens", description: "Adicione itens antes de gerar o contrato.", variant: "destructive" });
+    if (plano.erro) {
+      toast({ title: plano.erro, variant: "destructive" });
       return;
     }
-    if (entrada < 0 || entrada > total) {
-      toast({ title: "Entrada inválida", description: "A entrada não pode superar o total.", variant: "destructive" });
-      return;
-    }
-    if (restante > 0 && numParcelas < 1) {
-      toast({ title: "Informe o número de parcelas", variant: "destructive" });
+    if (!plano.linhas) {
+      toast({ title: "Informe o primeiro vencimento", variant: "destructive" });
       return;
     }
 
-    // Parcelas: entrada = número 0; restante dividido igualmente, com o ajuste
-    // de centavos na última parcela (a soma PRECISA bater com o total — 422).
-    const parcelas: { numero: number; descricao?: string; valorPrevisto: number; vencimento: string }[] = [];
-    if (entrada > 0) {
-      parcelas.push({ numero: 0, descricao: "Entrada", valorPrevisto: entrada, vencimento: new Date().toISOString() });
-    }
-    if (restante > 0) {
-      const base = Math.floor((restante / numParcelas) * 100) / 100;
-      const primeiro = new Date(`${values.primeiroVencimento}T12:00:00-03:00`);
-      for (let i = 1; i <= numParcelas; i++) {
-        const valor = i === numParcelas ? round2(restante - base * (numParcelas - 1)) : base;
-        parcelas.push({
-          numero: i,
-          valorPrevisto: valor,
-          vencimento: addMonths(primeiro, i - 1).toISOString(),
-        });
-      }
-    }
+    // O carnê é o MESMO objeto que a prévia mostrou — não há segunda conta
+    // entre o que a noiva viu e o que vai para o banco.
+    const parcelas = plano.linhas.map((p) => ({
+      numero: p.numero,
+      descricao: p.descricao,
+      valorPrevisto: reais(p.valorCentavos),
+      vencimento: diaParaISO(p.vencimento),
+    }));
 
     try {
       const contrato = await createContrato.mutateAsync({
@@ -446,7 +560,7 @@ export default function OrcamentoDetail() {
           leadId: orcamento.leadId,
           orcamentoId: orcamento.id,
           vendedoraId: user!.id,
-          valorTotal: total,
+          valorTotal: totais.liquido,
           // E72: prende as reservas marcadas — cancelar o contrato as liberta.
           bloqueioVestidoIds: reservasDaNoiva
             .filter((r) => !reservasDesmarcadas.has(r.id))
@@ -494,6 +608,11 @@ export default function OrcamentoDetail() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="text-sm px-3 py-1">{statusOrcamentoLabel(orcamento.status)}</Badge>
+          {/* F19: o aceite ao lado do status, e não só no rodapé — é o que
+              decide se dá para aprovar sem perder a prova da noiva. */}
+          <Badge variant={orcamento.aceitoEm ? "default" : "outline"} className="text-sm px-3 py-1">
+            {orcamento.aceitoEm ? "Aceito pela noiva" : "Sem aceite da noiva"}
+          </Badge>
           {podeEditar && orcamento.status !== "RECUSADO" && (
             <Button variant="outline" size="sm" onClick={onLinkNoiva} disabled={criarLink.isPending}>
               <Link2 className="h-4 w-4 mr-2" />
@@ -544,6 +663,17 @@ export default function OrcamentoDetail() {
                     <AlertDialogTitle>Aprovar este orçamento?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Aprovado, o orçamento vira a base do contrato e deixa de ser editável.
+                      {/* F19: aprovar antes do aceite APAGA o botão de aceite da
+                          noiva — o portal só o oferece enquanto o orçamento está
+                          ENVIADO. O E74 morria por ordem de cliques, e a tela não
+                          dizia uma palavra. */}
+                      {!orcamento.aceitoEm && (
+                        <span className="text-destructive mt-2 block font-medium">
+                          A noiva ainda não aceitou pelo link. Ao aprovar agora, o botão de aceite
+                          some do portal dela — você fica sem a prova digital de que ela concordou
+                          com este valor.
+                        </span>
+                      )}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -783,6 +913,27 @@ export default function OrcamentoDetail() {
                   Aplicar desconto
                 </Button>
               </div>
+
+              {/* F18: a validade era invisível e inalterável pela tela — só
+                  existia se quem criou o orçamento tivesse mandado, e os dois
+                  atalhos naturais não mandavam. É ela que põe a proposta na
+                  fila de lembrete do E69. */}
+              <div className="flex flex-wrap items-end gap-2 border-t pt-4">
+                <div className="w-44">
+                  <label className="text-xs text-muted-foreground" htmlFor="orcamento-validade">
+                    Proposta vale até
+                  </label>
+                  <Input
+                    id="orcamento-validade"
+                    type="date"
+                    value={validade}
+                    onChange={(e) => setValidade(e.target.value)}
+                  />
+                </div>
+                <Button variant="outline" onClick={onSalvarValidade} disabled={atualizar.isPending}>
+                  Salvar validade
+                </Button>
+              </div>
             </>
           )}
         </CardContent>
@@ -968,7 +1119,7 @@ export default function OrcamentoDetail() {
                   name="primeiroVencimento"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>1º vencimento *</FormLabel>
+                      <FormLabel>1ª parcela vence em *</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -977,6 +1128,9 @@ export default function OrcamentoDetail() {
                   )}
                 />
               </div>
+
+              <PreviaDoCarne erro={plano.erro} linhas={plano.linhas} />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setContratoOpen(false)}>
                   Cancelar

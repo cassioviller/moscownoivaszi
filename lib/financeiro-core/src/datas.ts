@@ -75,6 +75,39 @@ export function addDias(dia: string, n: number): string {
   return instante.toISOString().slice(0, 10);
 }
 
+/**
+ * Soma `n` meses a um dia YYYY-MM-DD, grampeando ao último dia do mês curto.
+ *
+ * Um carnê combinado para o dia 31 não existe em fevereiro, e "31/02" viraria
+ * 03/03 na aritmética do `Date` — a parcela de fevereiro venceria em março,
+ * calada. Mesmo grampo de `vencimentoDaCompetencia` no servidor.
+ *
+ * O grampo NÃO é pegajoso, e isso é de propósito: cada parcela é contada a
+ * partir da âncora original, então 31/01 → 28/02 → **31/03**. Se cada uma
+ * partisse da anterior, o carnê inteiro desceria para o dia 28 depois de um
+ * único fevereiro.
+ */
+export function addMeses(dia: string, n: number): string {
+  const [ano, mes, diaMes] = dia.split("-").map(Number);
+  const alvo = new Date(Date.UTC(ano, mes - 1 + n, 1));
+  const ultimoDiaDoAlvo = new Date(
+    Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  const pad = (v: number) => String(v).padStart(2, "0");
+  return `${alvo.getUTCFullYear()}-${pad(alvo.getUTCMonth() + 1)}-${pad(Math.min(diaMes, ultimoDiaDoAlvo))}`;
+}
+
+/**
+ * O INSTANTE de uma data de negócio: meio-dia de São Paulo.
+ *
+ * A âncora ao meio-dia é a que faz `diaDeNegocio` devolver o mesmo dia em
+ * qualquer fuso de leitura. Mesma convenção de `diaParaISO` no frontend e de
+ * `vencimentoDaCompetencia` no servidor — que agora é esta função.
+ */
+export function ancoraDeNegocio(dia: string): Date {
+  return new Date(`${dia}T12:00:00-03:00`);
+}
+
 /** Dias inteiros entre dois dias YYYY-MM-DD (b − a). */
 export function diasEntre(a: string, b: string): number {
   const dia = (s: string) => {

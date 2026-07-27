@@ -5331,14 +5331,21 @@ components:
         # ficam PAGAS no caixa, default) ou "estornar" (valor devolvido —
         # viram CANCELADA com campos de recebimento zerados).
         destinoPago: { type: string, enum: [manter, estornar] }
+    # E95: o carnê é MENSAL POR DIA FIXO, com o grampo de fim de mês (dia 31
+    # vira 28/02 e volta a 31/03). `periodicidadeDias` saiu: ela permitia
+    # espaçar por N dias corridos, o que fazia o dia do vencimento andar todo
+    # mês e a competência deixar de ser previsível — e era o default de 30 que
+    # divergia da tela, o único caminho que a loja usa de verdade.
     GerarPlanoInput:
       type: object
       required: [numParcelas, primeiroVencimento]
       properties:
         entrada: { type: number, minimum: 0 }
         numParcelas: { type: integer, minimum: 1, maximum: 360 }
+        # A data da PARCELA 1 — nunca a da entrada, mesmo quando há entrada.
         primeiroVencimento: { type: string, format: date-time }
-        periodicidadeDias: { type: integer, minimum: 1, maximum: 3650 }
+        # A entrada tem data própria; ausente, é hoje no fuso da loja.
+        vencimentoEntrada: { type: string, format: date-time }
 
     # ── Financeiro ──
     Parcela:

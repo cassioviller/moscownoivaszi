@@ -1824,11 +1824,7 @@ export interface GerarPlanoInput {
      */
   numParcelas: number;
   primeiroVencimento: string;
-  /**
-     * @minimum 1
-     * @maximum 3650
-     */
-  periodicidadeDias?: number;
+  vencimentoEntrada?: string;
 }
 
 export type ReceberParcelaInputFormaRecebimento = typeof ReceberParcelaInputFormaRecebimento[keyof typeof ReceberParcelaInputFormaRecebimento];

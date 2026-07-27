@@ -10786,7 +10786,9 @@ export const getRemoveContaPagarUrl = (lojaId: string,
 
 /**
  * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
- * @summary Remove uma conta a pagar ainda PREVISTA
+ *
+ * E94/B8: a conta nascida de um fechamento de comissão (`origemComissaoFechamentoId`) também é recusada, com `CONTA_DE_COMISSAO`. A FK do fechamento é ON DELETE SET NULL, então apagá-la zerava o vínculo em silêncio: a vendedora não recebia, `pendencias` não acusava (o fechamento continua existindo) e reabrir não reparava, porque as guardas do reabrir dependem do vínculo. O caminho para desfazer é reabrir o fechamento.
+ * @summary Remove uma conta a pagar ainda PREVISTA e sem dono
  */
 export const removeContaPagar = async (lojaId: string,
     contaId: string, options?: RequestInit): Promise<void> => {
@@ -10835,7 +10837,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RemoveContaPagarMutationError = ErrorType<void>
 
     /**
- * @summary Remove uma conta a pagar ainda PREVISTA
+ * @summary Remove uma conta a pagar ainda PREVISTA e sem dono
  */
 export const useRemoveContaPagar = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeContaPagar>>, TError,{lojaId: string;contaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}

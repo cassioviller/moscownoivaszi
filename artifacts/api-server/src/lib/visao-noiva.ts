@@ -11,7 +11,7 @@ import {
   type Orcamento,
 } from "@workspace/db";
 import { eq, asc, desc, inArray } from "drizzle-orm";
-import { round2 } from "./dinheiro";
+import { brutoEmCentavos, liquidoEmCentavos, reais } from "@workspace/financeiro-core";
 
 /**
  * E78 — as visões que a NOIVA vê, num lugar só. Nasceram nas rotas públicas
@@ -61,14 +61,14 @@ export async function montarOrcamentoPublico(
     .orderBy(asc(orcamentoItensTable.createdAt));
 
   // O mesmo cálculo da tela de gestão — a noiva e a vendedora precisam ver o
-  // MESMO número.
-  const totalBruto = round2(itens.reduce((acc, it) => acc + it.quantidade * it.valorUnitario, 0));
-  let totalLiquido = totalBruto;
-  if (orcamento.descontoTipo === "PERCENTUAL" && orcamento.descontoValor) {
-    totalLiquido = round2(totalBruto * (1 - orcamento.descontoValor / 100));
-  } else if (orcamento.descontoTipo === "VALOR" && orcamento.descontoValor) {
-    totalLiquido = round2(totalBruto - orcamento.descontoValor);
-  }
+  // MESMO número. Desde o E95 é literalmente a mesma função (C1/A11): este é o
+  // ramo do orçamento SEM versão congelada, anterior ao E75; com versão, os
+  // totais saem do snapshot acima e continuam sendo o que ela viu.
+  const brutoC = brutoEmCentavos(itens);
+  const totalBruto = reais(brutoC);
+  const totalLiquido = reais(
+    liquidoEmCentavos(brutoC, orcamento.descontoTipo, orcamento.descontoValor),
+  );
 
   return {
     lojaNome,

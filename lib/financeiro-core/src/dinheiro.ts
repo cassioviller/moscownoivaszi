@@ -24,6 +24,51 @@ export function somaCentavos<T>(itens: readonly T[], valorDe: (item: T) => numbe
 }
 
 /**
+ * Bruto de um orçamento/contrato em CENTAVOS: soma item a item, convertendo
+ * cada valor unitário antes de multiplicar pela quantidade.
+ *
+ * A ordem importa. Somar os reais em float e converter no fim
+ * (`round2(Σ qtd × valor)`, o que a rota de orçamento, a visão da noiva e a
+ * tela faziam) acumula erro dentro da soma; converter primeiro mantém a conta
+ * inteira do começo ao fim.
+ */
+export function brutoEmCentavos(
+  itens: readonly { valorUnitario: number; quantidade: number }[],
+): number {
+  return itens.reduce((total, it) => total + centavos(it.valorUnitario) * it.quantidade, 0);
+}
+
+/**
+ * Líquido em centavos a partir do bruto e do desconto — a régua ÚNICA do que
+ * um orçamento vale (E95/C1).
+ *
+ * Havia duas fórmulas para o MESMO número: esta, em centavos inteiros (que o
+ * `POST /contratos` usa para validar), e `round2(bruto × (1 − v/100))` em reais
+ * float (que a rota de orçamento, a visão da noiva e a tela usavam para
+ * exibir). São algebricamente iguais e numericamente diferentes: quando o
+ * resultado cai exatamente em meio centavo, o caminho float chega ali por
+ * baixo (`950.4749999999999`) e arredonda para o outro lado.
+ *
+ * Medido pela trilha C: **1,32% das vendas com desconto percentual** batiam num
+ * 422 `VALOR_TOTAL_NAO_BATE` — e a vendedora não tinha como destravar, porque o
+ * número que a tela mostrava era justamente o único que o servidor recusava.
+ * Pior: com versão ENVIADA, o valor float ficava congelado no snapshot E NO
+ * HASH — a noiva aceitava 950,47 e o único contrato gerável era de 950,48.
+ *
+ * Unificar no `round2` fecharia o 422 e deixaria a conta errada nos quatro
+ * lugares de forma consistente; por isso a régua é esta, em centavos.
+ */
+export function liquidoEmCentavos(
+  brutoC: number,
+  tipo: string | null | undefined,
+  valor: number | null | undefined,
+): number {
+  if (!tipo || !valor) return brutoC;
+  if (tipo === "PERCENTUAL") return Math.max(0, Math.round((brutoC * (100 - valor)) / 100));
+  return Math.max(0, brutoC - centavos(valor)); // VALOR
+}
+
+/**
  * Lê reais como o usuário os escreve — a outra borda, a do teclado.
  *
  * Vazio é `null` (não digitou) e lixo é `NaN` (digitou errado): quem chama

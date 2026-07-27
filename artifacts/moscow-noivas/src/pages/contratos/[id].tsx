@@ -59,7 +59,11 @@ import {
   teveRecebimento,
 } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
-import { centavos, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+// E95: o `parseValor` desta tela era uma QUARTA cópia da mesma função, letra
+// por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
+// a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
+// defeito que o épico existe para fechar.
+import { centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { podeNoModulo } from "@/lib/permissoes";
 
 const MENSAGENS_ERRO: Record<string, string> = {
@@ -85,27 +89,6 @@ function mensagemApi(err: unknown, fallback: string): string {
   return fallback;
 }
 
-/**
- * "1.234,56" ou "1234.56" → número em reais; null quando vazio; NaN quando
- * inválido. O ponto só vale como decimal quando não pode ser separador de
- * milhar pt-BR (exatamente 3 dígitos após o último ponto): "1.234" é mil
- * duzentos e trinta e quatro, "1.23" é um e vinte e três.
- */
-function parseValor(texto: string): number | null {
-  const t = texto.trim();
-  if (!t) return null;
-  let normalizado: string;
-  if (t.includes(",")) {
-    normalizado = t.replace(/\./g, "").replace(",", ".");
-  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
-    normalizado = t.replace(/\./g, "");
-  } else {
-    normalizado = t;
-  }
-  const n = Number(normalizado);
-  return Number.isFinite(n) ? n : Number.NaN;
-}
-
 export default function ContratoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
@@ -122,7 +105,6 @@ export default function ContratoDetail() {
   const [entrada, setEntrada] = useState("");
   const [numParcelas, setNumParcelas] = useState("1");
   const [primeiroVencimento, setPrimeiroVencimento] = useState("");
-  const [periodicidadeDias, setPeriodicidadeDias] = useState("30");
 
   // Receber parcela
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
@@ -262,11 +244,6 @@ export default function ContratoDetail() {
       toast({ title: "Informe o primeiro vencimento", variant: "destructive" });
       return;
     }
-    const periodicidade = Number(periodicidadeDias);
-    if (!Number.isInteger(periodicidade) || periodicidade < 1) {
-      toast({ title: "Periodicidade inválida", variant: "destructive" });
-      return;
-    }
     try {
       await gerarPlano.mutateAsync({
         lojaId: activeLojaId!,
@@ -274,8 +251,10 @@ export default function ContratoDetail() {
         data: {
           ...(entradaValor ? { entrada: entradaValor } : {}),
           numParcelas: n,
+          // E95: a data é a da PARCELA 1. Antes esta rota a usava como data da
+          // ENTRADA quando havia entrada, e a parcela 1 caía 30 dias depois —
+          // o mesmo campo com dois sentidos, e nenhum deles era o do rótulo.
           primeiroVencimento: diaParaISO(primeiroVencimento),
-          periodicidadeDias: periodicidade,
         },
       });
       await invalidarParcelas();
@@ -584,7 +563,7 @@ export default function ContratoDetail() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="plano-vencimento">1º vencimento *</Label>
+                    <Label htmlFor="plano-vencimento">1ª parcela vence em *</Label>
                     <Input
                       id="plano-vencimento"
                       type="date"
@@ -593,17 +572,16 @@ export default function ContratoDetail() {
                       onChange={(e) => setPrimeiroVencimento(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="plano-periodicidade">A cada (dias)</Label>
-                    <Input
-                      id="plano-periodicidade"
-                      type="number"
-                      min={1}
-                      value={periodicidadeDias}
-                      onChange={(e) => setPeriodicidadeDias(e.target.value)}
-                    />
-                  </div>
                 </div>
+                {/* E95: o campo "A cada (dias)" saiu. Ele espaçava o carnê por
+                    N dias corridos — o dia do vencimento andava para trás todo
+                    mês e duas parcelas podiam cair na mesma competência. A
+                    régua agora é mensal por dia fixo, a mesma que a tela de
+                    orçamento sempre usou. */}
+                <p className="text-muted-foreground text-sm">
+                  As parcelas vencem todo mês no mesmo dia. Se o dia não existir no mês (31 em
+                  fevereiro), a parcela cai no último dia dele. A entrada, se houver, vence hoje.
+                </p>
                 <Button onClick={onGerarPlano} disabled={gerarPlano.isPending}>
                   {gerarPlano.isPending ? "Gerando…" : "Gerar plano"}
                 </Button>

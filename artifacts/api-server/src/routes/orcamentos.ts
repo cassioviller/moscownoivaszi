@@ -24,7 +24,14 @@ import { orcamentoVersoesTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
-import { round2 } from "../lib/dinheiro";
+import {
+  addDias,
+  ancoraDeNegocio,
+  brutoEmCentavos,
+  hojeLocal,
+  liquidoEmCentavos,
+  reais,
+} from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -42,12 +49,30 @@ async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<vo
 }
 
 /**
+ * F18/E95: quantos dias um orçamento vale quando ninguém disse.
+ *
+ * Trinta é o ciclo do resto do sistema (competência, folha, carnê) e o prazo
+ * comercial usual. Decidido pelo dono em 2026-07-27; virar configuração por
+ * loja é épico próprio, não uma coluna nova enfiada aqui.
+ */
+const VALIDADE_PADRAO_DIAS = 30;
+
+/** Aceita o `db` global ou a transação em curso — mesmo idioma do E56/E94. */
+type Cliente = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
  * E75: marcar ENVIADO congela uma versão — itens, desconto e totais, com hash
  * sha256 do conteúdo canônico. É a esta versão que o link público e o aceite
  * da noiva (E74) apontam; a edição posterior não muda o que ela viu.
+ *
+ * B11/E95: roda na MESMA transação que marca ENVIADO. Antes eram duas
+ * escritas soltas, e entre elas cabia uma falha: o orçamento ficava ENVIADO
+ * sem versão congelada, e o portal caía no ramo de fallback que mostra o
+ * conteúdo VIVO — a noiva via o rascunho de agora em vez do que lhe foi
+ * enviado, em silêncio, e o aceite dela congelaria outra coisa.
  */
-async function criarVersaoEnviada(lojaId: string, orcamentoId: string): Promise<void> {
-  const orcamento = await db.query.orcamentosTable.findFirst({
+async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: string): Promise<void> {
+  const orcamento = await tx.query.orcamentosTable.findFirst({
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
     with: { itens: true },
   });
@@ -61,14 +86,12 @@ async function criarVersaoEnviada(lojaId: string, orcamentoId: string): Promise<
       valorUnitario: it.valorUnitario,
       quantidade: it.quantidade,
     }));
-  const totalBruto = round2(itens.reduce((acc, it) => acc + it.quantidade * it.valorUnitario, 0));
-  let totalLiquido = totalBruto;
-  if (orcamento.descontoTipo === "PERCENTUAL" && orcamento.descontoValor) {
-    totalLiquido = round2(totalBruto * (1 - orcamento.descontoValor / 100));
-  } else if (orcamento.descontoTipo === "VALOR" && orcamento.descontoValor) {
-    totalLiquido = round2(totalBruto - orcamento.descontoValor);
-  }
-  totalLiquido = Math.max(0, totalLiquido);
+  // E95/C1: a MESMA régua que o `POST /contratos` usa para validar. O que se
+  // congela aqui é o número que a noiva aceita e que o contrato terá de bater.
+  const totalBruto = reais(brutoEmCentavos(itens));
+  const totalLiquido = reais(
+    liquidoEmCentavos(brutoEmCentavos(itens), orcamento.descontoTipo, orcamento.descontoValor),
+  );
 
   const conteudo = {
     itens,
@@ -79,12 +102,15 @@ async function criarVersaoEnviada(lojaId: string, orcamentoId: string): Promise<
   };
   const hash = createHash("sha256").update(JSON.stringify(conteudo)).digest("hex");
 
-  const [{ maior }] = await db
+  const [{ maior }] = await tx
     .select({ maior: sql<number>`coalesce(max(${orcamentoVersoesTable.numero}), 0)`.mapWith(Number) })
     .from(orcamentoVersoesTable)
     .where(eq(orcamentoVersoesTable.orcamentoId, orcamentoId));
 
-  await db.insert(orcamentoVersoesTable).values({
+  // O `numero` é derivado dentro da transação, e o índice único
+  // (orcamentoId, numero) é a rede embaixo: dois envios simultâneos leriam o
+  // mesmo `maior`, e o segundo insert falha em vez de gravar duas versões 1.
+  await tx.insert(orcamentoVersoesTable).values({
     id: randomUUID(),
     lojaId,
     orcamentoId,
@@ -150,6 +176,13 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     id: randomUUID(),
     lojaId,
     ...parsed.data,
+    // F18/E95: validade por construção. Os dois atalhos naturais de criar
+    // orçamento (a ficha da noiva e o desfecho do atendimento) nunca a
+    // mandavam, e sem ela o orçamento não entra na fila de lembrete do E69 —
+    // justamente as propostas feitas no calor da venda ficavam sem cobrança.
+    // O default é do SERVIDOR de propósito: um cliente novo não pode nascer
+    // com o buraco de novo.
+    validade: parsed.data.validade ?? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS)),
     vendedoraId: req.usuario!.id,
   }).returning();
 
@@ -207,21 +240,26 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
 
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
   const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
-  const [orcamento] = await db.update(orcamentosTable)
-    .set({
-      ...parsed.data,
-      ...(virandoAprovado ? { aprovadoEm: new Date() } : {}),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)))
-    .returning();
+  // B11/E95: a marca de ENVIADO e a versão congelada nascem juntas ou não
+  // nascem — ver `criarVersaoEnviada`.
+  const orcamento = await db.transaction(async (tx) => {
+    const [atualizado] = await tx.update(orcamentosTable)
+      .set({
+        ...parsed.data,
+        ...(virandoAprovado ? { aprovadoEm: new Date() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)))
+      .returning();
+    if (!atualizado) return null;
+    if (virandoEnviado) {
+      await criarVersaoEnviada(tx, lojaId as string, orcamentoId as string);
+    }
+    return atualizado;
+  });
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
     return;
-  }
-  // E75: cada envio congela uma versão — é a ela que o link e o aceite apontam.
-  if (virandoEnviado) {
-    await criarVersaoEnviada(lojaId as string, orcamentoId as string);
   }
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
     where: eq(orcamentosTable.id, orcamento.id),
@@ -312,19 +350,25 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Pro
 
   const token = gerarTokenConvite();
   const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
-  await db.update(orcamentosTable)
-    .set({
-      publicoToken: token,
-      publicoExpiraEm: expiraEm,
-      ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(orcamentosTable.id, orcamento.id));
+  // B11/E95: o link, a marca de ENVIADO e a versão congelada, na mesma
+  // transação. Esta rota é a mais exposta ao buraco: ela ENTREGA o link no
+  // mesmo instante, então uma falha entre as duas escritas mandava a noiva
+  // direto para o ramo de fallback do portal.
+  await db.transaction(async (tx) => {
+    await tx.update(orcamentosTable)
+      .set({
+        publicoToken: token,
+        publicoExpiraEm: expiraEm,
+        ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(orcamentosTable.id, orcamento.id));
 
-  // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
-  if (orcamento.status === "RASCUNHO") {
-    await criarVersaoEnviada(lojaId, orcamentoId);
-  }
+    // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
+    if (orcamento.status === "RASCUNHO") {
+      await criarVersaoEnviada(tx, lojaId, orcamentoId);
+    }
+  });
 
   res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });

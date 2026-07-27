@@ -239,7 +239,8 @@ async function quitarContas(params: {
   lojaId: string;
   contas: readonly ContaPagar[];
   usuario: { id: string; nome: string };
-  data: string;
+  /** Instante do movimento — as duas rotas o recebem já convertido pelo Zod. */
+  data: Date;
   /** Ausente = a saída vale a soma das contas. */
   valorPago?: number;
   forma?: string | null;
