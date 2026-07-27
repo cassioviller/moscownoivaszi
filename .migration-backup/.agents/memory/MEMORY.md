@@ -1,3 +1,0 @@
-- [Moscow Noivas app layout](moscow-noivas-app-layout.md) — the live app is the Next.js app in root `app/`; the Vite pkg `artifacts/moscow-noivas` was retired (contradicts replit.md).
-- [Git recovery as main agent](git-recovery-main-agent.md) — destructive git (restore/checkout/reset) is BLOCKED for main agent; recover deleted files with `git archive HEAD <path> | tar` + `cp -n`.
-- [Moscow Noivas migration](moscow-noivas-migration.md) — decisions/gotchas for the **retired** Vite+Express migration (api-server seed, design tokens); stale for the live Next.js app.
