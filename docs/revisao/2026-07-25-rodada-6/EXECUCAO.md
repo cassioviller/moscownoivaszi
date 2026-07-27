@@ -57,7 +57,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
-| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `PENDENTE` · [notas](execucao/E98.md) |
+| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6` · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | ⬜ | — |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ⬜ | — |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ⬜ | — |
