@@ -643,7 +643,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId/parcelas", async (req, res): Pr
   res.json(ListParcelasResponse.parse(parcelas));
 });
 
-router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const { lojaId, parcelaId } = req.params;
   const parsed = ReceberParcelaBody.safeParse(req.body);
   if (!parsed.success) {

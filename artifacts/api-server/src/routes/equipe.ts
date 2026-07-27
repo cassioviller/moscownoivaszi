@@ -260,7 +260,7 @@ router.post("/lojas/:lojaId/equipe/convites", async (req, res): Promise<void> =>
   }));
 });
 
-router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", requireModulo("admin", "editar"), async (req, res): Promise<void> => {
   const { lojaId, conviteId } = req.params;
   // Regenera token e validade — o link antigo morre (desejável se vazou no
   // WhatsApp errado). Só convite ainda não usado.

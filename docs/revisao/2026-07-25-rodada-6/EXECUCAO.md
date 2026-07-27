@@ -60,7 +60,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6` · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
-| E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ⬜ | — |
+| E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | parte 1 (B5) em `PENDENTE` · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ⬜ | — |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ⬜ | — |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | ⬜ | — |
@@ -443,3 +443,19 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      tinha teste** — embora o cabeçalho do próprio arquivo diga, desde o E84,
      que "link morto na mensagem é pior que nenhum". Nove casos agora, incluindo
      a fronteira do instante.
+- **E101 parte 1** (notas em `execucao/E101.md`): o B5 fechado, e o épico para
+  aí porque **o que resta são decisões, não trabalho** — o próprio backlog diz
+  "decidir o que o dashboard é" e "decidir e ESCREVER onde mora o recebimento".
+  As duas perguntas estão formuladas nas notas, com o efeito de cada resposta.
+  1. **A inversão do default não é implementável, e agora sabemos por quê.**
+     `POST /orcamentos/:id/itens` (cria um item) e `POST /orcamentos/:id/aprovar`
+     (edita o orçamento) têm exatamente a mesma forma — nenhuma regra de caminho
+     os separa, só o nome do verbo. A preferência do épico pela lista explícita
+     estava certa, e passou de aceita a justificada.
+  2. **A varredura pegou duas coisas escrevendo**: meu primeiro detector tratava
+     `:lojaId` como id de recurso e acusou 14 rotas de coleção legítimas; e
+     achou uma rota real fora da lista do backlog —
+     `POST /equipe/convites/:id/reenviar`, que valia `criar`.
+  3. Uma falha de suíte na primeira execução (`lote17-agenda-concorrencia`) não
+     era minha: passou isolada e na re-execução completa. Teste de corrida sob
+     carga, mesma classe do S7 agora no lado da API.

@@ -527,7 +527,7 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
  * A criação da parcela e o vínculo acontecem na MESMA transação: a alternativa
  * (criar e depois marcar) tem exatamente a janela que o defeito explora.
  */
-router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos", "editar"), async (req, res): Promise<void> => {
   const { lojaId, avariaId } = req.params;
   const parsed = CobrarAvariaBody.safeParse(req.body);
   if (!parsed.success) {

@@ -389,7 +389,7 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pr
  * O carimbo continua acontecendo no clique, e continua sendo honesto — porque
  * agora ele afirma só o que aconteceu: a loja procurou.
  */
-router.post("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/atendimentos/:atendimentoId/contato", requireModulo("agenda", "editar"), async (req, res): Promise<void> => {
   const { lojaId, atendimentoId } = req.params;
   const existente = await db.query.atendimentosTable.findFirst({
     where: and(

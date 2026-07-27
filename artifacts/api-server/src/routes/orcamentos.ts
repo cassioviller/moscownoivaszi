@@ -334,7 +334,7 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
  * validade recomeça. Gerar link de um RASCUNHO marca ENVIADO — compartilhar
  * É enviar; RECUSADO não gera (não há o que a noiva rever de um não).
  */
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({
@@ -374,7 +374,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Pro
   res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });
 
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({
@@ -398,7 +398,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", async (req, res): 
   res.status(204).send();
 });
 
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({

@@ -310,7 +310,7 @@ async function quitarContas(params: {
   return pagamentoId;
 }
 
-router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", requireModulo("financeiro", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const contaId = req.params.contaId as string;
   const parsed = PagarContaPagarBody.safeParse(req.body);

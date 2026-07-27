@@ -278,7 +278,7 @@ router.get("/lojas/:lojaId/leads/parados", async (req, res): Promise<void> => {
 // perda mais antiga que a janela: a linha fica (funil e conversão continuam
 // contando), a PII sai. Irreversível por desenho; deixa rastro. Antes do
 // :leadId para o path não virar id.
-router.post("/lojas/:lojaId/leads/expurgo", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/leads/expurgo", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = ExpurgarLeadsPerdidosBody.safeParse(req.body ?? {});
   if (!parsed.success) {
