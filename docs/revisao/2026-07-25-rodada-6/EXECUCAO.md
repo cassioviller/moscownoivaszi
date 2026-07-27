@@ -54,7 +54,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E92 | Consertos de uma linha (E1 🔴, E2 🔴, +15) | P | ✅ | `6cbd004` · [notas](execucao/E92.md) |
 | E93 | O cliente para de brigar consigo mesmo (D1 🔴, +6) | M | ✅ | `1917f16` · [notas](execucao/E93.md) |
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
-| E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `PENDENTE` · [notas](execucao/E95.md) |
+| E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D5, D6) | M | ⬜ | — |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ⬜ | — |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
