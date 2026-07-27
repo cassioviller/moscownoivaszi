@@ -7240,8 +7240,8 @@ export const GetDashboardResponse = zod.object({
   "totalVestidosAtivos": zod.number(),
   "totalOrcamentosAbertos": zod.number(),
   "totalContratosAtivos": zod.number(),
-  "receberProximos30Dias": zod.number(),
-  "pagarProximos30Dias": zod.number(),
+  "receberProximos30Dias": zod.number().optional(),
+  "pagarProximos30Dias": zod.number().optional(),
   "atendimentosHoje": zod.number().optional()
 })
 

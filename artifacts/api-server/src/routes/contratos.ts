@@ -53,6 +53,26 @@ const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/contratos", requireModulo("leads"));
+
+/**
+ * B9/E101 — **receber pertence a quem vende**, e por isso as parcelas vivem sob
+ * `leads` e não sob `financeiro`.
+ *
+ * Decisão do dono em 2026-07-27, e o valor está em ela existir escrita: esta
+ * linha não explicava nada, e o resultado era a vendedora que o teste de
+ * permissões cria *justamente para provar que ela não entra no financeiro*
+ * podendo escrever no caixa realizado. Parecia buraco; é regra.
+ *
+ * A razão: a noiva paga na mão de quem a atendeu. Exigir alguém do financeiro
+ * disponível para registrar cada Pix recebido no balcão trocaria um risco de
+ * permissão por um atrito diário — e o dinheiro entraria no sistema com atraso,
+ * que é a forma mais cara de estar errado sobre caixa.
+ *
+ * O que o E101 apertou foi a AÇÃO, não o módulo: `receber` e `estornar` exigem
+ * `editar` (B5), então o perfil só-leitura de `leads` não escreve mais no caixa.
+ * VER o financeiro continua sendo outro gate — quem recebe não passa a enxergar
+ * o fluxo, o DRE nem a folha.
+ */
 router.use("/lojas/:lojaId/parcelas", requireModulo("leads"));
 
 /** Dinheiro soma em CENTAVOS inteiros — reais é float e não fecha na soma. */

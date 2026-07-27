@@ -36,7 +36,6 @@ describe("E101 — a ação vem do que a rota faz, não do sufixo", () => {
 
   afterAll(async () => {
     await limparFixture(f);
-    await fecharPool();
   });
 
   /** Um perfil que CRIA mas não EDITA — o estado que o achado descreve. */
@@ -173,5 +172,66 @@ describe("nenhum POST de ação escapa da classificação (B5)", () => {
     }
 
     expect(naoClassificados).toEqual([]);
+  });
+});
+
+/**
+ * B7/E101 — o dashboard é o painel de todo mundo, e os números de dinheiro só
+ * entram para quem tem o gate do dinheiro.
+ *
+ * Decisão do dono em 2026-07-27. Era uma das duas únicas rotas de loja sem
+ * `requireModulo`: a costureira com `agenda: {ver}` abria a tela inicial e
+ * recebia a previsão de caixa da loja inteira — a informação que o gate
+ * `financeiro` existe para restringir, entregue pela porta ao lado.
+ */
+describe("E101/B7 — o dashboard não entrega dinheiro por fora do gate", () => {
+  let f: Fixture;
+
+  beforeAll(async () => {
+    f = await criarFixture();
+  });
+
+  afterAll(async () => {
+    await limparFixture(f);
+    await fecharPool();
+  });
+
+  it("sem `financeiro: ver`, os campos de dinheiro não vêm na resposta", async () => {
+    const fx = await criarFixture();
+    try {
+      await db
+        .update(perfisTable)
+        .set({ acessosModulos: { agenda: { ver: true, criar: false, editar: false } } })
+        .where(eq(perfisTable.id, fx.perfilId));
+      const agent = await loginComLoja(fx.vendedoraEmail, fx.lojaId);
+
+      const r = await agent.get(`/api/lojas/${fx.lojaId}/dashboard`).expect(200);
+
+      // A home continua existindo — a decisão foi "painel de todo mundo".
+      expect(r.body.totalLeadsAtivos).toBeDefined();
+      expect(r.body.atendimentosHoje).toBeDefined();
+      // Mas o dinheiro não sai.
+      expect(r.body.receberProximos30Dias).toBeUndefined();
+      expect(r.body.pagarProximos30Dias).toBeUndefined();
+    } finally {
+      await limparFixture(fx);
+    }
+  });
+
+  it("com `financeiro: ver`, os campos voltam", async () => {
+    const fx = await criarFixture();
+    try {
+      await db
+        .update(perfisTable)
+        .set({ acessosModulos: { financeiro: { ver: true, criar: false, editar: false } } })
+        .where(eq(perfisTable.id, fx.perfilId));
+      const agent = await loginComLoja(fx.vendedoraEmail, fx.lojaId);
+
+      const r = await agent.get(`/api/lojas/${fx.lojaId}/dashboard`).expect(200);
+      expect(r.body.receberProximos30Dias).toBeDefined();
+      expect(r.body.pagarProximos30Dias).toBeDefined();
+    } finally {
+      await limparFixture(fx);
+    }
   });
 });

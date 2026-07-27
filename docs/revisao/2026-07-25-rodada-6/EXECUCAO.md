@@ -60,7 +60,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6` · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
-| E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | parte 1 (B5) em `0e8b37e` · [notas](execucao/E101.md) |
+| E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `PENDENTE`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ⬜ | — |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ⬜ | — |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | ⬜ | — |
@@ -459,3 +459,20 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   3. Uma falha de suíte na primeira execução (`lote17-agenda-concorrencia`) não
      era minha: passou isolada e na re-execução completa. Teste de corrida sob
      carga, mesma classe do S7 agora no lado da API.
+- **Duas decisões de produto respondidas pelo dono em 2026-07-27**, e valem como
+  regra do sistema daqui para frente:
+  1. **O dashboard é o painel de TODO MUNDO.** Os números de dinheiro só entram
+     para quem tem `financeiro: ver`; ninguém perde a home. A alternativa
+     (gate na rota inteira) faria a home de um perfil inteiro virar outra tela.
+  2. **Receber pertence a quem vende.** As parcelas ficam sob `leads`, e a razão
+     está escrita no código: a noiva paga na mão de quem a atendeu, e exigir
+     alguém do financeiro disponível trocaria risco de permissão por atrito
+     diário — com o dinheiro entrando no sistema atrasado, que é a forma mais
+     cara de estar errado sobre caixa. O que apertou foi a AÇÃO (`editar`), não
+     o módulo.
+- **E101 parte 2**: as duas implementadas. Mais duas correções ao backlog, as
+  duas achadas rodando: o contrato **não** marcava os campos de dinheiro do
+  dashboard como opcionais (eram `required`, e o `.parse` reprovou o conserto);
+  e o superadmin passa por fora do `podeNoModulo` — o `requireModulo` o libera
+  antes de consultar permissão —, então a régua da rota tinha de repetir isso,
+  senão o console da rede via um dashboard sem dinheiro.

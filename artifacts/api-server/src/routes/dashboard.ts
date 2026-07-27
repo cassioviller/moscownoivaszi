@@ -12,6 +12,8 @@ import {
 import { and, eq, gte, lte, lt, ne, inArray, sql } from "drizzle-orm";
 import { GetDashboardResponse } from "@workspace/api-zod";
 import { requireSessaoComLoja } from "../middlewares/auth";
+import { getPermissoes } from "../lib/auth";
+import { podeNoModulo } from "../lib/permissoes";
 import {
   addDias,
   hojeLocal,
@@ -117,14 +119,45 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
       ),
   ]);
 
+  /**
+   * B7/E101 — o dashboard é o painel de TODO MUNDO, e por isso os números de
+   * dinheiro só entram para quem tem o gate do dinheiro.
+   *
+   * **Decisão do dono em 2026-07-27.** A alternativa era `requireModulo` na
+   * rota inteira, o que é mais simples de auditar — e faria a home de quem não
+   * tem financeiro virar OUTRA tela, para um perfil inteiro. Esta é a mudança
+   * menor: ninguém perde a home, e a informação que o gate `financeiro` existe
+   * para restringir para de sair pela porta ao lado.
+   *
+   * Era o buraco: esta é uma das duas únicas rotas de loja sem `requireModulo`,
+   * e entregava `receberProximos30Dias`/`pagarProximos30Dias` da loja inteira —
+   * a costureira com `agenda: {ver}` abria a tela inicial e recebia a previsão
+   * de caixa. O contrato já marcava os dois campos como opcionais e a tela já
+   * sabia esconder o card; faltava o servidor parar de mandá-los.
+   */
+  // O superadmin passa por fora, como em `requireModulo` — que o libera ANTES
+  // de consultar permissão nenhuma. Sem esta linha, o console da rede veria um
+  // dashboard sem dinheiro, e a régua daqui divergiria da do middleware.
+  const veDinheiro =
+    !!req.usuario!.isSuperAdmin ||
+    podeNoModulo(
+      await getPermissoes(req.usuario!.id, lojaId, false),
+      "financeiro",
+      "ver",
+    );
+
   res.json(
     GetDashboardResponse.parse({
       totalLeadsAtivos: Number(leadsAtivos[0]?.count ?? 0),
       totalVestidosAtivos: Number(vestidosAtivos[0]?.count ?? 0),
       totalOrcamentosAbertos: Number(orcamentosAbertos[0]?.count ?? 0),
       totalContratosAtivos: Number(contratosAtivos[0]?.count ?? 0),
-      receberProximos30Dias: previstoNaJanela(receberProximos30Dias, janela),
-      pagarProximos30Dias: previstoNaJanela(pagarProximos30Dias, janela),
+      ...(veDinheiro
+        ? {
+            receberProximos30Dias: previstoNaJanela(receberProximos30Dias, janela),
+            pagarProximos30Dias: previstoNaJanela(pagarProximos30Dias, janela),
+          }
+        : {}),
       atendimentosHoje: Number(atendimentosHoje[0]?.count ?? 0),
     }),
   );

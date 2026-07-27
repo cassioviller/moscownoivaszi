@@ -11,7 +11,7 @@ export interface DashboardSummary {
   totalVestidosAtivos: number;
   totalOrcamentosAbertos: number;
   totalContratosAtivos: number;
-  receberProximos30Dias: number;
-  pagarProximos30Dias: number;
+  receberProximos30Dias?: number;
+  pagarProximos30Dias?: number;
   atendimentosHoje?: number;
 }

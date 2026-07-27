@@ -5953,7 +5953,16 @@ components:
     # ── Dashboard ──
     DashboardSummary:
       type: object
-      required: [totalLeadsAtivos, totalVestidosAtivos, totalOrcamentosAbertos, totalContratosAtivos, receberProximos30Dias, pagarProximos30Dias]
+      # E101/B7: `receberProximos30Dias` e `pagarProximos30Dias` saíram do
+      # `required`. O dashboard é o painel de todo mundo (decisão do dono em
+      # 2026-07-27) e os números de dinheiro só entram para quem tem
+      # `financeiro: ver` — antes eles saíam para qualquer perfil, e a
+      # costureira com `agenda: {ver}` recebia a previsão de caixa da loja.
+      #
+      # O backlog do E101 afirmava que o contrato JÁ os marcava como opcionais.
+      # Não marcava: eram obrigatórios, e o `.parse` da resposta reprovou o
+      # conserto na primeira execução do teste.
+      required: [totalLeadsAtivos, totalVestidosAtivos, totalOrcamentosAbertos, totalContratosAtivos]
       properties:
         totalLeadsAtivos: { type: integer }
         totalVestidosAtivos: { type: integer }
