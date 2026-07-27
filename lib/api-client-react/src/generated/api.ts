@@ -64,6 +64,7 @@ import type {
   CaptacaoToken,
   CaptarLeadParams,
   CheckDisponibilidadeVestidosParams,
+  CobrarAvariaInput,
   ComissaoFechamento,
   ComissaoPreviewLinha,
   ComissaoRegra,
@@ -7770,6 +7771,9 @@ export const getDeleteAvariaUrl = (lojaId: string,
   return `/api/lojas/${lojaId}/avarias/${avariaId}`
 }
 
+/**
+ * Recusa com 409 `AVARIA_COM_COBRANCA` quando a avaria já virou parcela (E97/F23): a FOTO é a prova que sustenta a cobrança, e apagá-la deixando a parcela viva faz a noiva dever por um dano que o sistema não consegue mais mostrar.
+ */
 export const deleteAvaria = async (lojaId: string,
     avariaId: string, options?: RequestInit): Promise<void> => {
 
@@ -7785,7 +7789,7 @@ export const deleteAvaria = async (lojaId: string,
 
 
 
-export const getDeleteAvariaMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteAvariaMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext> => {
 
@@ -7814,9 +7818,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAvaria>>>
 
-    export type DeleteAvariaMutationError = ErrorType<unknown>
+    export type DeleteAvariaMutationError = ErrorType<ErrorResponse>
 
-    export const useDeleteAvaria = <TError = ErrorType<unknown>,
+    export const useDeleteAvaria = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteAvaria>>,
@@ -7825,6 +7829,80 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteAvariaMutationOptions(options));
+    }
+
+export const getCobrarAvariaUrl = (lojaId: string,
+    avariaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/avarias/${avariaId}/cobrar`
+}
+
+/**
+ * Cria a parcela avulsa E grava o vínculo na MESMA transação. A segunda chamada responde 409 `AVARIA_JA_COBRADA` em vez de criar uma segunda parcela — antes, dois cliques cobravam o mesmo conserto duas vezes no carnê da noiva, e nada no sistema sabia que eram a mesma coisa.
+ * @summary Transforma o reparo numa parcela do contrato (E97)
+ */
+export const cobrarAvaria = async (lojaId: string,
+    avariaId: string,
+    cobrarAvariaInput: CobrarAvariaInput, options?: RequestInit): Promise<Avaria> => {
+
+  return customFetch<Avaria>(getCobrarAvariaUrl(lojaId,avariaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cobrarAvariaInput)
+  }
+);}
+
+
+
+
+export const getCobrarAvariaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cobrarAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cobrarAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}, TContext> => {
+
+const mutationKey = ['cobrarAvaria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cobrarAvaria>>, {lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}> = (props) => {
+          const {lojaId,avariaId,data} = props ?? {};
+
+          return  cobrarAvaria(lojaId,avariaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CobrarAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof cobrarAvaria>>>
+    export type CobrarAvariaMutationBody = BodyType<CobrarAvariaInput>
+    export type CobrarAvariaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Transforma o reparo numa parcela do contrato (E97)
+ */
+export const useCobrarAvaria = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cobrarAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cobrarAvaria>>,
+        TError,
+        {lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>},
+        TContext
+      > => {
+      return useMutation(getCobrarAvariaMutationOptions(options));
     }
 
 export const getGetAvariaFotoUrl = (lojaId: string,

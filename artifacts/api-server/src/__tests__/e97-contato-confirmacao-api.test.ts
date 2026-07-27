@@ -31,7 +31,6 @@ describe("E97 — contato da loja × confirmação da noiva", () => {
 
   afterAll(async () => {
     await limparFixture(f);
-    await fecharPool();
   });
 
   let seq = 0;
@@ -151,5 +150,96 @@ describe("E97 — contato da loja × confirmação da noiva", () => {
         eq(auditLogTable.acao, "PROVA_CONFIRMADA"),
       ));
     expect(trilha).toHaveLength(0);
+  });
+});
+
+/**
+ * E97/F15 — o dado fantasma.
+ *
+ * O backlog mandava inverter as confirmações da tela, mas pedia uma MEDIÇÃO
+ * antes: "confirmar se o PATCH de fato limpa `atendidoEm`/`desfecho` — se não
+ * limpa, o problema é o oposto e o conserto muda de lado". Não limpava. Um
+ * atendimento AGENDADO — que por definição ainda não aconteceu — guardava
+ * "começou às 14h" e "desfecho: RESERVOU" de uma vida passada, para sempre.
+ */
+describe("E97/F15 — voltar para agendado não deixa dado de uma vida passada", () => {
+  let f: Fixture;
+  let agent: Awaited<ReturnType<typeof loginComLoja>>;
+  let seq = 0;
+
+  beforeAll(async () => {
+    f = await criarFixture();
+    agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+  });
+
+  afterAll(async () => {
+    await limparFixture(f);
+    await fecharPool();
+  });
+
+  async function atendimentoConcluido() {
+    const lead = await criarLead(f);
+    const cabine = await agent
+      .post(`/api/lojas/${f.lojaId}/cabines`)
+      .send({ nome: `Cabine F15 ${seq}` })
+      .expect(201);
+    const inicio = new Date(dataFutura(60).getTime() + seq++ * 3_600_000);
+    const r = await agent
+      .post(`/api/lojas/${f.lojaId}/atendimentos`)
+      .send({
+        leadId: lead.id,
+        cabineId: cabine.body.id,
+        vendedoraId: f.vendedoraId,
+        tipo: "ATENDIMENTO",
+        inicio: inicio.toISOString(),
+      })
+      .expect(201);
+    const id = r.body.id as string;
+    await agent.patch(`/api/lojas/${f.lojaId}/atendimentos/${id}`).send({ situacao: "EM_ATENDIMENTO" }).expect(200);
+    const concluido = await agent
+      .patch(`/api/lojas/${f.lojaId}/atendimentos/${id}`)
+      .send({ situacao: "CONCLUIDO", desfecho: "RESERVOU" })
+      .expect(200);
+    expect(concluido.body.atendidoEm).toBeTruthy();
+    expect(concluido.body.desfecho).toBe("RESERVOU");
+    return id;
+  }
+
+  it("voltar para AGENDADO limpa atendidoEm e desfecho — o atendimento não aconteceu", async () => {
+    const id = await atendimentoConcluido();
+
+    const r = await agent
+      .patch(`/api/lojas/${f.lojaId}/atendimentos/${id}`)
+      .send({ situacao: "AGENDADO" })
+      .expect(200);
+
+    expect(r.body.situacao).toBe("AGENDADO");
+    expect(r.body.atendidoEm).toBeNull();
+    expect(r.body.desfecho).toBeNull();
+  });
+
+  it("reabrir para EM_ATENDIMENTO limpa o desfecho e PRESERVA o início real (E36)", async () => {
+    const id = await atendimentoConcluido();
+    const antes = await db.query.atendimentosTable.findFirst({ where: eq(atendimentosTable.id, id) });
+
+    const r = await agent
+      .patch(`/api/lojas/${f.lojaId}/atendimentos/${id}`)
+      .send({ situacao: "EM_ATENDIMENTO" })
+      .expect(200);
+
+    expect(r.body.desfecho).toBeNull();
+    // O E36 quis que reabrir não reescrevesse o primeiro início — a espera
+    // medida continua sendo a do atendimento real.
+    expect(new Date(r.body.atendidoEm!).getTime()).toBe(antes!.atendidoEm!.getTime());
+  });
+
+  it("editar outra coisa não mexe em nada disso", async () => {
+    const id = await atendimentoConcluido();
+    const r = await agent
+      .patch(`/api/lojas/${f.lojaId}/atendimentos/${id}`)
+      .send({ observacao: "noiva veio com a mãe" })
+      .expect(200);
+    expect(r.body.atendidoEm).toBeTruthy();
+    expect(r.body.desfecho).toBe("RESERVOU");
   });
 });

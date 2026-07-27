@@ -22,7 +22,7 @@ import {
   useDeleteAvaria,
   useListContratos,
   getListContratosQueryKey,
-  useCreateParcelaAvulsa,
+  useCobrarAvaria,
   type Ajuste,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +40,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -109,12 +110,14 @@ export default function ReservaDetalhe() {
   const contratoAtivo = (contratosDaNoiva.data ?? []).find((c) => c.status === "ATIVO") ?? null;
   const createAvaria = useCreateAvaria();
   const deleteAvaria = useDeleteAvaria();
-  const createParcelaAvulsa = useCreateParcelaAvulsa();
+  const cobrarAvaria = useCobrarAvaria();
 
   const [avariaDescricao, setAvariaDescricao] = useState("");
   const [avariaCusto, setAvariaCusto] = useState("");
   const [avariaFotoBase64, setAvariaFotoBase64] = useState<string | null>(null);
   const [avariaFotoNome, setAvariaFotoNome] = useState<string | null>(null);
+  // F25: o passo "o vestido voltou como saiu?", disparado pela devolução.
+  const [conferirDevolucao, setConferirDevolucao] = useState(false);
 
   const aoEscolherFotoAvaria = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -157,20 +160,26 @@ export default function ReservaDetalhe() {
       "Erro ao registrar a avaria",
     );
 
-  const cobrarReparo = (avaria: { descricao: string; custoReparo?: number | null }) =>
+  /**
+   * F22/E97 — a cobrança do reparo saiu da tela e virou uma rota.
+   *
+   * Aqui se criava a parcela avulsa direto, sem guardar vínculo nenhum: o botão
+   * não mudava de estado depois do clique, então clicar duas vezes — o que
+   * acontece quando a rede demora e a pessoa insiste — criava DUAS parcelas no
+   * carnê da noiva. Agora `POST /avarias/:id/cobrar` grava parcela e vínculo na
+   * mesma transação, e a segunda chamada responde 409.
+   */
+  const cobrarReparo = (avaria: { id: string }) =>
     comToast(
       async () => {
-        if (!contratoAtivo || !avaria.custoReparo) return;
-        const vencimento = new Date();
-        vencimento.setDate(vencimento.getDate() + 7);
-        await createParcelaAvulsa.mutateAsync({
+        if (!contratoAtivo) return;
+        await cobrarAvaria.mutateAsync({
           lojaId: activeLojaId!,
-          contratoId: contratoAtivo.id,
-          data: {
-            descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
-            valorPrevisto: avaria.custoReparo,
-            vencimento: vencimento.toISOString(),
-          },
+          avariaId: avaria.id,
+          data: { contratoId: contratoAtivo.id },
+        });
+        await queryClient.invalidateQueries({
+          queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
         });
       },
       "Cobrança criada — entrou como parcela do contrato",
@@ -231,6 +240,12 @@ export default function ReservaDetalhe() {
           queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
         ]);
         setDataMovimentacao(null);
+        // F25/E97: o gatilho da conferência. O E71 inteiro — avaria, foto,
+        // custo, cobrança — dependia de alguém LEMBRAR de rolar a página e
+        // preencher um formulário depois de registrar a devolução. O momento em
+        // que a peça está na mão é o único em que dá para olhar; passado ele, o
+        // vestido já voltou para a arara e a conferência não acontece mais.
+        if (campo === "devolucaoDataReal") setConferirDevolucao(true);
       },
       "Movimentação registrada",
       "Erro ao registrar a movimentação",
@@ -575,37 +590,92 @@ export default function ReservaDetalhe() {
                     </div>
                     {podeMovimentar && (
                       <span className="flex items-center gap-1">
-                        {contratoAtivo && a.custoReparo != null && a.custoReparo > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={createParcelaAvulsa.isPending}
-                            onClick={() => cobrarReparo(a)}
-                            data-testid={`cobrar-reparo-${a.id}`}
-                          >
-                            Cobrar reparo
-                          </Button>
+                        {/* F22: depois de cobrada, o botão não oferece cobrar de
+                            novo — ele leva à parcela. Antes ele continuava ali,
+                            idêntico, e o segundo clique criava a segunda
+                            cobrança do mesmo conserto. */}
+                        {a.parcelaId ? (
+                          contratoAtivo && (
+                            <Button asChild variant="ghost" size="sm">
+                              <Link to={`/loja/${activeLojaId}/contratos/${contratoAtivo.id}`}>
+                                Cobrado — ver parcela
+                              </Link>
+                            </Button>
+                          )
+                        ) : (
+                          contratoAtivo &&
+                          a.custoReparo != null &&
+                          a.custoReparo > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={cobrarAvaria.isPending}
+                              onClick={() => cobrarReparo(a)}
+                              data-testid={`cobrar-reparo-${a.id}`}
+                            >
+                              Cobrar reparo
+                            </Button>
+                          )
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          aria-label="Remover avaria"
-                          onClick={() =>
-                            comToast(
-                              async () => {
-                                await deleteAvaria.mutateAsync({ lojaId: activeLojaId!, avariaId: a.id });
-                                await queryClient.invalidateQueries({
-                                  queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
-                                });
-                              },
-                              "Avaria removida",
-                              "Erro ao remover a avaria",
-                            )
-                          }
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
+                        {/* F23: a foto é a PROVA que sustenta a cobrança. Ela
+                            saía por um toque num ícone de 28px, sem uma palavra
+                            — e a parcela continuava no carnê. */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              aria-label="Remover avaria"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover esta avaria?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {a.parcelaId ? (
+                                  <>
+                                    Esta avaria já virou parcela do contrato. Remova a parcela
+                                    primeiro — apagar a avaria agora deixaria a noiva devendo por um
+                                    dano sem prova nenhuma.
+                                  </>
+                                ) : (
+                                  <>
+                                    “{a.descricao}”{a.temFoto ? " e a foto que a comprova" : ""} saem
+                                    para sempre. {a.temFoto ? "A foto é a prova do dano — " : ""}
+                                    não há como recuperar depois.
+                                  </>
+                                )}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              {!a.parcelaId && (
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    comToast(
+                                      async () => {
+                                        await deleteAvaria.mutateAsync({
+                                          lojaId: activeLojaId!,
+                                          avariaId: a.id,
+                                        });
+                                        await queryClient.invalidateQueries({
+                                          queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+                                        });
+                                      },
+                                      "Avaria removida",
+                                      "Erro ao remover a avaria",
+                                    )
+                                  }
+                                >
+                                  Remover
+                                </AlertDialogAction>
+                              )}
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </span>
                     )}
                   </li>
@@ -614,7 +684,7 @@ export default function ReservaDetalhe() {
             )}
 
             {podeMovimentar && (
-              <div className="space-y-2 border-t pt-4">
+              <div className="space-y-2 border-t pt-4" id="registrar-avaria">
                 <Input
                   placeholder="O que aconteceu com o vestido? (ex.: barra rasgada)"
                   value={avariaDescricao}
@@ -864,6 +934,40 @@ export default function ReservaDetalhe() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={removerAjusteConfirmado}>Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* F25/E97 — a conferência da devolução.
+
+          O E71 inteiro (avaria, foto, custo, cobrança) dependia de alguém
+          LEMBRAR de rolar a página e preencher um formulário depois de
+          registrar a devolução. O momento em que a peça está na mão é o único
+          em que dá para olhar; passado ele, o vestido já voltou para a arara.
+
+          As duas saídas são explícitas de propósito: "sim, tudo certo" é uma
+          resposta, não um silêncio. */}
+      <AlertDialog open={conferirDevolucao} onOpenChange={setConferirDevolucao}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>O vestido voltou como saiu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confira agora, com a peça na mão. Depois que ela voltar para a arara, um dano
+              encontrado não tem mais como ser cobrado com prova.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Sim, tudo certo</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConferirDevolucao(false);
+                document
+                  .getElementById("registrar-avaria")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+            >
+              Registrar avaria
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

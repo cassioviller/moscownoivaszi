@@ -116,13 +116,26 @@ export default function Atendimentos() {
   const [desfechos, setDesfechos] = useState<Record<string, AtendimentoUpdateDesfecho>>({});
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
   const [janelaDias, setJanelaDias] = useState(JANELA_PADRAO_DIAS);
+  const [aba, setAba] = useState<"ATENDIMENTO" | "PROVA">("ATENDIMENTO");
 
-  // E87: a tela pede o RECORTE, não o acervo — só ATENDIMENTO, dos últimos 90
-  // dias em diante. `de` sem `ate` de propósito: a janela padrão nunca pode
-  // esconder um atendimento futuro. "Carregar mais antigo" dobra a janela;
-  // keepPreviousData segura a lista atual enquanto a maior chega.
+  /**
+   * F11/E97 — a aba. Uma PROVA não podia ser concluída em tela NENHUMA: esta
+   * filtrava `tipo: "ATENDIMENTO"` e a tela de provas só lê. Toda prova ficava
+   * em AGENDADO para sempre — prova esquecida não aparecia em lugar algum, o
+   * contador do sino degradava com o tempo, e o `atendidoEm` do E36 nunca era
+   * preenchido justamente para o atendimento mais demorado do ateliê.
+   *
+   * A aba reaproveita o agrupamento Atrasados/Hoje/Próximos e as ações de
+   * linha inteiras — é menos código do que replicá-las em `/provas`, e a API
+   * já aceitava (é o mesmo `PATCH /atendimentos/:id`).
+   *
+   * E87: a tela pede o RECORTE, não o acervo — dos últimos 90 dias em diante.
+   * `de` sem `ate` de propósito: a janela padrão nunca pode esconder um
+   * atendimento futuro. "Carregar mais antigo" dobra a janela; keepPreviousData
+   * segura a lista atual enquanto a maior chega.
+   */
   const paramsJanela = {
-    tipo: "ATENDIMENTO" as const,
+    tipo: aba,
     de: addDias(hojeLocal(), -janelaDias),
   };
   const atendimentos = useListAtendimentos(activeLojaId!, paramsJanela, {
@@ -366,20 +379,20 @@ export default function Atendimentos() {
                     ))}
                   </SelectContent>
                 </Select>
+                {/* F15/E97: as confirmações estavam invertidas. "Concluir" —
+                    reversível, e o desfecho já foi escolhido no seletor ao lado
+                    — pedia um AlertDialog; "Voltar para agendado", que APAGA o
+                    início real medido e o desfecho, não pedia nada. Agora
+                    concluir é direto e desfazer é que avisa. */}
                 <Button
                   size="sm"
                   disabled={updateAtendimento.isPending || !desfechoEscolhido}
                   onClick={() =>
-                    setConfirmacao({
-                      titulo: "Concluir atendimento?",
-                      descricao: `Concluir o atendimento de ${noivaNome}?`,
-                      acao: () =>
-                        aplicar(
-                          a,
-                          { situacao: "CONCLUIDO", desfecho: desfechoEscolhido },
-                          "Atendimento concluído",
-                        ),
-                    })
+                    aplicar(
+                      a,
+                      { situacao: "CONCLUIDO", desfecho: desfechoEscolhido },
+                      "Atendimento concluído",
+                    )
                   }
                 >
                   Concluir
@@ -388,7 +401,15 @@ export default function Atendimentos() {
                   variant="ghost"
                   size="sm"
                   disabled={updateAtendimento.isPending}
-                  onClick={() => aplicar(a, { situacao: "AGENDADO" }, "Voltou para agendado")}
+                  onClick={() =>
+                    setConfirmacao({
+                      titulo: "Voltar para agendado?",
+                      descricao: a.atendidoEm
+                        ? `O atendimento de ${noivaNome} volta a constar como não realizado: o horário de início já medido (${horaFmt.format(new Date(a.atendidoEm))}) e o desfecho são apagados, e não há como recuperá-los.`
+                        : `O atendimento de ${noivaNome} volta a constar como não realizado, e o desfecho é apagado.`,
+                      acao: () => aplicar(a, { situacao: "AGENDADO" }, "Voltou para agendado"),
+                    })
+                  }
                 >
                   Voltar para agendado
                 </Button>
@@ -400,7 +421,15 @@ export default function Atendimentos() {
                 variant="outline"
                 size="sm"
                 disabled={updateAtendimento.isPending}
-                onClick={() => aplicar(a, { situacao: "AGENDADO" }, "Atendimento reaberto")}
+                onClick={() =>
+                  setConfirmacao({
+                    titulo: "Reabrir este atendimento?",
+                    descricao: a.atendidoEm
+                      ? `Ele volta a constar como não realizado: o início já medido (${horaFmt.format(new Date(a.atendidoEm))}) e o desfecho são apagados.`
+                      : "Ele volta a constar como não realizado, e o desfecho é apagado.",
+                    acao: () => aplicar(a, { situacao: "AGENDADO" }, "Atendimento reaberto"),
+                  })
+                }
               >
                 Reabrir
               </Button>
@@ -418,12 +447,14 @@ export default function Atendimentos() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-serif">
-            {historico ? "Atendimentos anteriores" : "Atendimentos"}
+            {historico ? "Atendimentos anteriores" : "Atendimentos e provas"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {historico
               ? "Os atendimentos já finalizados."
-              : "Receba a noiva, registre o atendimento e o desfecho."}
+              : aba === "PROVA"
+                ? "Receba a noiva para a prova, registre como ela terminou."
+                : "Receba a noiva, registre o atendimento e o desfecho."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -443,6 +474,27 @@ export default function Atendimentos() {
             </Button>
           )}
         </div>
+      </div>
+
+      {/* F11: a aba que faltava. A PROVA usa a MESMA linha, as mesmas ações e o
+          mesmo agrupamento — o que não existia era o caminho até ela. */}
+      <div className="flex gap-1 border-b" role="tablist" aria-label="Tipo de atendimento">
+        {(["ATENDIMENTO", "PROVA"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={aba === t}
+            onClick={() => setAba(t)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              aba === t
+                ? "border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground border-transparent"
+            }`}
+          >
+            {t === "ATENDIMENTO" ? "Atendimentos" : "Provas"}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

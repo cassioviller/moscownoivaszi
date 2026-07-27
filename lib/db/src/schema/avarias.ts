@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, decimal, customType, index } from "drizzle-orm/pg-core";
 import { lojasTable } from "./loja";
 import { bloqueioVestidosTable } from "./atendimentos";
+import { parcelasTable } from "./financeiro";
 
 const bytea = customType<{ data: Buffer }>({
   dataType() {
@@ -33,6 +34,16 @@ export const avariasTable = pgTable(
     /** Foto-evidência (opcional). Mime sai do binário, nunca da palavra do cliente. */
     fotoBytes: bytea("foto_bytes"),
     fotoMime: text("foto_mime"),
+    /**
+     * E97: a parcela que cobrou este reparo. Preenchida significa "já cobrada",
+     * e é o que impede a segunda cobrança (409) e a remoção da avaria — cuja
+     * FOTO é a prova que sustenta a parcela.
+     *
+     * SET NULL e não CASCADE: perder o vínculo é recuperável, perder o registro
+     * do dano não é. Removida a parcela pelo caminho legítimo, a avaria e a foto
+     * ficam, e o reparo volta a ser cobrável.
+     */
+    parcelaId: text("parcela_id").references(() => parcelasTable.id, { onDelete: "set null" }),
     registradoPorNome: text("registrado_por_nome"),
     criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
   },

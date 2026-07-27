@@ -4346,6 +4346,7 @@ export const ListAvariasResponseItem = zod.object({
   "descricao": zod.string(),
   "custoReparo": zod.number().nullish(),
   "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "parcelaId": zod.string().nullish(),
   "registradoPorNome": zod.string().nullish(),
   "criadaEm": zod.coerce.date()
 })
@@ -4379,17 +4380,53 @@ export const CreateAvariaResponse = zod.object({
   "descricao": zod.string(),
   "custoReparo": zod.number().nullish(),
   "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "parcelaId": zod.string().nullish(),
   "registradoPorNome": zod.string().nullish(),
   "criadaEm": zod.coerce.date()
 })
 
 
+/**
+ * Recusa com 409 `AVARIA_COM_COBRANCA` quando a avaria já virou parcela (E97/F23): a FOTO é a prova que sustenta a cobrança, e apagá-la deixando a parcela viva faz a noiva dever por um dano que o sistema não consegue mais mostrar.
+ */
 export const DeleteAvariaParams = zod.object({
   "lojaId": zod.coerce.string(),
   "avariaId": zod.coerce.string()
 })
 
 export const DeleteAvariaResponse = zod.void()
+
+
+/**
+ * Cria a parcela avulsa E grava o vínculo na MESMA transação. A segunda chamada responde 409 `AVARIA_JA_COBRADA` em vez de criar uma segunda parcela — antes, dois cliques cobravam o mesmo conserto duas vezes no carnê da noiva, e nada no sistema sabia que eram a mesma coisa.
+ * @summary Transforma o reparo numa parcela do contrato (E97)
+ */
+export const CobrarAvariaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "avariaId": zod.coerce.string()
+})
+
+export const cobrarAvariaBodyPrazoDiasMin = 0;
+export const cobrarAvariaBodyPrazoDiasMax = 365;
+
+
+
+export const CobrarAvariaBody = zod.object({
+  "contratoId": zod.string(),
+  "prazoDias": zod.number().min(cobrarAvariaBodyPrazoDiasMin).max(cobrarAvariaBodyPrazoDiasMax).optional()
+})
+
+export const CobrarAvariaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "bloqueioId": zod.string(),
+  "descricao": zod.string(),
+  "custoReparo": zod.number().nullish(),
+  "temFoto": zod.boolean().describe('A foto vem por \/avarias\/{id}\/foto'),
+  "parcelaId": zod.string().nullish(),
+  "registradoPorNome": zod.string().nullish(),
+  "criadaEm": zod.coerce.date()
+})
 
 
 /**

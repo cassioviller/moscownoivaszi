@@ -74,6 +74,7 @@ export * from './captacaoLeadResultado';
 export * from './captacaoToken';
 export * from './captarLeadParams';
 export * from './checkDisponibilidadeVestidosParams';
+export * from './cobrarAvariaInput';
 export * from './comissaoFaixa';
 export * from './comissaoFaixaInput';
 export * from './comissaoFechamento';

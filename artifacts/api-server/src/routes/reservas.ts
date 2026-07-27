@@ -17,9 +17,11 @@ import {
   UpdateBloqueioResponse,
   ListAvariasResponse,
   CreateAvariaBody,
-  CreateAvariaResponse
+  CreateAvariaResponse,
+  CobrarAvariaBody,
+  CobrarAvariaResponse
 } from "@workspace/api-zod";
-import { avariasTable } from "@workspace/db";
+import { avariasTable, parcelasTable, contratosTable } from "@workspace/db";
 import { identificarImagem } from "../lib/imagem";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -34,6 +36,7 @@ import {
 } from "../lib/disponibilidade";
 import { transicaoReservaValida } from "../lib/estados";
 import { erroDeValidacao } from "../lib/erros";
+import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -434,6 +437,21 @@ function avariaMeta(a: typeof avariasTable.$inferSelect) {
   return { ...meta, temFoto: fotoBytes !== null };
 }
 
+/**
+ * A corrida perdida, sinalizada por exceção para abortar a transação inteira.
+ * Sem isto, a request perdedora sairia da transação achando que gravou.
+ */
+class AvariaJaCobrada extends Error {}
+
+/** True se o contrato existe, é da loja e está ATIVO. */
+async function contratoAtivoDaLoja(contratoId: string, lojaId: string): Promise<boolean> {
+  const [c] = await db
+    .select({ status: contratosTable.status })
+    .from(contratosTable)
+    .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
+  return c?.status === "ATIVO";
+}
+
 router.get("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
   const { lojaId, bloqueioId } = req.params;
   const avarias = await db
@@ -497,8 +515,118 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
   res.status(201).json(CreateAvariaResponse.parse(avariaMeta(avaria)));
 });
 
+/**
+ * E97/F22 — cobrar o reparo, uma vez só.
+ *
+ * A tela criava a parcela avulsa direto pelo `POST /contratos/:id/parcelas` e
+ * não guardava vínculo nenhum. O botão não mudava de estado depois do clique,
+ * então dois cliques — o que acontece quando a rede demora e a pessoa insiste —
+ * criavam DUAS parcelas no carnê, cobrando o mesmo conserto duas vezes, e nada
+ * no sistema sabia que eram a mesma coisa.
+ *
+ * A criação da parcela e o vínculo acontecem na MESMA transação: a alternativa
+ * (criar e depois marcar) tem exatamente a janela que o defeito explora.
+ */
+router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", async (req, res): Promise<void> => {
+  const { lojaId, avariaId } = req.params;
+  const parsed = CobrarAvariaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+
+  const avaria = await db.query.avariasTable.findFirst({
+    where: and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)),
+  });
+  if (!avaria) {
+    res.status(404).json({ error: "Avaria not found" });
+    return;
+  }
+  if (avaria.parcelaId) {
+    res.status(409).json({
+      error: "AVARIA_JA_COBRADA",
+      detalhe: "Este reparo já virou parcela do contrato",
+      campos: [{ campo: "avariaId", motivo: "Já existe uma cobrança para esta avaria" }],
+    });
+    return;
+  }
+  if (!avaria.custoReparo || avaria.custoReparo <= 0) {
+    res.status(422).json({
+      error: "AVARIA_SEM_CUSTO",
+      detalhe: "Avalie o custo do reparo antes de cobrar",
+      campos: [{ campo: "custoReparo", motivo: "Informe o custo do reparo" }],
+    });
+    return;
+  }
+  if (!(await contratoAtivoDaLoja(parsed.data.contratoId, lojaId as string))) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
+
+  const parcelaId = randomUUID();
+  await db.transaction(async (tx) => {
+    // A parcela PRIMEIRO: `avarias.parcela_id` é FK, então marcar antes de a
+    // linha existir viola a integridade. A ordem inversa parece mais segura à
+    // primeira vista e simplesmente não roda.
+    await tx.insert(parcelasTable).values({
+      id: parcelaId,
+      lojaId: lojaId as string,
+      contratoId: parsed.data.contratoId,
+      // Fora da numeração do carnê: é cobrança extra, não parcela do plano.
+      numero: 0,
+      descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
+      valorPrevisto: avaria.custoReparo!,
+      // Dia de negócio, não instante: `new Date()` das 21h à meia-noite jogava
+      // o vencimento para o dia seguinte (a mesma classe do C6).
+      vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? 7)),
+    });
+
+    // O vínculo é condicional a ele AINDA estar vazio. Quem perde a corrida não
+    // grava nada: a exceção derruba a transação inteira, e a parcela que ela
+    // acabou de inserir some junto — que é exatamente a segunda cobrança que
+    // este épico existe para impedir.
+    const [marcada] = await tx
+      .update(avariasTable)
+      .set({ parcelaId })
+      .where(and(eq(avariasTable.id, avaria.id), isNull(avariasTable.parcelaId)))
+      .returning();
+    if (!marcada) throw new AvariaJaCobrada();
+  }).catch((err) => {
+    if (err instanceof AvariaJaCobrada) return;
+    throw err;
+  });
+
+  const depois = await db.query.avariasTable.findFirst({ where: eq(avariasTable.id, avaria.id) });
+  if (depois?.parcelaId !== parcelaId) {
+    res.status(409).json({ error: "AVARIA_JA_COBRADA", detalhe: "Este reparo já virou parcela do contrato" });
+    return;
+  }
+  res.status(201).json(CobrarAvariaResponse.parse(avariaMeta(depois!)));
+});
+
+/**
+ * E97/F23 — a avaria não some enquanto sustenta uma cobrança.
+ *
+ * A FOTO é a prova do dano. Apagá-la deixando a parcela viva faz a noiva dever
+ * por algo que o sistema não consegue mais mostrar — e isso acontecia por um
+ * toque num ícone de 28px, sem confirmação nenhuma.
+ */
 router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void> => {
   const { lojaId, avariaId } = req.params;
+  const avaria = await db.query.avariasTable.findFirst({
+    where: and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)),
+  });
+  if (!avaria) {
+    res.status(204).send();
+    return;
+  }
+  if (avaria.parcelaId) {
+    res.status(409).json({
+      error: "AVARIA_COM_COBRANCA",
+      detalhe: "Esta avaria já virou parcela do contrato — remova a parcela antes",
+    });
+    return;
+  }
   await db
     .delete(avariasTable)
     .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -68,9 +70,28 @@ export function NoivaForm({
     defaultValues: { ...VAZIO, ...defaults },
   });
 
+  /**
+   * D14 — o cuidado (c) do épico, e é a armadilha real deste item.
+   *
+   * As duas telas que usam este formulário NAVEGAM depois de salvar, e o
+   * react-hook-form continua `isDirty` até o `reset()` — que aqui nunca
+   * acontece, porque a tela some. Sem este `salvou`, salvar uma noiva
+   * perguntaria "quer descartar as alterações?" logo depois de a pessoa ter
+   * salvado: um aviso que treina quem usa a ignorar.
+   */
+  const [salvou, setSalvou] = useState(false);
+  useConfirmarSaida(form.formState.isDirty && !salvou);
+
+  const submeter = async (values: NoivaFormValues) => {
+    await onSubmit(values);
+    // Só depois do await: se o `onSubmit` lançar, o formulário continua sujo e
+    // protegido — que é o caso em que perder o que foi digitado dói mais.
+    setSalvou(true);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-md space-y-5">
+      <form onSubmit={form.handleSubmit(submeter)} className="max-w-md space-y-5">
         <FormField
           control={form.control}
           name="noivaNome"

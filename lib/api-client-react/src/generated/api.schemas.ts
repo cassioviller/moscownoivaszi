@@ -1234,8 +1234,19 @@ export interface Avaria {
   /** A foto vem por /avarias/{id}/foto */
   temFoto: boolean;
   /** @nullable */
+  parcelaId?: string | null;
+  /** @nullable */
   registradoPorNome?: string | null;
   criadaEm: string;
+}
+
+export interface CobrarAvariaInput {
+  contratoId: string;
+  /**
+     * @minimum 0
+     * @maximum 365
+     */
+  prazoDias?: number;
 }
 
 export interface AvariaInput {

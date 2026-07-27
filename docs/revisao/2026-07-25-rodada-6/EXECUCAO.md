@@ -56,7 +56,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
-| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | 🟨 | parte 1 (F6, F26) em `3656a8e` · [notas](execucao/E97.md) |
+| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `PENDENTE` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | ⬜ | — |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ⬜ | — |
@@ -374,3 +374,23 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   contato; só escrevia confirmação. O E85 sobrepôs o segundo sentido sem
   renomear nada — e é o segundo que merece o nome, porque é o único que
   corresponde a alguém ter respondido.
+- **E97 fechado na parte 2**, com os seis itens restantes. Três coisas que a
+  execução ensinou e o plano não previa:
+  1. **A medição do F15 deu o resultado OPOSTO ao que o backlog supunha** — e o
+     backlog merece crédito por ter mandado medir. O `PATCH` nunca limpou
+     `atendidoEm`/`desfecho`: um atendimento AGENDADO guardava "começou às 14h"
+     e um desfecho de uma vida passada, para sempre. Era dado fantasma, não
+     confirmação faltando. Só depois de consertar isso é que inverter a
+     confirmação da tela virou verdade — antes o aviso não teria o que prometer.
+  2. **A ordem dentro da transação do F22 não era indiferente.** Marcar a avaria
+     antes de inserir a parcela parece mais seguro e não roda: `parcela_id` é FK.
+     A parcela vem primeiro, e quem perde a corrida derruba a transação inteira —
+     a parcela dela some junto, que é a segunda cobrança que o épico impede.
+  3. **O D14 não é implementável como escrito, e o E2E foi quem disse.** O item
+     pedia `useConfirmarSaida` "sobre o `useBlocker` do react-router 7"; o app
+     monta as rotas com `<BrowserRouter>`, e `useBlocker` só existe em data
+     router. Typecheck limpo, 673 testes de API verdes, 223 de frontend verdes —
+     e quatro specs E2E caíram porque as telas não renderizavam. **Terceira vez
+     nesta rodada que a suíte completa pega o que nada mais pega.** Entregue o
+     `beforeunload` (fechar/recarregar a aba), que funciona sem data router; a
+     navegação interna virou sobra com o motivo.

@@ -310,8 +310,33 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
       ? { atendidoEm: new Date() }
       : {};
 
+  /**
+   * E97/F15 — o dado fantasma. **A medição que o backlog mandou fazer antes de
+   * escrever código deu o resultado oposto ao que ele supunha**: este PATCH
+   * NUNCA limpou `atendidoEm` nem `desfecho`. O `set` aplica só o que veio no
+   * corpo, e voltar para agendado manda `{situacao: "AGENDADO"}` e mais nada.
+   *
+   * O efeito é uma contradição de estado que sobrevive para sempre: um
+   * atendimento AGENDADO — que por definição ainda não aconteceu — carregando
+   * "começou às 14h" e "desfecho: RESERVOU" de uma vida passada. A espera
+   * medida pelo E36 (`atendidoEm − inicio`) conta um atendimento que o sistema
+   * diz não ter ocorrido, e o funil lê um desfecho de quem ainda nem chegou.
+   *
+   * A régua segue a máquina de estados, não o gosto:
+   *   - **AGENDADO** = não aconteceu → limpa os dois.
+   *   - **EM_ATENDIMENTO** vindo de CONCLUIDO = está acontecendo de novo →
+   *     limpa só o desfecho; `atendidoEm` fica, que é o que o E36 quis
+   *     preservar ("reabrir e reentrar não reescreve o primeiro início").
+   */
+  const limpeza: Partial<typeof atendimentosTable.$inferInsert> =
+    parsed.data.situacao === "AGENDADO" && existente.situacao !== "AGENDADO"
+      ? { atendidoEm: null, desfecho: null }
+      : parsed.data.situacao === "EM_ATENDIMENTO" && existente.situacao === "CONCLUIDO"
+        ? { desfecho: null }
+        : {};
+
   const [atendimento] = await db.update(atendimentosTable)
-    .set({ ...parsed.data, ...carimbo, updatedAt: new Date() })
+    .set({ ...parsed.data, ...carimbo, ...limpeza, updatedAt: new Date() })
     .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))
     .returning();
     

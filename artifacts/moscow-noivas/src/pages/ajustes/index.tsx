@@ -57,7 +57,15 @@ export default function Ajustes() {
 
   // Semana é o recorte padrão — a fila responde "o que costuro agora", não
   // "tudo que existe". `?recorte=todos` abre o horizonte inteiro.
-  const recorte = searchParams.get("recorte") === "todos" ? "todos" : "semana";
+  /**
+   * F24/E97 — o terceiro recorte. A fila só sabia mostrar PENDENTE: um ajuste
+   * marcado como feito por engano sumia da tela e não havia caminho de volta,
+   * enquanto `/atendimentos`, `/provas`, `/orcamentos` e `/receber` todas têm
+   * a lente do estado oposto. O dado já vinha na MESMA query.
+   */
+  const recorteParam = searchParams.get("recorte");
+  const recorte: "semana" | "todos" | "feitos" =
+    recorteParam === "todos" ? "todos" : recorteParam === "feitos" ? "feitos" : "semana";
 
   const { data: ajustes, isLoading, isError, error, refetch } = useListAjustes(activeLojaId!, {
     query: {
@@ -70,7 +78,8 @@ export default function Ajustes() {
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const { pendentes, foraDaSemana } = useMemo(() => {
-    const lista = (ajustes ?? []).filter((a): a is Ajuste => a.status === "PENDENTE");
+    const alvo = recorte === "feitos" ? "FEITO" : "PENDENTE";
+    const lista = (ajustes ?? []).filter((a): a is Ajuste => a.status === alvo);
     // Prazo mais apertado primeiro; sem prazo ao fim (não some — vira rabeira).
     lista.sort((a, b) => {
       const da = prazoDias(a);
@@ -80,7 +89,7 @@ export default function Ajustes() {
       if (db === null) return -1;
       return da - db;
     });
-    if (recorte === "todos") return { pendentes: lista, foraDaSemana: 0 };
+    if (recorte === "todos" || recorte === "feitos") return { pendentes: lista, foraDaSemana: 0 };
     const semana = lista.filter((a) => {
       const dias = prazoDias(a);
       return dias !== null && dias <= 7;
@@ -95,19 +104,16 @@ export default function Ajustes() {
       queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
     ]);
 
-  const marcarFeito = async (ajusteId: string) => {
+  /** F24: o mesmo botão nos dois sentidos — concluir e reabrir. */
+  const mudarStatus = async (ajusteId: string, status: "FEITO" | "PENDENTE") => {
     try {
-      await updateAjuste.mutateAsync({
-        lojaId: activeLojaId!,
-        ajusteId,
-        data: { status: "FEITO" },
-      });
+      await updateAjuste.mutateAsync({ lojaId: activeLojaId!, ajusteId, data: { status } });
       await invalidar();
-      toast({ title: "Ajuste concluído" });
+      toast({ title: status === "FEITO" ? "Ajuste concluído" : "Ajuste reaberto" });
     } catch (err) {
       toast({
-        title: "Erro ao concluir o ajuste",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: status === "FEITO" ? "Erro ao concluir o ajuste" : "Erro ao reabrir o ajuste",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -130,10 +136,10 @@ export default function Ajustes() {
     }
   };
 
-  const trocarRecorte = (novo: "semana" | "todos") => {
+  const trocarRecorte = (novo: "semana" | "todos" | "feitos") => {
     const proximo = new URLSearchParams(searchParams);
-    if (novo === "todos") proximo.set("recorte", "todos");
-    else proximo.delete("recorte");
+    if (novo === "semana") proximo.delete("recorte");
+    else proximo.set("recorte", novo);
     setSearchParams(proximo, { replace: true });
   };
 
@@ -161,6 +167,13 @@ export default function Ajustes() {
             onClick={() => trocarRecorte("todos")}
           >
             Todos
+          </Button>
+          <Button
+            variant={recorte === "feitos" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => trocarRecorte("feitos")}
+          >
+            Concluídos
           </Button>
         </div>
       </div>
@@ -304,9 +317,9 @@ export default function Ajustes() {
                         variant="outline"
                         size="sm"
                         disabled={updateAjuste.isPending}
-                        onClick={() => marcarFeito(a.id)}
+                        onClick={() => mudarStatus(a.id, recorte === "feitos" ? "PENDENTE" : "FEITO")}
                       >
-                        Marcar feito
+                        {recorte === "feitos" ? "Reabrir" : "Marcar feito"}
                       </Button>
                     )}
                   </div>

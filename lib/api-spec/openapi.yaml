@@ -2074,9 +2074,63 @@ paths:
     delete:
       operationId: deleteAvaria
       tags: [reservas]
+      description: >
+        Recusa com 409 `AVARIA_COM_COBRANCA` quando a avaria já virou parcela
+        (E97/F23): a FOTO é a prova que sustenta a cobrança, e apagá-la deixando
+        a parcela viva faz a noiva dever por um dano que o sistema não consegue
+        mais mostrar.
       responses:
         "204":
           description: Avaria removida
+        "409":
+          description: Avaria com cobrança vinculada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /lojas/{lojaId}/avarias/{avariaId}/cobrar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: avariaId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: cobrarAvaria
+      tags: [reservas]
+      summary: Transforma o reparo numa parcela do contrato (E97)
+      description: >
+        Cria a parcela avulsa E grava o vínculo na MESMA transação. A segunda
+        chamada responde 409 `AVARIA_JA_COBRADA` em vez de criar uma segunda
+        parcela — antes, dois cliques cobravam o mesmo conserto duas vezes no
+        carnê da noiva, e nada no sistema sabia que eram a mesma coisa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CobrarAvariaInput"
+      responses:
+        "201":
+          description: Reparo cobrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Avaria"
+        "409":
+          description: Reparo já cobrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Sem custo avaliado, ou contrato não ativo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /lojas/{lojaId}/avarias/{avariaId}/foto:
     parameters:
@@ -4988,8 +5042,19 @@ components:
         descricao: { type: string }
         custoReparo: { type: ["number", "null"] }
         temFoto: { type: boolean, description: "A foto vem por /avarias/{id}/foto" }
+        # E97: preenchido = já cobrada. A tela usa isto para trocar o botão por
+        # "Cobrado — ver parcela" em vez de oferecer a cobrança de novo.
+        parcelaId: { type: ["string", "null"] }
         registradoPorNome: { type: ["string", "null"] }
         criadaEm: { type: string, format: date-time }
+
+    CobrarAvariaInput:
+      type: object
+      required: [contratoId]
+      properties:
+        contratoId: { type: string }
+        # Dias até o vencimento, contados do dia de negócio de hoje.
+        prazoDias: { type: integer, minimum: 0, maximum: 365 }
     AvariaInput:
       type: object
       required: [descricao]
