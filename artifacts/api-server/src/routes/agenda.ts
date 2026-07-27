@@ -30,7 +30,8 @@ import {
   GetDisponibilidadeResponse,
   SetDisponibilidadeBody,
   SetDisponibilidadeResponse,
-  ConfirmarAtendimentoResponse
+  RegistrarContatoAtendimentoResponse,
+  DesfazerContatoAtendimentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import {
@@ -349,9 +350,21 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pr
   res.status(204).send();
 });
 
-// E39: marcar que a presença foi confirmada por WhatsApp. Carimba do relógio do
-// servidor, idempotente — reconfirmar não reescreve o primeiro contato.
-router.post("/lojas/:lojaId/atendimentos/:atendimentoId/confirmar", async (req, res): Promise<void> => {
+/**
+ * E97/F6 — a loja registra que MANDOU mensagem. Carimba `contatadoEm`, do
+ * relógio do servidor, idempotente.
+ *
+ * Esta rota se chamava `/confirmar` e escrevia em `confirmadoEm` — o MESMO
+ * campo que `POST /portal/provas/:id/confirmar` usa quando a noiva clica. Os
+ * dois fatos ficavam indistinguíveis depois de gravados: a linha sumia da fila
+ * do dia e da contagem do sino tanto quando a recepção abriu o WhatsApp (sem
+ * escrever nada ainda) quanto quando a noiva respondeu de verdade. E é sobre o
+ * segundo que o ateliê toma decisão física.
+ *
+ * O carimbo continua acontecendo no clique, e continua sendo honesto — porque
+ * agora ele afirma só o que aconteceu: a loja procurou.
+ */
+router.post("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, res): Promise<void> => {
   const { lojaId, atendimentoId } = req.params;
   const existente = await db.query.atendimentosTable.findFirst({
     where: and(
@@ -363,16 +376,44 @@ router.post("/lojas/:lojaId/atendimentos/:atendimentoId/confirmar", async (req, 
     res.status(404).json({ error: "Atendimento not found" });
     return;
   }
-  if (!existente.confirmadoEm) {
+  if (!existente.contatadoEm) {
     await db.update(atendimentosTable)
-      .set({ confirmadoEm: new Date(), updatedAt: new Date() })
+      .set({ contatadoEm: new Date(), updatedAt: new Date() })
       .where(eq(atendimentosTable.id, atendimentoId as string));
   }
   const full = await db.query.atendimentosTable.findFirst({
     where: eq(atendimentosTable.id, atendimentoId as string),
     with: ATENDIMENTO_WITH,
   });
-  res.json(ConfirmarAtendimentoResponse.parse(full));
+  res.json(RegistrarContatoAtendimentoResponse.parse(full));
+});
+
+/**
+ * O desfazer. O carimbo nasce do clique num link que abre OUTRA ABA, então
+ * errar o botão é barato — e sem esta rota a noiva saía da fila do dia sem
+ * ninguém ter falado com ela, silenciosamente.
+ *
+ * Não toca `confirmadoEm`: desfazer o que a loja fez não pode apagar o que a
+ * noiva respondeu.
+ */
+router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, res): Promise<void> => {
+  const { lojaId, atendimentoId } = req.params;
+  const [atualizado] = await db.update(atendimentosTable)
+    .set({ contatadoEm: null, updatedAt: new Date() })
+    .where(and(
+      eq(atendimentosTable.id, atendimentoId as string),
+      eq(atendimentosTable.lojaId, lojaId as string),
+    ))
+    .returning();
+  if (!atualizado) {
+    res.status(404).json({ error: "Atendimento not found" });
+    return;
+  }
+  const full = await db.query.atendimentosTable.findFirst({
+    where: eq(atendimentosTable.id, atendimentoId as string),
+    with: ATENDIMENTO_WITH,
+  });
+  res.json(DesfazerContatoAtendimentoResponse.parse(full));
 });
 
 // Ajustes

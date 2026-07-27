@@ -73,8 +73,23 @@ export const atendimentosTable = pgTable("atendimentos", {
   inicio: timestamp("inicio", { withTimezone: true }).notNull(),
   situacao: atendimentoSituacaoEnum("situacao").notNull().default("AGENDADO"),
   atendidoEm: timestamp("atendido_em", { withTimezone: true }),
-  // Quando a recepção confirmou a presença por WhatsApp (E39). Separa "já falei"
-  // de "falta falar" na fila de confirmação — antes o E8 era um clique sem rastro.
+  /**
+   * Quando a LOJA mandou mensagem (E97). É um ato nosso: carimbado no clique da
+   * fila do dia, antes mesmo de a mensagem sair. Tira a linha da fila para a
+   * recepção não repetir, e não afirma nada sobre a noiva.
+   */
+  contatadoEm: timestamp("contatado_em", { withTimezone: true }),
+  /**
+   * Quando a NOIVA respondeu (E85, pelo portal). É o único dos dois sobre o qual
+   * a loja toma decisão física — separar a peça, reservar cabine, escalar
+   * costureira —, e por isso é o que a agenda mostra como "confirmada".
+   *
+   * Até o E97 esta coluna guardava os DOIS fatos: nasceu no E39 significando "a
+   * recepção falou" e o E85 sobrepôs "a noiva confirmou", sem renomear. Depois
+   * de gravados eram indistinguíveis. A migração
+   * `docs/migracoes/2026-07-27-e97-contato-e-confirmacao.sql` separou o passado
+   * pela trilha (`audit_log.acao = 'PROVA_CONFIRMADA'` só existe quando foi ela).
+   */
   confirmadoEm: timestamp("confirmado_em", { withTimezone: true }),
   desfecho: atendimentoDesfechoEnum("desfecho"),
   observacao: text("observacao"),

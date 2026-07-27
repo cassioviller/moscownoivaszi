@@ -1,22 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
-  useConfirmarAtendimento,
+  useRegistrarContatoAtendimento,
+  useDesfazerContatoAtendimento,
   useListParcelas,
   getListParcelasQueryKey,
   useListOrcamentos,
   getListOrcamentosQueryKey,
+  useCreateRegistroCobranca,
   useListPortais,
   getListPortaisQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, CalendarCheck, HandCoins, FileClock } from "lucide-react";
+import { MessageCircle, CalendarCheck, HandCoins, FileClock, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
@@ -35,9 +37,10 @@ import { brl } from "@/lib/formatos";
  *
  * Confirmação, cobrança e lembrete de orçamento já existiam — cada um numa
  * tela, cada um esperando alguém lembrar de abrir. Aqui viram UMA fila que a
- * recepcionista desce clicando: presenças das próximas 48h por confirmar
- * (carimba `confirmadoEm` ao abrir o wa.me, E39), as noivas em atraso com a
- * mensagem que cita a dívida (E29) e os orçamentos enviados vencendo em 72h.
+ * recepcionista desce clicando: as noivas das próximas 48h que ainda não foram
+ * procuradas (carimba `contatadoEm` ao abrir o wa.me — E97 separou isso da
+ * confirmação DELA), as noivas em atraso com a mensagem que cita a dívida (E29)
+ * e os orçamentos enviados vencendo em 72h.
  * É o máximo de automação possível sem API externa — o clique é humano, a
  * preparação é toda do sistema.
  */
@@ -64,7 +67,13 @@ export default function MensagensDoDia() {
       enabled: !!activeLojaId && veAgenda,
     },
   });
-  const confirmarAtendimento = useConfirmarAtendimento({
+  const registrarContato = useRegistrarContatoAtendimento({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
+    },
+  });
+  const desfazerContato = useDesfazerContatoAtendimento({
     mutation: {
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
@@ -95,17 +104,74 @@ export default function MensagensDoDia() {
 
   const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
 
-  // Presenças das próximas 48h ainda sem confirmação, mais próximas primeiro.
-  const aConfirmar = useMemo(() => {
+  /**
+   * E97/F6 — a fila de quem a loja ainda NÃO procurou nas próximas 48h.
+   *
+   * Antes o filtro era `a.confirmadoEm`, e o clique daqui escrevia nesse mesmo
+   * campo: a linha saía da fila no instante em que alguém ABRIA o WhatsApp —
+   * antes de escrever, antes de enviar — e ficava indistinguível de uma noiva
+   * que tinha confirmado pelo portal. Agora o clique carimba `contatadoEm`, que
+   * é o que de fato aconteceu, e quem respondeu de verdade também sai da fila
+   * (não há o que perguntar a ela).
+   */
+  const aContatar = useMemo(() => {
     const agora = Date.now();
     return (atendimentos.data ?? [])
       .filter((a) => {
-        if (a.situacao !== "AGENDADO" || a.confirmadoEm) return false;
+        if (a.situacao !== "AGENDADO" || a.contatadoEm || a.confirmadoEm) return false;
         const t = new Date(a.inicio).getTime();
         return t >= agora && t <= agora + H48;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
   }, [atendimentos.data]);
+
+  /** Procuradas nas 48h e ainda sem resposta — a linha que o desfazer atende. */
+  const jaContatadas = useMemo(() => {
+    const agora = Date.now();
+    return (atendimentos.data ?? [])
+      .filter((a) => {
+        if (a.situacao !== "AGENDADO" || !a.contatadoEm || a.confirmadoEm) return false;
+        const t = new Date(a.inicio).getTime();
+        return t >= agora && t <= agora + H48;
+      })
+      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+  }, [atendimentos.data]);
+
+  /**
+   * F26/E97 — cobrar pela fila do dia passa a deixar rastro.
+   *
+   * A MESMA cobrança feita por `/financeiro/cobranca` já gravava um
+   * `registro-cobranca`; feita por aqui — que é o caminho rápido, o que a tela
+   * pede que se use — não gravava nada. "Essa noiva foi cobrada?" tinha
+   * resposta diferente conforme a porta, e o relógio de "parado há N dias" do
+   * funil não zerava: a noiva virava alerta de lead frio no dia seguinte a ter
+   * sido cobrada.
+   *
+   * Cuidado (b) do épico: duplo clique não pode gerar duas linhas. O `enviadas`
+   * guarda os leads já registrados nesta sessão de tela — o servidor não tem
+   * como saber que dois POSTs a um segundo de distância são o mesmo dedo.
+   */
+  const enviadas = useRef<Set<string>>(new Set());
+  const criarRegistroCobranca = useCreateRegistroCobranca({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) });
+      },
+    },
+  });
+  const registrarCobranca = (leadId: string) => {
+    if (enviadas.current.has(leadId)) return;
+    enviadas.current.add(leadId);
+    criarRegistroCobranca.mutate({
+      lojaId: activeLojaId!,
+      leadId,
+      data: {
+        data: new Date().toISOString(),
+        canal: "WHATSAPP",
+        observacao: "mensagem de cobrança enviada pela fila do dia",
+      },
+    });
+  };
 
   // A mesma régua da tela de cobrança (financeiro-core) — piores primeiro.
   const inadimplentes = useMemo(() => {
@@ -125,7 +191,7 @@ export default function MensagensDoDia() {
       .sort((a, b) => new Date(a.validade!).getTime() - new Date(b.validade!).getTime());
   }, [orcamentos.data]);
 
-  const totalFila = aConfirmar.length + inadimplentes.length + orcamentosVencendo.length;
+  const totalFila = aContatar.length + inadimplentes.length + orcamentosVencendo.length;
 
   return (
     <div className="space-y-6">
@@ -143,18 +209,19 @@ export default function MensagensDoDia() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <CalendarCheck className="h-5 w-5 text-primary" />
-              Confirmar presença — próximas 48h
+              Procurar para confirmar — próximas 48h
             </CardTitle>
             <CardDescription>
-              Abrir o WhatsApp já carimba a confirmação; a linha sai da fila.
+              Abrir o WhatsApp registra que <strong>você procurou</strong> e tira a linha da fila.
+              Quem confirma a presença é a noiva, pelo link do portal.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {aConfirmar.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Todas as presenças confirmadas.</p>
+            {aContatar.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todas as noivas das próximas 48h já foram procuradas.</p>
             ) : (
               <ul className="divide-y">
-                {aConfirmar.map((a) => {
+                {aContatar.map((a) => {
                   const wa = linkWhatsApp(
                     a.lead?.whatsapp,
                     msgConfirmacaoAtendimento({
@@ -182,14 +249,14 @@ export default function MensagensDoDia() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() =>
-                              confirmarAtendimento.mutate({
+                              registrarContato.mutate({
                                 lojaId: activeLojaId!,
                                 atendimentoId: a.id,
                               })
                             }
                           >
                             <MessageCircle className="mr-1 h-4 w-4" />
-                            Confirmar
+                            Chamar no WhatsApp
                           </a>
                         </Button>
                       ) : (
@@ -199,6 +266,43 @@ export default function MensagensDoDia() {
                   );
                 })}
               </ul>
+            )}
+
+            {/* O desfazer (F6). O carimbo nasce do clique num link que abre
+                OUTRA ABA: errar o botão é barato, e sem esta lista a noiva saía
+                da fila sem ninguém ter falado com ela — em silêncio, e sem tela
+                nenhuma que voltasse atrás. */}
+            {jaContatadas.length > 0 && (
+              <div className="mt-4 space-y-1.5 border-t pt-3">
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">
+                  Já procuradas, sem resposta
+                </p>
+                {jaContatadas.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">
+                      <span className="text-muted-foreground tabular-nums">
+                        {format(new Date(a.inicio), "dd/MM HH:mm")}
+                      </span>{" "}
+                      {a.lead?.noivaNome ?? "Noiva"}
+                      <span className="text-muted-foreground">
+                        {" "}· procurada {format(new Date(a.contatadoEm!), "dd/MM 'às' HH:mm")}
+                      </span>
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() =>
+                        desfazerContato.mutate({ lojaId: activeLojaId!, atendimentoId: a.id })
+                      }
+                      disabled={desfazerContato.isPending}
+                    >
+                      <Undo2 className="mr-1 h-4 w-4" />
+                      Não procurei
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -249,7 +353,12 @@ export default function MensagensDoDia() {
                       </span>
                       {wa ? (
                         <Button asChild variant="outline" size="sm" className="shrink-0">
-                          <a href={wa} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={wa}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => n.leadId && registrarCobranca(n.leadId)}
+                          >
                             <MessageCircle className="mr-1 h-4 w-4" />
                             WhatsApp
                           </a>

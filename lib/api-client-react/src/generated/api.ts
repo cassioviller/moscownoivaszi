@@ -6220,23 +6220,25 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteAtendimentoMutationOptions(options));
     }
 
-export const getConfirmarAtendimentoUrl = (lojaId: string,
+export const getRegistrarContatoAtendimentoUrl = (lojaId: string,
     atendimentoId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/confirmar`
+  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/contato`
 }
 
 /**
- * Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação parar de repetir quem já foi contatado. Idempotente: reconfirmar não reescreve o primeiro carimbo.
- * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ * Carimba `contatadoEm` (relógio do servidor) para a fila do dia parar de repetir quem já foi procurado. Idempotente: o segundo clique não reescreve o primeiro carimbo.
+ *
+ * Este endpoint se chamava `/confirmar` e carimbava `confirmadoEm` — o MESMO campo que o portal usa quando a noiva confirma de verdade (E85). Os dois sentidos ficavam indistinguíveis, e a linha sumia da fila e do sino como se a noiva tivesse respondido. Abrir o WhatsApp é ato da loja e não prova nada sobre ela; quem confirma presença é `/portal/provas`.
+ * @summary Marca que a LOJA mandou mensagem para a noiva (E97)
  */
-export const confirmarAtendimento = async (lojaId: string,
+export const registrarContatoAtendimento = async (lojaId: string,
     atendimentoId: string, options?: RequestInit): Promise<Atendimento> => {
 
-  return customFetch<Atendimento>(getConfirmarAtendimentoUrl(lojaId,atendimentoId),
+  return customFetch<Atendimento>(getRegistrarContatoAtendimentoUrl(lojaId,atendimentoId),
   {
     ...options,
     method: 'POST'
@@ -6248,11 +6250,11 @@ export const confirmarAtendimento = async (lojaId: string,
 
 
 
-export const getConfirmarAtendimentoMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
+export const getRegistrarContatoAtendimentoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registrarContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registrarContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
 
-const mutationKey = ['confirmarAtendimento'];
+const mutationKey = ['registrarContatoAtendimento'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -6262,10 +6264,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmarAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registrarContatoAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
           const {lojaId,atendimentoId} = props ?? {};
 
-          return  confirmarAtendimento(lojaId,atendimentoId,requestOptions)
+          return  registrarContatoAtendimento(lojaId,atendimentoId,requestOptions)
         }
 
 
@@ -6275,22 +6277,95 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ConfirmarAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof confirmarAtendimento>>>
+    export type RegistrarContatoAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof registrarContatoAtendimento>>>
 
-    export type ConfirmarAtendimentoMutationError = ErrorType<unknown>
+    export type RegistrarContatoAtendimentoMutationError = ErrorType<unknown>
 
     /**
- * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ * @summary Marca que a LOJA mandou mensagem para a noiva (E97)
  */
-export const useConfirmarAtendimento = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useRegistrarContatoAtendimento = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registrarContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof confirmarAtendimento>>,
+        Awaited<ReturnType<typeof registrarContatoAtendimento>>,
         TError,
         {lojaId: string;atendimentoId: string},
         TContext
       > => {
-      return useMutation(getConfirmarAtendimentoMutationOptions(options));
+      return useMutation(getRegistrarContatoAtendimentoMutationOptions(options));
+    }
+
+export const getDesfazerContatoAtendimentoUrl = (lojaId: string,
+    atendimentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/contato`
+}
+
+/**
+ * Limpa `contatadoEm`, devolvendo a linha à fila do dia. Existe porque o carimbo acontece no clique de um link que abre outra aba: errar o botão é barato e, sem desfazer, a noiva saía da fila sem ninguém ter falado com ela.
+ * @summary Desfaz o carimbo de contato (E97)
+ */
+export const desfazerContatoAtendimento = async (lojaId: string,
+    atendimentoId: string, options?: RequestInit): Promise<Atendimento> => {
+
+  return customFetch<Atendimento>(getDesfazerContatoAtendimentoUrl(lojaId,atendimentoId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDesfazerContatoAtendimentoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
+
+const mutationKey = ['desfazerContatoAtendimento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
+          const {lojaId,atendimentoId} = props ?? {};
+
+          return  desfazerContatoAtendimento(lojaId,atendimentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DesfazerContatoAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof desfazerContatoAtendimento>>>
+
+    export type DesfazerContatoAtendimentoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Desfaz o carimbo de contato (E97)
+ */
+export const useDesfazerContatoAtendimento = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof desfazerContatoAtendimento>>,
+        TError,
+        {lojaId: string;atendimentoId: string},
+        TContext
+      > => {
+      return useMutation(getDesfazerContatoAtendimentoMutationOptions(options));
     }
 
 export const getListAjustesUrl = (lojaId: string,) => {

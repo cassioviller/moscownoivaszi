@@ -1676,7 +1676,7 @@ paths:
       responses:
         "204":
           description: Deleted
-  /lojas/{lojaId}/atendimentos/{atendimentoId}/confirmar:
+  /lojas/{lojaId}/atendimentos/{atendimentoId}/contato:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
       - name: atendimentoId
@@ -1684,16 +1684,39 @@ paths:
         required: true
         schema: { type: string }
     post:
-      operationId: confirmarAtendimento
+      operationId: registrarContatoAtendimento
       tags: [agenda]
-      summary: Marca que a recepção confirmou a presença por WhatsApp (E39)
+      summary: Marca que a LOJA mandou mensagem para a noiva (E97)
       description: >
-        Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação
-        parar de repetir quem já foi contatado. Idempotente: reconfirmar não
+        Carimba `contatadoEm` (relógio do servidor) para a fila do dia parar de
+        repetir quem já foi procurado. Idempotente: o segundo clique não
         reescreve o primeiro carimbo.
+
+
+        Este endpoint se chamava `/confirmar` e carimbava `confirmadoEm` — o
+        MESMO campo que o portal usa quando a noiva confirma de verdade (E85).
+        Os dois sentidos ficavam indistinguíveis, e a linha sumia da fila e do
+        sino como se a noiva tivesse respondido. Abrir o WhatsApp é ato da loja
+        e não prova nada sobre ela; quem confirma presença é `/portal/provas`.
       responses:
         "200":
-          description: Atendimento confirmado
+          description: Contato registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Atendimento"
+    delete:
+      operationId: desfazerContatoAtendimento
+      tags: [agenda]
+      summary: Desfaz o carimbo de contato (E97)
+      description: >
+        Limpa `contatadoEm`, devolvendo a linha à fila do dia. Existe porque o
+        carimbo acontece no clique de um link que abre outra aba: errar o botão
+        é barato e, sem desfazer, a noiva saía da fila sem ninguém ter falado
+        com ela.
+      responses:
+        "200":
+          description: Contato desfeito
           content:
             application/json:
               schema:
@@ -4747,6 +4770,7 @@ components:
         inicio: { type: string, format: date-time }
         atendidoEm: { type: ["string", "null"], format: date-time }
         confirmadoEm: { type: ["string", "null"], format: date-time }
+        contatadoEm: { type: ["string", "null"], format: date-time }
         situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
         desfecho: { type: ["string", "null"], enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU, null] }
         observacao: { type: ["string", "null"] }

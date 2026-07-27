@@ -7,10 +7,11 @@ const estado = lerEstado();
 test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 
 /**
- * E39: confirmar a presença carimba `confirmadoEm`; a linha sai da fila
- * "Confirmar presença" para a recepção não repetir quem já foi contatado.
+ * E39, revisto pelo E97: o clique da recepção carimba `contatadoEm` — a loja
+ * PROCUROU a noiva — e a linha sai da fila "Falta procurar" para ninguém
+ * repetir. Quem confirma presença é ela, pelo portal (E85), noutro campo.
  */
-test.describe("Confirmar presença (E39)", () => {
+test.describe("Procurar para confirmar (E39, revisto pelo E97)", () => {
   let atendimentoId: string;
   let ymd: string;
 
@@ -41,7 +42,7 @@ test.describe("Confirmar presença (E39)", () => {
     atendimentoId = (await criado.json()).id as string;
   });
 
-  test("confirmar tira a noiva da fila de confirmação", async ({ page }) => {
+  test("procurar tira a noiva da fila do dia", async ({ page }) => {
     // O clique abre o wa.me em nova aba — fecha o popup para não pendurar o teste.
     page.on("popup", (p) => p.close().catch(() => {}));
 

@@ -56,7 +56,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
-| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ⬜ | — |
+| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | 🟨 | parte 1 (F6, F26) em `PENDENTE` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | ⬜ | — |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ⬜ | — |
@@ -356,3 +356,21 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   gerado tem 261 KB e 539 schemas para um bundle que já é 1,1 MB num chunk só.
   A duplicação real medida é **um** enum de cada lado, não doze. O cuidado (a)
   autorizava exatamente isto: medir, registrar o veredito e parar.
+- **E97 executado pela METADE, e o rastreador diz isso** (notas em
+  `execucao/E97.md`). Fechados o F6 🔴 e o F26; abertos F11, F15, F22, F23, F24,
+  F25 e D14. O épico é G e cada perna toca uma tela diferente — parar num ponto
+  verificado e commitado vale mais que oito pernas pela metade, e a nota lista o
+  que já foi apurado sobre cada uma das que faltam.
+- **O cuidado (a) do backlog estava errado, e isso mudou a migração.** Ele diz
+  que os `confirmadoEm` antigos são ambíguos por construção e que "não dá para
+  separá-los retroativamente". Dá: toda confirmação pelo portal grava
+  `audit_log.acao = 'PROVA_CONFIRMADA'` com o id do atendimento, e o clique da
+  loja nunca gravou nada. O backfill perguntou à trilha em vez de chutar — 16
+  linhas separadas por evidência. A premissa virou teste, para que a migração de
+  quem vier depois não pare de valer em silêncio.
+- **A coluna já tinha dono antes do E85.** O comentário do schema dizia "quando a
+  recepção confirmou a presença por WhatsApp (E39)" e o `summary` do endpoint
+  dizia "parar de repetir quem já foi CONTATADO". A rota sempre descreveu
+  contato; só escrevia confirmação. O E85 sobrepôs o segundo sentido sem
+  renomear nada — e é o segundo que merece o nome, porque é o único que
+  corresponde a alguém ter respondido.

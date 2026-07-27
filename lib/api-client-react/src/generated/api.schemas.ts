@@ -9,8 +9,15 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ErrorResponseCamposItem = {
+  campo: string;
+  motivo: string;
+};
+
 export interface ErrorResponse {
   error: string;
+  detalhe?: string;
+  campos?: ErrorResponseCamposItem[];
 }
 
 export interface LoginInput {
@@ -1034,6 +1041,8 @@ export interface Atendimento {
   atendidoEm?: string | null;
   /** @nullable */
   confirmadoEm?: string | null;
+  /** @nullable */
+  contatadoEm?: string | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;

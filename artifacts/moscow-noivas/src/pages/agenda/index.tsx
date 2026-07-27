@@ -6,7 +6,8 @@ import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
   useCreateAtendimento,
-  useConfirmarAtendimento,
+  useRegistrarContatoAtendimento,
+  useDesfazerContatoAtendimento,
   useListCabines,
   getListCabinesQueryKey,
   useListAjustes,
@@ -89,7 +90,7 @@ export default function Agenda() {
   const createAtendimento = useCreateAtendimento();
   // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já
   // foi contatado. Invalida a agenda para o card mudar de "falta" para "feito".
-  const confirmarAtendimento = useConfirmarAtendimento({
+  const registrarContato = useRegistrarContatoAtendimento({
     mutation: {
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
@@ -367,17 +368,24 @@ export default function Agenda() {
                     está AGENDADO — que é justamente quem precisa confirmar. */}
                 {doDia.some((a) => a.situacao === "AGENDADO") && (() => {
                   const agendados = doDia.filter((a) => a.situacao === "AGENDADO");
-                  const faltaConfirmar = agendados.filter((a) => !a.confirmadoEm);
-                  const jaConfirmados = agendados.length - faltaConfirmar.length;
+                  // E97/F6: a fila é de quem a loja ainda NÃO procurou. Antes
+                  // ela filtrava por `confirmadoEm`, que também era escrito pelo
+                  // clique daqui — então a linha sumia sem ninguém ter falado
+                  // com a noiva, e ficava indistinguível de quem confirmou pelo
+                  // portal. Quem já respondeu de verdade sai da fila também,
+                  // porque não há o que perguntar a ela.
+                  const faltaContatar = agendados.filter((a) => !a.contatadoEm && !a.confirmadoEm);
+                  const jaConfirmados = agendados.filter((a) => a.confirmadoEm).length;
+                  const soContatados = agendados.filter((a) => a.contatadoEm && !a.confirmadoEm).length;
                   return (
                     <div className="space-y-2 border-t pt-4">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Confirmar presença
+                        Falta procurar
                       </p>
-                      {faltaConfirmar.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Todas as presenças já foram confirmadas.</p>
+                      {faltaContatar.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Todas as noivas do dia já foram procuradas.</p>
                       ) : (
-                        faltaConfirmar.map((atendimento) => {
+                        faltaContatar.map((atendimento) => {
                           const wa = waConfirmacao(atendimento);
                           return (
                             <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm" data-testid={`confirmar-linha-${atendimento.id}`}>
@@ -394,18 +402,19 @@ export default function Agenda() {
                                   size="sm"
                                   data-testid={`confirmar-btn-${atendimento.id}`}
                                 >
-                                  {/* Abrir o wa.me (o <a> navega) E carimbar a
-                                      confirmação, para a linha sair da fila. */}
+                                  {/* Abrir o wa.me (o <a> navega) E carimbar que
+                                      a LOJA procurou — não que a noiva
+                                      respondeu. O rótulo passou a dizer isso. */}
                                   <a
                                     href={wa}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() =>
-                                      confirmarAtendimento.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
+                                      registrarContato.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
                                     }
                                   >
                                     <MessageCircle className="h-4 w-4 mr-1" />
-                                    Confirmar
+                                    Chamar no WhatsApp
                                   </a>
                                 </Button>
                               )}
@@ -413,9 +422,17 @@ export default function Agenda() {
                           );
                         })
                       )}
+                      {/* Os dois números são fatos diferentes e passam a ser
+                          ditos como tais: uma fila que some não conta quem
+                          respondeu. */}
                       {jaConfirmados > 0 && (
-                        <p className="text-xs text-muted-foreground pt-1">
-                          {jaConfirmados} já confirmada{jaConfirmados === 1 ? "" : "s"}.
+                        <p className="text-positivo pt-1 text-xs font-medium">
+                          {jaConfirmados} confirmou pelo portal.
+                        </p>
+                      )}
+                      {soContatados > 0 && (
+                        <p className="text-muted-foreground pt-1 text-xs">
+                          {soContatados} procurada{soContatados === 1 ? "" : "s"}, ainda sem resposta.
                         </p>
                       )}
                     </div>

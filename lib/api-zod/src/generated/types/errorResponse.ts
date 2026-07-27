@@ -5,7 +5,10 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ErrorResponseCamposItem } from './errorResponseCamposItem';
 
 export interface ErrorResponse {
   error: string;
+  detalhe?: string;
+  campos?: ErrorResponseCamposItem[];
 }

@@ -81,31 +81,46 @@ test.describe("Sino e mensagens de hoje (E68+E69)", () => {
     await expect(page.getByText(/presença.*por confirmar nas próximas 24h/)).not.toBeVisible();
   });
 
-  test("a fila de mensagens carimba a confirmação ao abrir o WhatsApp", async ({
+  /**
+   * E97/F6 mudou o que este teste afirma, e a mudança é a decisão do épico.
+   *
+   * ANTES: abrir o WhatsApp carimbava `confirmadoEm` — o MESMO campo que o
+   * portal usa quando a noiva clica em "confirmo". O teste dizia
+   * `expect(atendimento.confirmadoEm).not.toBeNull()` e passava, mas o que
+   * tinha acontecido era só a recepção ABRIR um link: nada garantia que a
+   * mensagem saiu, muito menos que a noiva leu. A loja separava peça e cabine
+   * com base nesse número.
+   *
+   * AGORA: o clique carimba `contatadoEm` (ato da loja) e deixa `confirmadoEm`
+   * intacto. A linha sai da fila do mesmo jeito — a recepção não precisa
+   * repetir —, e a confirmação continua sendo só dela.
+   */
+  test("a fila de mensagens carimba o CONTATO da loja, não a confirmação da noiva", async ({
     page,
     context,
   }) => {
     await page.goto(`/loja/${estado.lojaId}/mensagens`);
 
-    // A linha da noiva está na seção de confirmação, com o botão pronto.
+    // A linha da noiva está na fila de quem falta procurar, com o botão pronto.
     const linha = page.locator("li", { hasText: noivaNome });
     await expect(linha).toBeVisible();
-    const confirmar = linha.getByRole("link", { name: /Confirmar/ });
+    const chamar = linha.getByRole("link", { name: /Chamar no WhatsApp/ });
 
     // O clique abre o wa.me numa aba nova E dispara a mutação — fecha-se a
     // aba e espera-se a linha sair da fila (o carimbo invalida a query).
     const popupP = context.waitForEvent("page");
-    await confirmar.click();
+    await chamar.click();
     const popup = await popupP;
     await popup.close();
 
     await expect(linha).not.toBeVisible();
 
-    // O carimbo é de verdade, não só de tela.
+    // O carimbo é de verdade, e é o carimbo CERTO.
     const [atendimento] = await db
       .select()
       .from(atendimentosTable)
       .where(eq(atendimentosTable.id, atendimentoId));
-    expect(atendimento.confirmadoEm).not.toBeNull();
+    expect(atendimento.contatadoEm).not.toBeNull();
+    expect(atendimento.confirmadoEm).toBeNull();
   });
 });
