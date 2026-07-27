@@ -56,7 +56,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
-| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `PENDENTE` · [notas](execucao/E97.md) |
+| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | ⬜ | — |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ⬜ | — |
@@ -93,6 +93,8 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S9 | **O teto de orçamento (E33) compara em reais.** `acimaDoTeto` faz `totais.liquido > teto` em float enquanto o excedente já saiu para centavos. Um centavo no limiar, sem consequência de dinheiro — mas é régua pela metade. | 🔵 | [E95](execucao/E95.md) vp |
 | S10 | **A tela de contrato gera o carnê às cegas.** O `gerar-plano` de lá não tem prévia, e desde o E95 existe a função para mostrá-la — é o F16 aplicado à tela irmã. | 🟡 | [E95](execucao/E95.md) vp |
 | S11 | **D5 não se faz como está escrito — veredito medido, item aberto.** Derivar os resolvers dos 12 formulários do `api-zod` esbarra em duas coisas: o schema gerado descreve o PAYLOAD e o formulário valida a SUPERFÍCIE DE ENTRADA (`entrada`/`numParcelas` não existem no corpo da API), e importar o barril de 261 KB / 539 schemas num bundle que já tem 1,1 MB sem code splitting troca dívida de duplicação por dívida de peso. A duplicação real medida é **um** enum de cada lado, não doze. Caminho barato: teste de paridade dos dois enums, ou reavaliar depois do code splitting do E104. | 🟠 | [E96](execucao/E96.md) |
+| S13 | **`useBlocker` do react-router não existe neste app.** Ele monta as rotas com `<BrowserRouter>` (`App.tsx:160`), e o `useBlocker` só funciona em data router (`createBrowserRouter` + `RouterProvider`) — fora dele, lança. Sem ele, o D14 protege só o fechar/recarregar a aba: clicar na sidebar com um formulário sujo continua descartando em silêncio. Migrar o roteador toca todas as rotas do app. | 🟡 | [E97](execucao/E97.md) |
+| S14 | **As avarias antigas ficaram sem `parcela_id`.** Não há backfill possível: casar por texto ("Reparo de avaria — …") adivinharia, e duas avarias com a mesma descrição no mesmo contrato são indistinguíveis — que é justamente o caso do duplo clique. Elas seguem cobráveis de novo e removíveis; a guarda vale para o que nasce daqui. | 🔵 | [E97](execucao/E97.md) |
 | S12 | **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
