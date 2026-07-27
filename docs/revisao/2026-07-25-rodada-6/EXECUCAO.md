@@ -11,8 +11,20 @@
 3. Pegue o primeiro épico ⬜ da tabela e leia o épico correspondente no backlog
    (ele traz **A dor / Feito significa / Escopo técnico / Cuidados / Testes /
    Primeira ação**).
-4. Ao terminar, atualize a linha na tabela, escreva o parágrafo no "Diário" e
-   faça o commit do épico.
+4. Leia **[Sobras](#sobras--visto-de-passagem-sem-épico)** — se o épico que você
+   vai fazer tem item herdado lá, ele entra no escopo agora.
+5. Ao terminar, atualize a linha na tabela, escreva o parágrafo no "Diário",
+   mande as sobras novas para a tabela de Sobras e faça o commit do épico.
+
+**O backlog erra.** Ele foi escrito lendo o código, não executando-o: o E92
+derrubou o diagnóstico de um 🔴, o E94 contradisse o plano em cinco pontos e o
+F33 prometia um dado que não existe. Mapeie antes de escrever, e registre a
+correção — é ela que vale mais que o diff.
+
+**Antes do commit, a régua é o E2E** (regra 11 do método): mudou o que a trilha
+grava, ou o formato do que alguma tela lê, roda a suíte completa. Verde em
+unidade + API + typecheck é o piso, não a régua — duas vezes nesta rodada o E2E
+pegou o que 625 testes e o typecheck não pegavam.
 
 **Nada é dado por feito sem commit.** Se a tabela diz ✅ e não há commit, o
 trabalho não sobreviveu — refaça.
@@ -57,6 +69,54 @@ Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ ad
 
 **Antecipado para o dia 1:** item 1 do E104 (`.migration-backup/` fora do
 versionamento) — envenena toda busca de quem executar os outros treze.
+
+## Sobras — visto de passagem sem épico
+
+Achado que a execução vê fora do próprio escopo não é consertado (disciplina de
+commit), mas também não pode ficar preso na nota de um épico fechado: ninguém
+abre a nota de um épico que já terminou. **Regra 12 do método:** a sobra entra
+aqui no MESMO commit que a viu. A nota do épico continua sendo onde o raciocínio
+mora; esta tabela é onde o trabalho é reclamado.
+
+### Sem dono — precisam de decisão
+
+| # | O quê | Peso | Origem |
+|---|---|---|---|
+| S1 | **`DELETE /admin/lojas/:lojaId` (`admin.ts:100`) não tem guarda nenhuma** e cascateia a loja inteira — leads, contratos, parcelas, pagamentos — sem confirmação e sem trilha. É o irmão maior do B2, que o E91 fechou com 409 `USUARIO_COM_HISTORICO`. **Nenhuma das seis trilhas o viu**; é a prova da crítica 2 do método. | 🔴 | [E91](execucao/E91.md) vp2 |
+| S2 | **`POST /contratos` não valida `bloqueioVestidoIds` contra o lead**, só contra a loja: um contrato pode prender a reserva física de OUTRA noiva da mesma loja. Não é vazamento entre lojas — por isso ficou fora do E91 —, mas é da mesma família. | 🟠 | [E91](execucao/E91.md) vp4 |
+| S3 | **Ato global de superadmin não deixa trilha.** `registrarAuditoria` exige `lojaId` (`audit_log.loja_id` é `notNull`) e `DELETE /admin/usuarios/:id` é global. Hoje sobra um `req.log.warn`. Registrar em cada loja da pessoa multiplica a mesma ação em N linhas; não registrar exige mudar o schema da trilha. Vale para S1 também. | 🟠 | [E91](execucao/E91.md) "ficou de fora" |
+| S4 | **`DELETE /contas-pagar/:id` não grava auditoria.** Apagar uma conta prevista é sumir com uma obrigação sem rastro — mesma classe do B3, um degrau abaixo (não move caixa realizado). | 🟡 | [E94](execucao/E94.md) vp1 |
+| S5 | **A parcela PARCIAL sob `destinoPago: "manter"` é ambígua.** Ela vira CANCELADA, o que tira do horizonte o saldo que falta (certo) mas também tira do caixa realizado o que já entrou — e sob "manter" a loja está dizendo que ficou com o dinheiro. Representar "cancelada, mas o recebido permanece no caixa" exige decidir se o motor passa a olhar `valorRecebido` em vez do status: mudança de régua com alcance grande. Sob "estornar" não há ambiguidade. | decisão de produto | [E94](execucao/E94.md) vp2 |
+| S6 | **O estorno avulso de parcela tem a mesma leitura-fora-da-transação do B6**, mas o `SET` dele é absoluto (sempre PREVISTA/null): dois estornos simultâneos convergem. Pior caso é auditar duas vezes, não perder valor. | 🔵 | [E94](execucao/E94.md) vp3 |
+
+### Roteadas a um épico que ainda não rodou
+
+O dono do épico **lê esta seção antes de começar** — foi a única forma de a
+sugestão sair da nota de um épico alheio e chegar a ele.
+
+| Épico | Item herdado | Origem |
+|---|---|---|
+| E96 | `selecionar-loja.tsx` faz `catch (error: any)` — resquício do padrão antigo, na tela que o E93 mexeu. | [E92](execucao/E92.md) vp |
+| E99 | `/vestidos` renderiza **114 cards com foto** de uma vez (E19); a `<h2>` que o E92 pôs já diz o número, a paginação continua sendo daqui. | [E92](execucao/E92.md) vp |
+| E99 | `components/ui/chart.tsx:243` chama `toLocaleString()` sem locale e `calendar.tsx:40` usa `toLocaleString("default", …)`. Nenhum dos dois está no bundle hoje — mas se `chart.tsx` for adotado como a camada de UI, ele formata dinheiro na locale do navegador. | [E92](execucao/E92.md) vp |
+| E104 | `index.html` ainda tem a boilerplate do Replit em inglês nas três metas `description`/`og:`/`twitter:` — *"built on Replit. Update this description…"*. É o texto que aparece quando alguém compartilha o link do sistema. Uma linha. | [E92](execucao/E92.md) vp |
+| E104 | `artifacts/mockup-sandbox/index.html:6` tem `lang="en"` — e o pacote inteiro é candidato à poda, se for descartável. | [E92](execucao/E92.md) vp |
+| E104 | **As "Lojas Teste" do E2E vivem no banco de dev** (`Loja Teste 214cda2c`, `b423b8db`, `3b9323fb`…). As fixtures da suíte não estão sendo limpas, ou não todas. Higiene de teste. | [E92](execucao/E92.md) vp |
+| E104 | `listPagamentos` ainda é pedido sem janela em telas que mostram um mês — nenhuma apareceu nos quatro casos do D2, mas vale a varredura. | [E93](execucao/E93.md) vp |
+
+### Decisão consciente — não são sobras
+
+Registradas para que ninguém as "conserte" numa rodada futura sem saber o porquê
+(é o movimento "o que está BEM", aplicado ao que a execução decidiu):
+
+- **O `persist` do zustand não escuta o evento `storage`** — as abas não se
+  sincronizam sozinhas, de propósito: o veredicto `seguir-a-sessao` resolve a
+  divergência com um redirect explícito e legível, em vez de uma sincronização
+  implícita que reintroduziria a escrita cruzada que o E93 acabou de remover.
+- **`recorrencias.usuario_id` continua `ON DELETE CASCADE`** — é a única FK de
+  usuário que sobrou em cascade, e de propósito: é NULLABLE e não é histórico, é
+  a CONFIGURAÇÃO do salário. A conta a pagar já gerada sobrevive. Anotado
+  também no rodapé do DDL do E91.
 
 ## Depois da execução
 

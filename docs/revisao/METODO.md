@@ -138,6 +138,61 @@ execução, sem seta de volta.
 que isto ensinou sobre o diagnóstico"**, e o que for método sobe para este
 arquivo na hora. Foi o que gerou esta seção.
 
+### 8. A régua de verificação do épico era mais estreita que o dano 🟠
+
+Duas vezes na mesma rodada a suíte E2E completa pegou o que nada mais pegava, e
+das duas o épico já se considerava verificado:
+
+- **E92** verificou "vendo as telas" — 9 rotas em claro, escuro e 390px, com o
+  app de pé. Régua forte para cor e alvo de toque, e ela achou o único bug real
+  do épico. Mas o E93, ao rodar a suíte inteira, encontrou **três regressões**
+  que o E92 deixou: `brl()` passou a usar espaço RÍGIDO (U+00A0) e o Playwright
+  normaliza espaço em seletor de **string** mas não em **regex**; o toast de
+  login mudou de texto; `rotuloCompetencia()` foi para minúscula contra um
+  `toContainText` case-sensitive.
+- **E94** verificou com **625 testes de API verdes e typecheck limpo**. O E2E
+  acusou uma **regressão de utilidade**, não de expectativa: unificadas as duas
+  portas de pagar, a trilha ficou uniforme e menos legível — *"R$ 500,00 ·
+  Aluguel"* virou *"R$ 500,00 · 1 conta"*, porque `resumoDetalhe` lia
+  `detalhe.descricao` e do formato novo só sabia CONTAR. Nenhum teste de unidade
+  olhava para isso e nenhum teste de API poderia: o dado estava certo no banco,
+  o resumo é da tela.
+
+A primeira formulação da regra (escrita no diário do E93) dizia "épico que mexe
+em **cópia ou formatação compartilhada**". O E94 a derrubou: ali não houve
+mudança de cópia nenhuma, foi mudança de **forma do dado que a tela lia**.
+
+→ **Regra nova (regra 11):** mudou o que a trilha grava, ou o formato do que
+alguma tela lê, roda o E2E completo antes do commit. Verde em unidade + API +
+typecheck **não** é a régua; é o piso.
+
+### 9. O "visto de passagem" preservava o achado e não o entregava a ninguém 🟠
+
+O movimento existe para não perder o que se vê fora do escopo sem quebrar a
+disciplina do commit — e ele preserva. O que faltava era o **trilho de saída**.
+
+A prova é o achado mais grave da rodada. `DELETE /admin/lojas/:lojaId`
+(`admin.ts:100`) não tem guarda nenhuma e cascateia a loja inteira. Ele foi
+achado por quem executava o E91, está escrito em **três** lugares — a nota do
+E91, a crítica 2 acima e a justificativa da lente "Irreversibilidade" da R7 — e
+em nenhum deles ele é **trabalho**: não está no backlog E91–E104 nem em lista
+alguma que o próximo executor abra. Enquanto isso, a rastreabilidade dos 121
+achados do diagnóstico é de 100%.
+
+Ou seja: o achado que o método encontrou por acidente tinha menos garantia de
+sobreviver que o achado que ele encontrou de propósito. E a assimetria é
+justamente ao contrário do valor — o de propósito já tem épico; o de acidente é
+o que ninguém mais vai procurar.
+
+Efeito medido: quatro épicos produziram **catorze** itens de "visto de passagem"
+(seis sem épico nenhum, oito sugeridos a um épico com uma seta e um ponto de
+interrogação, dentro de um arquivo que o dono daquele épico não tem motivo para
+abrir).
+
+→ **Regra nova (regra 12):** sobra vista de passagem entra na tabela de Sobras
+do rastreador no mesmo commit. A nota do épico continua sendo onde o raciocínio
+mora; o rastreador é onde o trabalho é reclamado.
+
 ---
 
 ## Rodada 7 — as lentes novas
@@ -178,6 +233,12 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
 9. Todo relatório de execução termina em "o que isto ensinou sobre o
    diagnóstico", e o que for método sobe para este arquivo. *(R7)*
 10. Um épico por commit, escopo fechado, "visto de passagem" para o resto. *(R6)*
+11. Mudou o que a trilha grava, ou o formato do que alguma tela lê, roda o E2E
+    completo antes do commit. *(R6, descoberta na execução — crítica 8)*
+12. Todo "visto de passagem" sai das notas do épico e entra na tabela de
+    **Sobras** do rastreador da rodada, no MESMO commit que o viu. Achado
+    preservado só na nota do épico não vira trabalho: ninguém lê a nota de um
+    épico fechado. *(R6, descoberta na execução — crítica 9)*
 
 ---
 
@@ -187,3 +248,10 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   correções que a execução fez ao próprio diagnóstico. Movimentos da R6
   nomeados; 7 falhas de método registradas com evidência; 7 lentes novas
   desenhadas para a R7.
+- **2026-07-27** — auditoria do próprio sistema de anotação, entre o E94 e o
+  E95. Duas falhas novas registradas com prova (8 e 9) e viradas em regra (11 e
+  12); a descoberta do `E2E_API_PROXY` finalmente migrada para o `replit.md`,
+  como a regra 8 mandava desde que foi escrita — ela nasceu desse caso e o caso
+  ficou para trás; tabela de **Sobras** criada no rastreador da R6 com os itens
+  que estavam presos nas notas; `CLAUDE.md` criado na raiz para que este arquivo
+  seja lido no começo de toda sessão, e não por acaso.

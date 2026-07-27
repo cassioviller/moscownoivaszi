@@ -191,6 +191,15 @@ rode o codegen.
   num filtro de dinheiro. Teste de UI que dependa do formato desses campos
   precisa fixar `--lang` no browser; a captura sem isso mede o navegador, não o
   app.
+- **Para navegar o app à mão, o `E2E_API_PROXY` do Vite NÃO serve.** Ele existe
+  só para o Playwright (`vite.config.ts:69`, ligado em `playwright.config.ts:59`)
+  e devolve **404 em POST** — ou seja, o login não passa por ele e não há como
+  chegar a tela nenhuma. O que funciona (medido na trilha E e reusado no E92):
+  subir `api-server` na 5000, o Vite na 5173, e um **proxy próprio na frente dos
+  dois** (ex.: 5174 → `/api` para a 5000, resto para a 5173); daí logar normal.
+  Vale para conferência visual, captura de tela e medição de contraste — e
+  lembre que fazer login **escreve** (uma linha em `sessions` e o carimbo de
+  `ultimoLoginEm`), o que é aceitável, mas não é "não toquei no banco".
 - **Rotas planas (`/financeiro`, `/contratos/:id`) são compatibilidade
   transitória**: caem no `LegacyRedirect` do `App.tsx`. Código novo linka com
   escopo de loja (`/loja/:lojaId/...`); a sidebar e `useCaminhoDaLoja` mostram o
