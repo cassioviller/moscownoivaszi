@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { chavesDoCaixa } from "@/lib/financeiro/cache";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Erro } from "@/components/estado";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
@@ -70,19 +71,18 @@ export function ResumoCard({
   );
 }
 
+/**
+ * E99: o desenho saiu daqui e virou `<Erro>` em `@/components/estado`. Esta
+ * função continua como porta fina para as seis telas do financeiro que já a
+ * chamam com a mensagem PRONTA — reescrever os seis call-sites para passar o
+ * erro cru seria mexer em código correto para trocar de nome, e o cuidado (a)
+ * do épico é explícito: poda e adoção onde a divergência já custou, nada mais.
+ *
+ * O que importa é que agora existe UM desenho, não três.
+ */
 export function ErroListagem({ mensagem, onRetry }: { mensagem: string; onRetry: () => void }) {
-  return (
-    <Alert variant="destructive">
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Erro ao carregar</AlertTitle>
-      <AlertDescription className="flex items-center gap-3">
-        <span>{mensagem}</span>
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          Tentar novamente
-        </Button>
-      </AlertDescription>
-    </Alert>
-  );
+  // A mensagem já veio traduzida pela tela; `detalhe` faz o `<Erro>` respeitá-la.
+  return <Erro titulo="Erro ao carregar" erro={{ data: { detalhe: mensagem } }} onTentarNovamente={onRetry} />;
 }
 
 /**

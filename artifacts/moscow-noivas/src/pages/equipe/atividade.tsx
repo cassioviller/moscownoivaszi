@@ -6,7 +6,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { ROTULO_ACAO, resumoDetalhe } from "../financeiro/auditoria";
 
 /**
@@ -60,7 +60,7 @@ export function AtividadeEquipe() {
       </CardHeader>
       <CardContent className="space-y-6">
         {atividade.isError ? (
-          <EstadoErro
+          <Erro
             titulo="Erro ao carregar a atividade"
             erro={atividade.error}
             onTentarNovamente={() => atividade.refetch()}

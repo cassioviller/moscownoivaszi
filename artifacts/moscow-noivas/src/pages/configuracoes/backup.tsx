@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { useToast } from "@/hooks/use-toast";
 import { DatabaseBackup, Loader2 } from "lucide-react";
 
@@ -151,7 +151,7 @@ export function BackupSistema() {
       </CardHeader>
       <CardContent className="space-y-6">
         {statusQ.isError ? (
-          <EstadoErro
+          <Erro
             titulo="Erro ao carregar o status do backup"
             erro={statusQ.error}
             onTentarNovamente={() => statusQ.refetch()}

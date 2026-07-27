@@ -45,7 +45,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Building2, Users, BarChart3 } from "lucide-react";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 
 const novaLojaSchema = z.object({
   nome: z.string().min(1, "Nome da loja é obrigatório"),
@@ -301,7 +301,7 @@ export default function AdminConsole() {
         <Card>
           <CardContent className="pt-6 space-y-6">
             {erroLojas ? (
-              <EstadoErro
+              <Erro
                 titulo="Erro ao carregar as lojas"
                 erro={errLojas}
                 onTentarNovamente={() => refetchLojas()}
@@ -383,7 +383,7 @@ export default function AdminConsole() {
         <Card>
           <CardContent className="pt-6 space-y-6">
             {erroUsuarios ? (
-              <EstadoErro
+              <Erro
                 titulo="Erro ao carregar os usuários"
                 erro={errUsuarios}
                 onTentarNovamente={() => refetchUsuarios()}

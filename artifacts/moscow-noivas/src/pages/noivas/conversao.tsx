@@ -10,7 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { brl } from "@/lib/formatos";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { capitalizar, origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
 
 /**
@@ -80,7 +80,7 @@ export default function ConversaoLeads() {
       </div>
 
       {q.isError ? (
-        <EstadoErro titulo="Erro ao carregar a conversão" erro={q.error} onTentarNovamente={() => q.refetch()} />
+        <Erro titulo="Erro ao carregar a conversão" erro={q.error} onTentarNovamente={() => q.refetch()} />
       ) : q.isPending || !dados ? (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="h-40 animate-pulse rounded-lg bg-muted" />

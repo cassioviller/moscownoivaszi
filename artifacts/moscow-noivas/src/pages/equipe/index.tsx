@@ -60,7 +60,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { AtividadeEquipe } from "./atividade";
 import { CACHE_ESTAVEL } from "@/lib/cache";
@@ -383,7 +383,7 @@ export default function Equipe() {
           </CardHeader>
           <CardContent>
             {erroEquipe ? (
-              <EstadoErro
+              <Erro
                 titulo="Erro ao carregar a equipe"
                 erro={errEquipe}
                 onTentarNovamente={() => refetchEquipe()}

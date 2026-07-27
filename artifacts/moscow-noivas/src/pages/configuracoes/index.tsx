@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Settings2, Users } from "lucide-react";
 import { tipoAtributoLabel } from "@/lib/formatos";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
 import { PrivacidadeLgpd } from "./privacidade";
@@ -66,7 +66,7 @@ export default function Configuracoes() {
 
         <TabsContent value="loja" className="space-y-6">
           {erroLoja && (
-            <EstadoErro
+            <Erro
               titulo="Erro ao carregar as configurações da loja"
               erro={errLoja}
               onTentarNovamente={recarregarLoja}
@@ -178,7 +178,7 @@ export default function Configuracoes() {
         {user?.isSuperAdmin && (
           <TabsContent value="admin" className="space-y-6">
             {erroAdmin && (
-              <EstadoErro
+              <Erro
                 titulo="Erro ao carregar a administração"
                 erro={errAdmin}
                 onTentarNovamente={recarregarAdmin}

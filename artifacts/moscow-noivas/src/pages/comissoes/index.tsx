@@ -183,6 +183,16 @@ export default function Comissoes() {
   // Resultado da simulação (E23) — abre o dialog quando chega.
   const [simulacao, setSimulacao] = useState<SimulacaoComissao | null>(null);
 
+  /**
+   * D7/E99 — "ainda não sei" não é "zero".
+   *
+   * O `resumoFechamento` abaixo devolve `qtd: 0` nos DOIS casos: quando não há
+   * comissão a lançar e quando o preview ainda está no ar. O diálogo tratava os
+   * dois igual e afirmava "nenhuma comissão a lançar" antes de saber — numa
+   * ação que fecha o mês e não tem desfazer.
+   */
+  const calculando = preview.isPending;
+
   // Resumo do que o fechamento vai LANÇAR em contas a pagar — o número que dá
   // confiança antes de uma ação irreversível.
   const resumoFechamento = useMemo(() => {
@@ -537,16 +547,27 @@ export default function Comissoes() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Fechar {rotuloCompetencia(competencia)}?</AlertDialogTitle>
+              {/* D7/E99 — a tela AFIRMAVA "nenhuma comissão a lançar" enquanto
+                  o preview ainda estava carregando: `resumoFechamento.qtd` é 0
+                  tanto quando não há comissão quanto quando ainda não se sabe.
+                  A frase saía idêntica nos dois casos, num diálogo que fecha o
+                  mês de forma IRREVERSÍVEL. É a tela mentindo sobre dinheiro
+                  para acelerar um clique que não tem volta. */}
               <AlertDialogDescription>
-                {resumoFechamento.qtd === 0
-                  ? "Nenhuma comissão a lançar nesta competência — o fechamento apenas trava o mês."
-                  : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando ${brl(resumoFechamento.total)}.`}
+                {calculando
+                  ? "Calculando o que será lançado…"
+                  : resumoFechamento.qtd === 0
+                    ? "Nenhuma comissão a lançar nesta competência — o fechamento apenas trava o mês."
+                    : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando ${brl(resumoFechamento.total)}.`}
                 {" "}O mês fica fechado e a ação não pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={onGerarFechamento} disabled={gerarFechamento.isPending}>
+              <AlertDialogAction
+                onClick={onGerarFechamento}
+                disabled={gerarFechamento.isPending || calculando}
+              >
                 {gerarFechamento.isPending ? "Fechando…" : "Fechar competência"}
               </AlertDialogAction>
             </AlertDialogFooter>

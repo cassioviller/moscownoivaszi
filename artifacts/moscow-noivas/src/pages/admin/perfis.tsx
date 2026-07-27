@@ -13,7 +13,7 @@ import {
   ehPerfilAdmin,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /** Templates globais de perfil — rota top-level /admin/perfis (fora de /loja). */
@@ -67,7 +67,7 @@ export default function AdminPerfis() {
         </div>
 
         {isError ? (
-          <EstadoErro
+          <Erro
             titulo="Erro ao carregar os perfis"
             erro={error}
             onTentarNovamente={() => refetch()}
