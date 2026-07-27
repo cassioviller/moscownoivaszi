@@ -2268,6 +2268,7 @@ export interface ComissaoFechamento {
   competencia: string;
   /** Base líquida, já com o estorno abatido */
   totalVendas: number;
+  estornoAbsorvido?: number;
   /** @nullable */
   percentualAplicado?: number | null;
   valorComissao: number;

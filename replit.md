@@ -136,7 +136,7 @@ rode o codegen.
   parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
   aceita pelo link com rastro (instante, versão, hash — E74).
 - **Financeiro** — `/financeiro` é o fluxo de caixa (realizado), com recortes
-  (DRE por competência, projeção de saldo) e telas de ação (receber, pagar com
+  (**DRE de CAIXA**, projeção de saldo) e telas de ação (receber, pagar com
   saída multi-conta, cobrança por faixa de atraso). Conciliação por extrato
   OFX/CSV no navegador (E70). E79: os agregados rodam no BANCO
   (`GET /financeiro/fluxo`, `/financeiro/dre`, recortes de parcelas,
@@ -214,6 +214,13 @@ rode o codegen.
   clique, token em QUERY (o logger corta a query), e o extrato sai só do
   contrato ATIVO da própria noiva. Revogado responde 404 como desconhecido —
   o link morto não conta que um dia valeu.
+- **O DRE é de CAIXA, e só existe um** (E102/C8). Ele soma o dinheiro que se
+  MOVEU dentro da competência — parcela recebida menos pagamento feito —, e por
+  isso fecha com o fluxo por construção. A coluna `contas_pagar.competencia`
+  existe, está preenchida e **não entra na conta**: nenhuma comissão aparece no
+  DRE da competência que a gerou, e sim no mês em que foi paga. O irmão por
+  competência foi decidido como épico SEPARADO (E105) em 2026-07-25 — o que não
+  podia seguir era o mesmo nome para as duas coisas.
 - **O drill do restore PROVA o dump, não restaura nada** (E89):
   `pnpm --filter api-server run restore-drill` pega o dump mais recente,
   restaura num database EFÊMERO `drill_<timestamp>` na mesma instância e

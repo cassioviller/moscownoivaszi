@@ -61,7 +61,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
-| E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ⬜ | — |
+| E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `PENDENTE` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ⬜ | — |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | ⬜ | — |
 
@@ -476,3 +476,23 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   e o superadmin passa por fora do `podeNoModulo` — o `requireModulo` o libera
   antes de consultar permissão —, então a régua da rota tinha de repetir isso,
   senão o console da rede via um dashboard sem dinheiro.
+- **E102 fechado** (notas em `execucao/E102.md`) — o único épico da rodada cuja
+  primeira ação não era código: as três decisões foram respondidas no dia 1, e
+  isto é a implementação delas.
+  1. **O estorno deixou de ser cobrado duas e três vezes.** `min(bruto,
+     pendente)`, com o resto carregando. Precisou de coluna nova, e o motivo é
+     que a alternativa do backlog (reconciliação por contrato) NÃO implementa a
+     decisão: absorção parcial não cabe em granularidade de contrato — abater
+     metade de um cancelamento de R$ 20.000 não é "meio contrato reconciliado".
+     O pendente virou uma conta DERIVADA, e por isso reabrir um fechamento
+     parcial devolve o valor sem uma linha de código.
+  2. **O caso do meio do mês nunca tinha sido exercitado** (C7) — o único teste
+     usava virada de mês, que é por que ninguém tinha visto a escada criada dia
+     20 reprecificar os 19 dias anteriores. E minha primeira régua comparava o
+     INSTANTE: reprovou cinco testes existentes, porque `dia("2020-01-01")`
+     ancora ao meio-dia e `limitesCompetencia` à meia-noite. Mesmo primeiro dia.
+  3. **No C8 a tela já estava honesta** ("Resultado do mês" + badge "Regime de
+     caixa"); quem mentia era o `replit.md`. Ele ganhou a entrada que faltava:
+     `contas_pagar.competencia` existe, está preenchida e NÃO entra na conta —
+     nenhuma comissão aparece no DRE da competência que a gerou. O nome era o
+     sintoma; a informação que faltava era essa.

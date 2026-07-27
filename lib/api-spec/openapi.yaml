@@ -5864,6 +5864,10 @@ components:
         vendedoraNome: { type: ["string", "null"] }
         competencia: { type: string, description: "Competência YYYY-MM" }
         totalVendas: { type: number, description: "Base líquida, já com o estorno abatido" }
+        # E102/C5: quanto do estorno pendente ESTE fechamento absorveu. Parcial
+        # quando o mês não cobre tudo — o resto carrega para a competência
+        # seguinte, em vez de o valor cheio voltar e ser descontado de novo.
+        estornoAbsorvido: { type: number }
         percentualAplicado: { type: ["number", "null"] }
         valorComissao: { type: number }
         valorBonus: { type: number }

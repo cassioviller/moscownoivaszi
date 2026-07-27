@@ -215,6 +215,8 @@ async function estornosPendentes(
       .select({
         vendedoraId: comissaoFechamentosTable.vendedoraId,
         competencia: comissaoFechamentosTable.competencia,
+        estornoAbsorvido: comissaoFechamentosTable.estornoAbsorvido,
+        estornoContratoIds: comissaoFechamentosTable.estornoContratoIds,
       })
       .from(comissaoFechamentosTable)
       .where(and(
@@ -253,6 +255,31 @@ async function estornosPendentes(
     e.totalC += cent(c.valorTotal);
     e.contratoIds.push(c.id);
   }
+
+  /**
+   * E102/C5 — desconta o que fechamentos ANTERIORES já absorveram em parte.
+   *
+   * A absorção proporcional (decisão do dono em 2026-07-25) faz um mês abater
+   * `min(bruto, pendente)` sem reconciliar contrato nenhum, porque abater
+   * metade de um cancelamento não é "meio contrato reconciliado". Esses
+   * fechamentos ficam com `estornoContratoIds` vazio e `estornoAbsorvido > 0`.
+   *
+   * Só os PARCIAIS entram aqui: quem absorveu tudo carimbou os contratos, e
+   * eles já saíram da soma acima (`comissaoEstornadaEm IS NULL`). Somar os dois
+   * descontaria duas vezes.
+   *
+   * A conta é DERIVADA, não acumulada — e é por isso que reabrir um fechamento
+   * parcial devolve o valor ao pendente sem uma linha de código: a linha some,
+   * a soma muda.
+   */
+  for (const f of fechs) {
+    if ((f.estornoContratoIds?.length ?? 0) > 0) continue;
+    const absorvidoC = cent(f.estornoAbsorvido ?? 0);
+    if (absorvidoC <= 0) continue;
+    const e = mapa.get(f.vendedoraId);
+    if (e) e.totalC = Math.max(0, e.totalC - absorvidoC);
+  }
+
   return mapa;
 }
 
@@ -342,6 +369,37 @@ router.post("/lojas/:lojaId/comissao/regras", async (req, res): Promise<void> =>
   const vigenciaInicio = parsed.data.vigenciaInicio
     ? new Date(parsed.data.vigenciaInicio)
     : limitesCompetencia(competenciaDe(new Date())).fim;
+
+  /**
+   * E102/C7 — a escada é POR MÊS, e o sistema passa a recusar o meio dele.
+   *
+   * **Decisão do dono em 2026-07-25.** A vigência sempre foi resolvida por
+   * competência inteira: uma escada criada dia 20 reprecificava os 19 dias
+   * anteriores, e o preview saltava de R$ 2.000 para R$ 6.400 no instante em
+   * que ela era salva. O docstring prometia "a regra que valia naquele mês", e
+   * o único teste usava virada de mês — o caso do meio nunca foi exercitado.
+   *
+   * Recusar é mais honesto que documentar: o campo se chama `vigenciaInicio` e
+   * agora ele significa exatamente isso, sem ambiguidade. Quem quer valer para
+   * um mês manda o primeiro dia dele.
+   */
+  // A pergunta é sobre o DIA, não sobre o instante: `2020-01-01T12:00-03:00` e
+  // `2020-01-01T00:00-03:00` são o mesmo primeiro dia, e comparar `getTime()`
+  // reprovaria o segundo. Mesmo deslocamento de fuso que `competenciaDe` usa.
+  const diaDoMesSP = new Date(vigenciaInicio.getTime() - 3 * 60 * 60 * 1000).getUTCDate();
+  if (diaDoMesSP !== 1) {
+    res.status(422).json({
+      error: "VIGENCIA_FORA_DA_COMPETENCIA",
+      detalhe: "A escada de comissão vale por mês inteiro — informe o primeiro dia da competência",
+      campos: [
+        {
+          campo: "vigenciaInicio",
+          motivo: `Use o primeiro dia de ${competenciaDe(vigenciaInicio)}`,
+        },
+      ],
+    });
+    return;
+  }
 
   const regraId = await db.transaction(async (tx) => {
     const [existente] = await tx
@@ -1023,7 +1081,16 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
     for (const vendedoraId of aFechar) {
       const brutoC = vendas.get(vendedoraId) ?? 0;
       const estorno = estornos.get(vendedoraId) ?? { totalC: 0, contratoIds: [] };
-      const netC = brutoC - estorno.totalC;
+      /**
+       * E102/C5 — o mês absorve o que cabe, e o resto carrega.
+       *
+       * Antes: `netC = brutoC − estorno.totalC`, que ficava NEGATIVO quando o
+       * estorno não cabia — e como a reconciliação era tudo-ou-nada, o valor
+       * CHEIO voltava no mês seguinte com a base deste mês já consumida. Três
+       * meses assim descontaram R$ 20.000 três vezes.
+       */
+      const absorvidoC = Math.min(brutoC, estorno.totalC);
+      const netC = brutoC - absorvidoC;
       const regra = regras.get(vendedoraId);
       const r = regra
         ? calcularComissao(netC, regra.faixas, regra.bonusAcumulaFaixas)
@@ -1046,16 +1113,18 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
         });
       }
 
-      // §6.4: só marca os cancelados como reconciliados se o mês absorveu o
-      // estorno INTEIRO. Se não absorveu, o saldo segue pendente e carrega para
-      // a competência seguinte — senão a diferença sumiria sem ninguém pagar.
-      const reconciliados = netC >= 0 ? estorno.contratoIds : [];
+      // §6.4: os contratos só são carimbados quando o mês absorveu o estorno
+      // INTEIRO — abater metade de um cancelamento não é "meio contrato
+      // reconciliado". Na absorção parcial, o valor absorvido fica na coluna e
+      // `estornosPendentes` o desconta do que carrega.
+      const reconciliados = absorvidoC >= estorno.totalC ? estorno.contratoIds : [];
       const [fechamento] = await tx.insert(comissaoFechamentosTable).values({
         id: fechamentoId,
         lojaId,
         vendedoraId,
         competencia,
-        totalVendas: real(Math.max(0, netC)),
+        totalVendas: real(netC),
+        estornoAbsorvido: real(absorvidoC),
         percentualAplicado: r.percentualAplicado,
         valorComissao: real(r.valorComissao),
         valorBonus: real(r.valorBonus),
