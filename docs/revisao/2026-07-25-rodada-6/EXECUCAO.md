@@ -61,7 +61,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
-| E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `PENDENTE` · [notas](execucao/E102.md) |
+| E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ⬜ | — |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | ⬜ | — |
 
