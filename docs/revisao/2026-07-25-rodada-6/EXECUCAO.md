@@ -56,7 +56,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E94 | Dinheiro que muda sem rastro (C4, B3, B6, B8, A2, F33) | M | ✅ | `ed62ac8` · [notas](execucao/E94.md) |
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
-| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | 🟨 | parte 1 (F6, F26) em `PENDENTE` · [notas](execucao/E97.md) |
+| E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | 🟨 | parte 1 (F6, F26) em `3656a8e` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ⬜ | — |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | ⬜ | — |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ⬜ | — |
