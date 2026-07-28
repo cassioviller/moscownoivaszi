@@ -83,7 +83,7 @@ quem escolheu a paleta:
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ✅ | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; parte 3 (a tela do F32) em `ced6a29`; parte 4 (F34) em `8673784` · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
-| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
+| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `<hash>`; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
@@ -124,6 +124,8 @@ mora; esta tabela é onde o trabalho é reclamado.
 | ~~S12~~ | **Fechada pelo E107** (`4623ec1`). **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 | S21 | **O "UM pacote" do F34 não foi feito, e a medida diz por quê.** Os quatro exports do financeiro recortam por réguas DIFERENTES — o de parcelas por `vencimento`, o da folha por `data` de pagamento. Juntá-los num arquivo como estão produz um pacote em REGIME MISTO, que não fecha com o DRE nem com o fluxo. Fazer direito é derivá-lo de `GET /financeiro/fluxo`, que já entrega os dois lados com a régua única — é épico de exportação, não uma linha do F34. O que ficou único no F34 foi o CARIMBO. | 🟡 | [E103/F34](execucao/E103-f34.md) |
 | S22 | **`e2e/24-dias-funcionamento` é flake.** Vermelho numa passada da suíte completa, verde sozinho e verde na execução seguinte. Mesma família da **S20** e da **S7**: um vermelho desses se lê como regressão e custa uma investigação. O spec mexe em `regra_disponibilidade.diasFuncionamento`, que é estado COMPARTILHADO da loja de seed — a suspeita é a mesma classe, e a saída também (configuração própria por execução). | 🟠 (infra de teste) | [E103/F34](execucao/E103-f34.md) |
+| S23 | **O `mockup-sandbox` guarda 4 cópias divergentes de `ui/`, e uma delas nunca recebeu o conserto do S19.** O `calendar.tsx` de lá continua com as cinco classes `-[--cell-size]` que o Tailwind v4 descarta. Enquanto o pacote estiver fora do workspace (A6) ninguém as compila, então o custo hoje é ZERO — o risco é o dia em que ele voltar, ou em que alguém copiar dali para cá achando que é o primitivo vivo. Ou se apaga o pacote (`rm -rf`, e as 4 cópias vão junto), ou o `ui/` de lá vira um link para o de verdade. | 🔵 | [E104](execucao/E104.md) parte 3 |
+| S24 | **A allowlist do `lote2` não cobra que cada perdão ainda tenha assunto** — foi assim que o `DELETE /ajustes/{ajusteId}` seguiu perdoado por tempo indeterminado depois de já estar no spec (`openapi.yaml:1767`). A guarda **não** foi escrita no E104 parte 3 porque o conjunto ficou VAZIO e ela não teria sujeito. Se a lista voltar a crescer, a guarda entra junto com a primeira entrada nova: toda entrada tem de estar no servidor **e** ausente do spec. | 🔵 | [E104](execucao/E104.md) parte 3 |
 
 ### Roteadas a um épico que ainda não rodou
 
@@ -1161,3 +1163,36 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   6. **O "UM pacote" NÃO foi feito, com medida** — os quatro exports recortam por
      réguas diferentes, e juntá-los como estão dá regime misto. Virou a **S21**.
      O flake do `24-dias-funcionamento` virou a **S22**.
+- **E104 parte 3 — o invariante fica total, e a razão do A6 era falsa.** Fecha o
+  A6, o A8 e as três roteadas; o épico segue 🟨.
+  1. **A fase A errou aqui, e só apareceu porque fui provar o ganho.** Ela mediu
+     que `pnpm run build` da raiz quebra por causa do `mockup-sandbox`, e foi
+     essa medida que decidiu o A6. Tirado o pacote, **a raiz continua
+     quebrando** — agora no `moscow-noivas`, cujo `vite.config.ts:11` tem o
+     `throw` idêntico: `Error: PORT environment variable is required but was not
+     provided.` Com `PORT=5000 BASE_PATH=/` o build passa inteiro em 8,21 s.
+     Exigir as duas variáveis é convenção do repo, não defeito do sandbox.
+  2. **A lição é sobre a fase A inteira, não sobre este item.** Ela mediu por
+     LEITURA e acertou trinta correções; aqui ela EXECUTOU pela metade e parou no
+     primeiro vermelho. Um `pnpm -r` que aborta na primeira falha só prova quem
+     falhou primeiro, nunca quem mais falha. A mentira foi corrigida nos três
+     lugares onde morava (o `pnpm-workspace.yaml`, o `replit.md` e a tabela da
+     fase A no plano), e o `replit.md` ganhou o que faltava: **como buildar a
+     raiz fora do `run` do Replit**, que é capacidade (regra 8).
+  3. **O A6 continua certo com outros números:** o typecheck cai de 4 para 3
+     projetos (`Scope: 3 of 11`), o lock perde **971 linhas**, e o pacote tem 60
+     devDependencies e **zero** dependencies — não entrega runtime nenhum.
+  4. **A allowlist do `lote2` tinha duas entradas e as duas eram mentira.** A
+     justificativa da primeira dizia "o spec só documenta a listagem geral", e o
+     spec documenta o `post:` no MESMO path (`openapi.yaml:3034`). A segunda, o
+     `DELETE /ajustes/{ajusteId}`, **já estava no spec** (`openapi.yaml:1767`) —
+     perdão sem assunto. Com a rota morta removida, a lista fica **vazia** e o
+     invariante **spec = servidor** passa a ser total.
+  5. **Duas recusas escritas.** Não há vermelho a citar no A8, porque o conserto
+     é uma REMOÇÃO — o que prova o item é a lista vazia com o `lote2` verde. E a
+     guarda contra o próximo perdão morto não foi escrita porque hoje não teria
+     sujeito: virou a **S24**. As 4 cópias de `ui/` do sandbox, uma com o
+     `calendar.tsx` que nunca recebeu o S19, viraram a **S23**.
+  6. **A roteada que mudava o que o mundo vê:** as três metas do `index.html`
+     traziam *"Moscow Noivas — built on Replit. Update this description…"* — é o
+     texto que aparece ao colar o link no WhatsApp.

@@ -429,7 +429,7 @@ nenhuma. São **13 linhas em 6 arquivos**, e o Tailwind instalado é **4.3.1**.
 | **E104** | "ampliar o `include` destrava testar componente" | **No-op**: os 31 testes já estão em `src/lib`. O que falta é `jsdom` + testing-library, **não instalados** — é o único item de todo o fechamento que precisa de rede |
 | **E104** | S18: "as quatro Loja Teste" | São 1,5% do passivo. **613 usuários órfãos** (86% de 714) e 723 sessões. E o risco que a sobra nomeia (a eleição do seed) **já não existe** desde o E100 parte 3 |
 | **S13** | "migrar o roteador toca todas as rotas" | Toca **1 arquivo**. Os 66 que importam `react-router` usam só hooks e `<Link>`, idênticos em data router |
-| **A6** | "~40 devDependencies" | **60**, 18 exclusivas, 9,3 MB — e **`pnpm run build` da raiz QUEBRA** por causa dele (falta `PORT`) |
+| **A6** | "~40 devDependencies" | **60** (e zero `dependencies`), 18 exclusivas, 9,3 MB. ~~e **`pnpm run build` da raiz QUEBRA** por causa dele (falta `PORT`)~~ — **esta segunda medida é FALSA, e o E104 parte 3 a derrubou:** tirado o sandbox, a raiz continua quebrando no `moscow-noivas`, que tem o `throw` idêntico. Exigir `PORT`/`BASE_PATH` é convenção do repo |
 
 ## As quatro decisões, respondidas
 

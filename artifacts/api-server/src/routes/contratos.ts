@@ -599,11 +599,14 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
 });
 
 // Parcelas
-router.get("/lojas/:lojaId/contratos/:contratoId/parcelas", async (req, res): Promise<void> => {
-  const { lojaId, contratoId } = req.params;
-  const parcelas = await db.select().from(parcelasTable).where(and(eq(parcelasTable.contratoId, contratoId as string), eq(parcelasTable.lojaId, lojaId as string))).orderBy(parcelasTable.numero);
-  res.json(ListParcelasResponse.parse(parcelas));
-});
+//
+// A8/E104 — `GET /contratos/:id/parcelas` foi REMOVIDA. Ela não estava no spec,
+// não tinha hook gerado, nenhuma tela a chamava e nenhum E2E a tocava: o único
+// consumidor era um teste. E era redundante mesmo para quem só tem `leads` —
+// `GET /contratos/:id` devolve `with: { parcelas: true }` no mesmo gate.
+//
+// Com ela some a última entrada viva da allowlist do `lote2`, e o invariante
+// **spec = servidor** passa a ser total, não "total menos uma".
 
 router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const { lojaId, parcelaId } = req.params;

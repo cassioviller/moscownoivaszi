@@ -1,5 +1,31 @@
 packages:
   - artifacts/*
+  # A6/E104 — `mockup-sandbox` sai do workspace de PRODUÇÃO, e não é poda.
+  #
+  # Medido: zero imports de `@workspace/*`, a pasta de mockups nem existe no
+  # disco, dois commits na vida do pacote (o último em 2026-07-06), nenhuma
+  # referência de código fora dele, 60 devDependencies (18 exclusivas, 9,3 MB) e
+  # 6,5 s de typecheck — 22% do total dos artefatos.
+  #
+  # **A razão que a fase A deu para tirá-lo é FALSA, e fica escrita para ninguém
+  # repeti-la.** Ela dizia "ele QUEBRA o `pnpm run build` da raiz", porque o
+  # `vite.config` dele lança sem `PORT`/`BASE_PATH`. Medido depois de tirá-lo: a
+  # raiz continua quebrando, e agora no `moscow-noivas`, cujo `vite.config.ts:11`
+  # tem o `throw` IDÊNTICO — `Error: PORT environment variable is required but
+  # was not provided.` Com `PORT=5000 BASE_PATH=/` o `pnpm -r run build` passa
+  # inteiro, em 8,21 s. Exigir as duas variáveis é convenção do repo, não defeito
+  # do sandbox; o sandbox só era o primeiro a falhar por ordem alfabética.
+  #
+  # O que de fato se ganha, medido: o typecheck cai de **4 para 3 projetos**
+  # (`Scope: 3 of 11`), e o lock perde **971 linhas** — o pacote tem 60
+  # devDependencies e ZERO dependencies, ou seja, não entrega runtime nenhum.
+  #
+  # Fora do workspace em vez de apagado: o `[[services]]` do Canvas continua no
+  # `.replit-artifact/artifact.toml`, e é o único ativo que o pacote ainda tem.
+  # Se um dia ficar claro que ninguém abre o preview, a poda é um `rm -rf` — e aí
+  # morrem junto as 4 cópias divergentes de `ui/` (incluindo um `calendar.tsx`
+  # que não recebeu o conserto do S19).
+  - "!artifacts/mockup-sandbox"
   - lib/*
   - lib/integrations/*
   - scripts

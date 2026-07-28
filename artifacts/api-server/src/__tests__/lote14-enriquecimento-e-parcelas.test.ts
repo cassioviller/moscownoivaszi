@@ -266,8 +266,12 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
     await agent.delete(`/api/lojas/${f.lojaId}/parcelas/${p1.id}`).expect(422);
 
     await agent.delete(`/api/lojas/${f.lojaId}/parcelas/${p2.id}`).expect(204);
-    const lista = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas`).expect(200);
-    expect(lista.body.find((p: any) => p.id === p2.id)).toBeUndefined();
+    // A8/E104: as parcelas vêm do GET do CONTRATO, que é de onde a tela as lê.
+    // A rota dedicada foi removida — nunca esteve no spec, nunca teve hook, e
+    // este era o seu único consumidor. Trocar por /financeiro/parcelas daria
+    // 403: o agente deste arquivo é a vendedora, que não tem o módulo.
+    const lista = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}`).expect(200);
+    expect(lista.body.parcelas.find((p: any) => p.id === p2.id)).toBeUndefined();
   });
 
   it("cancelar contrato com destinoPago=manter preserva PAGAs; estornar cancela e zera as PAGAs", async () => {

@@ -52,7 +52,9 @@ export default function SelecionarLoja() {
       setActiveLojaId(lojaId);
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       navigate(`/loja/${lojaId}/dashboard`);
-    } catch (error: any) {
+    // E96/E104: `mensagemApi` recebe `unknown` — o `any` era resquício do
+    // padrão antigo, e era o ÚLTIMO do frontend inteiro.
+    } catch (error) {
       toast({
         title: "Erro ao selecionar loja",
         description: mensagemApi(error, "Não foi possível entrar na loja. Tente novamente."),

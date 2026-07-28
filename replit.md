@@ -290,6 +290,26 @@ rode o codegen.
   DRE da competência que a gerou, e sim no mês em que foi paga. O irmão por
   competência foi decidido como épico SEPARADO (E105) em 2026-07-25 — o que não
   podia seguir era o mesmo nome para as duas coisas.
+- **Se `.migration-backup/` reaparecer no disco, apague** (A4 + E104). Ele saiu
+  do versionamento no A4, mas continuava ocupando 22 MB e **1.563 arquivos** com
+  nomes idênticos aos dos vivos — e o custo não é disco, é busca: `find` por
+  `*.ts`/`*.tsx` devolvia **2.317 resultados contra 1.528**, ou seja **789
+  fantasmas, 34% do total**, e `openapi.yaml` aparecia duas vezes. Duas sessões
+  desta rodada perderam tempo abrindo o arquivo errado. Não é commit — o repo já
+  está limpo; é higiene de ambiente, e o `.gitignore` já o cobre.
+- **`pnpm run build` na raiz exige `PORT` e `BASE_PATH` no ambiente** (A6/E104).
+  Sem elas o build morre em `Error: PORT environment variable is required but was
+  not provided.`, lançado pelo `vite.config.ts:11` do **`moscow-noivas`** — as
+  variáveis só existem no bloco de `run` do Replit. Com `PORT=5000 BASE_PATH=/`
+  ele passa inteiro em 8,21 s. Não é defeito de um pacote: é convenção do repo, e
+  vale para qualquer build fora do `run`.
+- **`artifacts/mockup-sandbox` NÃO está no workspace** (A6/E104), e a exclusão é
+  explícita no `pnpm-workspace.yaml`. Medido: o typecheck cai de **4 para 3
+  projetos** (`Scope: 3 of 11`) e o lock perde **971 linhas** — são 60
+  devDependencies e ZERO dependencies, e nada dele importa `@workspace/*`. O
+  `[[services]]` do Canvas continua funcionando; para mexer nele, instale as deps
+  dentro da pasta. **Não foi tirado por quebrar o build da raiz** — essa razão foi
+  medida e é falsa, veja o item acima.
 - **O drill do restore PROVA o dump, não restaura nada** (E89):
   `pnpm --filter api-server run restore-drill` pega o dump mais recente,
   restaura num database EFÊMERO `drill_<timestamp>` na mesma instância e
