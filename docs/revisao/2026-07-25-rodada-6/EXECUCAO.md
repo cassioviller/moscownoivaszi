@@ -6,6 +6,12 @@
 
 ## Como retomar esta rodada
 
+> **O plano de fechamento está escrito.** Com onze épicos fechados e nenhum 🔴
+> aberto, o que falta (três épicos 🟨 + 18 sobras) foi organizado em seis épicos
+> ordenados em **`docs/propostas/2026-07-28-fechamento-rodada-6.md`**. Ele traz
+> também as **quatro perguntas** que precisam de resposta do dono e que estão
+> isoladas para não travarem nada.
+
 1. Leia este arquivo — a tabela abaixo é a fonte da verdade do que já foi feito.
 2. `git log --oneline main..rodada-6/execucao` — um commit por épico, na ordem.
 3. Pegue o primeiro épico ⬜ da tabela e leia o épico correspondente no backlog
