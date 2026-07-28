@@ -34,7 +34,7 @@ import {
   PhoneCall,
   MessageCircle,
 } from "lucide-react";
-import { dataDia, etapaLabel } from "@/lib/formatos";
+import { dataDia, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -395,7 +395,7 @@ export default function Dashboard() {
                             com a noiva na porta. */}
                         <p className="text-sm font-medium truncate">
                           <span className="tabular-nums text-muted-foreground">
-                            {format(new Date(atendimento.inicio), "HH:mm")}
+                            {instanteHora(atendimento.inicio)}
                           </span>{" "}
                           <Link
                             to={`/loja/${activeLojaId}/noivas/${atendimento.leadId}`}

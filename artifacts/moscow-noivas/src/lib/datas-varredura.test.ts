@@ -37,9 +37,29 @@ function arquivosFonte(dir: string): string[] {
   return achados;
 }
 
-/** Um `Intl.DateTimeFormat` ou `toLocale*` sem `timeZone` no mesmo argumento. */
-function semFusoExplicito(fonte: string): string[] {
+/**
+ * As TRÊS grafias do mesmo defeito. A lista cresceu duas vezes, e é a prova do
+ * ponto: a primeira versão olhava só `Intl.DateTimeFormat`; a segunda somou
+ * `toLocale*String`; e o `format()` do date-fns — que também lê o relógio do
+ * navegador — só apareceu ao mexer no cabeçalho do orçamento, oito call-sites
+ * depois de o item ser dado por fechado.
+ */
+function semFusoExplicito(codigoComComentarios: string): string[] {
   const achados: string[] = [];
+  // Comentários fora: eles CITAM o código errado para explicar o conserto, e
+  // uma varredura que lê documentação acusa a própria nota de rodapé.
+  const fonte = codigoComComentarios
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  // date-fns: `format(x, "HH:mm")` não tem parâmetro de fuso — sempre o local.
+  // Só acusa padrões com HORA ou DIA; `format(d, "yyyy-MM")` de competência é
+  // outra conversa e não passa por aqui.
+  const dateFns = /\bformat\(\s*new Date\([^)]*\)\s*,\s*"([^"]*)"/g;
+  let f: RegExpExecArray | null;
+  while ((f = dateFns.exec(fonte)) !== null) {
+    if (/[Hhdm]/.test(f[1]!)) achados.push(f[0].replace(/\s+/g, " ").slice(0, 90));
+  }
 
   const intl = /new Intl\.DateTimeFormat\(/g;
   let m: RegExpExecArray | null;

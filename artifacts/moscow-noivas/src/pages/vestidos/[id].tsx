@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NaoEncontrado } from "@/components/estado";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
+import { hojeLocal } from "@/lib/financeiro/datas";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -170,7 +171,10 @@ export default function VestidoDetail() {
 
   // "Estado atual" do vestido: consulta batch de disponibilidade com a data de
   // hoje (new Date() aqui é aceitável — é UI de estado presente).
-  const hoje = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  // D15: era `format(new Date(), "yyyy-MM-dd")`, o HOJE do navegador. Depois
+  // das 21h de São Paulo um navegador em UTC já está no dia seguinte, e a
+  // ocupação do vestido passaria a ser calculada contra a data errada.
+  const hoje = useMemo(() => hojeLocal(), []);
   const disponibilidadeHoje = useCheckDisponibilidadeVestidos(
     activeLojaId!,
     { data: hoje },

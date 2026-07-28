@@ -259,3 +259,15 @@ const instanteDiaFmt = new Intl.DateTimeFormat("pt-BR", {
 export function instanteDia(valor: Date | string): string {
   return instanteDiaFmt.format(comoData(valor));
 }
+
+const instanteDiaHoraFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+/** "28/07, 21:30" — a fila de mensagens e a agenda do dia. */
+export function instanteDiaHora(valor: Date | string): string {
+  return instanteDiaHoraFmt.format(comoData(valor));
+}

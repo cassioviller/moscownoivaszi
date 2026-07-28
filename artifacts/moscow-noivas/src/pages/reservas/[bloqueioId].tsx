@@ -28,6 +28,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -404,38 +405,26 @@ export default function ReservaDetalhe() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="space-y-1">
-        <Link
-          to={`/loja/${lojaId}/reservas`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Reservas
-        </Link>
-        <h1 className="text-3xl font-serif">
-          {reserva.leadId ? (
-            <Link to={`/loja/${lojaId}/noivas/${reserva.leadId}`} className="hover:underline">
-              {reserva.lead?.noivaNome ?? "Noiva"}
-            </Link>
-          ) : (
-            (reserva.lead?.noivaNome ?? "Noiva")
-          )}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {vestido ? (
+      <CabecalhoDetalhe
+        trilha={[
+          { rotulo: "Reservas", para: "/reservas" },
+          ...(reserva.leadId
+            ? [{ rotulo: reserva.lead?.noivaNome ?? "Noiva", para: `/noivas/${reserva.leadId}` }]
+            : []),
+          { rotulo: "Reserva" },
+        ]}
+        titulo={reserva.lead?.noivaNome ?? "Noiva"}
+        subtitulo={
+          <>
             <Link to={`/loja/${lojaId}/vestidos/${reserva.vestidoId}`} className="hover:underline">
-              {vestido.codigo} · {vestido.nome}
+              {vestido ? `${vestido.codigo} · ${vestido.nome}` : "Ver vestido"}
             </Link>
-          ) : (
-            <Link to={`/loja/${lojaId}/vestidos/${reserva.vestidoId}`} className="hover:underline">
-              Ver vestido
-            </Link>
-          )}
-          {reserva.casamentoData && (
-            <> · casamento {dataCurtaFmt.format(new Date(reserva.casamentoData))}</>
-          )}
-        </p>
-      </div>
+            {reserva.casamentoData && (
+              <> · casamento {dataCurtaFmt.format(new Date(reserva.casamentoData))}</>
+            )}
+          </>
+        }
+      />
 
       {/* Ocupação física do vestido — honesto e calmo (não é "alerta").
           GAP Onda 4: as FASES do bloco (prova/uso/lavagem) vêm de um motor de

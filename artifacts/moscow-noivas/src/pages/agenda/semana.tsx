@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { instanteHora } from "@/lib/formatos";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -176,7 +177,7 @@ export default function AgendaSemana() {
                                   className={`rounded-md border px-2 py-1 ${encerrado ? "opacity-50" : ""} ${a.tipo === "PROVA" ? "border-primary/40" : ""}`}
                                 >
                                   <span className="tabular-nums text-xs text-muted-foreground">
-                                    {format(new Date(a.inicio), "HH:mm")}
+                                    {instanteHora(a.inicio)}
                                   </span>{" "}
                                   <Link
                                     to={`/loja/${lojaId}/noivas/${a.leadId}`}

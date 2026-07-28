@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle, MessageCircle } from "lucide-react";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { instanteHora } from "@/lib/formatos";
 
 const SITUACAO_LABELS: Record<string, string> = {
   AGENDADO: "Agendado",
@@ -208,7 +209,7 @@ export default function Agenda() {
                             <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm" data-testid={`confirmar-linha-${atendimento.id}`}>
                               <span className="min-w-0 truncate">
                                 <span className="tabular-nums text-muted-foreground">
-                                  {format(new Date(atendimento.inicio), "HH:mm")}
+                                  {instanteHora(atendimento.inicio)}
                                 </span>{" "}
                                 {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
                               </span>

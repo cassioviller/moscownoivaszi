@@ -32,6 +32,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -62,7 +63,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
+import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto } from "@/lib/formatos";
 import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
@@ -191,6 +192,10 @@ export default function OrcamentoDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [contratoOpen, setContratoOpen] = useState(false);
+  // E9: controlados porque agora são abertos por itens de menu — o
+  // `AlertDialogTrigger` some junto com o menu ao selecionar.
+  const [recusarOpen, setRecusarOpen] = useState(false);
+  const [aprovarOpen, setAprovarOpen] = useState(false);
   // E72: as reservas físicas ativas da noiva entram no contrato (todas
   // marcadas por padrão) — cancelar o contrato passa a liberar as peças.
   const [reservasDesmarcadas, setReservasDesmarcadas] = useState<Set<string>>(new Set());
@@ -613,105 +618,55 @@ export default function OrcamentoDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-serif">Orçamento — {lead?.noivaNome ?? "Noiva"}</h1>
-          <p className="text-sm text-muted-foreground">
-            Criado em {format(new Date(orcamento.createdAt), "dd/MM/yyyy")}
-            {/* O aviso de abertura (E13): a noiva viu — a vendedora sabe a hora de puxar a conversa. */}
-            {orcamento.publicoAbertoEm
-              ? ` · aberto pela noiva em ${format(new Date(orcamento.publicoAbertoEm), "dd/MM/yyyy 'às' HH:mm")}`
-              : orcamento.publicoToken
-                ? " · link enviado, ainda não aberto"
-                : ""}
-          </p>
-          {/* E74: o aceite digital — mais forte que "ela viu": ela concordou. */}
-          {orcamento.aceitoEm && (
-            <p className="text-sm font-medium text-positivo mt-0.5">
-              Aceito pela noiva em {format(new Date(orcamento.aceitoEm), "dd/MM/yyyy 'às' HH:mm")}
-              {orcamento.aceiteVersao ? ` (versão ${orcamento.aceiteVersao} da proposta)` : ""}
+      {/* E9: o status sai da fileira de botões e vira chip; a ação primária é a
+          que o estado do orçamento pede (enviar → aprovar → ver contrato), e o
+          resto vai para o menu. "Recusar" é destrutiva.
+
+          Os dois AlertDialogs precisaram virar CONTROLADOS: um item de menu que
+          abre um diálogo não funciona com `AlertDialogTrigger` embrulhando o
+          botão — o menu fecha ao selecionar e desmonta o gatilho junto, então o
+          diálogo nunca chega a abrir. */}
+      <CabecalhoDetalhe
+        trilha={[
+          { rotulo: "Orçamentos", para: "/orcamentos" },
+          ...(orcamento.leadId && lead?.noivaNome
+            ? [{ rotulo: lead.noivaNome, para: `/noivas/${orcamento.leadId}` }]
+            : []),
+          { rotulo: "Orçamento" },
+        ]}
+        titulo={`Orçamento — ${lead?.noivaNome ?? "Noiva"}`}
+        chip={
+          <span className="flex flex-wrap items-center gap-2">
+            <Badge className="text-sm px-3 py-1">{statusOrcamentoLabel(orcamento.status)}</Badge>
+            {/* F19: o aceite ao lado do status, e não só no rodapé — é o que
+                decide se dá para aprovar sem perder a prova da noiva. */}
+            <Badge variant={orcamento.aceitoEm ? "default" : "outline"} className="text-sm px-3 py-1">
+              {orcamento.aceitoEm ? "Aceito pela noiva" : "Sem aceite da noiva"}
+            </Badge>
+          </span>
+        }
+        subtitulo={
+          <>
+            <p>
+              Criado em {instanteDia(orcamento.createdAt)}
+              {/* O aviso de abertura (E13): a noiva viu — a vendedora sabe a hora de puxar a conversa. */}
+              {orcamento.publicoAbertoEm
+                ? ` · aberto pela noiva em ${instanteCurto(orcamento.publicoAbertoEm)}`
+                : orcamento.publicoToken
+                  ? " · link enviado, ainda não aberto"
+                  : ""}
             </p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className="text-sm px-3 py-1">{statusOrcamentoLabel(orcamento.status)}</Badge>
-          {/* F19: o aceite ao lado do status, e não só no rodapé — é o que
-              decide se dá para aprovar sem perder a prova da noiva. */}
-          <Badge variant={orcamento.aceitoEm ? "default" : "outline"} className="text-sm px-3 py-1">
-            {orcamento.aceitoEm ? "Aceito pela noiva" : "Sem aceite da noiva"}
-          </Badge>
-          {podeEditar && orcamento.status !== "RECUSADO" && (
-            <Button variant="outline" size="sm" onClick={onLinkNoiva} disabled={criarLink.isPending}>
-              <Link2 className="h-4 w-4 mr-2" />
-              {criarLink.isPending ? "Gerando…" : linkVigente ? "Copiar link da noiva" : "Link para a noiva"}
-            </Button>
-          )}
-          {editavel && (
-            <>
-              {orcamento.status === "RASCUNHO" && (
-                <Button variant="outline" size="sm" onClick={() => onMudarStatus("ENVIADO")} disabled={atualizar.isPending}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Marcar como enviado
-                </Button>
-              )}
-              {orcamento.status === "ENVIADO" && (
-                <Button variant="outline" size="sm" onClick={() => onMudarStatus("RASCUNHO")} disabled={atualizar.isPending}>
-                  <Undo2 className="h-4 w-4 mr-2" />
-                  Voltar para rascunho
-                </Button>
-              )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={recusar.isPending}>
-                    Recusar
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Recusar este orçamento?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      O orçamento deixa de ser editável e fica registrado como recusado.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={onRecusar}>Recusar</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" disabled={aprovar.isPending}>
-                    Aprovar
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Aprovar este orçamento?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Aprovado, o orçamento vira a base do contrato e deixa de ser editável.
-                      {/* F19: aprovar antes do aceite APAGA o botão de aceite da
-                          noiva — o portal só o oferece enquanto o orçamento está
-                          ENVIADO. O E74 morria por ordem de cliques, e a tela não
-                          dizia uma palavra. */}
-                      {!orcamento.aceitoEm && (
-                        <span className="text-destructive mt-2 block font-medium">
-                          A noiva ainda não aceitou pelo link. Ao aprovar agora, o botão de aceite
-                          some do portal dela — você fica sem a prova digital de que ela concordou
-                          com este valor.
-                        </span>
-                      )}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={onAprovar}>Aprovar</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
-          )}
-          {orcamento.status === "APROVADO" && (
+            {/* E74: o aceite digital — mais forte que "ela viu": ela concordou. */}
+            {orcamento.aceitoEm && (
+              <p className="text-positivo mt-0.5 font-medium">
+                Aceito pela noiva em {instanteCurto(orcamento.aceitoEm)}
+                {orcamento.aceiteVersao ? ` (versão ${orcamento.aceiteVersao} da proposta)` : ""}
+              </p>
+            )}
+          </>
+        }
+        acaoPrimaria={
+          orcamento.status === "APROVADO" ? (
             contratoExistente ? (
               <Button size="sm" asChild>
                 <Link to={`/loja/${activeLojaId}/contratos/${contratoExistente.id}`}>
@@ -719,17 +674,81 @@ export default function OrcamentoDetail() {
                   Ver contrato
                 </Link>
               </Button>
-            ) : (
-              podeEditar && !contratos.isLoading && (
-                <Button size="sm" onClick={() => setContratoOpen(true)}>
-                  <ScrollText className="h-4 w-4 mr-2" />
-                  Gerar contrato
-                </Button>
-              )
-            )
-          )}
-        </div>
-      </div>
+            ) : podeEditar && !contratos.isLoading ? (
+              <Button size="sm" onClick={() => setContratoOpen(true)}>
+                <ScrollText className="h-4 w-4 mr-2" />
+                Gerar contrato
+              </Button>
+            ) : undefined
+          ) : editavel ? (
+            <Button size="sm" disabled={aprovar.isPending} onClick={() => setAprovarOpen(true)}>
+              Aprovar
+            </Button>
+          ) : undefined
+        }
+        acoes={[
+          ...(podeEditar && orcamento.status !== "RECUSADO"
+            ? [{
+                rotulo: criarLink.isPending
+                  ? "Gerando…"
+                  : linkVigente
+                    ? "Copiar link da noiva"
+                    : "Link para a noiva",
+                onClick: onLinkNoiva,
+                desabilitada: criarLink.isPending,
+              }]
+            : []),
+          ...(editavel && orcamento.status === "RASCUNHO"
+            ? [{ rotulo: "Marcar como enviado", onClick: () => onMudarStatus("ENVIADO"), desabilitada: atualizar.isPending }]
+            : []),
+          ...(editavel && orcamento.status === "ENVIADO"
+            ? [{ rotulo: "Voltar para rascunho", onClick: () => onMudarStatus("RASCUNHO"), desabilitada: atualizar.isPending }]
+            : []),
+          ...(editavel
+            ? [{ rotulo: "Recusar", onClick: () => setRecusarOpen(true), destrutiva: true, desabilitada: recusar.isPending }]
+            : []),
+        ]}
+      />
+
+      <AlertDialog open={recusarOpen} onOpenChange={setRecusarOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recusar este orçamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O orçamento deixa de ser editável e fica registrado como recusado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onRecusar}>Recusar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={aprovarOpen} onOpenChange={setAprovarOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aprovar este orçamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Aprovado, o orçamento vira a base do contrato e deixa de ser editável.
+              {/* F19: aprovar antes do aceite APAGA o botão de aceite da noiva —
+                  o portal só o oferece enquanto o orçamento está ENVIADO. O E74
+                  morria por ordem de cliques, e a tela não dizia uma palavra. */}
+              {!orcamento.aceitoEm && (
+                <span className="text-destructive mt-2 block font-medium">
+                  A noiva ainda não aceitou pelo link. Ao aprovar agora, o botão de aceite
+                  some do portal dela — você fica sem a prova digital de que ela concordou
+                  com este valor.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onAprovar}>Aprovar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card>
         <CardHeader>

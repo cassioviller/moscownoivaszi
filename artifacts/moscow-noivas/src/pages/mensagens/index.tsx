@@ -35,7 +35,7 @@ import {
   jaContatadasNaJanela,
   orcamentosVencendoNaJanela,
 } from "@/lib/mensagens-do-dia";
-import { brl } from "@/lib/formatos";
+import { brl, instanteDiaHora, instanteDiaMes } from "@/lib/formatos";
 
 /**
  * E69 — a fila do dia de WhatsApp.
@@ -221,7 +221,7 @@ export default function MensagensDoDia() {
                     <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
                       <span className="min-w-0 truncate text-sm">
                         <span className="tabular-nums text-muted-foreground">
-                          {format(new Date(a.inicio), "dd/MM HH:mm")}
+                          {instanteDiaHora(a.inicio)}
                         </span>{" "}
                         {a.lead?.noivaNome ?? "Noiva"} —{" "}
                         {a.tipo === "PROVA" ? "Prova" : "Atendimento"}
@@ -265,11 +265,11 @@ export default function MensagensDoDia() {
                   <div key={a.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="min-w-0 truncate">
                       <span className="text-muted-foreground tabular-nums">
-                        {format(new Date(a.inicio), "dd/MM HH:mm")}
+                        {instanteDiaHora(a.inicio)}
                       </span>{" "}
                       {a.lead?.noivaNome ?? "Noiva"}
                       <span className="text-muted-foreground">
-                        {" "}· procurada {format(new Date(a.contatadoEm!), "dd/MM 'às' HH:mm")}
+                        {" "}· procurada {instanteDiaHora(a.contatadoEm!)}
                       </span>
                     </span>
                     <Button
@@ -395,7 +395,7 @@ export default function MensagensDoDia() {
                           {o.lead?.noivaNome ?? "Noiva"}
                         </Link>{" "}
                         <span className="text-muted-foreground">
-                          · vence {format(new Date(o.validade!), "dd/MM")}
+                          · vence {instanteDiaMes(o.validade!)}
                         </span>
                       </span>
                       {wa ? (
