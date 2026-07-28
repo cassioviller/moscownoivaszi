@@ -70,7 +70,7 @@ quem escolheu a paleta:
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; faltam E9 (vai com o E99) e F13 · [notas](execucao/E98.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a`; faltam E6/E8, E10, E19+E9 · [notas](execucao/E99.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; faltam E6/E8, E10, E19+E9 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -120,7 +120,7 @@ sugestão sair da nota de um épico alheio e chegar a ele.
 |---|---|---|
 | E96 | `selecionar-loja.tsx` faz `catch (error: any)` — resquício do padrão antigo, na tela que o E93 mexeu. | [E92](execucao/E92.md) vp |
 | E99 | `/vestidos` renderiza **114 cards com foto** de uma vez (E19); a `<h2>` que o E92 pôs já diz o número, a paginação continua sendo daqui. | [E92](execucao/E92.md) vp |
-| ~~E99~~ | ~~`chart.tsx` e `calendar.tsx` com `toLocaleString` sem locale.~~ **Fechada na parte 3b do E99** (`PENDENTE3B`): o `chart.tsx` morreu na poda e o `calendar.tsx:40` passou de `"default"` (a locale da INTERFACE do navegador) para `"pt-BR"`. | [E92](execucao/E92.md) vp · [E99](execucao/E99.md) |
+| ~~E99~~ | ~~`chart.tsx` e `calendar.tsx` com `toLocaleString` sem locale.~~ **Fechada na parte 3b do E99** (`5c2d268`): o `chart.tsx` morreu na poda e o `calendar.tsx:40` passou de `"default"` (a locale da INTERFACE do navegador) para `"pt-BR"`. | [E92](execucao/E92.md) vp · [E99](execucao/E99.md) |
 | E104 | `index.html` ainda tem a boilerplate do Replit em inglês nas três metas `description`/`og:`/`twitter:` — *"built on Replit. Update this description…"*. É o texto que aparece quando alguém compartilha o link do sistema. Uma linha. | [E92](execucao/E92.md) vp |
 | E104 | `artifacts/mockup-sandbox/index.html:6` tem `lang="en"` — e o pacote inteiro é candidato à poda, se for descartável. | [E92](execucao/E92.md) vp |
 | E104 | **As "Lojas Teste" do E2E vivem no banco de dev** (`Loja Teste 214cda2c`, `b423b8db`, `3b9323fb`…). As fixtures da suíte não estão sendo limpas, ou não todas. Higiene de teste. | [E92](execucao/E92.md) vp |
@@ -681,3 +681,21 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      componente compartilhado, e reimplementou a montagem com `useParams`. Foi
      assim que uma régua virou duas. O hook subiu para `@/hooks` e a cópia
      morreu.
+- **E99 parte 3b — declarei o D15 fechado e ele não estava.** A varredura da
+  parte 3 procurou `new Intl.DateTimeFormat`, contou 36, consertou 7 e deu o item
+  por pronto. O mesmo defeito se escreve `new Date(x).toLocaleDateString("pt-BR")`
+  — **dez linhas do app faziam isso, seis sobre instantes**, e o
+  `contratos/[id].tsx` mostrava "Fechado em" no relógio de quem abre: o defeito
+  que o commit anterior tinha acabado de consertar três arquivos adiante.
+  1. **A régua já estava escrita no arquivo em que eu estava escrevendo.** O
+     comentário da `dataDia`, no MESMO `lib/formatos.ts`, documenta a armadilha
+     desde antes. A varredura não leu o próprio arquivo.
+  2. **Havia uma sobra ROTEADA a este épico que não conferi.** A tabela "Roteadas
+     a um épico que ainda não rodou" diz `calendar.tsx:40 … entra no D15`, e o
+     passo 4 do "Como retomar" manda lê-la antes de começar. Li a tabela no
+     início da sessão e não a cruzei na hora de executar o item — a sobra
+     sobreviveu ao épico que existia para fechá-la.
+  3. **A lição, e ela é de método:** uma varredura que procura UMA grafia
+     declara-se completa e não é. O teste novo olha as duas, com lista de
+     perdoados de um item e o motivo escrito — mesmo formato do teste de
+     `error.message` do E96, e nascido do mesmo jeito.
