@@ -26,6 +26,11 @@ export const parcelasTable = pgTable("parcelas", {
   // duas direções. O ESTORNO limpa: movimento que deixou de existir não pode
   // continuar conferido.
   conciliadoEm: timestamp("conciliado_em", { withTimezone: true }),
+  // F34/E103: quando este RECEBIMENTO foi declarado à contabilidade. Irmã de
+  // `pagamentos.enviado_contabilidade_em` — sem ela, fechar o mês carimbava só
+  // as saídas. O estorno NÃO limpa: ter sido declarado é fato histórico, e
+  // desfazer o recebimento não desfaz o que a contadora já recebeu.
+  enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // gerar-plano checa "já tem parcela?" e insere, sem rede: dois POSTs
@@ -44,6 +49,9 @@ export const parcelasTable = pgTable("parcelas", {
   naoConciliadasIdx: index("parcelas_nao_conciliadas_idx")
     .on(t.lojaId, t.recebidoEm)
     .where(sql`conciliado_em IS NULL`),
+  naoEnviadasIdx: index("parcelas_nao_enviadas_idx")
+    .on(t.lojaId, t.recebidoEm)
+    .where(sql`enviado_contabilidade_em IS NULL`),
 }));
 
 export const insertParcelaSchema = createInsertSchema(parcelasTable).omit({ createdAt: true });

@@ -1136,3 +1136,26 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   5. **Rodei o E2E completo DUAS vezes** — o spec passou a escrever carimbo no
      banco que persiste, e uma passada só não prova que a segunda execução do dia
      encontra o mundo como esperava. É o erro que o F13 cometeu.
+- **E103 parte 4 — o mês fecha nos DOIS lados, e o épico fecha.**
+  1. **O primeiro passo não foi a tela: foi desarmar uma mina.** `e2e/15`
+     afirmava que TODO pagamento da loja de seed tem carimbo nulo — qualquer
+     carimbo de qualquer origem o deixaria vermelho para sempre, num banco que
+     persiste, e um vermelho desses se lê como regressão de dinheiro. Agora ele
+     cria o pagamento e afirma sobre AQUELE. A intenção é sobre o verbo (GET não
+     escreve), não sobre o estado global. Fiz isso **antes** de escrever a tela.
+  2. **O lado das entradas não existia** — `parcelas.enviado_contabilidade_em`
+     não era coluna. "Carimba os dois lados" não estava subdimensionado: era
+     impossível. Vermelho: `expected +0 to be 1`.
+  3. **A régua de cada lado é a do CAIXA.** Recortar a entrada por VENCIMENTO
+     produziria um pacote em regime misto que não fecha com o DRE — tem teste: a
+     parcela que vence em março e é recebida em abril **não** entra em março.
+  4. **A ação passou a deixar rastro.** Era a segunda escrita mais irreversível
+     do financeiro (o carimbo é de mão única) e a única sem autor — a tese do
+     E107 onde ela ainda não valia. O `entidadeId` carrega a JANELA, porque o
+     fato é o período; e clique que não carimbou nada **não grava**.
+  5. **O defeito medido na folha:** dois estados de tempo independentes. Trocar a
+     competência para junho e clicar carimbava **os pagamentos de julho**, com a
+     tela toda falando de junho. Agora a competência leva as duas datas junto.
+  6. **O "UM pacote" NÃO foi feito, com medida** — os quatro exports recortam por
+     réguas diferentes, e juntá-los como estão dá regime misto. Virou a **S21**.
+     O flake do `24-dias-funcionamento` virou a **S22**.

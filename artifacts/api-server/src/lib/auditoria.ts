@@ -46,6 +46,11 @@ export const ACOES_AUDITORIA = [
   // mas depois do DELETE não há linha para consultar, então o que não estiver
   // no detalhe da trilha está perdido.
   "CONTA_PAGAR_REMOVIDA",
+  // F34/E103: declarar o mês à contabilidade. O carimbo é de MÃO ÚNICA — não há
+  // rota que o limpe —, e a ação era a única escrita irreversível do financeiro
+  // sem autor. O `entidadeId` carrega a JANELA, porque o fato é o período e não
+  // um registro: é o que alguém procura ao perguntar "quem declarou junho?".
+  "CONTABILIDADE_ENVIADA",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -83,6 +88,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
   CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
+  CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {

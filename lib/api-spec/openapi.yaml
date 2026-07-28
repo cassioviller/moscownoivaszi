@@ -5937,9 +5937,14 @@ components:
         ate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
     EnviarContabilidadeResultado:
       type: object
-      required: [marcados]
+      required: [marcados, parcelas, pagamentos]
       properties:
-        marcados: { type: integer }
+        # `marcados` é o TOTAL e continua existindo: a tela já o lê, e um número
+        # que some quebra quem não foi avisado. Os dois campos abaixo é que
+        # dizem a verdade nova — F34/E103, fechar o mês carimba os DOIS lados.
+        marcados: { type: integer, description: "Total (parcelas + pagamentos)" }
+        parcelas: { type: integer, description: "Recebimentos declarados — o lado que NÃO existia antes do F34" }
+        pagamentos: { type: integer }
     # O saldo conferido num DIA — a âncora da projeção. Chavear por competência
     # não respondia "quanto tem em caixa hoje?"; a data responde.
     SaldoReferencia:

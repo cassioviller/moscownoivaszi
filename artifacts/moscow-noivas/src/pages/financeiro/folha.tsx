@@ -267,6 +267,28 @@ export default function Folha() {
     }
   }
 
+  /**
+   * F34/E103 — a competência manda nas duas datas, e antes não mandava.
+   *
+   * A tela tinha DOIS estados de tempo independentes: `competencia` (o seletor
+   * de mês, que alimenta "Gerar competência") e `intervalo` (De/Até na URL, que
+   * alimenta o card da contabilidade). Eles não conversavam, e o resultado era
+   * medido: abrir a tela em julho, trocar a competência para junho para
+   * conferir, e clicar em "Marcar como enviados" carimbava **os pagamentos de
+   * julho** — com toda a tela acima falando de junho. E o carimbo é de MÃO
+   * ÚNICA: não existe rota que o limpe.
+   *
+   * Trocar de mês agora leva as duas datas junto. O De/Até continua editável
+   * para quem precisa de uma janela fora do mês — o que some é a divergência
+   * silenciosa entre o que a tela diz e o que o botão faz.
+   */
+  const trocarCompetencia = (nova: string) => {
+    setCompetencia(nova);
+    if (!nova) return;
+    const { iniYMD, fimYMD } = intervaloDaCompetencia(nova);
+    atualizarParams({ ini: iniYMD, fim: fimYMD });
+  };
+
   const atualizarParams = (patch: Record<string, string>) => {
     const proximo = new URLSearchParams(searchParams);
     for (const [chave, valor] of Object.entries(patch)) {
@@ -363,12 +385,14 @@ export default function Folha() {
       await queryClient.invalidateQueries({
         queryKey: getListPagamentosQueryKey(activeLojaId!, params),
       });
+      // F34: o mês fecha nos DOIS lados, e o recado diz os dois. Falar só em
+      // "pagamentos" agora seria esconder metade do que o clique fez.
       toast({
-        title: res.marcados === 0 ? "Nada novo para enviar" : "Marcado como enviado",
+        title: res.marcados === 0 ? "Nada novo para enviar" : "Mês declarado à contabilidade",
         description:
           res.marcados === 0
-            ? "Todos os pagamentos do período já constavam como enviados."
-            : `${res.marcados} ${res.marcados === 1 ? "pagamento" : "pagamentos"} do período.`,
+            ? "Tudo do período já constava como enviado."
+            : `${res.pagamentos} saída(s) e ${res.parcelas} recebimento(s) do período.`,
       });
     } catch (err) {
       toast({
@@ -411,7 +435,7 @@ export default function Folha() {
                 type="month"
                 className="w-44"
                 value={competencia}
-                onChange={(e) => setCompetencia(e.target.value)}
+                onChange={(e) => trocarCompetencia(e.target.value)}
               />
             </div>
             <Button onClick={onGerar} disabled={gerarRecorrencias.isPending || !competencia}>
@@ -779,11 +803,14 @@ export default function Folha() {
             </Button>
             <Button
               onClick={onEnviarContabilidade}
-              disabled={enviarContabilidade.isPending || pendentesEnvio.length === 0}
+              /* F34: NÃO desabilita por `pendentesEnvio`, que conta só as
+                 saídas. Desde que o mês fecha nos dois lados, um período sem
+                 pagamento pendente pode ter recebimentos por declarar — e o
+                 botão desabilitado esconderia justamente o lado que acabou de
+                 nascer. Quem responde "não havia nada" é a rota, com zero. */
+              disabled={enviarContabilidade.isPending}
             >
-              {enviarContabilidade.isPending
-                ? "Marcando…"
-                : `Marcar ${pendentesEnvio.length} como enviados`}
+              {enviarContabilidade.isPending ? "Marcando…" : "Declarar o mês"}
             </Button>
           </div>
 

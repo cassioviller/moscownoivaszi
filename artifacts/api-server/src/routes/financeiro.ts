@@ -1362,16 +1362,66 @@ router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): 
     return;
   }
 
-  const marcados = await db.update(pagamentosTable)
-    .set({ enviadoContabilidadeEm: new Date() })
-    .where(and(
-      eq(pagamentosTable.lojaId, lojaId),
-      gte(pagamentosTable.data, inicioDoDia(de)),
-      lt(pagamentosTable.data, inicioDoDia(addDias(ate, 1))),
-      isNull(pagamentosTable.enviadoContabilidadeEm),
-    ))
-    .returning({ id: pagamentosTable.id });
-  res.json(EnviarContabilidadeResponse.parse({ marcados: marcados.length }));
+  /**
+   * F34/E103 — carimba os DOIS lados, e deixa rastro.
+   *
+   * Até aqui só as SAÍDAS eram carimbadas: o lado das entradas não tinha onde,
+   * porque `parcelas.enviado_contabilidade_em` não existia. Declarar metade do
+   * mês e chamar isso de fechado é o defeito que o F34 nomeia.
+   *
+   * A régua de cada lado é a do CAIXA, que é o que a contadora recebe:
+   * `pagamentos.data` e `parcelas.recebido_em`. Recortar a entrada por
+   * VENCIMENTO (como o CSV de parcelas faz) produziria um pacote em regime
+   * misto, que não fecha com o DRE nem com o fluxo.
+   *
+   * E a ação passa a AUDITAR. Fechar o mês é a segunda escrita mais irreversível
+   * do financeiro — o carimbo é de mão única, não há rota que o limpe — e era a
+   * única sem autor. É a tese do E107 aplicada onde ela ainda não valia.
+   */
+  const agora = new Date();
+  const { pcs, pgs } = await db.transaction(async (tx) => {
+    const pgs = await tx.update(pagamentosTable)
+      .set({ enviadoContabilidadeEm: agora })
+      .where(and(
+        eq(pagamentosTable.lojaId, lojaId),
+        gte(pagamentosTable.data, inicioDoDia(de)),
+        lt(pagamentosTable.data, inicioDoDia(addDias(ate, 1))),
+        isNull(pagamentosTable.enviadoContabilidadeEm),
+      ))
+      .returning({ id: pagamentosTable.id });
+
+    const pcs = await tx.update(parcelasTable)
+      .set({ enviadoContabilidadeEm: agora })
+      .where(and(
+        eq(parcelasTable.lojaId, lojaId),
+        isNotNull(parcelasTable.recebidoEm),
+        gte(parcelasTable.recebidoEm, inicioDoDia(de)),
+        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(ate, 1))),
+        isNull(parcelasTable.enviadoContabilidadeEm),
+      ))
+      .returning({ id: parcelasTable.id });
+
+    // Só audita se algo mudou: um clique que não carimbou nada não é um fato.
+    if (pcs.length + pgs.length > 0) {
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "CONTABILIDADE_ENVIADA",
+        entidade: "pagamento",
+        // Não há UMA entidade: o fato é o PERÍODO. O id carrega a janela, que é
+        // o que alguém vai procurar ao perguntar "quem declarou junho?".
+        entidadeId: `${de}..${ate}`,
+        detalhe: { de, ate, parcelas: pcs.length, pagamentos: pgs.length },
+      });
+    }
+    return { pcs, pgs };
+  });
+
+  res.json(EnviarContabilidadeResponse.parse({
+    marcados: pcs.length + pgs.length,
+    parcelas: pcs.length,
+    pagamentos: pgs.length,
+  }));
 });
 
 export default router;
