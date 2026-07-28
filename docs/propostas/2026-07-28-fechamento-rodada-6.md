@@ -248,3 +248,131 @@ o S15 em especial: sem ele, nenhum componente desta rodada tem teste possível.
 - **S3** e **S5** — decisões (perguntas 1 e 2).
 - O **E105** (DRE por competência) continua sendo o épico separado que a decisão
   de produto de 2026-07-25 criou. Não é sobra: é escopo novo.
+
+---
+
+# Como executar os passos 1 a 5 com subagentes
+
+**Escrito em 2026-07-28**, depois do E107 (`4623ec1`). Este anexo não muda o
+plano nem a ordem — muda **quem faz o quê**, e começa pela restrição que decide
+tudo.
+
+## A restrição: a verificação é um recurso ÚNICO
+
+Três configurações do repo dizem a mesma coisa, e não por acaso:
+
+| Onde | O quê | Por quê está escrito lá |
+|---|---|---|
+| `api-server/vitest.config.ts` | `fileParallelism: false` | *"Testes de integração compartilham o mesmo banco; execução serial evita interferência"* |
+| `playwright.config.ts` | `workers: 1` | a suíte mexe no `e2e-lead-1` e na loja da semente |
+| `lib/api-spec/orval.config.ts` | `clean: true` (×2) | o codegen **apaga e reescreve** `api-client-react` e `api-zod` inteiros |
+
+Ou seja: **rodar teste é um mutex.** Dois agentes rodando `vitest` ou
+`test:e2e` ao mesmo tempo não são duas vezes mais rápidos — são duas vezes mais
+prováveis de produzir um vermelho que ninguém consegue explicar. Esta rodada já
+pagou esse preço três vezes (as 53 linhas vazadas do F13, a eleição da loja no
+seed, o flake da S20), e **duas dessas vezes custaram mais tempo que o trabalho
+que estava sendo feito**.
+
+O mesmo vale para o `openapi.yaml`: com `clean: true`, dois agentes que mexam no
+spec e regerem clobberam um ao outro sem conflito de git — o segundo simplesmente
+apaga o que o primeiro gerou.
+
+**Conclusão de desenho:** paralelize a **leitura** e a **escrita em arquivos
+disjuntos**; serialize a **verificação** e o **spec**.
+
+## Fase A — Mapeamento (paralelo de verdade, 6 agentes, só leitura)
+
+É onde o subagente paga mais, e a razão é do método: **o backlog erra**. Nesta
+rodada ele errou cinco vezes documentadas (o E92 derrubou um 🔴; o F33 e o F39
+prometeram dados que não existem; o F42 já estava meio feito desde o E6; o S1
+descrevia "sem guarda nenhuma" quando o gate existia). Mapear é metade do
+trabalho, e é 100% paralelizável porque ninguém escreve.
+
+Seis agentes, um relatório cada, **nenhum escreve código**:
+
+| Agente | Alvo | Entrega |
+|---|---|---|
+| `map-e99` | E10 + `<Table>` do E19 | inventário com `arquivo:linha` de toda destrutiva fora do `…` e das 5 telas com `<table>` cru |
+| `map-e103` | F34 + F32 | o que a folha já tem de "envio", onde `conciliadoEm` encaixa, o DDL necessário |
+| `map-e108` | S8, S9, S10, S11 | a contagem REAL de call-sites de `cent`/`reais` em `contratos.ts`; se o teto ainda compara em reais; se a prévia do carnê é reusável |
+| `map-e109` | S17, S16 | onde a seção de loja cabe em `/configuracoes`; quantos leads têm contrato com `contrato_fechado_em` nulo **hoje, no banco** |
+| `map-e104` | A8, S15, S18, S19, S20 + roteadas | se `GET /contratos/{id}/parcelas` está mesmo morto; o que o `include` do vitest passa a coletar; a varredura `-\[--` completa |
+| `map-decisoes` | S3, S5, A6, S13 | **mede** o que as quatro perguntas precisam para serem respondidas: o calendário está visivelmente errado? `mockup-sandbox` é referenciado por alguém? |
+
+**Contrato de cada relatório**, e ele não é negociável — é a regra 1 do método:
+nenhum achado sem `arquivo:linha` que o agente leu, nenhum achado de dinheiro
+sem exemplo numérico, e uma seção final **"onde o backlog erra"**. Relatório sem
+âncora volta.
+
+O `map-decisoes` é o que mais destrava: as quatro perguntas estão paradas
+esperando o dono, e três delas viram triviais com uma medição na frente.
+
+## Fase B — Execução, um épico por vez (o commit é serial, o trabalho não)
+
+A disciplina "um épico por commit" não é burocracia: é o que permite reverter um
+épico sem levar outro junto. Ela **serializa o commit**, não a digitação.
+
+O padrão por épico:
+
+```
+  agente(s) em worktree  →  escrevem código + typecheck
+            ↓
+  eu, no tronco          →  vermelho ANTES, suíte, E2E, commit
+```
+
+`isolation: "worktree"` resolve o conflito de arquivo; o typecheck é seguro
+porque **não toca o banco**. O que o agente NÃO faz: rodar `vitest`, rodar
+`test:e2e`, mexer no `openapi.yaml`, commitar.
+
+Onde vale abrir mais de um agente:
+
+- **E99 / `<Table>` em 5 telas** — cinco transformações quase idênticas em
+  arquivos disjuntos. É o caso ideal: 5 agentes em worktree, um por tela.
+  **O E10 vem ANTES e é feito por um só**, porque é a regra que as cinco seguem.
+- **E104** — sete itens independentes e pequenos (A8, S15, S18, S19, S20 e as
+  roteadas). Dois ou três agentes, agrupados por arquivo, não por item.
+- **E108 / S8** — dezenas de call-sites num arquivo só: é mecânico e é UM agente,
+  porque dois no mesmo arquivo conflitam mesmo em worktree (o merge é meu).
+- **E103 e E109** — um agente cada. Têm migração e decisão de forma; dividir
+  custa mais coordenação do que economiza.
+
+## Fase C — Verificação, sempre minha e sempre serial
+
+Não delego, e o motivo é medido: quatro vezes nesta rodada o E2E pegou o que
+742 testes de API e o typecheck não pegavam — e nas quatro **a leitura do
+vermelho foi o trabalho**, não o conserto. Um agente que recebe "rode a suíte e
+conserte" tende a consertar o TESTE.
+
+A régua por épico continua a de sempre: vermelho literal antes de cada conserto,
+suíte completa, E2E quando a regra 11 mandar (e no E99 ela manda, porque o
+`<Table>` muda o que as telas desenham).
+
+## Um agente a mais, que esta rodada justificou: o revisor de asserts
+
+Três vezes nesta rodada escrevi um teste que **afirmava mais do que verificava**
+— o D15 fechado três vezes, o `dataFutura(-1)` que era 2027, o
+`trilha.length === confirmados` copiado de um invariante que não transferia. E
+uma vez o contrário: um assert que **congelava um defeito** (`toContain("vínculos")`).
+
+Depois de cada épico, um agente `revisor-de-asserts` recebe só os arquivos de
+teste do diff e responde três perguntas:
+
+1. O nome do teste promete mais do que os asserts olham?
+2. Algum assert passaria mesmo com o conserto desligado?
+3. Algum assert afirma o comportamento ATUAL em vez do comportamento DEVIDO?
+
+É barato, é adversarial e ataca o erro que esta rodada mais cometeu.
+
+## O que continua sendo pergunta
+
+A Fase A **mede** as quatro decisões (S3, S5, A6, S13); ela não as responde. O
+A6 trava o E104 — sem saber se `mockup-sandbox` é ferramenta viva, o passo 5 não
+fecha. Os outros três não travam nada.
+
+## Custo honesto
+
+O ganho real está na Fase A (seis mapeamentos em paralelo, contra seis em série)
+e no `<Table>` do E99. Nos demais épicos o gargalo é a **verificação**, que não
+paraleliza — e prometer aceleração ali seria repetir, no processo, o erro que o
+método manda evitar no código: **afirmar mais do que se verifica**.
