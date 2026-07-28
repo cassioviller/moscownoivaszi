@@ -12,6 +12,14 @@ import { brl } from "@/lib/formatos";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Erro } from "@/components/estado";
 import { capitalizar, origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Relatório de conversão (E34): o consumidor que faltava para o motivo de perda
@@ -217,26 +225,26 @@ export default function ConversaoLeads() {
                   caminho.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-xs text-muted-foreground">
-                      <th className="py-2 pr-3 font-normal">Vendedora</th>
-                      <th className="py-2 px-3 font-normal text-right">Atendimentos</th>
-                      <th className="py-2 px-3 font-normal text-right">Reservou</th>
-                      <th className="py-2 px-3 font-normal text-right">Contratos</th>
-                      <th className="py-2 px-3 font-normal text-right">Receita</th>
-                      <th className="py-2 pl-3 font-normal text-right">Ticket médio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <CardContent>
+                <Table className="text-sm">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b text-left text-xs text-muted-foreground">
+                      <TableHead className="py-2 pr-3 font-normal">Vendedora</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Atendimentos</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Reservou</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Contratos</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Receita</TableHead>
+                      <TableHead className="py-2 pl-3 font-normal text-right">Ticket médio</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {(desempenho.data ?? []).map((v) => (
-                      <tr key={v.vendedoraId} className="border-b last:border-0">
-                        <td className="py-2.5 pr-3 font-medium">{v.nome}</td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">
+                      <TableRow key={v.vendedoraId} className="border-b last:border-0">
+                        <TableCell className="py-2.5 pr-3 font-medium">{v.nome}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">
                           {v.atendimentosConcluidos}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">
+                        </TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">
                           {v.reservou}
                           {v.atendimentosConcluidos > 0 && (
                             <span className="text-muted-foreground">
@@ -244,18 +252,18 @@ export default function ConversaoLeads() {
                               ({pct(v.reservou, v.atendimentosConcluidos)}%)
                             </span>
                           )}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">
+                        </TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">
                           {v.receita > 0 ? `${brl(v.receita)}` : "—"}
-                        </td>
-                        <td className="py-2.5 pl-3 text-right tabular-nums">
+                        </TableCell>
+                        <TableCell className="py-2.5 pl-3 text-right tabular-nums">
                           {v.contratos > 0 ? `${brl(v.receita / v.contratos)}` : "—"}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           )}

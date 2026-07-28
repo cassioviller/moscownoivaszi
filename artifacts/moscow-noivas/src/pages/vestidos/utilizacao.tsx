@@ -14,6 +14,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Utilização por vestido (E15) — o relatório da dona: quantas provas, reservas
@@ -158,29 +166,29 @@ export default function UtilizacaoVestidos() {
               </CardDescription>
             )}
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="py-2 pr-3 font-normal">Vestido</th>
-                  <th className="py-2 px-3 font-normal text-right">Provas</th>
-                  <th className="py-2 px-3 font-normal text-right">Reservas</th>
-                  <th className="py-2 px-3 font-normal text-right">Contratos</th>
-                  <th className="py-2 pl-3 font-normal text-right">Receita</th>
-                  <th className="py-2 pl-3 font-normal text-right" title="Curva ABC: A carrega 80% da receita, B até 95%, C é cauda">
+          <CardContent>
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b text-left text-xs text-muted-foreground">
+                  <TableHead className="py-2 pr-3 font-normal">Vestido</TableHead>
+                  <TableHead className="py-2 px-3 font-normal text-right">Provas</TableHead>
+                  <TableHead className="py-2 px-3 font-normal text-right">Reservas</TableHead>
+                  <TableHead className="py-2 px-3 font-normal text-right">Contratos</TableHead>
+                  <TableHead className="py-2 pl-3 font-normal text-right">Receita</TableHead>
+                  <TableHead className="py-2 pl-3 font-normal text-right" title="Curva ABC: A carrega 80% da receita, B até 95%, C é cauda">
                     Curva
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {linhas.map((v) => {
                   const parado = usoTotal(v) === 0;
                   return (
-                    <tr
+                    <TableRow
                       key={v.vestidoId}
                       className={`border-b last:border-0 ${parado ? "text-muted-foreground" : ""}`}
                     >
-                      <td className="py-2.5 pr-3">
+                      <TableCell className="py-2.5 pr-3">
                         <Link
                           to={`/loja/${lojaId}/vestidos/${v.vestidoId}`}
                           className="hover:underline"
@@ -198,14 +206,14 @@ export default function UtilizacaoVestidos() {
                             sem uso
                           </Badge>
                         )}
-                      </td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">{v.provas}</td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">{v.reservas}</td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
-                      <td className="py-2.5 pl-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="py-2.5 px-3 text-right tabular-nums">{v.provas}</TableCell>
+                      <TableCell className="py-2.5 px-3 text-right tabular-nums">{v.reservas}</TableCell>
+                      <TableCell className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</TableCell>
+                      <TableCell className="py-2.5 pl-3 text-right tabular-nums">
                         {v.receita > 0 ? `${brl(v.receita)}` : "—"}
-                      </td>
-                      <td className="py-2.5 pl-3 text-right">
+                      </TableCell>
+                      <TableCell className="py-2.5 pl-3 text-right">
                         <Badge
                           variant={
                             curvaPorVestido.get(v.vestidoId) === "A"
@@ -218,12 +226,12 @@ export default function UtilizacaoVestidos() {
                         >
                           {curvaPorVestido.get(v.vestidoId)}
                         </Badge>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

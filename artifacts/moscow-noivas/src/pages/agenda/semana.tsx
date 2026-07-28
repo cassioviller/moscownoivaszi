@@ -12,6 +12,14 @@ import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -138,33 +146,37 @@ export default function AgendaSemana() {
           Nenhuma cabine ativa — configure as cabines para ver a grade.
         </p>
       ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full min-w-[56rem] text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="w-28 py-2 pl-4 pr-2 text-xs font-normal text-muted-foreground">
+        // E19/E99 — o `<Table>` traz o próprio `div.overflow-auto`, então o
+        // `overflow-x-auto` do Card sai: scroll dentro de scroll não rola. E o
+        // `min-w` fica no `<Table>` (que cai no `<table>`), NÃO no wrapper —
+        // no wrapper a rolagem nunca dispararia.
+        <Card>
+          <Table className="min-w-[56rem] text-sm">
+            <TableHeader>
+              <TableRow className="text-left hover:bg-transparent">
+                <TableHead className="w-28 py-2 pl-4 pr-2 text-xs font-normal text-muted-foreground">
                   Cabine
-                </th>
+                </TableHead>
                 {dias.map((dia) => {
                   const ehHoje = isSameDay(dia, hoje);
                   return (
-                    <th key={diaISO(dia)} className="px-2 py-2 text-xs font-normal">
+                    <TableHead key={diaISO(dia)} className="px-2 py-2 text-xs font-normal">
                       <span className={ehHoje ? "font-semibold text-primary" : "text-muted-foreground"}>
                         {format(dia, "EEE dd/MM", { locale: ptBR })}
                       </span>
-                    </th>
+                    </TableHead>
                   );
                 })}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {cabinesAtivas.map((cabine) => (
-                <tr key={cabine.id} className="border-b align-top last:border-0">
-                  <td className="py-2 pl-4 pr-2 font-medium">{cabine.nome}</td>
+                <TableRow key={cabine.id} className="border-b align-top last:border-0">
+                  <TableCell className="py-2 pl-4 pr-2 font-medium">{cabine.nome}</TableCell>
                   {dias.map((dia) => {
                     const celula = porCabineEDia.get(`${cabine.id}:${diaISO(dia)}`) ?? [];
                     return (
-                      <td key={diaISO(dia)} className={`px-2 py-2 ${isSameDay(dia, hoje) ? "bg-primary/5" : ""}`}>
+                      <TableCell key={diaISO(dia)} className={`px-2 py-2 ${isSameDay(dia, hoje) ? "bg-primary/5" : ""}`}>
                         {celula.length === 0 ? (
                           <span className="text-xs text-muted-foreground/50">—</span>
                         ) : (
@@ -194,13 +206,13 @@ export default function AgendaSemana() {
                             })}
                           </ul>
                         )}
-                      </td>
+                      </TableCell>
                     );
                   })}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

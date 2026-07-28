@@ -27,6 +27,15 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1078,46 +1087,52 @@ export default function Comissoes() {
           </DialogHeader>
           {simulacao && (
             <div className="space-y-3">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-1.5 pr-2 font-normal">Mês</th>
-                    <th className="px-2 py-1.5 text-right font-normal">Vendas</th>
-                    <th className="px-2 py-1.5 text-right font-normal">Pago</th>
-                    <th className="px-2 py-1.5 text-right font-normal">Simulado</th>
-                    <th className="py-1.5 pl-2 text-right font-normal">Diferença</th>
-                  </tr>
-                </thead>
-                <tbody>
+              {/* E19/E99 — a única das cinco tabelas com dor MEDIDA: ela vive
+                  num `DialogContent max-w-lg` e não tinha contêiner de rolagem
+                  nenhum entre os dois. Cinco colunas de dinheiro num diálogo
+                  estreito eram cortadas sem saída. O `<Table>` embrulha num
+                  `div.relative.w-full.overflow-auto` — é esse wrapper o ganho,
+                  não a marcação. */}
+              <Table className="text-sm">
+                <TableHeader>
+                  <TableRow className="text-left text-xs text-muted-foreground hover:bg-transparent">
+                    <TableHead className="h-auto py-1.5 pl-0 pr-2 font-normal">Mês</TableHead>
+                    <TableHead className="h-auto px-2 py-1.5 text-right font-normal">Vendas</TableHead>
+                    <TableHead className="h-auto px-2 py-1.5 text-right font-normal">Pago</TableHead>
+                    <TableHead className="h-auto px-2 py-1.5 text-right font-normal">Simulado</TableHead>
+                    <TableHead className="h-auto py-1.5 pl-2 pr-0 text-right font-normal">Diferença</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {simulacao.linhas.map((l) => (
-                    <tr key={l.competencia} className="border-b last:border-0">
-                      <td className="py-1.5 pr-2">
+                    <TableRow key={l.competencia} className="last:border-0 hover:bg-transparent">
+                      <TableCell className="py-1.5 pl-0 pr-2">
                         {capitalizar(rotuloCompetencia(l.competencia))}
                         {!l.fechada && (
                           <span className="ml-1 text-xs text-muted-foreground">(sem fechamento)</span>
                         )}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.base)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.pagoReal)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{brl(l.simulado)}</td>
-                      <td
-                        className={`py-1.5 pl-2 text-right tabular-nums ${
+                      </TableCell>
+                      <TableCell className="px-2 py-1.5 text-right tabular-nums">{brl(l.base)}</TableCell>
+                      <TableCell className="px-2 py-1.5 text-right tabular-nums">{brl(l.pagoReal)}</TableCell>
+                      <TableCell className="px-2 py-1.5 text-right tabular-nums">{brl(l.simulado)}</TableCell>
+                      <TableCell
+                        className={`py-1.5 pl-2 pr-0 text-right tabular-nums ${
                           l.diferenca > 0 ? "text-destructive" : l.diferenca < 0 ? "text-positivo" : ""
                         }`}
                       >
                         {l.diferenca > 0 ? "+" : ""}{brl(l.diferenca)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="font-medium">
-                    <td className="py-2 pr-2">Total</td>
-                    <td />
-                    <td className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalPagoReal)}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalSimulado)}</td>
-                    <td
-                      className={`py-2 pl-2 text-right tabular-nums ${
+                </TableBody>
+                <TableFooter className="bg-transparent">
+                  <TableRow className="font-medium hover:bg-transparent">
+                    <TableCell className="py-2 pl-0 pr-2">Total</TableCell>
+                    <TableCell />
+                    <TableCell className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalPagoReal)}</TableCell>
+                    <TableCell className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalSimulado)}</TableCell>
+                    <TableCell
+                      className={`py-2 pl-2 pr-0 text-right tabular-nums ${
                         simulacao.totalDiferenca > 0
                           ? "text-destructive"
                           : simulacao.totalDiferenca < 0
@@ -1126,10 +1141,10 @@ export default function Comissoes() {
                       }`}
                     >
                       {simulacao.totalDiferenca > 0 ? "+" : ""}{brl(simulacao.totalDiferenca)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
               <p className="text-xs text-muted-foreground">
                 Diferença positiva = a escada nova teria pago MAIS do que foi pago.
               </p>
