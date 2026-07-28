@@ -71,7 +71,7 @@ quem escolheu a paleta:
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; faltam E10 e o `<Table>` do E19 · [notas](execucao/E99.md) |
-| E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
+| E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; faltam F35, F21, F38, F39 · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
@@ -791,3 +791,25 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      estados diferentes** — o segundo precisa dizer que o primeiro é falso, senão
      a pessoa conclui que o acervo está vazio quando só marcou dois filtros
      incompatíveis.
+- **E100 parte 2 — o F37**, o de maior valor operacional que restava: a noiva
+  avisa que NÃO pode ir, e cabine, vendedora e vestido voltam para a loja com
+  antecedência em vez de com a ausência. Migração
+  `2026-07-28-e100-f37-pedido-de-remarcacao.sql`, aplicada no dev.
+  1. **O cuidado (c) mandava alinhar com o E97, e a resposta estava lá:** a
+     coluna nova é o **terceiro fato da mesma família** — `contatadoEm` (a loja
+     procurou), `confirmadoEm` (ela disse que vem), `remarcacaoPedidaEm` (ela
+     disse que não pode). Um valor a mais em `situacao` teria o mesmo defeito por
+     outro caminho: misturaria onde o atendimento está com o que ela respondeu.
+  2. **Duas decisões, e as duas são sobre NÃO fazer demais.** O pedido não
+     cancela nada (o teste compara horário e cabine antes e depois) — cancelar
+     sozinho deixaria a noiva sem horário nenhum por um clique num link. E quem
+     já confirmou não desmarca por aqui: a loja separou a peça e escalou a
+     costureira em cima daquele sim.
+  3. **A régua que o F7 extraiu pagou aqui.** Quem pede remarcação sai da fila de
+     "falta procurar", porque ela RESPONDEU — e como isso mora em
+     `lib/mensagens-do-dia.ts`, foi **uma mudança e duas telas corretas**. Com a
+     régua ainda dentro da tela de mensagens, o dashboard continuaria contando a
+     noiva que acabou de avisar que não vem.
+  4. **Errei um teste e o código estava certo, de novo:** sete provas na mesma
+     cabine e horário, contra o `unique(cabine_id, inicio)` do banco — sete casos
+     caíram com 23505 antes do primeiro assert.
