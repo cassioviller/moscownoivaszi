@@ -70,7 +70,7 @@ quem escolheu a paleta:
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; faltam E6/E8, E10 e o E19 · [notas](execucao/E99.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; faltam E10 e o E19 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -742,3 +742,17 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      ocupação do vestido: depois das 21h de São Paulo, um navegador em UTC já
      está no dia seguinte. Passou a usar `hojeLocal()`, que é a régua da loja e
      já existia.
+- **E99 parte 6** (E6, E8): a escala de dinheiro. **A medição é mais dura que o
+  épico** — ele fala em "quatro tipografias para o mesmo valor"; são **92 lugares
+  com 28 combinações**, **58 sem `tabular-nums`** (o que faz coluna de número
+  desalinhar) e 29 sem classe tipográfica nenhuma.
+  1. **A cor ficou FORA da escala, de propósito.** Ela é do estado (positivo,
+     destrutivo), não do tamanho: um valor grande pode ser bom, ruim ou neutro, e
+     amarrar cor a tamanho obrigaria a inventar um degrau por estado.
+  2. **O E8 foi medido vermelho antes e o teste nomeou os quatro sozinho.** O
+     valor do contrato é o caso do épico: ao lado do `text-destructive` da
+     parcela em atraso, o rosa da marca lia-se como um segundo alerta. O que
+     aquele número precisa não é cor, é TAMANHO.
+  3. **O teste não persegue os 92, e isso é decisão** — o cuidado (a) proíbe
+     virar reescrita. E **depois das três tentativas do D15, o nome do teste diz
+     exatamente o que ele cobre**, não mais que isso.
