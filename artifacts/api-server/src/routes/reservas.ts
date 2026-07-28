@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
-import { eq, and, isNull, gte, lt, asc, desc } from "drizzle-orm";
+import { eq, and, isNull, gte, lt, asc, desc, sql } from "drizzle-orm";
 import { leadNaLoja, reservaNaLoja } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
@@ -443,13 +443,20 @@ function avariaMeta(a: typeof avariasTable.$inferSelect) {
  */
 class AvariaJaCobrada extends Error {}
 
-/** True se o contrato existe, é da loja e está ATIVO. */
-async function contratoAtivoDaLoja(contratoId: string, lojaId: string): Promise<boolean> {
+/**
+ * O contrato da loja, com a NOIVA junto — o `leadId` é o que amarra a cobrança
+ * de um reparo ao carnê certo (E110). Devolve `undefined` quando o contrato não
+ * existe, não é da loja ou não está ATIVO: os três casos têm a mesma resposta.
+ */
+async function contratoAtivoDaLoja(
+  contratoId: string,
+  lojaId: string,
+): Promise<{ leadId: string } | undefined> {
   const [c] = await db
-    .select({ status: contratosTable.status })
+    .select({ status: contratosTable.status, leadId: contratosTable.leadId })
     .from(contratosTable)
     .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)));
-  return c?.status === "ATIVO";
+  return c?.status === "ATIVO" ? { leadId: c.leadId } : undefined;
 }
 
 router.get("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
@@ -558,13 +565,69 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
     });
     return;
   }
-  if (!(await contratoAtivoDaLoja(parsed.data.contratoId, lojaId as string))) {
+  const contrato = await contratoAtivoDaLoja(parsed.data.contratoId, lojaId as string);
+  if (!contrato) {
     res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
+
+  /**
+   * E110 — o reparo entra no carnê da noiva DELE, e não de qualquer contrato
+   * ativo da loja.
+   *
+   * Antes daqui a rota provava três coisas do contrato (existe, é da loja, está
+   * ATIVO) e NENHUMA sobre a avaria: o reparo do vestido da noiva A podia ser
+   * cobrado no carnê e no extrato do portal da noiva B — e depois a avaria
+   * ficava travada, porque `parcelaId` preenchido bloqueia a remoção. Todas as
+   * outras rotas que aceitam id de corpo já faziam essa prova (`leadNaLoja`,
+   * `usuarioNaLoja`).
+   *
+   * **A guarda prova quando é provável, e o limite está medido:** o `lead_id` do
+   * bloqueio é NULLABLE, e no banco de desenvolvimento **61 das 63 avarias**
+   * vivem em bloqueio sem noiva (61 deles `RESERVA_CASAMENTO`, o que é
+   * suspeito por si — virou sobra). Recusar todos esses seria trocar um defeito
+   * raro por uma parede diária. Sem noiva no bloqueio não há o que comparar, e
+   * a rota segue como antes; com noiva, ela tem de ser a mesma.
+   */
+  const [bloqueioDaAvaria] = await db
+    .select({ leadId: bloqueioVestidosTable.leadId })
+    .from(bloqueioVestidosTable)
+    .where(eq(bloqueioVestidosTable.id, avaria.bloqueioId));
+  if (bloqueioDaAvaria?.leadId && bloqueioDaAvaria.leadId !== contrato.leadId) {
+    res.status(422).json({
+      error: "AVARIA_DE_OUTRA_NOIVA",
+      detalhe: "Este reparo é do vestido de outra noiva — cobre no contrato dela",
+      campos: [{ campo: "contratoId", motivo: "O contrato é de outra noiva" }],
+    });
     return;
   }
 
   const parcelaId = randomUUID();
   await db.transaction(async (tx) => {
+    /**
+     * E110 — o próximo número LIVRE, nunca o 0.
+     *
+     * Aqui estava `numero: 0` fixo, com o comentário "fora da numeração do
+     * carnê: é cobrança extra, não parcela do plano". O 0 não é fora da
+     * numeração — **é a ENTRADA**, e está escrito no motor que monta o carnê
+     * (`financeiro-core/src/plano.ts:27`, e a linha 91 é quem a insere).
+     *
+     * Com `unique(contratoId, numero)` em `parcelas`, cobrar um reparo num
+     * contrato que TEM entrada devolvia
+     * `409 { error: "REGISTRO_DUPLICADO", detalhe: "Já existe um registro com
+     * estes dados." }` — e esse 409 é pior que um 500, porque se lê como "já
+     * cobrei este reparo": a vendedora para de tentar e o conserto nunca é
+     * cobrado. A segunda avaria de QUALQUER contrato dava o mesmo.
+     *
+     * É a mesma conta da rota irmã do E71 (`contratos.ts:874`), e fica DENTRO
+     * da transação de propósito — a UNIQUE continua sendo a rede do duplo
+     * clique, exatamente como era com o 0.
+     */
+    const [{ maior }] = await tx
+      .select({ maior: sql<number>`coalesce(max(${parcelasTable.numero}), 0)` })
+      .from(parcelasTable)
+      .where(eq(parcelasTable.contratoId, parsed.data.contratoId));
+
     // A parcela PRIMEIRO: `avarias.parcela_id` é FK, então marcar antes de a
     // linha existir viola a integridade. A ordem inversa parece mais segura à
     // primeira vista e simplesmente não roda.
@@ -572,8 +635,7 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       id: parcelaId,
       lojaId: lojaId as string,
       contratoId: parsed.data.contratoId,
-      // Fora da numeração do carnê: é cobrança extra, não parcela do plano.
-      numero: 0,
+      numero: Number(maior) + 1,
       descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
       valorPrevisto: avaria.custoReparo!,
       // Dia de negócio, não instante: `new Date()` das 21h à meia-noite jogava

@@ -214,6 +214,12 @@ export default function ReservaDetalhe() {
       queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
     ]);
 
+  // E110: era `err.message`, que é o texto do CLIENTE gerado, não o do servidor
+  // — o `detalhe` que a API manda morria aqui. É a tese do E96 ("o erro do
+  // servidor chega a quem está na tela") que esta tela nunca recebeu, e ficou
+  // visível ao escrever o `AVARIA_DE_OUTRA_NOIVA`: a guarda nova recusaria a
+  // cobrança e a vendedora leria uma frase genérica, sem saber que o contrato
+  // escolhido é de outra noiva. Vale para as seis ações deste arquivo.
   const comToast = async (fn: () => Promise<unknown>, titulo: string, tituloErro: string) => {
     try {
       await fn();
@@ -221,7 +227,7 @@ export default function ReservaDetalhe() {
     } catch (err) {
       toast({
         title: tituloErro,
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

@@ -93,6 +93,7 @@ quem escolheu a paleta:
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; **parte 4 (desfaz a regressão do Canvas que a parte 3 criou) em `0910ab6`**; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
+| E110 | A cobrança de avaria não colide com a entrada (achados 1 🔴 e 8 da revisão) | P | ✅ | `<hash>` · [notas](execucao/E110.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
@@ -134,6 +135,8 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S21 | **O "UM pacote" do F34 não foi feito, e a medida diz por quê.** Os quatro exports do financeiro recortam por réguas DIFERENTES — o de parcelas por `vencimento`, o da folha por `data` de pagamento. Juntá-los num arquivo como estão produz um pacote em REGIME MISTO, que não fecha com o DRE nem com o fluxo. Fazer direito é derivá-lo de `GET /financeiro/fluxo`, que já entrega os dois lados com a régua única — é épico de exportação, não uma linha do F34. O que ficou único no F34 foi o CARIMBO. | 🟡 | [E103/F34](execucao/E103-f34.md) |
 | S22 | **`e2e/24-dias-funcionamento` é flake.** Vermelho numa passada da suíte completa, verde sozinho e verde na execução seguinte. Mesma família da **S20** e da **S7**: um vermelho desses se lê como regressão e custa uma investigação. O spec mexe em `regra_disponibilidade.diasFuncionamento`, que é estado COMPARTILHADO da loja de seed — a suspeita é a mesma classe, e a saída também (configuração própria por execução). | 🟠 (infra de teste) | [E103/F34](execucao/E103-f34.md) |
 | S23 | **O `mockup-sandbox` guarda 4 cópias divergentes de `ui/`, e uma delas nunca recebeu o conserto do S19.** O `calendar.tsx` de lá continua com as cinco classes `-[--cell-size]` que o Tailwind v4 descarta. Enquanto o pacote estiver fora do workspace (A6) ninguém as compila, então o custo hoje é ZERO — o risco é o dia em que ele voltar, ou em que alguém copiar dali para cá achando que é o primitivo vivo. Ou se apaga o pacote (`rm -rf`, e as 4 cópias vão junto), ou o `ui/` de lá vira um link para o de verdade. | 🔵 | [E104](execucao/E104.md) parte 3 |
+| S26 | **Cobrado um reparo, o contrato não consegue mais gerar o carnê.** `contratos.ts:910` recusa `gerar-plano` por `contrato.parcelas.length > 0` — QUALQUER parcela, não "parcela de plano". Cobrar a avaria antes de montar o carnê deixa o contrato em `409 JA_TEM_PLANO` para sempre. Medido depois do E110: `numeroDaAvaria: 1`, `planoStatus: 409`. **O E110 não fechou isto de propósito, e a razão é de escopo:** consertar aquele guard sozinho MOVE a colisão, porque o plano insere `numero` 0..N e o 1 já está tomado pela avaria. Sair disso exige renumerar o carnê ou deslocar o plano — decisão sobre o que a noiva vê no boleto, não uma linha. A saída provável é o guard olhar só as parcelas SEM avaria vinculada (`avarias.parcela_id`), e o plano começar depois do maior número existente. | 🟠 | [E110](execucao/E110.md) |
+| S27 | **61 `RESERVA_CASAMENTO` no banco de dev não têm `lead_id`** — uma reserva de casamento sem noiva. Descoberto ao desenhar a guarda do E110: `bloqueio_vestidos.lead_id` é nullable, e **61 das 63 avarias** vivem em bloqueio sem noiva, o que obrigou a guarda a "provar quando é provável" em vez de exigir sempre. Falta medir se a ROTA de criação permite `RESERVA_CASAMENTO` sem noiva ou se são resíduo de fixture de API (os helpers de teste aceitam `leadId` opcional) — a resposta muda o achado de "defeito de rota" para "mais um item da S18". Enquanto não se sabe, a guarda do E110 é mais fraca do que poderia ser. | 🟡 | [E110](execucao/E110.md) |
 | S25 | **`e2e/48-avaria-vira-parcela` vaza a corrente do vestido a cada execução.** O `afterAll` (`e2e/48:67`) limpa parcelas → contrato → lead, e **não** limpa vestido, bloqueio nem avaria. Medido em duas execuções seguidas hoje: as avarias foram de **62 para 63**, e cada passada acrescenta um vestido `AVA-<stamp>` ao acervo — parte dos 533 vestidos e das 63 avarias do banco de dev sai daqui. Família da **S18**, e a mesma lição: higiene de fixture pela metade não é higiene. **Não é o caso da S7/S20:** não causa flake, porque cada execução usa `stamp` próprio — o custo é o acervo virar lixo e nenhuma tela de vestidos ser avaliável. | 🟡 (infra de teste) | [E104](execucao/E104.md) parte 4 |
 | S24 | **A allowlist do `lote2` não cobra que cada perdão ainda tenha assunto** — foi assim que o `DELETE /ajustes/{ajusteId}` seguiu perdoado por tempo indeterminado depois de já estar no spec (`openapi.yaml:1767`). A guarda **não** foi escrita no E104 parte 3 porque o conjunto ficou VAZIO e ela não teria sujeito. Se a lista voltar a crescer, a guarda entra junto com a primeira entrada nova: toda entrada tem de estar no servidor **e** ausente do spec. | 🔵 | [E104](execucao/E104.md) parte 3 |
 
@@ -1228,3 +1231,34 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      derrubou uma; errou por não medir a QUARTA — a que ela mesma escreveu como
      benefício. **A afirmação que a gente inventa para justificar a decisão é a
      que ninguém verifica**, porque já chega parecendo conclusão.
+- **E110 — a avaria entra depois da entrada, e no carnê da noiva dela.** Fecha o
+  único 🔴 confirmado da revisão do branch, mais o achado 8.
+  1. **Não é 500, é 409 — e o 409 é PIOR.** A revisão previu que a colisão de
+     UNIQUE viraria 500; o `erros.ts` do E107 mapeia `23505` para
+     `409 REGISTRO_DUPLICADO`, **"Já existe um registro com estes dados."** A
+     vendedora clica "Cobrar reparo", lê isso e conclui que **já cobrou**. Para
+     de tentar, o reparo nunca entra no carnê e nada parece quebrado. Um 500
+     seria investigado; este 409 é lido como confirmação.
+  2. **O comentário era a origem do defeito.** A rota dizia `numero: 0` com
+     *"fora da numeração do carnê"*, e o 0 **é a entrada** — escrito em
+     `plano.ts:27`, inserido em `plano.ts:91`, e o comentário da própria UNIQUE
+     já anunciava o choque. A rota irmã do MESMO épico E71 sempre fez `max+1`.
+  3. **759 testes e 137 specs não pegavam porque o HELPER decidia o cenário.**
+     `criarContrato` insere a linha e nada mais, então os sete testes do E97 e o
+     `e2e/48` herdam contrato sem carnê — e com o slot 0 livre tudo passa. O
+     defeito mora no caso normal (contrato com entrada), que era justamente o
+     que ninguém montava. O `e2e/48` agora gera entrada + 4 parcelas e afirma
+     `numero === 5`.
+  4. **A guarda do achado 8 não pôde ser a óbvia: 61 das 63 avarias a
+     derrubariam.** `bloqueio_vestidos.lead_id` é nullable, e 61 bloqueios
+     `RESERVA_CASAMENTO` não têm noiva. Exigir sempre o vínculo trocaria um
+     defeito raro por uma parede diária. A guarda **prova quando é provável**, e
+     o limite está no código. Virou a **S27**.
+  5. **Consertar a numeração NÃO desfaz o beco do `gerar-plano`** — medido depois
+     do conserto: `numeroDaAvaria: 1`, `planoStatus: 409 JA_TEM_PLANO`. Consertar
+     aquele guard sozinho MOVERIA a colisão. Virou a **S26**, com o mecanismo
+     escrito, em vez de conserto de contrabando.
+  6. **Um conserto só apareceu porque o outro foi feito:** `comToast` usava
+     `err.message` e não `mensagemApi`, então o `detalhe` do servidor morria na
+     tela — a guarda nova recusaria a cobrança sem dizer por quê. É a tese do
+     E96 que esta tela nunca recebeu, e vale para as seis ações do arquivo.
