@@ -12,6 +12,15 @@
 > também as **quatro perguntas** que precisam de resposta do dono e que estão
 > isoladas para não travarem nada.
 
+> **E a revisão do branch inteiro mudou a ordem.** Em 2026-07-28, base `faa30c9`,
+> uma revisão de `rodada-6/execucao` contra `main` achou **treze defeitos**, entre
+> eles **um 🔴 confirmado por leitura** (a cobrança de avaria colide com a entrada
+> do contrato) e **uma regressão do próprio E104 parte 3**. Os cinco épicos novos
+> estão em **`docs/propostas/2026-07-28-revisao-do-branch-rodada-6.md`** e **passam
+> na frente do E108 e do E109** — achado confirmado de dinheiro vem antes de
+> consolidação de régua. Nove dos treze entram como **suspeita com âncora**: mapear
+> é a primeira ação de cada épico.
+
 1. Leia este arquivo — a tabela abaixo é a fonte da verdade do que já foi feito.
 2. `git log --oneline main..rodada-6/execucao` — um commit por épico, na ordem.
 3. Pegue o primeiro épico ⬜ da tabela e leia o épico correspondente no backlog
