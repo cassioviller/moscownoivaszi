@@ -1,5 +1,7 @@
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   useGetDashboard,
   getGetDashboardQueryKey,
@@ -9,8 +11,14 @@ import {
   getListAtendimentosQueryKey,
   useGetMinhaComissao,
   getGetMinhaComissaoQueryKey,
+  useListParcelas,
+  getListParcelasQueryKey,
+  useListOrcamentos,
+  getListOrcamentosQueryKey,
+  useUpdateAtendimento,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router";
 import { format } from "date-fns";
@@ -24,13 +32,21 @@ import {
   ArrowUpFromLine,
   Wallet,
   PhoneCall,
+  MessageCircle,
 } from "lucide-react";
 import { dataDia, etapaLabel } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
-import { competenciaAtual, hojeLocal } from "@/lib/financeiro/datas";
+import { competenciaAtual, hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { agingDeParcelas } from "@/lib/financeiro/cobranca";
+import {
+  aContatarNaJanela,
+  orcamentosVencendoNaJanela,
+  resumoDaFila,
+} from "@/lib/mensagens-do-dia";
 
 /**
  * E66 — "meu dia", não "números da loja".
@@ -60,15 +76,60 @@ export default function Dashboard() {
   const paradosQuery = useGetLeadsParados(activeLojaId!, {
     query: { queryKey: getGetLeadsParadosQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
   });
-  // E83: "Hoje na loja" pede o DIA, não a agenda inteira — o corte por hora
-  // continua no cliente, sobre o superconjunto do dia local.
-  const janelaHoje = { de: hojeLocal(), ate: hojeLocal() };
-  const atendimentosQuery = useListAtendimentos(activeLojaId!, janelaHoje, {
+  /**
+   * A agenda das próximas 48h — UMA consulta que serve "Hoje na loja" e a
+   * contagem da fila do F7.
+   *
+   * O painel pedia a janela de HOJE (E83) e o F7 precisa das 48h. Duas consultas
+   * seria o caminho óbvio e errado: a de 48h **contém** a de hoje, e o corte por
+   * hora já roda no cliente. Então a janela abriu e a outra saiu — o cartão novo
+   * não custa request nenhum de agenda, e a chave passou a ser a MESMA de
+   * `/mensagens`, que o react-query deduplica ao navegar para lá.
+   *
+   * De quebra o recorte de hoje ficou mais correto, não menos: com a janela de
+   * um dia só, um navegador em fuso adiantado podia perder o fim do dia da loja.
+   */
+  const janela48h = { de: hojeLocal(), ate: addDias(hojeLocal(), 2) };
+  const atendimentosQuery = useListAtendimentos(activeLojaId!, janela48h, {
     query: {
-      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaHoje),
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janela48h),
       enabled: !!activeLojaId && veAgenda,
     },
   });
+
+  /**
+   * F7 — a fila de mensagens contada com a MESMA régua e as MESMAS chaves de
+   * query que `/mensagens` usa (`lib/mensagens-do-dia`).
+   *
+   * A alternativa era contar sobre o que o painel já tinha em mãos — a agenda de
+   * hoje — e o número sairia menor que o da fila, que olha 48h. Um painel que
+   * promete três mensagens e entrega cinco é pior que um painel calado.
+   *
+   * Cada bloco é gateado pelo próprio módulo: quem só tem agenda não paga as
+   * consultas de dinheiro, e conta só o que pode ver.
+   */
+  const paramsAbertas = { status: "abertas" as const };
+  const parcelasAbertas = useListParcelas(activeLojaId!, paramsAbertas, {
+    query: {
+      queryKey: getListParcelasQueryKey(activeLojaId!, paramsAbertas),
+      enabled: !!activeLojaId && veFinanceiro,
+    },
+  });
+  const paramsEnviados = { status: "ENVIADO" as const };
+  const orcamentosEnviados = useListOrcamentos(activeLojaId!, paramsEnviados, {
+    query: {
+      queryKey: getListOrcamentosQueryKey(activeLojaId!, paramsEnviados),
+      enabled: !!activeLojaId && veLeads,
+    },
+  });
+
+  const filaDeMensagens = useMemo(() => {
+    const agora = Date.now();
+    const aContatar = aContatarNaJanela(atendimentosQuery.data ?? [], agora).length;
+    const emAtraso = agingDeParcelas(parcelasAbertas.data ?? []).noivas.length;
+    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data ?? [], agora).length;
+    return resumoDaFila(aContatar + emAtraso + vencendo);
+  }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data]);
 
   // "Minha comissão" mora fora do gate de módulo (E11); quem não tem escada
   // vigente volta temRegra=false e o cartão simplesmente não aparece.
@@ -80,6 +141,38 @@ export default function Dashboard() {
       retry: false,
     },
   });
+
+  /**
+   * F10 — "Iniciar" no lugar onde a recepcionista já está.
+   *
+   * O gesto existia só na fila de `/atendimentos`. É o mesmo PATCH e o mesmo
+   * gate; o que NÃO veio junto foi a régua de concluir (o desfecho `RESERVOU`
+   * que oferece abrir o orçamento), porque ela é sobre o fim do atendimento e
+   * copiá-la para cá seria duas cópias de uma decisão de produto.
+   */
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const podeEditarAgenda = podeNoModulo(acessosModulos, "agenda", "editar");
+  const iniciarAtendimento = useUpdateAtendimento();
+  const iniciar = async (atendimentoId: string) => {
+    try {
+      await iniciarAtendimento.mutateAsync({
+        lojaId: activeLojaId!,
+        atendimentoId,
+        data: { situacao: "EM_ATENDIMENTO" },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListAtendimentosQueryKey(activeLojaId!),
+      });
+      toast({ title: "Atendimento iniciado" });
+    } catch (err) {
+      toast({
+        title: "Essa mudança não é possível agora",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
 
   // A agenda de HOJE, em ordem de horário — o que a recepcionista folheia.
   const deHoje = useMemo(() => {
@@ -131,6 +224,27 @@ export default function Dashboard() {
 
       {/* Acima dos números: se o caixa vai furar, é a primeira coisa a saber. */}
       <AlertaCaixa />
+
+      {/* F7: o painel promete "o que precisa da sua atenção agora" e não
+          mencionava a única tela que responde isso. O número é o MESMO da fila,
+          por construção (`lib/mensagens-do-dia`), e o cartão some quando ela
+          está vazia — a disciplina do AlertaCaixa. */}
+      {filaDeMensagens && (
+        <Link to={`/loja/${activeLojaId}/mensagens`} className="block">
+          <Card className="hover-elevate border-primary/40">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <div className="min-w-0">
+                <CardTitle className="text-base">{filaDeMensagens.frase}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Presenças a confirmar, cobranças e orçamentos vencendo — com o
+                  WhatsApp pronto. Desça a fila clicando.
+                </p>
+              </div>
+              <MessageCircle className="h-5 w-5 shrink-0 text-primary" />
+            </CardHeader>
+          </Card>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {veLeads && (
@@ -275,14 +389,38 @@ export default function Dashboard() {
                   {deHoje.map((atendimento) => (
                     <li key={atendimento.id} className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
+                        {/* F10: o nome era texto morto na tela que a
+                            recepcionista folheia de manhã — para abrir a ficha
+                            de quem chegou, ela ia à sidebar e buscava por nome,
+                            com a noiva na porta. */}
                         <p className="text-sm font-medium truncate">
                           <span className="tabular-nums text-muted-foreground">
                             {format(new Date(atendimento.inicio), "HH:mm")}
                           </span>{" "}
-                          {atendimento.lead?.noivaNome ?? "Noiva"} —{" "}
-                          {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
+                          <Link
+                            to={`/loja/${activeLojaId}/noivas/${atendimento.leadId}`}
+                            className="hover:underline"
+                          >
+                            {atendimento.lead?.noivaNome ?? "Noiva"}
+                          </Link>{" "}
+                          — {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
                         </p>
                       </div>
+                      {/* Iniciar é o gesto do momento em que ela chega, e ele
+                          morava só na fila de atendimentos. Mesma rota, mesmo
+                          gate (`agenda.editar`). */}
+                      {podeEditarAgenda && atendimento.situacao === "AGENDADO" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={iniciarAtendimento.isPending}
+                          onClick={() => iniciar(atendimento.id)}
+                          data-testid={`iniciar-${atendimento.id}`}
+                        >
+                          Iniciar
+                        </Button>
+                      )}
                       <Badge
                         variant={
                           atendimento.situacao === "FALTOU"

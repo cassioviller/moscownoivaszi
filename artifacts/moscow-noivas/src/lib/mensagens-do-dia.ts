@@ -1,0 +1,101 @@
+/**
+ * F7/E98 — a régua da fila de mensagens, num lugar só.
+ *
+ * "Mensagens de hoje" (E69) já sabia contar: o `totalFila` da tela produz a
+ * frase *"N mensagens prontas para enviar"*. O que faltava era o dashboard
+ * dizer o mesmo número — ele promete "o que precisa da sua atenção agora" e não
+ * mencionava a única tela que responde isso.
+ *
+ * A tentação era contar de novo no dashboard. Duas contagens da mesma fila
+ * divergem no primeiro ajuste de janela — e divergir aqui é pior que não
+ * contar: o painel prometeria três mensagens e a fila mostraria cinco. As
+ * regras saíram da tela para cá, e as duas passaram a derivar delas.
+ *
+ * As janelas são as do E69 e continuam sendo decisão de produto: 48h para
+ * confirmar presença (dá tempo de a noiva remarcar), 72h para o orçamento que
+ * vence (dá tempo de ela decidir).
+ */
+
+export const JANELA_CONFIRMACAO_MS = 48 * 3_600_000;
+export const JANELA_ORCAMENTO_MS = 72 * 3_600_000;
+
+/** O mínimo que a régua precisa saber de um atendimento. */
+export type AtendimentoDaFila = {
+  situacao: string;
+  inicio: string;
+  contatadoEm?: string | null;
+  confirmadoEm?: string | null;
+};
+
+/** O mínimo que a régua precisa saber de um orçamento. */
+export type OrcamentoDaFila = {
+  status: string;
+  validade?: string | null;
+};
+
+/**
+ * Quem a loja ainda NÃO procurou nas próximas 48h.
+ *
+ * O E97/F6 separou dois fatos que moravam na mesma coluna: `contatadoEm` é a
+ * loja ter procurado, `confirmadoEm` é a noiva ter respondido. Quem já
+ * respondeu sai da fila também — não há o que perguntar a ela.
+ */
+export function aContatarNaJanela<T extends AtendimentoDaFila>(
+  atendimentos: readonly T[],
+  agora: number,
+): T[] {
+  return atendimentos
+    .filter((a) => {
+      if (a.situacao !== "AGENDADO" || a.contatadoEm || a.confirmadoEm) return false;
+      const t = new Date(a.inicio).getTime();
+      return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
+    })
+    .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+}
+
+/** Procuradas na janela e ainda sem resposta — a linha que o desfazer atende. */
+export function jaContatadasNaJanela<T extends AtendimentoDaFila>(
+  atendimentos: readonly T[],
+  agora: number,
+): T[] {
+  return atendimentos
+    .filter((a) => {
+      if (a.situacao !== "AGENDADO" || !a.contatadoEm || a.confirmadoEm) return false;
+      const t = new Date(a.inicio).getTime();
+      return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
+    })
+    .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+}
+
+/** Orçamentos ENVIADOS vencendo na janela — os já vencidos não entram. */
+export function orcamentosVencendoNaJanela<T extends OrcamentoDaFila>(
+  orcamentos: readonly T[],
+  agora: number,
+): T[] {
+  return orcamentos
+    .filter((o) => {
+      if (o.status !== "ENVIADO" || !o.validade) return false;
+      const t = new Date(o.validade).getTime();
+      return t >= agora && t <= agora + JANELA_ORCAMENTO_MS;
+    })
+    .sort((a, b) => new Date(a.validade!).getTime() - new Date(b.validade!).getTime());
+}
+
+/**
+ * A frase da fila, com o total.
+ *
+ * `null` quando não há nada a enviar, e isso é o item inteiro do F7: o cartão
+ * do dashboard **some** quando a fila está vazia, como o `AlertaCaixa`. Um
+ * cartão que fica para sempre vira banner, e banner vira paisagem — a mesma
+ * disciplina que o E103 aplicou ao alarme de caixa.
+ */
+export function resumoDaFila(total: number): { total: number; frase: string } | null {
+  if (total <= 0) return null;
+  return {
+    total,
+    frase:
+      total === 1
+        ? "1 mensagem pronta para enviar"
+        : `${total} mensagens prontas para enviar`,
+  };
+}

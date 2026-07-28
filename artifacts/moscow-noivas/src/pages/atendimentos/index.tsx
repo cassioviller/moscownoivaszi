@@ -360,6 +360,22 @@ export default function Atendimentos() {
               </>
             )}
 
+            {/* F14: o DURANTE do atendimento. Enquanto a noiva está na cabine,
+                o que a vendedora preenche é interesse e lookbook — e daqui não
+                havia caminho: era abrir a ficha e procurar as abas. Os dois
+                links não dependem de `podeEditar` da agenda, porque quem
+                registra interesse é o módulo de noivas. */}
+            {a.situacao === "EM_ATENDIMENTO" && (
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to={`/loja/${lojaId}/noivas/${a.leadId}/interesses`}>Interesses</Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to={`/loja/${lojaId}/noivas/${a.leadId}/lookbook`}>Lookbook</Link>
+                </Button>
+              </>
+            )}
+
             {podeEditar && a.situacao === "EM_ATENDIMENTO" && (
               <>
                 <Select

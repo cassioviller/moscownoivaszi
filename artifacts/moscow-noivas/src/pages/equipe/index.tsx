@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,6 +96,7 @@ const editarMembroSchema = z.object({
 type EditarMembroValues = z.infer<typeof editarMembroSchema>;
 
 export default function Equipe() {
+  const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -122,6 +123,13 @@ export default function Equipe() {
   const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
     query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId },
   });
+
+  // F43: os perfis já vêm para o seletor — a linha do membro passa a ler deles
+  // o que a pessoa alcança, sem nenhuma consulta a mais.
+  const acessosDoPerfil = useMemo(
+    () => new Map((perfis ?? []).map((p) => [p.id, p.acessosModulos])),
+    [perfis],
+  );
 
   const addMembro = useAddMembroEquipe();
   const updateMembro = useUpdateMembroEquipe();
@@ -416,9 +424,30 @@ export default function Equipe() {
                       <div className="text-sm text-muted-foreground truncate">
                         {membro.email}
                       </div>
+                      {/* F43: o nome do perfil não diz o que a pessoa ALCANÇA —
+                          "Vendedora" e "Recepção" são rótulos, e quem precisa
+                          conferir um acesso tinha de abrir /permissoes e cruzar
+                          na cabeça. A frase já existia (`resumoAcessos`, E24) e
+                          só era usada na lista de perfis, ao lado. */}
+                      {acessosDoPerfil.get(membro.perfilId) !== undefined && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {resumoAcessos(acessosDoPerfil.get(membro.perfilId)!)}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="secondary">{membro.perfilNome}</Badge>
+                      {podeGerir ? (
+                        <Button asChild variant="ghost" size="sm" className="h-auto py-1">
+                          <Link
+                            to={`/loja/${lojaId}/permissoes`}
+                            aria-label={`Ver o que o perfil ${membro.perfilNome} libera`}
+                          >
+                            <Badge variant="secondary">{membro.perfilNome}</Badge>
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary">{membro.perfilNome}</Badge>
+                      )}
                       {podeGerir && (
                         <>
                           <Button

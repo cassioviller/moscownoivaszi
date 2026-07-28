@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useListAtributos, useListCabines, useGetDisponibilidade, useListLojas, useListUsuarios, getListAtributosQueryKey, getListCabinesQueryKey, getGetDisponibilidadeQueryKey, getListLojasQueryKey, getListUsuariosQueryKey } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,7 +16,28 @@ import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 
+/**
+ * F40/E98 — "Configurações" era a única tela do sistema que não configura nada.
+ *
+ * Ela mostra o que está valendo — atributos, regras, cabines — e não dizia onde
+ * mudar. Quem via "Duração Prova: 60 min" e queria 90 tinha de saber, de cabeça,
+ * que isso mora em "Cabines & horário", dentro de Atendimentos.
+ *
+ * O `aria-label` diz O QUE se edita: três links "Editar" na mesma tela são
+ * indistinguíveis para quem navega por leitor de tela.
+ */
+function EditarEm({ to, o }: { to: string; o: string }) {
+  return (
+    <Button asChild variant="ghost" size="sm" className="shrink-0">
+      <Link to={to} aria-label={`Editar ${o}`}>
+        Editar <span aria-hidden="true">→</span>
+      </Link>
+    </Button>
+  );
+}
+
 export default function Configuracoes() {
+  const { lojaId } = useParams();
   const { activeLojaId, user, acessosModulos } = useAuth();
   // O endpoint do token é gateado por admin no backend — mesma régua aqui.
   const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
@@ -93,8 +115,9 @@ export default function Configuracoes() {
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle>Atributos de Vestido</CardTitle>
+                <EditarEm to={`/loja/${lojaId}/catalogo`} o="os atributos de vestido" />
               </CardHeader>
               <CardContent>
                 {atributos?.length === 0 ? (
@@ -116,8 +139,9 @@ export default function Configuracoes() {
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle>Disponibilidade e Regras</CardTitle>
+                <EditarEm to={`/loja/${lojaId}/atendimentos/config`} o="as regras de disponibilidade" />
               </CardHeader>
               <CardContent className="space-y-4">
                 {disponibilidade ? (
@@ -146,8 +170,9 @@ export default function Configuracoes() {
             </Card>
             
             <Card className="md:col-span-2">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle>Cabines</CardTitle>
+                <EditarEm to={`/loja/${lojaId}/atendimentos/config`} o="as cabines" />
               </CardHeader>
               <CardContent>
                  {cabines?.length === 0 ? (

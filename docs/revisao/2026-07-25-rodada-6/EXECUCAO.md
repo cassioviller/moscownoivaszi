@@ -57,7 +57,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
-| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; faltam E9, os 6 links e o F13 · [notas](execucao/E98.md) |
+| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `PENDENTE`; faltam E9 (vai com o E99), F28 e F13 · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
@@ -585,3 +585,24 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      uma noiva já convertida **passa**. A tela manda o formulário inteiro no
      PATCH — recusar o campo idêntico impediria de corrigir o NOME de uma
      convertida, com um 422 apontando para um campo que ninguém tentou mudar.
+- **E98 parte 3**: cinco dos seis links do item 3 (F7, F10, F14, F40, F43).
+  1. **O F7 parecia um link e virou régua compartilhada.** O dashboard promete
+     "o que precisa da sua atenção agora" e não mencionava "Mensagens de hoje".
+     Contar a fila de novo no painel era o caminho de duas linhas, e as duas
+     contagens divergiriam **desde o primeiro dia**: o painel tinha a agenda de
+     HOJE em mãos e a fila olha 48h. As regras saíram da tela para
+     `lib/mensagens-do-dia.ts` (16 casos), e as duas telas passaram a derivar
+     delas — um painel que promete três mensagens e entrega cinco é pior que um
+     painel calado.
+  2. **O cartão novo não custou request e ainda tirou um.** A janela de 48h
+     CONTÉM a de hoje e o corte por hora já rodava no cliente: a janela abriu, a
+     consulta antiga saiu, a chave virou a mesma de `/mensagens` (o react-query
+     deduplica ao navegar) e o recorte de hoje ficou mais correto — com um dia
+     só, um navegador em fuso adiantado podia perder o fim do dia da loja.
+  3. **O sexto link não é um link, e por isso ficou de fora.** O F28 supõe uma
+     parcela por linha, e a linha de `/cobranca` é por **noiva** — ela agrega N
+     parcelas vencidas. "Receber" ali precisa responder *qual*, e a resposta
+     menos arbitrária (a mais antiga) exige expor a parcela no `agingDeParcelas`,
+     que é núcleo testado, além de extrair o diálogo da tela de dinheiro. Cinco
+     links de navegação e uma refatoração da tela de receber não pertencem ao
+     mesmo commit — é o cuidado (a) do próprio épico.

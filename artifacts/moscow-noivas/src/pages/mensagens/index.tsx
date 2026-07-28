@@ -30,6 +30,11 @@ import {
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
 import { urlsDePortalPorLead } from "@/lib/portal";
+import {
+  aContatarNaJanela,
+  jaContatadasNaJanela,
+  orcamentosVencendoNaJanela,
+} from "@/lib/mensagens-do-dia";
 import { brl } from "@/lib/formatos";
 
 /**
@@ -44,9 +49,6 @@ import { brl } from "@/lib/formatos";
  * É o máximo de automação possível sem API externa — o clique é humano, a
  * preparação é toda do sistema.
  */
-
-const H48 = 48 * 3_600_000;
-const H72 = 72 * 3_600_000;
 
 export default function MensagensDoDia() {
   const { lojaId } = useParams();
@@ -114,28 +116,16 @@ export default function MensagensDoDia() {
    * é o que de fato aconteceu, e quem respondeu de verdade também sai da fila
    * (não há o que perguntar a ela).
    */
-  const aContatar = useMemo(() => {
-    const agora = Date.now();
-    return (atendimentos.data ?? [])
-      .filter((a) => {
-        if (a.situacao !== "AGENDADO" || a.contatadoEm || a.confirmadoEm) return false;
-        const t = new Date(a.inicio).getTime();
-        return t >= agora && t <= agora + H48;
-      })
-      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentos.data]);
+  const aContatar = useMemo(
+    () => aContatarNaJanela(atendimentos.data ?? [], Date.now()),
+    [atendimentos.data],
+  );
 
   /** Procuradas nas 48h e ainda sem resposta — a linha que o desfazer atende. */
-  const jaContatadas = useMemo(() => {
-    const agora = Date.now();
-    return (atendimentos.data ?? [])
-      .filter((a) => {
-        if (a.situacao !== "AGENDADO" || !a.contatadoEm || a.confirmadoEm) return false;
-        const t = new Date(a.inicio).getTime();
-        return t >= agora && t <= agora + H48;
-      })
-      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentos.data]);
+  const jaContatadas = useMemo(
+    () => jaContatadasNaJanela(atendimentos.data ?? [], Date.now()),
+    [atendimentos.data],
+  );
 
   /**
    * F26/E97 — cobrar pela fila do dia passa a deixar rastro.
@@ -180,16 +170,10 @@ export default function MensagensDoDia() {
   }, [parcelas.data]);
 
   // Orçamentos ENVIADOS com validade nas próximas 72h (ainda não vencidos).
-  const orcamentosVencendo = useMemo(() => {
-    const agora = Date.now();
-    return (orcamentos.data ?? [])
-      .filter((o) => {
-        if (o.status !== "ENVIADO" || !o.validade) return false;
-        const t = new Date(o.validade).getTime();
-        return t >= agora && t <= agora + H72;
-      })
-      .sort((a, b) => new Date(a.validade!).getTime() - new Date(b.validade!).getTime());
-  }, [orcamentos.data]);
+  const orcamentosVencendo = useMemo(
+    () => orcamentosVencendoNaJanela(orcamentos.data ?? [], Date.now()),
+    [orcamentos.data],
+  );
 
   const totalFila = aContatar.length + inadimplentes.length + orcamentosVencendo.length;
 
