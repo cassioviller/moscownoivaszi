@@ -496,3 +496,52 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      `contas_pagar.competencia` existe, está preenchida e NÃO entra na conta —
      nenhuma comissão aparece no DRE da competência que a gerou. O nome era o
      sintoma; a informação que faltava era essa.
+- **E103 parte 1** (notas em `execucao/E103.md`): o F30, o F31 e a regra do F41.
+  O achado do épico é sobre a disciplina do silêncio, que esta rodada vinha
+  aplicando bem e aplicou longe demais. O `AlertaCaixa` — o aviso mais grave do
+  sistema — **não aparecia quando não havia saldo conferido**: sem âncora a curva
+  não tem nível, `ancorado` era `false` e o componente devolvia `null`. Um alarme
+  que se desliga sozinho quando a rotina diária não é feita, e não diz que está
+  desligado. O docstring defendia o silêncio com um argumento certo ("um bloco
+  verde permanente de 'tudo certo' vira paisagem em uma semana") e o estendia a um
+  caso onde ele não vale: **a disciplina do silêncio é certa para "está tudo bem"
+  e errada para "não sei"**. O F31 é da mesma família de alcance: Folha do mês, a
+  tela que fecha o mês, só era alcançável por um botão secundário dentro de
+  "Contas a pagar", e o link dizia "Folha do mês" enquanto o `<h1>` dizia
+  "Recorrências do mês" — quem procurava "folha" não achava, e quem achava lia
+  outro nome. Um nome só, na sidebar, e três specs E2E adotaram o nome novo. No
+  F41 a regra saiu pura e testada antes da tela (`lib/primeiros-passos.ts`, seis
+  casos), com duas decisões que o teste afirma: a ordem é a de **execução**, não a
+  de importância (atributos antes de vestidos, porque montar vestido sem atributo
+  obriga a voltar), e o item da escada de comissão precisa explicar o silêncio que
+  a ausência dela causa — é o único cuja falta produz uma tela que não aparece,
+  sem erro, e a pessoa conclui que o sistema não tem comissão. `lojaConfigurada()`
+  existe para o cartão **sumir**, pela mesma razão do `AlertaCaixa`.
+- **E104 parte 1** (notas em `execucao/E104.md`), em dois commits, com o A4
+  isolado como o cuidado (a) pede: 1.611 arquivos e 22 MB de `.migration-backup/`
+  fora do versionamento, com nomes idênticos aos dos arquivos vivos — cinco
+  épicos desta rodada carregaram um `grep -v .migration-backup` que não deveria
+  existir. Lá dentro estava a peça mais interessante do épico: a **memória do
+  agente da migração**, versionada, afirmando que *"the live app is the Next.js
+  app in root `app/`"* — o oposto do que vale hoje. Memória que contradiz o repo,
+  versionada dentro dele, é pior que memória nenhuma. **O fiscal estava de olhos
+  fechados onde era fiscal** (A7): o `tsconfig` do front excluía `**/*.test.ts`;
+  removida a exclusão, **nada quebrou** — os 249 testes já eram tipados, e o valor
+  é para a frente. O `strictFunctionTypes` (A13) acendeu a fila que o cuidado (b)
+  previa, e **todos os erros eram contravariância de callback, nenhum era bug** —
+  o mais instrutivo é o `aplicarErroDoServidor` do E96, que recebe `string` onde o
+  react-hook-form quer `FieldPath<T>`: ela é genérica por natureza, porque recebe
+  caminhos que vêm do SERVIDOR, e o servidor não conhece o tipo do formulário. E
+  o B15 é o único que era exposição de verdade: `express.json({ limit: "6mb" })`
+  da rota de foto era montado **antes de qualquer autenticação** — qualquer um
+  fazia o processo montar 6 MB de JSON sem estar logado. O parser continua fora do
+  router (o global de 100kb não pode vir primeiro, senão nenhuma foto real entra);
+  o que mudou é que `requireSessaoComLoja` e `requireModulo("vestidos")` vêm antes
+  dele no mesmo `app.use`.
+- **Duas sobras roteadas ao E104 continuam abertas depois da parte 1**, e ficam
+  nomeadas aqui para que a parte 2 não as perca: as três metas do `index.html`
+  ainda dizem *"Moscow Noivas — built on Replit. Update this description…"*, que
+  é o texto que aparece quando alguém compartilha o link do sistema; e o
+  `include` do vitest do front continua `src/lib/**/*.test.ts` (S15) — teste de
+  componente segue não sendo executado, e o A7 não cobre isso, porque tipar o
+  teste e coletá-lo são fiscais diferentes.
