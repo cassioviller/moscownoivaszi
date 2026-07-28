@@ -92,7 +92,7 @@ quem escolheu a paleta:
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ✅ | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; parte 3 (a tela do F32) em `ced6a29`; parte 4 (F34) em `8673784` · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
-| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
+| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; **parte 4 (desfaz a regressão do Canvas que a parte 3 criou) em `<hash>`**; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
@@ -1205,3 +1205,25 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   6. **A roteada que mudava o que o mundo vê:** as três metas do `index.html`
      traziam *"Moscow Noivas — built on Replit. Update this description…"* — é o
      texto que aparece ao colar o link no WhatsApp.
+- **E104 parte 4 — desfazer o que a parte 3 quebrou.** Uma revisão do branch
+  inteiro, no mesmo dia, mediu que a parte 3 destruiu o ativo que ela dizia
+  preservar.
+  1. **Tirar do workspace É tirar do alcance do `--filter`.** O Canvas roda
+     `pnpm --filter @workspace/mockup-sandbox run dev`
+     (`.replit-artifact/artifact.toml:17`), e a resposta virou `No projects
+     matched the filters`. A nota da parte 3 afirmava o contrário — **um texto
+     meu dizendo que verifiquei o que não verifiquei**, que é pior que o defeito.
+  2. **O conserto separa duas coisas que a parte 3 amarrou:** a PARTICIPAÇÃO no
+     workspace (que é o que o Canvas usa) e o CUSTO (que sempre esteve nos
+     scripts da raiz). O pacote volta ao `packages:` e sai do `typecheck` e do
+     `build` por `--filter "!@workspace/mockup-sandbox"`.
+  3. **Desta vez eu abri a porta.** Com as variáveis do próprio `artifact.toml`
+     (`PORT=8081`, `BASE_PATH=/__mockup`): `VITE ready in 931 ms` e `curl` no
+     `/__mockup/` devolvendo **200**. `Scope: 3 of 12` — o ganho do A6 intacto.
+  4. **O `pnpm install` devolveu 1.610 linhas ao lock, e conferi que nenhuma
+     versão do app mudou:** o único `importers:` acrescentado é o do sandbox, e
+     os blocos dos pacotes do app estão byte a byte idênticos.
+  5. **A lição não é sobre pnpm.** A parte 3 mediu três afirmações do A6 e
+     derrubou uma; errou por não medir a QUARTA — a que ela mesma escreveu como
+     benefício. **A afirmação que a gente inventa para justificar a decisão é a
+     que ninguém verifica**, porque já chega parecendo conclusão.

@@ -303,13 +303,16 @@ rode o codegen.
   variáveis só existem no bloco de `run` do Replit. Com `PORT=5000 BASE_PATH=/`
   ele passa inteiro em 8,21 s. Não é defeito de um pacote: é convenção do repo, e
   vale para qualquer build fora do `run`.
-- **`artifacts/mockup-sandbox` NÃO está no workspace** (A6/E104), e a exclusão é
-  explícita no `pnpm-workspace.yaml`. Medido: o typecheck cai de **4 para 3
-  projetos** (`Scope: 3 of 11`) e o lock perde **971 linhas** — são 60
-  devDependencies e ZERO dependencies, e nada dele importa `@workspace/*`. O
-  `[[services]]` do Canvas continua funcionando; para mexer nele, instale as deps
-  dentro da pasta. **Não foi tirado por quebrar o build da raiz** — essa razão foi
-  medida e é falsa, veja o item acima.
+- **`artifacts/mockup-sandbox` está no workspace, e sai do typecheck e do build
+  pelo FILTRO** (A6/E104), não pelo `pnpm-workspace.yaml`: os dois scripts da raiz
+  levam `--filter "!@workspace/mockup-sandbox"`. Medido: o typecheck roda **3 dos
+  12 projetos** (`Scope: 3 of 12`), que é onde o custo do pacote morava — 60
+  devDependencies, zero dependencies, e nada dele importa `@workspace/*`.
+  **Tirá-lo do workspace quebra o Canvas**, e isso já aconteceu uma vez: o
+  `[[services]]` roda `pnpm --filter @workspace/mockup-sandbox run dev`
+  (`.replit-artifact/artifact.toml:17`), e fora do workspace o filtro responde
+  "No projects matched the filters". Ele não foi tirado por quebrar o build da
+  raiz — essa razão foi medida e é falsa, veja o item acima.
 - **O drill do restore PROVA o dump, não restaura nada** (E89):
   `pnpm --filter api-server run restore-drill` pega o dump mais recente,
   restaura num database EFÊMERO `drill_<timestamp>` na mesma instância e
