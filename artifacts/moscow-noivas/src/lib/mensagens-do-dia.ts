@@ -25,6 +25,8 @@ export type AtendimentoDaFila = {
   inicio: string;
   contatadoEm?: string | null;
   confirmadoEm?: string | null;
+  /** F37/E100 — ela respondeu, e a resposta foi "não posso". */
+  remarcacaoPedidaEm?: string | null;
 };
 
 /** O mínimo que a régua precisa saber de um orçamento. */
@@ -39,6 +41,11 @@ export type OrcamentoDaFila = {
  * O E97/F6 separou dois fatos que moravam na mesma coluna: `contatadoEm` é a
  * loja ter procurado, `confirmadoEm` é a noiva ter respondido. Quem já
  * respondeu sai da fila também — não há o que perguntar a ela.
+ *
+ * **F37/E100 acrescentou o terceiro fato**, e ele sai da fila pelo MESMO motivo:
+ * quem pediu remarcação respondeu — respondeu "não posso". Perguntar "você vem?"
+ * a quem acabou de avisar que não vem é a forma mais rápida de a noiva concluir
+ * que ninguém leu o aviso dela. Ela entra na fila de REMARCAR, que é outra.
  */
 export function aContatarNaJanela<T extends AtendimentoDaFila>(
   atendimentos: readonly T[],
@@ -46,7 +53,28 @@ export function aContatarNaJanela<T extends AtendimentoDaFila>(
 ): T[] {
   return atendimentos
     .filter((a) => {
-      if (a.situacao !== "AGENDADO" || a.contatadoEm || a.confirmadoEm) return false;
+      if (a.situacao !== "AGENDADO" || a.contatadoEm || a.confirmadoEm || a.remarcacaoPedidaEm) {
+        return false;
+      }
+      const t = new Date(a.inicio).getTime();
+      return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
+    })
+    .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+}
+
+/**
+ * F37/E100 — quem avisou que NÃO pode ir, e ainda tem horário preso.
+ *
+ * É a fila que devolve cabine, vendedora e vestido à loja. Ela existe separada
+ * das outras duas porque o gesto é outro: não é mandar mensagem, é **remarcar**.
+ */
+export function pediramRemarcacaoNaJanela<T extends AtendimentoDaFila>(
+  atendimentos: readonly T[],
+  agora: number,
+): T[] {
+  return atendimentos
+    .filter((a) => {
+      if (a.situacao !== "AGENDADO" || !a.remarcacaoPedidaEm) return false;
       const t = new Date(a.inicio).getTime();
       return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
     })
@@ -60,7 +88,9 @@ export function jaContatadasNaJanela<T extends AtendimentoDaFila>(
 ): T[] {
   return atendimentos
     .filter((a) => {
-      if (a.situacao !== "AGENDADO" || !a.contatadoEm || a.confirmadoEm) return false;
+      if (a.situacao !== "AGENDADO" || !a.contatadoEm || a.confirmadoEm || a.remarcacaoPedidaEm) {
+        return false;
+      }
       const t = new Date(a.inicio).getTime();
       return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
     })

@@ -91,6 +91,21 @@ export const atendimentosTable = pgTable("atendimentos", {
    * pela trilha (`audit_log.acao = 'PROVA_CONFIRMADA'` só existe quando foi ela).
    */
   confirmadoEm: timestamp("confirmado_em", { withTimezone: true }),
+  /**
+   * Quando a noiva pediu para REMARCAR, pelo portal (F37/E100).
+   *
+   * É o TERCEIRO fato da família que o E97 separou, e o motivo de ser coluna
+   * própria é o mesmo: `contatadoEm` é a loja ter procurado, `confirmadoEm` é a
+   * noiva ter dito que vem, e este é a noiva ter dito que **não pode**. Guardar
+   * os três num campo só é exatamente o erro que o E85 cometeu sobre o E39 e o
+   * E97 teve de desfazer com migração e arqueologia de trilha.
+   *
+   * O atendimento **continua AGENDADO** de propósito: isto é um PEDIDO, não uma
+   * remarcação. O horário, a cabine e o vestido seguem presos até alguém da loja
+   * decidir — cancelar sozinho devolveria o recurso e deixaria a noiva sem
+   * horário nenhum por causa de um clique dela num link.
+   */
+  remarcacaoPedidaEm: timestamp("remarcacao_pedida_em", { withTimezone: true }),
   desfecho: atendimentoDesfechoEnum("desfecho"),
   observacao: text("observacao"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

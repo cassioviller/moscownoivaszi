@@ -1058,6 +1058,8 @@ export interface Atendimento {
   confirmadoEm?: string | null;
   /** @nullable */
   contatadoEm?: string | null;
+  /** @nullable */
+  remarcacaoPedidaEm?: string | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;
@@ -1592,6 +1594,8 @@ export type PortalNoivaProvasItem = {
   inicio: string;
   /** @nullable */
   confirmadoEm?: string | null;
+  /** @nullable */
+  remarcacaoPedidaEm?: string | null;
 };
 
 export type PortalParcelaStatus = typeof PortalParcelaStatus[keyof typeof PortalParcelaStatus];
@@ -2646,6 +2650,14 @@ token: string;
 
 export type ConfirmarProvaPortal200 = {
   confirmadoEm: string;
+};
+
+export type PedirRemarcacaoPortalParams = {
+token: string;
+};
+
+export type PedirRemarcacaoPortal200 = {
+  remarcacaoPedidaEm: string;
 };
 
 export type GetPortalFotoParams = {

@@ -1746,6 +1746,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "atendidoEm": zod.coerce.date().nullish(),
   "confirmadoEm": zod.coerce.date().nullish(),
   "contatadoEm": zod.coerce.date().nullish(),
+  "remarcacaoPedidaEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
   "observacao": zod.string().nullish(),
@@ -2020,6 +2021,7 @@ export const CreateAtendimentoResponse = zod.object({
   "atendidoEm": zod.coerce.date().nullish(),
   "confirmadoEm": zod.coerce.date().nullish(),
   "contatadoEm": zod.coerce.date().nullish(),
+  "remarcacaoPedidaEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
   "observacao": zod.string().nullish(),
@@ -2293,6 +2295,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "atendidoEm": zod.coerce.date().nullish(),
   "confirmadoEm": zod.coerce.date().nullish(),
   "contatadoEm": zod.coerce.date().nullish(),
+  "remarcacaoPedidaEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
   "observacao": zod.string().nullish(),
@@ -2571,6 +2574,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "atendidoEm": zod.coerce.date().nullish(),
   "confirmadoEm": zod.coerce.date().nullish(),
   "contatadoEm": zod.coerce.date().nullish(),
+  "remarcacaoPedidaEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
   "observacao": zod.string().nullish(),
@@ -2839,6 +2843,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "atendidoEm": zod.coerce.date().nullish(),
   "confirmadoEm": zod.coerce.date().nullish(),
   "contatadoEm": zod.coerce.date().nullish(),
+  "remarcacaoPedidaEm": zod.coerce.date().nullish(),
   "situacao": zod.enum(['AGENDADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'FALTOU']),
   "desfecho": zod.union([zod.literal('RESERVOU'),zod.literal('VAI_PENSAR'),zod.literal('NAO_SERVIU'),zod.literal(null)]).nullish(),
   "observacao": zod.string().nullish(),
@@ -5026,7 +5031,8 @@ export const GetPortalResponse = zod.object({
   "provas": zod.array(zod.object({
   "id": zod.string(),
   "inicio": zod.coerce.date(),
-  "confirmadoEm": zod.coerce.date().nullish()
+  "confirmadoEm": zod.coerce.date().nullish(),
+  "remarcacaoPedidaEm": zod.coerce.date().nullish()
 })),
   "parcelas": zod.array(zod.object({
   "numero": zod.number(),
@@ -5066,6 +5072,25 @@ export const ConfirmarProvaPortalQueryParams = zod.object({
 
 export const ConfirmarProvaPortalResponse = zod.object({
   "confirmadoEm": zod.coerce.date()
+})
+
+
+/**
+ * F37/E100. A única ação da noiva no portal era "confirmo que vou", e ninguém abre um link para dizer que vai: abre para dizer que NÃO. Este aviso devolve à loja os três recursos mais caros do ateliê — cabine, hora da vendedora e vestido separado — com antecedência em vez de com a ausência.
+ * Carimba `remarcacaoPedidaEm`, o TERCEIRO fato da família que o E97 separou (`contatadoEm` = a loja procurou, `confirmadoEm` = ela disse que vem). O atendimento continua AGENDADO de propósito: é PEDIDO, não remarcação — cancelar sozinho devolveria o recurso e deixaria a noiva sem horário nenhum por causa de um clique num link. Quem remarca é a loja, pela fila do dia.
+ * Idempotente, e recusa (422) o que já foi confirmado: quem disse que vem e mudou de ideia fala com a vendedora — o portal não desfaz uma confirmação sobre a qual a loja já tomou decisão física.
+ * @summary A noiva avisa que NÃO pode ir — um pedido, não uma remarcação
+ */
+export const PedirRemarcacaoPortalParams = zod.object({
+  "atendimentoId": zod.coerce.string()
+})
+
+export const PedirRemarcacaoPortalQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const PedirRemarcacaoPortalResponse = zod.object({
+  "remarcacaoPedidaEm": zod.coerce.date()
 })
 
 

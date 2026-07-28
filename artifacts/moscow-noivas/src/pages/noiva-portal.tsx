@@ -5,6 +5,7 @@ import {
   getGetPortalQueryKey,
   useAceitarPortal,
   useConfirmarProvaPortal,
+  usePedirRemarcacaoPortal,
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,20 @@ export default function NoivaPortal() {
   // E85: confirmar a presença é o mesmo gesto do aceite — o clique dela vira
   // o carimbo que a fila da vendedora já entende.
   const confirmarProva = useConfirmarProvaPortal({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: getGetPortalQueryKey(params),
+        }),
+    },
+  });
+
+  /**
+   * F37 — "não vou poder ir". O gesto vale mais que o de confirmar: ele devolve
+   * cabine, vendedora e vestido à loja com antecedência, em vez de com a
+   * ausência. A rota registra um PEDIDO — nada é cancelado aqui.
+   */
+  const pedirRemarcacao = usePedirRemarcacaoPortal({
     mutation: {
       onSuccess: () =>
         queryClient.invalidateQueries({
@@ -232,26 +247,49 @@ export default function NoivaPortal() {
                         <Badge variant="secondary" className="ml-auto">
                           Confirmada
                         </Badge>
+                      ) : p.remarcacaoPedidaEm ? (
+                        /* F37: ela já avisou. Sem isto o botão reapareceria e ela
+                           clicaria de novo, achando que a primeira vez não valeu. */
+                        <Badge variant="outline" className="ml-auto">
+                          Avisamos o atelier
+                        </Badge>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="ml-auto"
-                          disabled={confirmarProva.isPending}
-                          onClick={() =>
-                            confirmarProva.mutate({ atendimentoId: p.id, params })
-                          }
-                          data-testid={`confirmar-prova-${p.id}`}
-                        >
-                          Confirmar presença
-                        </Button>
+                        <span className="ml-auto flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={confirmarProva.isPending || pedirRemarcacao.isPending}
+                            onClick={() =>
+                              confirmarProva.mutate({ atendimentoId: p.id, params })
+                            }
+                            data-testid={`confirmar-prova-${p.id}`}
+                          >
+                            Confirmar presença
+                          </Button>
+                          {/* F37: ninguém abre um link para dizer que VAI — abre
+                              para dizer que não pode. É este aviso que devolve
+                              cabine, vendedora e vestido à loja com
+                              antecedência, em vez de com a ausência. */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground"
+                            disabled={confirmarProva.isPending || pedirRemarcacao.isPending}
+                            onClick={() =>
+                              pedirRemarcacao.mutate({ atendimentoId: p.id, params })
+                            }
+                            data-testid={`remarcar-prova-${p.id}`}
+                          >
+                            Não vou poder ir
+                          </Button>
+                        </span>
                       )}
                     </li>
                   ))}
                 </ul>
                 <p className="text-xs text-muted-foreground">
-                  Confirmar avisa o atelier que você vem. Precisa remarcar? É só avisar a sua
-                  vendedora no WhatsApp.
+                  Confirmar avisa o atelier que você vem. Se não puder, avise por aqui — a gente
+                  libera o horário e entra em contato para remarcar.
                 </p>
               </section>
             )}

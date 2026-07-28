@@ -157,6 +157,8 @@ import type {
   PagamentoInput,
   PagarContaInput,
   Parcela,
+  PedirRemarcacaoPortal200,
+  PedirRemarcacaoPortalParams,
   PendenciaComissao,
   Perfil,
   PerfilInput,
@@ -9148,6 +9150,88 @@ export const useConfirmarProvaPortal = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getConfirmarProvaPortalMutationOptions(options));
+    }
+
+export const getPedirRemarcacaoPortalUrl = (atendimentoId: string,
+    params: PedirRemarcacaoPortalParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/provas/${atendimentoId}/remarcar?${stringifiedParams}` : `/api/portal/provas/${atendimentoId}/remarcar`
+}
+
+/**
+ * F37/E100. A única ação da noiva no portal era "confirmo que vou", e ninguém abre um link para dizer que vai: abre para dizer que NÃO. Este aviso devolve à loja os três recursos mais caros do ateliê — cabine, hora da vendedora e vestido separado — com antecedência em vez de com a ausência.
+ * Carimba `remarcacaoPedidaEm`, o TERCEIRO fato da família que o E97 separou (`contatadoEm` = a loja procurou, `confirmadoEm` = ela disse que vem). O atendimento continua AGENDADO de propósito: é PEDIDO, não remarcação — cancelar sozinho devolveria o recurso e deixaria a noiva sem horário nenhum por causa de um clique num link. Quem remarca é a loja, pela fila do dia.
+ * Idempotente, e recusa (422) o que já foi confirmado: quem disse que vem e mudou de ideia fala com a vendedora — o portal não desfaz uma confirmação sobre a qual a loja já tomou decisão física.
+ * @summary A noiva avisa que NÃO pode ir — um pedido, não uma remarcação
+ */
+export const pedirRemarcacaoPortal = async (atendimentoId: string,
+    params: PedirRemarcacaoPortalParams, options?: RequestInit): Promise<PedirRemarcacaoPortal200> => {
+
+  return customFetch<PedirRemarcacaoPortal200>(getPedirRemarcacaoPortalUrl(atendimentoId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPedirRemarcacaoPortalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, TError,{atendimentoId: string;params: PedirRemarcacaoPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, TError,{atendimentoId: string;params: PedirRemarcacaoPortalParams}, TContext> => {
+
+const mutationKey = ['pedirRemarcacaoPortal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, {atendimentoId: string;params: PedirRemarcacaoPortalParams}> = (props) => {
+          const {atendimentoId,params} = props ?? {};
+
+          return  pedirRemarcacaoPortal(atendimentoId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PedirRemarcacaoPortalMutationResult = NonNullable<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>>
+
+    export type PedirRemarcacaoPortalMutationError = ErrorType<void>
+
+    /**
+ * @summary A noiva avisa que NÃO pode ir — um pedido, não uma remarcação
+ */
+export const usePedirRemarcacaoPortal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, TError,{atendimentoId: string;params: PedirRemarcacaoPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pedirRemarcacaoPortal>>,
+        TError,
+        {atendimentoId: string;params: PedirRemarcacaoPortalParams},
+        TContext
+      > => {
+      return useMutation(getPedirRemarcacaoPortalMutationOptions(options));
     }
 
 export const getGetPortalFotoUrl = (params: GetPortalFotoParams,) => {

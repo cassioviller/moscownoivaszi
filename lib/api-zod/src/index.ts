@@ -29,4 +29,5 @@ export {
   GetDreParams,
   ListAtendimentosParams,
   ConfirmarProvaPortalParams,
+  PedirRemarcacaoPortalParams,
 } from "./generated/api";

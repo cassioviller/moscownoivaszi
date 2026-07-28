@@ -33,6 +33,7 @@ import { urlsDePortalPorLead } from "@/lib/portal";
 import {
   aContatarNaJanela,
   jaContatadasNaJanela,
+  pediramRemarcacaoNaJanela,
   orcamentosVencendoNaJanela,
 } from "@/lib/mensagens-do-dia";
 import { brl, instanteDiaHora, instanteDiaMes } from "@/lib/formatos";
@@ -121,6 +122,12 @@ export default function MensagensDoDia() {
     [atendimentos.data],
   );
 
+  /** F37: quem avisou que não pode ir — horário preso à espera de remarcação. */
+  const pediramRemarcacao = useMemo(
+    () => pediramRemarcacaoNaJanela(atendimentos.data ?? [], Date.now()),
+    [atendimentos.data],
+  );
+
   /** Procuradas nas 48h e ainda sem resposta — a linha que o desfazer atende. */
   const jaContatadas = useMemo(
     () => jaContatadasNaJanela(atendimentos.data ?? [], Date.now()),
@@ -187,6 +194,61 @@ export default function MensagensDoDia() {
             : `${totalFila} mensagem${totalFila === 1 ? "" : "s"} pronta${totalFila === 1 ? "" : "s"} para enviar. Desça a fila clicando.`}
         </p>
       </div>
+
+      {/* F37/E100 — quem AVISOU que não pode ir vem primeiro na tela.
+          Não é uma mensagem a enviar: é um horário preso que a loja pode
+          devolver — cabine, hora da vendedora e vestido separado. Quanto antes
+          se remarca, mais chance de outra noiva usar aquele horário. */}
+      {veAgenda && pediramRemarcacao.length > 0 && (
+        <Card className="border-primary/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarCheck className="h-5 w-5 text-primary" />
+              Pediram para remarcar — {pediramRemarcacao.length}
+            </CardTitle>
+            <CardDescription>
+              Elas avisaram pelo portal que não podem vir. O horário continua
+              preso até alguém remarcar ou cancelar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {pediramRemarcacao.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                  <span className="min-w-0 truncate text-sm">
+                    <span className="tabular-nums text-muted-foreground">
+                      {instanteDiaHora(a.inicio)}
+                    </span>{" "}
+                    {a.lead?.noivaNome ?? "Noiva"}
+                    <span className="text-muted-foreground">
+                      {" "}· avisou {instanteDiaHora(a.remarcacaoPedidaEm!)}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {linkWhatsApp(a.lead?.whatsapp, "") && (
+                      <Button asChild variant="outline" size="sm">
+                        <a
+                          href={linkWhatsApp(a.lead?.whatsapp, "")!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <MessageCircle className="mr-1 h-4 w-4" />
+                          Falar
+                        </a>
+                      </Button>
+                    )}
+                    <Button asChild size="sm">
+                      <Link to={`/loja/${lojaId}/atendimentos/novo?noiva=${a.leadId}&tipo=PROVA`}>
+                        Remarcar
+                      </Link>
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {veAgenda && (
         <Card>

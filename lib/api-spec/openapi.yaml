@@ -2532,6 +2532,58 @@ paths:
         "422":
           description: Não é uma prova futura AGENDADA — nada a confirmar
 
+  /portal/provas/{atendimentoId}/remarcar:
+    parameters:
+      - name: atendimentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: pedirRemarcacaoPortal
+      tags: [portal]
+      security: []
+      summary: A noiva avisa que NÃO pode ir — um pedido, não uma remarcação
+      description: >
+        F37/E100. A única ação da noiva no portal era "confirmo que vou", e
+        ninguém abre um link para dizer que vai: abre para dizer que NÃO. Este
+        aviso devolve à loja os três recursos mais caros do ateliê — cabine,
+        hora da vendedora e vestido separado — com antecedência em vez de com a
+        ausência.
+
+        Carimba `remarcacaoPedidaEm`, o TERCEIRO fato da família que o E97
+        separou (`contatadoEm` = a loja procurou, `confirmadoEm` = ela disse que
+        vem). O atendimento continua AGENDADO de propósito: é PEDIDO, não
+        remarcação — cancelar sozinho devolveria o recurso e deixaria a noiva
+        sem horário nenhum por causa de um clique num link. Quem remarca é a
+        loja, pela fila do dia.
+
+        Idempotente, e recusa (422) o que já foi confirmado: quem disse que vem
+        e mudou de ideia fala com a vendedora — o portal não desfaz uma
+        confirmação sobre a qual a loja já tomou decisão física.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pedido registrado (ou o carimbo já existente)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [remarcacaoPedidaEm]
+                properties:
+                  remarcacaoPedidaEm: { type: string, format: date-time }
+        "404":
+          description: Token desconhecido/revogado, ou a prova não é desta noiva
+        "410":
+          description: Link expirado
+        "422":
+          description: Não é uma prova futura AGENDADA, ou ela já confirmou presença
+
   /portal/foto:
     get:
       operationId: getPortalFoto
@@ -4834,6 +4886,10 @@ components:
         atendidoEm: { type: ["string", "null"], format: date-time }
         confirmadoEm: { type: ["string", "null"], format: date-time }
         contatadoEm: { type: ["string", "null"], format: date-time }
+        # F37/E100: a noiva avisou pelo portal que não pode ir. Sem este campo na
+        # lista, o aviso dela morre no banco — a fila da loja não teria como
+        # mostrá-lo, e o horário ficaria preso até a ausência.
+        remarcacaoPedidaEm: { type: ["string", "null"], format: date-time }
         situacao: { type: string, enum: [AGENDADO, EM_ATENDIMENTO, CONCLUIDO, FALTOU] }
         desfecho: { type: ["string", "null"], enum: [RESERVOU, VAI_PENSAR, NAO_SERVIU, null] }
         observacao: { type: ["string", "null"] }
@@ -5325,6 +5381,10 @@ components:
               id: { type: string }
               inicio: { type: string, format: date-time }
               confirmadoEm: { type: ["string", "null"], format: date-time }
+              # F37: sem isto o portal não saberia que ela já avisou, e ofereceria
+              # o botão de novo — a noiva clicaria duas vezes achando que a
+              # primeira não valeu.
+              remarcacaoPedidaEm: { type: ["string", "null"], format: date-time }
         # O extrato DELA, só leitura — pagar continua com a loja. Vazio antes
         # do contrato.
         parcelas:

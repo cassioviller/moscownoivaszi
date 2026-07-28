@@ -22,6 +22,8 @@ import {
   GetPortalFotoQueryParams,
   ConfirmarProvaPortalQueryParams,
   ConfirmarProvaPortalResponse,
+  PedirRemarcacaoPortalQueryParams,
+  PedirRemarcacaoPortalResponse,
   GetPortalLeadResponse,
   CriarPortalLeadResponse,
   ListPortaisResponse,
@@ -117,6 +119,7 @@ router.get("/portal", async (req, res): Promise<void> => {
       id: atendimentosTable.id,
       inicio: atendimentosTable.inicio,
       confirmadoEm: atendimentosTable.confirmadoEm,
+      remarcacaoPedidaEm: atendimentosTable.remarcacaoPedidaEm,
     })
       .from(atendimentosTable)
       .where(and(
@@ -305,6 +308,99 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
     .from(atendimentosTable)
     .where(eq(atendimentosTable.id, prova.id));
   res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: depois.confirmadoEm ?? agora }));
+});
+
+/**
+ * F37/E100 — a noiva avisa que NÃO pode ir.
+ *
+ * A única ação dela aqui era "confirmo que vou", e ninguém abre um link para
+ * dizer que vai: abre para dizer que não. Este aviso devolve à loja os três
+ * recursos mais caros do ateliê — cabine, hora da vendedora e vestido separado —
+ * com antecedência, em vez de com a ausência.
+ */
+router.post("/portal/provas/:atendimentoId/remarcar", async (req, res): Promise<void> => {
+  const parsed = PedirRemarcacaoPortalQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  const atendimentoId = req.params.atendimentoId as string;
+  const prova = await db.query.atendimentosTable.findFirst({
+    where: and(
+      eq(atendimentosTable.id, atendimentoId),
+      eq(atendimentosTable.lojaId, linha.portal.lojaId),
+      eq(atendimentosTable.leadId, linha.portal.leadId),
+    ),
+  });
+  if (!prova) {
+    res.status(404).json({ error: "PROVA_INEXISTENTE" });
+    return;
+  }
+  // Idempotente ANTES das réguas, como no confirmar: o segundo clique devolve o
+  // mesmo carimbo em vez de um 422 que a noiva leria como "não deu certo".
+  if (prova.remarcacaoPedidaEm) {
+    res.json(PedirRemarcacaoPortalResponse.parse({ remarcacaoPedidaEm: prova.remarcacaoPedidaEm }));
+    return;
+  }
+  // Quem JÁ CONFIRMOU não desmarca por aqui. A loja tomou decisão física em
+  // cima daquele sim — separou a peça, reservou a cabine, escalou a costureira —
+  // e desfazer isso por um clique num link, sem ninguém saber, é pior que a
+  // conversa de trinta segundos com a vendedora.
+  if (prova.confirmadoEm) {
+    res.status(422).json({
+      error: "JA_CONFIRMADA",
+      detalhe: "Você já confirmou esta prova — fale com a sua vendedora para remarcar.",
+    });
+    return;
+  }
+  if (prova.tipo !== "PROVA" || prova.situacao !== "AGENDADO" || prova.inicio <= new Date()) {
+    res.status(422).json({ error: "NADA_A_REMARCAR", detalhe: "não é uma prova futura agendada" });
+    return;
+  }
+
+  const agora = new Date();
+  await db.transaction(async (tx) => {
+    // UPDATE condicional: dois cliques simultâneos gravam UM carimbo.
+    const [atualizado] = await tx
+      .update(atendimentosTable)
+      .set({ remarcacaoPedidaEm: agora, updatedAt: agora })
+      .where(and(
+        eq(atendimentosTable.id, prova.id),
+        isNull(atendimentosTable.remarcacaoPedidaEm),
+      ))
+      .returning();
+    if (!atualizado) return;
+
+    // Autoria da NOIVA, sem sessão — o mesmo rastro do aceite (E74) e da
+    // confirmação (E85).
+    await tx.insert(auditLogTable).values({
+      id: randomUUID(),
+      lojaId: linha.portal.lojaId,
+      usuarioId: null,
+      usuarioNome: `${linha.lead.noivaNome} (link público)`,
+      acao: "REMARCACAO_PEDIDA",
+      entidade: "atendimento",
+      entidadeId: prova.id,
+      detalhe: { inicio: prova.inicio.toISOString() },
+    });
+  });
+
+  const [depois] = await db.select({ remarcacaoPedidaEm: atendimentosTable.remarcacaoPedidaEm })
+    .from(atendimentosTable)
+    .where(eq(atendimentosTable.id, prova.id));
+  res.json(PedirRemarcacaoPortalResponse.parse({
+    remarcacaoPedidaEm: depois.remarcacaoPedidaEm ?? agora,
+  }));
 });
 
 // A foto escopada ao token do PORTAL — espelho de /lookbooks/publico/foto,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aContatarNaJanela,
   jaContatadasNaJanela,
+  pediramRemarcacaoNaJanela,
   orcamentosVencendoNaJanela,
   resumoDaFila,
 } from "./mensagens-do-dia";
@@ -62,6 +63,33 @@ describe("a fila de quem procurar", () => {
     const concluido = atendimento({ situacao: "CONCLUIDO" });
     const faltou = atendimento({ situacao: "FALTOU" });
     expect(aContatarNaJanela([concluido, faltou], AGORA)).toHaveLength(0);
+  });
+});
+
+describe("F37 — quem avisou que NÃO pode ir", () => {
+  it("sai da fila de procurar: ela JÁ respondeu", () => {
+    const pediu = atendimento({ remarcacaoPedidaEm: new Date(AGORA - H).toISOString() });
+    // Perguntar "você vem?" a quem acabou de avisar que não vem é a forma mais
+    // rápida de a noiva concluir que ninguém leu o aviso dela.
+    expect(aContatarNaJanela([pediu], AGORA)).toHaveLength(0);
+    expect(jaContatadasNaJanela([pediu], AGORA)).toHaveLength(0);
+  });
+
+  it("entra na fila PRÓPRIA, porque o gesto é outro — remarcar, não escrever", () => {
+    const pediu = atendimento({ remarcacaoPedidaEm: new Date(AGORA - H).toISOString() });
+    expect(pediramRemarcacaoNaJanela([pediu], AGORA)).toHaveLength(1);
+  });
+
+  it("quem não pediu não aparece nela", () => {
+    expect(pediramRemarcacaoNaJanela([atendimento()], AGORA)).toHaveLength(0);
+  });
+
+  it("sai da fila quando o horário passa — não há mais o que devolver", () => {
+    const passado = atendimento({
+      inicio: new Date(AGORA - H).toISOString(),
+      remarcacaoPedidaEm: new Date(AGORA - 2 * H).toISOString(),
+    });
+    expect(pediramRemarcacaoNaJanela([passado], AGORA)).toHaveLength(0);
   });
 });
 

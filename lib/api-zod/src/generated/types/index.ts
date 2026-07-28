@@ -247,6 +247,8 @@ export * from './parcela';
 export * from './parcelaContrato';
 export * from './parcelaFormaRecebimento';
 export * from './parcelaStatus';
+export * from './pedirRemarcacaoPortal200';
+export * from './pedirRemarcacaoPortalParams';
 export * from './pendenciaComissao';
 export * from './perfil';
 export * from './perfilInput';
