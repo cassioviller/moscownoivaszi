@@ -35,6 +35,7 @@ import { Plus, FileText, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO, statusOrcamentoLabel, instanteDia } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
+import { Vazio } from "@/components/estado";
 
 const FILTROS: { chave: string; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -214,11 +215,18 @@ export default function Orcamentos() {
         ) : isLoading ? (
           [1, 2, 3].map(i => <Card key={i} className="h-24 animate-pulse" />)
         ) : filtrados?.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
-            {filtro === "todos"
-              ? "Nenhum orçamento encontrado."
-              : `Nenhum orçamento ${statusOrcamentoLabel(filtro).toLowerCase()} encontrado.`}
-          </div>
+          <Vazio
+            titulo={
+              filtro === "todos"
+                ? "Nenhum orçamento ainda"
+                : `Nenhum orçamento ${statusOrcamentoLabel(filtro).toLowerCase()}`
+            }
+            descricao={
+              filtro === "todos"
+                ? "O orçamento é onde o valor da noiva é montado — e é dele que sai o contrato."
+                : "Há orçamentos na loja; nenhum neste status."
+            }
+          />
         ) : (
           filtrados?.map(orcamento => (
             <Link key={orcamento.id} to={`/loja/${activeLojaId}/orcamentos/${orcamento.id}`}>

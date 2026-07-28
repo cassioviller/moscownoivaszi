@@ -49,6 +49,7 @@ import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, Al
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { Vazio } from "@/components/estado";
 
 const novoVestidoSchema = z.object({
   codigo: z.string().min(1, { message: "Código é obrigatório" }),
@@ -555,18 +556,29 @@ export default function Vestidos() {
           {[1, 2, 3, 4].map(i => <Card key={i} className="h-64 animate-pulse" />)}
         </div>
       ) : (vestidos?.length ?? 0) === 0 ? (
-        <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
-          Nenhum vestido cadastrado no catálogo.
-        </div>
+        <Vazio
+          titulo="O acervo ainda está vazio"
+          descricao="Cada vestido cadastrado passa a aparecer no orçamento, na reserva e na prova — é por ele que o resto do sistema se move."
+          acao={
+            podeCriar ? (
+              <Button asChild>
+                <Link to={`/loja/${activeLojaId}/vestidos/novo`}>Cadastrar o primeiro vestido</Link>
+              </Button>
+            ) : undefined
+          }
+        />
       ) : filtrados.length === 0 ? (
-        <div className="text-center py-12 bg-card border rounded-lg space-y-3">
-          <p className="text-muted-foreground">Nenhum vestido corresponde aos filtros.</p>
-          {temFiltrosAtivos && (
-            <Button variant="outline" size="sm" onClick={limparFiltros}>
-              Limpar filtros
-            </Button>
-          )}
-        </div>
+        <Vazio
+          titulo="Nenhum vestido corresponde aos filtros"
+          descricao="O acervo tem vestidos — nenhum deles bate com esta combinação."
+          acao={
+            temFiltrosAtivos ? (
+              <Button variant="outline" size="sm" onClick={limparFiltros}>
+                Limpar filtros
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <section aria-labelledby="acervo-titulo" className="space-y-4">
           {/* E92/E23: o degrau que faltava entre a <h1> da página e os <h3> dos

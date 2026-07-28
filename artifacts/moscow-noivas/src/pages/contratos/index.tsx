@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, ScrollText, AlertCircle } from "lucide-react";
 import { brl, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
+import { Vazio } from "@/components/estado";
 
 const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -73,11 +74,23 @@ export default function Contratos() {
         ) : isLoading ? (
           [1, 2, 3].map(i => <Card key={i} className="h-24 animate-pulse" />)
         ) : lista.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
-            {filtroAtivo.status
-              ? "Nenhum contrato com este status."
-              : "Nenhum contrato encontrado. Aprove um orçamento e gere o contrato a partir dele."}
-          </div>
+          <Vazio
+            titulo={
+              filtroAtivo.status ? "Nenhum contrato com este status" : "Nenhum contrato ainda"
+            }
+            descricao={
+              filtroAtivo.status
+                ? "Há contratos na loja — nenhum deles está neste status."
+                : "O contrato nasce de um orçamento aprovado: é lá que o valor e as parcelas são decididos."
+            }
+            acao={
+              filtroAtivo.status ? undefined : (
+                <Button asChild variant="outline">
+                  <Link to={`/loja/${lojaId}/orcamentos`}>Ver orçamentos</Link>
+                </Button>
+              )
+            }
+          />
         ) : (
           lista.map(contrato => (
             <Link key={contrato.id} to={`/loja/${lojaId}/contratos/${contrato.id}`}>
