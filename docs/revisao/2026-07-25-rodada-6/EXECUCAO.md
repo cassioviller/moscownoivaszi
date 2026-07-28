@@ -80,7 +80,7 @@ quem escolheu a paleta:
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `6c7fa20` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ✅ | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; F42 em `d37fc72` · [notas](execucao/E101.md) · [F42](execucao/E101-f42.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
-| E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; parte 3 (a tela do F32) em `<hash>`; falta o F34 · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
+| E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; parte 3 (a tela do F32) em `ced6a29`; falta o F34 · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
