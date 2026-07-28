@@ -17,6 +17,7 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SemWhatsApp } from "@/components/sem-whatsapp";
+import { PortalVencido } from "@/components/portal-vencido";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, CalendarCheck, HandCoins, FileClock, Undo2 } from "lucide-react";
 import { format } from "date-fns";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/whatsapp";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
-import { urlsDePortalPorLead } from "@/lib/portal";
+import { urlsDePortalPorLead, leadsComPortalVencido } from "@/lib/portal";
 import {
   aContatarNaJanela,
   jaContatadasNaJanela,
@@ -104,6 +105,13 @@ export default function MensagensDoDia() {
     query: { queryKey: getListPortaisQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
   });
   const portalUrls = useMemo(() => urlsDePortalPorLead(portais.data), [portais.data]);
+  /**
+   * F38: quem some do mapa acima porque o link VENCEU. Sem isto, a mensagem
+   * sai sem a última linha e ninguém fica sabendo — nem a noiva, que recebe uma
+   * cobrança sem o extrato que a explica, nem a vendedora, que acha que mandou
+   * o link. É o mesmo veredito do selo "Expirado" da ficha, agora numa régua só.
+   */
+  const portaisVencidos = useMemo(() => leadsComPortalVencido(portais.data), [portais.data]);
 
   const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
 
@@ -289,22 +297,25 @@ export default function MensagensDoDia() {
                         {a.tipo === "PROVA" ? "Prova" : "Atendimento"}
                       </span>
                       {wa ? (
-                        <Button asChild variant="outline" size="sm" className="shrink-0">
-                          <a
-                            href={wa}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() =>
-                              registrarContato.mutate({
-                                lojaId: activeLojaId!,
-                                atendimentoId: a.id,
-                              })
-                            }
-                          >
-                            <MessageCircle className="mr-1 h-4 w-4" />
-                            Chamar no WhatsApp
-                          </a>
-                        </Button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          {portaisVencidos.has(a.leadId) && <PortalVencido leadId={a.leadId} />}
+                          <Button asChild variant="outline" size="sm">
+                            <a
+                              href={wa}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() =>
+                                registrarContato.mutate({
+                                  lojaId: activeLojaId!,
+                                  atendimentoId: a.id,
+                                })
+                              }
+                            >
+                              <MessageCircle className="mr-1 h-4 w-4" />
+                              Chamar no WhatsApp
+                            </a>
+                          </Button>
+                        </span>
                       ) : (
                         <SemWhatsApp leadId={a.leadId} />
                       )}
@@ -398,17 +409,22 @@ export default function MensagensDoDia() {
                         </span>
                       </span>
                       {wa ? (
-                        <Button asChild variant="outline" size="sm" className="shrink-0">
-                          <a
-                            href={wa}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => n.leadId && registrarCobranca(n.leadId)}
-                          >
-                            <MessageCircle className="mr-1 h-4 w-4" />
-                            WhatsApp
-                          </a>
-                        </Button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          {n.leadId && portaisVencidos.has(n.leadId) && (
+                            <PortalVencido leadId={n.leadId} />
+                          )}
+                          <Button asChild variant="outline" size="sm">
+                            <a
+                              href={wa}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => n.leadId && registrarCobranca(n.leadId)}
+                            >
+                              <MessageCircle className="mr-1 h-4 w-4" />
+                              WhatsApp
+                            </a>
+                          </Button>
+                        </span>
                       ) : (
                         <SemWhatsApp leadId={n.leadId} />
                       )}
@@ -461,12 +477,15 @@ export default function MensagensDoDia() {
                         </span>
                       </span>
                       {wa ? (
-                        <Button asChild variant="outline" size="sm" className="shrink-0">
-                          <a href={wa} target="_blank" rel="noopener noreferrer">
-                            <MessageCircle className="mr-1 h-4 w-4" />
-                            WhatsApp
-                          </a>
-                        </Button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          {portaisVencidos.has(o.leadId) && <PortalVencido leadId={o.leadId} />}
+                          <Button asChild variant="outline" size="sm">
+                            <a href={wa} target="_blank" rel="noopener noreferrer">
+                              <MessageCircle className="mr-1 h-4 w-4" />
+                              WhatsApp
+                            </a>
+                          </Button>
+                        </span>
                       ) : (
                         <SemWhatsApp leadId={o.leadId} />
                       )}

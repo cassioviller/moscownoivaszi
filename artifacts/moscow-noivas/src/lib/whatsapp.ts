@@ -108,6 +108,22 @@ export function msgOrcamentoVencendo(p: OrcamentoVencendo): string {
   ].join("\n");
 }
 
+/**
+ * E100/F35 — a ÚNICA mensagem que vai no sentido contrário: da noiva para o
+ * atelier, disparada pelo rodapé do portal.
+ *
+ * Ela existe por um motivo prático: o número que atende é o da LOJA, e quem
+ * chega por ali chega sem contexto — "oi" de um número desconhecido, no meio de
+ * dezenas. O nome dela na primeira linha é o que transforma isso num
+ * atendimento em vez de numa pergunta ("quem é?") antes da pergunta.
+ */
+export function msgDaNoivaParaAtelier(noivaNome?: string | null): string {
+  const quem = noivaNome?.trim();
+  return quem
+    ? `Oi! Aqui é a ${quem}. Vim pelo meu link e queria tirar uma dúvida.`
+    : "Oi! Vim pelo meu link do atelier e queria tirar uma dúvida.";
+}
+
 /** Mensagem de confirmação do atendimento/prova — criação e véspera usam a mesma. */
 export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
   const quando = `${diaFmt.format(new Date(p.inicio))} às ${horaFmt.format(new Date(p.inicio))}`;

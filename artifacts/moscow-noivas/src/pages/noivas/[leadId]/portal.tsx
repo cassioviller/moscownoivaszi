@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
-import { portalVivo, linkDoPortal } from "@/lib/portal";
+import { portalVivo, portalVencido, linkDoPortal } from "@/lib/portal";
 import { DoorOpen, Copy, Ban } from "lucide-react";
 import { instanteDiaMes } from "@/lib/formatos";
 
@@ -60,7 +60,9 @@ export function PortalNoiva({ leadId }: { leadId: string }) {
   const portal = portalQ.data ?? null;
   const nuncaGerado = portalQ.isError;
   const vivo = portalVivo(portal);
-  const expirado = !!portal && !portal.revogadoEm && !vivo;
+  // F38: a régua do "venceu" também virou uma só — a fila de mensagens precisa
+  // do MESMO veredito para dizer que a mensagem vai sair sem o link.
+  const expirado = portalVencido(portal);
 
   async function copiar(token: string) {
     try {

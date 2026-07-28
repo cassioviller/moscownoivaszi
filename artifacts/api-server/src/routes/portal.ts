@@ -54,7 +54,15 @@ const router: IRouter = Router();
 /** Portal válido com noiva e loja, ou o motivo da recusa. */
 async function buscarPorToken(token: string) {
   const [linha] = await db
-    .select({ portal: portalTokensTable, lojaNome: lojasTable.nome, lead: leadsTable })
+    .select({
+      portal: portalTokensTable,
+      lojaNome: lojasTable.nome,
+      // F35: os dados PÚBLICOS da loja — os mesmos da vitrine. O telefone da
+      // vendedora não entra aqui (cuidado (a) do épico).
+      lojaEndereco: lojasTable.endereco,
+      lojaTelefone: lojasTable.telefone,
+      lead: leadsTable,
+    })
     .from(portalTokensTable)
     .innerJoin(lojasTable, eq(lojasTable.id, portalTokensTable.lojaId))
     .innerJoin(leadsTable, eq(leadsTable.id, portalTokensTable.leadId))
@@ -98,11 +106,23 @@ router.get("/portal", async (req, res): Promise<void> => {
     res.status(410).json({ error: "LINK_EXPIRADO" });
     return;
   }
-  const { portal, lojaNome, lead } = linha;
+  const { portal, lojaNome, lojaEndereco, lojaTelefone, lead } = linha;
 
-  // "Ela abriu" do card da vendedora — cada abertura move o carimbo.
+  /**
+   * "Ela abriu" do card da vendedora — cada abertura move o carimbo.
+   *
+   * F38/E100 — e cada abertura RENOVA o prazo. O noivado dura um ano e o link
+   * durava 30 dias contados da geração: a noiva voltava ao favorito em setembro
+   * e lia "este link expirou", que é mais uma mensagem de WhatsApp; do lado de
+   * dentro, a mensagem de cobrança do E84 passava a sair sem o link, calada.
+   *
+   * O espírito da política de 30 dias fica de pé, porque a janela é de
+   * INATIVIDADE: o link de quem usa não morre, o de quem parou morre igual. E
+   * renovar não RESSUSCITA nada — o 410 acima roda antes, então portal vencido
+   * continua vencido e revogado continua 404. Só o acesso vivo estica o prazo.
+   */
   await db.update(portalTokensTable)
-    .set({ ultimoAcessoEm: new Date() })
+    .set({ ultimoAcessoEm: new Date(), expiraEm: new Date(Date.now() + PORTAL_TTL_MS) })
     .where(eq(portalTokensTable.id, portal.id));
 
   const agora = new Date();
@@ -170,6 +190,8 @@ router.get("/portal", async (req, res): Promise<void> => {
     GetPortalResponse.parse({
       noivaNome: lead.noivaNome,
       lojaNome,
+      lojaEndereco,
+      lojaTelefone,
       // Só quando há contrato: sem ele, um "falta pagar R$ 0,00" afirmaria algo
       // sobre um acordo que não existe.
       resumoPagamento: contrato[0]

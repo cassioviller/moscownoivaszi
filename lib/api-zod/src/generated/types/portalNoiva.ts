@@ -14,6 +14,10 @@ import type { PortalParcela } from './portalParcela';
 export interface PortalNoiva {
   noivaNome: string;
   lojaNome: string;
+  /** @nullable */
+  lojaEndereco: string | null;
+  /** @nullable */
+  lojaTelefone: string | null;
   resumoPagamento?: PortalNoivaResumoPagamento;
   orcamento: OrcamentoPublico | null;
   lookbook: PortalNoivaLookbook;

@@ -131,13 +131,18 @@ rode o codegen.
   Avarias da devolução viram parcela cobrável (E71); LGPD interna com
   consentimento carimbado e expurgo que preserva números (E77).
 - **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
-  `portal_tokens`, 30 dias): proposta com aceite (E74), lookbook, próximas
-  provas e extrato de parcelas só-leitura. A vendedora gera/revoga no card da
-  ficha; os links antigos de orçamento/lookbook seguem valendo (compat).
+  `portal_tokens`, 30 dias **de inatividade**): proposta com aceite (E74),
+  lookbook, próximas provas e extrato de parcelas só-leitura, com "falta pagar"
+  e "próxima em" somados (E100/F36). A vendedora gera/revoga no card da ficha;
+  os links antigos de orçamento/lookbook seguem valendo (compat).
   A noiva CONFIRMA a presença da prova por ele (E85 — o mesmo `confirmadoEm`
-  do E39, com rastro "link público" na trilha), e as mensagens de wa.me
+  do E39, com rastro "link público" na trilha) ou avisa que **não pode ir**
+  (E100/F37 — `remarcacaoPedidaEm`, que não cancela nada e devolve a linha à
+  fila de remarcação da loja), e as mensagens de wa.me
   (cobrança/confirmação/orçamento) fecham com o link quando o portal está
   vivo (E84, `GET /portais` em lote + `lib/portal.ts` como régua única).
+  O rodapé traz nome, endereço e "Falar no WhatsApp" da LOJA, com o nome dela
+  já na mensagem (E100/F35).
 - **Comercial** — orçamento → contrato (com snapshot dos itens) → plano de
   parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
   aceita pelo link com rastro (instante, versão, hash — E74).
@@ -230,6 +235,16 @@ rode o codegen.
   clique, token em QUERY (o logger corta a query), e o extrato sai só do
   contrato ATIVO da própria noiva. Revogado responde 404 como desconhecido —
   o link morto não conta que um dia valeu.
+- **O TTL do portal conta INATIVIDADE, não idade** (E100/F38): cada `GET
+  /portal` bem-sucedido empurra `expiraEm` para 30 dias à frente, junto com o
+  `ultimoAcessoEm`. A decisão de segurança dos 30 dias fica de pé — o link de
+  quem parou de usar continua morrendo sozinho, no mesmo prazo —, e some o
+  absurdo de o link de uma noiva ATIVA vencer no meio de um noivado de um ano.
+  **Renovar não ressuscita:** o 410 do vencido e o 404 do revogado rodam ANTES
+  do `UPDATE`, então só o acesso vivo estica o prazo. Do lado de dentro, o que
+  vencer para de vencer em silêncio: a fila de `/mensagens` marca a linha cuja
+  mensagem vai sair sem o link (`leadsComPortalVencido`, mesma régua do selo
+  "Expirado" da ficha).
 - **O DRE é de CAIXA, e só existe um** (E102/C8). Ele soma o dinheiro que se
   MOVEU dentro da competência — parcela recebida menos pagamento feito —, e por
   isso fecha com o fluxo por construção. A coluna `contas_pagar.competencia`

@@ -71,7 +71,7 @@ quem escolheu a paleta:
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; faltam E10 e o `<Table>` do E19 · [notas](execucao/E99.md) |
-| E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; faltam F35, F21, F38, F39 · [notas](execucao/E100.md) |
+| E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `<hash>`; faltam F21 e F39 · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
@@ -109,6 +109,8 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S13 | **`useBlocker` do react-router não existe neste app.** Ele monta as rotas com `<BrowserRouter>` (`App.tsx:160`), e o `useBlocker` só funciona em data router (`createBrowserRouter` + `RouterProvider`) — fora dele, lança. Sem ele, o D14 protege só o fechar/recarregar a aba: clicar na sidebar com um formulário sujo continua descartando em silêncio. Migrar o roteador toca todas as rotas do app. | 🟡 | [E97](execucao/E97.md) |
 | S14 | **As avarias antigas ficaram sem `parcela_id`.** Não há backfill possível: casar por texto ("Reparo de avaria — …") adivinharia, e duas avarias com a mesma descrição no mesmo contrato são indistinguíveis — que é justamente o caso do duplo clique. Elas seguem cobráveis de novo e removíveis; a guarda vale para o que nasce daqui. | 🔵 | [E97](execucao/E97.md) |
 | S16 | **`leads.contrato_fechado_em` fica `null` em quem tem contrato, e um relatório conta por ela.** O carimbo só é gravado dentro do `if (etapaNova !== lead.etapa)` de `contratos.ts:335` — e `transicaoLeadValida` aceita pular no funil (`iPara > iDe`), então um lead levado de `NOVO` direto a `EM_PROVAS` fecha contrato sem que a etapa mude, e a coluna nunca é preenchida. O `comContrato` de `/leads/sazonalidade` (`leads.ts:397`) filtra por `contratoFechadoEm is not null`: aquela noiva não é contada como "já fechou" na curva que diz quando falta vestido. O conserto é gravar o carimbo mesmo quando a etapa não avança; o backfill pergunta à tabela de contratos, que é a fonte. | 🟡 | [E98](execucao/E98.md) parte 2 |
+| S17 | **A dona da loja não consegue editar os dados da própria loja.** `endereco` e `telefone` de `lojas` só têm formulário no console de SUPERADMIN (`pages/admin/index.tsx:560`), que é rota top-level fora do `/loja/:lojaId` com gate próprio (`App.tsx:270`); `/configuracoes` tem backup, captação e privacidade, e nada da loja. Três coisas dependem desses campos e degradam caladas sem eles: o rodapé do portal (F35), a linha "Endereço:" da mensagem de confirmação (`msgConfirmacaoAtendimento`) e o cabeçalho do PDF. Trocar de telefone vira chamado para quem tem o console. | 🟠 | [E100](execucao/E100.md) parte 3 |
+| S18 | **O seed do E2E elegia a loja por ordem física de linha, e isso QUEBROU.** Consertado dentro do E100 parte 3 porque a suíte não rodava — fica registrado porque o resto do diagnóstico continua aberto: as quatro "Loja Teste" que as fixtures de API deixam no banco de dev (sobra do E104, catalogada como higiene) eram candidatas à eleição, e uma delas ganhou. Higiene de fixture em lugar COMPARTILHADO não é higiene: é uma bomba esperando a primeira escrita. Apagá-las continua sendo trabalho do E104. | 🟡 | [E100](execucao/E100.md) parte 3 |
 | S12 | **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
@@ -813,3 +815,34 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   4. **Errei um teste e o código estava certo, de novo:** sete provas na mesma
      cabine e horário, contra o `unique(cabine_id, inicio)` do banco — sete casos
      caíram com 23505 antes do primeiro assert.
+- **E100 parte 3** (F35, F38): o portal deixa de ser um beco, e o prazo dele passa
+  a contar INATIVIDADE. Cada `GET /portal` que responde 200 empurra `expiraEm`
+  30 dias à frente — a decisão de segurança fica de pé porque o link de quem
+  parou continua morrendo no mesmo prazo, e **renovar não ressuscita**: o 410 do
+  vencido e o 404 do revogado rodam antes do `UPDATE`.
+  1. **O "no mínimo" do épico foi recusado com medida.** O item 5 pede, no
+     mínimo, um aviso no sino. O sino contaria um fato fora do momento em que
+     ele importa e **não teria para onde levar** — não existe lista de portais
+     vencidos, e "N noivas" sem destino é o beco que o E98/F3 passou a rodada
+     fechando. O silêncio foi calado onde ele acontece: a linha de `/mensagens`
+     cuja mensagem vai sair sem o link mostra "Portal vencido", no formato do
+     `<SemWhatsApp>`. E não regenera dali — regenerar mata o link antigo.
+  2. **O E2E não falhou num teste: falhou no SEED**, com `duplicate key …
+     regra_disponibilidade_pkey`, minutos depois de a mesma suíte passar
+     inteira. `global-setup.ts` elegia a loja com `limit(1)` **sem `order by`**,
+     ou seja, por posição física no heap — e o spec novo grava telefone/endereço
+     da loja para provar o rodapé. Duas escritas reelegeram outra loja no run
+     seguinte, e a vencedora foi uma das quatro **"Loja Teste" abandonadas pelas
+     fixtures de API** — a sobra do E104, que estava catalogada como higiene.
+  3. **A lição, e ela é de método:** aquele item não era higiene, era uma bomba
+     esperando a primeira escrita em `lojas`. Um achado tratado como sujeira e
+     outro que nem existia (a eleição por ordem física) só viraram defeito
+     quando se encontraram, e nenhuma das seis trilhas olharia para
+     `global-setup.ts`. **Candidata a regra da R7: quando uma sobra de "higiene"
+     descreve dado a mais num lugar COMPARTILHADO, pergunte quem ELEGE alguma
+     coisa naquele lugar.**
+  4. **Errei de novo pelo mesmo caminho, e desta vez o teste me pegou.** Usei
+     `dataFutura(-1)` achando que era "ontem"; ela conta a partir de uma
+     data-base de casamento em **2027**. Dois testes ficaram verdes sem tocar no
+     que diziam cobrir. O assert da renovação virou faixa fechada (>29 e <31),
+     porque "está longe" e "renovou" eram indistinguíveis.

@@ -10,8 +10,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, CalendarDays } from "lucide-react";
+import { CheckCircle2, CalendarDays, MessageCircle, MapPin } from "lucide-react";
 import { brl, capitalizar, instanteLongo } from "@/lib/formatos";
+import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 
 /**
  * O portal da noiva (/noiva/:token, E78) — UM link para tudo dela: a
@@ -55,6 +56,73 @@ const fotoUrl = (
   atualizadaEm: string,
 ) =>
   `/api/portal/foto?token=${encodeURIComponent(token)}&vestidoId=${vestidoId}&ordem=${ordem}&v=${new Date(atualizadaEm).getTime()}`;
+
+/**
+ * F35/E100 — o portal deixa de ser um beco.
+ *
+ * A página pedia "fale com a sua vendedora" em três lugares e não tinha um
+ * único link para falar com ninguém. A noiva está no navegador, à noite, com
+ * uma dúvida sobre a parcela: para perguntar, precisava sair, abrir o WhatsApp
+ * e achar uma conversa que pode ser de três meses atrás — ou de uma vendedora
+ * que já saiu da loja. É a fricção que decide se ela pergunta agora (e a loja
+ * responde amanhã cedo) ou se desiste e liga no meio do atendimento de outra.
+ *
+ * O número é o da LOJA, nunca o da vendedora: o primeiro é público — está na
+ * vitrine —, e o segundo é o telefone pessoal de alguém.
+ *
+ * **Divergência do plano, registrada:** o épico manda o rodapé SUMIR quando não
+ * há telefone. Aqui ele some só quando não há telefone NEM endereço. "Onde eu
+ * vou?" é uma segunda pergunta, com uma segunda resposta; apagá-la porque a
+ * primeira não tem resposta é punir a noiva pelo cadastro incompleto da loja.
+ */
+function RodapeDaLoja({
+  nome,
+  endereco,
+  telefone,
+  noivaNome,
+}: {
+  nome: string;
+  endereco: string | null;
+  telefone: string | null;
+  noivaNome: string;
+}) {
+  const wa = linkWhatsApp(telefone, msgDaNoivaParaAtelier(noivaNome));
+
+  // Sem os dois, não há rodapé a montar — e a frase antiga continua verdadeira:
+  // o link chegou por WhatsApp, então há uma conversa para responder.
+  if (!wa && !endereco) {
+    return (
+      <p className="text-muted-foreground text-center text-xs">
+        Dúvidas? É só responder à sua vendedora no WhatsApp.
+      </p>
+    );
+  }
+
+  return (
+    <footer className="bg-card space-y-3 rounded-lg border p-6 text-center shadow-sm">
+      <p className="font-serif text-xl">{nome}</p>
+      {endereco && (
+        <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm">
+          <MapPin className="h-4 w-4 shrink-0" />
+          {endereco}
+        </p>
+      )}
+      {wa && (
+        <>
+          <Button asChild className="w-full sm:w-auto" data-testid="falar-com-a-loja">
+            <a href={wa} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Falar no WhatsApp
+            </a>
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            A mensagem já vai com o seu nome — é só enviar.
+          </p>
+        </>
+      )}
+    </footer>
+  );
+}
 
 export default function NoivaPortal() {
   const { token } = useParams();
@@ -425,9 +493,13 @@ export default function NoivaPortal() {
               </section>
             )}
 
-            <p className="text-center text-xs text-muted-foreground">
-              Dúvidas? É só responder à sua vendedora no WhatsApp.
-            </p>
+            {/* — F35/E100: o caminho de volta — */}
+            <RodapeDaLoja
+              nome={dados!.lojaNome}
+              endereco={dados!.lojaEndereco}
+              telefone={dados!.lojaTelefone}
+              noivaNome={dados!.noivaNome}
+            />
           </>
         )}
       </div>

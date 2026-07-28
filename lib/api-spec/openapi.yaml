@@ -5332,10 +5332,17 @@ components:
       # interno além do vestidoId (necessário para pedir a foto). NUNCA dados
       # de outra noiva ou da loja.
       type: object
-      required: [noivaNome, lojaNome, orcamento, lookbook, provas, parcelas]
+      required: [noivaNome, lojaNome, lojaEndereco, lojaTelefone, orcamento, lookbook, provas, parcelas]
       properties:
         noivaNome: { type: string }
         lojaNome: { type: string }
+        # E100/F35: o portal mandava "falar com a sua vendedora" três vezes e
+        # não tinha um link para falar com ninguém. Estes dois são o caminho de
+        # volta — e são os dados PÚBLICOS da loja, os mesmos que ela põe na
+        # vitrine e no Instagram. O telefone da VENDEDORA continua fora daqui:
+        # a fronteira do cuidado (a) do épico é loja sim, pessoa não.
+        lojaEndereco: { type: ["string", "null"] }
+        lojaTelefone: { type: ["string", "null"] }
         # E100/F36: as duas perguntas que ela abre o link para responder —
         # "quanto falta" e "quando é a próxima". Estavam a uma soma de
         # distância num carnê de oito linhas lido no celular, e cada uma delas

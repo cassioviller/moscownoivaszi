@@ -54,7 +54,28 @@ export default async function globalSetup() {
     if (!admin) throw new Error("[e2e-setup] seed não criou o admin");
   }
 
-  const [loja] = await db.select().from(lojasTable).limit(1);
+  /**
+   * A loja da suíte é a MAIS ANTIGA do banco, e a ordem é explícita.
+   *
+   * Era `limit(1)` sem `order by`, o que em Postgres devolve a linha que a
+   * varredura encontrar primeiro — ou seja, **posição física no heap**. Duas
+   * coisas quebram isso, e as duas estão neste banco:
+   *
+   * 1. qualquer `UPDATE` em `lojas` reescreve a linha no fim do heap e reelege
+   *    outra loja no run seguinte (foi o que aconteceu: o spec 45 passou a
+   *    gravar telefone/endereço da loja para o rodapé do E100/F35);
+   * 2. as "Loja Teste" que as fixtures de API deixam no banco de dev (sobra do
+   *    E104) são candidatas à eleição — e uma delas ganhou.
+   *
+   * O sintoma não foi um teste vermelho: foi o SEED estourando com `duplicate
+   * key ... regra_disponibilidade_pkey`, porque a regra abaixo já existia
+   * apontando para a loja da eleição anterior. A loja de verdade é a primeira
+   * que existiu; fixture nasce sempre depois.
+   */
+  const todasAsLojas = await db.select().from(lojasTable);
+  const loja = todasAsLojas.sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+  )[0];
   if (!loja) throw new Error("[e2e-setup] nenhuma loja no banco");
 
   // E93/D1: uma SEGUNDA loja da mesma pessoa. Sem ela a fixture não conseguia
@@ -132,9 +153,13 @@ export default async function globalSetup() {
   // abre TODOS os dias (E38): assim os testes que criam atendimento "hoje" não
   // dependem de o dia da suíte cair num dia fechado. O teste do E38 gere e
   // restaura sua própria configuração de dias.
+  // O conflito é resolvido pelo `id`, e não pelo `lojaId`: a tabela tem as duas
+  // restrições únicas, e só a do `id` cobre o caso que estourou — a linha
+  // `e2e-regra-disp` sobrevivendo de um run que elegeu OUTRA loja. Reapontar é
+  // o conserto; recusar era o bug.
   await db.insert(regraDisponibilidadeTable)
     .values({ id: "e2e-regra-disp", lojaId: loja.id, provaDiasAntes: 14, usoDiasAntes: 3, usoDiasDepois: 2, lavagemDiasDepois: 7, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] })
-    .onConflictDoUpdate({ target: regraDisponibilidadeTable.lojaId, set: { diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] } });
+    .onConflictDoUpdate({ target: regraDisponibilidadeTable.id, set: { lojaId: loja.id, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] } });
 
   // Escada de comissão da admin — alvo da tela de comissões. Vigência bem no
   // passado para valer em qualquer competência que o teste olhe. As faixas são
