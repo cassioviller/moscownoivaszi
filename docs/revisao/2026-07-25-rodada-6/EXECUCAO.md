@@ -93,7 +93,7 @@ quem escolheu a paleta:
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; **parte 4 (desfaz a regressão do Canvas que a parte 3 criou) em `0910ab6`**; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
-| E110 | A cobrança de avaria não colide com a entrada (achados 1 🔴 e 8 da revisão) | P | ✅ | `<hash>` · [notas](execucao/E110.md) |
+| E110 | A cobrança de avaria não colide com a entrada (achados 1 🔴 e 8 da revisão) | P | ✅ | `d437e97` · [notas](execucao/E110.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
