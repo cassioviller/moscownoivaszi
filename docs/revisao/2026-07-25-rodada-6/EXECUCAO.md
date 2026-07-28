@@ -69,8 +69,8 @@ quem escolheu a paleta:
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
-| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 em 3 das 6 telas** no E99 parte 4 (`25a2904`); faltam E9 nas 2 restantes e F13 · [notas](execucao/E98.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; faltam E6/E8, E10, E19 e o E9 nas 2 telas restantes · [notas](execucao/E99.md) |
+| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; faltam E6/E8, E10 e o E19 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -723,3 +723,22 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      `AlertDialog` não funciona direto — o menu fecha ao selecionar e desmonta o
      gatilho. Os dois diálogos precisam virar controlados, e isso é trabalho, não
      troca de marcação.
+- **E99 parte 5**: o E9 fecha nas seis telas (o orçamento com os dois diálogos
+  controlados, como previsto), **e o D15 foi dado por fechado pela TERCEIRA
+  vez.** Primeira: varri `Intl.DateTimeFormat` — havia 10 `toLocaleDateString`.
+  Segunda: somei `toLocale*String` e escrevi um teste chamado "nenhum arquivo do
+  app formata data sem dizer o fuso" — havia **8 `format()` do date-fns**, que
+  também lê o relógio do navegador, e só apareceram porque tropecei num ao mexer
+  noutra tela.
+  1. **O padrão do erro é o mesmo das três vezes: escrevi um teste que afirma
+     mais do que verifica**, e o nome dele me deu confiança de que o item estava
+     fechado. Um teste de varredura é uma promessa, e errá-la custa caro porque
+     **desliga a suspeita de quem vem depois** — a mesma crítica que a nota do
+     E99 fez ao comentário do `reservas/helpers.ts` duas partes antes. Fiz o que
+     critiquei, no mesmo item, duas vezes. **Candidata a regra da R7: teste de
+     varredura declara a GRAFIA que cobre, e o nome não promete mais que isso.**
+  2. **Um dos oito era pior que formatação.** `vestidos/[id].tsx` usava
+     `format(new Date(), "yyyy-MM-dd")` para saber que dia é HOJE e decidir a
+     ocupação do vestido: depois das 21h de São Paulo, um navegador em UTC já
+     está no dia seguinte. Passou a usar `hojeLocal()`, que é a régua da loja e
+     já existia.
