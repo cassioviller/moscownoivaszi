@@ -410,7 +410,11 @@ export default function ContratoDetail() {
           <CardContent className="space-y-4">
             <div>
               <span className="text-muted-foreground text-sm">Valor Total</span>
-              <p className="text-2xl font-semibold text-primary">{brl(contrato.valorTotal)}</p>
+              {/* E8: era `text-primary`. Lado a lado com o `text-destructive` da parcela
+                  em atraso, o rosa da marca lia-se como um segundo alerta. O rosa fica
+                  para o que é INTERATIVO; aqui é o número mais importante da tela, e o
+                  que ele precisa é de TAMANHO. */}
+              <p className="money-lg">{brl(contrato.valorTotal)}</p>
             </div>
             <div>
               <span className="text-muted-foreground text-sm">Forma de Pagamento Base</span>

@@ -605,7 +605,7 @@ export default function Vestidos() {
                   <div className="font-mono text-xs text-muted-foreground mb-1">{vestido.codigo}</div>
                   <h3 className="font-medium truncate">{vestido.nome}</h3>
                   <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="font-semibold text-primary">{brl(vestido.precoBase)}</span>
+                    <span className="money-sm">{brl(vestido.precoBase)}</span>
                     <span className="text-muted-foreground">Tam: {vestido.tamanho || '-'}</span>
                   </div>
                 </CardContent>

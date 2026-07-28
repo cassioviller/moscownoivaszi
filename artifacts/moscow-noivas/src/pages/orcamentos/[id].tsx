@@ -813,7 +813,7 @@ export default function OrcamentoDetail() {
                 Desconto: {orcamento.descontoTipo === "PERCENTUAL" ? `${orcamento.descontoValor}%` : `${brl(orcamento.descontoValor)}`}
               </span>
             ) : null}
-            <span className="font-semibold text-primary">Total: {brl(totais.liquido)}</span>
+            <span className="money-md">Total: {brl(totais.liquido)}</span>
           </div>
 
           {acimaDoTeto && (

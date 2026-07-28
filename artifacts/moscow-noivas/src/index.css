@@ -304,6 +304,35 @@
  */
 @layer utilities {
 
+  /* ── E6/E8 (E99): a escala de dinheiro, em três degraus ───────────────────
+   *
+   * Medido antes de escrever: 92 lugares do app renderizam `brl()`, com 28
+   * combinações de classe diferentes — e 58 deles SEM `tabular-nums`, que é
+   * exatamente o que faz coluna de número deixar de alinhar. O épico falava em
+   * "quatro tipografias"; são vinte e oito.
+   *
+   * Decisão do dono (2026-07-28): **dinheiro é serif no degrau maior** — a
+   * fonte da marca, que os totais já usavam —, e os TRÊS degraus levam sempre
+   * `tabular-nums`. A cor não entra na escala: ela é do estado (positivo,
+   * destrutivo), não do tamanho.
+   *
+   * E8: o valor do contrato deixa de ser `text-primary`. Lado a lado com o
+   * `text-destructive` do atraso, o rosa da marca lia-se como "outro alerta";
+   * `text-primary` fica para o que é INTERATIVO e `text-destructive` só para o
+   * que está errado.
+   */
+  .money-lg {
+    @apply font-serif text-3xl tabular-nums;
+  }
+
+  .money-md {
+    @apply font-serif text-xl tabular-nums;
+  }
+
+  .money-sm {
+    @apply text-sm font-medium tabular-nums;
+  }
+
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;

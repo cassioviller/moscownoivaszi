@@ -196,9 +196,7 @@ export default function DRE() {
             </CardHeader>
             <CardContent className="space-y-1">
               <p
-                className={`font-serif text-4xl tabular-nums ${
-                  resultadoNegativo ? "text-destructive" : "text-positivo"
-                }`}
+                className={`money-lg text-4xl ${resultadoNegativo ? "text-destructive" : "text-positivo"}`}
                 data-testid="dre-resultado"
               >
                 {resultadoNegativo ? "−" : "+"}
@@ -217,7 +215,7 @@ export default function DRE() {
               <CardDescription>Parcelas recebidas no mês.</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold tabular-nums text-positivo">
+              <p className="money-md text-positivo">
                 {brl(dre.receitas)}
               </p>
             </CardContent>
