@@ -83,7 +83,7 @@ quem escolheu a paleta:
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | ✅ | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; parte 3 (a tela do F32) em `ced6a29`; parte 4 (F34) em `8673784` · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
-| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `<hash>`; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
+| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
