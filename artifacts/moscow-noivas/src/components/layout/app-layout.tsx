@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { TourAcessoPrimeiraEntrada } from "@/components/tour-acesso";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
+import { BarraAtendimento } from "@/components/barra-atendimento";
 import { Carregando } from "@/components/estado";
 
 /**
@@ -162,6 +163,13 @@ export function AppLayout() {
             <SinoNotificacoes />
           </span>
         </header>
+
+        {/* F13/E98 — a barra do atendimento em curso, acima do conteúdo e
+            FORA do <main> rolável: ela tem de continuar visível quando a
+            vendedora rola uma lista longa de vestidos, que é exatamente a tela
+            em que ela está quando esquece o atendimento aberto. Some sozinha
+            quando não há nenhum. */}
+        <BarraAtendimento />
 
         <main className="flex-1 overflow-y-auto bg-muted/20">
           <div className="container mx-auto p-4 sm:p-6 max-w-6xl">

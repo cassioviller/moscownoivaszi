@@ -69,7 +69,7 @@ quem escolheu a paleta:
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
-| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
+| E98 | As telas se alcançam (E3 🔴, +9) | G | ✅ | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); F13 em `<hash>` · [notas](execucao/E98.md) · [F13](execucao/E98-f13.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; faltam E10 e o `<Table>` do E19 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `6c7fa20` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ✅ | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; F42 em `d37fc72` · [notas](execucao/E101.md) · [F42](execucao/E101-f42.md) |
@@ -112,6 +112,7 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S16 | **`leads.contrato_fechado_em` fica `null` em quem tem contrato, e um relatório conta por ela.** O carimbo só é gravado dentro do `if (etapaNova !== lead.etapa)` de `contratos.ts:335` — e `transicaoLeadValida` aceita pular no funil (`iPara > iDe`), então um lead levado de `NOVO` direto a `EM_PROVAS` fecha contrato sem que a etapa mude, e a coluna nunca é preenchida. O `comContrato` de `/leads/sazonalidade` (`leads.ts:397`) filtra por `contratoFechadoEm is not null`: aquela noiva não é contada como "já fechou" na curva que diz quando falta vestido. O conserto é gravar o carimbo mesmo quando a etapa não avança; o backfill pergunta à tabela de contratos, que é a fonte. | 🟡 | [E98](execucao/E98.md) parte 2 |
 | S17 | **A dona da loja não consegue editar os dados da própria loja.** `endereco` e `telefone` de `lojas` só têm formulário no console de SUPERADMIN (`pages/admin/index.tsx:560`), que é rota top-level fora do `/loja/:lojaId` com gate próprio (`App.tsx:270`); `/configuracoes` tem backup, captação e privacidade, e nada da loja. Três coisas dependem desses campos e degradam caladas sem eles: o rodapé do portal (F35), a linha "Endereço:" da mensagem de confirmação (`msgConfirmacaoAtendimento`) e o cabeçalho do PDF. Trocar de telefone vira chamado para quem tem o console. | 🟠 | [E100](execucao/E100.md) parte 3 |
 | S18 | **O seed do E2E elegia a loja por ordem física de linha, e isso QUEBROU.** Consertado dentro do E100 parte 3 porque a suíte não rodava — fica registrado porque o resto do diagnóstico continua aberto: as quatro "Loja Teste" que as fixtures de API deixam no banco de dev (sobra do E104, catalogada como higiene) eram candidatas à eleição, e uma delas ganhou. Higiene de fixture em lugar COMPARTILHADO não é higiene: é uma bomba esperando a primeira escrita. Apagá-las continua sendo trabalho do E104. | 🟡 | [E100](execucao/E100.md) parte 3 |
+| S19 | **Cinco lugares do `ui/` ainda têm CSS morto da migração Tailwind v3 → v4.** `max-h-[--var]` é sintaxe da v3; este repo está na **4.1.14**, onde a forma é `max-h-(--var)` — a antiga emite `max-height: --radix-…`, CSS inválido que o navegador descarta em silêncio. O F13 mediu um caso: `getComputedStyle(selectContent).maxHeight === "none"` com a variável valendo 378px ao lado, e um select de 389 opções renderizando **12.456px**. **Consertado só o `max-h` do `select.tsx`** (era o que a barra do F13 quebrou). Continuam mortos: `origin-[--radix-*]` em `select`, `popover`, `dropdown-menu` e `tooltip` (cosmético — origem da animação) e `h-/w-/min-w-[--cell-size]` em `calendar.tsx` (afeta tamanho; precisa ser olhado com a tela aberta). Vale varrer `-\[--` no `ui/` inteiro. | 🟠 | [E98/F13](execucao/E98-f13.md) |
 | S12 | **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
@@ -939,3 +940,35 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      COMMIT em que foi lido; o executor confere o `git log -L` do bloco antes de
      escrever. É a terceira vez nesta rodada que o backlog descreve um estado que
      não é mais o do código.
+- **E98/F13 — o épico fecha.** A barra do atendimento em curso: enquanto existir
+  um `EM_ATENDIMENTO` da pessoa logada, toda tela diz de quem é e oferece
+  interesses, lookbook e o caminho de volta. O buraco era entre dois épicos que
+  já existiam — o E36 mediu o INÍCIO, o E61 encurtou o DEPOIS, e o durante não
+  era de ninguém: `atendimentos/index.tsx` era o único lugar do app que conhecia
+  aquele estado. Custo de rede zero: a janela é a mesma do sino, e o cache
+  deduplica.
+  1. **O E2E falhou duas vezes, e as duas valem mais que o diff.** Primeiro por
+     ver a régua funcionando e ler como erro: o spec criava o atendimento para
+     `equipe[0]`, que não é a pessoa logada, e a barra corretamente não aparece
+     para quem não está conduzindo. Consertei o teste, não o código.
+  2. **Depois, um spec alheio caiu — e a causa era minha, da família da S7.** O
+     spec 22 inicia um atendimento e nunca o conclui; o banco de dev persiste, e
+     a barra passava a aparecer em todos os specs seguintes do mesmo dia. Havia
+     **53 linhas vazadas** quando fui olhar. O detalhe que vale: **o vazamento é
+     o próprio achado do F13** — o teste da barra reproduziu o problema que a
+     barra existe para resolver.
+  3. **Limpar o vazamento não bastava, e verificar isso foi o que importou.** Um
+     usuário real TEM a barra ao montar um orçamento. Forcei o estado e o spec
+     caiu igual: era regressão de verdade. A medição levou a um **CSS morto desde
+     a migração Tailwind v3 → v4**: `max-h-[--radix-select-content-available-height]`
+     é sintaxe da v3 e emite CSS inválido na 4.1.14. Medido: `maxHeight: "none"`
+     com a variável valendo 378px, e um select de **389 opções** renderizando
+     **12.456px**, jogado para y = −12.073 quando o Radix flipou para cima.
+     **A barra não criou o defeito: revelou.** Depois: 376px, y = 7. O resto do
+     CSS morto foi para a **S19**.
+  4. **Candidata a regra da R7:** mudança no chrome compartilhado (`AppLayout`,
+     sidebar, header) roda a suíte E2E completa **com o elemento novo VISÍVEL** —
+     um elemento que só aparece em certo estado precisa desse estado forçado,
+     senão a suíte inteira testa a versão sem ele. A regra 11 não cobria este
+     caso: não mudou o que a trilha grava nem o formato que uma tela lê, e o E2E
+     foi a única coisa que pegou.
