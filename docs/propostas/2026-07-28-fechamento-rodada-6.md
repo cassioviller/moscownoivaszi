@@ -163,11 +163,12 @@ que o D15 ensinou, **declarando a grafia que cobre**.
 1. **S17 🟠** — `lojas.endereco` e `lojas.telefone` só têm formulário no console
    de **superadmin** (`pages/admin/index.tsx:560`), rota top-level fora do
    `/loja/:lojaId`. Três coisas dependem deles e degradam caladas: o rodapé do
-   portal (E100/F35), a linha "Endereço:" da confirmação e o cabeçalho do PDF.
+   portal (E100/F35) e a linha "Endereço:" da confirmação. (O cabeçalho do PDF
+   NÃO depende deles — medido na fase A; eram dois dependentes, não três.)
    Trocar de telefone vira chamado. **A tela é uma seção em `/configuracoes`.**
 2. **S16 🟡** — `leads.contrato_fechado_em` fica `null` em quem tem contrato: o
    carimbo só é gravado dentro do `if (etapaNova !== lead.etapa)` de
-   `contratos.ts:335`, e `transicaoLeadValida` aceita pular no funil. Um lead
+   `contratos.ts:357` (carimbo em `:361`), e `transicaoLeadValida` aceita pular no funil. Um lead
    levado de `NOVO` direto a `EM_PROVAS` fecha contrato sem que a etapa mude. O
    `comContrato` de `/leads/sazonalidade` filtra por essa coluna: **aquela noiva
    não é contada na curva que diz quando falta vestido.** Conserto: gravar o
@@ -376,3 +377,84 @@ O ganho real está na Fase A (seis mapeamentos em paralelo, contra seis em séri
 e no `<Table>` do E99. Nos demais épicos o gargalo é a **verificação**, que não
 paraleliza — e prometer aceleração ali seria repetir, no processo, o erro que o
 método manda evitar no código: **afirmar mais do que se verifica**.
+
+---
+
+# Fase A executada — o que o mapeamento corrigiu
+
+**2026-07-28**, seis agentes de leitura em paralelo, base `473104a`. Nenhum
+escreveu código; a verificação continuou sendo um recurso único, como o anexo
+previa.
+
+O saldo: **mais de trinta correções** ao backlog, às sobras e a este plano. A
+fase existia para isso — "o backlog erra" é a primeira linha do rastreador — e o
+que ela achou teria virado retrabalho em todos os cinco passos.
+
+## O que está visivelmente errado hoje, e ninguém tinha olhado
+
+**O calendário.** A prova não é inferência, é o CSS entregue
+(`dist/public/assets/index-*.css`):
+
+```
+.h-\[--cell-size\]{height:--cell-size}        ← nome de variável como VALOR
+.px-\[--cell-size\]{padding-inline:--cell-size}
+.\[--cell-size\:2rem\]{--cell-size:2rem}      ← a variável existe, vale 32px
+.min-w-\[8rem\]{min-width:8rem}               ← o compilador está sadio
+```
+
+Cinco classes, 100% do consumo de `--cell-size`, descartadas pelo navegador. As
+setas de mês ficam com a largura do ícone (16px em vez de 32), e o
+`px-[--cell-size]` do rótulo **era a reserva de espaço para elas** — o mês fica
+centrado por baixo das setas. Não há rede: ninguém importa o CSS do
+`react-day-picker`.
+
+**E o pior caso está fora do `ui/`.** A instrução da S19 dizia "varrer no `ui/`
+inteiro"; `combobox-noiva.tsx:171` passa `w-[--radix-popover-trigger-width]` a um
+`PopoverContent` cuja base é `w-72`. O `tailwind-merge` vê dois `w-*`, **remove o
+`w-72`**, e sobra a classe morta: a lista de noivas fica sem regra de largura
+nenhuma. São **13 linhas em 6 arquivos**, e o Tailwind instalado é **4.3.1**.
+
+## As correções a este plano, por passo
+
+| Passo | O que eu escrevi | O que foi medido |
+|---|---|---|
+| **E99** | "o estorno de parcela não nomeia objeto e valor" | `contratos/[id].tsx:745` **nomeia os dois** desde antes da rodada. Quem não nomeia é `receber.tsx:391`. A trilha original tinha o endereço certo; minha condensação o perdeu |
+| **E99** | "exposta só com `variant=\"destructive\"`" | **A grafia não existe**: zero gatilhos a usam, e `DropdownMenuItem` **não tem prop `variant`** — o caminho do `…` não pode cumprir a régua como escrita. São 3 grafias em uso, e 14 dos 31 casos não usam nenhuma |
+| **E99** | "o `CabecalhoDetalhe` é a metade escrita da regra" | É **3 de 31**. As outras 28 moram em LINHAS de lista, e para elas não existe componente — a parte cara é um `<AcoesDaLinha>` que ainda não existe |
+| **E103** | "Migração: sim — `conciliadoEm`" (uma coluna) | **Três colunas em duas tabelas**: `parcelas.conciliado_em`, `pagamentos.conciliado_em` e `parcelas.enviado_contabilidade_em`, que não existe. "Carimba os dois" não era possível |
+| **E103** | "uma coluna, um PATCH em lote" | O lote é **heterogêneo** e os ids da tela são sintéticos (`parcela:<id>`, `pagamento:<id>`): não há entidade "movimento" para receber um PATCH |
+| **E108** | S8 é um arquivo, "dezenas de call-sites" | **Dois arquivos, 63 call-sites.** `comissao.ts:62` tem a mesma dupla, com 39 sítios — mais que o alvo declarado, e nunca esteve em sobra nenhuma |
+| **E108** | S9 "erra um centavo no limiar" | **Zero centavos hoje**, e não por sorte: `leads.ts:49` é `decimal(scale: 2)`. O que está desprotegido é a ENTRADA (zod sem `multipleOf`, formulário sem checagem de escala) |
+| **E109** | "o cabeçalho do PDF depende de endereço/telefone" | **Falso.** `contrato-pdf.ts` tem zero ocorrências dos dois. São dois dependentes, não três — e há um terceiro que ninguém viu: `linkWhatsApp` devolve `null` para telefone malformado e o botão do portal some sem erro |
+| **E104** | "ampliar o `include` destrava testar componente" | **No-op**: os 31 testes já estão em `src/lib`. O que falta é `jsdom` + testing-library, **não instalados** — é o único item de todo o fechamento que precisa de rede |
+| **E104** | S18: "as quatro Loja Teste" | São 1,5% do passivo. **613 usuários órfãos** (86% de 714) e 723 sessões. E o risco que a sobra nomeia (a eleição do seed) **já não existe** desde o E100 parte 3 |
+| **S13** | "migrar o roteador toca todas as rotas" | Toca **1 arquivo**. Os 66 que importam `react-router` usam só hooks e `<Link>`, idênticos em data router |
+| **A6** | "~40 devDependencies" | **60**, 18 exclusivas, 9,3 MB — e **`pnpm run build` da raiz QUEBRA** por causa dele (falta `PORT`) |
+
+## As quatro decisões, respondidas
+
+O dono seguiu as recomendações medidas:
+
+1. **A6 → tirar do workspace** (uma linha no `pnpm-workspace.yaml`), não podar. Paga
+   os mesmos 6,5 s e 9,3 MB, é reversível, e preserva o único ativo que resta.
+2. **S3 → manter o `req.log.warn`**, e fechar antes as duas rotas que já têm
+   `lojaId` em mãos (`admin.ts:61`, `admin.ts:74`) mais o `convites.ts:72`, que
+   nem estava na sobra e é a única entrada de gente numa loja sem rastro. A
+   migração é de uma linha, mas com `loja_id` nulo as linhas não aparecem em
+   NENHUMA das 4 leituras: a opção (a) sozinha entrega uma tabela cega.
+3. **S5 → congelar o comportamento atual num teste** e escrever a régua no
+   código. Zero ocorrências no banco; o custo de errar hoje é zero e o de decidir
+   errado é grande (o predicado é lido por 7 funções do motor).
+4. **S13 → aplicar `useConfirmarSaida` nos 4 formulários descobertos** (4 linhas,
+   cobertura de 3 → 8 rotas) e adiar o data router, agora sabendo que ele custa
+   um arquivo.
+
+## A ordem revista
+
+O S19 sobe para **primeiro** — é o único item de todo o fechamento com defeito
+visível para quem usa o sistema, e a prova está no bundle. Depois disso, a ordem
+do plano vale como estava.
+
+```
+S19  →  E99  →  E103  →  E108  →  E109  →  E104 (com A6 já decidido)
+```
