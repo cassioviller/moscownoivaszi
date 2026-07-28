@@ -17,6 +17,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { HistoricoContato } from "@/components/historico-contato";
 import { Erro, NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { LookbookNoiva } from "./lookbook";
 import { PortalNoiva } from "./portal";
 import { Badge } from "@/components/ui/badge";
@@ -245,78 +246,49 @@ export default function NoivaDetalhe() {
 
   return (
     <div className="space-y-6">
-      <Link
-        to={`/loja/${lojaId}/noivas`}
-        className="inline-block text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Noivas
-      </Link>
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-serif" data-testid="text-noiva-nome">
+      <CabecalhoDetalhe
+        trilha={[{ rotulo: "Noivas", para: "/noivas" }, { rotulo: lead.noivaNome }]}
+        titulo={
+          <span data-testid="text-noiva-nome">
             {lead.noivaNome}
             {lead.noivoNome && <span className="text-muted-foreground"> &amp; {lead.noivoNome}</span>}
-          </h1>
-          <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"} className="mt-2">
+          </span>
+        }
+        chip={
+          <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"}>
             {etapaLabel(lead.etapa)}
             {lead.etapa === "PERDIDO" && lead.perdidaMotivo && ` · ${perdidaMotivoLabel(lead.perdidaMotivo)}`}
           </Badge>
-          {lead.etapa === "PERDIDO" && lead.perdidaDetalhe && (
-            <p className="mt-1 text-xs text-muted-foreground">{lead.perdidaDetalhe}</p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* F1/E98 — o link que faltava no caminho mais percorrido do app.
-              A ficha sabe o `leadId` e o formulário de agendar já aceita
-              `?noiva=` (`reservas/[bloqueioId].tsx` usa o mesmo deep-link há
-              tempos), mas daqui não havia caminho: agendar custava uma
-              navegação de sidebar mais uma busca por nome — com a noiva do
-              lado, esperando. Zero código do lado do formulário. */}
-          {podeAgendar && lead.etapa !== "PERDIDO" && (
+        }
+        subtitulo={
+          lead.etapa === "PERDIDO" && lead.perdidaDetalhe ? lead.perdidaDetalhe : undefined
+        }
+        acaoPrimaria={
+          /* F1/E98 — o link que faltava no caminho mais percorrido do app: a
+             ficha sabe o `leadId` e o formulário já aceita `?noiva=`, mas daqui
+             não havia caminho, e agendar custava uma navegação de sidebar mais
+             uma busca por nome — com a noiva do lado, esperando. */
+          podeAgendar && lead.etapa !== "PERDIDO" ? (
             <Button asChild data-testid="button-agendar-da-ficha">
               <Link to={`/loja/${lojaId}/atendimentos/novo?noiva=${leadId}`}>
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 Agendar atendimento
               </Link>
             </Button>
-          )}
-          {podeEditar && lead.etapa === "PERDIDO" && (
-            <Button
-              variant="outline"
-              onClick={reativar}
-              disabled={updateLead.isPending}
-              data-testid="button-reativar-noiva"
-            >
-              {updateLead.isPending ? "Reativando…" : "Reativar"}
-            </Button>
-          )}
-          {podeEditar && lead.etapa !== "PERDIDO" && (
-            <Button
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setPerdendo(true)}
-              data-testid="button-marcar-perdida"
-            >
-              Marcar como perdida
-            </Button>
-          )}
-          {podeEditar && (
-            <Button asChild variant="outline" data-testid="button-editar-noiva">
-              <Link to={`/loja/${lojaId}/noivas/${leadId}/editar`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Editar dados
-              </Link>
-            </Button>
-          )}
-          {/* E77 (LGPD): o direito de acesso — a noiva pede, a loja entrega. */}
-          <Button asChild variant="ghost" size="sm" data-testid="button-exportar-dados">
-            <a href={`/api/lojas/${lojaId}/leads/${leadId}/exportar`} download>
-              Exportar dados (LGPD)
-            </a>
-          </Button>
-        </div>
-      </div>
+          ) : undefined
+        }
+        acoes={[
+          ...(podeEditar ? [{ rotulo: "Editar dados", para: `/noivas/${leadId}/editar` }] : []),
+          ...(podeEditar && lead.etapa === "PERDIDO"
+            ? [{ rotulo: updateLead.isPending ? "Reativando…" : "Reativar", onClick: reativar, desabilitada: updateLead.isPending }]
+            : []),
+          /* E77 (LGPD): o direito de acesso — a noiva pede, a loja entrega. */
+          { rotulo: "Exportar dados (LGPD)", href: `/api/lojas/${lojaId}/leads/${leadId}/exportar` },
+          ...(podeEditar && lead.etapa !== "PERDIDO"
+            ? [{ rotulo: "Marcar como perdida", onClick: () => setPerdendo(true), destrutiva: true }]
+            : []),
+        ]}
+      />
 
       {/* F5/E98 — o que falta, em uma frase e um botão.
 

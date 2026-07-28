@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -263,28 +264,31 @@ export default function VestidoDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-mono text-muted-foreground">{vestido.codigo}</div>
-          <h1 className="text-3xl font-serif">{vestido.nome}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {renderBadgeHoje()}
-          {vestido.status === "ativo" ? (
-            <Badge variant="secondary" className="text-sm px-3 py-1">Ativo</Badge>
-          ) : (
-            <Badge variant="outline" className="text-sm px-3 py-1">Inativo</Badge>
-          )}
-          {podeEditar && (
+      <CabecalhoDetalhe
+        trilha={[{ rotulo: "Acervo", para: "/vestidos" }, { rotulo: vestido.codigo }]}
+        titulo={vestido.nome}
+        subtitulo={<span className="font-mono">{vestido.codigo}</span>}
+        chip={
+          <span className="flex flex-wrap items-center gap-2">
+            {renderBadgeHoje()}
+            {vestido.status === "ativo" ? (
+              <Badge variant="secondary" className="text-sm px-3 py-1">Ativo</Badge>
+            ) : (
+              <Badge variant="outline" className="text-sm px-3 py-1">Inativo</Badge>
+            )}
+          </span>
+        }
+        acaoPrimaria={
+          podeEditar ? (
             <Button variant="outline" asChild>
               <Link to={editarHref}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Editar vestido
               </Link>
             </Button>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {vestido.fotos && vestido.fotos.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto pb-1">

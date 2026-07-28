@@ -22,7 +22,10 @@ test.describe("Leads → Noivas (E31)", () => {
   test("/leads/:id redireciona para o detalhe da noiva", async ({ page }) => {
     await page.goto(`/leads/${estado.leadId}`);
     await expect(page).toHaveURL(new RegExp(`/noivas/${estado.leadId}(\\?|$)`));
-    await expect(page.getByText("E2E Noiva Playwright")).toBeVisible();
+    // E9/E98: o nome aparece DUAS vezes na ficha por desenho — no último item da
+    // trilha ("Noivas › Ana Silva", que é onde a pessoa está) e no <h1>. Um
+    // `getByText` solto virou ambíguo; o testid diz qual dos dois interessa.
+    await expect(page.getByTestId("text-noiva-nome")).toHaveText(/E2E Noiva Playwright/);
   });
 
   test("cadastra uma noiva pelo fluxo unificado", async ({ page }) => {

@@ -19,6 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -349,46 +350,49 @@ export default function ContratoDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-serif">
-            {noivaNome ? (
-              <Link to={`/loja/${lojaId}/noivas/${contrato.leadId}`} className="hover:text-primary hover:underline">
-                {noivaNome}
-              </Link>
-            ) : (
-              `Contrato #${contrato.id.slice(0, 6)}`
-            )}
-          </h1>
-          <p className="text-sm text-muted-foreground">
+      {/* E9: o status saiu da fileira de botões (onde o Badge rosa "Ativo" era o
+          elemento mais clicável dos três, sem ser clicável) e virou chip de
+          leitura ao lado do nome. "Cancelar contrato" saiu do mesmo tamanho dos
+          vizinhos para dentro do menu, em vermelho. */}
+      <CabecalhoDetalhe
+        trilha={[
+          { rotulo: "Noivas", para: "/noivas" },
+          ...(noivaNome && contrato.leadId
+            ? [{ rotulo: noivaNome, para: `/noivas/${contrato.leadId}` }]
+            : []),
+          { rotulo: "Contrato" },
+        ]}
+        titulo={noivaNome ?? `Contrato #${contrato.id.slice(0, 6)}`}
+        chip={
+          <Badge variant={contratoAtivo ? "default" : "destructive"} className="text-sm px-3 py-1">
+            {statusContratoLabel(contrato.status)}
+          </Badge>
+        }
+        subtitulo={
+          <>
             Fechado em {instanteDia(contrato.fechadoEm)}
             {contrato.dataCasamento && ` • Casamento ${diaMesAno(contrato.dataCasamento)}`}
             {contrato.vendedora && ` • Vendedora: ${contrato.vendedora.nome}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Âncora crua, e não o client gerado: o PDF é um download do navegador
-              (cookie de sessão vai junto), sem passar pelo react-query. */}
+          </>
+        }
+        acaoPrimaria={
+          /* Âncora crua, e não o client gerado: o PDF é um download do navegador
+             (cookie de sessão vai junto), sem passar pelo react-query. */
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/lojas/${lojaId}/contratos/${contrato.id}/pdf`} target="_blank" rel="noreferrer">
               Baixar PDF
             </a>
           </Button>
-          {contrato.orcamentoId && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to={`/loja/${lojaId}/orcamentos/${contrato.orcamentoId}`}>Ver orçamento de origem</Link>
-            </Button>
-          )}
-          <Badge variant={contratoAtivo ? 'default' : 'destructive'} className="text-sm px-3 py-1">
-            {statusContratoLabel(contrato.status)}
-          </Badge>
-          {podeMexer && (
-            <Button variant="outline" size="sm" onClick={() => setCancelarOpen(true)}>
-              Cancelar contrato
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        acoes={[
+          ...(contrato.orcamentoId
+            ? [{ rotulo: "Ver orçamento de origem", para: `/orcamentos/${contrato.orcamentoId}` }]
+            : []),
+          ...(podeMexer
+            ? [{ rotulo: "Cancelar contrato", onClick: () => setCancelarOpen(true), destrutiva: true }]
+            : []),
+        ]}
+      />
 
       {contrato.status === "CANCELADO" && contrato.canceladoMotivo && (
         <Alert>
