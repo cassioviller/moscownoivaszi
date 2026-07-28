@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ErroListagem, useCaminhoDaLoja } from "./helpers";
 import { HistoricoContato } from "@/components/historico-contato";
+import { SemWhatsApp } from "@/components/sem-whatsapp";
 import { MessageCircle, ChevronDown } from "lucide-react";
 import { brl } from "@/lib/formatos";
 import {
@@ -132,9 +133,7 @@ function LinhaNoiva({
                 </a>
               </Button>
             ) : (
-              <Badge variant="secondary" title="Sem WhatsApp válido no cadastro">
-                Sem WhatsApp
-              </Badge>
+              <SemWhatsApp leadId={noiva.leadId} />
             )}
           </div>
         </div>

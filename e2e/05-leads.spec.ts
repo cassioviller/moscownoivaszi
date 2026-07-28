@@ -31,6 +31,12 @@ test.describe("Leads → Noivas (E31)", () => {
     await expect(page).toHaveURL(/\/noivas\/nova$/);
 
     await page.getByTestId("input-noiva-nome").fill("Noiva Criada Pelo E2E");
+    // E98/F2: a origem passou a NASCER VAZIA. Este spec passava sem tocá-la
+    // porque o formulário respondia "Loja" por quem cadastrava — que é o
+    // defeito, não a conveniência: era assim que toda noiva captada pelo
+    // Instagram entrava na coluna da loja física do relatório de conversão.
+    await page.getByTestId("select-noiva-origem").click();
+    await page.getByRole("option", { name: "Instagram" }).click();
     await page.getByRole("button", { name: "Adicionar noiva" }).click();
 
     // O sucesso navega para o detalhe da noiva recém-criada.

@@ -20,6 +20,7 @@ export {
   FUNIL_LEAD,
   ETAPAS_LEAD,
   ETAPAS_CONVERTIDA,
+  converteu,
   transicaoLeadValida,
   avancarEtapaLead,
   etapasAlcancaveis,

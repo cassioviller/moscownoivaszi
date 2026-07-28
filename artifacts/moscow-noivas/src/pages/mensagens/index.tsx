@@ -16,7 +16,7 @@ import {
   getListPortaisQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { SemWhatsApp } from "@/components/sem-whatsapp";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, CalendarCheck, HandCoins, FileClock, Undo2 } from "lucide-react";
 import { format } from "date-fns";
@@ -260,7 +260,7 @@ export default function MensagensDoDia() {
                           </a>
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="font-normal">Sem WhatsApp</Badge>
+                        <SemWhatsApp leadId={a.leadId} />
                       )}
                     </li>
                   );
@@ -364,7 +364,7 @@ export default function MensagensDoDia() {
                           </a>
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="font-normal">Sem WhatsApp</Badge>
+                        <SemWhatsApp leadId={n.leadId} />
                       )}
                     </li>
                   );
@@ -422,7 +422,7 @@ export default function MensagensDoDia() {
                           </a>
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="font-normal">Sem WhatsApp</Badge>
+                        <SemWhatsApp leadId={o.leadId} />
                       )}
                     </li>
                   );

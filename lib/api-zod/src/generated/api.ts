@@ -1541,7 +1541,8 @@ export const UpdateLeadBody = zod.object({
   "casamentoHorario": zod.string().optional(),
   "casamentoLocal": zod.string().optional(),
   "perdidaMotivo": zod.enum(['PRECO', 'DATA_INDISPONIVEL', 'CONCORRENTE', 'DESISTENCIA', 'SEM_RETORNO', 'OUTRO']).optional().describe('Obrigatório quando etapa vira PERDIDO; ignorado nas demais'),
-  "perdidaDetalhe": zod.string().optional()
+  "perdidaDetalhe": zod.string().optional(),
+  "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional().describe('Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)')
 })
 
 export const UpdateLeadResponse = zod.object({

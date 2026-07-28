@@ -117,11 +117,18 @@ export default function NovoAtendimento() {
 
   // Deep-link do detalhe da reserva ("Agendar prova"): ?noiva=&tipo=PROVA&reserva=
   // pré-preenche o formulário. `tipo` só aceita os valores do schema.
+  //
+  // F12: a agenda manda `?dia=` ao trocar o diálogo próprio por esta tela — sem
+  // ele, quem estava olhando a grade de 14/02 cairia aqui com a data em branco e
+  // teria de redigitar o dia que já estava na tela anterior. O formato é o mesmo
+  // YMD do `<input type=date>`, então serve de valor inicial sem conversão.
   const tipoParam = searchParams.get("tipo");
+  const diaParam = searchParams.get("dia") ?? "";
   const prefill = {
     tipo: tipoParam === "PROVA" || tipoParam === "ATENDIMENTO" ? tipoParam : "ATENDIMENTO",
     leadId: searchParams.get("noiva") ?? "",
     bloqueioId: searchParams.get("reserva") ?? "",
+    data: /^\d{4}-\d{2}-\d{2}$/.test(diaParam) ? diaParam : "",
   } as const;
 
   const equipe = useListEquipe(activeLojaId!, {
@@ -153,7 +160,7 @@ export default function NovoAtendimento() {
       bloqueioId: prefill.bloqueioId,
       cabineId: "",
       vendedoraId: "",
-      data: "",
+      data: prefill.data,
       hora: "",
       observacao: "",
     },
@@ -384,12 +391,24 @@ export default function NovoAtendimento() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link
-            to={`/loja/${lojaId}/atendimentos`}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Atendimentos
-          </Link>
+          {/* Quem veio da agenda volta para a agenda, no MESMO dia que estava
+              olhando — a comodidade que o diálogo do F12 dava de graça e que um
+              link para "Atendimentos" não devolve. */}
+          {prefill.data ? (
+            <Link
+              to={`/loja/${lojaId}/agenda?dia=${prefill.data}`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Agenda
+            </Link>
+          ) : (
+            <Link
+              to={`/loja/${lojaId}/atendimentos`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Atendimentos
+            </Link>
+          )}
           <h1 className="text-3xl font-serif mt-1">Agendar</h1>
         </div>
         {podeVerConfig && (

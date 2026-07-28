@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LeadUpdateEtapa } from './leadUpdateEtapa';
+import type { LeadUpdateOrigem } from './leadUpdateOrigem';
 import type { LeadUpdatePerdidaMotivo } from './leadUpdatePerdidaMotivo';
 
 export interface LeadUpdate {
@@ -20,4 +21,6 @@ export interface LeadUpdate {
   /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
   perdidaMotivo?: LeadUpdatePerdidaMotivo;
   perdidaDetalhe?: string;
+  /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
+  origem?: LeadUpdateOrigem;
 }

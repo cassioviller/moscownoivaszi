@@ -4609,6 +4609,15 @@ components:
           enum: [PRECO, DATA_INDISPONIVEL, CONCORRENTE, DESISTENCIA, SEM_RETORNO, OUTRO]
           description: "Obrigatório quando etapa vira PERDIDO; ignorado nas demais"
         perdidaDetalhe: { type: string }
+        # F2 (E98): a origem passou a ser corrigível — errar o canal no cadastro
+        # envenenava /leads/conversao sem conserto possível. A janela fecha na
+        # CONVERSÃO, não no contrato: é `converteu(etapa)` que decide, a mesma
+        # régua que o relatório usa para contar. Depois disso, mudar a origem
+        # reescreveria uma conversão já contada — 422 ORIGEM_IMUTAVEL.
+        origem:
+          type: string
+          enum: [LOJA, WHATSAPP, SITE, INSTAGRAM]
+          description: "Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)"
     LeadInteresse:
       type: object
       required: [leadId]

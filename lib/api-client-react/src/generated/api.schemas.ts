@@ -661,6 +661,19 @@ export const LeadUpdatePerdidaMotivo = {
   OUTRO: 'OUTRO',
 } as const;
 
+/**
+ * Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)
+ */
+export type LeadUpdateOrigem = typeof LeadUpdateOrigem[keyof typeof LeadUpdateOrigem];
+
+
+export const LeadUpdateOrigem = {
+  LOJA: 'LOJA',
+  WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
+} as const;
+
 export interface LeadUpdate {
   etapa?: LeadUpdateEtapa;
   noivaNome?: string;
@@ -673,6 +686,8 @@ export interface LeadUpdate {
   /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
   perdidaMotivo?: LeadUpdatePerdidaMotivo;
   perdidaDetalhe?: string;
+  /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
+  origem?: LeadUpdateOrigem;
 }
 
 export interface LeadInteresseInput {

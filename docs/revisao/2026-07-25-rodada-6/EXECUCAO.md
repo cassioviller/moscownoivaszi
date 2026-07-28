@@ -57,7 +57,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
-| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6` · [notas](execucao/E98.md) |
+| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `PENDENTE`; faltam E9, os 6 links e o F13 · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
@@ -96,6 +96,7 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S15 | **O `vitest` do frontend só coleta testes dentro de `src/lib`.** Teste de componente não chega a ser executado — descoberto ao escrever o do `<Erro>` e ver "No test files found". Ampliar o `include` é infraestrutura de teste e mora no E104, que já vai ligar o typecheck dos testes do front. | 🟡 | [E99](execucao/E99.md) |
 | S13 | **`useBlocker` do react-router não existe neste app.** Ele monta as rotas com `<BrowserRouter>` (`App.tsx:160`), e o `useBlocker` só funciona em data router (`createBrowserRouter` + `RouterProvider`) — fora dele, lança. Sem ele, o D14 protege só o fechar/recarregar a aba: clicar na sidebar com um formulário sujo continua descartando em silêncio. Migrar o roteador toca todas as rotas do app. | 🟡 | [E97](execucao/E97.md) |
 | S14 | **As avarias antigas ficaram sem `parcela_id`.** Não há backfill possível: casar por texto ("Reparo de avaria — …") adivinharia, e duas avarias com a mesma descrição no mesmo contrato são indistinguíveis — que é justamente o caso do duplo clique. Elas seguem cobráveis de novo e removíveis; a guarda vale para o que nasce daqui. | 🔵 | [E97](execucao/E97.md) |
+| S16 | **`leads.contrato_fechado_em` fica `null` em quem tem contrato, e um relatório conta por ela.** O carimbo só é gravado dentro do `if (etapaNova !== lead.etapa)` de `contratos.ts:335` — e `transicaoLeadValida` aceita pular no funil (`iPara > iDe`), então um lead levado de `NOVO` direto a `EM_PROVAS` fecha contrato sem que a etapa mude, e a coluna nunca é preenchida. O `comContrato` de `/leads/sazonalidade` (`leads.ts:397`) filtra por `contratoFechadoEm is not null`: aquela noiva não é contada como "já fechou" na curva que diz quando falta vestido. O conserto é gravar o carimbo mesmo quando a etapa não avança; o backfill pergunta à tabela de contratos, que é a fonte. | 🟡 | [E98](execucao/E98.md) parte 2 |
 | S12 | **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
@@ -112,6 +113,7 @@ sugestão sair da nota de um épico alheio e chegar a ele.
 | E104 | `artifacts/mockup-sandbox/index.html:6` tem `lang="en"` — e o pacote inteiro é candidato à poda, se for descartável. | [E92](execucao/E92.md) vp |
 | E104 | **As "Lojas Teste" do E2E vivem no banco de dev** (`Loja Teste 214cda2c`, `b423b8db`, `3b9323fb`…). As fixtures da suíte não estão sendo limpas, ou não todas. Higiene de teste. | [E92](execucao/E92.md) vp |
 | E104 | `listPagamentos` ainda é pedido sem janela em telas que mostram um mês — nenhuma apareceu nos quatro casos do D2, mas vale a varredura. | [E93](execucao/E93.md) vp |
+| E104 | **O `.migration-backup/` saiu do versionamento e continua no DISCO.** O A4 resolveu o repo, não a busca: `find`/`grep` no workspace ainda devolvem dois resultados para cada arquivo vivo (aconteceu duas vezes na sessão 4, procurando `openapi.yaml` e `schema.ts`). Apagar é uma linha; o que falta é a decisão de apagar. | [E98](execucao/E98.md) parte 2 vp2 |
 
 ### Decisão consciente — não são sobras
 
@@ -545,3 +547,41 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   `include` do vitest do front continua `src/lib/**/*.test.ts` (S15) — teste de
   componente segue não sendo executado, e o A7 não cobre isso, porque tipar o
   teste e coletá-lo são fiscais diferentes.
+
+### Sessão 4 — 2026-07-28
+
+- **O diário registrou o E103 e o E104**, que estavam commitados e mudos: os
+  hashes estavam na tabela e nenhum parágrafo existia. O passo 5 do "Como
+  retomar" pede os dois, e o parágrafo é o que sobrevive — a tabela diz que foi
+  feito, a nota diz o que se aprendeu. Commit `85d7c14`.
+- **E98 parte 2** (notas em `execucao/E98.md`): F12, F2, F3 e F4. Os quatro
+  andam juntos por um motivo que só apareceu ao fazer — **o F4 cria uma noiva, e
+  criar noiva é exatamente o que o F2 acabou de proibir de fazer no escuro.**
+  Na ordem trocada, o "Cadastrar «Maria»" teria caído no default da coluna e
+  reintroduzido, na tela de maior frequência do app, o defeito que o F2 fecha.
+  1. **O F12 não trocou um formulário por um link: apagou uma versão ERRADA da
+     mesma tela.** O diálogo da agenda tinha 198 linhas e três defeitos que
+     nenhuma tela mostra — o instante nascia no fuso do NAVEGADOR (`new
+     Date(inicio)`) enquanto a tela de agendar usa `instanteDoSlot`, no fuso da
+     loja; a vendedora logada virava a responsável sem ninguém perguntar, e a
+     comissão lê esse campo; e `tipo: PROVA` era aceito **sem reserva**, que é a
+     prova órfã que o E97 teve de consertar do outro lado. 15 linhas entraram,
+     198 saíram. O cuidado (b) cobrou dois lados e não um: o `?dia=` preenche a
+     data **e** a volta devolve a agenda do mesmo dia.
+  2. **O backlog trava a origem no CONTRATO; a régua certa é a CONVERSÃO — e as
+     duas divergem nos dois sentidos.** `/leads/conversao` conta por ETAPA
+     (`ETAPAS_CONVERTIDA`), não por linha da tabela de contratos: cancelar o
+     contrato não regride a etapa, então a noiva continua contada e a régua do
+     backlog a devolveria para edição; e `transicaoLeadValida` aceita pular no
+     funil, então existe lead com contrato que nunca passou por
+     `CONTRATO_FECHADO`. A guarda ficou em `converteu(etapa)` — **a mesma função
+     que o relatório usa para contar**, não uma cópia dela.
+  3. **`origem` não virou obrigatória no contrato da API, e isso foi medido.**
+     Fechar a porta no `LeadInput` custaria 16 chamadas de `POST /leads` em
+     testes onde a origem não é o assunto, e a captação externa já tem corpo e
+     default próprios (`SITE`). A cerca que importa é a do formulário, que é por
+     onde gente passa. Decisão registrada, não esquecimento.
+  4. **Um caso de teste que parece detalhe e não é:** reenviar a MESMA origem de
+     uma noiva já convertida **passa**. A tela manda o formulário inteiro no
+     PATCH — recusar o campo idêntico impediria de corrigir o NOME de uma
+     convertida, com um 422 apontando para um campo que ninguém tentou mudar.

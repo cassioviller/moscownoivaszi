@@ -23,7 +23,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
-import { transicaoLeadValida, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
+import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
 import { erroDeValidacao } from "../lib/erros";
@@ -456,6 +456,21 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     res.status(422).json({
       error: "TRANSICAO_INVALIDA",
       detalhe: `Lead não pode ir de ${existente.etapa} para ${parsed.data.etapa}`,
+    });
+    return;
+  }
+
+  // F2: corrigir a origem é permitido enquanto a noiva não CONVERTEU, e a régua
+  // é `converteu()` — a mesma que /leads/conversao usa para contar. O backlog
+  // dizia "enquanto não tem contrato", e não é a mesma pergunta: o relatório
+  // conta por ETAPA, então um contrato cancelado continua contado e um lead em
+  // EM_PROVAS que nunca passou por CONTRATO_FECHADO tem contrato e não é
+  // contado. Travar pelo contrato deixaria a conversão já publicada mudar de
+  // canal debaixo de quem leu o relatório.
+  if (parsed.data.origem && parsed.data.origem !== existente.origem && converteu(existente.etapa)) {
+    res.status(422).json({
+      error: "ORIGEM_IMUTAVEL",
+      detalhe: "A noiva já converteu: mudar a origem agora reescreveria um número que o relatório de conversão já contou.",
     });
     return;
   }

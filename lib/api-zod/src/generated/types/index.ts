@@ -179,6 +179,7 @@ export * from './leadPerdidaMotivo';
 export * from './leadsPage';
 export * from './leadUpdate';
 export * from './leadUpdateEtapa';
+export * from './leadUpdateOrigem';
 export * from './leadUpdatePerdidaMotivo';
 export * from './linkOrcamentoPublico';
 export * from './listAtendimentosParams';

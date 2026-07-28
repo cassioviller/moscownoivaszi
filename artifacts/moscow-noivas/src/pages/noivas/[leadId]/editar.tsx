@@ -15,6 +15,7 @@ import { diaParaISO } from "@/lib/formatos";
 import { NoivaForm, type NoivaFormValues } from "../noiva-form";
 import { isoParaDia } from "../helpers";
 import { podeNoModulo } from "@/lib/permissoes";
+import { converteu } from "@/lib/funil";
 import { mensagemApi } from "@/lib/erro-api";
 
 /** Editar dados da noiva (porte da /noivas/[leadId]/editar) — volta ao perfil. */
@@ -36,8 +37,10 @@ export default function EditarNoiva() {
 
   const onSubmit = async (values: NoivaFormValues) => {
     try {
-      // Origem não é editável no main (LeadUpdate não tem o campo); textos
-      // vazios seguem como "" para permitir limpar; data vazia não limpa.
+      // F2: a origem passou a viajar no PATCH — é o único caminho de correção de
+      // um canal errado, e a rota recusa (422 ORIGEM_IMUTAVEL) depois que a
+      // noiva converte. Textos vazios seguem como "" para permitir limpar; data
+      // vazia não limpa.
       await updateLead.mutateAsync({
         lojaId: activeLojaId!,
         leadId: leadId!,
@@ -49,6 +52,7 @@ export default function EditarNoiva() {
           casamentoData: values.casamentoData ? diaParaISO(values.casamentoData) : undefined,
           casamentoHorario: values.casamentoHorario ?? "",
           casamentoLocal: values.casamentoLocal ?? "",
+          origem: values.origem,
         },
       });
       await Promise.all([
@@ -108,7 +112,7 @@ export default function EditarNoiva() {
           submitLabel="Salvar alterações"
           pending={updateLead.isPending}
           onSubmit={onSubmit}
-          origemDisabled
+          origemTravada={converteu(lead.etapa)}
           defaults={{
             noivaNome: lead.noivaNome,
             noivoNome: lead.noivoNome ?? "",
