@@ -75,6 +75,7 @@ quem escolheu a paleta:
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
+| E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `<hash>` · [notas](execucao/E106.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
@@ -94,7 +95,7 @@ mora; esta tabela é onde o trabalho é reclamado.
 
 | # | O quê | Peso | Origem |
 |---|---|---|---|
-| S1 | **`DELETE /admin/lojas/:lojaId` (`admin.ts:100`) não tem guarda nenhuma** e cascateia a loja inteira — leads, contratos, parcelas, pagamentos — sem confirmação e sem trilha. É o irmão maior do B2, que o E91 fechou com 409 `USUARIO_COM_HISTORICO`. **Nenhuma das seis trilhas o viu**; é a prova da crítica 2 do método. | 🔴 | [E91](execucao/E91.md) vp2 |
+| ~~S1~~ | ~~**`DELETE /admin/lojas/:lojaId` não tem guarda nenhuma** e cascateia a loja inteira.~~ **Fechada pelo E106** (`<hash>`): virou 409 `LOJA_COM_HISTORICO`, com a régua contando também acervo e equipe, e o 404 cosmético consertado de brinde. Três correções ao diagnóstico nas notas — o gate existia, nenhuma tela chamava a rota, e a cascata é de **31 tabelas**, não quatro. **Nenhuma das seis trilhas a viu**: é a prova da crítica 2 do método, e ela só sobreviveu porque a regra 12 a tirou da nota do E91. | 🔴 | [E91](execucao/E91.md) vp2 · [E106](execucao/E106.md) |
 | S2 | **`POST /contratos` não valida `bloqueioVestidoIds` contra o lead**, só contra a loja: um contrato pode prender a reserva física de OUTRA noiva da mesma loja. Não é vazamento entre lojas — por isso ficou fora do E91 —, mas é da mesma família. | 🟠 | [E91](execucao/E91.md) vp4 |
 | S3 | **Ato global de superadmin não deixa trilha.** `registrarAuditoria` exige `lojaId` (`audit_log.loja_id` é `notNull`) e `DELETE /admin/usuarios/:id` é global. Hoje sobra um `req.log.warn`. Registrar em cada loja da pessoa multiplica a mesma ação em N linhas; não registrar exige mudar o schema da trilha. Vale para S1 também. | 🟠 | [E91](execucao/E91.md) "ficou de fora" |
 | S4 | **`DELETE /contas-pagar/:id` não grava auditoria.** Apagar uma conta prevista é sumir com uma obrigação sem rastro — mesma classe do B3, um degrau abaixo (não move caixa realizado). | 🟡 | [E94](execucao/E94.md) vp1 |
@@ -876,3 +877,40 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      mesmo instante contra `unique(loja_id, vendedora_id, inicio)`. O detalhe que
      interessa: **passava sozinho e falhava no arquivo inteiro**. Rodar o teste
      isolado para "confirmar" teria dito que estava tudo bem.
+- **E106 — o S1, o último 🔴 da rodada**, e o único achado que **nenhuma das seis
+  trilhas viu**. Ele saiu do "visto de passagem" do E91, quando o executor
+  consertava o irmão menor (`DELETE /admin/usuarios/:id`, o B2) e reparou que a
+  loja tinha o mesmo defeito um andar acima. **Só sobreviveu porque a regra 12 o
+  tirou da nota de um épico fechado** — é a prova da crítica 2 (o ponto cego do
+  recorte por módulo: nenhuma trilha tinha "console de superadmin" como assunto)
+  e da crítica 9 ao mesmo tempo.
+  1. **Três correções ao diagnóstico, e as três importam.** A sobra diz "não tem
+     guarda nenhuma": o **gate existe** (`requireSuperAdmin`, `admin.ts:53`) — o
+     que falta é guarda de DESTRUIÇÃO, e a pergunta que ninguém fazia não era
+     "quem pode?" e sim "isto deveria ser possível?". **Nenhuma tela chama a
+     rota** (`deleteLoja` só existe no client gerado), o que a torna menos
+     provável e mais perigosa — um defeito nela não seria notado por uso. E o
+     estrago é maior: `pg_constraint` diz **31 FKs em CASCADE**, não as quatro
+     citadas — inclusive `vestidos`, `usuarios_lojas` e a própria `audit_log`.
+  2. **A régua não é só de dinheiro, e é decisão.** Uma loja sem contrato pode ter
+     200 vestidos fotografados e seis pessoas na equipe. Contar só o financeiro
+     deixaria passar exatamente o caso da loja nova que alguém "limpa" porque
+     "ainda não vendeu nada". Dois testes existem só para isso.
+  3. **O caminho que a mensagem ensina foi verificado, não suposto.** Um 409 que
+     manda desativar sem que desativar faça algo é o beco do E98/F3 vestido de
+     conselho. O teste desativa e confirma que a loja **sai do `/auth/me`** da
+     vendedora, com a loja e o vínculo intactos no banco.
+  4. **A trilha não é gravada, e o motivo É o defeito:** `audit_log.loja_id` é
+     `notNull` + CASCADE, então registrar "loja X apagada" dentro da loja X apaga
+     o registro junto. Ficou o `req.log.warn` — mesmo veredito do E91, mesma
+     razão, e a **S3** segue sendo onde isso vira épico. O que mudou é a urgência:
+     com a guarda, o que ainda se apaga é uma loja VAZIA.
+  5. **O DDL ficou como está, e também é decisão.** Trocar as 31 CASCADE por
+     `restrict` — a simetria com o E91 — obrigaria todo apagamento legítimo (o
+     expurgo de LGPD, o `limparFixture`) a varrer 31 tabelas na ordem certa, que
+     é a coisa que ninguém acerta na segunda vez.
+  6. **A cascata de cinco falhas na medição do vermelho é a prova, não ruído.**
+     Depois que a loja da fixture foi apagada, o teste seguinte recebeu 404 e o de
+     permissão recebeu **403 — a sessão do próprio superadmin morreu**, porque
+     `usuarios_lojas` cascateou. Um `DELETE` derrubou o fixture inteiro e expulsou
+     quem o executou. É o que a rota fazia em produção.

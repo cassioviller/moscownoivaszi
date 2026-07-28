@@ -88,6 +88,21 @@ rode o codegen.
   exclusão em vez de apagar o histórico junto com a pessoa. Quem sai do ateliê é
   INATIVADO (`usuarios.ativo`), e `DELETE /admin/usuarios/:id` responde 409
   `USUARIO_COM_HISTORICO` dizendo isso.
+- **Apagar uma LOJA segue a mesma régua, um andar acima** (E106/S1). `lojas` é
+  referenciada por **31 FKs em CASCADE** — entre elas `parcelas` (com
+  `recebido_em`), `pagamentos`, `vestidos`, `usuarios_lojas` e a própria
+  `audit_log` —, então um `DELETE` numa linha levava 31 tabelas junto.
+  `DELETE /admin/lojas/:id` responde 409 `LOJA_COM_HISTORICO` sempre que houver
+  parcela, pagamento, contrato, noiva, **vestido no acervo ou pessoa na equipe**
+  — a régua não é só de dinheiro, porque acervo e equipe também são trabalho que
+  some. Loja que sai de operação é DESATIVADA (`lojas.ativo`): ela some dos
+  seletores (`buscarLojasUsuario` filtra `ativo = true`) e nenhuma sessão entra
+  nela (`buscarSessao` recusa), sem perder nada. **O cascade continua de
+  propósito** — é o que faz o expurgo de LGPD e a limpeza de fixture caberem num
+  comando; a guarda é de aplicação, e recusa só o caso perigoso. E a exclusão de
+  uma loja NÃO deixa trilha, porque não há onde: `audit_log.loja_id` é `notNull`
+  + CASCADE, e o registro morreria com a loja (sobra S3). Fica o `req.log.warn`
+  `loja_excluida`.
 - **Nenhum id entra sem prova de loja** (E91). `usuarios` é tabela GLOBAL e a FK
   do banco só garante que um id EXISTE, não a que loja pertence. Toda escrita
   que recebe id de outra entidade — do CORPO ou do PATH — passa por

@@ -186,6 +186,9 @@ export const UpdateLojaResponse = zod.object({
 })
 
 
+/**
+ * Apaga uma loja VAZIA. E106/S1: `lojas` é referenciada por 31 FKs em CASCADE — um DELETE aqui levava junto leads, contratos, parcelas recebidas, pagamentos, o acervo de vestidos, os vínculos da equipe e a própria trilha de auditoria da loja. Com histórico, responde 409 `LOJA_COM_HISTORICO` e ensina o caminho certo: desativar (`PATCH { ativo: false }`) tira a loja de todos os seletores e recusa a sessão nela, preservando tudo.
+ */
 export const DeleteLojaParams = zod.object({
   "lojaId": zod.coerce.string()
 })

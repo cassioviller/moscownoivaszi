@@ -848,6 +848,9 @@ export const getDeleteLojaUrl = (lojaId: string,) => {
   return `/api/admin/lojas/${lojaId}`
 }
 
+/**
+ * Apaga uma loja VAZIA. E106/S1: `lojas` é referenciada por 31 FKs em CASCADE — um DELETE aqui levava junto leads, contratos, parcelas recebidas, pagamentos, o acervo de vestidos, os vínculos da equipe e a própria trilha de auditoria da loja. Com histórico, responde 409 `LOJA_COM_HISTORICO` e ensina o caminho certo: desativar (`PATCH { ativo: false }`) tira a loja de todos os seletores e recusa a sessão nela, preservando tudo.
+ */
 export const deleteLoja = async (lojaId: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteLojaUrl(lojaId),
@@ -862,7 +865,7 @@ export const deleteLoja = async (lojaId: string, options?: RequestInit): Promise
 
 
 
-export const getDeleteLojaMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteLojaMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLoja>>, TError,{lojaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteLoja>>, TError,{lojaId: string}, TContext> => {
 
@@ -891,9 +894,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteLojaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLoja>>>
 
-    export type DeleteLojaMutationError = ErrorType<unknown>
+    export type DeleteLojaMutationError = ErrorType<void>
 
-    export const useDeleteLoja = <TError = ErrorType<unknown>,
+    export const useDeleteLoja = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLoja>>, TError,{lojaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteLoja>>,

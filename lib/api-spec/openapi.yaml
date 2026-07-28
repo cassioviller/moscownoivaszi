@@ -179,9 +179,21 @@ paths:
     delete:
       operationId: deleteLoja
       tags: [admin]
+      description: >
+        Apaga uma loja VAZIA. E106/S1: `lojas` é referenciada por 31 FKs em
+        CASCADE — um DELETE aqui levava junto leads, contratos, parcelas
+        recebidas, pagamentos, o acervo de vestidos, os vínculos da equipe e a
+        própria trilha de auditoria da loja. Com histórico, responde 409
+        `LOJA_COM_HISTORICO` e ensina o caminho certo: desativar
+        (`PATCH { ativo: false }`) tira a loja de todos os seletores e recusa a
+        sessão nela, preservando tudo.
       responses:
         "204":
-          description: Deleted
+          description: Loja vazia removida
+        "404":
+          description: Loja inexistente (antes respondia 204 sem ter removido nada)
+        "409":
+          description: A loja tem histórico — desative em vez de excluir
   /admin/perfis:
     get:
       operationId: listPerfis

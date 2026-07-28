@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable } from "@workspace/db";
+import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, pagamentosTable, vestidosTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable } from "@workspace/db";
 import { eq, and, sql, count, inArray } from "drizzle-orm";
 import { STATUS_ABERTO } from "@workspace/financeiro-core";
 import { 
@@ -93,13 +93,84 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   res.json(UpdateLojaResponse.parse(loja));
 });
 
+/**
+ * E106/S1 🔴 — apagar uma loja deixa de ser um clique sem volta.
+ *
+ * A rota tinha o gate certo (`requireSuperAdmin`, acima) e **nenhuma guarda de
+ * destruição**: `DELETE FROM lojas WHERE id = ?` e 204. `lojas` é referenciada
+ * por **31 FKs em CASCADE** — medidas em `pg_constraint`, não estimadas —, e
+ * entre elas estão `parcelas` (com `recebido_em` preenchido), `pagamentos`,
+ * `contratos`, `vestidos` (o acervo inteiro), `usuarios_lojas` (os vínculos da
+ * equipe) e `audit_log`. Uma linha some e leva 31 tabelas junto.
+ *
+ * É o irmão maior do B2, que o E91 fechou em `DELETE /admin/usuarios/:id`, e
+ * ganha a mesma forma: contar o que seria destruído, **recusar com 409 legível**
+ * e ensinar o caminho que preserva. Aqui a diferença é o alcance — lá morria o
+ * histórico de UMA pessoa, aqui morre o de uma loja inteira.
+ *
+ * **A contagem não é só de dinheiro, e isso é decisão.** Uma loja sem contrato
+ * nenhum pode ter 200 vestidos fotografados e seis pessoas na equipe: é trabalho,
+ * e some igual. Por isso o acervo e a equipe entram na régua ao lado das
+ * parcelas.
+ *
+ * **A trilha não é gravada aqui, e o motivo é o próprio defeito:**
+ * `audit_log.loja_id` é `notNull` + CASCADE, então registrar "loja X apagada"
+ * dentro da loja X apaga o registro junto com ela. Fica o `req.log.warn`
+ * estruturado — o mesmo veredito do `DELETE /admin/usuarios/:id` do E91, pela
+ * mesma razão. A sobra **S3** é onde isso vira épico; com a guarda de cima, o
+ * que ainda pode ser apagado é uma loja VAZIA, e o rastro pesado deixa de ser
+ * urgente.
+ */
 router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   const params = DeleteLojaParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json(erroDeValidacao(params.error));
     return;
   }
-  await db.delete(lojasTable).where(eq(lojasTable.id, params.data.lojaId));
+  const lojaId = params.data.lojaId;
+
+  // 404 ANTES de qualquer coisa. O `delete` devolvia 204 mesmo sem ter removido
+  // linha nenhuma — o mesmo 404 cosmético que o E91 corrigiu no DELETE da
+  // equipe: quem chamou não distinguia "apaguei" de "não existia".
+  const [loja] = await db.select().from(lojasTable).where(eq(lojasTable.id, lojaId));
+  if (!loja) {
+    res.status(404).json({ error: "Loja not found" });
+    return;
+  }
+
+  const [[l], [c], [p], [pg], [v], [e]] = await Promise.all([
+    db.select({ n: count() }).from(leadsTable).where(eq(leadsTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(parcelasTable).where(eq(parcelasTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(pagamentosTable).where(eq(pagamentosTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(vestidosTable).where(eq(vestidosTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(usuariosLojasTable).where(eq(usuariosLojasTable.lojaId, lojaId)),
+  ]);
+
+  // A ordem é a do estrago: dinheiro primeiro, porque é o irreversível de
+  // verdade — o resto se recadastra, uma parcela recebida não.
+  const historico = [
+    p.n > 0 ? `${p.n} parcela(s)` : null,
+    pg.n > 0 ? `${pg.n} pagamento(s)` : null,
+    c.n > 0 ? `${c.n} contrato(s)` : null,
+    l.n > 0 ? `${l.n} noiva(s)` : null,
+    v.n > 0 ? `${v.n} vestido(s) no acervo` : null,
+    e.n > 0 ? `${e.n} pessoa(s) na equipe` : null,
+  ].filter(Boolean);
+
+  if (historico.length > 0) {
+    res.status(409).json({
+      error: "LOJA_COM_HISTORICO",
+      detalhe: `Esta loja tem ${historico.join(", ")} — excluir apagaria tudo isso, inclusive parcelas já recebidas. Desative a loja em vez de excluir: ela sai dos seletores e ninguém entra nela, e nada é perdido.`,
+    });
+    return;
+  }
+
+  await db.delete(lojasTable).where(eq(lojasTable.id, lojaId));
+  req.log.warn(
+    { lojaId, lojaNome: loja.nome, porUsuarioId: req.usuario!.id },
+    "loja_excluida",
+  );
   res.status(204).send();
 });
 
