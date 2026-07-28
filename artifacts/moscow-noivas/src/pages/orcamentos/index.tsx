@@ -33,7 +33,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ComboboxNoiva } from "@/components/combobox-noiva";
 import { Plus, FileText, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { diaParaISO, statusOrcamentoLabel } from "@/lib/formatos";
+import { diaParaISO, statusOrcamentoLabel, instanteDia } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 
 const FILTROS: { chave: string; rotulo: string }[] = [
@@ -230,7 +230,7 @@ export default function Orcamentos() {
                     </div>
                     <div>
                       <div className="font-medium">{nomePorLead.get(orcamento.leadId) ?? "Noiva"}</div>
-                      <div className="text-sm text-muted-foreground">Criado em {new Date(orcamento.createdAt).toLocaleDateString("pt-BR")}</div>
+                      <div className="text-sm text-muted-foreground">Criado em {instanteDia(orcamento.createdAt)}</div>
                     </div>
                   </div>
                   <Badge variant={orcamento.status === "APROVADO" ? "default" : orcamento.status === "RECUSADO" ? "outline" : "secondary"}>

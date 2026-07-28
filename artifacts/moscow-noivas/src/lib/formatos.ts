@@ -241,3 +241,21 @@ const mesAnoLongoFmt = new Intl.DateTimeFormat("pt-BR", {
 export function mesAnoLongo(valor: Date | string): string {
   return mesAnoLongoFmt.format(comoData(valor));
 }
+
+const instanteDiaFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+/**
+ * "28/07/2026" para um INSTANTE (fechadoEm, criadoEm, recebidoEm).
+ *
+ * Tem o mesmo desenho de `diaMesAno`, e existe separado de propósito: aquele lê
+ * em UTC porque a entrada é uma data de negócio; este lê no relógio da loja
+ * porque a entrada é um momento. Um `recebidoEm` das 22h de 28/07 é dia 28 —
+ * lido em UTC viraria 29.
+ */
+export function instanteDia(valor: Date | string): string {
+  return instanteDiaFmt.format(comoData(valor));
+}

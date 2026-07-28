@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusContratoLabel } from "@/lib/formatos";
+import { brl, diaParaISO, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
 import {
   ROTULO_FORMA,
   rotuloForma,
@@ -361,8 +361,8 @@ export default function ContratoDetail() {
             )}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Fechado em {new Date(contrato.fechadoEm).toLocaleDateString("pt-BR")}
-            {contrato.dataCasamento && ` • Casamento ${new Date(contrato.dataCasamento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}`}
+            Fechado em {instanteDia(contrato.fechadoEm)}
+            {contrato.dataCasamento && ` • Casamento ${diaMesAno(contrato.dataCasamento)}`}
             {contrato.vendedora && ` • Vendedora: ${contrato.vendedora.nome}`}
           </p>
         </div>
@@ -393,7 +393,7 @@ export default function ContratoDetail() {
       {contrato.status === "CANCELADO" && contrato.canceladoMotivo && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Contrato cancelado{contrato.canceladoEm && ` em ${new Date(contrato.canceladoEm).toLocaleDateString("pt-BR")}`}</AlertTitle>
+          <AlertTitle>Contrato cancelado{contrato.canceladoEm && ` em ${instanteDia(contrato.canceladoEm)}`}</AlertTitle>
           <AlertDescription>Motivo: {contrato.canceladoMotivo}</AlertDescription>
         </Alert>
       )}
@@ -480,7 +480,7 @@ export default function ContratoDetail() {
                               {rotuloParcela(parcela)}
                             </p>
                             <p className={`text-xs ${atrasada(parcela) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                              Venc: {new Date(parcela.vencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                              Venc: {diaMesAno(parcela.vencimento)}
                             </p>
                           </div>
                           <div className="text-right">
@@ -631,7 +631,7 @@ export default function ContratoDetail() {
                       <span>
                         {p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`}
                         {p.recebidoEm &&
-                          ` — ${new Date(p.recebidoEm).toLocaleDateString("pt-BR")}`}
+                          ` — ${instanteDia(p.recebidoEm)}`}
                       </span>
                       <span className="tabular-nums">{brl(p.valorRecebido ?? 0)}</span>
                     </li>

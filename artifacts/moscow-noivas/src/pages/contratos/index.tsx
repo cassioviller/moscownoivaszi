@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, ScrollText, AlertCircle } from "lucide-react";
-import { brl, statusContratoLabel } from "@/lib/formatos";
+import { brl, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
 
 const FILTROS: { chave: string; rotulo: string; status?: ContratoStatus }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -92,8 +92,8 @@ export default function Contratos() {
                         {contrato.lead?.noivaNome ?? `Contrato #${contrato.id.slice(0, 6)}`}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Contrato #{contrato.id.slice(0, 6)} • Fechado em {new Date(contrato.fechadoEm).toLocaleDateString("pt-BR")}
-                        {contrato.dataCasamento && ` • Casamento ${new Date(contrato.dataCasamento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}`}
+                        Contrato #{contrato.id.slice(0, 6)} • Fechado em {instanteDia(contrato.fechadoEm)}
+                        {contrato.dataCasamento && ` • Casamento ${diaMesAno(contrato.dataCasamento)}`}
                       </div>
                     </div>
                   </div>

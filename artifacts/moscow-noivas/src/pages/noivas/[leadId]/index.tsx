@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM } from "@/lib/formatos";
+import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { ehNaoEncontrado } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
@@ -517,7 +517,7 @@ export default function NoivaDetalhe() {
                       className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-primary"
                     >
                       <span>
-                        Criado em {new Date(o.createdAt).toLocaleDateString("pt-BR")}
+                        Criado em {instanteDia(o.createdAt)}
                       </span>
                       <Badge variant={o.status === "APROVADO" ? "default" : o.status === "RECUSADO" ? "outline" : "secondary"}>
                         {STATUS_ORCAMENTO[o.status] ?? o.status}

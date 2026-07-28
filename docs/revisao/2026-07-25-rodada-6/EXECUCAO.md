@@ -120,7 +120,7 @@ sugestão sair da nota de um épico alheio e chegar a ele.
 |---|---|---|
 | E96 | `selecionar-loja.tsx` faz `catch (error: any)` — resquício do padrão antigo, na tela que o E93 mexeu. | [E92](execucao/E92.md) vp |
 | E99 | `/vestidos` renderiza **114 cards com foto** de uma vez (E19); a `<h2>` que o E92 pôs já diz o número, a paginação continua sendo daqui. | [E92](execucao/E92.md) vp |
-| ~~E99~~ | ~~`chart.tsx` e `calendar.tsx` com `toLocaleString` sem locale.~~ **Resolvido pela metade e sem querer:** a poda do E99 apagou o `chart.tsx`, então metade da sobra deixou de existir. Sobra `calendar.tsx:40`, que tem consumidor e continua usando `toLocaleString("default", …)` — entra no D15 (item 10 do E99, parte 2). | [E92](execucao/E92.md) vp · [E99](execucao/E99.md) |
+| ~~E99~~ | ~~`chart.tsx` e `calendar.tsx` com `toLocaleString` sem locale.~~ **Fechada na parte 3b do E99** (`PENDENTE3B`): o `chart.tsx` morreu na poda e o `calendar.tsx:40` passou de `"default"` (a locale da INTERFACE do navegador) para `"pt-BR"`. | [E92](execucao/E92.md) vp · [E99](execucao/E99.md) |
 | E104 | `index.html` ainda tem a boilerplate do Replit em inglês nas três metas `description`/`og:`/`twitter:` — *"built on Replit. Update this description…"*. É o texto que aparece quando alguém compartilha o link do sistema. Uma linha. | [E92](execucao/E92.md) vp |
 | E104 | `artifacts/mockup-sandbox/index.html:6` tem `lang="en"` — e o pacote inteiro é candidato à poda, se for descartável. | [E92](execucao/E92.md) vp |
 | E104 | **As "Lojas Teste" do E2E vivem no banco de dev** (`Loja Teste 214cda2c`, `b423b8db`, `3b9323fb`…). As fixtures da suíte não estão sendo limpas, ou não todas. Higiene de teste. | [E92](execucao/E92.md) vp |

@@ -64,6 +64,7 @@ import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { AtividadeEquipe } from "./atividade";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { instanteDia } from "@/lib/formatos";
 
 const novoMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -349,7 +350,7 @@ export default function Equipe() {
                     <div className="font-medium truncate">{c.nome}</div>
                     <div className="text-sm text-muted-foreground truncate">
                       {c.email} · {c.perfilNome ?? c.perfilId} · expira{" "}
-                      {new Date(c.expiraEm).toLocaleDateString("pt-BR")}
+                      {instanteDia(c.expiraEm)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

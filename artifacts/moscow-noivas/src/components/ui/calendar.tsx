@@ -36,8 +36,12 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+        // E92 (sobra) / D15: era `toLocaleString("default", …)` — "default" é a
+        // locale da INTERFACE do navegador, então o seletor de mês deste
+        // calendário saía em inglês para quem usa o Chrome em inglês, dentro de
+        // um app inteiro em português. É a mesma família do E1, e aqui o
+        // conserto é uma palavra.
+        formatMonthDropdown: (date) => date.toLocaleString("pt-BR", { month: "short" }),
         ...formatters,
       }}
       classNames={{
