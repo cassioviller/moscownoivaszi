@@ -69,8 +69,8 @@ quem escolheu a paleta:
 | E95 | A tela de orçamento para de calcular dinheiro (C1 🔴, +12) | G | ✅ | `c4d8609` · [notas](execucao/E95.md) |
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
-| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; faltam E9 (vai com o E99) e F13 · [notas](execucao/E98.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; faltam E6/E8, E10, E19+E9 · [notas](execucao/E99.md) |
+| E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 em 3 das 6 telas** no E99 parte 4 (`25a2904`); faltam E9 nas 2 restantes e F13 · [notas](execucao/E98.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; faltam E6/E8, E10, E19 e o E9 nas 2 telas restantes · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -699,3 +699,27 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      declara-se completa e não é. O teste novo olha as duas, com lista de
      perdoados de um item e o motivo escrito — mesmo formato do teste de
      `error.message` do E96, e nascido do mesmo jeito.
+- **E99 parte 4**: o `<CabecalhoDetalhe>` (E9, do E98) nasce e três das seis
+  telas de detalhe o adotam — contrato, vestido e ficha da noiva.
+  1. **O caso do épico se confirma na tela**: no contrato, "Cancelar contrato"
+     dividia a fileira com "Baixar PDF" e "Ver orçamento", os três do mesmo
+     tamanho, e o elemento mais clicável dos quatro era o `Badge` rosa "Ativo" —
+     cor cheia no meio de botões outline, e não clicável. O status virou chip de
+     leitura ao lado do `<h1>`; a destrutiva foi para o `…`, em vermelho e atrás
+     de um separador.
+  2. **A poda foi cobrada e a promessa se sustentou.** O `dropdown-menu` era um
+     dos 24 primitivos apagados na parte 1, com a nota "reintroduzir é um
+     comando". Hoje foi o dia: a dependência ainda estava no store do pnpm e o
+     arquivo veio **do próprio commit da poda**, não reescrito. Podar sabendo que
+     reintroduzir é barato só vale se, no dia, for barato mesmo.
+  3. **O E9 faz o nome do registro aparecer duas vezes, por desenho**, e um spec
+     disse isso com `strict mode violation … resolved to 2 elements`. É o padrão
+     certo (o último item do breadcrumb É o título da página, com
+     `aria-current="page"`); quem envelheceu foi a expectativa. **Terceira vez
+     nesta sessão** que o E2E completo pega uma expectativa velha — verde em
+     unidade e typecheck não veria nenhuma das três.
+  4. **O orçamento ficou de fora com motivo técnico:** "Recusar" e "Aprovar" são
+     `AlertDialogTrigger` embrulhando botões, e um `DropdownMenuItem` que abre um
+     `AlertDialog` não funciona direto — o menu fecha ao selecionar e desmonta o
+     gatilho. Os dois diálogos precisam virar controlados, e isso é trabalho, não
+     troca de marcação.
