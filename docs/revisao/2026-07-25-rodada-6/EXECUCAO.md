@@ -82,6 +82,7 @@ quem escolheu a paleta:
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
+| E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `<hash>` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
@@ -102,11 +103,11 @@ mora; esta tabela é onde o trabalho é reclamado.
 | # | O quê | Peso | Origem |
 |---|---|---|---|
 | ~~S1~~ | ~~**`DELETE /admin/lojas/:lojaId` não tem guarda nenhuma** e cascateia a loja inteira.~~ **Fechada pelo E106** (`d8e923c`): virou 409 `LOJA_COM_HISTORICO`, com a régua contando também acervo e equipe, e o 404 cosmético consertado de brinde. Três correções ao diagnóstico nas notas — o gate existia, nenhuma tela chamava a rota, e a cascata é de **31 tabelas**, não quatro. **Nenhuma das seis trilhas a viu**: é a prova da crítica 2 do método, e ela só sobreviveu porque a regra 12 a tirou da nota do E91. | 🔴 | [E91](execucao/E91.md) vp2 · [E106](execucao/E106.md) |
-| S2 | **`POST /contratos` não valida `bloqueioVestidoIds` contra o lead**, só contra a loja: um contrato pode prender a reserva física de OUTRA noiva da mesma loja. Não é vazamento entre lojas — por isso ficou fora do E91 —, mas é da mesma família. | 🟠 | [E91](execucao/E91.md) vp4 |
+| ~~S2~~ | **Fechada pelo E107** (`<hash>`). **`POST /contratos` não valida `bloqueioVestidoIds` contra o lead**, só contra a loja: um contrato pode prender a reserva física de OUTRA noiva da mesma loja. Não é vazamento entre lojas — por isso ficou fora do E91 —, mas é da mesma família. | 🟠 | [E91](execucao/E91.md) vp4 |
 | S3 | **Ato global de superadmin não deixa trilha.** `registrarAuditoria` exige `lojaId` (`audit_log.loja_id` é `notNull`) e `DELETE /admin/usuarios/:id` é global. Hoje sobra um `req.log.warn`. Registrar em cada loja da pessoa multiplica a mesma ação em N linhas; não registrar exige mudar o schema da trilha. Vale para S1 também. | 🟠 | [E91](execucao/E91.md) "ficou de fora" |
-| S4 | **`DELETE /contas-pagar/:id` não grava auditoria.** Apagar uma conta prevista é sumir com uma obrigação sem rastro — mesma classe do B3, um degrau abaixo (não move caixa realizado). | 🟡 | [E94](execucao/E94.md) vp1 |
+| ~~S4~~ | **Fechada pelo E107** (`<hash>`). **`DELETE /contas-pagar/:id` não grava auditoria.** Apagar uma conta prevista é sumir com uma obrigação sem rastro — mesma classe do B3, um degrau abaixo (não move caixa realizado). | 🟡 | [E94](execucao/E94.md) vp1 |
 | S5 | **A parcela PARCIAL sob `destinoPago: "manter"` é ambígua.** Ela vira CANCELADA, o que tira do horizonte o saldo que falta (certo) mas também tira do caixa realizado o que já entrou — e sob "manter" a loja está dizendo que ficou com o dinheiro. Representar "cancelada, mas o recebido permanece no caixa" exige decidir se o motor passa a olhar `valorRecebido` em vez do status: mudança de régua com alcance grande. Sob "estornar" não há ambiguidade. | decisão de produto | [E94](execucao/E94.md) vp2 |
-| S6 | **O estorno avulso de parcela tem a mesma leitura-fora-da-transação do B6**, mas o `SET` dele é absoluto (sempre PREVISTA/null): dois estornos simultâneos convergem. Pior caso é auditar duas vezes, não perder valor. | 🔵 | [E94](execucao/E94.md) vp3 |
+| ~~S6~~ | **Fechada pelo E107** (`<hash>`). **O estorno avulso de parcela tem a mesma leitura-fora-da-transação do B6**, mas o `SET` dele é absoluto (sempre PREVISTA/null): dois estornos simultâneos convergem. Pior caso é auditar duas vezes, não perder valor. | 🔵 | [E94](execucao/E94.md) vp3 |
 | S7 | **`e2e/25-confirmar-presenca` colide consigo mesma entre execuções.** Ela cria o atendimento sempre na cabine fixa `e2e-cabine-1`, às `14:mm:ss` de HOJE, num banco que persiste — quanto mais vezes a suíte roda no mesmo dia, maior a chance de 409 `Registro duplicado ou conflito de dados`. Mesma classe que a sobra da rodada 5 resolveu noutro spec ("recurso próprio por execução"). Um vermelho desses se lê como regressão de dinheiro e não é. | 🟠 (infra de teste) | [E95](execucao/E95.md) |
 | S8 | **`contratos.ts` mantém `cent`/`reais` locais**, idênticos aos do `financeiro-core`, com dezenas de call-sites — a mesma classe do `parseValor` quadruplicado que o E95 fechou, em volume maior. | 🟡 | [E95](execucao/E95.md) vp |
 | S9 | **O teto de orçamento (E33) compara em reais.** `acimaDoTeto` faz `totais.liquido > teto` em float enquanto o excedente já saiu para centavos. Um centavo no limiar, sem consequência de dinheiro — mas é régua pela metade. | 🔵 | [E95](execucao/E95.md) vp |
@@ -119,7 +120,8 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S17 | **A dona da loja não consegue editar os dados da própria loja.** `endereco` e `telefone` de `lojas` só têm formulário no console de SUPERADMIN (`pages/admin/index.tsx:560`), que é rota top-level fora do `/loja/:lojaId` com gate próprio (`App.tsx:270`); `/configuracoes` tem backup, captação e privacidade, e nada da loja. Três coisas dependem desses campos e degradam caladas sem eles: o rodapé do portal (F35), a linha "Endereço:" da mensagem de confirmação (`msgConfirmacaoAtendimento`) e o cabeçalho do PDF. Trocar de telefone vira chamado para quem tem o console. | 🟠 | [E100](execucao/E100.md) parte 3 |
 | S18 | **O seed do E2E elegia a loja por ordem física de linha, e isso QUEBROU.** Consertado dentro do E100 parte 3 porque a suíte não rodava — fica registrado porque o resto do diagnóstico continua aberto: as quatro "Loja Teste" que as fixtures de API deixam no banco de dev (sobra do E104, catalogada como higiene) eram candidatas à eleição, e uma delas ganhou. Higiene de fixture em lugar COMPARTILHADO não é higiene: é uma bomba esperando a primeira escrita. Apagá-las continua sendo trabalho do E104. | 🟡 | [E100](execucao/E100.md) parte 3 |
 | S19 | **Cinco lugares do `ui/` ainda têm CSS morto da migração Tailwind v3 → v4.** `max-h-[--var]` é sintaxe da v3; este repo está na **4.1.14**, onde a forma é `max-h-(--var)` — a antiga emite `max-height: --radix-…`, CSS inválido que o navegador descarta em silêncio. O F13 mediu um caso: `getComputedStyle(selectContent).maxHeight === "none"` com a variável valendo 378px ao lado, e um select de 389 opções renderizando **12.456px**. **Consertado só o `max-h` do `select.tsx`** (era o que a barra do F13 quebrou). Continuam mortos: `origin-[--radix-*]` em `select`, `popover`, `dropdown-menu` e `tooltip` (cosmético — origem da animação) e `h-/w-/min-w-[--cell-size]` em `calendar.tsx` (afeta tamanho; precisa ser olhado com a tela aberta). Vale varrer `-\[--` no `ui/` inteiro. | 🟠 | [E98/F13](execucao/E98-f13.md) |
-| S12 | **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
+| S20 | **`lote17-agenda-concorrencia` é flake.** `expected [201, 500] to deeply equal [201, 409]` na suíte completa, verde sozinho e verde na execução seguinte — a corrida das duas requisições depende do relógio sob carga, e quando elas não se sobrepõem o 23P01 não acontece. Mesma família da **S7**: um vermelho desses se lê como regressão e custa uma investigação inteira (custou, no E107). | 🟠 (infra de teste) | [E107](execucao/E107.md) |
+| ~~S12~~ | **Fechada pelo E107** (`<hash>`). **`classificarErro` põe frase no campo que virou contrato de CÓDIGO.** Os 409 de Postgres saem como `{ error: "Registro duplicado ou conflito de dados" }` — português, mas texto livre onde o E96 estabeleceu que vai código. Nenhuma tela consegue traduzir aquilo para algo específico, e foi exatamente o que apareceu no flake do E2E (S7) vestido de erro de dinheiro. Última fonte de texto livre em `error`. | 🟡 | [E96](execucao/E96.md) vp |
 
 ### Roteadas a um épico que ainda não rodou
 
@@ -978,3 +980,32 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      senão a suíte inteira testa a versão sem ele. A regra 11 não cobria este
      caso: não mudou o que a trilha grava nem o formato que uma tela lê, e o E2E
      foi a única coisa que pegou.
+- **E107 — o rabo de integridade do E91/E94/E96** (S2, S4, S6, S12). Quatro
+  escritas que não tinham terminado de aprender o que aqueles épicos ensinaram.
+  1. **S2 🟠 era o que doía:** `POST /contratos` provava a LOJA e parava aí — o
+     vestido que a noiva B reservou passava a responder pelo contrato de A, sem
+     erro nenhum. Vermelho literal: `expected 422, got 201`. A guarda tem uma
+     exceção que é o caso COMUM: reserva sem dona é legítima, e é o contrato que
+     lhe dá dono.
+  2. **O E2E entregou um achado maior que o épico.** `AuditoriaItem.acao` era
+     **enum fechado** no openapi, e `ListAuditoriaResponse.parse()` estoura no
+     primeiro registro desconhecido — morre a **lista inteira**, não a linha. Uma
+     `CONTA_PAGAR_REMOVIDA` no banco de dev apagou a trilha da tela. E isso
+     contradizia o projeto por escrito em dois lugares: o schema do banco ("trilha
+     nova não pode exigir migration para existir") e o `ROTULO_ACAO` frouxo do
+     front ("tela velha lendo trilha nova não pode quebrar"). **Só o openapi
+     discordava, e era ele quem executava.**
+  3. **Regra 11 se pagando pela quarta vez.** Os 740 testes de API não pegaram —
+     usam fixture própria, e fixture não tem sujeira. O E2E roda contra o banco de
+     dev, que tem, e é por isso que pega o que os outros não pegam.
+  4. **O S12 estava congelado num teste.** O assert era
+     `expect(c.body.error).toContain("vínculos")` — afirmava a PROSA no campo que
+     o E96 definiu como código, e teria reprovado o conserto. **Candidata a regra
+     da R7: quando um épico estabelece contrato novo, a varredura que o fecha
+     inclui os TESTES, não só o código.**
+  5. **Dois erros meus, os dois de raciocínio.** Copiei do E94/B6 um invariante
+     que não transferia (`trilha.length === confirmados` é falso quando o
+     perdedor recebe 200 sem auditar) — passava sozinho, falhava na suíte. E
+     acusei o E107 de quebrar o `lote17` com amostra de UM: era flake, virou
+     **S20**. Uma passada verde não prova ausência de flake, e uma vermelha não
+     prova autoria.

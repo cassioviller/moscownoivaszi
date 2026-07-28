@@ -12,7 +12,14 @@
 
 export type Classificacao = {
   status: number;
-  body: { error: string };
+  /**
+   * S12/E107 — `error` é CÓDIGO, `detalhe` é a frase.
+   *
+   * Esta era a última fonte de texto livre no campo que o E96 estabeleceu como
+   * contrato de máquina. O `detalhe` opcional preserva a frase em português
+   * para quem só a exibe, sem obrigar nenhuma tela a mudar hoje.
+   */
+  body: { error: string; detalhe?: string };
   logLevel: "warn" | "error";
   logMsg: string;
 };
@@ -154,22 +161,68 @@ export function classificarErro(err: unknown): Classificacao {
     // recado vai para o LOG, com marcação greppável.
     return {
       status: 500,
-      body: { error: "Erro interno do servidor" },
+      // S12/E107: código também aqui. O cliente continua sem ver schema
+      // nenhum — o que muda é que `error` deixa de ser frase em TODOS os
+      // caminhos deste módulo, e não em três dos quatro.
+      body: { error: "ERRO_INTERNO", detalhe: "Erro interno do servidor" },
       logLevel: "error",
       logMsg: "RESPOSTA_FORA_DO_CONTRATO: ZodError na saída — a linha do banco não bate com o schema",
     };
   }
 
+  /**
+   * S12/E107 — os três 409 do Postgres passam a sair como CÓDIGO.
+   *
+   * Eles saíam como `{ error: "Registro duplicado ou conflito de dados" }`:
+   * português correto, no campo que o E96 estabeleceu que carrega código. A
+   * consequência prática é que **nenhuma tela consegue traduzir aquilo para
+   * algo específico** — um `switch` no `error` não tem o que casar, e o toast
+   * repete a frase genérica do banco.
+   *
+   * E há o caso concreto, que não é hipotético: o flake da S7 apareceu na
+   * suíte como "Registro duplicado ou conflito de dados" no meio de um fluxo de
+   * dinheiro, e foi lido como regressão financeira por dois minutos. O código
+   * `REGISTRO_DUPLICADO` diria de cara que é a trava de unicidade do banco.
+   *
+   * A frase não se perde: vai para `detalhe`, que é onde a prosa mora desde o
+   * E96 (e é o que `PARCELAS_NAO_BATEM`, `CONTA_JA_PAGA` e as outras já fazem).
+   */
   const code = pgErrorCode(err);
   if (code === "23505") {
-    return { status: 409, body: { error: "Registro duplicado ou conflito de dados" }, logLevel: "warn", logMsg: "Violação de unicidade" };
+    return {
+      status: 409,
+      body: { error: "REGISTRO_DUPLICADO", detalhe: "Já existe um registro com estes dados." },
+      logLevel: "warn",
+      logMsg: "Violação de unicidade",
+    };
   }
   if (code === "23503") {
-    return { status: 409, body: { error: "Operação viola vínculos existentes" }, logLevel: "warn", logMsg: "Violação de integridade referencial" };
+    return {
+      status: 409,
+      body: {
+        error: "VINCULO_EXISTENTE",
+        detalhe: "Esta operação viola vínculos existentes — há registros dependendo deste.",
+      },
+      logLevel: "warn",
+      logMsg: "Violação de integridade referencial",
+    };
   }
   if (code === "23P01") {
-    return { status: 409, body: { error: "Conflito de disponibilidade" }, logLevel: "warn", logMsg: "Violação de exclusão (sobreposição de disponibilidade)" };
+    return {
+      status: 409,
+      body: {
+        error: "CONFLITO_DE_DISPONIBILIDADE",
+        detalhe: "Já existe uma reserva ocupando este período.",
+      },
+      logLevel: "warn",
+      logMsg: "Violação de exclusão (sobreposição de disponibilidade)",
+    };
   }
 
-  return { status: 500, body: { error: "Erro interno do servidor" }, logLevel: "error", logMsg: "Erro não tratado" };
+  return {
+    status: 500,
+    body: { error: "ERRO_INTERNO", detalhe: "Erro interno do servidor" },
+    logLevel: "error",
+    logMsg: "Erro não tratado",
+  };
 }

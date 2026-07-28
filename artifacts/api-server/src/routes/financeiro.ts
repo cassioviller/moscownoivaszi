@@ -393,7 +393,38 @@ router.delete("/lojas/:lojaId/contas-pagar/:contaId", async (req, res): Promise<
     return;
   }
 
-  await db.delete(contasPagarTable).where(eq(contasPagarTable.id, conta.id));
+  /**
+   * S4/E107 — apagar uma conta prevista deixa rastro.
+   *
+   * As duas guardas acima recusam o que não pode sumir (conta paga, conta de
+   * fechamento). O que restava era o caso legítimo: uma obrigação **prevista**
+   * some do sistema e ninguém consegue reconstituir que ela existiu — nem
+   * quanto era, nem para quem, nem quem a apagou. Não move caixa realizado, e
+   * por isso é um degrau abaixo do B3; mas é da mesma classe, e o B3 existe
+   * porque "dinheiro que muda sem rastro" foi o achado da rodada.
+   *
+   * A trilha guarda o VALOR e o vencimento no detalhe, não só o id: depois do
+   * DELETE a linha não existe mais para ser consultada, então o que não estiver
+   * aqui está perdido.
+   */
+  const usuario = req.usuario!;
+  await db.transaction(async (tx) => {
+    await tx.delete(contasPagarTable).where(eq(contasPagarTable.id, conta.id));
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario,
+      acao: "CONTA_PAGAR_REMOVIDA",
+      entidade: "conta_pagar",
+      entidadeId: conta.id,
+      detalhe: {
+        descricao: conta.descricao,
+        valorPrevisto: conta.valorPrevisto,
+        vencimento: conta.vencimento.toISOString(),
+        tipo: conta.tipo,
+        colaboradorId: conta.colaboradorId,
+      },
+    });
+  });
   res.status(204).end();
 });
 

@@ -255,6 +255,27 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       res.status(404).json({ error: "Bloqueio not found" });
       return;
     }
+    /**
+     * S2/E107 — a reserva tem de ser DESTA noiva.
+     *
+     * A conferência acima prova a LOJA e parava aí: um contrato da noiva A
+     * podia prender o `bloqueio_vestido` da noiva B da mesma loja, e o vestido
+     * que B provou e reservou passava a responder pelo contrato de A. Não é
+     * vazamento entre lojas — por isso ficou fora do E91 —, mas é a mesma
+     * família: **um id entrou sem prova de a quem pertence.**
+     *
+     * `bloqueio.leadId` NULO é o caso legítimo e comum: a reserva nasceu sem
+     * dona (a loja segurou a peça antes de saber de quem seria) e este contrato
+     * é justamente quem lhe dá dono. Só o vínculo com OUTRA noiva é recusado.
+     */
+    if (bloqueio.leadId && bloqueio.leadId !== contratoData.leadId) {
+      res.status(422).json({
+        error: "REFERENCIA_INVALIDA",
+        detalhe: "Esta reserva de vestido é de outra noiva — escolha uma reserva desta noiva ou uma sem dona.",
+        campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva pertence a outra noiva" }],
+      });
+      return;
+    }
     if (
       contratoData.dataCasamento &&
       bloqueio.casamentoData &&
@@ -734,6 +755,24 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
     return;
   }
 
+  /**
+   * S6/E107 — a última leitura-fora-da-transação do módulo.
+   *
+   * As guardas acima leem a parcela FORA da transação e o `SET` de dentro é
+   * absoluto (sempre PREVISTA/null). Dois cliques simultâneos convergem no
+   * banco — o estado final é o mesmo —, e por isso o achado é 🔵 e não 🟠: não
+   * se perde dinheiro. **O que se perde é a verdade da trilha.**
+   *
+   * Os dois leem `valorRecebido: 1.000` e os dois gravam
+   * `RECEBIMENTO_ESTORNADO` com 1.000 no detalhe: a auditoria passa a dizer que
+   * R$ 2.000 foram estornados de uma parcela de R$ 1.000. Quem for reconstituir
+   * o caixa pela trilha — que é exatamente para isso que ela existe — encontra
+   * um buraco que nunca houve.
+   *
+   * O conserto é o do B6: o `UPDATE` é CONDICIONAL ao status ainda ser
+   * recebido. Só um dos dois casa, e só ele audita. O perdedor não recebe erro:
+   * ele pediu "estornada" e a parcela está estornada.
+   */
   const parcela = await db.transaction(async (tx) => {
     const [atualizada] = await tx.update(parcelasTable)
       .set({
@@ -742,8 +781,16 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
         recebidoEm: null,
         formaRecebimento: null,
       })
-      .where(eq(parcelasTable.id, existente.id))
+      .where(and(
+        eq(parcelasTable.id, existente.id),
+        inArray(parcelasTable.status, ["PAGA", "PARCIAL"]),
+      ))
       .returning();
+    if (!atualizada) {
+      const [atual] = await tx.select().from(parcelasTable)
+        .where(eq(parcelasTable.id, existente.id));
+      return atual;
+    }
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
       usuario: req.usuario!,

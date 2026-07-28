@@ -238,30 +238,6 @@ export interface MembroAtividade {
   acoes30d: number;
 }
 
-export type AuditoriaItemAcao = typeof AuditoriaItemAcao[keyof typeof AuditoriaItemAcao];
-
-
-export const AuditoriaItemAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
-  CONTRATO_CANCELADO: 'CONTRATO_CANCELADO',
-  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
-  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
-  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
-  CONVITE_CRIADO: 'CONVITE_CRIADO',
-  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
-  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
-  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
-  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
-  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
-  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
-} as const;
-
 /**
  * @nullable
  */
@@ -269,7 +245,8 @@ export type AuditoriaItemDetalhe = { [key: string]: unknown } | null;
 
 export interface AuditoriaItem {
   id: string;
-  acao: AuditoriaItemAcao;
+  /** Código da ação, versionado pela aplicação (ver ACOES_AUDITORIA no api-server). Aberto de propósito: consumidor antigo lendo trilha nova mostra o código cru, nunca quebra. */
+  acao: string;
   entidade: string;
   entidadeId: string;
   /** @nullable */
@@ -2967,9 +2944,9 @@ colaboradorId?: string;
 
 export type ListAuditoriaParams = {
 /**
- * Uma das ações da união fechada (ACOES_AUDITORIA)
+ * Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve lista vazia, não erro.
  */
-acao?: ListAuditoriaAcao;
+acao?: string;
 /**
  * Autor da ação (id; o nome na linha é desnormalizado)
  */
@@ -2985,30 +2962,6 @@ de?: string;
  */
 ate?: string;
 };
-
-export type ListAuditoriaAcao = typeof ListAuditoriaAcao[keyof typeof ListAuditoriaAcao];
-
-
-export const ListAuditoriaAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
-  CONTRATO_CANCELADO: 'CONTRATO_CANCELADO',
-  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
-  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
-  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
-  CONVITE_CRIADO: 'CONVITE_CRIADO',
-  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
-  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
-  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
-  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
-  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
-  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
-} as const;
 
 export type ExportarAuditoriaParams = {
 acao?: ExportarAuditoriaAcao;

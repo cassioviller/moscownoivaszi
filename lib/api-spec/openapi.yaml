@@ -3527,10 +3527,15 @@ paths:
         - name: acao
           in: query
           required: false
-          description: Uma das ações da união fechada (ACOES_AUDITORIA)
+          # E107/S4 — aberto pelo mesmo motivo do `acao` da resposta: com o
+          # enum fechado, filtrar por uma ação que a trilha JÁ GRAVA (mas que o
+          # spec ainda não conhece) respondia 400. O filtro nunca acha o que não
+          # existe — não precisa de enum para se proteger disso.
+          description: >
+            Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar
+            por código desconhecido devolve lista vazia, não erro.
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, CONTRATO_CANCELADO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false
@@ -5221,9 +5226,28 @@ components:
       required: [id, acao, entidade, entidadeId, usuarioNome, criadoEm]
       properties:
         id: { type: string }
+        # E107/S4 — `acao` é STRING ABERTA, e isso é a correção de uma
+        # contradição entre camadas, não relaxamento.
+        #
+        # O schema do banco diz, desde o E10: "`acao` é texto versionado pela
+        # aplicação, não pgEnum: **trilha nova não pode exigir migration para
+        # existir**". E `ROTULO_ACAO` do front é frouxo de propósito — cai no
+        # código cru — "porque tela velha lendo trilha nova não pode quebrar".
+        #
+        # O enum FECHADO aqui contradizia as duas coisas, e o preço não era uma
+        # linha mal formatada: `ListAuditoriaResponse.parse()` estoura no
+        # primeiro registro desconhecido e **a tela inteira da trilha morre**.
+        # Aconteceu: uma linha `CONTA_PAGAR_REMOVIDA` no banco de dev derrubou
+        # a lista toda, e a suíte E2E foi quem pegou.
+        #
+        # Os valores conhecidos vivem em `api-server/src/lib/auditoria.ts`
+        # (`ACOES_AUDITORIA`), onde o TypeScript cobra o rótulo de cada um.
         acao:
           type: string
-          enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, CONTRATO_CANCELADO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
+          description: >
+            Código da ação, versionado pela aplicação (ver ACOES_AUDITORIA no
+            api-server). Aberto de propósito: consumidor antigo lendo trilha
+            nova mostra o código cru, nunca quebra.
         entidade: { type: string }
         entidadeId: { type: string }
         usuarioId: { type: ["string", "null"] }

@@ -5,12 +5,12 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { AuditoriaItemAcao } from './auditoriaItemAcao';
 import type { AuditoriaItemDetalhe } from './auditoriaItemDetalhe';
 
 export interface AuditoriaItem {
   id: string;
-  acao: AuditoriaItemAcao;
+  /** Código da ação, versionado pela aplicação (ver ACOES_AUDITORIA no api-server). Aberto de propósito: consumidor antigo lendo trilha nova mostra o código cru, nunca quebra. */
+  acao: string;
   entidade: string;
   entidadeId: string;
   /** @nullable */

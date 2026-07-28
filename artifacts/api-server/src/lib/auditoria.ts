@@ -36,7 +36,16 @@ export const ACOES_AUDITORIA = [
   "ORCAMENTO_ACEITO",
   // E85: a noiva confirmou a presença pelo portal — mesma mecânica do aceite.
   "PROVA_CONFIRMADA",
+  // E100/F37: e a noiva avisou que NÃO pode ir. Ela já era gravada desde a
+  // parte 2, mas ficara fora desta união — o CSV da contadora caía no código
+  // cru. Terceiro fato da mesma família do E97.
+  "REMARCACAO_PEDIDA",
   "LEADS_ANONIMIZADOS",
+  // S4/E107: apagar uma conta PREVISTA some com uma obrigação. Não move caixa
+  // realizado (a paga é recusada antes), e por isso é um degrau abaixo do B3 —
+  // mas depois do DELETE não há linha para consultar, então o que não estiver
+  // no detalhe da trilha está perdido.
+  "CONTA_PAGAR_REMOVIDA",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -71,7 +80,9 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
   PROVA_CONFIRMADA: "Prova confirmada pela noiva",
+  REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
+  CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
