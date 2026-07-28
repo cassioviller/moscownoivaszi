@@ -21,6 +21,12 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   A tela baixa o dump (E59) e cada backup bom poda os dumps além dos 10 mais
   recentes e as sessões expiradas — o registro fica, o arquivo sai do disco.
 - Env obrigatória: `DATABASE_URL` (Postgres)
+- **Para MEDIR o bundle do frontend**, o build do Vite exige duas variáveis e
+  falha antes de compilar sem elas (o `vite.config.ts` lança de propósito):
+  `PORT=5173 BASE_PATH=/ pnpm --filter @workspace/moscow-noivas run build`.
+  O tamanho de cada chunk sai no relatório; **o que importa para o primeiro
+  desenho não é a soma deles**, e sim a entrada mais os `modulepreload` do
+  `dist/public/index.html` — o resto só desce quando alguém abre a rota.
 
 ## Stack
 
@@ -160,6 +166,16 @@ rode o codegen.
   prova, um admin inativava a dona da loja vizinha por curl.
 
 ## Gotchas
+
+- **Import morto num módulo ANSIOSO custa caro desde o E104/D8.** Enquanto o app
+  era um chunk só, um `import` sem uso não pesava nada — o E99 mediu a poda de 24
+  primitivos e o bundle não mudou um byte, porque tudo já era tree-shaken. Com o
+  corte por rota isso deixou de valer: `dashboard.tsx` importava `format` do
+  date-fns sem usar, e como o dashboard é uma das quatro rotas ansiosas, aquele
+  import prendia **103 kB de date-fns no caminho crítico de todo mundo** — até da
+  noiva abrindo o portal no celular, que não usa data nenhuma. Ao mexer nos
+  quatro módulos ansiosos (`App.tsx`, `app-layout`, `login`, `dashboard`),
+  confira o que eles importam de verdade.
 
 - **`drizzle-kit push` trava sem TTY** quando há coluna a dropar/renomear: ele
   pergunta "renomeou ou removeu?" e não há terminal interativo aqui. Aplique o

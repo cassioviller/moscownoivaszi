@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useParams, useLocation } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSelecionarLoja, getGetMeQueryKey } from "@workspace/api-client-react";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { TourAcessoPrimeiraEntrada } from "@/components/tour-acesso";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
+import { Carregando } from "@/components/estado";
 
 /**
  * Layout das rotas /loja/:lojaId/…: valida a sessão, faz a loja da URL valer
@@ -164,7 +165,16 @@ export function AppLayout() {
 
         <main className="flex-1 overflow-y-auto bg-muted/20">
           <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-            <Outlet />
+            {/* D8/E104 — cuidado (c) do épico: o fallback fica AQUI DENTRO, e
+                não em volta do `<AppLayout>`.
+
+                Se envolvesse o layout, trocar de tela faria a sidebar, o header
+                e o sino sumirem e voltarem a cada navegação — o chrome piscando
+                por causa do conteúdo. Aqui só a área de conteúdo espera, que é
+                exatamente o que está sendo baixado. */}
+            <Suspense fallback={<Carregando forma="detalhe" />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
 
