@@ -72,7 +72,7 @@ quem escolheu a paleta:
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; faltam E10 e o `<Table>` do E19 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `6c7fa20` · [notas](execucao/E100.md) |
-| E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
+| E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ✅ | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; F42 em `<hash>` · [notas](execucao/E101.md) · [F42](execucao/E101-f42.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
@@ -914,3 +914,28 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      permissão recebeu **403 — a sessão do próprio superadmin morreu**, porque
      `usuarios_lojas` cascateou. Um `DELETE` derrubou o fixture inteiro e expulsou
      quem o executou. É o que a rota fazia em produção.
+- **E101/F42 — o épico fecha.** O caminho pior de trazer alguém para a equipe
+  deixa de ser uma escolha no escuro.
+  1. **Metade do item já estava feita, e há três rodadas.** O F42 pede que o
+     convite vire a ação primária: `git log -L` sobre o bloco mostra o **E6**
+     (`1ef8620`) já fazendo isso. O diagnóstico foi escrito lendo o código e leu
+     um trecho consertado. Quem executasse sem conferir teria "consertado" um
+     botão certo e declarado o item fechado **sem escrever a frase**, que era o
+     que faltava de verdade.
+  2. **O núcleo do achado é o que a pessoa não sabia:** a senha que o admin
+     digita é jogada fora — `equipe.ts:128` grava `precisaTrocarSenha: true`.
+     Quem escolhe esse caminho troca um link por uma senha que viaja num
+     WhatsApp e **nem vai ser usada**. Ninguém escolheria isso sabendo, então o
+     conserto não é esconder o caminho pior: é dar o contexto, e no lugar onde a
+     decisão acontece — o diálogo, não o cabeçalho da tela.
+  3. **O aviso leva ao caminho melhor, não só o nomeia.** "Convidar por link"
+     dentro da frase é clicável e troca de diálogo. Um aviso que diz "há um
+     caminho melhor" e obriga a fechar, procurar e clicar de novo é o beco do
+     E98/F3 com outra roupa.
+  4. **O vazio da equipe apontava para um botão inexistente** desde o E6 —
+     "Cadastre a primeira vendedora em *Novo membro*" — e mandava a loja NOVA
+     para o pior dos dois caminhos, na primeira vez que ela traz alguém.
+  5. **Candidata a regra da R7:** item de UX que descreve uma tela declara o
+     COMMIT em que foi lido; o executor confere o `git log -L` do bloco antes de
+     escrever. É a terceira vez nesta rodada que o backlog descreve um estado que
+     não é mais o do código.

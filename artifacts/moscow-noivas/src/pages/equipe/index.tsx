@@ -32,6 +32,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -321,7 +322,10 @@ export default function Equipe() {
         {podeGerir && (
           <div className="flex flex-wrap gap-2">
             {/* Caminho primário: a própria pessoa define a senha. O cadastro
-                com senha digitada continua como secundário na transição. */}
+                com senha digitada continua como secundário na transição.
+                F42/E101: a HIERARQUIA já vinha do E6; o que faltava era a
+                pessoa saber POR QUE ela existe — a frase mora no diálogo, que
+                é onde a decisão é tomada. */}
             <Button onClick={() => setConvidandoAberto(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Convidar por link
@@ -406,7 +410,11 @@ export default function Equipe() {
             ) : equipe?.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 Nenhum membro cadastrado ainda.
-                {podeGerir && " Cadastre a primeira vendedora em “Novo membro”."}
+                {/* F42: apontava para um botão chamado “Novo membro”, que não
+                    existe desde o E6 — e mandava para o caminho pior dos dois.
+                    O vazio agora nomeia o botão certo, que é o que está lá em
+                    cima e o que a loja deve usar. */}
+                {podeGerir && " Traga a primeira vendedora em “Convidar por link”."}
               </p>
             ) : (
               <ul className="space-y-4">
@@ -612,10 +620,37 @@ export default function Equipe() {
         </DialogContent>
       </Dialog>
 
+      {/* F42/E101 — o caminho secundário diz quando serve, e o que acontece
+          com a senha.
+
+          O admin escolhia no escuro entre dois caminhos. A hierarquia visual
+          existe desde o E6, mas ela só SUGERE; sem a frase, quem clica aqui não
+          sabe que a senha que vai digitar é jogada fora no primeiro acesso
+          (`equipe.ts:128` grava `precisaTrocarSenha: true`) — ou seja, que está
+          trocando um link por uma senha que vai viajar num WhatsApp e não vai
+          nem ser usada. É uma decisão de segurança tomada por acaso, por quem
+          não tem contexto para decidir; o conserto é dar o contexto. */}
       <Dialog open={novoAberto} onOpenChange={setNovoAberto}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo membro</DialogTitle>
+            <DialogTitle>Cadastrar com senha</DialogTitle>
+            <DialogDescription>
+              Use quando a pessoa não tem WhatsApp nem e-mail para receber o
+              link. A senha é <strong>provisória</strong>: ela será obrigada a
+              trocá-la no primeiro acesso, e até lá você precisa transmiti-la
+              por algum canal.{" "}
+              <button
+                type="button"
+                className="text-primary underline underline-offset-4"
+                onClick={() => {
+                  setNovoAberto(false);
+                  setConvidandoAberto(true);
+                }}
+              >
+                Convidar por link
+              </button>{" "}
+              evita as duas coisas.
+            </DialogDescription>
           </DialogHeader>
           <Form {...formNovo}>
             <form onSubmit={formNovo.handleSubmit(onCadastrar)} className="space-y-4">
