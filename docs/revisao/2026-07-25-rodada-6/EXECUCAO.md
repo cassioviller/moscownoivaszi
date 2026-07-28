@@ -75,7 +75,7 @@ quem escolheu a paleta:
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
-| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; falta D8 · [notas](execucao/E104.md) |
+| E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
@@ -756,3 +756,24 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   3. **O teste não persegue os 92, e isso é decisão** — o cuidado (a) proíbe
      virar reescrita. E **depois das três tentativas do D15, o nome do teste diz
      exatamente o que ele cobre**, não mais que isso.
+- **E104/D8 — o code splitting**, o único item da rodada que muda o que a
+  recepcionista baixa. O caminho crítico caiu de **1.270,80 kB para 613,10 kB**
+  (354,99 → 182,34 em gzip): **−51,8%**. 50 das 54 rotas viraram `lazy`.
+  1. **Metade do ganho veio de um import morto que EU deixei.** `dashboard.tsx`
+     importava `format` do date-fns sem usar — resquício da parte 5 do E99, onde
+     troquei a última chamada por `instanteHora`. Sendo o dashboard uma das
+     quatro rotas ansiosas, aquele import prendia **103 kB no caminho crítico de
+     todo mundo**, inclusive da noiva no portal, que não usa data nenhuma.
+  2. **Isso INVERTE uma conclusão da própria rodada.** O E99 parte 1 mediu a poda
+     de 24 primitivos, viu o bundle não mudar um byte e concluiu — corretamente
+     na época — que import morto não custa. Com o corte por rota, **import morto
+     em módulo ansioso passa a ter preço, e quem paga é quem nunca abre aquela
+     tela**. Foi para os Gotchas do `replit.md`.
+  3. **O que conta não é a soma dos 29 chunks**, é a entrada mais os
+     `modulepreload` do `index.html` — junto com as duas variáveis que o build
+     exige (`PORT`, `BASE_PATH`), foi para o `replit.md`: sem isso escrito, o
+     próximo a medir soma 29 números e conclui que nada melhorou.
+  4. **O cuidado (c) era concreto.** O `Suspense` fica DENTRO do `AppLayout`,
+     em volta só do `<Outlet />`: em volta do layout, a sidebar, o header e o
+     sino sumiriam e voltariam a cada navegação — o chrome piscando por causa do
+     conteúdo.
