@@ -5043,7 +5043,35 @@ export const GetPortalResponse = zod.object({
   "valorRecebido": zod.number().nullable(),
   "vencimento": zod.coerce.date(),
   "status": zod.enum(['PREVISTA', 'PARCIAL', 'PAGA', 'CANCELADA'])
+})),
+  "contrato": zod.union([zod.object({
+  "valorTotal": zod.number(),
+  "totalBruto": zod.number(),
+  "descontoTipo": zod.union([zod.enum(['PERCENTUAL', 'VALOR']),zod.null()]).optional(),
+  "descontoValor": zod.number().nullish(),
+  "fechadoEm": zod.coerce.date(),
+  "dataCasamento": zod.coerce.date().nullish(),
+  "itens": zod.array(zod.object({
+  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "descricao": zod.string(),
+  "valorUnitario": zod.number(),
+  "quantidade": zod.number()
 }))
+}),zod.null()]),
+  "vestido": zod.union([zod.object({
+  "vestidoId": zod.string(),
+  "nome": zod.string(),
+  "fotos": zod.array(zod.object({
+  "ordem": zod.number(),
+  "atualizadaEm": zod.coerce.date()
+})),
+  "retiradaPrevista": zod.coerce.date().nullish(),
+  "retiradaFeitaEm": zod.coerce.date().nullish(),
+  "ajustes": zod.array(zod.object({
+  "descricao": zod.string(),
+  "pronto": zod.boolean()
+}))
+}),zod.null()])
 })
 
 
@@ -5108,6 +5136,16 @@ export const GetPortalFotoQueryParams = zod.object({
 })
 
 export const GetPortalFotoResponse = zod.unknown()
+
+
+/**
+ * O PDF do contrato ATIVO da noiva, servido pelo token do PORTAL — o mesmo documento que a loja baixa, montado pela mesma régua (`lib/contrato-do-papel.ts`). É a quinta rota pública com documento financeiro dentro: checa TTL **e** revogação como as outras quatro, e o contrato sai do leadId do token, nunca de um id na URL — não há id de contrato a adivinhar. Sem contrato ativo é 404.
+ */
+export const GetPortalContratoPdfQueryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetPortalContratoPdfResponse = zod.unknown()
 
 
 /**

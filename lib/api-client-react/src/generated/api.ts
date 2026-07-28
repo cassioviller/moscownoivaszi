@@ -110,6 +110,7 @@ import type {
   GetLookbookPublicoParams,
   GetMinhaComissaoParams,
   GetOrcamentoPublicoParams,
+  GetPortalContratoPdfParams,
   GetPortalFotoParams,
   GetPortalParams,
   GetSazonalidadeCasamentos200Item,
@@ -9303,6 +9304,87 @@ export function useGetPortalFoto<TData = Awaited<ReturnType<typeof getPortalFoto
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPortalFotoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPortalContratoPdfUrl = (params: GetPortalContratoPdfParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/contrato-pdf?${stringifiedParams}` : `/api/portal/contrato-pdf`
+}
+
+/**
+ * O PDF do contrato ATIVO da noiva, servido pelo token do PORTAL — o mesmo documento que a loja baixa, montado pela mesma régua (`lib/contrato-do-papel.ts`). É a quinta rota pública com documento financeiro dentro: checa TTL **e** revogação como as outras quatro, e o contrato sai do leadId do token, nunca de um id na URL — não há id de contrato a adivinhar. Sem contrato ativo é 404.
+ */
+export const getPortalContratoPdf = async (params: GetPortalContratoPdfParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPortalContratoPdfUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalContratoPdfQueryKey = (params?: GetPortalContratoPdfParams,) => {
+    return [
+    `/api/portal/contrato-pdf`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPortalContratoPdfQueryOptions = <TData = Awaited<ReturnType<typeof getPortalContratoPdf>>, TError = ErrorType<void>>(params: GetPortalContratoPdfParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalContratoPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalContratoPdfQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalContratoPdf>>> = ({ signal }) => getPortalContratoPdf(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalContratoPdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalContratoPdfQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalContratoPdf>>>
+export type GetPortalContratoPdfQueryError = ErrorType<void>
+
+
+
+export function useGetPortalContratoPdf<TData = Awaited<ReturnType<typeof getPortalContratoPdf>>, TError = ErrorType<void>>(
+ params: GetPortalContratoPdfParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalContratoPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalContratoPdfQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

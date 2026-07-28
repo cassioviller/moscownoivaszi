@@ -10,7 +10,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, CalendarDays, MessageCircle, MapPin } from "lucide-react";
+import {
+  CheckCircle2,
+  CalendarDays,
+  MessageCircle,
+  MapPin,
+  FileText,
+  Clock,
+} from "lucide-react";
 import { brl, capitalizar, instanteLongo } from "@/lib/formatos";
 import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 
@@ -414,6 +421,156 @@ export default function NoivaPortal() {
                     </figure>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {/* — F21/E100: o contrato, o documento que ela mais vai querer rever — */}
+            {dados!.contrato && (
+              <section className="bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-serif text-2xl">Seu contrato</h2>
+                  <span className="text-muted-foreground text-xs">
+                    Fechado em {instanteLongo(dados!.contrato.fechadoEm)}
+                  </span>
+                </div>
+
+                <ul className="divide-y">
+                  {dados!.contrato.itens.map((it, i) => (
+                    <li key={i} className="flex items-start justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm">{it.descricao}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {ROTULO_TIPO[it.tipo] ?? it.tipo}
+                          {it.quantidade > 1 &&
+                            ` · ${it.quantidade}× ${brl(it.valorUnitario)}`}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm tabular-nums">
+                        {brl(it.quantidade * it.valorUnitario)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Com desconto, a soma dos itens NÃO é o total — e um contrato
+                    que não fecha na tela dela é pior que não mostrar itens. */}
+                <div className="space-y-1 border-t pt-3">
+                  {dados!.contrato.descontoTipo && dados!.contrato.descontoValor ? (
+                    <>
+                      <div className="text-muted-foreground flex justify-between text-sm">
+                        <span>Soma dos itens</span>
+                        <span className="tabular-nums">
+                          {brl(dados!.contrato.totalBruto)}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground flex justify-between text-sm">
+                        <span>Desconto</span>
+                        <span className="tabular-nums">
+                          {dados!.contrato.descontoTipo === "PERCENTUAL"
+                            ? `${dados!.contrato.descontoValor}%`
+                            : brl(dados!.contrato.descontoValor)}
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="flex justify-between font-medium">
+                    <span>Total</span>
+                    <span className="font-serif text-xl tabular-nums">
+                      {brl(dados!.contrato.valorTotal)}
+                    </span>
+                  </div>
+                </div>
+
+                {dados!.contrato.dataCasamento && (
+                  <p className="text-muted-foreground border-t pt-3 text-sm">
+                    Casamento em {instanteLongo(dados!.contrato.dataCasamento)}.
+                  </p>
+                )}
+
+                {/* Âncora crua e não o client gerado: é um download do
+                    navegador, como o "Baixar PDF" da tela da loja. */}
+                <Button variant="outline" asChild className="w-full sm:w-auto">
+                  <a
+                    href={`/api/portal/contrato-pdf?token=${encodeURIComponent(token!)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="baixar-contrato-portal"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Baixar o contrato em PDF
+                  </a>
+                </Button>
+              </section>
+            )}
+
+            {/* — F39/E100: "O seu vestido" — a fase que o portal não cobria — */}
+            {dados!.vestido && (
+              <section className="bg-card space-y-4 rounded-lg border p-6 shadow-sm">
+                <h2 className="font-serif text-2xl">O seu vestido</h2>
+                <div className="flex gap-4">
+                  {dados!.vestido.fotos.length > 0 && (
+                    <img
+                      src={fotoUrl(
+                        token!,
+                        dados!.vestido.vestidoId,
+                        dados!.vestido.fotos[0].ordem,
+                        String(dados!.vestido.fotos[0].atualizadaEm),
+                      )}
+                      alt={dados!.vestido.nome}
+                      loading="lazy"
+                      className="aspect-[3/4] w-28 shrink-0 rounded-md object-cover"
+                    />
+                  )}
+                  <div className="min-w-0 space-y-2">
+                    <p className="font-serif text-lg">{dados!.vestido.nome}</p>
+                    {/* A pergunta que ela repete: "que dia eu pego?". Feita a
+                        retirada, a promessa vira registro. */}
+                    {dados!.vestido.retiradaFeitaEm ? (
+                      <p className="text-sm">
+                        Retirado em{" "}
+                        <span className="font-medium">
+                          {instanteLongo(dados!.vestido.retiradaFeitaEm)}
+                        </span>
+                        .
+                      </p>
+                    ) : dados!.vestido.retiradaPrevista ? (
+                      <p className="text-sm">
+                        Retirada combinada para{" "}
+                        <span className="font-medium">
+                          {instanteLongo(dados!.vestido.retiradaPrevista)}
+                        </span>
+                        .
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        A data da retirada ainda vai ser combinada com você.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {dados!.vestido.ajustes.length > 0 && (
+                  <div className="space-y-1.5 border-t pt-3">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wider">
+                      Ajustes
+                    </p>
+                    <ul className="space-y-1">
+                      {dados!.vestido.ajustes.map((a, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          {a.pronto ? (
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Clock className="text-muted-foreground h-4 w-4 shrink-0" />
+                          )}
+                          <span className="min-w-0">{a.descricao}</span>
+                          <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                            {a.pronto ? "Pronto" : "Em andamento"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </section>
             )}
 

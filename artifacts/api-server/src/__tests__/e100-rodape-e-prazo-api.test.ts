@@ -100,6 +100,12 @@ describe("E100 — o rodapé da loja e a renovação do prazo", () => {
    * Ele cobre a raiz, e só ela — o que está dentro de `orcamento` e de
    * `lookbook` é contrato do E13/E21 e tem os testes de lá. (Lição do D15,
    * fechado três vezes: o nome do teste não promete mais do que ele olha.)
+   *
+   * **Ele já cobrou uma vez, e funcionou.** A parte 4 acrescentou `contrato`
+   * (F21) e `vestido` (F39), e este teste ficou vermelho antes de qualquer
+   * outro — que é exatamente o pedido para pensar duas vezes. As duas entraram
+   * por decisão, e as guardas do que sai dentro delas estão em
+   * `e100-contrato-e-vestido-api.test.ts`.
    */
   it("a RAIZ do payload público tem exatamente as chaves declaradas — nada de pessoa da loja", async () => {
     const { token } = await noivaComPortal();
@@ -108,6 +114,8 @@ describe("E100 — o rodapé da loja e a renovação do prazo", () => {
 
     expect(Object.keys(r.body).sort()).toEqual(
       [
+        "contrato",
+        "vestido",
         "lojaEndereco",
         "lojaNome",
         "lojaTelefone",

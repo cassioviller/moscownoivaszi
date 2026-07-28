@@ -8,9 +8,12 @@ import {
   vestidoAtributosTable,
   atributosTable,
   atributoOpcoesTable,
+  bloqueioVestidosTable,
+  ajustesTable,
+  atendimentosTable,
   type Orcamento,
 } from "@workspace/db";
-import { eq, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { brutoEmCentavos, liquidoEmCentavos, reais } from "@workspace/financeiro-core";
 
 /**
@@ -152,4 +155,91 @@ export async function montarVestidosLookbook(lookbookId: string): Promise<Vestid
   }
 
   return [...porVestido.values()];
+}
+
+/**
+ * E100/F39 — "O seu vestido": a fase que o portal não cobria.
+ *
+ * Ele respondia a fase comercial (proposta, contrato, parcelas) e parava. As
+ * duas fases mais ansiosas da noiva — os ajustes e a retirada — eram perguntas
+ * repetidas no WhatsApp cujas respostas o sistema já tinha.
+ *
+ * **Correção ao diagnóstico.** O F39 aponta `ajuste.proximaProva` como fonte da
+ * "próxima prova depois dessa". Essa coluna NÃO existe: `ajustes` tem id,
+ * lojaId, atendimentoId, descricao, status e os carimbos, e nada mais. A
+ * pergunta, porém, já estava respondida — a seção "Suas próximas provas" lista
+ * as futuras desde o E78. O que faltava mesmo era a retirada e o andamento dos
+ * ajustes, e é só isso que esta função monta.
+ *
+ * O que fica FORA, e é decisão: o `ajuste_checklist_itens`. O checklist é a
+ * conversa da loja com a costureira ("soltar bainha 3cm", "refazer alça") e é
+ * escrito nesse registro; a noiva quer saber se ficou pronto, não como. O épico
+ * escreve isso em letras maiúsculas e ele tem razão.
+ */
+export type VestidoDaNoiva = {
+  vestidoId: string;
+  nome: string;
+  fotos: { ordem: number; atualizadaEm: Date }[];
+  retiradaPrevista: Date | null;
+  retiradaFeitaEm: Date | null;
+  ajustes: { descricao: string; pronto: boolean }[];
+};
+
+export async function montarVestidoDaNoiva(contrato: {
+  id: string;
+  lojaId: string;
+  leadId: string;
+  bloqueioVestidoId: string | null;
+  dataRetirada: Date | null;
+}): Promise<VestidoDaNoiva | null> {
+  // Sem reserva física no contrato não há "o seu vestido" — o contrato pode ser
+  // só de serviço, e inventar uma seção vazia é pior que não a ter.
+  if (!contrato.bloqueioVestidoId) return null;
+
+  const [bloqueio] = await db
+    .select({
+      vestidoId: bloqueioVestidosTable.vestidoId,
+      retiradaDataReal: bloqueioVestidosTable.retiradaDataReal,
+      canceladoEm: bloqueioVestidosTable.canceladoEm,
+      nome: vestidosTable.nome,
+    })
+    .from(bloqueioVestidosTable)
+    .innerJoin(vestidosTable, eq(vestidosTable.id, bloqueioVestidosTable.vestidoId))
+    .where(eq(bloqueioVestidosTable.id, contrato.bloqueioVestidoId));
+  // Bloqueio cancelado: a reserva foi desfeita e o contrato ainda aponta para
+  // ela (`set null` só dispara quando a LINHA some). Mostrar seria prometer um
+  // vestido que a loja já liberou para outra noiva.
+  if (!bloqueio || bloqueio.canceladoEm) return null;
+
+  const [fotos, ajustes] = await Promise.all([
+    db
+      .select({ ordem: vestidoFotosTable.ordem, atualizadaEm: vestidoFotosTable.updatedAt })
+      .from(vestidoFotosTable)
+      .where(eq(vestidoFotosTable.vestidoId, bloqueio.vestidoId))
+      .orderBy(asc(vestidoFotosTable.ordem)),
+    // Os ajustes penduram no ATENDIMENTO, não no contrato: o caminho até ela é
+    // pelo lead, e o `lojaId` entra junto porque um id nunca anda sozinho aqui.
+    db
+      .select({ descricao: ajustesTable.descricao, status: ajustesTable.status })
+      .from(ajustesTable)
+      .innerJoin(atendimentosTable, eq(atendimentosTable.id, ajustesTable.atendimentoId))
+      .where(
+        and(
+          eq(atendimentosTable.leadId, contrato.leadId),
+          eq(atendimentosTable.lojaId, contrato.lojaId),
+        ),
+      )
+      .orderBy(asc(ajustesTable.createdAt)),
+  ]);
+
+  return {
+    vestidoId: bloqueio.vestidoId,
+    nome: bloqueio.nome,
+    fotos,
+    // A data COMBINADA no contrato é a que ela assinou; a real diz que já
+    // aconteceu, e aí a promessa vira registro.
+    retiradaPrevista: contrato.dataRetirada,
+    retiradaFeitaEm: bloqueio.retiradaDataReal,
+    ajustes: ajustes.map((a) => ({ descricao: a.descricao, pronto: a.status === "FEITO" })),
+  };
 }

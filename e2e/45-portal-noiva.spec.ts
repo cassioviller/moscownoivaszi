@@ -11,6 +11,8 @@ import {
   atendimentosTable,
   cabinesTable,
   lojasTable,
+  contratosTable,
+  contratoItensTable,
 } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
@@ -229,5 +231,69 @@ test.describe("Portal da noiva (E78)", () => {
     const diasQueFaltam = (depois.expiraEm.getTime() - Date.now()) / 86_400_000;
     expect(diasQueFaltam).toBeGreaterThan(29);
     expect(diasQueFaltam).toBeLessThan(31);
+  });
+
+  /**
+   * E100 parte 4 / F21 — o contrato assinado chega até ela.
+   *
+   * Era o único artefato do sistema sem caminho até a noiva: o PDF só descia no
+   * computador da loja (`<a download>` na tela do contrato), e o portal mostrava
+   * a PROPOSTA, nunca o contrato. Quando ela perdia o arquivo — e ela perde —,
+   * a vendedora baixava, trocava para o WhatsApp e anexava tudo de novo.
+   *
+   * O F39 ("O seu vestido") fica com os 14 testes de API: ele é 🔵, não estreia
+   * rota nenhuma e não muda o que a loja opera. **O que este spec cobre e a API
+   * não cobre é a QUINTA rota pública com documento financeiro dentro** — que a
+   * tela dela realmente a alcança, com o token certo na URL.
+   */
+  test("o contrato aparece no portal e o PDF desce pelo link dela", async ({
+    request,
+    browser,
+  }) => {
+    const admin = await db.query.usuariosTable.findFirst({
+      where: (u, { eq: eq_ }) => eq_(u.email, estado.adminEmail),
+    });
+    const contratoId = randomUUID();
+    await db.insert(contratosTable).values({
+      id: contratoId,
+      lojaId: estado.lojaId,
+      leadId,
+      vendedoraId: admin!.id,
+      valorTotal: 9200,
+      fechadoEm: new Date(),
+    });
+    await db.insert(contratoItensTable).values({
+      id: randomUUID(),
+      lojaId: estado.lojaId,
+      contratoId,
+      tipo: "VESTIDO",
+      descricao: `Vestido contratado ${stamp}`,
+      valorUnitario: 9200,
+      quantidade: 1,
+    });
+
+    const novo = await request.post(
+      `${API_URL}/api/lojas/${estado.lojaId}/leads/${leadId}/portal`,
+    );
+    const token = (await novo.json()).token as string;
+
+    const semLogin = await browser.newContext();
+    const noiva = await semLogin.newPage();
+    await noiva.goto(`/noiva/${token}`);
+
+    await expect(noiva.getByText("Seu contrato")).toBeVisible();
+    await expect(noiva.getByText(`Vestido contratado ${stamp}`)).toBeVisible();
+    await expect(noiva.getByText("R$ 9.200,00").first()).toBeVisible();
+
+    // O PDF pelo MESMO token — a resposta é o papel, não uma página de erro.
+    const href = await noiva.getByTestId("baixar-contrato-portal").getAttribute("href");
+    expect(href).toContain(`token=${encodeURIComponent(token)}`);
+    const pdf = await noiva.request.get(href!);
+    expect(pdf.status()).toBe(200);
+    expect(pdf.headers()["content-type"]).toContain("application/pdf");
+    expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+
+    await semLogin.close();
+    await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
   });
 });

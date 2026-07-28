@@ -1598,6 +1598,47 @@ export type PortalNoivaProvasItem = {
   remarcacaoPedidaEm?: string | null;
 };
 
+export type PortalNoivaContratoDescontoTipo = typeof PortalNoivaContratoDescontoTipo[keyof typeof PortalNoivaContratoDescontoTipo] | null;
+
+
+export const PortalNoivaContratoDescontoTipo = {
+  PERCENTUAL: 'PERCENTUAL',
+  VALOR: 'VALOR',
+} as const;
+
+export type PortalNoivaContrato = {
+  valorTotal: number;
+  totalBruto: number;
+  descontoTipo?: PortalNoivaContratoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
+  fechadoEm: string;
+  /** @nullable */
+  dataCasamento?: string | null;
+  itens: OrcamentoPublicoItem[];
+} | null;
+
+export type PortalNoivaVestidoFotosItem = {
+  ordem: number;
+  atualizadaEm: string;
+};
+
+export type PortalNoivaVestidoAjustesItem = {
+  descricao: string;
+  pronto: boolean;
+};
+
+export type PortalNoivaVestido = {
+  vestidoId: string;
+  nome: string;
+  fotos: PortalNoivaVestidoFotosItem[];
+  /** @nullable */
+  retiradaPrevista?: string | null;
+  /** @nullable */
+  retiradaFeitaEm?: string | null;
+  ajustes: PortalNoivaVestidoAjustesItem[];
+} | null;
+
 export type PortalParcelaStatus = typeof PortalParcelaStatus[keyof typeof PortalParcelaStatus];
 
 
@@ -1631,6 +1672,8 @@ export interface PortalNoiva {
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];
   parcelas: PortalParcela[];
+  contrato: PortalNoivaContrato;
+  vestido: PortalNoivaVestido;
 }
 
 export interface PortalStatus {
@@ -2682,6 +2725,10 @@ export const GetPortalFotoVariante = {
   original: 'original',
   thumb: 'thumb',
 } as const;
+
+export type GetPortalContratoPdfParams = {
+token: string;
+};
 
 export type ListPortais200Item = {
   leadId: string;

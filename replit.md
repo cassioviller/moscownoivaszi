@@ -142,7 +142,12 @@ rode o codegen.
   (cobrança/confirmação/orçamento) fecham com o link quando o portal está
   vivo (E84, `GET /portais` em lote + `lib/portal.ts` como régua única).
   O rodapé traz nome, endereço e "Falar no WhatsApp" da LOJA, com o nome dela
-  já na mensagem (E100/F35).
+  já na mensagem (E100/F35). Depois do contrato ele mostra **"Seu contrato"**
+  (o snapshot de itens, o total e o PDF pelo mesmo token — E100/F21) e **"O seu
+  vestido"** (a peça reservada, a retirada e os ajustes como pronto/em
+  andamento — E100/F39). O papel do contrato é montado por
+  `lib/contrato-do-papel.ts`, a mesma régua dos dois lados: a loja e a noiva
+  baixam byte por byte o mesmo documento.
 - **Comercial** — orçamento → contrato (com snapshot dos itens) → plano de
   parcelas → PDF do contrato. A noiva vê a última versão ENVIADA (E75) e
   aceita pelo link com rastro (instante, versão, hash — E74).
@@ -234,7 +239,12 @@ rode o codegen.
 - **O portal expõe dados financeiros num link** (E78): TTL 30d, revogação a um
   clique, token em QUERY (o logger corta a query), e o extrato sai só do
   contrato ATIVO da própria noiva. Revogado responde 404 como desconhecido —
-  o link morto não conta que um dia valeu.
+  o link morto não conta que um dia valeu. **Nenhuma rota pública aceita id de
+  recurso na URL** (E100/F21): o PDF do contrato sai do `leadId` do token, não
+  de um `:contratoId` — o que não se pode adivinhar não precisa ser provado.
+  A raiz do payload de `GET /portal` tem **lista fechada de chaves**, com teste:
+  acrescentar campo naquele link é decisão, não efeito colateral de um `select`
+  que cresceu.
 - **O TTL do portal conta INATIVIDADE, não idade** (E100/F38): cada `GET
   /portal` bem-sucedido empurra `expiraEm` para 30 dias à frente, junto com o
   `ultimoAcessoEm`. A decisão de segurança dos 30 dias fica de pé — o link de

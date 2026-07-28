@@ -10,6 +10,8 @@ import {
   contratosTable,
   parcelasTable,
   atendimentosTable,
+  contratoItensTable,
+  bloqueioVestidosTable,
   vestidoFotosTable,
   auditLogTable,
 } from "@workspace/db";
@@ -24,6 +26,7 @@ import {
   ConfirmarProvaPortalResponse,
   PedirRemarcacaoPortalQueryParams,
   PedirRemarcacaoPortalResponse,
+  GetPortalContratoPdfQueryParams,
   GetPortalLeadResponse,
   CriarPortalLeadResponse,
   ListPortaisResponse,
@@ -32,7 +35,12 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
 import { leadNaLoja } from "../lib/escopo-loja";
 import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
-import { montarOrcamentoPublico, montarVestidosLookbook } from "../lib/visao-noiva";
+import {
+  montarOrcamentoPublico,
+  montarVestidosLookbook,
+  montarVestidoDaNoiva,
+} from "../lib/visao-noiva";
+import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 import { centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
@@ -162,11 +170,19 @@ router.get("/portal", async (req, res): Promise<void> => {
   // O extrato DELA: as parcelas do contrato ativo, por número. O escopo por
   // contratoId (do contrato DESTA noiva) é o que garante que valores de outra
   // noiva jamais aparecem.
-  const parcelas = contrato[0]
-    ? await db.select().from(parcelasTable)
-        .where(eq(parcelasTable.contratoId, contrato[0].id))
-        .orderBy(asc(parcelasTable.numero))
-    : [];
+  const [parcelas, itensDoContrato, vestido] = contrato[0]
+    ? await Promise.all([
+        db.select().from(parcelasTable)
+          .where(eq(parcelasTable.contratoId, contrato[0].id))
+          .orderBy(asc(parcelasTable.numero)),
+        // F21: o snapshot congelado no fechamento — não o orçamento vivo, que
+        // pode ter sido editado depois (E75).
+        db.select().from(contratoItensTable)
+          .where(eq(contratoItensTable.contratoId, contrato[0].id))
+          .orderBy(asc(contratoItensTable.createdAt)),
+        montarVestidoDaNoiva(contrato[0]),
+      ])
+    : [[], [], null];
 
   /**
    * F36/E100 — as duas respostas que ela abre o link para procurar.
@@ -218,8 +234,85 @@ router.get("/portal", async (req, res): Promise<void> => {
           vencimento: p.vencimento,
           status: p.status,
         })),
+      /**
+       * F21 — o contrato assinado, o único artefato do sistema que não tinha
+       * caminho até ela. O `totalBruto` sai da SOMA DOS ITENS e não de um campo
+       * gravado: com desconto, `valorTotal` é o líquido, e sem o bruto ao lado
+       * a tela dela mostraria itens que não somam o total do próprio contrato.
+       */
+      contrato: contrato[0]
+        ? {
+            valorTotal: contrato[0].valorTotal,
+            totalBruto: reais(
+              itensDoContrato.reduce(
+                (acc, it) => acc + centavos(it.valorUnitario) * it.quantidade,
+                0,
+              ),
+            ),
+            descontoTipo: contrato[0].descontoTipo,
+            descontoValor: contrato[0].descontoValor,
+            fechadoEm: contrato[0].fechadoEm,
+            dataCasamento: contrato[0].dataCasamento,
+            itens: itensDoContrato.map((it) => ({
+              tipo: it.tipo,
+              descricao: it.descricao,
+              quantidade: it.quantidade,
+              valorUnitario: it.valorUnitario,
+            })),
+          }
+        : null,
+      // F39 — "O seu vestido". Null quando o contrato não prende reserva.
+      vestido,
     }),
   );
+});
+
+/**
+ * F21/E100 — o PDF do contrato pelo token da noiva.
+ *
+ * O papel é o MESMO da loja (`lib/contrato-do-papel.ts`); o que muda é a prova
+ * de quem pode vê-lo. Cuidado (d) do épico, cumprido: TTL **e** revogação, na
+ * mesma ordem das outras quatro rotas públicas.
+ *
+ * E não há id de contrato na URL — ele sai do `leadId` do token. Uma rota
+ * pública que aceitasse `:contratoId` teria de provar o pertencimento a cada
+ * chamada; esta não tem o que provar, porque não há o que adivinhar.
+ */
+router.get("/portal/contrato-pdf", async (req, res): Promise<void> => {
+  const parsed = GetPortalContratoPdfQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(
+      eq(contratosTable.lojaId, linha.portal.lojaId),
+      eq(contratosTable.leadId, linha.portal.leadId),
+      eq(contratosTable.status, "ATIVO"),
+    ),
+    with: { loja: true, lead: true, parcelas: true, itens: true },
+    orderBy: desc(contratosTable.fechadoEm),
+  });
+  // Cancelado não desce: o papel que ela guardar tem de ser o que vale.
+  if (!contrato) {
+    res.status(404).json({ error: "CONTRATO_INEXISTENTE" });
+    return;
+  }
+
+  res.status(200)
+    .type("application/pdf")
+    .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivo(contrato)}"`);
+  res.send(Buffer.from(pdfDoContrato(contrato)));
 });
 
 // O aceite pelo portal delega à MESMA rotina do E74 (uma transação, um
@@ -445,7 +538,18 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     return;
   }
 
-  // O escopo: o vestido tem de estar no lookbook mais recente DA noiva.
+  /**
+   * O escopo: o vestido tem de estar no lookbook mais recente DA noiva **ou**
+   * ser o vestido reservado pelo contrato ATIVO dela.
+   *
+   * F39/E100 acrescentou o segundo caminho, e ele não é um afrouxamento: a
+   * seção "O seu vestido" mostra a peça que ela contratou, e essa peça pode
+   * nunca ter entrado num lookbook — quem fecha na primeira visita não ganha
+   * uma seleção de provados. Sem isto a foto da própria noiva respondia 404.
+   *
+   * O que continua valendo: vestido de OUTRA noiva é 404 mesmo existindo, e
+   * ambos os caminhos passam pelo `leadId` do token.
+   */
   const [lookbook] = await db.select({ id: lookbooksTable.id }).from(lookbooksTable)
     .where(and(
       eq(lookbooksTable.lojaId, linha.portal.lojaId),
@@ -453,14 +557,29 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     ))
     .orderBy(desc(lookbooksTable.createdAt))
     .limit(1);
-  const [pertence] = lookbook
+  const [noLookbook] = lookbook
     ? await db.select({ id: lookbookItensTable.id }).from(lookbookItensTable)
         .where(and(
           eq(lookbookItensTable.lookbookId, lookbook.id),
           eq(lookbookItensTable.vestidoId, vestidoId),
         ))
     : [];
-  if (!pertence) {
+  const [noContrato] = noLookbook
+    ? []
+    : await db.select({ id: contratosTable.id })
+        .from(contratosTable)
+        .innerJoin(
+          bloqueioVestidosTable,
+          eq(bloqueioVestidosTable.id, contratosTable.bloqueioVestidoId),
+        )
+        .where(and(
+          eq(contratosTable.lojaId, linha.portal.lojaId),
+          eq(contratosTable.leadId, linha.portal.leadId),
+          eq(contratosTable.status, "ATIVO"),
+          eq(bloqueioVestidosTable.vestidoId, vestidoId),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ));
+  if (!noLookbook && !noContrato) {
     res.status(404).json({ error: "Foto not found" });
     return;
   }

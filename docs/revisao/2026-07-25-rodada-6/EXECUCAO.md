@@ -71,7 +71,7 @@ quem escolheu a paleta:
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); falta só o F13 · [notas](execucao/E98.md) |
 | E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; faltam E10 e o `<Table>` do E19 · [notas](execucao/E99.md) |
-| E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; faltam F21 e F39 · [notas](execucao/E100.md) |
+| E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `<hash>` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
 | E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
@@ -846,3 +846,33 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      data-base de casamento em **2027**. Dois testes ficaram verdes sem tocar no
      que diziam cobrir. O assert da renovação virou faixa fechada (>29 e <31),
      porque "está longe" e "renovou" eram indistinguíveis.
+- **E100 parte 4** (F21, F39): **o épico fecha.** O contrato assinado era o único
+  artefato do sistema sem caminho até a noiva — o PDF só descia no computador da
+  loja e o portal mostrava a PROPOSTA, nunca o contrato. Agora há "Seu contrato"
+  (snapshot de itens, total e PDF pelo mesmo token) e "O seu vestido" (a peça
+  reservada, a retirada e os ajustes como pronto/em andamento).
+  1. **Duas correções ao diagnóstico, antes do código.** O F39 cita
+     `ajuste.proximaProva`, coluna que **não existe** — mesma classe do F33. A
+     pergunta já estava respondida pela seção de provas do E78, então o item
+     encolheu por medição: sobraram a retirada e o andamento dos ajustes. E o
+     "barato" do F21 (botão de WhatsApp na tela do contrato) foi **superado, não
+     adiado**: com a seção no portal, o contrato tem caminho até ela e o link já
+     viaja nas três filas do E84.
+  2. **O papel virou régua** (`lib/contrato-do-papel.ts`). Dois chamadores é
+     exatamente quando um bloco inline vira duas versões do mesmo documento — a
+     loja arruma uma linha e a da noiva fica para trás, porque ninguém compara
+     dois PDFs. O que ficou de fora da régua é o **escopo**: a rota da loja prova
+     a loja da URL, a do portal prova o token, e passar a prova como parâmetro
+     daria à função pública a chance de aceitar a errada.
+  3. **A rota pública não tem `:contratoId`** — o contrato sai do `leadId` do
+     token. O que não se pode adivinhar não precisa ser provado. Foi para os
+     Gotchas do `replit.md`, junto com o cuidado (d) cumprido: 410 para vencido,
+     404 para revogado.
+  4. **O guarda de chaves da parte 3 cobrou, e funcionou.** Ele ficou vermelho
+     antes de qualquer outro teste, apontando `contrato` e `vestido` — que é
+     precisamente para o que existe: campo novo num link público com dinheiro
+     dentro custa um vermelho e uma decisão. Um dia de vida e já pagou.
+  5. **Repeti o tropeço da parte 2, na mesma sessão** — dois atendimentos no
+     mesmo instante contra `unique(loja_id, vendedora_id, inicio)`. O detalhe que
+     interessa: **passava sozinho e falhava no arquivo inteiro**. Rodar o teste
+     isolado para "confirmar" teria dito que estava tudo bem.

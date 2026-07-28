@@ -2635,6 +2635,37 @@ paths:
         "410":
           description: Link expirado
 
+  /portal/contrato-pdf:
+    get:
+      operationId: getPortalContratoPdf
+      tags: [portal]
+      security: []
+      description: >
+        O PDF do contrato ATIVO da noiva, servido pelo token do PORTAL — o mesmo
+        documento que a loja baixa, montado pela mesma régua
+        (`lib/contrato-do-papel.ts`). É a quinta rota pública com documento
+        financeiro dentro: checa TTL **e** revogação como as outras quatro, e o
+        contrato sai do leadId do token, nunca de um id na URL — não há id de
+        contrato a adivinhar. Sem contrato ativo é 404.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: O PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Token desconhecido/revogado, ou noiva sem contrato ativo
+        "410":
+          description: Link expirado
+
   /lojas/{lojaId}/portais:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -5332,7 +5363,7 @@ components:
       # interno além do vestidoId (necessário para pedir a foto). NUNCA dados
       # de outra noiva ou da loja.
       type: object
-      required: [noivaNome, lojaNome, lojaEndereco, lojaTelefone, orcamento, lookbook, provas, parcelas]
+      required: [noivaNome, lojaNome, lojaEndereco, lojaTelefone, orcamento, lookbook, provas, parcelas, contrato, vestido]
       properties:
         noivaNome: { type: string }
         lojaNome: { type: string }
@@ -5398,6 +5429,68 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PortalParcela"
+        # E100/F21: o contrato assinado é o documento que ela mais vai querer
+        # rever, e era o único artefato do sistema sem caminho até ela — o PDF
+        # só descia no computador da loja. O snapshot de itens já existe em
+        # `contrato_itens`; o PDF desce por GET /portal/contrato-pdf, com o
+        # MESMO token. `null` = não há contrato ATIVO (só a proposta).
+        #
+        # O desconto vem junto pelo mesmo motivo do OrcamentoPublico: com ele,
+        # a soma dos itens NÃO é o total, e um contrato que não fecha na tela
+        # dela é pior que nenhum.
+        contrato:
+          anyOf:
+            - type: object
+              required: [valorTotal, totalBruto, fechadoEm, itens]
+              properties:
+                valorTotal: { type: number }
+                totalBruto: { type: number }
+                descontoTipo:
+                  anyOf:
+                    - type: string
+                      enum: [PERCENTUAL, VALOR]
+                    - type: "null"
+                descontoValor: { type: ["number", "null"] }
+                fechadoEm: { type: string, format: date-time }
+                dataCasamento: { type: ["string", "null"], format: date-time }
+                itens:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/OrcamentoPublicoItem"
+            - type: "null"
+        # E100/F39: "que dia eu pego o vestido?" e "os ajustes ficaram prontos?"
+        # são as perguntas das duas fases mais ansiosas dela, e o portal parava
+        # na fase comercial. Dos ajustes sai só descrição e pronto/em andamento
+        # — o CHECKLIST interno é a conversa da costureira com a loja, e não a
+        # dela. `null` = não há vestido reservado no contrato ativo.
+        vestido:
+          anyOf:
+            - type: object
+              required: [vestidoId, nome, fotos, ajustes]
+              properties:
+                vestidoId: { type: string }
+                nome: { type: string }
+                fotos:
+                  type: array
+                  items:
+                    type: object
+                    required: [ordem, atualizadaEm]
+                    properties:
+                      ordem: { type: integer }
+                      atualizadaEm: { type: string, format: date-time }
+                # A data combinada no contrato; `retiradaFeitaEm` preenchido diz
+                # que já aconteceu, e aí a promessa vira registro.
+                retiradaPrevista: { type: ["string", "null"], format: date-time }
+                retiradaFeitaEm: { type: ["string", "null"], format: date-time }
+                ajustes:
+                  type: array
+                  items:
+                    type: object
+                    required: [descricao, pronto]
+                    properties:
+                      descricao: { type: string }
+                      pronto: { type: boolean }
+            - type: "null"
     PortalParcela:
       type: object
       required: [numero, descricao, valorPrevisto, valorRecebido, vencimento, status]
