@@ -780,6 +780,10 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
         valorRecebido: null,
         recebidoEm: null,
         formaRecebimento: null,
+        // F32/E103: o movimento deixou de existir, então não pode continuar
+        // "conferido com o extrato". Sem esta linha o carimbo fica órfão e a
+        // conciliação seguinte pula uma linha que voltou a ser divergência.
+        conciliadoEm: null,
       })
       .where(and(
         eq(parcelasTable.id, existente.id),

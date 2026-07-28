@@ -80,7 +80,7 @@ quem escolheu a paleta:
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `6c7fa20` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ✅ | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; F42 em `d37fc72` · [notas](execucao/E101.md) · [F42](execucao/E101-f42.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
-| E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533` · [notas](execucao/E103.md) |
+| E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `<hash>`; faltam a tela do F32 e o F34 · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
@@ -1087,3 +1087,28 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   5. **O E99 fecha com TRÊS recusas com medida em nove partes:** a paginação do
      E19 (parte 7), o assert da segunda cláusula do E10 (parte 8) e os 10 gatilhos
      que nomeiam o objeto e não o valor (viraram sobra, com inventário pronto).
+- **E103 parte 2 — a conciliação ganha memória** (F32, o lado do servidor). Ela
+  era uma FOTOGRAFIA: a tela não tinha uma única mutation, o resultado morria com
+  a aba, e as divergências já perdoadas voltavam todo mês indistinguíveis das
+  novas.
+  1. **O meu plano subdimensionou a migração em 3×.** Escrevi "Migração: sim —
+     `conciliadoEm`", no singular; são **duas colunas em duas tabelas** só para o
+     F32, porque o que a tela chama de "movimento" vem de `parcelas` E de
+     `pagamentos`. Ou são as duas, ou metade da conciliação continua amnésica.
+  2. **"Um PATCH em lote" mirava um recurso que não existe.** Não há
+     `/movimentos/:id`; os ids da tela são sintéticos (`parcela:<id>`). A rota
+     recebe DUAS listas e devolve quantos mudaram de cada lado — inventar a
+     entidade seria criar um recurso para caber numa frase.
+  3. **A guarda que o plano não previa: o estorno LIMPA o carimbo.** Movimento
+     que deixou de existir não pode continuar conferido — se ficasse, a
+     conciliação seguinte pularia em silêncio uma linha que voltou a ser
+     divergência. Vermelho medido: `expected 2026-07-28T16:56:17.333Z to be null`.
+     **E os dois estornos não são simétricos:** o de parcela REVERTE (precisa da
+     linha), o de pagamento APAGA (o carimbo vai junto). Escrever nos dois seria
+     código morto num deles.
+  4. **`conciliadoEm` não é `enviadoContabilidadeEm`**, e os dois vão conviver na
+     mesma tabela — está escrito no `COMMENT ON COLUMN`, no schema, no spec e num
+     teste, porque o cuidado (b) do épico é exatamente esse.
+  5. **Sem backfill, e por quê:** a conciliação nunca escreveu, então nada sabe o
+     que já foi conferido. Todo movimento antigo nasce não-conciliado, que é a
+     verdade. Adivinhar é o que o E97 recusou com as avarias.

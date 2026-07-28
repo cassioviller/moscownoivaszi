@@ -5257,6 +5257,7 @@ export const ListContratosResponseItem = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5406,6 +5407,7 @@ export const CreateContratoResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5530,6 +5532,7 @@ export const GetContratoResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5664,6 +5667,7 @@ export const UpdateContratoResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5804,6 +5808,7 @@ export const CancelarContratoResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5921,6 +5926,7 @@ export const ListParcelasResponseItem = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -5987,6 +5993,7 @@ export const ReceberParcelaResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6040,6 +6047,7 @@ export const EstornarParcelaResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6114,6 +6122,7 @@ export const GerarPlanoParcelasResponseItem = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6183,6 +6192,7 @@ export const CreateParcelaAvulsaResponse = zod.object({
   "valorRecebido": zod.number().nullish().describe('Acumulado desta parcela, somando todos os recebimentos'),
   "recebidoEm": zod.coerce.date().nullish(),
   "formaRecebimento": zod.union([zod.literal('PIX'),zod.literal('CARTAO_CREDITO'),zod.literal('CARTAO_DEBITO'),zod.literal('DINHEIRO'),zod.literal('BOLETO'),zod.literal('TRANSFERENCIA'),zod.literal('OUTRO'),zod.literal(null)]).nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "contrato": zod.union([zod.object({
   "leadId": zod.string(),
   "lead": zod.union([zod.object({
@@ -6540,6 +6550,7 @@ export const ListPagamentosResponseItem = zod.object({
   "forma": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "enviadoContabilidadeEm": zod.coerce.date().nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "colaborador": zod.union([zod.object({
   "id": zod.string(),
   "nome": zod.string(),
@@ -6609,6 +6620,7 @@ export const CreatePagamentoResponse = zod.object({
   "forma": zod.string().nullish(),
   "observacoes": zod.string().nullish(),
   "enviadoContabilidadeEm": zod.coerce.date().nullish(),
+  "conciliadoEm": zod.coerce.date().nullish(),
   "colaborador": zod.union([zod.object({
   "id": zod.string(),
   "nome": zod.string(),
@@ -6925,6 +6937,26 @@ export const EnviarContabilidadeBody = zod.object({
 
 export const EnviarContabilidadeResponse = zod.object({
   "marcados": zod.number()
+})
+
+
+/**
+ * F32/E103 — a conciliação passa a ter memória. O corpo traz DUAS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
+ * Idempotente por construção: o WHERE exige `conciliado_em IS NULL`, então remarcar o mesmo lote devolve zero sem tocar no carimbo antigo — a mesma forma de `enviarContabilidade`. Id de outra loja não é erro: o WHERE filtra por `loja_id` e ele simplesmente não é marcado.
+ * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
+ */
+export const MarcarConciliadoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const MarcarConciliadoBody = zod.object({
+  "parcelaIds": zod.array(zod.string()).optional(),
+  "pagamentoIds": zod.array(zod.string()).optional()
+})
+
+export const MarcarConciliadoResponse = zod.object({
+  "parcelas": zod.number().describe('Quantas parcelas passaram de nao-conciliadas a conciliadas'),
+  "pagamentos": zod.number()
 })
 
 

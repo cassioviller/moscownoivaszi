@@ -1748,6 +1748,8 @@ export interface Parcela {
   recebidoEm?: string | null;
   /** @nullable */
   formaRecebimento?: ParcelaFormaRecebimento;
+  /** @nullable */
+  conciliadoEm?: string | null;
   contrato?: ParcelaContrato | null;
 }
 
@@ -2018,6 +2020,17 @@ export interface PagamentoItem {
   contaPagar?: ContaPagar;
 }
 
+export interface MarcarConciliadoInput {
+  parcelaIds?: string[];
+  pagamentoIds?: string[];
+}
+
+export interface MarcarConciliadoResultado {
+  /** Quantas parcelas passaram de nao-conciliadas a conciliadas */
+  parcelas: number;
+  pagamentos: number;
+}
+
 export interface Pagamento {
   id: string;
   lojaId: string;
@@ -2031,6 +2044,8 @@ export interface Pagamento {
   observacoes?: string | null;
   /** @nullable */
   enviadoContabilidadeEm?: string | null;
+  /** @nullable */
+  conciliadoEm?: string | null;
   colaborador?: Usuario | null;
   itens?: PagamentoItem[];
 }

@@ -20,6 +20,12 @@ export const parcelasTable = pgTable("parcelas", {
   valorRecebido: decimal("valor_recebido", { precision: 10, scale: 2, mode: "number" }),
   recebidoEm: timestamp("recebido_em", { withTimezone: true }),
   formaRecebimento: formaPagamentoEnum("forma_recebimento"),
+  // F32/E103: quando este recebimento casou com uma linha do extrato do banco.
+  // NÃO é `pagamentos.enviado_contabilidade_em` — conciliar é "bateu com o
+  // banco", enviar é "declarei à contabilidade", e um existe sem o outro nas
+  // duas direções. O ESTORNO limpa: movimento que deixou de existir não pode
+  // continuar conferido.
+  conciliadoEm: timestamp("conciliado_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // gerar-plano checa "já tem parcela?" e insere, sem rede: dois POSTs
@@ -32,6 +38,12 @@ export const parcelasTable = pgTable("parcelas", {
   // tabela inteira de TODAS as lojas para responder por uma.
   lojaVencimentoIdx: index("parcelas_loja_vencimento_idx").on(t.lojaId, t.vencimento),
   lojaRecebidoEmIdx: index("parcelas_loja_recebido_em_idx").on(t.lojaId, t.recebidoEm),
+  // F32: o filtro "só o não conciliado" abre por loja + data e descarta o resto.
+  // Índice PARCIAL (o idioma de `contas_pagar_recorrencia_unica`): ele guarda só
+  // o que a query procura, e encolhe conforme o mês fecha.
+  naoConciliadasIdx: index("parcelas_nao_conciliadas_idx")
+    .on(t.lojaId, t.recebidoEm)
+    .where(sql`conciliado_em IS NULL`),
 }));
 
 export const insertParcelaSchema = createInsertSchema(parcelasTable).omit({ createdAt: true });
@@ -82,10 +94,15 @@ export const pagamentosTable = pgTable("pagamentos", {
   forma: text("forma"),
   observacoes: text("observacoes"),
   enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
+  /** F32/E103: casou com o extrato do banco. O estorno limpa. */
+  conciliadoEm: timestamp("conciliado_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // B10/E91: a saída de caixa é lida por loja + dia em fluxo, DRE e alerta.
   lojaDataIdx: index("pagamentos_loja_data_idx").on(t.lojaId, t.data),
+  naoConciliadosIdx: index("pagamentos_nao_conciliados_idx")
+    .on(t.lojaId, t.data)
+    .where(sql`conciliado_em IS NULL`),
 }));
 
 export const insertPagamentoSchema = createInsertSchema(pagamentosTable).omit({ createdAt: true });

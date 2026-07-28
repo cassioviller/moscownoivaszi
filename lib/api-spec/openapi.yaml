@@ -3817,6 +3817,41 @@ paths:
         "400":
           description: Intervalo inválido (INTERVALO_INVALIDO)
 
+
+  /lojas/{lojaId}/financeiro/conciliacao/marcar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    post:
+      operationId: marcarConciliado
+      tags: [financeiro]
+      summary: Carimba conciliadoEm nos movimentos que casaram com o extrato
+      description: >
+        F32/E103 — a conciliação passa a ter memória. O corpo traz DUAS listas de
+        ids, e não uma: o que a tela chama de "movimento do sistema" é montado de
+        `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e
+        `pagamento:<id>`). Não existe entidade "movimento" para receber um PATCH,
+        e inventá-la seria criar um recurso para caber num verbo.
+
+        Idempotente por construção: o WHERE exige `conciliado_em IS NULL`, então
+        remarcar o mesmo lote devolve zero sem tocar no carimbo antigo — a mesma
+        forma de `enviarContabilidade`. Id de outra loja não é erro: o WHERE
+        filtra por `loja_id` e ele simplesmente não é marcado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarcarConciliadoInput"
+      responses:
+        "200":
+          description: Quantos foram marcados de cada lado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarcarConciliadoResultado"
+        "400":
+          description: Corpo inválido (CORPO_INVALIDO)
+
   # ───────────────────────── Comissão ─────────────────────────
   /lojas/{lojaId}/comissao/regras:
     parameters:
@@ -5690,6 +5725,11 @@ components:
         valorRecebido: { type: ["number", "null"], description: "Acumulado desta parcela, somando todos os recebimentos" }
         recebidoEm: { type: ["string", "null"], format: date-time }
         formaRecebimento: { type: ["string", "null"], enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO, null] }
+        # F32/E103: casou com uma linha do extrato do banco. É a memória que a
+        # conciliação não tinha — sem ela, as divergências já perdoadas voltam
+        # todo mês indistinguíveis das novas. O ESTORNO limpa: movimento que
+        # deixou de existir não pode continuar conferido.
+        conciliadoEm: { type: ["string", "null"], format: date-time }
         # Quem é a noiva desta parcela, sem rebuscar todos os contratos: a
         # cobrança junta por aqui. Presente no GET da lista; ausente nas
         # respostas de receber/estornar (que devolvem a parcela seca).
@@ -5797,6 +5837,21 @@ components:
     # O caixa REALIZADO: até a Onda 3 pagamentos era write-only (gravado no
     # POST …/pagar e nunca lido de volta). É a fonte do fluxo, do regime-caixa
     # do DRE, do saldoHoje da projeção e do histórico da folha.
+    MarcarConciliadoInput:
+      type: object
+      properties:
+        parcelaIds:
+          type: array
+          items: { type: string }
+        pagamentoIds:
+          type: array
+          items: { type: string }
+    MarcarConciliadoResultado:
+      type: object
+      required: [parcelas, pagamentos]
+      properties:
+        parcelas: { type: integer, description: "Quantas parcelas passaram de nao-conciliadas a conciliadas" }
+        pagamentos: { type: integer }
     Pagamento:
       type: object
       required: [id, lojaId, data, valorPago]
@@ -5809,6 +5864,10 @@ components:
         forma: { type: ["string", "null"] }
         observacoes: { type: ["string", "null"] }
         enviadoContabilidadeEm: { type: ["string", "null"], format: date-time }
+        # F32/E103 — e NÃO é o mesmo fato que o de cima: conciliado é "bateu com
+        # o banco", enviado é "declarei à contabilidade". Um existe sem o outro
+        # nas duas direções.
+        conciliadoEm: { type: ["string", "null"], format: date-time }
         colaborador:
           anyOf:
             - $ref: "#/components/schemas/Usuario"

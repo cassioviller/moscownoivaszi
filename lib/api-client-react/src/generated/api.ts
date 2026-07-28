@@ -143,6 +143,8 @@ import type {
   Lookbook,
   LookbookInput,
   LookbookPublico,
+  MarcarConciliadoInput,
+  MarcarConciliadoResultado,
   MembroEquipe,
   MembroEquipeInput,
   MembroEquipeUpdate,
@@ -12386,6 +12388,79 @@ export const useEnviarContabilidade = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getEnviarContabilidadeMutationOptions(options));
+    }
+
+export const getMarcarConciliadoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/conciliacao/marcar`
+}
+
+/**
+ * F32/E103 — a conciliação passa a ter memória. O corpo traz DUAS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
+ * Idempotente por construção: o WHERE exige `conciliado_em IS NULL`, então remarcar o mesmo lote devolve zero sem tocar no carimbo antigo — a mesma forma de `enviarContabilidade`. Id de outra loja não é erro: o WHERE filtra por `loja_id` e ele simplesmente não é marcado.
+ * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
+ */
+export const marcarConciliado = async (lojaId: string,
+    marcarConciliadoInput: MarcarConciliadoInput, options?: RequestInit): Promise<MarcarConciliadoResultado> => {
+
+  return customFetch<MarcarConciliadoResultado>(getMarcarConciliadoUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(marcarConciliadoInput)
+  }
+);}
+
+
+
+
+export const getMarcarConciliadoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof marcarConciliado>>, TError,{lojaId: string;data: BodyType<MarcarConciliadoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof marcarConciliado>>, TError,{lojaId: string;data: BodyType<MarcarConciliadoInput>}, TContext> => {
+
+const mutationKey = ['marcarConciliado'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof marcarConciliado>>, {lojaId: string;data: BodyType<MarcarConciliadoInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  marcarConciliado(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarcarConciliadoMutationResult = NonNullable<Awaited<ReturnType<typeof marcarConciliado>>>
+    export type MarcarConciliadoMutationBody = BodyType<MarcarConciliadoInput>
+    export type MarcarConciliadoMutationError = ErrorType<void>
+
+    /**
+ * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
+ */
+export const useMarcarConciliado = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof marcarConciliado>>, TError,{lojaId: string;data: BodyType<MarcarConciliadoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof marcarConciliado>>,
+        TError,
+        {lojaId: string;data: BodyType<MarcarConciliadoInput>},
+        TContext
+      > => {
+      return useMutation(getMarcarConciliadoMutationOptions(options));
     }
 
 export const getListComissaoRegrasUrl = (lojaId: string,) => {

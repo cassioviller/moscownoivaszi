@@ -33,6 +33,8 @@ import {
   PagarContaPagarBody,
   PagarContaPagarResponse,
   ListAuditoriaResponse,
+  MarcarConciliadoBody,
+  MarcarConciliadoResponse,
   ListAuditoriaQueryParams,
   ListAutoresAuditoriaResponse,
   ExportarAuditoriaQueryParams,
@@ -537,6 +539,62 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
   });
   res.status(204).end();
 });
+
+/**
+ * F32/E103 — a conciliação passa a ter memória.
+ *
+ * Ela era uma FOTOGRAFIA: a tela não tinha uma única mutation, o resultado
+ * morria com a aba, e todo mês se refazia o mesmo trabalho — com as divergências
+ * já olhadas e perdoadas voltando indistinguíveis das novas.
+ *
+ * **Duas listas, e não uma.** O que a tela chama de "movimento do sistema" é
+ * montado de `parcelas` e de `pagamentos`, com ids sintéticos
+ * (`parcela:<id>`, `pagamento:<id>`). Não existe entidade "movimento" para
+ * receber um PATCH; inventá-la seria criar um recurso para caber num verbo.
+ *
+ * **Idempotente por construção:** o `WHERE` exige `conciliadoEm IS NULL`, então
+ * remarcar o mesmo lote devolve zero e não mexe no carimbo antigo — a mesma
+ * forma do `enviarContabilidade`. E o `lojaId` vai no WHERE, não numa
+ * conferência posterior: id de outra loja simplesmente não é marcado (E91).
+ */
+router.post(
+  "/lojas/:lojaId/financeiro/conciliacao/marcar",
+  async (req, res): Promise<void> => {
+    const lojaId = req.params.lojaId as string;
+    const parsed = MarcarConciliadoBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(erroDeValidacao(parsed.error));
+      return;
+    }
+    const { parcelaIds = [], pagamentoIds = [] } = parsed.data;
+    const agora = new Date();
+
+    const [pcs, pgs] = await Promise.all([
+      parcelaIds.length
+        ? db.update(parcelasTable)
+            .set({ conciliadoEm: agora })
+            .where(and(
+              eq(parcelasTable.lojaId, lojaId),
+              inArray(parcelasTable.id, parcelaIds),
+              isNull(parcelasTable.conciliadoEm),
+            ))
+            .returning({ id: parcelasTable.id })
+        : Promise.resolve([]),
+      pagamentoIds.length
+        ? db.update(pagamentosTable)
+            .set({ conciliadoEm: agora })
+            .where(and(
+              eq(pagamentosTable.lojaId, lojaId),
+              inArray(pagamentosTable.id, pagamentoIds),
+              isNull(pagamentosTable.conciliadoEm),
+            ))
+            .returning({ id: pagamentosTable.id })
+        : Promise.resolve([]),
+    ]);
+
+    res.json(MarcarConciliadoResponse.parse({ parcelas: pcs.length, pagamentos: pgs.length }));
+  },
+);
 
 // Trilha de auditoria (E10): a linha do tempo do que mexeu em dinheiro —
 // quem recebeu, estornou, pagou, baixou. Só leitura; a escrita vive nas
