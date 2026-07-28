@@ -9,7 +9,7 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 test.describe("Agenda", () => {
   test("página abre com cabines listadas", async ({ page }) => {
     await page.goto("/agenda");
-    await expect(page.getByText("Atendimentos do Dia")).toBeVisible();
+    await expect(page.getByText("Atendimentos do dia")).toBeVisible();
     // A cabine agora é coluna da grade (E28) além de item da lista lateral —
     // `.first()` desfaz a ambiguidade de o nome aparecer nos dois lugares.
     await expect(page.getByText("E2E Cabine").first()).toBeVisible();

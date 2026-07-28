@@ -21,6 +21,7 @@ import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NaoEncontrado } from "@/components/estado";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -221,14 +222,14 @@ export default function VestidoDetail() {
 
   if (!vestido) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Vestido não encontrado — pode ter saído do acervo, ou o link veio errado.
-        </p>
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/loja/${lojaId}/vestidos`}>Voltar ao acervo</Link>
-        </Button>
-      </div>
+      <NaoEncontrado
+        titulo="Este vestido não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${lojaId}/vestidos`}>Voltar ao acervo</Link>
+          </Button>
+        }
+      />
     );
   }
 

@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NaoEncontrado } from "@/components/estado";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -363,14 +364,14 @@ export default function OrcamentoDetail() {
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
   if (!orcamento) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Orçamento não encontrado — pode ter sido removido, ou o link veio errado.
-        </p>
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/loja/${activeLojaId}/orcamentos`}>Voltar aos orçamentos</Link>
-        </Button>
-      </div>
+      <NaoEncontrado
+        titulo="Este orçamento não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${activeLojaId}/orcamentos`}>Voltar aos orçamentos</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -732,7 +733,7 @@ export default function OrcamentoDetail() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Itens do Orçamento</CardTitle>
+          <CardTitle>Itens do orçamento</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {orcamento.itens && orcamento.itens.length > 0 ? (

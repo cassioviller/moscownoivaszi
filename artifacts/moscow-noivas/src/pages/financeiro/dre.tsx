@@ -185,6 +185,31 @@ export default function DRE() {
         </Card>
       ) : (
         <div className="space-y-4">
+          {/* E14: o resultado é a PERGUNTA da tela — quem abre o DRE quer saber
+              se sobrou, e a resposta morava no rodapé, depois de três cartões.
+              Agora ele é o herói e as duas metades ficam abaixo, explicando-o.
+              O padrão é o de `fluxo.tsx`, que já resolvia isso. */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Sobrou em {rotuloCompetencia(competencia)}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <p
+                className={`font-serif text-4xl tabular-nums ${
+                  resultadoNegativo ? "text-destructive" : "text-positivo"
+                }`}
+                data-testid="dre-resultado"
+              >
+                {resultadoNegativo ? "−" : "+"}
+                {brl(Math.abs(dre.resultado))}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {brl(dre.receitas)} recebidos menos {brl(dre.totalDespesas)} pagos.
+                {resultadoNegativo && " O mês fechou no vermelho."}
+              </p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Recebimentos</CardTitle>
@@ -240,22 +265,6 @@ export default function DRE() {
                   </li>
                 </ul>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Resultado do mês</CardTitle>
-              <CardDescription>Recebimentos menos despesas, pelo caixa.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p
-                className={`text-3xl font-semibold tabular-nums ${
-                  resultadoNegativo ? "text-destructive" : "text-positivo"
-                }`}
-              >
-                {brl(dre.resultado)}
-              </p>
             </CardContent>
           </Card>
         </div>

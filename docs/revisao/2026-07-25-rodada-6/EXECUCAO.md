@@ -46,6 +46,18 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
    para épico separado.** Nesta rodada só o nome muda (tela + `replit.md`);
    o relatório por competência entra no backlog como E105.
 
+## Decisão de design (respondida pelo dono em 2026-07-28)
+
+Destrava o item 4 do E99 (E6/E8), que o cuidado (c) do épico manda decidir com
+quem escolheu a paleta:
+
+4. **Dinheiro é SERIF no degrau maior** — a fonte da marca continua nos valores
+   grandes (contrato, totais), como já está hoje. Os três degraus da escala
+   (`money-lg`/`money-md`/`money-sm`) usam **sempre `tabular-nums`**, que é o que
+   faz coluna de número alinhar. A decisão fecha a divergência das quatro
+   tipografias, mantendo a que a marca já tinha escolhido — não a que seria mais
+   neutra.
+
 ## Estado dos épicos
 
 | Épico | O que resolve | Esforço | Estado | Commit |
@@ -58,7 +70,7 @@ Estas destravam o E102 e valem como regra do sistema daqui para frente:
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; faltam E9 (vai com o E99) e F13 · [notas](execucao/E98.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967` · [notas](execucao/E99.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `PENDENTE`; faltam E6/E8, E10, E19+E9, A9/D15 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -623,3 +635,24 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      componente, a parcela chega por prop e o preenchimento passou a seguir a
      prop. Sem isso, abrir a segunda noiva da fila mostraria o valor da
      primeira — a pior forma de errar um lançamento.
+- **E99 parte 2** (notas em `execucao/E99.md`): E12, E14, E21 e D11 — os quatro
+  que não dependiam de decisão. A decisão que faltava (item 4) foi respondida
+  pelo dono nesta sessão e está acima.
+  1. **O backlog dizia que as telas irmãs já tinham o card de "não encontrado".
+     Não tinham.** Fui buscar e achei **três cópias de um parágrafo**, uma por
+     tela de detalhe — e o `<NaoEncontrado>` que a parte 1 DESTE MESMO ÉPICO
+     criou tinha **zero consumidores**. O E12 não era ligar um componente numa
+     tela: era adotá-lo nas quatro. E a ficha da noiva tinha um defeito que as
+     irmãs não têm: 404 caía no mesmo alerta destrutivo de um 500, **com
+     "Tentar novamente"** — um botão que não pode dar certo.
+  2. **No E21 a varredura vale mais que as treze correções**, e ela nomeou os
+     treze sozinha. Cinco eram afirmados por spec E2E e mudaram junto, com o
+     motivo — a lição do E93, que a rodada já pagou uma vez.
+  3. **Errei e o próprio teste me pegou.** Para fazê-lo passar, pus `"Regras"` na
+     lista de nomes próprios, o que faria "Disponibilidade e Regras" passar sem
+     ser corrigido. Não é nome próprio: tirei da lista e corrigi o título. **Uma
+     lista de exceções é onde uma varredura vai morrer, se deixarem.**
+  4. **O D11 não é cosmético.** As faixas da escada de comissão eram keyadas por
+     índice num editor que remove do MEIO: apagar a segunda de três faz o React
+     reaproveitar o nó da terceira e o foco saltar de campo, no meio da digitação
+     de uma escada de comissão. O id novo é local e não vaza para a API.

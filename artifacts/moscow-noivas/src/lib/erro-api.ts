@@ -75,6 +75,21 @@ export function mensagemApi(
 }
 
 /**
+ * E12/E99 — 404 não é falha, e por isso não é `<Erro>`.
+ *
+ * Uma tela de detalhe que recebe 404 mostrava o mesmo alerta destrutivo de um
+ * 500, com "Tentar novamente" ao lado. As duas coisas estão erradas: o registro
+ * não existe (o sistema respondeu certo, e depressa), e repetir a mesma busca
+ * vai devolver 404 de novo — o botão convida a um gesto que não pode dar certo.
+ *
+ * O que a pessoa precisa ali é saber que aquele endereço não leva a nada e ter
+ * a saída para a lista, que é o que o `<NaoEncontrado>` faz.
+ */
+export function ehNaoEncontrado(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404;
+}
+
+/**
  * D6/E96 — o erro do servidor chega ao CAMPO que o causou.
  *
  * Antes, todo 400/422 virava toast destrutivo: a mensagem aparecia no canto da

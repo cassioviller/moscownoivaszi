@@ -250,7 +250,7 @@ export default function Dashboard() {
         {veLeads && (
           <Card className="hover-elevate">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Noivas Ativas</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Noivas ativas</CardTitle>
               <Users className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
@@ -263,7 +263,7 @@ export default function Dashboard() {
         {veAgenda && (
           <Card className="hover-elevate">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos Hoje</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos hoje</CardTitle>
               <Calendar className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
@@ -276,7 +276,7 @@ export default function Dashboard() {
         {veLeads && (
           <Card className="hover-elevate">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos Abertos</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos abertos</CardTitle>
               <FileText className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
@@ -289,7 +289,7 @@ export default function Dashboard() {
         {veLeads && (
           <Card className="hover-elevate">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Contratos Fechados</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Contratos fechados</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>

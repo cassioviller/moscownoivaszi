@@ -150,7 +150,7 @@ export default function Agenda() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="col-span-2">
           <CardHeader>
-            <CardTitle>Atendimentos do Dia</CardTitle>
+            <CardTitle>Atendimentos do dia</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {atendimentos.isError ? (
@@ -279,7 +279,7 @@ export default function Agenda() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Ajustes Pendentes</CardTitle>
+              <CardTitle>Ajustes pendentes</CardTitle>
             </CardHeader>
             <CardContent>
               {(ajustes.data ?? []).filter(a => a.status === 'PENDENTE').length === 0 ? (

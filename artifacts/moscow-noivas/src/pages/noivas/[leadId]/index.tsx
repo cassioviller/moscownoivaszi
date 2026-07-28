@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { HistoricoContato } from "@/components/historico-contato";
+import { Erro, NaoEncontrado } from "@/components/estado";
 import { LookbookNoiva } from "./lookbook";
 import { PortalNoiva } from "./portal";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +45,7 @@ import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
-import { mensagemApi } from "@/lib/erro-api";
+import { ehNaoEncontrado } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
 import {
   dataLongaFmt,
@@ -192,18 +193,29 @@ export default function NoivaDetalhe() {
     }
   }
 
+  // E12: 404 não é falha. A ficha de uma noiva que não existe mostrava o mesmo
+  // alerta destrutivo de um 500, com "Tentar novamente" — um botão que não pode
+  // dar certo, porque a busca vai devolver 404 de novo.
+  if (ehNaoEncontrado(error)) {
+    return (
+      <NaoEncontrado
+        titulo="Esta noiva não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${lojaId}/noivas`}>Voltar às noivas</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
   if (isError) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar a noiva</AlertTitle>
-        <AlertDescription className="flex items-center gap-3">
-          <span>{mensagemApi(error, "Falha inesperada ao buscar a noiva.")}</span>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <Erro
+        titulo="Erro ao carregar a noiva"
+        erro={error}
+        onTentarNovamente={() => refetch()}
+      />
     );
   }
 

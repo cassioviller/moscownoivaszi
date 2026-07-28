@@ -34,7 +34,7 @@ test.describe("Contratos", () => {
     const erros = coletarErrosApi(page);
     await page.goto(`/contratos/${estado.contratoId}`);
     await expect(
-      page.getByText("Detalhes Financeiros"),
+      page.getByText("Detalhes financeiros"),
       `Detalhe do contrato deveria abrir (bug C2 — URL divergente):\n${resumoErros(erros)}`,
     ).toBeVisible();
   });

@@ -18,6 +18,7 @@ import { Link, useParams } from "react-router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NaoEncontrado } from "@/components/estado";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -184,14 +185,14 @@ export default function ContratoDetail() {
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
   if (!contrato) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Contrato não encontrado — pode ter sido removido, ou o link veio errado.
-        </p>
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/loja/${lojaId}/contratos`}>Voltar aos contratos</Link>
-        </Button>
-      </div>
+      <NaoEncontrado
+        titulo="Este contrato não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${lojaId}/contratos`}>Voltar aos contratos</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -400,7 +401,7 @@ export default function ContratoDetail() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Detalhes Financeiros</CardTitle>
+            <CardTitle>Detalhes financeiros</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -463,7 +464,7 @@ export default function ContratoDetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Plano de Pagamento</CardTitle>
+            <CardTitle>Plano de pagamento</CardTitle>
           </CardHeader>
           <CardContent>
             {parcelas.length > 0 ? (

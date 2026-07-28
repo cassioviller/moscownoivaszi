@@ -116,7 +116,7 @@ export default function Configuracoes() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-3">
-                <CardTitle>Atributos de Vestido</CardTitle>
+                <CardTitle>Atributos de vestido</CardTitle>
                 <EditarEm to={`/loja/${lojaId}/catalogo`} o="os atributos de vestido" />
               </CardHeader>
               <CardContent>
@@ -140,7 +140,7 @@ export default function Configuracoes() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-3">
-                <CardTitle>Disponibilidade e Regras</CardTitle>
+                <CardTitle>Disponibilidade e regras</CardTitle>
                 <EditarEm to={`/loja/${lojaId}/atendimentos/config`} o="as regras de disponibilidade" />
               </CardHeader>
               <CardContent className="space-y-4">

@@ -106,9 +106,28 @@ const MESES_NA_SERIE = 12;
 const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 /** Uma faixa em edição — strings, porque vêm do teclado. */
-type FaixaForm = { minAcumulado: string; maxAcumulado: string; percentual: string; bonusFixo: string };
+/**
+ * D11/E99 — a faixa carrega um id LOCAL, e ele existe só para o React.
+ *
+ * As linhas eram keyadas por índice num editor onde se REMOVE do meio
+ * (`filter((_, j) => j !== i)`): ao apagar a segunda de três, o React reaproveita
+ * o nó da terceira como se fosse a segunda, e o foco salta de campo — no meio
+ * da digitação de uma escada de comissão, que é uma tela de dinheiro. O id não
+ * viaja para o servidor: o payload continua sendo min/max/percentual/bônus.
+ */
+type FaixaForm = {
+  id: string;
+  minAcumulado: string;
+  maxAcumulado: string;
+  percentual: string;
+  bonusFixo: string;
+};
 
-const FAIXA_VAZIA: FaixaForm = { minAcumulado: "", maxAcumulado: "", percentual: "", bonusFixo: "" };
+/** Uma faixa nova, com identidade própria desde o nascimento. */
+function faixaVazia(): FaixaForm {
+  return { id: crypto.randomUUID(), minAcumulado: "", maxAcumulado: "", percentual: "", bonusFixo: "" };
+}
+
 
 function descreverFaixa(f: ComissaoFaixa): string {
   const ate = f.maxAcumulado === null || f.maxAcumulado === undefined
@@ -264,7 +283,7 @@ export default function Comissoes() {
 
   const [vendedoraId, setVendedoraId] = useState("");
   const [bonusAcumula, setBonusAcumula] = useState(false);
-  const [faixas, setFaixas] = useState<FaixaForm[]>([{ ...FAIXA_VAZIA }]);
+  const [faixas, setFaixas] = useState<FaixaForm[]>([faixaVazia()]);
 
   const competenciasDisponiveis = useMemo(
     () => ultimasCompetencias(competenciaAtual(), 12).reverse(),
@@ -318,7 +337,7 @@ export default function Comissoes() {
       });
       await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
       await queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) });
-      setFaixas([{ ...FAIXA_VAZIA }]);
+      setFaixas([faixaVazia()]);
       setVendedoraId("");
       setBonusAcumula(false);
       toast({ title: "Regra salva" });
@@ -841,7 +860,7 @@ export default function Comissoes() {
       {/* — Escada por vendedora — */}
       <Card>
         <CardHeader>
-          <CardTitle>Regras de Comissão</CardTitle>
+          <CardTitle>Regras de comissão</CardTitle>
           <CardDescription>
             Cada vendedora tem a sua escada, versionada no tempo: redefinir cria uma versão nova e
             as antigas ficam na linha do tempo — é aí que se responde “por que março pagou
@@ -967,7 +986,7 @@ export default function Comissoes() {
 
             <div className="space-y-2">
               {faixas.map((f, i) => (
-                <div key={i} className="flex flex-wrap items-end gap-2">
+                <div key={f.id} className="flex flex-wrap items-end gap-2">
                   <div className="grid gap-1">
                     <Label className="text-xs text-muted-foreground">De (R$)</Label>
                     <Input
@@ -1026,7 +1045,7 @@ export default function Comissoes() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setFaixas((prev) => [...prev, { ...FAIXA_VAZIA }])}
+                onClick={() => setFaixas((prev) => [...prev, faixaVazia()])}
               >
                 <Plus className="mr-1 h-4 w-4" />
                 Adicionar faixa
