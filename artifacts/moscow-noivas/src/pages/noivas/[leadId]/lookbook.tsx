@@ -15,6 +15,16 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -42,6 +52,8 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
   const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
   const [aberto, setAberto] = useState(false);
+  /** E10/E99: o lookbook que a noiva tem no favorito morre na hora — confirma. */
+  const [revogandoId, setRevogandoId] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
 
@@ -178,7 +190,7 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
                         size="icon"
                         aria-label="Revogar lookbook"
                         disabled={revogar.isPending}
-                        onClick={() => onRevogar(l.id)}
+                        onClick={() => setRevogandoId(l.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -247,6 +259,43 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* E10/E99 — revogar era um ícone de lixeira sem confirmação nenhuma, numa
+          LISTA: o alvo do clique é a linha, e a linha não se identifica depois
+          do gesto. O link que a noiva guardou morre na hora, e criar outro não
+          desfaz o que ela já não consegue abrir. */}
+      <AlertDialog
+        open={!!revogandoId}
+        onOpenChange={(aberto) => !aberto && setRevogandoId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revogar este lookbook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A seleção de{" "}
+              <span className="font-medium">
+                {lookbooks.data?.find((l) => l.id === revogandoId)?.vestidos?.length ?? 0}{" "}
+                vestido(s)
+              </span>{" "}
+              para de abrir para a noiva na hora. Você pode criar outra seleção,
+              mas o link que ela já tem não volta a funcionar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const id = revogandoId!;
+                setRevogandoId(null);
+                void onRevogar(id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revogar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

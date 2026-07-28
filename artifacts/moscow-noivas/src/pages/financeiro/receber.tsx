@@ -387,8 +387,32 @@ export default function Receber() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Estornar este recebimento?</AlertDialogTitle>
+            {/* E10/E99 — a confirmação NOMEIA o objeto e o valor.
+
+                Ela dizia "a parcela volta para em aberto e o valor sai do caixa
+                realizado": nem de quem, nem de quanto. Numa tela que lista
+                dezenas de parcelas, quem clica na linha errada não tem como
+                perceber antes de confirmar.
+
+                E o valor é o RECEBIDO, não o previsto — a distinção não é
+                cosmética. Numa PARCIAL de R$ 1.000,00 com R$ 300,00 recebidos, o
+                estorno tira **R$ 300,00** do caixa; escrever R$ 1.000,00 aqui
+                seria a tela mentindo sobre dinheiro num clique sem volta. */}
             <AlertDialogDescription>
-              A parcela volta para em aberto e o valor sai do caixa realizado.
+              {parcelaEstornar && (
+                <>
+                  Os{" "}
+                  <span className="font-medium">
+                    {brl(parcelaEstornar.valorRecebido ?? 0)}
+                  </span>{" "}
+                  recebidos de{" "}
+                  <span className="font-medium">
+                    {parcelaEstornar.contrato?.lead?.noivaNome ?? "esta noiva"}
+                  </span>{" "}
+                  ({rotuloParcela(parcelaEstornar)}) saem do caixa realizado e a
+                  parcela volta para em aberto.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

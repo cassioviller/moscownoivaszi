@@ -76,7 +76,7 @@ quem escolheu a paleta:
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | ✅ | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; **E9 fechado nas 6 telas** no E99 partes 4 e 5 (`25a2904` + `fe6d9d4`); F13 em `d2d194d` · [notas](execucao/E98.md) · [F13](execucao/E98-f13.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; faltam E10 e o `<Table>` do E19 · [notas](execucao/E99.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `365f56a` + `5c2d268`; parte 4 (E9 em 3 telas + Breadcrumb) em `25a2904`; parte 5 (E9 nas 6, D15 3ª grafia) em `fe6d9d4`; parte 6 (E6, E8) em `0aa07e6`; parte 7 (vazios; paginação recusada) em `faa07a3`; E10 (a régua da destrutiva) em `<hash>`; falta o `<Table>` do E19 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `6c7fa20` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ✅ | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; F42 em `d37fc72` · [notas](execucao/E101.md) · [F42](execucao/E101-f42.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -1035,3 +1035,29 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      **artefato compilado**. Aqui não houve erro de build, teste vermelho nem
      alerta: 13 declarações inválidas foram compiladas e entregues, e o que as
      denunciou foi uma barra de 41px empurrar um popper — um acidente.
+- **E99 parte 8 — a régua da ação destrutiva (E10)**, e a régua como o backlog a
+  escreveu **era impossível de cumprir**: ele pedia `variant="destructive"` no
+  gatilho, e `DropdownMenuItem` **não tem essa prop** — a mesma regra mandava usar
+  o `…` e uma grafia que o `…` não aceita. Medido: zero gatilhos usam a grafia; o
+  único `<Button variant="destructive">` do app é o de CONFIRMAR. A régua escrita
+  põe a cor onde o gesto acontece, e está no `replit.md`.
+  1. **Das 31 destrutivas, oito não tinham confirmação nenhuma.** Fechei as
+     quatro irreversíveis (revogar portal, revogar lookbook, restaurar padrão de
+     permissões, e o estorno de `/receber`) e deixei os 10 que nomeiam o objeto
+     mas não o valor como sobra — com a lista da fase A pronta.
+  2. **"Desfazer" NÃO é destrutivo, e é decisão escrita.** As duas de
+     `reservas/[bloqueioId].tsx` **são** a rede que o E97 criou para errar sair
+     barato; embrulhá-las num diálogo devolve o custo que elas tiraram.
+  3. **O meu plano endereçou o arquivo errado.** `contratos/[id].tsx` já nomeava
+     objeto e valor desde antes da rodada; quem não nomeava é o `/receber`. E o
+     valor certo é o **RECEBIDO**: numa PARCIAL de R$ 1.000,00 com R$ 300,00
+     recebidos, o estorno tira R$ 300,00 — escrever mil seria a tela mentindo
+     sobre dinheiro num clique sem volta.
+  4. **Escrevi o assert da segunda cláusula e o desliguei.** "Nenhuma descrição é
+     frase fixa" acusou **cinco**, e nenhuma era o defeito — uma delas nem é
+     destrutiva (a confirmação de registrar devolução). O defeito real não se
+     distingue delas **pela forma**, e sim pelo contexto (o diálogo abre de uma
+     LINHA). **É o erro do D15 pelo avesso:** lá o teste prometia mais do que
+     olhava, aqui acusaria mais do que a régua diz — e o custo é o mesmo, desligar
+     a suspeita de quem vem depois, por ruído em vez de por silêncio. As cinco
+     ficaram citadas no próprio arquivo, para ninguém tentar de novo às cegas.

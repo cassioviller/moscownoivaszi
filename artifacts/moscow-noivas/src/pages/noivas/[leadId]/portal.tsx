@@ -14,6 +14,17 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { portalVivo, portalVencido, linkDoPortal } from "@/lib/portal";
 import { DoorOpen, Copy, Ban } from "lucide-react";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { instanteDiaMes } from "@/lib/formatos";
 
 /**
@@ -34,10 +45,11 @@ function haQuanto(instante: string): string {
   return `há ${dias} dia${dias > 1 ? "s" : ""}`;
 }
 
-export function PortalNoiva({ leadId }: { leadId: string }) {
+export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?: string }) {
   const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [revogandoAberto, setRevogandoAberto] = useState(false);
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
 
   const portalQ = useGetPortalLead(activeLojaId!, leadId, {
@@ -172,7 +184,7 @@ export function PortalNoiva({ leadId }: { leadId: string }) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={onRevogar}
+                      onClick={() => setRevogandoAberto(true)}
                       disabled={revogar.isPending}
                     >
                       <Ban className="mr-1.5 h-3.5 w-3.5" />
@@ -185,6 +197,33 @@ export function PortalNoiva({ leadId }: { leadId: string }) {
           </>
         )}
       </CardContent>
+
+      {/* E10/E99 — revogar é irreversível para o link que a noiva TEM.
+          Gerar outro é possível; recuperar o que ela guardou no favorito, não.
+          O diálogo nomeia de quem é o portal, porque este card mora numa ficha
+          e quem clica pode ter chegado por uma aba aberta há meia hora. */}
+      <AlertDialog open={revogandoAberto} onOpenChange={setRevogandoAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revogar o portal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O link que <span className="font-medium">{noivaNome ?? "esta noiva"}</span>{" "}
+              tem guardado para de funcionar na hora, e as mensagens de cobrança
+              passam a sair sem ele. Você pode gerar um novo, mas terá de enviá-lo
+              de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onRevogar}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revogar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

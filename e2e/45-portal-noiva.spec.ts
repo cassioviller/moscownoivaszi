@@ -170,6 +170,10 @@ test.describe("Portal da noiva (E78)", () => {
       .from(portalTokensTable)
       .where(eq(portalTokensTable.leadId, leadId));
 
+    // E10/E99: revogar passou a confirmar — o link que a noiva guardou morre na
+    // hora, e o diálogo nomeia de quem é o portal antes de deixar apagar.
+    await page.getByRole("button", { name: "Revogar" }).click();
+    await expect(page.getByText(new RegExp(`O link que .*${noivaNome}`))).toBeVisible();
     await page.getByRole("button", { name: "Revogar" }).click();
     await expect(page.getByText("Portal revogado").first()).toBeVisible();
 

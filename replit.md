@@ -251,6 +251,19 @@ rode o codegen.
 - **Orçamento versiona no ENVIO** (E75): a noiva vê a última versão enviada,
   nunca o rascunho vivo; o aceite congela versão+hash. Editar depois de
   enviado NÃO muda o que ela está vendo — crie/envie nova versão.
+- **A régua da ação destrutiva** (E10/E99). Toda ação que apaga, desfaz dinheiro
+  ou tira acesso **pede confirmação**; a confirmação **nomeia o objeto** ("o
+  portal de Marina", "Parcela 3") **e o que se perde** — o valor em dinheiro
+  quando houver, o que deixa de funcionar quando não houver; e a ação de
+  **confirmar** é vermelha (o gatilho, numa fileira, não precisa ser).
+  Duas coisas que a régua NÃO diz, e o porquê: **não** exige
+  `variant="destructive"` no gatilho, porque `DropdownMenuItem` não tem essa
+  prop — pedir uma grafia que o componente não aceita é escrever regra que
+  ninguém pode seguir; e **desfazer não é destrutivo** ("Desfazer retirada",
+  "Desfazer devolução"), porque o desfazer É a rede que o E97 criou para errar
+  sair barato. `src/lib/destrutivas-varredura.test.ts` cobra a **ausência** de
+  confirmação, e só isso — a segunda cláusula é prosa e mora na revisão, com o
+  motivo escrito no próprio teste.
 - **O portal expõe dados financeiros num link** (E78): TTL 30d, revogação a um
   clique, token em QUERY (o logger corta a query), e o extrato sai só do
   contrato ATIVO da própria noiva. Revogado responde 404 como desconhecido —

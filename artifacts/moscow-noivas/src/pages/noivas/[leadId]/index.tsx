@@ -532,7 +532,7 @@ export default function NoivaDetalhe() {
         </Card>
 
         {/* Portal (E78): o link único que substitui gradualmente os soltos. */}
-        <PortalNoiva leadId={leadId!} />
+        <PortalNoiva leadId={leadId!} noivaNome={lead.noivaNome} />
 
         {/* Lookbook (E21): a seleção provada vira link para rever em casa. */}
         <LookbookNoiva leadId={leadId!} />
