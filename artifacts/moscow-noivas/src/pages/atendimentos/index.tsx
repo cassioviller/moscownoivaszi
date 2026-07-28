@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { instanteHora, instanteDiaMes } from "@/lib/formatos";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const TODAS = "TODAS";
@@ -63,8 +64,6 @@ const DESFECHO_LABELS: Record<string, string> = {
 
 const DESFECHOS = ["RESERVOU", "VAI_PENSAR", "NAO_SERVIU"] as const;
 
-const horaFmt = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
-const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long" });
 
 /**
  * O início REAL do atendimento (E36): a que horas de fato começou e o quanto
@@ -83,7 +82,7 @@ function duracaoHumana(min: number): string {
 }
 
 function inicioReal(inicio: string, atendidoEm: string): string {
-  const hora = horaFmt.format(new Date(atendidoEm));
+  const hora = instanteHora(atendidoEm);
   const min = Math.round((new Date(atendidoEm).getTime() - new Date(inicio).getTime()) / 60_000);
   if (min > 2) return `começou ${hora} · ${duracaoHumana(min)} após o horário`;
   if (min < -2) return `começou ${hora} · ${duracaoHumana(Math.abs(min))} adiantado`;
@@ -289,11 +288,11 @@ export default function Atendimentos() {
       <li key={a.id} className="flex items-start gap-4 px-4 py-3" data-testid={`linha-atendimento-${a.id}`}>
         <div className="flex w-16 shrink-0 flex-col items-center">
           <span className="text-lg font-serif leading-none tabular-nums">
-            {horaFmt.format(new Date(a.inicio))}
+            {instanteHora(a.inicio)}
           </span>
           {comData && (
             <span className="mt-1 text-center text-xs text-muted-foreground">
-              {dataFmt.format(new Date(a.inicio))}
+              {instanteDiaMes(a.inicio)}
             </span>
           )}
         </div>
@@ -421,7 +420,7 @@ export default function Atendimentos() {
                     setConfirmacao({
                       titulo: "Voltar para agendado?",
                       descricao: a.atendidoEm
-                        ? `O atendimento de ${noivaNome} volta a constar como não realizado: o horário de início já medido (${horaFmt.format(new Date(a.atendidoEm))}) e o desfecho são apagados, e não há como recuperá-los.`
+                        ? `O atendimento de ${noivaNome} volta a constar como não realizado: o horário de início já medido (${instanteHora(a.atendidoEm)}) e o desfecho são apagados, e não há como recuperá-los.`
                         : `O atendimento de ${noivaNome} volta a constar como não realizado, e o desfecho é apagado.`,
                       acao: () => aplicar(a, { situacao: "AGENDADO" }, "Voltou para agendado"),
                     })
@@ -441,7 +440,7 @@ export default function Atendimentos() {
                   setConfirmacao({
                     titulo: "Reabrir este atendimento?",
                     descricao: a.atendidoEm
-                      ? `Ele volta a constar como não realizado: o início já medido (${horaFmt.format(new Date(a.atendidoEm))}) e o desfecho são apagados.`
+                      ? `Ele volta a constar como não realizado: o início já medido (${instanteHora(a.atendidoEm)}) e o desfecho são apagados.`
                       : "Ele volta a constar como não realizado, e o desfecho é apagado.",
                     acao: () => aplicar(a, { situacao: "AGENDADO" }, "Atendimento reaberto"),
                   })

@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, FileUp, CheckCircle2 } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import { brl, instanteDiaMes } from "@/lib/formatos";
 
 /**
  * E70 — a conciliação que era planilha.
@@ -34,14 +34,9 @@ import { brl } from "@/lib/formatos";
  * apareceu no banco.
  */
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-});
 
 function diaCurto(ymd: string): string {
-  return dataFmt.format(new Date(`${ymd}T12:00:00-03:00`));
+  return instanteDiaMes(`${ymd}T12:00:00-03:00`);
 }
 
 export default function Conciliacao() {

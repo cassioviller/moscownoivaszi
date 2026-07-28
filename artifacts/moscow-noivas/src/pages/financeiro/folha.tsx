@@ -63,7 +63,8 @@ import {
   instanteNoIntervalo,
 } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, ResumoCard, dataFmt, useCaminhoDaLoja, invalidarCaixa } from "./helpers";
+import { ErroListagem, ResumoCard, dataFmt, invalidarCaixa } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 

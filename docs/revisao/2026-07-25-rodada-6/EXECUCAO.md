@@ -70,7 +70,7 @@ quem escolheu a paleta:
 | E96 | O erro do servidor chega ao campo (F17 🔴, B13, D6; D5 com veredito) | M | ✅ | `adfa90e` · [notas](execucao/E96.md) |
 | E97 | Registro operacional: carimbo honesto e desfazer (F6 🔴, +6) | G | ✅ | `3656a8e` + `92094a8` · [notas](execucao/E97.md) |
 | E98 | As telas se alcançam (E3 🔴, +9) | G | 🟨 | parte 1 (E3, F1, F5, F9, F27, F29) em `22f14b6`; parte 2 (F12, F2, F3, F4) em `7920576`; parte 3 (F7, F10, F14, F40, F43) em `6cf3473`; parte 4 (F28) em `69511b4`; faltam E9 (vai com o E99) e F13 · [notas](execucao/E98.md) |
-| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; faltam E6/E8, E10, E19+E9, A9/D15 · [notas](execucao/E99.md) |
+| E99 | A camada de UI que falta (D7, E6, E8, +6) | G | 🟨 | parte 1 (A5, D7, E17, E18) em `c8ff967`; parte 2 (E12, E14, E21, D11) em `b093527`; parte 3 (D15, A9) em `PENDENTE`; faltam E6/E8, E10, E19+E9 · [notas](execucao/E99.md) |
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | 🟨 | parte 1 (F36, A11) em `5ae20fb` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | 🟨 | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; falta F42 · [notas](execucao/E101.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
@@ -656,3 +656,28 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      índice num editor que remove do MEIO: apagar a segunda de três faz o React
      reaproveitar o nó da terceira e o foco saltar de campo, no meio da digitação
      de uma escada de comissão. O id novo é local e não vaza para a API.
+- **E99 parte 3**: D15 e A9. **A etiqueta 🔵 do D15 estava errada, e a medição
+  mostra por quê**: não eram 25 formatadores, eram **36**; **17 eram cópias** de
+  oito formas idênticas; e **7 omitiam `timeZone`, três deles formatando um
+  INSTANTE** — a hora do atendimento e o início real medido eram desenhados no
+  relógio de QUEM ABRE, não no da loja. É o irmão de código do E1 (E92): lá era o
+  Chromium em inglês desenhando a data invertida, aqui é a hora mudando conforme
+  onde está quem abriu. Saldo: **36 → 30 formatadores, 7 → 0 sem fuso**.
+  1. **O teste escolhe os casos na FRONTEIRA**, que é a única forma de um sweep
+     de formatação ser verificável: `2026-07-29T00:30:00Z` é 21h30 do dia **28**
+     em São Paulo, e `"2026-01-01"` sem âncora vira 31/12/**2025** — o caso em
+     que o erro troca o ANO. Um formatador sem `timeZone` passa nos casos do
+     meio do dia e falha nesses.
+  2. **Um comentário apontava para o lugar errado, e é o achado do épico.**
+     `reservas/helpers.ts` justificava os três formatadores sem fuso dizendo
+     "fuso local (**mesma convenção da página Agenda**)" — e a Agenda faz o
+     oposto: `grade.tsx` sempre passou `America/Sao_Paulo`. O comentário citava
+     como prova uma tela que discorda dele. **Pior que comentário nenhum:
+     desliga a suspeita de quem lê** — a mesma classe do `liquidoEmCentavos` do
+     E95.
+  3. **O A9 já tinha custado uma cópia, nesta mesma sessão.** `useCaminhoDaLoja`
+     morava em `pages/financeiro/helpers.tsx`; o `<SemWhatsApp>` do F3 precisou
+     dele três commits atrás, não podia importar uma página a partir de um
+     componente compartilhado, e reimplementou a montagem com `useParams`. Foi
+     assim que uma régua virou duas. O hook subiu para `@/hooks` e a cópia
+     morreu.

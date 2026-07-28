@@ -1,4 +1,3 @@
-import { useParams } from "react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { chavesDoCaixa } from "@/lib/financeiro/cache";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,17 +24,6 @@ export const dataFmt = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: "UTC",
 });
-
-/**
- * Caminho dentro da loja atual. As rotas reais vivem sob `/loja/:lojaId/…`; um
- * link absoluto tipo `/contratos/x` só chega lá pelo catch-all LegacyRedirect,
- * que é compatibilidade transitória para deep-links antigos — e uma ida e volta
- * de navegação a cada clique. Mesma montagem da sidebar.
- */
-export function useCaminhoDaLoja(): (caminho: string) => string {
-  const { lojaId } = useParams();
-  return (caminho) => `/loja/${lojaId}${caminho}`;
-}
 
 /**
  * Um movimento de caixa invalida TUDO o que ele muda (D9/E93) — a lista das

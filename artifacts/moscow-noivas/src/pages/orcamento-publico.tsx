@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
-import { brl } from "@/lib/formatos";
+import { brl, instanteLongo } from "@/lib/formatos";
 
 /**
  * Página PÚBLICA do orçamento (/orcamento/:token) — o que a noiva abre pelo
@@ -34,10 +34,6 @@ const ROTULO_TIPO: Record<string, string> = {
   AJUSTE: "Ajuste",
 };
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "long",
-  timeZone: "America/Sao_Paulo",
-});
 
 export default function OrcamentoPublico() {
   const { token } = useParams();
@@ -147,7 +143,7 @@ export default function OrcamentoPublico() {
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <span>
                     Você aceitou esta proposta em{" "}
-                    <span className="font-medium">{dataFmt.format(new Date(dados!.aceitoEm))}</span>.
+                    <span className="font-medium">{instanteLongo(dados!.aceitoEm)}</span>.
                     A sua vendedora já foi avisada.
                   </span>
                 </div>
@@ -169,7 +165,7 @@ export default function OrcamentoPublico() {
 
               <p className="text-xs text-muted-foreground border-t pt-3">
                 {dados!.validade
-                  ? `Proposta válida até ${dataFmt.format(new Date(dados!.validade))}. `
+                  ? `Proposta válida até ${instanteLongo(dados!.validade)}. `
                   : ""}
                 Dúvidas ou quer fechar? É só responder à sua vendedora no WhatsApp.
               </p>

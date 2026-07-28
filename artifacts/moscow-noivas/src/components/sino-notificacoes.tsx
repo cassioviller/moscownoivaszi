@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Bell, X } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { instanteDiaMes } from "@/lib/formatos";
 
 
 /**
@@ -42,11 +43,6 @@ type Notificacao = {
   urgente: boolean;
 };
 
-const diaCurto = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-});
 
 function chaveDispensadas(usuarioId: string, lojaId: string): string {
   return `sino:dispensadas:${usuarioId}:${lojaId}`;
@@ -119,7 +115,7 @@ export function SinoNotificacoes() {
     if (diaNegativo) {
       lista.push({
         id: `CAIXA:${diaNegativo}`,
-        titulo: `O caixa fica negativo em ${diaCurto.format(new Date(`${diaNegativo}T12:00:00-03:00`))}`,
+        titulo: `O caixa fica negativo em ${instanteDiaMes(`${diaNegativo}T12:00:00-03:00`)}`,
         detalhe: "Pela projeção com o que há para receber e pagar.",
         href: `${base}/financeiro/projecao`,
         urgente: true,

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Erro } from "@/components/estado";
 import { useToast } from "@/hooks/use-toast";
 import { DatabaseBackup, Loader2 } from "lucide-react";
+import { instanteCurto } from "@/lib/formatos";
 
 /**
  * Status de backup do sistema (E30) — a resposta do SRE à pergunta que não
@@ -20,14 +21,6 @@ import { DatabaseBackup, Loader2 } from "lucide-react";
  * aperta. Mora na aba Administração porque o dump é do banco inteiro.
  */
 
-const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /** "há 5 min", "há 3 h", "há 12 dias" — ou null para cair na data absoluta. */
 function haQuanto(instante: string): string | null {
@@ -44,7 +37,7 @@ function haQuanto(instante: string): string | null {
 }
 
 function dataLonga(iso: string): string {
-  return quandoFmt.format(new Date(iso)).replace(", ", " às ");
+  return instanteCurto(iso).replace(", ", " às ");
 }
 
 function tamanho(bytes: number | null | undefined): string {

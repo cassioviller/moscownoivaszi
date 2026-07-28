@@ -60,6 +60,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { MessageCircle } from "lucide-react";
 import { dataCurtaFmt } from "../noivas/helpers";
 import { hojeLocal } from "@/lib/financeiro/datas";
+import { instanteCurto } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import {
@@ -96,12 +97,6 @@ const agendarSchema = z
 
 type AgendarValues = z.infer<typeof agendarSchema>;
 
-const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /**
  * Agendar atendimento/prova (porte da /atendimentos/novo do feat/orcamentos).
@@ -736,7 +731,7 @@ export default function NovoAtendimento() {
                         {a.tipo === "PROVA" ? " — Prova" : ""}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {dataHoraFmt.format(new Date(a.inicio))} · {a.cabine?.nome ?? "Cabine"} ·{" "}
+                        {instanteCurto(a.inicio)} · {a.cabine?.nome ?? "Cabine"} ·{" "}
                         {a.vendedora?.nome ?? "Vendedora"}
                       </span>
                     </div>

@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { BookImage, Trash2 } from "lucide-react";
+import { instanteDiaMes } from "@/lib/formatos";
 
 /**
  * Lookbook (E21) — o card na página da noiva: a vendedora escolhe os vestidos
@@ -33,11 +34,6 @@ import { BookImage, Trash2 } from "lucide-react";
 
 const linkDoLookbook = (token: string) => `${window.location.origin}/lookbook/${token}`;
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "America/Sao_Paulo",
-});
 
 export function LookbookNoiva({ leadId }: { leadId: string }) {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -164,10 +160,10 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
                       {l.vestidos.map((v) => v.nome).join(", ") || "Sem vestidos"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      criado em {dataFmt.format(new Date(l.criadoEm))}
+                      criado em {instanteDiaMes(l.criadoEm)}
                       {expirado
                         ? " · expirado"
-                        : ` · vale até ${dataFmt.format(new Date(l.expiraEm))}`}
+                        : ` · vale até ${instanteDiaMes(l.expiraEm)}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">

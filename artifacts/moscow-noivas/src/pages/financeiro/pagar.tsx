@@ -79,7 +79,8 @@ import { brl, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, useCaminhoDaLoja, invalidarCaixa } from "./helpers";
+import { ResumoCard, dataFmt, invalidarCaixa } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 

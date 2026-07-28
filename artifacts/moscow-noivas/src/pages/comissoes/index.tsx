@@ -61,7 +61,7 @@ import {
 import { Trash2, Plus, FlaskConical, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { brl } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { rotuloCompetencia } from "@/lib/financeiro/datas";
@@ -103,7 +103,6 @@ const MOTIVO_FAIXA: Record<string, string> = {
 /** Quantos meses fechados a série mostra — um ano dá para ver sazonalidade. */
 const MESES_NA_SERIE = 12;
 
-const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 /** Uma faixa em edição — strings, porque vêm do teclado. */
 /**
@@ -767,7 +766,7 @@ export default function Comissoes() {
                       {f.percentualAplicado !== null && f.percentualAplicado !== undefined && ` · ${f.percentualAplicado}%`}
                       {" · comissão "}{brl(f.valorComissao)}
                       {!!f.valorBonus && ` · bônus ${brl(f.valorBonus)}`}
-                      {f.fechadoEm && ` · fechado em ${diaFmt.format(new Date(f.fechadoEm))}`}
+                      {f.fechadoEm && ` · fechado em ${diaMesAno(f.fechadoEm)}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -843,7 +842,7 @@ export default function Comissoes() {
                     <p className="text-xs text-muted-foreground">
                       {b.noivaNome && `Contrato de ${b.noivaNome} · `}
                       baixado por {b.baixadoPorNome ?? "—"}
-                      {b.baixadoEm && ` em ${diaFmt.format(new Date(b.baixadoEm))}`}
+                      {b.baixadoEm && ` em ${diaMesAno(b.baixadoEm)}`}
                       {b.motivo && ` · ${b.motivo}`}
                     </p>
                   </div>
@@ -903,26 +902,26 @@ export default function Comissoes() {
                               {vigente ? (
                                 <>
                                   <Badge className="mr-2 font-normal">vigente</Badge>
-                                  desde {diaFmt.format(inicio)}
+                                  desde {diaMesAno(inicio)}
                                 </>
                               ) : futura ? (
                                 <>
                                   <Badge variant="secondary" className="mr-2 font-normal">
                                     futura
                                   </Badge>
-                                  entra em vigor em {diaFmt.format(inicio)}
+                                  entra em vigor em {diaMesAno(inicio)}
                                 </>
                               ) : !regra.ativo ? (
                                 <>
                                   <Badge variant="outline" className="mr-2 font-normal">
                                     inativa
                                   </Badge>
-                                  definida para {diaFmt.format(inicio)}
+                                  definida para {diaMesAno(inicio)}
                                 </>
                               ) : (
                                 <>
-                                  valeu de {diaFmt.format(inicio)}
-                                  {fim ? ` a ${diaFmt.format(fim)}` : ""}
+                                  valeu de {diaMesAno(inicio)}
+                                  {fim ? ` a ${diaMesAno(fim)}` : ""}
                                 </>
                               )}
                               {regra.bonusAcumulaFaixas && " · bônus acumulam"}
@@ -930,7 +929,7 @@ export default function Comissoes() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Remover a versão de ${diaFmt.format(inicio)} de ${vendedora.nome}`}
+                              aria-label={`Remover a versão de ${diaMesAno(inicio)} de ${vendedora.nome}`}
                               disabled={removerRegra.isPending}
                               onClick={() =>
                                 setRegraRemovendo({ id: regra.id, nome: vendedora.nome })

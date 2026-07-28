@@ -134,3 +134,110 @@ export function brl(valor: number): string {
 export function diaParaISO(dia: string): string {
   return new Date(`${dia}T12:00:00-03:00`).toISOString();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// D15/E99 — as datas na tela saem de uma régua só, e o fuso é sempre explícito.
+//
+// Havia **36** `new Intl.DateTimeFormat` escritos à mão nas telas, e **17 deles
+// eram cópias** de oito formas idênticas — a mesma "dd/MM/aaaa HH:mm" repetida
+// em quatro arquivos. Sete omitiam `timeZone`, e três desses formatam um
+// INSTANTE: a hora do atendimento era desenhada no relógio de QUEM ABRE, não no
+// da loja. É o irmão de código do E1 (E92), onde o Chromium em inglês desenhava
+// a data invertida — só que este não depende do idioma do navegador, e sim de
+// onde ele está.
+//
+// A distinção que os nomes daqui existem para tornar impossível de errar:
+//
+//   • **INSTANTE** — um momento no tempo (`inicio`, `criadoEm`, `recebidoEm`).
+//     Vale o relógio da LOJA: `America/Sao_Paulo`. Um atendimento das 14h é às
+//     14h em Recife, em Lisboa e no servidor.
+//   • **DIA DE NEGÓCIO** — uma data sem hora (vencimento, casamento,
+//     competência). Vale `UTC` com âncora ao meio-dia, senão o fuso empurra o
+//     dia para a véspera — o defeito que a `dataDia` acima já documentava.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FUSO_LOJA = "America/Sao_Paulo";
+
+/** Normaliza "YYYY-MM-DD" ao meio-dia UTC; instante ISO passa direto. */
+function comoData(valor: Date | string): Date {
+  if (valor instanceof Date) return valor;
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(valor) ? `${valor}T12:00:00Z` : valor);
+}
+
+// ── Instantes: o relógio da loja ──
+
+const instanteCurtoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+/** "28/07/2026 14:30" — trilha de auditoria, atividade da equipe, backups. */
+export function instanteCurto(valor: Date | string): string {
+  return instanteCurtoFmt.format(comoData(valor));
+}
+
+const instanteHoraFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+/** "14:30" — a hora do atendimento, no relógio da loja. */
+export function instanteHora(valor: Date | string): string {
+  return instanteHoraFmt.format(comoData(valor));
+}
+
+const instanteDiaMesFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  day: "2-digit",
+  month: "2-digit",
+});
+/** "28/07" — sino, conciliação, cards curtos. */
+export function instanteDiaMes(valor: Date | string): string {
+  return instanteDiaMesFmt.format(comoData(valor));
+}
+
+const instanteLongoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  dateStyle: "long",
+});
+/** "28 de julho de 2026" — as telas públicas (portal, orçamento). */
+export function instanteLongo(valor: Date | string): string {
+  return instanteLongoFmt.format(comoData(valor));
+}
+
+// ── Dias de negócio: UTC, ancorado ao meio-dia ──
+
+const diaMesAnoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+/** "28/07/2026" — vencimento, competência fechada. */
+export function diaMesAno(valor: Date | string): string {
+  return diaMesAnoFmt.format(comoData(valor));
+}
+
+const diaMesAbrevAnoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+/** "28 de jul. de 2026" — fluxo de caixa, listas de noivas. */
+export function diaMesAbrevAno(valor: Date | string): string {
+  return diaMesAbrevAnoFmt.format(comoData(valor));
+}
+
+const mesAnoLongoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  month: "long",
+  year: "numeric",
+});
+/** "julho de 2026" — competências. Minúsculo, como o E92 fixou. */
+export function mesAnoLongo(valor: Date | string): string {
+  return mesAnoLongoFmt.format(comoData(valor));
+}

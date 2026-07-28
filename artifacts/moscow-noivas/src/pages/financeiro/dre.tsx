@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErroListagem, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import {
   Select,
   SelectContent,

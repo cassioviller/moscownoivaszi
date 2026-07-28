@@ -4,9 +4,20 @@
  * Convenções de tempo do sistema:
  * - `casamentoData` é data de negócio (âncora meio-dia SP via diaParaISO) →
  *   exibir/contar em UTC (mesma convenção de src/pages/noivas/helpers.ts).
- * - `inicio` de atendimento é um instante real → exibir/contar no fuso local
- *   (mesma convenção da página Agenda).
+ * - `inicio` de atendimento é um instante real → exibir/contar no fuso da LOJA
+ *   (America/Sao_Paulo).
+ *
+ * D15/E99 — este cabeçalho dizia "fuso local (mesma convenção da página
+ * Agenda)", e a Agenda faz o oposto: `grade.tsx` sempre passou
+ * `timeZone: "America/Sao_Paulo"`. Os três formatadores abaixo herdavam o
+ * relógio do NAVEGADOR, então a mesma prova das 14h aparecia às 19h para quem
+ * abrisse de Lisboa — e o comentário mandava o próximo leitor confiar nisso,
+ * citando como prova uma tela que discorda. Comentário que aponta para o lugar
+ * errado é pior que comentário nenhum: desliga a suspeita de quem lê.
  */
+
+/** O relógio da loja: um atendimento das 14h é às 14h em qualquer lugar. */
+const FUSO_LOJA = "America/Sao_Paulo";
 
 /** Mês por extenso + ano ("setembro de 2026") para datas de negócio (UTC). */
 export const mesAnoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -18,14 +29,15 @@ export const mesAnoFmt = new Intl.DateTimeFormat("pt-BR", {
 /** Mês abreviado ("set.") para datas de negócio (UTC). */
 export const mesAbrevFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
 
-/** Mês por extenso + ano no fuso local, para instantes (provas). */
-export const mesAnoLocalFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+/** Mês por extenso + ano no fuso da loja, para instantes (provas). */
+export const mesAnoLocalFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: FUSO_LOJA });
 
-/** Mês abreviado no fuso local, para instantes (provas). */
-export const mesAbrevLocalFmt = new Intl.DateTimeFormat("pt-BR", { month: "short" });
+/** Mês abreviado no fuso da loja, para instantes (provas). */
+export const mesAbrevLocalFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: FUSO_LOJA });
 
-/** Data + hora no fuso local ("12 de setembro de 2026 14:30") para provas. */
+/** Data + hora no fuso da loja ("12 de setembro de 2026 14:30") para provas. */
 export const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
   day: "2-digit",
   month: "long",
   year: "numeric",

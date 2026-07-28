@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, CalendarDays } from "lucide-react";
-import { brl, capitalizar } from "@/lib/formatos";
+import { brl, capitalizar, instanteLongo } from "@/lib/formatos";
 
 /**
  * O portal da noiva (/noiva/:token, E78) — UM link para tudo dela: a
@@ -41,10 +41,6 @@ const ROTULO_PARCELA: Record<string, string> = {
   CANCELADA: "Cancelada",
 };
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "long",
-  timeZone: "America/Sao_Paulo",
-});
 const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "full",
   timeStyle: "short",
@@ -190,7 +186,7 @@ export default function NoivaPortal() {
                     <span>
                       Você aceitou esta proposta em{" "}
                       <span className="font-medium">
-                        {dataFmt.format(new Date(orc.aceitoEm))}
+                        {instanteLongo(orc.aceitoEm)}
                       </span>
                       . A sua vendedora já foi avisada.
                     </span>
@@ -216,7 +212,7 @@ export default function NoivaPortal() {
 
                 {orc.validade && (
                   <p className="text-xs text-muted-foreground border-t pt-3">
-                    Proposta válida até {dataFmt.format(new Date(orc.validade))}
+                    Proposta válida até {instanteLongo(orc.validade)}
                     .
                   </p>
                 )}
@@ -343,7 +339,7 @@ export default function NoivaPortal() {
                         <p className="text-lg tabular-nums">
                           {brl(dados!.resumoPagamento.proximaValor ?? 0)}
                           <span className="text-muted-foreground">
-                            {" "}em {dataFmt.format(new Date(dados!.resumoPagamento.proximaEm))}
+                            {" "}em {instanteLongo(dados!.resumoPagamento.proximaEm)}
                           </span>
                         </p>
                       </div>
@@ -368,7 +364,7 @@ export default function NoivaPortal() {
                           <p className="text-xs text-muted-foreground">
                             {paga
                               ? ROTULO_PARCELA[p.status]
-                              : `Vence em ${dataFmt.format(new Date(p.vencimento))} · ${
+                              : `Vence em ${instanteLongo(p.vencimento)} · ${
                                   ROTULO_PARCELA[p.status] ?? p.status
                                 }`}
                           </p>

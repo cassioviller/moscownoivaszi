@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { portalVivo, linkDoPortal } from "@/lib/portal";
 import { DoorOpen, Copy, Ban } from "lucide-react";
+import { instanteDiaMes } from "@/lib/formatos";
 
 /**
  * Portal da noiva (E78) — o card na ficha: gerar/copiar/revogar o link único
@@ -22,11 +23,6 @@ import { DoorOpen, Copy, Ban } from "lucide-react";
  * antigo na hora.
  */
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "America/Sao_Paulo",
-});
 
 /** "há 3 dias" / "há 2 horas" / "agora há pouco" — vocabulário de card. */
 function haQuanto(instante: string): string {
@@ -140,7 +136,7 @@ export function PortalNoiva({ leadId }: { leadId: string }) {
                   <>Ela ainda não abriu.</>
                 )}{" "}
                 <span className="text-muted-foreground">
-                  Válido até {dataFmt.format(new Date(portal!.expiraEm))}.
+                  Válido até {instanteDiaMes(portal!.expiraEm)}.
                 </span>
               </p>
             )}

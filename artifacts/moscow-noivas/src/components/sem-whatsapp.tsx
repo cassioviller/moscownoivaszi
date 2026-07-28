@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 
@@ -16,9 +17,11 @@ import { Pencil } from "lucide-react";
  * mandar mensagem, não cadastrar), mas agora é clicável e diz o que acontece.
  */
 export function SemWhatsApp({ leadId }: { leadId?: string | null }) {
-  // A loja vem da rota, como nas telas que usam este selo — `useCaminhoDaLoja`
-  // mora em `pages/financeiro/helpers` e arrastá-lo para um componente
-  // compartilhado é o que a sobra A9 (E99) existe para resolver.
+  // A9/E99: o hook saiu de `pages/financeiro/helpers` para `@/hooks` justamente
+  // por causa deste componente — antes ele reimplementava a montagem do caminho
+  // com `useParams`, porque um componente compartilhado não deve importar uma
+  // página.
+  const naLoja = useCaminhoDaLoja();
   const { lojaId } = useParams();
 
   // Sem lead não há ficha para abrir — a fila de inadimplentes tem linhas que
@@ -39,7 +42,7 @@ export function SemWhatsApp({ leadId }: { leadId?: string | null }) {
       className="text-muted-foreground shrink-0"
       data-testid={`sem-whatsapp-${leadId}`}
     >
-      <Link to={`/loja/${lojaId}/noivas/${leadId}/editar`} title="Cadastrar o WhatsApp dela">
+      <Link to={naLoja(`/noivas/${leadId}/editar`)} title="Cadastrar o WhatsApp dela">
         <Pencil className="mr-1 h-3.5 w-3.5" />
         Sem WhatsApp
       </Link>

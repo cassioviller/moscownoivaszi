@@ -62,7 +62,10 @@ export default function ConversaoLeads() {
   const dados = q.data;
   const maiorMes = Math.max(1, ...(sazonalidade.data ?? []).map((m) => m.total));
 
-  const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+    // A competência já é ancorada ao meio-dia de SP na linha abaixo, então o fuso
+  // não mudava a resposta — mas deixá-lo implícito era o convite para a próxima
+  // cópia deste formatador nascer sem âncora nenhuma.
+  const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" });
   const rotuloMes = (competencia: string) =>
     mesFmt.format(new Date(`${competencia}-15T12:00:00-03:00`));
   const maiorMotivo = dados ? Math.max(1, ...dados.porMotivoPerda.map((m) => m.total)) : 1;

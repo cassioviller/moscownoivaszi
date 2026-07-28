@@ -27,7 +27,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ErroListagem, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, diaParaISO } from "@/lib/formatos";
