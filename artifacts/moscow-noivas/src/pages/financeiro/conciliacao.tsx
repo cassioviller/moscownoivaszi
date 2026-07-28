@@ -6,7 +6,11 @@ import {
   getListParcelasQueryKey,
   useListPagamentos,
   getListPagamentosQueryKey,
+  useMarcarConciliado,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import {
   parseExtrato,
   conciliarExtrato,
@@ -137,6 +141,77 @@ export default function Conciliacao() {
     return conciliarExtrato(transacoes, movimentos);
   }, [transacoes, janela, parcelas.data, pagamentos.data]);
 
+  /**
+   * F32/E103 — o carimbo por id SINTÉTICO, num mapa ao lado.
+   *
+   * Ele não entra no `MovimentoSistema` de propósito: aquele tipo é do motor de
+   * CASAMENTO (`conciliarExtrato`), que compara valor e data e não tem por que
+   * saber o que é conciliação. Misturar as duas coisas faria o núcleo do E70
+   * carregar um conceito do E103.
+   */
+  const carimboPorMovimento = useMemo(() => {
+    const mapa = new Map<string, string | null>();
+    for (const p of parcelas.data ?? []) mapa.set(`parcela:${p.id}`, p.conciliadoEm ?? null);
+    for (const pg of pagamentos.data ?? []) mapa.set(`pagamento:${pg.id}`, pg.conciliadoEm ?? null);
+    return mapa;
+  }, [parcelas.data, pagamentos.data]);
+
+  const marcar = useMarcarConciliado();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  /** As casadas que AINDA não têm carimbo — é o que o botão vai marcar. */
+  const casadasNovas = useMemo(
+    () => (conciliacao?.casadas ?? []).filter((c) => !carimboPorMovimento.get(c.movimento.id)),
+    [conciliacao, carimboPorMovimento],
+  );
+
+  const [soNaoConciliado, setSoNaoConciliado] = useState(true);
+
+  /** Divergências do sistema que alguém já olhou e marcou em outra passada. */
+  const jaConferidasNoSistema = useMemo(
+    () => (conciliacao?.soSistema ?? []).filter((m) => carimboPorMovimento.get(m.id)).length,
+    [conciliacao, carimboPorMovimento],
+  );
+  const soSistemaVisivel = useMemo(
+    () =>
+      (conciliacao?.soSistema ?? []).filter(
+        (m) => !soNaoConciliado || !carimboPorMovimento.get(m.id),
+      ),
+    [conciliacao, carimboPorMovimento, soNaoConciliado],
+  );
+
+  async function onMarcarConciliadas() {
+    const parcelaIds: string[] = [];
+    const pagamentoIds: string[] = [];
+    for (const { movimento } of casadasNovas) {
+      const [tipo, id] = movimento.id.split(":");
+      if (tipo === "parcela") parcelaIds.push(id);
+      else pagamentoIds.push(id);
+    }
+    try {
+      const r = await marcar.mutateAsync({
+        lojaId: activeLojaId!,
+        data: { parcelaIds, pagamentoIds },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) }),
+        queryClient.invalidateQueries({ queryKey: getListPagamentosQueryKey(activeLojaId!) }),
+      ]);
+      toast({
+        title: `${r.parcelas + r.pagamentos} movimento(s) conferido(s)`,
+        description: "Na próxima conciliação eles não voltam como novidade.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao marcar",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }
+
+
   return (
     <div className="space-y-6">
       <div>
@@ -191,8 +266,33 @@ export default function Conciliacao() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Bateu</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-2">
                 <div className="text-2xl font-bold text-positivo">{conciliacao.casadas.length}</div>
+                {/* F32/E103 — a memória que faltava. Sem ela a conferência morria
+                    com a aba, e as divergências já perdoadas voltavam todo mês
+                    indistinguíveis das novas. O botão some quando não há nada
+                    novo a marcar: dizer "0 conferidos" seria oferecer trabalho
+                    que não existe. */}
+                {casadasNovas.length > 0 ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    disabled={marcar.isPending}
+                    onClick={onMarcarConciliadas}
+                    data-testid="marcar-conciliadas"
+                  >
+                    {marcar.isPending
+                      ? "Marcando…"
+                      : `Marcar ${casadasNovas.length} como conferidas`}
+                  </Button>
+                ) : (
+                  conciliacao.casadas.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Todas já conferidas em conciliações anteriores.
+                    </p>
+                  )
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -253,7 +353,7 @@ export default function Conciliacao() {
             </Card>
           )}
 
-          {conciliacao.soSistema.length > 0 && (
+          {soSistemaVisivel.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">No sistema, mas não no banco</CardTitle>
@@ -261,10 +361,29 @@ export default function Conciliacao() {
                   Registrado aqui e sem par no extrato — pode ser dinheiro em espécie, outra
                   conta, ou um lançamento errado.
                 </CardDescription>
+                {/* F32/E103 — o filtro que a memória destrava, e o motivo de ela
+                    existir. Uma divergência já olhada e perdoada (dinheiro em
+                    espécie, conta de outro banco) volta em TODA conciliação,
+                    indistinguível das novas. Marcá-la como conferida a tira da
+                    lista, e o contador diz quantas foram escondidas — esconder
+                    em silêncio seria trocar um problema por outro. */}
+                {jaConferidasNoSistema > 0 && (
+                  <label className="mt-2 flex items-center gap-2 text-sm font-normal">
+                    <Checkbox
+                      checked={soNaoConciliado}
+                      onCheckedChange={(v) => setSoNaoConciliado(v === true)}
+                      data-testid="filtro-nao-conciliado"
+                    />
+                    <span className="text-muted-foreground">
+                      Esconder as {jaConferidasNoSistema} já conferidas em conciliações
+                      anteriores
+                    </span>
+                  </label>
+                )}
               </CardHeader>
               <CardContent>
                 <ul className="divide-y">
-                  {conciliacao.soSistema.map((m) => (
+                  {soSistemaVisivel.map((m) => (
                     <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                       <span className="min-w-0 truncate">
                         <span className="tabular-nums text-muted-foreground">{diaCurto(m.data)}</span>{" "}

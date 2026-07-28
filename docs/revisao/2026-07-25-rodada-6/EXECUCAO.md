@@ -80,7 +80,7 @@ quem escolheu a paleta:
 | E100 | O portal responde as perguntas da noiva (F35–F39) | G | ✅ | parte 1 (F36, A11) em `5ae20fb`; parte 2 (F37) em `ad8ea38`; parte 3 (F35, F38; sino recusado com medida) em `f03ef0f`; parte 4 (F21, F39) em `6c7fa20` · [notas](execucao/E100.md) |
 | E101 | A permissão diz o que a rota faz (B5, B7, B9, F42) | M | ✅ | B5+B7+B9 em `0e8b37e` + `7d0a0dd`; F42 em `d37fc72` · [notas](execucao/E101.md) · [F42](execucao/E101-f42.md) |
 | E102 | Decisões de domínio financeiro (C5, C7, C8) | M | ✅ | `7dd9d09` · [notas](execucao/E102.md) |
-| E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; faltam a tela do F32 e o F34 · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
+| E103 | Roteiro do mês e da loja nova (F30–F34, F41) | M | 🟨 | parte 1 (F30, F31, F41) em `210c533`; parte 2 (F32, servidor + migração) em `ea22940`; parte 3 (a tela do F32) em `<hash>`; falta o F34 · [notas](execucao/E103.md) · [F32](execucao/E103-f32.md) |
 | E106 | Apagar uma loja deixa de ser um clique sem volta (S1 🔴) | P | ✅ | `d8e923c` · [notas](execucao/E106.md) |
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; faltam A6 (decisão), A8 e o flake · [notas](execucao/E104.md) |
@@ -1112,3 +1112,27 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
   5. **Sem backfill, e por quê:** a conciliação nunca escreveu, então nada sabe o
      que já foi conferido. Todo movimento antigo nasce não-conciliado, que é a
      verdade. Adivinhar é o que o E97 recusou com as avarias.
+- **E103 parte 3 — a tela lembra, e o F32 fecha.** O botão marca as casadas que
+  ainda não têm carimbo; o filtro esconde as divergências já perdoadas.
+  1. **O carimbo mora num mapa ao lado, e não no `MovimentoSistema`** — foi a
+     primeira coisa que tentei e desfiz. Aquele tipo é do motor de CASAMENTO do
+     E70: pôr `conciliadoEm` nele faria o núcleo carregar um conceito do E103
+     para sempre.
+  2. **Duas decisões de tela, as duas sobre não mentir:** o botão SOME quando não
+     há nada novo (dizer "marcar 0" é oferecer trabalho inexistente), e o filtro
+     DIZ quantas escondeu (esconder calado faria a pessoa concluir que o mês
+     bateu).
+  3. **O F32 tornou visível um defeito latente no spec do E70.** O spec novo
+     ficou vermelho porque havia **quatro parcelas vazadas** com valor e data
+     idênticos aos que ele cria — e o casamento é por valor + data. Enquanto a
+     conciliação era fotografia isso não importava: casar a parcela deste run ou
+     a do anterior dava o mesmo placar. **Com memória, a identidade passa a
+     importar.** Conserto: valor único por execução, a lição da S7.
+  4. **E limpar o lixo deixou o teste ANTIGO vermelho.** Ele dizia "os três
+     placares aparecem" e afirmava dois títulos de LISTA — o de "No sistema, mas
+     não no banco" passava **porque o lixo o preenchia**, já que o spec não semeia
+     divergência desse lado. Assert que depende de garbage é assert que mente
+     sobre o que cobre.
+  5. **Rodei o E2E completo DUAS vezes** — o spec passou a escrever carimbo no
+     banco que persiste, e uma passada só não prova que a segunda execução do dia
+     encontra o mundo como esperava. É o erro que o F13 cometeu.
