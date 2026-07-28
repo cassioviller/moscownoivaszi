@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { podeNoModulo } from "@/lib/permissoes";
+import { DialogoReceberParcela } from "@/components/dialogo-receber-parcela";
 import {
   useListParcelas,
   getListParcelasQueryKey,
   useListPortais,
   getListPortaisQueryKey,
+  type Parcela,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,11 +61,16 @@ function LinhaNoiva({
   noiva,
   lojaNome,
   portalUrl,
+  podeReceber,
+  onReceber,
 }: {
   noiva: NoivaInadimplente;
   lojaNome?: string | null;
   /** E84: o portal VIVO da noiva entra na mensagem; sem ele, nada muda. */
   portalUrl?: string | null;
+  /** F28: dar baixa é `financeiro.editar` — ver a fila de cobrança não é. */
+  podeReceber: boolean;
+  onReceber: (noiva: NoivaInadimplente) => void;
 }) {
   const naLoja = useCaminhoDaLoja();
   const wa = linkWhatsApp(
@@ -122,6 +131,22 @@ function LinhaNoiva({
                 />
               </Button>
             </CollapsibleTrigger>
+            {/* F28: a fila existe para cobrar, e cobrar dava certo — a noiva
+                pagava na hora e a vendedora tinha de trocar de tela, achar a
+                parcela no meio da carteira e só então lançar. O diálogo é o
+                MESMO de /financeiro/receber (componente compartilhado), e a
+                parcela é a mais antiga: é a que define os dias e a faixa que
+                esta linha mostra, e a que a mensagem de cobrança cita. */}
+            {podeReceber && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReceber(noiva)}
+                data-testid={`receber-${noiva.leadId}`}
+              >
+                Receber
+              </Button>
+            )}
             <Button asChild variant="outline" size="sm">
               <Link to={naLoja(`/contratos/${noiva.contratoId}`)}>Contrato</Link>
             </Button>
@@ -147,7 +172,8 @@ function LinhaNoiva({
 
 export default function Cobranca() {
   const naLoja = useCaminhoDaLoja();
-  const { activeLojaId, session } = useAuth();
+  const { activeLojaId, acessosModulos, session } = useAuth();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Nome da loja para a mensagem de cobrança ("Aqui é da Moscow Noivas") — vem
@@ -179,6 +205,29 @@ export default function Cobranca() {
   const portalUrls = useMemo(() => urlsDePortalPorLead(portais.data), [portais.data]);
 
   const aging = useMemo(() => agingDeParcelas(parcelas.data ?? []), [parcelas.data]);
+
+  /**
+   * F28 — dar baixa sem sair da fila.
+   *
+   * A parcela vem do `agingDeParcelas`, que já escolheu a mais antiga da noiva,
+   * e é procurada na MESMA lista que desenhou a tela — nada de request novo. Se
+   * ela não estiver mais lá (alguém recebeu noutra aba entre o desenho e o
+   * clique), a tela diz isso em vez de abrir um diálogo sobre nada.
+   */
+  const podeReceber = podeNoModulo(acessosModulos, "financeiro", "editar");
+  const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
+  const abrirRecebimento = (noiva: NoivaInadimplente) => {
+    const parcela = (parcelas.data ?? []).find((p) => p.id === noiva.parcelaMaisAntigaId);
+    if (!parcela) {
+      toast({
+        title: "Esta parcela mudou",
+        description: "Alguém já deu baixa nela — a lista vai se atualizar.",
+      });
+      parcelas.refetch();
+      return;
+    }
+    setParcelaReceber(parcela);
+  };
 
   const noivasVisiveis = useMemo(
     () => (faixaAtiva ? aging.noivas.filter((n) => n.faixaMaisAntiga === faixaAtiva) : aging.noivas),
@@ -297,6 +346,8 @@ export default function Cobranca() {
                       noiva={n}
                       lojaNome={lojaNome}
                       portalUrl={portalUrls.get(n.leadId)}
+                      podeReceber={podeReceber}
+                      onReceber={abrirRecebimento}
                     />
                   ))}
                 </ul>
@@ -305,6 +356,13 @@ export default function Cobranca() {
           </Card>
         </>
       )}
+
+      <DialogoReceberParcela
+        lojaId={activeLojaId!}
+        parcela={parcelaReceber}
+        onFechar={() => setParcelaReceber(null)}
+        descricao="Baixa da parcela mais antiga em atraso desta noiva."
+      />
     </div>
   );
 }

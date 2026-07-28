@@ -13,11 +13,9 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useListParcelas,
   getListParcelasQueryKey,
-  useReceberParcela,
   useEstornarParcela,
   getExportarParcelasUrl,
   type Parcela,
-  type ReceberParcelaInputFormaRecebimento,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
@@ -26,21 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,10 +37,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl } from "@/lib/formatos";
 import {
-  ROTULO_FORMA,
-  FORMAS,
   rotuloForma,
   estaAtrasada,
   vencidas,
@@ -65,9 +47,10 @@ import {
   teveRecebimento,
 } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
-import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { ResumoCard, dataFmt, useCaminhoDaLoja, invalidarCaixa } from "./helpers";
 import { mensagemApi } from "@/lib/erro-api";
+import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PAGA: "Este recebimento não está pago — nada a estornar.",
@@ -105,11 +88,9 @@ export default function Receber() {
     "abertas") as FiltroReceber;
   const intervalo = resolverIntervalo(searchParams.get("ini"), searchParams.get("fim"));
 
-  // Recebimento
+  // Recebimento — o diálogo virou componente no F28 (a cobrança precisa dele
+  // também); daqui só sai QUAL parcela, e o preenchimento é dele.
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
-  const [valorRecebido, setValorRecebido] = useState("");
-  const [dataRecebimento, setDataRecebimento] = useState(hojeLocal());
-  const [formaRecebimento, setFormaRecebimento] = useState<ReceberParcelaInputFormaRecebimento | "">("");
 
   // Estorno
   const [parcelaEstornar, setParcelaEstornar] = useState<Parcela | null>(null);
@@ -140,7 +121,6 @@ export default function Receber() {
     },
   });
 
-  const receber = useReceberParcela();
   const estornar = useEstornarParcela();
 
   const hoje = hojeLocal();
@@ -192,52 +172,6 @@ export default function Receber() {
 
   const rotuloParcela = (p: Parcela) =>
     p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`;
-
-  const abrirReceber = (parcela: Parcela) => {
-    // Sugere o que FALTA, não o previsto: numa parcela meio recebida, repetir
-    // o valor cheio faria a vendedora cobrar de novo o que já entrou.
-    setValorRecebido(saldoAberto(parcela).toFixed(2).replace(".", ","));
-    setDataRecebimento(hojeLocal());
-    setFormaRecebimento("");
-    setParcelaReceber(parcela);
-  };
-
-  const onReceber = async () => {
-    if (!parcelaReceber) return;
-    const valor = parseValor(valorRecebido);
-    if (valor === null || Number.isNaN(valor) || valor <= 0) {
-      toast({ title: "Valor recebido inválido", variant: "destructive" });
-      return;
-    }
-    if (!dataRecebimento) {
-      toast({ title: "Informe a data do recebimento", variant: "destructive" });
-      return;
-    }
-    // `recebidoEm` é um INSTANTE: para hoje vale o agora real; para um dia
-    // passado, meio-dia de São Paulo mantém o dia local correto.
-    const recebidoEm =
-      dataRecebimento === hojeLocal() ? new Date().toISOString() : diaParaISO(dataRecebimento);
-    try {
-      await receber.mutateAsync({
-        lojaId: activeLojaId!,
-        parcelaId: parcelaReceber.id,
-        data: {
-          valorRecebido: valor,
-          recebidoEm,
-          ...(formaRecebimento ? { formaRecebimento } : {}),
-        },
-      });
-      await invalidarMovimento();
-      toast({ title: "Recebimento registrado" });
-      setParcelaReceber(null);
-    } catch (err) {
-      toast({
-        title: "Erro ao receber",
-        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
-        variant: "destructive",
-      });
-    }
-  };
 
   const onEstornar = async () => {
     if (!parcelaEstornar) return;
@@ -429,7 +363,7 @@ export default function Receber() {
                         </Button>
                       )}
                       {estaAberta(p) && (
-                        <Button size="sm" variant="outline" onClick={() => abrirReceber(p)}>
+                        <Button size="sm" variant="outline" onClick={() => setParcelaReceber(p)}>
                           {p.status === "PARCIAL" ? "Receber o restante" : "Receber"}
                         </Button>
                       )}
@@ -442,65 +376,11 @@ export default function Receber() {
         </Card>
       )}
 
-      <Dialog open={!!parcelaReceber} onOpenChange={(aberto) => !aberto && setParcelaReceber(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Registrar recebimento{parcelaReceber ? ` — ${rotuloParcela(parcelaReceber)}` : ""}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="valorRecebido">Valor recebido</Label>
-              {/* E92/E20: o campo de dinheiro MAIS usado do sistema subia o
-                  teclado QWERTY no celular. Nunca type="number" para dinheiro:
-                  vira roleta e muda o valor quando o dedo rola a página. */}
-              <Input
-                id="valorRecebido"
-                inputMode="decimal"
-                value={valorRecebido}
-                onChange={(e) => setValorRecebido(e.target.value)}
-                placeholder="0,00"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="dataRecebimento">Data</Label>
-              <Input
-                id="dataRecebimento"
-                type="date"
-                value={dataRecebimento}
-                onChange={(e) => setDataRecebimento(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="formaRecebimento">Forma</Label>
-              <Select
-                value={formaRecebimento || undefined}
-                onValueChange={(v) => setFormaRecebimento(v as ReceberParcelaInputFormaRecebimento)}
-              >
-                <SelectTrigger id="formaRecebimento">
-                  <SelectValue placeholder="Selecione (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FORMAS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {ROTULO_FORMA[f]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setParcelaReceber(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={onReceber} disabled={receber.isPending}>
-              {receber.isPending ? "Registrando…" : "Registrar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DialogoReceberParcela
+        lojaId={activeLojaId!}
+        parcela={parcelaReceber}
+        onFechar={() => setParcelaReceber(null)}
+      />
 
       <AlertDialog open={!!parcelaEstornar} onOpenChange={(aberto) => !aberto && setParcelaEstornar(null)}>
         <AlertDialogContent>
