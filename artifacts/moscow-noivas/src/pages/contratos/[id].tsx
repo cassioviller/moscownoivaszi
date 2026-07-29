@@ -5,7 +5,6 @@ import {
   getGetContratoQueryKey,
   useCancelarContrato,
   getListContratosQueryKey,
-  getListParcelasQueryKey,
   useGerarPlanoParcelas,
   useReceberParcela,
   useEstornarParcela,
@@ -66,7 +65,8 @@ import { mensagemApi } from "@/lib/erro-api";
 // por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
 // defeito que o épico existe para fechar.
-import { centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 
 const MENSAGENS_ERRO: Record<string, string> = {
@@ -165,10 +165,21 @@ export default function ContratoDetail() {
   const planoDivergente =
     parcelas.length > 0 && contrato != null && totalPlanoCentavos !== centavos(contrato.valorTotal);
 
+  /**
+   * Receber, estornar, remover parcela e cancelar contrato são MOVIMENTO DE
+   * CAIXA, e a régua deles é `chavesDoCaixa` (D9/E93) — não a lista desta tela.
+   *
+   * Esta função invalidava só o contrato e as parcelas. O diálogo de receber
+   * foi migrado para `invalidarCaixa`; este segundo call-site do MESMO endpoint
+   * ficou para trás: recebida a entrada de R$ 5.000 pelo botão da linha da
+   * parcela, o DRE e o Fluxo continuavam mostrando a receita sem ela, e o sino
+   * do layout — montado em toda tela — seguia avisando que o caixa fura na data
+   * antiga. `chavesDoCaixa` já inclui a lista de parcelas.
+   */
   const invalidarParcelas = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, id!) }),
-      queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) }),
+      invalidarCaixa(queryClient, activeLojaId!),
     ]);
 
   if (isError) {
@@ -449,7 +460,11 @@ export default function ContratoDetail() {
                     fecha a conta: subtotal − desconto = total. O abatimento é
                     bruto − total, então reconcilia sempre. */}
                 {contrato.descontoTipo && (() => {
-                  const brutoC = contrato.itens!.reduce((a, it) => a + centavos(it.valorUnitario) * it.quantidade, 0);
+                  // `brutoEmCentavos` é a régua do core (E95/C1) — a mesma que
+                  // o PDF do MESMO contrato usa. O `reduce` inline aqui era a
+                  // terceira escrita da conta, e a tela e o papel divergirem
+                  // sobre o subtotal é o defeito que a régua existe para impedir.
+                  const brutoC = brutoEmCentavos(contrato.itens!);
                   const abatimentoC = brutoC - centavos(contrato.valorTotal);
                   const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
                   return (

@@ -1,5 +1,6 @@
 import { gerarContratoPdf } from "./contrato-pdf";
 import type { Contrato, ContratoItem, Parcela, Lead, Loja } from "@workspace/db";
+import { brutoEmCentavos } from "@workspace/financeiro-core";
 
 /**
  * E100/F21 — o contrato como PAPEL, com uma régua só.
@@ -41,6 +42,25 @@ export const dataBR = new Intl.DateTimeFormat("pt-BR", {
   month: "2-digit",
   year: "numeric",
   timeZone: "UTC",
+});
+
+/**
+ * O dia de um INSTANTE, no fuso da loja — a outra metade da régua do repo
+ * ("data de negócio ≠ instante").
+ *
+ * `contrato.fechadoEm` é `timestamp defaultNow()`, não um dia civil: um
+ * contrato fechado às 21h30 de 28/07 em São Paulo grava `2026-07-29T00:30Z`, e
+ * o formatador UTC imprimia "29/07/2026" no papel que a noiva assina. Todo
+ * contrato fechado entre 21h e a meia-noite saía com a data um dia à frente, e
+ * a divergência era permanente porque o PDF é regerado do mesmo campo. As
+ * outras datas do documento (casamento, retirada, vencimento) SÃO dias civis e
+ * continuam em UTC — é por isso que existem dois formatadores.
+ */
+export const dataBRInstante = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "America/Sao_Paulo",
 });
 export const brl = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -97,10 +117,9 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     // dos itens não é o total. O abatimento é bruto − total: reconcilia sempre.
     ...(() => {
       if (!contrato.descontoTipo) return {};
-      const brutoC = contrato.itens.reduce(
-        (acc, it) => acc + Math.round(it.valorUnitario * 100) * it.quantidade,
-        0,
-      );
+      // `brutoEmCentavos` do core (E95/C1) — era a mesma conta reescrita à mão,
+      // e o papel que a noiva assina é o pior lugar para uma cópia divergir.
+      const brutoC = brutoEmCentavos(contrato.itens);
       const abatimentoC = brutoC - Math.round(contrato.valorTotal * 100);
       const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
       return { subtotal: brl(brutoC / 100), desconto: `−${brl(abatimentoC / 100)}${rotulo}` };
@@ -111,7 +130,7 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     dataCasamento: contrato.dataCasamento ? dataBR.format(contrato.dataCasamento) : undefined,
     dataRetirada: contrato.dataRetirada ? dataBR.format(contrato.dataRetirada) : undefined,
     dataDevolucao: contrato.dataDevolucao ? dataBR.format(contrato.dataDevolucao) : undefined,
-    dataContrato: dataBR.format(contrato.fechadoEm),
+    dataContrato: dataBRInstante.format(contrato.fechadoEm),
     observacao: contrato.observacoes ?? undefined,
   });
 }

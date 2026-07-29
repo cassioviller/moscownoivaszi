@@ -45,8 +45,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
-import { dataCurtaFmt, isoParaDia } from "../noivas/helpers";
+import { brl, diaMesAbrevAno, diaParaISO } from "@/lib/formatos";
+import { parseValor } from "@/lib/financeiro/dinheiro";
+import { invalidarCaixa } from "@/pages/financeiro/helpers";
+import { isoParaDia } from "../noivas/helpers";
 import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
@@ -136,16 +138,32 @@ export default function ReservaDetalhe() {
     setAvariaFotoNome(arquivo.name);
   };
 
-  const registrarAvaria = () =>
-    comToast(
+  const registrarAvaria = () => {
+    // O MESMO defeito C3 que o orçamento já corrigiu, de novo aqui:
+    // `Number("1.500")` é 1,5, e a avaria de R$ 1.500,00 era gravada valendo
+    // R$ 1,50 — a parcela de cobrança da noiva saía com R$ 1,50 e o prejuízo
+    // de R$ 1.498,50 não aparecia em lugar nenhum. Escrito "1.500,00", o
+    // `replace(",", ".")` produzia "1.500.00" → NaN, e o spread descartava o
+    // campo em silêncio: avaria salva SEM custo, sem toast de erro. `parseValor`
+    // lê pt-BR e separa "não digitou" (null) de "digitou bobagem" (NaN) — e a
+    // bobagem passa a ser dita, não engolida.
+    const custo = parseValor(avariaCusto);
+    if (custo !== null && !Number.isFinite(custo)) {
+      toast({
+        title: "Custo do reparo inválido",
+        description: "Informe um valor em reais (ex.: 1.500,00).",
+        variant: "destructive",
+      });
+      return;
+    }
+    return comToast(
       async () => {
-        const custo = avariaCusto.trim() ? Number(avariaCusto.replace(",", ".")) : undefined;
         await createAvaria.mutateAsync({
           lojaId: activeLojaId!,
           bloqueioId: bloqueioId!,
           data: {
             descricao: avariaDescricao.trim(),
-            ...(custo !== undefined && Number.isFinite(custo) ? { custoReparo: custo } : {}),
+            ...(custo !== null ? { custoReparo: custo } : {}),
             ...(avariaFotoBase64 ? { fotoBase64: avariaFotoBase64 } : {}),
           },
         });
@@ -160,6 +178,7 @@ export default function ReservaDetalhe() {
       "Avaria registrada",
       "Erro ao registrar a avaria",
     );
+  };
 
   /**
    * F22/E97 — a cobrança do reparo saiu da tela e virou uma rota.
@@ -179,9 +198,16 @@ export default function ReservaDetalhe() {
           avariaId: avaria.id,
           data: { contratoId: contratoAtivo.id },
         });
-        await queryClient.invalidateQueries({
-          queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
-        });
+        // Cobrar o reparo CRIA parcela no carnê da noiva: é movimento de
+        // caixa, e por isso passa pela régua do D9/E93 e não só pela lista de
+        // avarias desta tela. Sem isto, o fluxo, o DRE e o alerta do sino
+        // seguiam sem a cobrança que a loja acabou de lançar.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+          }),
+          invalidarCaixa(queryClient, activeLojaId!),
+        ]);
       },
       "Cobrança criada — entrou como parcela do contrato",
       "Erro ao criar a cobrança",
@@ -426,7 +452,7 @@ export default function ReservaDetalhe() {
               {vestido ? `${vestido.codigo} · ${vestido.nome}` : "Ver vestido"}
             </Link>
             {reserva.casamentoData && (
-              <> · casamento {dataCurtaFmt.format(new Date(reserva.casamentoData))}</>
+              <> · casamento {diaMesAbrevAno(reserva.casamentoData)}</>
             )}
           </>
         }
@@ -567,7 +593,7 @@ export default function ReservaDetalhe() {
                       <p className="text-xs text-muted-foreground">
                         {a.custoReparo != null && <>reparo estimado {brl(a.custoReparo)} · </>}
                         {a.registradoPorNome && <>{a.registradoPorNome} · </>}
-                        {dataCurtaFmt.format(new Date(a.criadaEm))}
+                        {diaMesAbrevAno(a.criadaEm)}
                         {a.temFoto && (
                           <>
                             {" · "}

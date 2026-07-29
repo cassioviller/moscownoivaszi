@@ -2983,7 +2983,10 @@ ate?: string;
 };
 
 export type ExportarAuditoriaParams = {
-acao?: ExportarAuditoriaAcao;
+/**
+ * Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve planilha vazia, não erro.
+ */
+acao?: string;
 usuarioId?: string;
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
@@ -2996,30 +2999,6 @@ de?: string;
  */
 ate?: string;
 };
-
-export type ExportarAuditoriaAcao = typeof ExportarAuditoriaAcao[keyof typeof ExportarAuditoriaAcao];
-
-
-export const ExportarAuditoriaAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
-  CONTRATO_CANCELADO: 'CONTRATO_CANCELADO',
-  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
-  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
-  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
-  CONVITE_CRIADO: 'CONVITE_CRIADO',
-  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
-  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
-  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
-  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
-  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
-  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
-} as const;
 
 export type ExportarFolhaParams = {
 /**

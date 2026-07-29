@@ -448,6 +448,31 @@ class AvariaJaCobrada extends Error {}
  * de um reparo ao carnê certo (E110). Devolve `undefined` quando o contrato não
  * existe, não é da loja ou não está ATIVO: os três casos têm a mesma resposta.
  */
+/**
+ * A cobrança deste reparo ainda está DE PÉ?
+ *
+ * `avarias.parcela_id` preenchido significava "já cobrada", ponto — e isso
+ * fechava um ciclo sem saída depois do cancelamento do contrato. A parcela do
+ * reparo vira CANCELADA junto com ele, e a partir daí as três rotas se
+ * recusavam mutuamente: `cobrar` respondia 409 AVARIA_JA_COBRADA (o
+ * `parcelaId` não é nulo), `DELETE /parcelas/:id` respondia 422
+ * PARCELA_NAO_PREVISTA e, ainda que não, 422 CONTRATO_NAO_ATIVO, e
+ * `DELETE /avarias/:id` respondia 409 AVARIA_COM_COBRANCA. O reparo ficava
+ * impossível de cobrar e o registro impossível de limpar — e a noiva que
+ * assina um contrato novo meses depois não tem por onde ser cobrada.
+ *
+ * Parcela CANCELADA (ou apagada, com o `set null` da FK) não cobra ninguém, e
+ * o próprio schema já dizia isto: "removida a parcela pelo caminho legítimo, a
+ * avaria e a foto ficam, e o reparo volta a ser cobrável".
+ */
+async function cobrancaViva(parcelaId: string): Promise<boolean> {
+  const [parcela] = await db
+    .select({ status: parcelasTable.status })
+    .from(parcelasTable)
+    .where(eq(parcelasTable.id, parcelaId));
+  return !!parcela && parcela.status !== "CANCELADA";
+}
+
 async function contratoAtivoDaLoja(
   contratoId: string,
   lojaId: string,
@@ -549,7 +574,7 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
     res.status(404).json({ error: "Avaria not found" });
     return;
   }
-  if (avaria.parcelaId) {
+  if (avaria.parcelaId && (await cobrancaViva(avaria.parcelaId))) {
     res.status(409).json({
       error: "AVARIA_JA_COBRADA",
       detalhe: "Este reparo já virou parcela do contrato",
@@ -643,14 +668,21 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       vencimento: ancoraDeNegocio(addDias(hojeLocal(), parsed.data.prazoDias ?? 7)),
     });
 
-    // O vínculo é condicional a ele AINDA estar vazio. Quem perde a corrida não
-    // grava nada: a exceção derruba a transação inteira, e a parcela que ela
-    // acabou de inserir some junto — que é exatamente a segunda cobrança que
-    // este épico existe para impedir.
+    // O vínculo é condicional ao estado que a rota LEU: vazio, ou a mesma
+    // cobrança morta que ela conferiu acima. Quem perde a corrida não grava
+    // nada — a exceção derruba a transação inteira e a parcela que ela acabou
+    // de inserir some junto, que é exatamente a segunda cobrança que este
+    // épico existe para impedir. Quem chega depois de a cobrança ter morrido
+    // recobra, e o `parcela_id` passa a apontar para o carnê novo.
     const [marcada] = await tx
       .update(avariasTable)
       .set({ parcelaId })
-      .where(and(eq(avariasTable.id, avaria.id), isNull(avariasTable.parcelaId)))
+      .where(and(
+        eq(avariasTable.id, avaria.id),
+        avaria.parcelaId
+          ? eq(avariasTable.parcelaId, avaria.parcelaId)
+          : isNull(avariasTable.parcelaId),
+      ))
       .returning();
     if (!marcada) throw new AvariaJaCobrada();
   }).catch((err) => {
@@ -682,7 +714,10 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
     res.status(204).send();
     return;
   }
-  if (avaria.parcelaId) {
+  // Mesma régua da cobrança: o que impede apagar a avaria é uma cobrança VIVA,
+  // porque a foto é a prova que sustenta a parcela. Cancelada a parcela (pelo
+  // cancelamento do contrato, por exemplo), não há mais nada sustentado.
+  if (avaria.parcelaId && (await cobrancaViva(avaria.parcelaId))) {
     res.status(409).json({
       error: "AVARIA_COM_COBRANCA",
       detalhe: "Esta avaria já virou parcela do contrato — remova a parcela antes",

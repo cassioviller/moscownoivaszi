@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
+import { addDias, hojeLocal } from "@/lib/financeiro/datas";
 import { mensagemApi } from "@/lib/erro-api";
 import {
   Table,
@@ -37,8 +38,16 @@ const PERIODOS = {
 } as const;
 type Periodo = keyof typeof PERIODOS;
 
+/**
+ * O dia da LOJA, deslocado de `offsetDias`.
+ *
+ * Era `new Date(Date.now() + n·86400000).toISOString().slice(0,10)`: o dia em
+ * UTC, não em São Paulo. Das 21h à meia-noite a janela "últimos 90 dias" saía
+ * inteira um dia à frente, e a régua exata — `addDias(hojeLocal(), n)` — já
+ * está no core, com teste.
+ */
 function diaISO(offsetDias: number): string {
-  return new Date(Date.now() + offsetDias * 86_400_000).toISOString().slice(0, 10);
+  return addDias(hojeLocal(), offsetDias);
 }
 
 function usoTotal(v: VestidoUtilizacao): number {

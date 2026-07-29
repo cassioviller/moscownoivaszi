@@ -58,7 +58,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { MessageCircle } from "lucide-react";
-import { dataCurtaFmt } from "../noivas/helpers";
+import { diaMesAbrevAno } from "@/lib/formatos";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { instanteCurto } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -554,7 +554,7 @@ export default function NovoAtendimento() {
                                 <SelectItem key={r.id} value={r.id}>
                                   Vestido {r.vestido?.codigo ?? "?"} · {r.vestido?.nome ?? "sem nome"}
                                   {r.casamentoData
-                                    ? ` — casamento ${dataCurtaFmt.format(new Date(r.casamentoData))}`
+                                    ? ` — casamento ${diaMesAbrevAno(r.casamentoData)}`
                                     : ""}
                                 </SelectItem>
                               ))}

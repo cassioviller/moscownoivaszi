@@ -697,7 +697,30 @@ async function linhasDaCompetencia(lojaId: string, competencia: string, agora: D
       eq(comissaoFechamentosTable.competencia, competencia),
     ));
 
-  if (fechamentosDaComp.length > 0) {
+  /**
+   * A imutabilidade é por (competência, VENDEDORA) — não por competência.
+   *
+   * O `if (fechamentosDaComp.length > 0)` decidia pelo MÊS: bastava UMA
+   * vendedora fechada para a resposta virar a lista de fechamentos, e quem
+   * vendeu naquele mês sem ter fechamento sumia do preview e do ranking,
+   * levando o estorno pendente junto — o mesmo caso que
+   * `lib/comissao.ts:249-263` já documenta como o erro dessa granularidade,
+   * e que a `pendenciasDeFechamento` resolve do outro lado.
+   *
+   * Aqui o cálculo ao vivo passa a rodar para quem FALTA, e a memória do
+   * fechamento continua mandando em quem já fechou. `imutavel` só vale quando
+   * não sobrou ninguém de fora — é ele que autoriza o cache longo.
+   */
+  const jaFechadas = new Set(fechamentosDaComp.map((f) => f.fechamento.vendedoraId));
+  const [vendasDoMes, candidatasDoMes] = await Promise.all([
+    vendasDaCompetencia(db, lojaId, competencia),
+    candidatasComEstorno(db, lojaId),
+  ]);
+  const faltantes = [...new Set([...vendasDoMes.keys(), ...candidatasDoMes])].filter(
+    (id) => !jaFechadas.has(id),
+  );
+
+  if (fechamentosDaComp.length > 0 && faltantes.length === 0) {
     const linhas = fechamentosDaComp
       .map(({ fechamento, vendedoraNome }) => ({
         vendedoraId: fechamento.vendedoraId,
@@ -722,12 +745,10 @@ async function linhasDaCompetencia(lojaId: string, competencia: string, agora: D
 
   // Quem vendeu no mês MAIS quem deve estorno: uma vendedora que parou de
   // vender ainda precisa aparecer, senão o estorno dela some da tela e carrega
-  // para sempre sem ninguém saber.
-  const [vendas, candidatas] = await Promise.all([
-    vendasDaCompetencia(db, lojaId, competencia),
-    candidatasComEstorno(db, lojaId),
-  ]);
-  const vendedoraIds = [...new Set([...vendas.keys(), ...candidatas])];
+  // para sempre sem ninguém saber. Com a competência parcialmente fechada, são
+  // só as que faltam — as fechadas entram pela memória, logo abaixo.
+  const vendas = vendasDoMes;
+  const vendedoraIds = faltantes;
   if (vendedoraIds.length === 0) return { linhas: [], imutavel: false };
 
   const [nomes, estornos, regras] = await Promise.all([
@@ -763,8 +784,25 @@ async function linhasDaCompetencia(lojaId: string, competencia: string, agora: D
   // fechou — a comissão nunca chegou a ser paga) não tem o que mostrar: entrou
   // na pergunta, não na resposta.
   const visiveis = linhas.filter((l) => vendas.has(l.vendedoraId) || l.estornoPendente > 0);
-  visiveis.sort((a, b) => b.valorTotal - a.valorTotal || b.estornoPendente - a.estornoPendente);
-  return { linhas: visiveis, imutavel: false };
+
+  // Competência parcialmente fechada: a memória de quem fechou entra junto do
+  // cálculo ao vivo de quem faltou, na mesma lista e na mesma ordem.
+  const daMemoria = fechamentosDaComp.map(({ fechamento, vendedoraNome }) => ({
+    vendedoraId: fechamento.vendedoraId,
+    vendedoraNome,
+    totalVendas: fechamento.totalVendas,
+    estornoPendente: 0,
+    percentualAplicado: fechamento.percentualAplicado,
+    valorComissao: fechamento.valorComissao,
+    valorBonus: fechamento.valorBonus,
+    valorTotal: fechamento.valorTotal,
+    faltaProximoDegrau: null,
+    projecao: null,
+  }));
+
+  const todas = [...daMemoria, ...visiveis];
+  todas.sort((a, b) => b.valorTotal - a.valorTotal || b.estornoPendente - a.estornoPendente);
+  return { linhas: todas, imutavel: false };
 }
 
 /**

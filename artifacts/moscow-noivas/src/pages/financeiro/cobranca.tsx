@@ -215,7 +215,21 @@ export default function Cobranca() {
    * ela não estiver mais lá (alguém recebeu noutra aba entre o desenho e o
    * clique), a tela diz isso em vez de abrir um diálogo sobre nada.
    */
-  const podeReceber = podeNoModulo(acessosModulos, "financeiro", "editar");
+  /**
+   * O gate da TELA tem de ser o mesmo do endpoint, e eram módulos diferentes.
+   *
+   * Aqui se pedia `financeiro.editar`, mas quem guarda
+   * `POST /lojas/:lojaId/parcelas/:parcelaId/receber` é o módulo **leads**
+   * (contratos.ts:76 e :611) — e isso não é descuido do servidor, é a decisão
+   * B9/E101 escrita lá: *a noiva paga na mão de quem a atendeu*. O resultado do
+   * desencontro era o pior dos dois: quem tem financeiro e não tem leads via o
+   * botão e levava 403 depois do clique, e quem tem leads e recebe de verdade
+   * não via o botão nesta fila.
+   *
+   * Estar NESTA tela já exige `financeiro.ver` (a rota é gateada). O que a
+   * ação exige, e portanto o que o botão exige, é `leads.editar`.
+   */
+  const podeReceber = podeNoModulo(acessosModulos, "leads", "editar");
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
   const abrirRecebimento = (noiva: NoivaInadimplente) => {
     const parcela = (parcelas.data ?? []).find((p) => p.id === noiva.parcelaMaisAntigaId);

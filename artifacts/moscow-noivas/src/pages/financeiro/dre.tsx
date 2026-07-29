@@ -35,11 +35,9 @@ import { competenciaAtual, competenciaValida, rotuloCompetencia, ultimasCompeten
 
 const MESES_NO_SELETOR = 12;
 
-const mesFmt = new Intl.DateTimeFormat("pt-BR", {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
+// `mesFmt` morava aqui, declarado e nunca usado: a tela formata competência por
+// `rotuloCompetencia`, que já embrulha um formatador idêntico. Régua morta ao
+// lado da viva é convite para a próxima linha usar a errada.
 
 /** Desloca uma competência em `n` meses. */
 function deslocarCompetencia(competencia: string, n: number): string {

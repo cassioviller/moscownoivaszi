@@ -27,7 +27,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ErroListagem } from "./helpers";
+import { ErroListagem, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -143,9 +143,15 @@ export default function Projecao() {
         lojaId: activeLojaId!,
         data: { dataReferencia: diaParaISO(diaConferido), valor: conferencia.valor },
       });
-      await queryClient.invalidateQueries({
-        queryKey: getListSaldoReferenciaQueryKey(activeLojaId!),
-      });
+      // A âncora de saldo é o ponto de partida da curva: conferir o caixa muda
+      // a projeção e o alerta que o sino mostra em toda tela, não só a lista de
+      // âncoras. Mesma régua do D9/E93.
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListSaldoReferenciaQueryKey(activeLojaId!),
+        }),
+        invalidarCaixa(queryClient, activeLojaId!),
+      ]);
       toast({
         title: "Saldo conferido",
         description: `${brl(conferencia.valor)} no início de ${formatarDia(diaConferido, diaLongo)}.`,

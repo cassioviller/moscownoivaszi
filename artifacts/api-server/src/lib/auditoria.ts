@@ -41,6 +41,15 @@ export const ACOES_AUDITORIA = [
   // cru. Terceiro fato da mesma família do E97.
   "REMARCACAO_PEDIDA",
   "LEADS_ANONIMIZADOS",
+  // Apagar a ficha da noiva leva junto atendimento, orçamento, interesse e
+  // registro de cobrança pelo cascade. Era um `delete` cru — sem 404, sem
+  // contagem e sem rastro —, e depois dele não há linha nenhuma de onde
+  // reconstituir quem foi apagada. O detalhe guarda o nome e o que foi junto.
+  "LEAD_REMOVIDO",
+  // Remover uma parcela some com uma obrigação do carnê da noiva. É a operação
+  // espelho do CONTA_PAGAR_REMOVIDA do E107, e ficou sem trilha pelo mesmo
+  // tempo em que a irmã já tinha a dela.
+  "PARCELA_REMOVIDA",
   // S4/E107: apagar uma conta PREVISTA some com uma obrigação. Não move caixa
   // realizado (a paga é recusada antes), e por isso é um degrau abaixo do B3 —
   // mas depois do DELETE não há linha para consultar, então o que não estiver
@@ -87,6 +96,8 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PROVA_CONFIRMADA: "Prova confirmada pela noiva",
   REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
+  LEAD_REMOVIDO: "Noiva removida do cadastro",
+  PARCELA_REMOVIDA: "Parcela removida",
   CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
 };

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable } from "@workspace/db";
+import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable, recorrenciasTable } from "@workspace/db";
 import { eq, and, gt, gte, isNull, desc, count } from "drizzle-orm";
 import {
   ListEquipeParams,
@@ -440,6 +440,28 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
         eq(usuariosLojasTable.usuarioId, params.data.usuarioId)
       ));
 
+    /**
+     * E a FOLHA para junto. Sair da equipe apagava o vínculo e os convites e
+     * não tocava em `recorrencias`: no mês seguinte, "Gerar folha" lia todas as
+     * recorrências ATIVAS da loja — sem nenhuma junção com `usuarios_lojas` —
+     * e a conta a pagar de quem já não trabalha ali nascia de novo, entrava na
+     * tela de Pagar, no "a pagar dos próximos 30 dias" do dashboard e no DRE
+     * previsto. Todo mês, para sempre.
+     *
+     * DESATIVA, não apaga: a recorrência é a régua que EXPLICA os salários já
+     * pagos, e o índice parcial `recorrencias_salario_ativo_unico` só olha as
+     * ativas — então recontratar a mesma pessoa volta a ser possível sem
+     * apagar o histórico. É a mesma escolha de `usuarios.ativo`.
+     */
+    const desativadas = await tx.update(recorrenciasTable)
+      .set({ ativo: false, updatedAt: new Date() })
+      .where(and(
+        eq(recorrenciasTable.lojaId, params.data.lojaId),
+        eq(recorrenciasTable.usuarioId, params.data.usuarioId),
+        eq(recorrenciasTable.ativo, true),
+      ))
+      .returning({ id: recorrenciasTable.id });
+
     // Removida da equipe com a aba aberta continuaria navegando até a sessão
     // expirar — o vínculo já não existe, e o acesso não pode sobreviver a ele.
     await encerrarSessoesDoUsuario(tx, params.data.usuarioId);
@@ -450,7 +472,9 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
       acao: "MEMBRO_REMOVIDO",
       entidade: "usuario",
       entidadeId: params.data.usuarioId,
-      detalhe: { email: usuario?.email ?? null },
+      // A folha que parou junto entra na trilha: sem isto, a conta de R$ 2.800
+      // que some do mês seguinte não tem nenhuma linha que a explique.
+      detalhe: { email: usuario?.email ?? null, recorrenciasDesativadas: desativadas.length },
     });
   });
 

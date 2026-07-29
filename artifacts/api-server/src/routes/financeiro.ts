@@ -12,6 +12,7 @@ import {
 import { eq, and, or, inArray, gte, lt, lte, desc, isNull, isNotNull, count, sql } from "drizzle-orm";
 import {
   alertaDeCaixa,
+  ancoraDeNegocio,
   diaLocal,
   hojeLocal,
   resolverIntervalo,
@@ -19,6 +20,7 @@ import {
   intervaloDaCompetencia,
   ultimasCompetencias,
   ultimoDiaDoMes,
+  primeiroDiaDoMes,
   resumoCaixa,
   tendenciaCaixa,
   horizonteAberto,
@@ -93,10 +95,15 @@ const router: IRouter = Router();
  * Meio-dia de São Paulo do dia LOCAL de um instante. Âncora de data de negócio:
  * o dia UTC do resultado já é o dia certo, e é o mesmo instante para qualquer
  * hora do mesmo dia local — o que faz o dedup por (loja, dia) funcionar.
+ *
+ * É a COMPOSIÇÃO de duas funções do core, e era reimplementada à mão aqui com
+ * um `-3h` cravado — `diaLocal` já estava importado neste mesmo arquivo. O
+ * offset à mão é pior que redundante: ele repete a premissa "São Paulo não tem
+ * DST" num lugar a mais, e o dia em que ela mudar é o dia em que o repo tem de
+ * achar todas as cópias.
  */
 function ancorarMeioDiaSP(instante: Date | string): Date {
-  const dia = new Date(new Date(instante).getTime() - 3 * 3_600_000).toISOString().slice(0, 10);
-  return new Date(`${dia}T12:00:00-03:00`);
+  return ancoraDeNegocio(diaLocal(instante));
 }
 
 router.use(requireSessaoComLoja);
@@ -1221,8 +1228,10 @@ router.get("/lojas/:lojaId/financeiro/folha/exportar", async (req, res): Promise
     return;
   }
   // Sem intervalo, o mês corrente — o período que a contabilidade fecha.
-  const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const de = parsed.data.de ?? `${hoje.slice(0, 7)}-01`;
+  // `hojeLocal()` é a régua (importada acima); o `-3h` cravado à mão era a
+  // mesma conta escrita pela segunda vez no arquivo.
+  const hoje = hojeLocal();
+  const de = parsed.data.de ?? primeiroDiaDoMes(hoje);
   const ate = parsed.data.ate ?? hoje;
   if (de > ate) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
@@ -1243,8 +1252,8 @@ router.get("/lojas/:lojaId/financeiro/folha/exportar", async (req, res): Promise
  * /parcelas); sem intervalo, o mês corrente — o período que a contadora fecha.
  */
 function janelaExportacao(de?: string, ate?: string): { de: string; ate: string } | null {
-  const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const d = de ?? `${hoje.slice(0, 7)}-01`;
+  const hoje = hojeLocal();
+  const d = de ?? primeiroDiaDoMes(hoje);
   const a = ate ?? hoje;
   return d > a ? null : { de: d, ate: a };
 }

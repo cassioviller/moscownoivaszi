@@ -3,6 +3,7 @@
  * Nasceu no financeiro (cobrança) e virou módulo neutro quando a agenda
  * passou a confirmar atendimento por aqui também (E8).
  */
+import { brl } from "./formatos";
 
 /**
  * Deep-link wa.me. Prefixa o DDI 55 só se o número for nacional (10–11
@@ -44,7 +45,13 @@ export type ConfirmacaoAtendimento = {
   portalUrl?: string | null;
 };
 
-const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+// O valor que a noiva lê no WhatsApp sai da MESMA régua da tela (`brl`, do
+// E92). Havia aqui um terceiro `Intl.NumberFormat` de BRL, e ele não divergia:
+// medido, `R$ 1.234,57`, `-R$ 500,00` e `R$ 0,01` saem idênticos dos dois. O
+// problema não era o resultado de hoje — era que o docstring do `brl()` diz
+// "mesma escolha que lib/whatsapp.ts já fazia", isto é, as duas concordam por
+// COINCIDÊNCIA MANTIDA À MÃO. A próxima decisão sobre como o dinheiro é escrito
+// (o sinal antes do R$, por exemplo) alcançaria a tela e não a mensagem.
 
 export type Cobranca = {
   noivaNome?: string | null;
@@ -77,7 +84,7 @@ export function msgCobranca(p: Cobranca): string {
   const atraso = p.diasMaisAntigo === 1 ? "desde ontem" : `há ${p.diasMaisAntigo} dias`;
   return [
     `Olá, ${quem}! Aqui é ${daLoja}.`,
-    `Passando com carinho para lembrar de um valor em aberto: ${brlFmt.format(p.totalVencido)}, ${atraso}.`,
+    `Passando com carinho para lembrar de um valor em aberto: ${brl(p.totalVencido)}, ${atraso}.`,
     "Se já tiver acertado, é só desconsiderar. Qualquer dúvida, estou à disposição.",
     ...linhaPortal(p.portalUrl),
   ].join("\n");

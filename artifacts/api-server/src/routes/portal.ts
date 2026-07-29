@@ -43,7 +43,7 @@ import {
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
-import { centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
+import { brutoEmCentavos, centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
 
 /**
  * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
@@ -202,6 +202,14 @@ router.get("/portal", async (req, res): Promise<void> => {
     (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime(),
   )[0];
 
+  // As duas montagens são independentes e eram `await`adas em sequência DENTRO
+  // do literal — uma esperava a outra sem precisar. O portal é a tela que a
+  // noiva abre no celular, e cada uma delas é um punhado de consultas.
+  const [visaoOrcamento, visaoLookbook] = await Promise.all([
+    orcamento ? montarOrcamentoPublico(orcamento, lojaNome, lead.noivaNome) : null,
+    lookbook[0] ? montarVestidosLookbook(lookbook[0].id) : null,
+  ]);
+
   res.json(
     GetPortalResponse.parse({
       noivaNome: lead.noivaNome,
@@ -217,12 +225,8 @@ router.get("/portal", async (req, res): Promise<void> => {
             proximaValor: proxima ? saldoAberto(proxima) : null,
           }
         : null,
-      orcamento: orcamento
-        ? await montarOrcamentoPublico(orcamento, lojaNome, lead.noivaNome)
-        : null,
-      lookbook: lookbook[0]
-        ? { vestidos: await montarVestidosLookbook(lookbook[0].id) }
-        : null,
+      orcamento: visaoOrcamento,
+      lookbook: visaoLookbook ? { vestidos: visaoLookbook } : null,
       provas,
       parcelas: parcelas
         .filter((p) => p.status !== "CANCELADA")
@@ -243,12 +247,10 @@ router.get("/portal", async (req, res): Promise<void> => {
       contrato: contrato[0]
         ? {
             valorTotal: contrato[0].valorTotal,
-            totalBruto: reais(
-              itensDoContrato.reduce(
-                (acc, it) => acc + centavos(it.valorUnitario) * it.quantidade,
-                0,
-              ),
-            ),
+            // `brutoEmCentavos` é a régua do core (E95/C1) e estava
+            // reimplementada aqui, linha por linha igual — inclusive a ordem
+            // "converte antes de multiplicar", que é o ponto dela.
+            totalBruto: reais(brutoEmCentavos(itensDoContrato)),
             descontoTipo: contrato[0].descontoTipo,
             descontoValor: contrato[0].descontoValor,
             fechadoEm: contrato[0].fechadoEm,
@@ -397,14 +399,19 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
   }
 
   const agora = new Date();
-  await db.transaction(async (tx) => {
+  // O `.returning()` do UPDATE já traz o carimbo de quem VENCEU a corrida — o
+  // SELECT extra depois da transação relia o que a transação acabou de
+  // devolver. Ele continua existindo, mas só para o PERDEDOR, que precisa ler o
+  // carimbo que ficou gravado (devolver `agora` ali afirmaria uma hora que não
+  // existe no banco — o mesmo defeito do aceite do orçamento).
+  const confirmadoNaHora = await db.transaction(async (tx) => {
     // UPDATE condicional: dois cliques simultâneos gravam UM carimbo.
     const [atualizado] = await tx
       .update(atendimentosTable)
       .set({ confirmadoEm: agora, updatedAt: agora })
       .where(and(eq(atendimentosTable.id, prova.id), isNull(atendimentosTable.confirmadoEm)))
       .returning();
-    if (!atualizado) return;
+    if (!atualizado) return null;
 
     // Autoria da NOIVA, sem sessão — o mesmo rastro do aceite (E74).
     await tx.insert(auditLogTable).values({
@@ -417,12 +424,17 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
       entidadeId: prova.id,
       detalhe: { inicio: prova.inicio.toISOString() },
     });
+    return atualizado.confirmadoEm;
   });
 
-  const [depois] = await db.select({ confirmadoEm: atendimentosTable.confirmadoEm })
-    .from(atendimentosTable)
-    .where(eq(atendimentosTable.id, prova.id));
-  res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: depois.confirmadoEm ?? agora }));
+  const confirmadoEm =
+    confirmadoNaHora ??
+    (
+      await db.select({ confirmadoEm: atendimentosTable.confirmadoEm })
+        .from(atendimentosTable)
+        .where(eq(atendimentosTable.id, prova.id))
+    )[0]?.confirmadoEm;
+  res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: confirmadoEm ?? agora }));
 });
 
 /**
@@ -484,7 +496,9 @@ router.post("/portal/provas/:atendimentoId/remarcar", async (req, res): Promise<
   }
 
   const agora = new Date();
-  await db.transaction(async (tx) => {
+  // Mesma forma da confirmação: o `.returning()` serve o vencedor, e o SELECT
+  // extra só roda para quem perdeu a corrida.
+  const pedidoNaHora = await db.transaction(async (tx) => {
     // UPDATE condicional: dois cliques simultâneos gravam UM carimbo.
     const [atualizado] = await tx
       .update(atendimentosTable)
@@ -494,7 +508,7 @@ router.post("/portal/provas/:atendimentoId/remarcar", async (req, res): Promise<
         isNull(atendimentosTable.remarcacaoPedidaEm),
       ))
       .returning();
-    if (!atualizado) return;
+    if (!atualizado) return null;
 
     // Autoria da NOIVA, sem sessão — o mesmo rastro do aceite (E74) e da
     // confirmação (E85).
@@ -508,13 +522,18 @@ router.post("/portal/provas/:atendimentoId/remarcar", async (req, res): Promise<
       entidadeId: prova.id,
       detalhe: { inicio: prova.inicio.toISOString() },
     });
+    return atualizado.remarcacaoPedidaEm;
   });
 
-  const [depois] = await db.select({ remarcacaoPedidaEm: atendimentosTable.remarcacaoPedidaEm })
-    .from(atendimentosTable)
-    .where(eq(atendimentosTable.id, prova.id));
+  const remarcacaoPedidaEm =
+    pedidoNaHora ??
+    (
+      await db.select({ remarcacaoPedidaEm: atendimentosTable.remarcacaoPedidaEm })
+        .from(atendimentosTable)
+        .where(eq(atendimentosTable.id, prova.id))
+    )[0]?.remarcacaoPedidaEm;
   res.json(PedirRemarcacaoPortalResponse.parse({
-    remarcacaoPedidaEm: depois.remarcacaoPedidaEm ?? agora,
+    remarcacaoPedidaEm: remarcacaoPedidaEm ?? agora,
   }));
 });
 

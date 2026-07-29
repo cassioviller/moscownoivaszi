@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia } from "@/lib/formatos";
+import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { ehNaoEncontrado } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
@@ -53,9 +53,8 @@ import {
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
-  moedaFmt,
   whatsappDigits,
-  } from "../helpers";
+} from "../helpers";
 
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -522,7 +521,7 @@ export default function NoivaDetalhe() {
                       <span className={c.status === "CANCELADO" ? "text-muted-foreground line-through" : undefined}>
                         {STATUS_CONTRATO[c.status] ?? c.status}
                       </span>
-                      <span className="tabular-nums">{moedaFmt.format(c.valorTotal)}</span>
+                      <span className="tabular-nums">{brl(c.valorTotal)}</span>
                     </Link>
                   </li>
                 ))}

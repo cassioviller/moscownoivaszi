@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, pagamentosTable, vestidosTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable } from "@workspace/db";
-import { eq, and, sql, count, inArray } from "drizzle-orm";
-import { STATUS_ABERTO } from "@workspace/financeiro-core";
+import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, pagamentosTable, vestidosTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable, comissaoRegrasTable, recorrenciasTable, convitesTable } from "@workspace/db";
+import { eq, and, sql, count, inArray, isNull } from "drizzle-orm";
+import { STATUS_ABERTO, hojeLocal, inicioDoDia, primeiroDiaDoMes } from "@workspace/financeiro-core";
 import { 
   ListLojasResponse, 
   CreateLojaBody, 
@@ -255,6 +255,36 @@ router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
     res.status(403).json({ error: "PERFIL_SISTEMA", detalhe: "o perfil do sistema não pode ser removido" });
     return;
   }
+  if (!alvo) {
+    res.status(404).json({ error: "Perfil not found" });
+    return;
+  }
+  // Mesma régua do DELETE de usuário: o 409 LEGÍVEL sai antes de o banco
+  // levantar o 23503, e ele diz QUEM depende do perfil. Sem isto, a resposta
+  // era o `VINCULO_EXISTENTE` genérico ("há registros dependendo deste") — que
+  // não diz se são pessoas, convites ou overrides, nem em que loja, e deixa
+  // quem administra sem próximo passo.
+  const [[vinculos], [convites], [overrides]] = await Promise.all([
+    db.select({ n: count() }).from(usuariosLojasTable)
+      .where(eq(usuariosLojasTable.perfilId, params.data.perfilId)),
+    db.select({ n: count() }).from(convitesTable)
+      .where(and(eq(convitesTable.perfilId, params.data.perfilId), isNull(convitesTable.usadoEm))),
+    db.select({ n: count() }).from(perfilOverridesLojasTable)
+      .where(eq(perfilOverridesLojasTable.perfilId, params.data.perfilId)),
+  ]);
+  const emUso = [
+    vinculos.n > 0 ? `${vinculos.n} pessoa(s)` : null,
+    convites.n > 0 ? `${convites.n} convite(s) pendente(s)` : null,
+    overrides.n > 0 ? `${overrides.n} personalização(ões) de loja` : null,
+  ].filter(Boolean);
+  if (emUso.length > 0) {
+    res.status(409).json({
+      error: "PERFIL_EM_USO",
+      detalhe: `Este perfil está em uso por ${emUso.join(", ")}. Mova quem o usa para outro perfil antes de removê-lo.`,
+    });
+    return;
+  }
+
   await db.delete(perfisTable).where(eq(perfisTable.id, params.data.perfilId));
   res.status(204).send();
 });
@@ -318,6 +348,15 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   }
   
   const updateData: any = { ...parsed.data };
+  // O e-mail entra pela MESMA borda do cadastro (linha do POST) e do login,
+  // que procura por `email` já em minúsculas. Gravando o texto cru, corrigir a
+  // ficha de alguém digitando "Ana@Moscow.com" trancava a pessoa para fora: o
+  // login não achava linha nenhuma e devolvia 401 com a senha certa, sem nada
+  // na tela do admin mostrando o que mudou. Pior, a unicidade é sobre o texto
+  // cru (`email` .unique()), então as duas grafias conviviam e só uma logava.
+  if (typeof updateData.email === "string") {
+    updateData.email = updateData.email.toLowerCase().trim();
+  }
   if (updateData.senha) {
     updateData.senhaHash = await hashSenha(updateData.senha);
     delete updateData.senha;
@@ -364,20 +403,37 @@ router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   // trocou por `restrict`; aqui damos o 409 LEGÍVEL antes de o banco levantar o
   // 23503 genérico ("Operação viola vínculos existentes"), e a mensagem ensina
   // o caminho certo: inativar preserva tudo.
+  //
+  // A contagem tem de cobrir TODAS as FKs que apontam para `usuarios`, e
+  // cobria quatro de seis. As duas que faltavam falhavam em direções opostas:
+  //
+  // - `recorrencias.usuario_id` é CASCADE. Uma costureira com salário ativo de
+  //   R$ 2.800 e nada mais passava pelas quatro contagens, o DELETE ia adiante
+  //   e o banco apagava a recorrência junto. No mês seguinte a folha vinha
+  //   R$ 2.800 menor, sem erro e sem linha nenhuma que explicasse.
+  // - `comissao_regras.vendedora_id` é restrict. Uma vendedora que só tem
+  //   regra de comissão também passava, e morria no 23503 do banco — devolvendo
+  //   o `409 VINCULO_EXISTENTE` genérico em vez da mensagem que ensina a
+  //   inativar, que era exatamente o ponto desta guarda.
   const usuarioId = params.data.usuarioId;
-  const [[c1], [c2], [c3], [c4]] = await Promise.all([
+  const [[c1], [c2], [c3], [c4], [c5], [c6]] = await Promise.all([
     db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.vendedoraId, usuarioId)),
     db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.vendedoraId, usuarioId)),
     db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.vendedoraId, usuarioId)),
     db.select({ n: count() }).from(comissaoFechamentosTable).where(eq(comissaoFechamentosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(recorrenciasTable).where(eq(recorrenciasTable.usuarioId, usuarioId)),
+    db.select({ n: count() }).from(comissaoRegrasTable).where(eq(comissaoRegrasTable.vendedoraId, usuarioId)),
   ]);
   const contratos = c1.n, orcamentos = c2.n, atendimentos = c3.n, comissoes = c4.n;
+  const recorrencias = c5.n, regras = c6.n;
 
   const historico = [
     contratos > 0 ? `${contratos} contrato(s)` : null,
     orcamentos > 0 ? `${orcamentos} orçamento(s)` : null,
     atendimentos > 0 ? `${atendimentos} atendimento(s)` : null,
     comissoes > 0 ? `${comissoes} fechamento(s) de comissão` : null,
+    recorrencias > 0 ? `${recorrencias} lançamento(s) recorrente(s) — salário` : null,
+    regras > 0 ? `${regras} regra(s) de comissão` : null,
   ].filter(Boolean);
 
   if (historico.length > 0) {
@@ -519,9 +575,12 @@ router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Prom
 // E76: a rede numa tela. Quatro agregados por loja, cada um numa consulta com
 // GROUP BY — nada de N+1 por loja.
 router.get("/admin/consolidado", async (_req, res): Promise<void> => {
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
+  // "Recebido no mês" é o mês da LOJA, não o do relógio do processo. Com
+  // `setDate(1)` + `setHours(0,0,0,0)` num container UTC, o corte caía às 21h
+  // do último dia do mês anterior em São Paulo: todo recebimento entre 21h e a
+  // meia-noite do dia 31 entrava no mês seguinte, e o número que a rede vê no
+  // console não batia com o DRE de nenhuma das lojas.
+  const inicioMes = inicioDoDia(primeiroDiaDoMes(hojeLocal()));
 
   const [lojas, leadsPorLoja, contratosPorLoja, recebidoPorLoja, abertoPorLoja] = await Promise.all([
     db.select({ id: lojasTable.id, nome: lojasTable.nome }).from(lojasTable)

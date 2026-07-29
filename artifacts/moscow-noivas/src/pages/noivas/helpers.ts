@@ -13,19 +13,15 @@ export const dataLongaFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
-/** Data curta ("12 de set. de 2026") para os cards da lista. */
-export const dataCurtaFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+// `dataCurtaFmt` morava aqui: cópia campo a campo de `diaMesAbrevAno`
+// (formatos.ts) — mesmas opções, mesmo UTC. As seis telas que a usavam passaram
+// a chamar a régua direto.
 
-/** Moeda BRL completa ("R$ 1.234,56"). */
-export const moedaFmt = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+// `moedaFmt` morava aqui — o SEGUNDO formatador de BRL do frontend, contra o
+// invariante do `replit.md` ("todo dinheiro na tela sai de `brl()`", E92, que
+// apagou 98 cópias). Como o irmão em `whatsapp.ts`, ele não divergia hoje: a
+// string sai idêntica. O que ele fazia era manter viva a possibilidade de
+// divergir amanhã, no único lugar em que o repo já pagou para não ter.
 
 /** Dias (inteiros) até o casamento, comparando dias-calendário em UTC. */
 export function diasAteCasamento(iso: string): number {

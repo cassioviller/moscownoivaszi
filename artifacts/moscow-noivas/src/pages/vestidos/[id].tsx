@@ -32,7 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl, dataDia } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 
@@ -400,7 +400,7 @@ export default function VestidoDetail() {
                   <span className="font-medium">
                     {proximaJanela.data.proximaData === proximaJanela.data.aPartirDe
                       ? "a partir de hoje"
-                      : dataDia(proximaJanela.data.proximaData)}
+                      : diaMesAno(proximaJanela.data.proximaData)}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">nenhuma no próximo ano</span>

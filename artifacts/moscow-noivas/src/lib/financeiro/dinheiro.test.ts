@@ -49,6 +49,15 @@ describe("parseValor", () => {
     expect(parseValor("1.234.567")).toBe(1234567);
   });
 
+  it("o SINAL não muda a quantia por mil", () => {
+    // O caixa fecha no vermelho e a conferência aceita negativo de propósito.
+    // O reconhecedor de milhar começava em `^\d` e reprovava o "-": "-1.234"
+    // caía no Number cru e virava −1,23 — a âncora de saldo mil vezes menor.
+    expect(parseValor("-1.234")).toBe(-1234);
+    expect(parseValor("-1.234,56")).toBe(-1234.56);
+    expect(parseValor("+1.234")).toBe(1234);
+  });
+
   it("vazio é null (não digitou); lixo é NaN (digitou errado)", () => {
     expect(parseValor("")).toBeNull();
     expect(parseValor("   ")).toBeNull();

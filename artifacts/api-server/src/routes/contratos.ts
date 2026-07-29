@@ -276,6 +276,41 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       });
       return;
     }
+    /**
+     * E107 fechou a metade fácil e deixou a outra aberta: a guarda acima só
+     * morde quando o bloqueio JÁ tem dona, e **nenhuma rota escrevia
+     * `bloqueio.lead_id`** — o campo nascia nulo e continuava nulo. O caso
+     * comum era justamente o descoberto: 61 das 63 avarias do banco de
+     * desenvolvimento vivem em bloqueio sem noiva.
+     *
+     * O que passava: contrato da noiva A prende o bloqueio B (leadId nulo,
+     * `ignorarBloqueioId` faz B não conflitar consigo mesmo); dias depois, o
+     * contrato da noiva C — com `dataCasamento` nulo, que pula a conferência
+     * de data — prende o MESMO B. A PK de `contrato_bloqueios` é
+     * (contratoId, bloqueioId) e não impede o segundo par. O vestido ficava
+     * prometido a duas noivas para a mesma data, o portal das duas desenhava
+     * "O seu vestido" com a mesma peça, e a loja só descobria na retirada.
+     *
+     * A prova que faltava é sobre o VÍNCULO, não sobre a dona: uma reserva é
+     * de no máximo um contrato ATIVO. Contrato cancelado não conta — ele
+     * libera a peça (soft-cancel do bloqueio) e a reserva volta ao mercado.
+     */
+    const [presoPor] = await db
+      .select({ contratoId: contratoBloqueiosTable.contratoId })
+      .from(contratoBloqueiosTable)
+      .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+      .where(and(
+        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    if (presoPor) {
+      res.status(409).json({
+        error: "RESERVA_JA_CONTRATADA",
+        detalhe: "Esta reserva de vestido já está presa por outro contrato ativo.",
+        campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva já é de outro contrato" }],
+      });
+      return;
+    }
     if (
       contratoData.dataCasamento &&
       bloqueio.casamentoData &&
@@ -350,6 +385,20 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       await tx.insert(contratoBloqueiosTable).values(
         bloqueioIds.map((bloqueioId) => ({ contratoId: contrato.id, bloqueioId })),
       );
+      // E o contrato DÁ DONO à reserva que não tinha — o que o comentário da
+      // guarda S2/E107 já afirmava ("este contrato é justamente quem lhe dá
+      // dono") e nenhuma linha fazia. Sem isto, `bloqueio.lead_id` seguia nulo
+      // para sempre e a guarda de noiva nunca tinha o que comparar: nem aqui,
+      // nem em `POST /avarias/:id/cobrar`, que depende do mesmo campo para
+      // mandar o reparo ao carnê certo. Só as sem dona são tocadas — as com
+      // dona já foram recusadas acima.
+      await tx.update(bloqueioVestidosTable)
+        .set({ leadId: contratoData.leadId, updatedAt: new Date() })
+        .where(and(
+          inArray(bloqueioVestidosTable.id, bloqueioIds),
+          eq(bloqueioVestidosTable.lojaId, lojaId),
+          isNull(bloqueioVestidosTable.leadId),
+        ));
     }
 
     // Fechar contrato avança o funil do lead (nunca regride).
@@ -425,6 +474,44 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
+  }
+
+  /**
+   * O PATCH grava `dataCasamento` sem repetir NENHUMA das duas provas que o
+   * POST faz sobre ela: a coerência com `bloqueio.casamentoData` e o
+   * `verificarDisponibilidade` da peça. Fechar o contrato para 10/05 e depois
+   * mover a data por aqui era o caminho aberto para o mesmo estrago que a
+   * criação recusa — o vestido reservado para uma data e o contrato prometendo
+   * outra, ou a peça já ocupada na data nova.
+   *
+   * As reservas presas vêm do vínculo vivo (E72), e a conferência é a mesma
+   * função do POST — a régua é uma só.
+   */
+  if (parsed.data.dataCasamento) {
+    const vinculos = await db
+      .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+      .from(contratoBloqueiosTable)
+      .where(eq(contratoBloqueiosTable.contratoId, contratoId as string));
+    for (const { bloqueioId } of vinculos) {
+      const [bloqueio] = await db.select().from(bloqueioVestidosTable)
+        .where(and(
+          eq(bloqueioVestidosTable.id, bloqueioId),
+          eq(bloqueioVestidosTable.lojaId, lojaId as string),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ));
+      if (!bloqueio) continue;
+      if (
+        bloqueio.casamentoData &&
+        diaLocal(parsed.data.dataCasamento) !== diaLocal(bloqueio.casamentoData)
+      ) {
+        res.status(422).json({
+          error: "DATA_DIVERGE_DA_RESERVA",
+          detalhe: "A data do casamento diverge da data da reserva do vestido — mude a reserva primeiro.",
+          campos: [{ campo: "dataCasamento", motivo: "Diverge da reserva do vestido" }],
+        });
+        return;
+      }
+    }
   }
 
   const [contrato] = await db.update(contratosTable)
@@ -837,7 +924,28 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
     return;
   }
 
-  await db.delete(parcelasTable).where(eq(parcelasTable.id, existente.id));
+  // A trilha vem ANTES do delete, na mesma transação — é a operação espelho do
+  // `CONTA_PAGAR_REMOVIDA` que o E107 criou do lado das contas a pagar, pelo
+  // mesmo motivo: some com uma obrigação, não move caixa realizado (a parcela
+  // paga é recusada acima), e depois do DELETE não há linha para consultar.
+  // O que não estiver no detalhe está perdido.
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "PARCELA_REMOVIDA",
+      entidade: "parcela",
+      entidadeId: existente.id,
+      detalhe: {
+        contratoId: existente.contratoId,
+        numero: existente.numero,
+        descricao: existente.descricao,
+        valorPrevisto: existente.valorPrevisto,
+        vencimento: existente.vencimento,
+      },
+    });
+    await tx.delete(parcelasTable).where(eq(parcelasTable.id, existente.id));
+  });
   res.status(204).send();
 });
 

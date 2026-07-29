@@ -120,7 +120,6 @@ export * from './enviarContabilidadeInput';
 export * from './enviarContabilidadeResultado';
 export * from './errorResponse';
 export * from './errorResponseCamposItem';
-export * from './exportarAuditoriaAcao';
 export * from './exportarAuditoriaParams';
 export * from './exportarContasPagarParams';
 export * from './exportarDadosLead200';

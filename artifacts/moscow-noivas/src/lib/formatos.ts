@@ -50,6 +50,24 @@ export function statusContratoLabel(status: string): string {
   return STATUS_CONTRATO_LABELS[status] ?? status;
 }
 
+/**
+ * O tipo do item de orçamento/contrato, como a noiva o lê.
+ *
+ * Estava declarado idêntico em `noiva-portal.tsx` e em `orcamento-publico.tsx`
+ * — as DUAS telas públicas, que mostram os mesmos itens à mesma pessoa. Rótulo
+ * duplicado entre telas públicas é o caso em que a divergência aparece para
+ * quem menos deveria vê-la.
+ */
+const TIPO_ITEM_LABELS: Record<string, string> = {
+  VESTIDO: "Vestido",
+  SERVICO: "Serviço",
+  AJUSTE: "Ajuste",
+};
+
+export function tipoItemLabel(tipo: string): string {
+  return TIPO_ITEM_LABELS[tipo] ?? tipo;
+}
+
 const TIPO_ATRIBUTO_LABELS: Record<string, string> = {
   ESCALA: "escala",
   OPCAO_UNICA: "opção única",
@@ -85,18 +103,11 @@ export function origemLabel(origem: string): string {
   return ROTULO_ORIGEM[origem] ?? origem;
 }
 
-const dataDiaFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
-
-/**
- * Formata uma data de NEGÓCIO (casamento, vencimento) sem deixar o fuso
- * empurrar o dia: `toLocaleDateString("pt-BR")` sem timeZone lê meia-noite UTC
- * no fuso local e mostra a véspera. Date-only ("2026-11-20") é normalizado ao
- * meio-dia UTC antes de formatar.
- */
-export function dataDia(iso: string): string {
-  const soDia = /^\d{4}-\d{2}-\d{2}$/.test(iso);
-  return dataDiaFmt.format(new Date(soDia ? `${iso}T12:00:00Z` : iso));
-}
+// `dataDia` morava aqui e produzia EXATAMENTE a mesma string que `diaMesAno`
+// (a seção "Dias de negócio", mais abaixo): mesmo fuso UTC, mesma normalização
+// ao meio-dia, e o default numérico do pt-BR já é "28/07/2026". Duas funções
+// públicas da MESMA régua, na MESMA régua — o pior lugar para uma cópia, porque
+// quem lê o arquivo não descobre qual das duas é a certa. Ficou `diaMesAno`.
 
 /**
  * O ÚNICO jeito de escrever dinheiro na tela. Devolve o valor JÁ com o `R$`.

@@ -10,6 +10,7 @@
  */
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListParcelas,
   getListParcelasQueryKey,
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 import {
   rotuloForma,
   estaAtrasada,
@@ -48,7 +49,7 @@ import {
 } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, invalidarCaixa } from "./helpers";
+import { ResumoCard, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
@@ -80,7 +81,12 @@ type FiltroReceber = (typeof FILTROS)[number]["chave"];
 
 export default function Receber() {
   const naLoja = useCaminhoDaLoja();
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // Receber e estornar parcela são guardados pelo módulo **leads** no servidor
+  // (contratos.ts:76 — B9/E101, "a noiva paga na mão de quem a atendeu"), e
+  // esta tela não tinha gate nenhum: os dois botões apareciam para toda gente
+  // do financeiro e o 403 só chegava depois do clique, no diálogo.
+  const podeMovimentar = podeNoModulo(acessosModulos, "leads", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -324,7 +330,7 @@ export default function Receber() {
                       )}
                       <span className="text-muted-foreground text-xs">
                         {p.contrato?.leadId ? <>{rotuloParcela(p)} · </> : null}
-                        Vence {dataFmt.format(new Date(p.vencimento))} ·{" "}
+                        Vence {diaMesAno(p.vencimento)} ·{" "}
                         <Link to={naLoja(`/contratos/${p.contratoId}`)} className="underline underline-offset-2 hover:text-primary">
                           contrato
                         </Link>
@@ -351,7 +357,7 @@ export default function Receber() {
 
                   {/* Uma parcela PARCIAL tem as DUAS saídas ao mesmo tempo:
                       receber o que falta ou desfazer o que entrou. */}
-                  {(estaAberta(p) || teveRecebimento(p)) && (
+                  {podeMovimentar && (estaAberta(p) || teveRecebimento(p)) && (
                     <div className="flex justify-end gap-2 border-t pt-2">
                       {teveRecebimento(p) && (
                         <Button

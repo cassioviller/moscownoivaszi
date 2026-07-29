@@ -19,6 +19,7 @@ import {
   type Cabine,
 } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
+import { instanteHora } from "@/lib/formatos";
 import { GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -235,11 +236,10 @@ export function GradeDoDia({
           </p>
           {orfaos.map((a) => (
             <div key={a.id} className="text-sm" data-testid={`orfao-agenda-${a.id}`}>
-              {new Intl.DateTimeFormat("pt-BR", {
-                timeZone: "America/Sao_Paulo",
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(new Date(a.inicio))}{" "}
+              {/* Era um Intl.DateTimeFormat construído DENTRO do .map() — um
+                  formatador novo por órfão, com as mesmas opções de
+                  `instanteHora`, a régua do relógio da loja. */}
+              {instanteHora(a.inicio)}{" "}
               — {nomePorLead.get(a.leadId) ?? "Noiva"}
             </div>
           ))}

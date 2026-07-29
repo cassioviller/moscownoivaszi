@@ -51,7 +51,7 @@ import {
   rotuloParado,
   type EtapaLead,
 } from "@/lib/funil";
-import { dataCurtaFmt } from "./helpers";
+import { diaMesAbrevAno } from "@/lib/formatos";
 
 /**
  * O funil kanban (E27). Cada etapa é uma coluna e o card se arrasta de uma para
@@ -381,7 +381,7 @@ function CardNoiva({
             </Link>
             {lead.casamentoData && (
               <span className="block text-xs text-muted-foreground">
-                {dataCurtaFmt.format(new Date(lead.casamentoData))}
+                {diaMesAbrevAno(lead.casamentoData)}
               </span>
             )}
           </div>

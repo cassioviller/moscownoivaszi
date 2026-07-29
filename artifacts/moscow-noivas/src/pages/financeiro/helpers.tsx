@@ -13,17 +13,10 @@ import { brl } from "@/lib/formatos";
  * erro e mostrar um número.
  */
 
-/**
- * Datas de NEGÓCIO (vencimento) — o dia já é o dia, e lê-lo em UTC não o
- * escorrega. Instantes (recebidoEm, pagamento.data) NÃO passam por aqui: eles
- * só têm dia dentro de um fuso, e o de São Paulo é o da loja (ver datas.ts).
- */
-export const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "UTC",
-});
+// `dataFmt` morava aqui: cópia campo a campo de `diaMesAno` (formatos.ts) —
+// mesmas opções, mesmo `timeZone: "UTC"`, mesmo propósito declarado. Data de
+// negócio tem UMA régua, e ela é a de `lib/formatos.ts`; as três telas do
+// financeiro que a usavam passaram a chamar `diaMesAno` direto.
 
 /**
  * Um movimento de caixa invalida TUDO o que ele muda (D9/E93) — a lista das

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
-import { brl, instanteLongo } from "@/lib/formatos";
+import { brl, instanteLongo, tipoItemLabel } from "@/lib/formatos";
 
 /**
  * Página PÚBLICA do orçamento (/orcamento/:token) — o que a noiva abre pelo
@@ -26,12 +26,6 @@ import { brl, instanteLongo } from "@/lib/formatos";
 const ERROS: Record<string, string> = {
   LINK_EXPIRADO: "Este link expirou. Peça um novo para a sua vendedora.",
   LINK_INVALIDO: "Link inválido — confira se ele veio inteiro do WhatsApp.",
-};
-
-const ROTULO_TIPO: Record<string, string> = {
-  VESTIDO: "Vestido",
-  SERVICO: "Serviço",
-  AJUSTE: "Ajuste",
 };
 
 
@@ -95,7 +89,7 @@ export default function OrcamentoPublico() {
                     <div className="min-w-0">
                       <p className="text-sm">{it.descricao}</p>
                       <p className="text-xs text-muted-foreground">
-                        {ROTULO_TIPO[it.tipo] ?? it.tipo}
+                        {tipoItemLabel(it.tipo)}
                         {it.quantidade > 1 && ` · ${it.quantidade}× ${brl(it.valorUnitario)}`}
                       </p>
                     </div>

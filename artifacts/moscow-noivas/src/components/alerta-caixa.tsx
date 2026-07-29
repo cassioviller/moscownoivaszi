@@ -4,7 +4,7 @@ import { useGetAlertaCaixa, getGetAlertaCaixaQueryKey } from "@workspace/api-cli
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { TriangleAlert, Info } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl, dataDia } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 
 /**
  * "O caixa fica negativo em DD/MM" (E46) — o veredito da projeção onde a dona
@@ -67,7 +67,7 @@ export function AlertaCaixa() {
   return (
     <Alert variant="destructive" data-testid="alerta-caixa">
       <TriangleAlert className="h-4 w-4" />
-      <AlertTitle>Caixa fica negativo em {dataDia(data.diaNegativo)}</AlertTitle>
+      <AlertTitle>Caixa fica negativo em {diaMesAno(data.diaNegativo)}</AlertTitle>
       <AlertDescription className="space-y-1">
         <p>
           Pelo que está previsto para os próximos {data.horizonteDias} dias, partindo dos{" "}
@@ -76,7 +76,7 @@ export function AlertaCaixa() {
             <>
               , o caixa chega a{" "}
               <span className="font-semibold tabular-nums">{brl(data.menorSaldo.valor)}</span>
-              {data.menorSaldo.dia && <> em {dataDia(data.menorSaldo.dia)}</>}
+              {data.menorSaldo.dia && <> em {diaMesAno(data.menorSaldo.dia)}</>}
             </>
           )}
           .

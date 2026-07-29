@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { db, perfisTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { POST_QUE_MUTA } from "../lib/permissoes";
 import {
   criarFixture,
   criarLead,
@@ -163,8 +164,10 @@ describe("nenhum POST de ação escapa da classificação (B5)", () => {
         // a noiva, pelo token. O gate delas é o TTL, não a permissão.
         if (caminho.startsWith("/portal")) continue;
 
-        // Já tratado por `acaoDoRequest`, ou declarado na própria rota.
-        const naRegex = /^(cancelar|estornar)$/.test(ultimo);
+        // Já tratado por `acaoDoRequest`, ou declarado na própria rota. A lista
+        // é IMPORTADA, não recopiada: a varredura existe porque a régua para de
+        // crescer, e uma segunda cópia dela aqui teria o mesmo defeito.
+        const naRegex = POST_QUE_MUTA.test(`/${ultimo}`);
         if (naRegex || comRequire?.includes('"editar"')) continue;
 
         naoClassificados.push(`${arquivo}: POST ${caminho}`);

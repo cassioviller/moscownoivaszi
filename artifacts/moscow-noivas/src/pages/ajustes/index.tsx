@@ -16,7 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { dataCurtaFmt, diasAteCasamento } from "../noivas/helpers";
+import { diasAteCasamento } from "../noivas/helpers";
+import { diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 
@@ -258,7 +259,7 @@ export default function Ajustes() {
                             {rotuloProva(diasProva)}
                           </span>
                           <span>·</span>
-                          <span>{dataCurtaFmt.format(new Date(a.proximaProva!))}</span>
+                          <span>{diaMesAbrevAno(a.proximaProva!)}</span>
                         </>
                       ) : diasCasamento !== null ? (
                         <>
@@ -267,7 +268,7 @@ export default function Ajustes() {
                             {rotuloCasamento(diasCasamento)}
                           </span>
                           <span>·</span>
-                          <span>{dataCurtaFmt.format(new Date(casamento!))}</span>
+                          <span>{diaMesAbrevAno(casamento!)}</span>
                         </>
                       ) : (
                         <>

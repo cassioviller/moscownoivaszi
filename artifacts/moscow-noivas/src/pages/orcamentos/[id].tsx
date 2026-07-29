@@ -514,7 +514,10 @@ export default function OrcamentoDetail() {
   };
 
   const onAplicarDesconto = async () => {
-    const valor = Number(descontoValor);
+    // Mesmo C3 do item: com desconto em VALOR, `Number("1.500")` é 1,5 — o
+    // abatimento de mil e quinhentos entrava como um e cinquenta, e o total do
+    // orçamento saía R$ 1.498,50 acima do combinado com a noiva.
+    const valor = parseValor(descontoValor) ?? Number.NaN;
     if (!descontoTipo || !Number.isFinite(valor) || valor <= 0) {
       toast({ title: "Informe tipo e valor do desconto", variant: "destructive" });
       return;

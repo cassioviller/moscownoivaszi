@@ -76,6 +76,13 @@ rode o codegen.
   `recebidoEm`/`pagamento.data` são INSTANTES, e o dia deles só existe num fuso:
   lidos em UTC, todo movimento das 21h à meia-noite cai no dia seguinte e o
   caixa do dia fecha errado. Ver `artifacts/moscow-noivas/src/lib/financeiro/datas.ts`.
+  **"Hoje" nunca sai de `new Date()` + `setHours(0,0,0,0)`**: isso é a meia-noite
+  do relógio do PROCESSO, que no container é UTC — o E111 achou quatro desses
+  (dashboard, consolidado da rede, relatório de acervo, expurgo LGPD), um deles
+  no MESMO handler em que o número ao lado já usava `hojeLocal()`. A régua é
+  `hojeLocal()`/`inicioDoDia()`/`addDias()`/`addMeses()` do `financeiro-core`, e
+  `addMeses` existe porque `setMonth` **transborda para o futuro** quando o dia
+  de hoje não existe no mês alvo (31/03 −1 mês = 03/03).
 - **Autoria vem da SESSÃO, não do corpo da request.** Quem registrou um contato
   de cobrança sai de `req.usuario`, e `RegistroCobrancaInput` não aceita
   `vendedorId` de propósito — um cliente que declara o próprio autor pode
@@ -107,10 +114,27 @@ rode o codegen.
   do banco só garante que um id EXISTE, não a que loja pertence. Toda escrita
   que recebe id de outra entidade — do CORPO ou do PATH — passa por
   `api-server/src/lib/escopo-loja.ts` (`leadNaLoja`, `cabineNaLoja`,
-  `usuarioNaLoja`/`vendedoraNaLoja`, `reservaNaLoja`) ANTES de escrever: id do
-  corpo que não é da loja vira 422 `REFERENCIA_INVALIDA`, id do path vira 404.
-  Régua única — quem precisar de uma pergunta nova a acrescenta lá, não escreve
-  a checagem à mão na rota.
+  `usuarioNaLoja`/`vendedoraNaLoja`, `reservaNaLoja`, `vestidoNaLoja`,
+  `atributosDaLoja`) ANTES de escrever: id do corpo que não é da loja vira 422
+  `REFERENCIA_INVALIDA`, id do path vira 404. Régua única — quem precisar de uma
+  pergunta nova a acrescenta lá, não escreve a checagem à mão na rota.
+- **A loja da URL é conferida contra a da sessão em TODA rota de loja** (E111),
+  e a conferência lê o CAMINHO CRU (`lojaIdDaUrl`, em `middlewares/auth.ts`), não
+  `req.params`. O motivo é uma pegadinha do Express que custou caro: `router.use(fn)`
+  **sem path** roda com `req.params` vazio, e os dez routers de domínio montam
+  assim — a comparação nunca falhava porque nunca rodava, e uma vendedora da loja
+  A lia, editava e apagava noiva da loja B com 200/200/204. `requireModulo` não
+  protege disso: ele consulta as permissões de `lojaAtivaId` e aprova. Middleware
+  que precisa de um param **tem** de ser montado com o path, ou ler a URL.
+- **Ação destrutiva responde 404, conta o que vai junto e deixa rastro** — a
+  régua que o E91 (usuário), o E106 (loja) e o E111 (noiva, parcela, perfil)
+  aplicam igual: 404 antes de qualquer escrita, 409 LEGÍVEL dizendo o que segura
+  o registro (`LEAD_COM_CONTRATO`, `PERFIL_EM_USO`, `USUARIO_COM_HISTORICO`,
+  `LOJA_COM_HISTORICO`) em vez do 23503 genérico do banco, e `registrarAuditoria`
+  DENTRO da transação e ANTES do delete — depois dele não há linha de onde
+  reconstituir. A guarda de `DELETE /admin/usuarios/:id` conta as **seis** FKs
+  que apontam para `usuarios`, contando `recorrencias` (CASCADE: apagava o
+  salário em silêncio) e `comissao_regras` (restrict).
 - **Todo dinheiro na tela sai de `brl()`, e ele já traz o `R$`** (E92).
   `moscow-noivas/src/lib/formatos.ts` é a régua única: `Intl.NumberFormat` com
   `style: "currency"`, o que põe um espaço RÍGIDO (U+00A0) entre o símbolo e o
@@ -138,6 +162,19 @@ rode o codegen.
   desconhecida é descartada, ausente é `false`. O guard deriva a ação do método
   HTTP. O cliente espelha o gate (`moscow-noivas/src/lib/permissoes.ts`) só para
   não OFERECER o que o servidor vai negar — a autoridade é sempre o servidor.
+  **A ação vem do método E do caminho** (`acaoDoRequest`): POST que termina em
+  verbo de mutação (`receber`, `pagar`, `cobrar`, `aprovar`, `cancelar`,
+  `estornar`, …) é `editar`, não `criar`. A lista é uma só, e a varredura de
+  `e101-acao-da-rota-api.test.ts` a IMPORTA — verbo novo sem classificação
+  reprova o teste. Sem isso, o guard de prefixo do router e o guard da rota
+  exigem ações DIFERENTES e a pessoa leva 403 numa ação que ela pode fazer.
+- **Uma reserva de vestido é de um contrato ATIVO só** (E111). `POST /contratos`
+  recusa com 409 `RESERVA_JA_CONTRATADA` o bloqueio já preso por outro contrato
+  ativo, **e grava `bloqueio_vestidos.lead_id`** — o contrato é quem dá dona à
+  reserva que nasceu sem. Cancelar o contrato solta a peça (soft-cancel), e ela
+  volta ao mercado. A seção "O seu vestido" do portal resolve pelo vínculo VIVO
+  `contrato_bloqueios`; `contratos.bloqueio_vestido_id` é legado lido, nunca
+  escrito — decidir por ele deixava a seção morta em produção.
 
 ## Product
 
@@ -177,7 +214,11 @@ rode o codegen.
   preview ao vivo do mês e fechamento idempotente que gera a conta a pagar.
 - **Recorrências** — o que se repete todo mês (salário, aluguel, assinatura,
   fornecedor fixo) vira conta a pagar por geração idempotente por competência,
-  e o período fecha com a contabilidade (export CSV).
+  e o período fecha com a contabilidade (export CSV). **Sair da equipe DESATIVA
+  a recorrência da pessoa naquela loja** (E111): a geração lê as ativas da loja
+  sem junção com `usuarios_lojas`, então sem isso a conta de quem já não
+  trabalha ali renascia todo mês, na tela de Pagar e no DRE previsto. Desativa,
+  não apaga — a recorrência é a régua que explica os salários já pagos.
 - **Avisos sem cron** — o sino (E68) reúne caixa furando, comissão esquecida,
   noivas esfriando e presenças por confirmar; "Mensagens de hoje" (E69) é a
   fila de wa.me pronta (confirmação carimba `confirmadoEm`). E83: o poll e as

@@ -6732,7 +6732,7 @@ export const exportarAuditoriaQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}
 
 
 export const ExportarAuditoriaQueryParams = zod.object({
-  "acao": zod.enum(['PARCELA_RECEBIDA', 'RECEBIMENTO_ESTORNADO', 'CONTA_PAGA', 'PAGAMENTO_REGISTRADO', 'PAGAMENTO_ESTORNADO', 'ESTORNO_COMISSAO_BAIXADO', 'COMISSAO_FECHAMENTO_REABERTO', 'CONTRATO_CANCELADO', 'MEMBRO_ADICIONADO', 'MEMBRO_ALTERADO', 'MEMBRO_REMOVIDO', 'CONVITE_CRIADO', 'CONVITE_CANCELADO', 'PERMISSOES_ALTERADAS', 'PERMISSOES_RESTAURADAS', 'ORCAMENTO_ACEITO', 'PROVA_CONFIRMADA', 'LEADS_ANONIMIZADOS']).optional(),
+  "acao": zod.coerce.string().optional().describe('Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve planilha vazia, não erro.\n'),
   "usuarioId": zod.coerce.string().optional(),
   "de": zod.coerce.string().regex(exportarAuditoriaQueryDeRegExp).optional().describe('Início do intervalo (inclusivo, dia local America\/Sao_Paulo)'),
   "ate": zod.coerce.string().regex(exportarAuditoriaQueryAteRegExp).optional().describe('Fim do intervalo (inclusivo, dia local America\/Sao_Paulo)')

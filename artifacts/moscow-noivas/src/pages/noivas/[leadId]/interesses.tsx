@@ -22,6 +22,7 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { parseValor } from "@/lib/financeiro/dinheiro";
 
 /**
  * Interesses da noiva (porte da /noivas/[leadId]/interesses): atributos do
@@ -134,7 +135,10 @@ function InteresseForm({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const teto = tetoOrcamento.trim() ? Number(tetoOrcamento.replace(",", ".")) : undefined;
+    // `Number("8.000")` é 8 — o teto de oito mil virava oito reais, e o filtro
+    // de vestidos passava a esconder o catálogo inteiro. `parseValor` lê o
+    // ponto de milhar como pt-BR (a mesma régua do item de orçamento).
+    const teto = parseValor(tetoOrcamento) ?? undefined;
     if (teto !== undefined && (!Number.isFinite(teto) || teto < 0)) {
       toast({
         title: "Teto de orçamento inválido",

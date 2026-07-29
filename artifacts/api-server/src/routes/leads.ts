@@ -26,6 +26,7 @@ import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
+import { addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -286,8 +287,15 @@ router.post("/lojas/:lojaId/leads/expurgo", requireModulo("leads", "editar"), as
     return;
   }
   const meses = parsed.data.mesesInatividade ?? 24;
-  const corte = new Date();
-  corte.setMonth(corte.getMonth() - meses);
+  /**
+   * `setMonth(getMonth() - meses)` TRANSBORDA quando o dia de hoje não existe
+   * no mês alvo: rodado em 31/03 com 1 mês, o corte vira 03/03 — o Date corrige
+   * "31/02" para frente. O expurgo é irreversível por desenho (anonimiza a
+   * noiva), e um corte que anda três dias para o FUTURO anonimiza fichas que
+   * ainda estavam dentro do prazo de retenção. `addMeses` grampeia ao último
+   * dia do mês curto (31/03 −1 mês = 28/02), que é a régua do carnê.
+   */
+  const corte = inicioDoDia(addMeses(hojeLocal(), -meses));
 
   const anonimizadas = await db.transaction(async (tx) => {
     const linhas = await tx
@@ -518,9 +526,60 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
   }));
 });
 
+/**
+ * Apagar a noiva é a operação mais destrutiva do cadastro comercial — e era um
+ * `delete` cru: sem 404, sem contagem do que ia junto e sem trilha, o oposto da
+ * régua que o E91 aplicou ao DELETE de usuário e o E106 ao de loja.
+ *
+ * O que o cascade leva é atendimento, orçamento, interesse e registro de
+ * cobrança. Contrato NÃO: `contratos.lead_id` é `restrict` de propósito
+ * (histórico financeiro), e o banco levantava o 23503 genérico. Aqui o 409 sai
+ * antes, LEGÍVEL, dizendo quantos contratos seguram a ficha.
+ *
+ * A trilha grava o que sumiu ANTES de sumir — depois do delete não há de onde
+ * reconstituir, que é exatamente o motivo de a trilha existir.
+ */
 router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
   const { lojaId, leadId } = req.params;
-  await db.delete(leadsTable).where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)));
+  const [lead] = await db
+    .select({ id: leadsTable.id, noivaNome: leadsTable.noivaNome, etapa: leadsTable.etapa })
+    .from(leadsTable)
+    .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)));
+  if (!lead) {
+    res.status(404).json({ error: "Lead not found" });
+    return;
+  }
+
+  const [[c1], [c2], [c3]] = await Promise.all([
+    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.leadId, lead.id)),
+    db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.leadId, lead.id)),
+    db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.leadId, lead.id)),
+  ]);
+  if (c1.n > 0) {
+    res.status(409).json({
+      error: "LEAD_COM_CONTRATO",
+      detalhe: `Esta noiva tem ${c1.n} contrato(s) — excluir apagaria o histórico financeiro dela. Marque como PERDIDO, ou use o expurgo para anonimizar.`,
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "LEAD_REMOVIDO",
+      entidade: "lead",
+      entidadeId: lead.id,
+      detalhe: {
+        noivaNome: lead.noivaNome,
+        etapa: lead.etapa,
+        orcamentos: c2.n,
+        atendimentos: c3.n,
+      },
+    });
+    await tx.delete(leadsTable)
+      .where(and(eq(leadsTable.id, lead.id), eq(leadsTable.lojaId, lojaId as string)));
+  });
   res.status(204).send();
 });
 

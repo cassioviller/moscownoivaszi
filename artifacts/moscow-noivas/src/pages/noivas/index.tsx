@@ -22,16 +22,15 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Plus, AlertCircle, Search, LayoutGrid, Columns3, BarChart3 } from "lucide-react";
-import { etapaLabel } from "@/lib/formatos";
+import { diaMesAbrevAno, etapaLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { FunilNoivas } from "./funil";
 import { mensagemApi } from "@/lib/erro-api";
 import {
-  dataCurtaFmt,
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
-  } from "./helpers";
+} from "./helpers";
 
 const TODAS_ETAPAS = "TODAS";
 const POR_PAGINA = 24;
@@ -238,7 +237,7 @@ export default function Noivas() {
                     <span>Casamento</span>
                     <span className="text-right">
                       <span className="tabular-nums text-foreground">
-                        {n.casamentoData ? dataCurtaFmt.format(new Date(n.casamentoData)) : "a definir"}
+                        {n.casamentoData ? diaMesAbrevAno(n.casamentoData) : "a definir"}
                       </span>
                       {mostrarContagem && (
                         <span className={`block text-xs ${urgente ? "text-destructive" : ""}`}>

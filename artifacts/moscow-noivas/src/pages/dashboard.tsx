@@ -33,7 +33,7 @@ import {
   PhoneCall,
   MessageCircle,
 } from "lucide-react";
-import { dataDia, etapaLabel, instanteHora } from "@/lib/formatos";
+import { diaMesAno, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -474,7 +474,7 @@ export default function Dashboard() {
                             <p className="text-sm font-medium">{p.noivaNome}</p>
                             <p className="text-xs text-muted-foreground">
                               {etapaLabel(p.etapa)}
-                              {p.casamentoData && ` · ${dataDia(p.casamentoData)}`}
+                              {p.casamentoData && ` · ${diaMesAno(p.casamentoData)}`}
                             </p>
                           </div>
                           <Badge

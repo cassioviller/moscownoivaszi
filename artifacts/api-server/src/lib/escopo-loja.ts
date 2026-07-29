@@ -1,5 +1,14 @@
-import { db, leadsTable, cabinesTable, usuariosLojasTable, reservasTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import {
+  db,
+  leadsTable,
+  cabinesTable,
+  usuariosLojasTable,
+  reservasTable,
+  vestidosTable,
+  atributosTable,
+  atributoOpcoesTable,
+} from "@workspace/db";
+import { and, eq, inArray } from "drizzle-orm";
 
 /**
  * Guardas de escopo por loja para as ESCRITAS.
@@ -41,6 +50,37 @@ export async function usuarioNaLoja(usuarioId: string, lojaId: string): Promise<
 
 /** Alias histórico de `usuarioNaLoja` — a pergunta é a mesma. */
 export const vendedoraNaLoja = usuarioNaLoja;
+
+export async function vestidoNaLoja(vestidoId: string, lojaId: string): Promise<boolean> {
+  const [r] = await db.select({ id: vestidosTable.id }).from(vestidosTable)
+    .where(and(eq(vestidosTable.id, vestidoId), eq(vestidosTable.lojaId, lojaId))).limit(1);
+  return !!r;
+}
+
+/**
+ * Os pares (atributo, opção) que a ficha do vestido carrega são todos desta
+ * loja, e cada opção é do atributo com que ela vem?
+ *
+ * `vestido_atributos` tem FK para as duas tabelas, e FK só prova que o id
+ * EXISTE. `atributos.loja_id` é quem diz de quem ele é; `atributo_opcoes` não
+ * tem coluna de loja nenhuma — herda a do atributo pai —, então a opção é
+ * conferida pelo pai, o que também barra "Marfim" do atributo Cor entrando no
+ * atributo Tamanho.
+ */
+export async function atributosDaLoja(
+  pares: readonly { atributoId: string; opcaoId: string }[],
+  lojaId: string,
+): Promise<boolean> {
+  if (pares.length === 0) return true;
+  const opcaoIds = [...new Set(pares.map((p) => p.opcaoId))];
+  const linhas = await db
+    .select({ atributoId: atributoOpcoesTable.atributoId, opcaoId: atributoOpcoesTable.id })
+    .from(atributoOpcoesTable)
+    .innerJoin(atributosTable, eq(atributosTable.id, atributoOpcoesTable.atributoId))
+    .where(and(inArray(atributoOpcoesTable.id, opcaoIds), eq(atributosTable.lojaId, lojaId)));
+  const donoDaOpcao = new Map(linhas.map((l) => [l.opcaoId, l.atributoId]));
+  return pares.every((p) => donoDaOpcao.get(p.opcaoId) === p.atributoId);
+}
 
 export async function reservaNaLoja(reservaId: string, lojaId: string): Promise<boolean> {
   const [r] = await db.select({ id: reservasTable.id }).from(reservasTable)

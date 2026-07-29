@@ -87,12 +87,29 @@ export function acaoDoMetodo(metodo: string): Acao {
 }
 
 /**
- * Ação exigida a partir do método E do caminho. Cancelar/estornar são POST mas
- * MUTAM um recurso existente — são `editar`, não `criar`. Sem isto, um perfil
- * com `criar` e sem `editar` (estado válido) cancelava contrato e estornava
- * recebimento: o guard derivava `criar` do método e a rota mentia sobre o que faz.
+ * Os POST que MUTAM um recurso existente em vez de criar um. O caminho termina
+ * num verbo, e o verbo é quem diz a verdade sobre a ação — o método não.
+ *
+ * A lista tem de cobrir TODA rota que declara `requireModulo(mod, "editar")`
+ * explicitamente, porque o guard de prefixo do router roda ANTES dela e deriva
+ * a ação daqui. Faltando um verbo, a rota passa a exigir as DUAS ações: a
+ * derivada (`criar`) e a declarada (`editar`) — e o perfil que tem só `editar`
+ * leva 403 numa ação que ele pode fazer. Foi o que aconteceu com `receber`:
+ * a gerente com `{ ver, criar: false, editar }` — estado válido e comum, quem
+ * revisa noiva cadastrada por outra sem abrir lead novo — não conseguia
+ * registrar o Pix de R$ 700 pago no balcão, e a mensagem culpava "criar".
+ */
+export const POST_QUE_MUTA =
+  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar)$/;
+
+/**
+ * Ação exigida a partir do método E do caminho. Cancelar/estornar/receber e os
+ * outros verbos de `POST_QUE_MUTA` são POST mas alteram um recurso que já
+ * existe — são `editar`, não `criar`. Sem isto, um perfil com `criar` e sem
+ * `editar` (estado válido) cancelava contrato e estornava recebimento: o guard
+ * derivava `criar` do método e a rota mentia sobre o que faz.
  */
 export function acaoDoRequest(metodo: string, caminho: string): Acao {
-  if (metodo.toUpperCase() === "POST" && /\/(cancelar|estornar)$/.test(caminho)) return "editar";
+  if (metodo.toUpperCase() === "POST" && POST_QUE_MUTA.test(caminho)) return "editar";
   return acaoDoMetodo(metodo);
 }

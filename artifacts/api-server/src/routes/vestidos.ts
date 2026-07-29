@@ -45,6 +45,7 @@ import {
   type Janela,
 } from "../lib/disponibilidade";
 import { identificarImagem } from "../lib/imagem";
+import { atributosDaLoja, vestidoNaLoja } from "../lib/escopo-loja";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -91,8 +92,19 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
   }
 
   const { atributos, ...vestidoData } = parsed.data;
+  // Mesma prova do PATCH: a FK garante que o atributo EXISTE, não de que loja
+  // ele é. Sem isto, a loja A cadastra um vestido com a cor da loja B e o GET
+  // enriquecido puxa o vocabulário da outra loja para dentro dela.
+  if (atributos && !(await atributosDaLoja(atributos, lojaId))) {
+    res.status(422).json({
+      error: "REFERENCIA_INVALIDA",
+      detalhe: "Atributo ou opção não é desta loja",
+      campos: [{ campo: "atributos", motivo: "Atributo ou opção de outra loja" }],
+    });
+    return;
+  }
   const vestidoId = randomUUID();
-  
+
   const insertData = { ...vestidoData };
 
   await db.transaction(async (tx) => {
@@ -390,6 +402,30 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
 
   const { atributos, ...vestidoData } = parsed.data;
   const updateData = { ...vestidoData, updatedAt: new Date() };
+
+  /**
+   * O 404 vem ANTES da transação, e não é cosmético — é o mesmo padrão B1 que
+   * o E91 consertou no `PATCH /equipe`, repetido aqui.
+   *
+   * O `tx.update` é escopado por loja e não fazia nada num vestido de outra
+   * loja; o `tx.delete` de `vestido_atributos` filtrava SÓ por `vestidoId`, e
+   * destruía. Medido nesta árvore: `PATCH /api/lojas/<A>/vestidos/<de-B>` com
+   * `{"atributos": []}` respondia 404 **e deixava o vestido de B com zero
+   * atributos** — a ficha de tamanho, cor e categoria vazia, sem trilha e sem
+   * ninguém a quem perguntar. O 404 saía da consulta pós-commit.
+   */
+  if (!(await vestidoNaLoja(vestidoId as string, lojaId as string))) {
+    res.status(404).json({ error: "Vestido not found" });
+    return;
+  }
+  if (atributos !== undefined && !(await atributosDaLoja(atributos, lojaId as string))) {
+    res.status(422).json({
+      error: "REFERENCIA_INVALIDA",
+      detalhe: "Atributo ou opção não é desta loja",
+      campos: [{ campo: "atributos", motivo: "Atributo ou opção de outra loja" }],
+    });
+    return;
+  }
 
   await db.transaction(async (tx) => {
     if (Object.keys(vestidoData).length > 0) {

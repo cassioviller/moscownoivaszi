@@ -94,6 +94,7 @@ quem escolheu a paleta:
 | E107 | Nenhuma escrita sem prova, nenhum dinheiro sem rastro (S2, S4, S6, S12) | M | ✅ | `4623ec1` · [notas](execucao/E107.md) |
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; **parte 4 (desfaz a regressão do Canvas que a parte 3 criou) em `0910ab6`**; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
 | E110 | A cobrança de avaria não colide com a entrada (achados 1 🔴 e 8 da revisão) | P | ✅ | `d437e97` · [notas](execucao/E110.md) |
+| E111 | A revisão do aplicativo inteiro: a loja da URL, o dinheiro na borda e o rastro do que some (58 achados) | G | ✅ | `HASH_E111` · [notas](execucao/E111.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
@@ -123,7 +124,7 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S9 | **O teto de orçamento (E33) compara em reais.** `acimaDoTeto` faz `totais.liquido > teto` em float enquanto o excedente já saiu para centavos. Um centavo no limiar, sem consequência de dinheiro — mas é régua pela metade. | 🔵 | [E95](execucao/E95.md) vp |
 | S10 | **A tela de contrato gera o carnê às cegas.** O `gerar-plano` de lá não tem prévia, e desde o E95 existe a função para mostrá-la — é o F16 aplicado à tela irmã. | 🟡 | [E95](execucao/E95.md) vp |
 | S11 | **D5 não se faz como está escrito — veredito medido, item aberto.** Derivar os resolvers dos 12 formulários do `api-zod` esbarra em duas coisas: o schema gerado descreve o PAYLOAD e o formulário valida a SUPERFÍCIE DE ENTRADA (`entrada`/`numParcelas` não existem no corpo da API), e importar o barril de 261 KB / 539 schemas num bundle que já tem 1,1 MB sem code splitting troca dívida de duplicação por dívida de peso. A duplicação real medida é **um** enum de cada lado, não doze. Caminho barato: teste de paridade dos dois enums, ou reavaliar depois do code splitting do E104. | 🟠 | [E96](execucao/E96.md) |
-| S15 | **O `vitest` do frontend só coleta testes dentro de `src/lib`.** Teste de componente não chega a ser executado — descoberto ao escrever o do `<Erro>` e ver "No test files found". Ampliar o `include` é infraestrutura de teste e mora no E104, que já vai ligar o typecheck dos testes do front. | 🟡 | [E99](execucao/E99.md) |
+| S15 | **O `vitest` do frontend só coleta testes dentro de `src/lib`.** Teste de componente não chega a ser executado — descoberto ao escrever o do `<Erro>` e ver "No test files found". Ampliar o `include` é infraestrutura de teste e mora no E104, que já vai ligar o typecheck dos testes do front. **O E111 pagou o preço dela pela primeira vez num conserto de PERMISSÃO:** os dois gates das telas do financeiro (`cobranca.tsx`, `receber.tsx` pediam `financeiro.editar` para botões que o servidor guarda por `leads`) ficaram sem teste, e gate de permissão sem teste é a classe de defeito que volta calada. Sobe de 🟡 para 🟠. | 🟠 | [E99](execucao/E99.md) · [E111](execucao/E111.md) |
 | S13 | **`useBlocker` do react-router não existe neste app.** Ele monta as rotas com `<BrowserRouter>` (`App.tsx:160`), e o `useBlocker` só funciona em data router (`createBrowserRouter` + `RouterProvider`) — fora dele, lança. Sem ele, o D14 protege só o fechar/recarregar a aba: clicar na sidebar com um formulário sujo continua descartando em silêncio. Migrar o roteador toca todas as rotas do app. | 🟡 | [E97](execucao/E97.md) |
 | S14 | **As avarias antigas ficaram sem `parcela_id`.** Não há backfill possível: casar por texto ("Reparo de avaria — …") adivinharia, e duas avarias com a mesma descrição no mesmo contrato são indistinguíveis — que é justamente o caso do duplo clique. Elas seguem cobráveis de novo e removíveis; a guarda vale para o que nasce daqui. | 🔵 | [E97](execucao/E97.md) |
 | S16 | **`leads.contrato_fechado_em` fica `null` em quem tem contrato, e um relatório conta por ela.** O carimbo só é gravado dentro do `if (etapaNova !== lead.etapa)` de `contratos.ts:357` (o carimbo em `:361`) — e `transicaoLeadValida` aceita pular no funil (`iPara > iDe`), então um lead levado de `NOVO` direto a `EM_PROVAS` fecha contrato sem que a etapa mude, e a coluna nunca é preenchida. O `comContrato` de `/leads/sazonalidade` (`leads.ts:397`) filtra por `contratoFechadoEm is not null`: aquela noiva não é contada como "já fechou" na curva que diz quando falta vestido. O conserto é gravar o carimbo mesmo quando a etapa não avança; o backfill pergunta à tabela de contratos, que é a fonte. | 🟡 | [E98](execucao/E98.md) parte 2 |
@@ -136,8 +137,10 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S22 | **`e2e/24-dias-funcionamento` é flake.** Vermelho numa passada da suíte completa, verde sozinho e verde na execução seguinte. Mesma família da **S20** e da **S7**: um vermelho desses se lê como regressão e custa uma investigação. O spec mexe em `regra_disponibilidade.diasFuncionamento`, que é estado COMPARTILHADO da loja de seed — a suspeita é a mesma classe, e a saída também (configuração própria por execução). | 🟠 (infra de teste) | [E103/F34](execucao/E103-f34.md) |
 | S23 | **O `mockup-sandbox` guarda 4 cópias divergentes de `ui/`, e uma delas nunca recebeu o conserto do S19.** O `calendar.tsx` de lá continua com as cinco classes `-[--cell-size]` que o Tailwind v4 descarta. Enquanto o pacote estiver fora do workspace (A6) ninguém as compila, então o custo hoje é ZERO — o risco é o dia em que ele voltar, ou em que alguém copiar dali para cá achando que é o primitivo vivo. Ou se apaga o pacote (`rm -rf`, e as 4 cópias vão junto), ou o `ui/` de lá vira um link para o de verdade. | 🔵 | [E104](execucao/E104.md) parte 3 |
 | S26 | **Cobrado um reparo, o contrato não consegue mais gerar o carnê.** `contratos.ts:910` recusa `gerar-plano` por `contrato.parcelas.length > 0` — QUALQUER parcela, não "parcela de plano". Cobrar a avaria antes de montar o carnê deixa o contrato em `409 JA_TEM_PLANO` para sempre. Medido depois do E110: `numeroDaAvaria: 1`, `planoStatus: 409`. **O E110 não fechou isto de propósito, e a razão é de escopo:** consertar aquele guard sozinho MOVE a colisão, porque o plano insere `numero` 0..N e o 1 já está tomado pela avaria. Sair disso exige renumerar o carnê ou deslocar o plano — decisão sobre o que a noiva vê no boleto, não uma linha. A saída provável é o guard olhar só as parcelas SEM avaria vinculada (`avarias.parcela_id`), e o plano começar depois do maior número existente. | 🟠 | [E110](execucao/E110.md) |
-| S27 | **61 `RESERVA_CASAMENTO` no banco de dev não têm `lead_id`** — uma reserva de casamento sem noiva. Descoberto ao desenhar a guarda do E110: `bloqueio_vestidos.lead_id` é nullable, e **61 das 63 avarias** vivem em bloqueio sem noiva, o que obrigou a guarda a "provar quando é provável" em vez de exigir sempre. Falta medir se a ROTA de criação permite `RESERVA_CASAMENTO` sem noiva ou se são resíduo de fixture de API (os helpers de teste aceitam `leadId` opcional) — a resposta muda o achado de "defeito de rota" para "mais um item da S18". Enquanto não se sabe, a guarda do E110 é mais fraca do que poderia ser. | 🟡 | [E110](execucao/E110.md) |
+| S27 | **61 `RESERVA_CASAMENTO` no banco de dev não têm `lead_id`** — uma reserva de casamento sem noiva. Descoberto ao desenhar a guarda do E110: `bloqueio_vestidos.lead_id` é nullable, e **61 das 63 avarias** vivem em bloqueio sem noiva, o que obrigou a guarda a "provar quando é provável" em vez de exigir sempre. Falta medir se a ROTA de criação permite `RESERVA_CASAMENTO` sem noiva ou se são resíduo de fixture de API (os helpers de teste aceitam `leadId` opcional) — a resposta muda o achado de "defeito de rota" para "mais um item da S18". Enquanto não se sabe, a guarda do E110 é mais fraca do que poderia ser. **O E111 respondeu metade e encolheu a sobra:** `POST /contratos` passou a ESCREVER `bloqueio.lead_id` (o comentário da guarda S2/E107 já prometia isso — "este contrato é justamente quem lhe dá dono" — e nenhuma linha fazia), então reserva nova nasce com dona e as duas guardas passam a ter o que ler. As 61 legadas continuam sem: para elas quem segura é o 409 `RESERVA_JA_CONTRATADA` do vínculo, não a comparação de noiva. Falta o backfill e a resposta sobre a ROTA de criação. | 🟡 | [E110](execucao/E110.md) · [E111](execucao/E111.md) vp1 |
 | S25 | **`e2e/48-avaria-vira-parcela` vaza a corrente do vestido a cada execução.** O `afterAll` (`e2e/48:67`) limpa parcelas → contrato → lead, e **não** limpa vestido, bloqueio nem avaria. Medido em duas execuções seguidas hoje: as avarias foram de **62 para 63**, e cada passada acrescenta um vestido `AVA-<stamp>` ao acervo — parte dos 533 vestidos e das 63 avarias do banco de dev sai daqui. Família da **S18**, e a mesma lição: higiene de fixture pela metade não é higiene. **Não é o caso da S7/S20:** não causa flake, porque cada execução usa `stamp` próprio — o custo é o acervo virar lixo e nenhuma tela de vestidos ser avaliável. | 🟡 (infra de teste) | [E104](execucao/E104.md) parte 4 |
+| S28 | **Uma sonda do E2E provava a si mesma, e nada garante que fosse a única.** `e2e/08-contratos.spec.ts:56` comparava a MESMA string literal consigo mesma — o assert media o status de uma requisição contra o dele próprio e passava sempre, inclusive se as duas dessem 404. Consertada no E111 (a URL passou a sair de `getGetContratoUrl`, do cliente gerado). O que fica aberto é a **varredura**: a mesma classe de defeito cabe em qualquer `expect(x).toBe(x)` e em qualquer assert cujos dois lados nasçam da mesma expressão. O E101 já provou que uma lista para de crescer sozinha; um teste tautológico é pior, porque ele conta como cobertura. | 🟠 (infra de teste) | [E111](execucao/E111.md) vp3 |
+| S29 | **A raiz do workspace ganhou `@workspace/api-client-react` só para o E2E.** A sonda do S28 só testa algo se a URL vier do cliente GERADO, e importá-lo da raiz exigiu a devDependency. É decisão registrada, não descuido: sem o import, a sonda volta a repetir uma literal que o codegen pode invalidar sem ninguém notar. Se o dono preferir não pagar a dependência na raiz, o caminho alternativo é a sonda afirmar só o `200` na URL literal — mata a tautologia, perde a amarração com o codegen. | 🔵 | [E111](execucao/E111.md) vp4 |
 | S24 | **A allowlist do `lote2` não cobra que cada perdão ainda tenha assunto** — foi assim que o `DELETE /ajustes/{ajusteId}` seguiu perdoado por tempo indeterminado depois de já estar no spec (`openapi.yaml:1767`). A guarda **não** foi escrita no E104 parte 3 porque o conjunto ficou VAZIO e ela não teria sujeito. Se a lista voltar a crescer, a guarda entra junto com a primeira entrada nova: toda entrada tem de estar no servidor **e** ausente do spec. | 🔵 | [E104](execucao/E104.md) parte 3 |
 
 ### Roteadas a um épico que ainda não rodou
@@ -1262,3 +1265,51 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      `err.message` e não `mensagemApi`, então o `detalhe` do servidor morria na
      tela — a guarda nova recusaria a cobrança sem dizer por quê. É a tese do
      E96 que esta tela nunca recebeu, e vale para as seis ações do arquivo.
+
+### Sessão 9 — 2026-07-29
+
+- **E111 — a revisão do aplicativo INTEIRO** (notas em `execucao/E111.md`). Uma
+  revisão de máximo esforço sobre o codebase, não sobre o diff da branch: 79
+  agentes, 71 candidatos, 13 refutados, **58 confirmados**. Os 15 mais graves
+  foram reportados; os 43 restantes tiveram de ser recuperados do diário do
+  workflow, porque o relatório final os menciona e não os lista.
+  1. **A promessa de cinco commits por tese não sobreviveu aos arquivos.** Eu
+     propus a divisão ao dono e ela não fecha: `contratos.ts` sozinho carrega
+     três teses, e mais quatro arquivos carregam duas cada. Separar exigiria
+     staging por trecho, e os commits intermediários **não passariam nos
+     testes** — pior que um commit grande, porque quebra o `git bisect` que a
+     granularidade existia para servir. Ficou um commit de código e um de docs.
+  2. **O guard de fronteira do E91 nunca rodou nos dez routers de domínio.**
+     `router.use(fn)` SEM path roda com `req.params` VAZIO — não havia o que
+     comparar, então o `if` era pulado em silêncio: nunca falhava, nunca rodava.
+     Medido com duas fixtures: `GET/PATCH/DELETE /api/lojas/<B>/leads/<leadB>`
+     com sessão em A respondiam **200/200/204**. O E91 fechou os ids do CORPO e
+     deixou aberto o id do PATH — e o `e2e/50-loja-da-url.spec.ts:22` afirma por
+     escrito o 403 que nunca testou contra a API.
+  3. **A reserva prometida a duas noivas tinha duas metades, e o achado via
+     uma.** A guarda S2/E107 só morde com `bloqueio.leadId` preenchido, e
+     **nenhuma rota escrevia esse campo** — ela existia e nunca teve o que ler. O
+     teste que escrevi para o 409 novo falhou na primeira execução, porque com a
+     dona gravada o segundo contrato passa a parar antes, no 422 do E107. Os dois
+     valem: o 409 protege as linhas legadas da S27.
+  4. **"O seu vestido" do portal estava MORTO em produção, e os testes o
+     escondiam.** `montarVestidoDaNoiva` decidia pela coluna legada que o único
+     caminho de criação do app nunca preenche; passava nos testes porque eles
+     preenchiam a coluna com um `db.update` à mão. O teste novo fecha o contrato
+     **pela rota** — é a diferença que importa.
+  5. **Um `SELECT` que o achado pedia para apagar era metade necessária.** No
+     portal ele relê o carimbo depois da transação: redundante para quem VENCE a
+     corrida, única fonte para quem PERDE. Apagá-lo reintroduziria o defeito que
+     outro achado da mesma revisão aponta no aceite do orçamento — devolver
+     `agora`, um instante que não existe no banco. Ficou condicional.
+  6. **Dois formatadores de BRL que o verificador refutou foram unificados
+     assim mesmo, com a medida escrita.** As três strings saem idênticas hoje; o
+     `brl()` e o `whatsapp.ts` concordam por **coincidência mantida à mão**, e a
+     próxima decisão sobre como o dinheiro é escrito alcançaria a tela e não a
+     mensagem que a noiva lê.
+  7. **A S15 cobrou o preço dela pela primeira vez num conserto de permissão** —
+     os dois gates de tela do financeiro ficaram sem teste porque o vitest do
+     front só coleta `src/lib`. Subiu para 🟠.
+- Suíte: API 759 → **815** (108 → 116 arquivos) · frontend 313 → **314** · E2E
+  **137** · typecheck verde. O E2E rodou porque a trilha ganhou duas ações e o
+  `openapi.yaml` mudou (regra 11).

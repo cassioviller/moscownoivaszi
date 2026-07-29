@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   brl,
   capitalizar,
-  dataDia,
+  diaMesAno,
   perdidaMotivoLabel,
   statusContratoLabel,
   statusOrcamentoLabel,
@@ -78,19 +78,19 @@ describe("labels de status e tipo", () => {
 });
 
 /**
- * dataDia formata uma data de NEGÓCIO (casamento, vencimento) sem deixar o
+ * diaMesAno formata uma data de NEGÓCIO (casamento, vencimento) sem deixar o
  * fuso empurrar o dia. O bug que ela previne: `toLocaleDateString("pt-BR")`
  * sem timeZone lê um `2026-11-20T00:00:00Z` no fuso local (SP, UTC-3) e
  * mostra 19/11 — o casamento aparece um dia antes do real.
  */
-describe("dataDia", () => {
+describe("diaMesAno", () => {
   it("ISO ancorado ao meio-dia SP mostra o dia certo", () => {
-    expect(dataDia("2026-11-20T12:00:00-03:00")).toBe("20/11/2026");
+    expect(diaMesAno("2026-11-20T12:00:00-03:00")).toBe("20/11/2026");
   });
 
   it("date-only (meia-noite UTC) NÃO escorrega um dia para trás", () => {
-    expect(dataDia("2026-11-20")).toBe("20/11/2026");
-    expect(dataDia("2026-11-20T00:00:00.000Z")).toBe("20/11/2026");
+    expect(diaMesAno("2026-11-20")).toBe("20/11/2026");
+    expect(diaMesAno("2026-11-20T00:00:00.000Z")).toBe("20/11/2026");
   });
 });
 

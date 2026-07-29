@@ -9,11 +9,12 @@ import {
   atributosTable,
   atributoOpcoesTable,
   bloqueioVestidosTable,
+  contratoBloqueiosTable,
   ajustesTable,
   atendimentosTable,
   type Orcamento,
 } from "@workspace/db";
-import { eq, and, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, isNull } from "drizzle-orm";
 import { brutoEmCentavos, liquidoEmCentavos, reais } from "@workspace/financeiro-core";
 
 /**
@@ -192,24 +193,54 @@ export async function montarVestidoDaNoiva(contrato: {
   bloqueioVestidoId: string | null;
   dataRetirada: Date | null;
 }): Promise<VestidoDaNoiva | null> {
+  /**
+   * O vínculo vivo é o N:N `contrato_bloqueios` (E72) — a coluna singular
+   * `contratos.bloqueio_vestido_id` é legado "lido, nunca mais escrito", e a
+   * decisão estava escrita no schema.
+   *
+   * Decidir só por ela deixava esta seção MORTA em produção: o único caminho
+   * de criação de contrato do app manda `bloqueioVestidoIds` (a tela do
+   * orçamento) e o servidor grava `bloqueioVestidoId: … ?? null`, então a
+   * coluna nasce nula sempre e a função devolvia `null` na primeira linha. A
+   * noiva nunca via "O seu vestido" — foto, retirada prevista, andamento dos
+   * ajustes —, e o teste só passava porque preenchia a coluna com um `update`
+   * à mão, sem passar pela rota.
+   */
+  const vinculos = await db
+    .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+    .from(contratoBloqueiosTable)
+    .where(eq(contratoBloqueiosTable.contratoId, contrato.id));
+  const bloqueioIds = [
+    ...new Set([
+      ...(contrato.bloqueioVestidoId ? [contrato.bloqueioVestidoId] : []),
+      ...vinculos.map((v) => v.bloqueioId),
+    ]),
+  ];
   // Sem reserva física no contrato não há "o seu vestido" — o contrato pode ser
   // só de serviço, e inventar uma seção vazia é pior que não a ter.
-  if (!contrato.bloqueioVestidoId) return null;
+  if (bloqueioIds.length === 0) return null;
 
+  // Bloqueio cancelado fica de fora no WHERE: a reserva foi desfeita e o
+  // contrato ainda aponta para ela (`set null` só dispara quando a LINHA some).
+  // Mostrar seria prometer um vestido que a loja já liberou para outra noiva.
+  // Com mais de uma peça presa (vestido + véu), a seção mostra a mais antiga —
+  // a primeira reservada é a que a noiva chama de "o meu vestido".
   const [bloqueio] = await db
     .select({
       vestidoId: bloqueioVestidosTable.vestidoId,
       retiradaDataReal: bloqueioVestidosTable.retiradaDataReal,
-      canceladoEm: bloqueioVestidosTable.canceladoEm,
       nome: vestidosTable.nome,
     })
     .from(bloqueioVestidosTable)
     .innerJoin(vestidosTable, eq(vestidosTable.id, bloqueioVestidosTable.vestidoId))
-    .where(eq(bloqueioVestidosTable.id, contrato.bloqueioVestidoId));
-  // Bloqueio cancelado: a reserva foi desfeita e o contrato ainda aponta para
-  // ela (`set null` só dispara quando a LINHA some). Mostrar seria prometer um
-  // vestido que a loja já liberou para outra noiva.
-  if (!bloqueio || bloqueio.canceladoEm) return null;
+    .where(and(
+      inArray(bloqueioVestidosTable.id, bloqueioIds),
+      eq(bloqueioVestidosTable.lojaId, contrato.lojaId),
+      isNull(bloqueioVestidosTable.canceladoEm),
+    ))
+    .orderBy(asc(bloqueioVestidosTable.createdAt))
+    .limit(1);
+  if (!bloqueio) return null;
 
   const [fotos, ajustes] = await Promise.all([
     db

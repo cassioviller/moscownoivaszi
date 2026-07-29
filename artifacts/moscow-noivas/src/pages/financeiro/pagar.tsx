@@ -75,11 +75,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl, diaMesAno, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, invalidarCaixa } from "./helpers";
+import { ResumoCard, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
@@ -540,7 +540,7 @@ export default function Pagar() {
                           <span className="text-xs text-muted-foreground">
                             {TIPO_ROTULO[c.tipo]}
                             {detalhe ? ` · ${detalhe}` : ""} · vence{" "}
-                            {dataFmt.format(new Date(c.vencimento))}
+                            {diaMesAno(c.vencimento)}
                           </span>
                         </div>
                       </div>

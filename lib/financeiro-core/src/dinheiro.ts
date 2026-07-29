@@ -76,6 +76,15 @@ export function liquidoEmCentavos(
  * "1234.56" são a mesma quantia; "1.234" são mil duzentos e trinta e quatro,
  * não um e pouco — ponto de milhar é o padrão pt-BR, e ler isso errado por
  * mil vezes é o tipo de engano que só aparece no fechamento.
+ *
+ * O SINAL entra no reconhecedor de milhar (`^[+-]?`) e não é detalhe: sem ele,
+ * `-1.234` reprovava o casamento por começar em `-`, caía no `Number` cru e
+ * virava −1,23. O caixa fecha no vermelho e a conferência aceita negativo de
+ * propósito (`validarConferencia`), então a âncora de saldo era gravada mil
+ * vezes menor — a curva de `projetarCaixa` inteira nascia R$ 1.232,77 acima do
+ * caixa real e o alerta do dashboard parava de acusar o dia negativo que
+ * existe. O mesmo texto SEM o menos já era lido certo: a interpretação mudava
+ * por mil só por causa do sinal.
  */
 export function parseValor(texto: string): number | null {
   const t = texto.trim();
@@ -83,7 +92,7 @@ export function parseValor(texto: string): number | null {
   let normalizado: string;
   if (t.includes(",")) {
     normalizado = t.replace(/\./g, "").replace(",", ".");
-  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
+  } else if (/^[+-]?\d{1,3}(\.\d{3})+$/.test(t)) {
     normalizado = t.replace(/\./g, "");
   } else {
     normalizado = t;

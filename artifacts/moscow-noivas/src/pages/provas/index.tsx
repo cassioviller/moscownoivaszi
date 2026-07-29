@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { dataCurtaFmt } from "../noivas/helpers";
+import { diaMesAbrevAno } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
 import {
   ROTULO_SITUACAO,
@@ -167,7 +167,7 @@ export default function Provas() {
                             )}
                             {p.bloqueio?.casamentoData && (
                               <span className="text-xs text-muted-foreground">
-                                casamento {dataCurtaFmt.format(new Date(p.bloqueio.casamentoData))}
+                                casamento {diaMesAbrevAno(p.bloqueio.casamentoData)}
                               </span>
                             )}
                             {p.bloqueioId && (

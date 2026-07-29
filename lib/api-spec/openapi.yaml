@@ -3602,9 +3602,17 @@ paths:
         - name: acao
           in: query
           required: false
+          # Aberto pela MESMA razão do `acao` do GET /auditoria (E107/S4), que
+          # ficou uma rota acima: com o enum fechado, exportar o CSV filtrado
+          # por uma ação que a trilha JÁ GRAVA respondia 400. A lista aqui tinha
+          # parado em LEADS_ANONIMIZADOS e já ignorava REMARCACAO_PEDIDA,
+          # CONTA_PAGAR_REMOVIDA e CONTABILIDADE_ENVIADA — a planilha da
+          # contadora não conseguia recortar justamente as ações mais novas.
+          description: >
+            Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar
+            por código desconhecido devolve planilha vazia, não erro.
           schema:
             type: string
-            enum: [PARCELA_RECEBIDA, RECEBIMENTO_ESTORNADO, CONTA_PAGA, PAGAMENTO_REGISTRADO, PAGAMENTO_ESTORNADO, ESTORNO_COMISSAO_BAIXADO, COMISSAO_FECHAMENTO_REABERTO, CONTRATO_CANCELADO, MEMBRO_ADICIONADO, MEMBRO_ALTERADO, MEMBRO_REMOVIDO, CONVITE_CRIADO, CONVITE_CANCELADO, PERMISSOES_ALTERADAS, PERMISSOES_RESTAURADAS, ORCAMENTO_ACEITO, PROVA_CONFIRMADA, LEADS_ANONIMIZADOS]
         - name: usuarioId
           in: query
           required: false

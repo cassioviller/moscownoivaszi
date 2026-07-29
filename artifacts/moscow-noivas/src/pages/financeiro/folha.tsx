@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import {
   competenciaAtual,
@@ -63,7 +63,7 @@ import {
   instanteNoIntervalo,
 } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, ResumoCard, dataFmt, invalidarCaixa } from "./helpers";
+import { ErroListagem, ResumoCard, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
@@ -478,7 +478,7 @@ export default function Folha() {
                     <span className="truncate">{nome ?? c.descricao}</span>
                     <span className="text-xs text-muted-foreground">
                       {nome ? `${c.descricao} · ` : ""}vence{" "}
-                      {dataFmt.format(new Date(c.vencimento))}
+                      {diaMesAno(c.vencimento)}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

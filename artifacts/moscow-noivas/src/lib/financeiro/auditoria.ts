@@ -33,6 +33,14 @@ export const ROTULO_ACAO: Record<string, string> = {
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
   PROVA_CONFIRMADA: "Prova confirmada pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
+  // O espelho tinha PARADO: estas cinco já existiam (ou passam a existir) no
+  // servidor e caíam no código cru na tela. O mapa é frouxo de propósito para
+  // não quebrar, mas "CONTABILIDADE_ENVIADA" na coluna Ação não é rótulo.
+  REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
+  CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
+  CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
+  LEAD_REMOVIDO: "Noiva removida do cadastro",
+  PARCELA_REMOVIDA: "Parcela removida",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -55,6 +63,11 @@ export const ACOES_FILTRAVEIS = [
   "ORCAMENTO_ACEITO",
   "PROVA_CONFIRMADA",
   "LEADS_ANONIMIZADOS",
+  "REMARCACAO_PEDIDA",
+  "CONTA_PAGAR_REMOVIDA",
+  "CONTABILIDADE_ENVIADA",
+  "LEAD_REMOVIDO",
+  "PARCELA_REMOVIDA",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];

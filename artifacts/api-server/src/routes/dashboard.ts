@@ -9,7 +9,7 @@ import {
   parcelasTable,
   contasPagarTable,
 } from "@workspace/db";
-import { and, eq, gte, lte, lt, ne, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, lt, ne, inArray, sql } from "drizzle-orm";
 import { GetDashboardResponse } from "@workspace/api-zod";
 import { requireSessaoComLoja } from "../middlewares/auth";
 import { getPermissoes } from "../lib/auth";
@@ -27,17 +27,22 @@ const router: IRouter = Router();
 router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
 
-  const now = new Date();
-  const inicioHoje = new Date(now);
-  inicioHoje.setHours(0, 0, 0, 0);
-  const fimHoje = new Date(now);
-  fimHoje.setHours(23, 59, 59, 999);
-
   // Janela do "próximos 30 dias" pela régua do MOTOR (E25): dia de negócio
   // São Paulo, hoje inclusivo, soma em centavos — antes era sum(float) em SQL
   // por INSTANTE, que descartava o vencimento de hoje (meio-dia) quando a
   // consulta rodava à tarde e podia divergir da projeção por centavos.
   const hoje = hojeLocal();
+
+  // "Hoje" é o dia da LOJA, e este handler tinha dois: o "a receber" já usava
+  // `hojeLocal()` (America/Sao_Paulo) e o contador de atendimentos usava
+  // `setHours(0,0,0,0)` — a meia-noite do relógio do PROCESSO, que no container
+  // é UTC. Das 21h à meia-noite de São Paulo o card contava os atendimentos do
+  // dia SEGUINTE, no mesmo painel em que o número ao lado já falava do dia
+  // certo. Intervalo semiaberto [início de hoje, início de amanhã): a
+  // meia-noite menos um milissegundo perdia o atendimento marcado em cima da
+  // virada.
+  const inicioHoje = inicioDoDia(hoje);
+  const inicioAmanha = inicioDoDia(addDias(hoje, 1));
   const janela = { iniYMD: hoje, fimYMD: addDias(hoje, 30) };
   const recorteSql = { de: inicioDoDia(hoje), ate: inicioDoDia(addDias(janela.fimYMD, 1)) };
 
@@ -73,7 +78,7 @@ router.get("/lojas/:lojaId/dashboard", requireSessaoComLoja, async (req, res): P
         and(
           eq(atendimentosTable.lojaId, lojaId),
           gte(atendimentosTable.inicio, inicioHoje),
-          lte(atendimentosTable.inicio, fimHoje),
+          lt(atendimentosTable.inicio, inicioAmanha),
         ),
       ),
     // As LINHAS (não a soma): quem soma é o motor, na mesma régua do front.
