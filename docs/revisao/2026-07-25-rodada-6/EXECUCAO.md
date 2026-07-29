@@ -139,6 +139,7 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S26 | **Cobrado um reparo, o contrato não consegue mais gerar o carnê.** `contratos.ts:910` recusa `gerar-plano` por `contrato.parcelas.length > 0` — QUALQUER parcela, não "parcela de plano". Cobrar a avaria antes de montar o carnê deixa o contrato em `409 JA_TEM_PLANO` para sempre. Medido depois do E110: `numeroDaAvaria: 1`, `planoStatus: 409`. **O E110 não fechou isto de propósito, e a razão é de escopo:** consertar aquele guard sozinho MOVE a colisão, porque o plano insere `numero` 0..N e o 1 já está tomado pela avaria. Sair disso exige renumerar o carnê ou deslocar o plano — decisão sobre o que a noiva vê no boleto, não uma linha. A saída provável é o guard olhar só as parcelas SEM avaria vinculada (`avarias.parcela_id`), e o plano começar depois do maior número existente. | 🟠 | [E110](execucao/E110.md) |
 | S27 | **61 `RESERVA_CASAMENTO` no banco de dev não têm `lead_id`** — uma reserva de casamento sem noiva. Descoberto ao desenhar a guarda do E110: `bloqueio_vestidos.lead_id` é nullable, e **61 das 63 avarias** vivem em bloqueio sem noiva, o que obrigou a guarda a "provar quando é provável" em vez de exigir sempre. Falta medir se a ROTA de criação permite `RESERVA_CASAMENTO` sem noiva ou se são resíduo de fixture de API (os helpers de teste aceitam `leadId` opcional) — a resposta muda o achado de "defeito de rota" para "mais um item da S18". Enquanto não se sabe, a guarda do E110 é mais fraca do que poderia ser. **O E111 respondeu metade e encolheu a sobra:** `POST /contratos` passou a ESCREVER `bloqueio.lead_id` (o comentário da guarda S2/E107 já prometia isso — "este contrato é justamente quem lhe dá dono" — e nenhuma linha fazia), então reserva nova nasce com dona e as duas guardas passam a ter o que ler. As 61 legadas continuam sem: para elas quem segura é o 409 `RESERVA_JA_CONTRATADA` do vínculo, não a comparação de noiva. Falta o backfill e a resposta sobre a ROTA de criação. | 🟡 | [E110](execucao/E110.md) · [E111](execucao/E111.md) vp1 |
 | S25 | **`e2e/48-avaria-vira-parcela` vaza a corrente do vestido a cada execução.** O `afterAll` (`e2e/48:67`) limpa parcelas → contrato → lead, e **não** limpa vestido, bloqueio nem avaria. Medido em duas execuções seguidas hoje: as avarias foram de **62 para 63**, e cada passada acrescenta um vestido `AVA-<stamp>` ao acervo — parte dos 533 vestidos e das 63 avarias do banco de dev sai daqui. Família da **S18**, e a mesma lição: higiene de fixture pela metade não é higiene. **Não é o caso da S7/S20:** não causa flake, porque cada execução usa `stamp` próprio — o custo é o acervo virar lixo e nenhuma tela de vestidos ser avaliável. | 🟡 (infra de teste) | [E104](execucao/E104.md) parte 4 |
+| S30 | **Quinze formatadores `Intl` vivem fora da régua, e ninguém verificou um a um se cada um se justifica.** O E92 consolidou 36 → 17 e parou ali de propósito; o E111 apagou mais cinco. A varredura mecânica (`varredura-reguas.test.ts`) travou o número: arquivo NOVO declarando formatador reprova o teste. O que fica aberto é o passivo — `reservas/helpers.ts` sozinho tem seis, e alguns podem ser opção-set que a régua não cobre (mês sozinho, mês no fuso da loja). Consolidar exige decidir quais viram função pública em `formatos.ts`, e isso é julgamento de API de tela, não limpeza. A lista está no teste declarada como **estado de hoje, não atestado**. | 🔵 | [E111](execucao/E111.md) adendo |
 | S28 | **Uma sonda do E2E provava a si mesma, e nada garante que fosse a única.** `e2e/08-contratos.spec.ts:56` comparava a MESMA string literal consigo mesma — o assert media o status de uma requisição contra o dele próprio e passava sempre, inclusive se as duas dessem 404. Consertada no E111 (a URL passou a sair de `getGetContratoUrl`, do cliente gerado). O que fica aberto é a **varredura**: a mesma classe de defeito cabe em qualquer `expect(x).toBe(x)` e em qualquer assert cujos dois lados nasçam da mesma expressão. O E101 já provou que uma lista para de crescer sozinha; um teste tautológico é pior, porque ele conta como cobertura. | 🟠 (infra de teste) | [E111](execucao/E111.md) vp3 |
 | S29 | **A raiz do workspace ganhou `@workspace/api-client-react` só para o E2E.** A sonda do S28 só testa algo se a URL vier do cliente GERADO, e importá-lo da raiz exigiu a devDependency. É decisão registrada, não descuido: sem o import, a sonda volta a repetir uma literal que o codegen pode invalidar sem ninguém notar. Se o dono preferir não pagar a dependência na raiz, o caminho alternativo é a sonda afirmar só o `200` na URL literal — mata a tautologia, perde a amarração com o codegen. | 🔵 | [E111](execucao/E111.md) vp4 |
 | S24 | **A allowlist do `lote2` não cobra que cada perdão ainda tenha assunto** — foi assim que o `DELETE /ajustes/{ajusteId}` seguiu perdoado por tempo indeterminado depois de já estar no spec (`openapi.yaml:1767`). A guarda **não** foi escrita no E104 parte 3 porque o conjunto ficou VAZIO e ela não teria sujeito. Se a lista voltar a crescer, a guarda entra junto com a primeira entrada nova: toda entrada tem de estar no servidor **e** ausente do spec. | 🔵 | [E104](execucao/E104.md) parte 3 |
@@ -1313,3 +1314,34 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
 - Suíte: API 759 → **815** (108 → 116 arquivos) · frontend 313 → **314** · E2E
   **137** · typecheck verde. O E2E rodou porque a trilha ganhou duas ações e o
   `openapi.yaml` mudou (regra 11).
+
+### Sessão 10 — 2026-07-29
+
+- **A varredura mecânica das quatro assinaturas do E111** (adendo em
+  `execucao/E111.md`). A tese: uma revisão encontra ALGUMAS ocorrências de cada
+  classe; um `grep` encontra todas — e vira teste, então não expira. 391
+  arquivos varridos, quatro sondas novas.
+  1. **Três achados que a revisão de 79 agentes não viu**, todos no frontend:
+     `atendimentos/index.tsx`, `dashboard.tsx` e `vestidos/[id].tsx` derivavam
+     "hoje" da meia-noite do NAVEGADOR. A revisão olhou o servidor, onde o
+     processo roda em UTC e a consequência é diária; no navegador o mesmo código
+     só erra para quem está fora do fuso — o tipo de caso que um revisor descarta
+     como improvável e uma varredura não tem como descartar.
+  2. **O falso positivo vale mais que os três achados.** `extrato.ts:50` usa
+     `Number(replace)` no ramo OFX e está CERTO: em OFX o ponto é decimal por
+     especificação, então `1.500` é um e meio, e `parseValor` multiplicaria a
+     transação por mil. Quem "consertasse o achado" quebraria a conciliação. O
+     perdão está no teste com a razão escrita.
+  3. **A sonda de fronteira substituiu uma lista que eu tinha digitado.** O
+     teste do E111 prova nove caminhos escolhidos à mão; a varredura extrai os
+     recursos de `routes/*.ts` e acha **22**. Ela usa o SUPERADMIN de propósito —
+     ele tem bypass de módulo, então o único gate capaz de recusá-lo é o da
+     fronteira; com uma vendedora comum, o 403 poderia vir da permissão e o teste
+     passaria sem provar nada sobre a loja.
+  4. **As sondas foram vistas VERMELHAS antes de entrarem.** Um arquivo com as
+     três grafias erradas foi plantado e as três acusaram; depois o defeito exato
+     do E111 voltou a `lojaIdDaUrl` e a varredura de fronteira listou **11
+     recursos respondendo 200 para a loja da outra pessoa**. Sonda que nunca foi
+     vista vermelha é decoração.
+- Suíte: API 815 → **824** (116 → 118 arquivos) · frontend **314** · E2E **137**
+  · typecheck verde.

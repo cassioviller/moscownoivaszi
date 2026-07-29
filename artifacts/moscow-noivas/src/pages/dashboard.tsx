@@ -39,7 +39,7 @@ import { AlertaCaixa } from "@/components/alerta-caixa";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 
-import { competenciaAtual, hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { competenciaAtual, hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
 import {
   aContatarNaJanela,
@@ -175,14 +175,15 @@ export default function Dashboard() {
 
   // A agenda de HOJE, em ordem de horário — o que a recepcionista folheia.
   const deHoje = useMemo(() => {
-    const inicioHoje = new Date();
-    inicioHoje.setHours(0, 0, 0, 0);
-    const fimHoje = new Date(inicioHoje);
-    fimHoje.setDate(fimHoje.getDate() + 1);
+    // O dia da LOJA (E111): a meia-noite do fuso do navegador desloca a agenda
+    // inteira para quem abre o painel com o relógio fora de São Paulo.
+    const hoje = hojeLocal();
+    const inicioHoje = inicioDoDia(hoje).getTime();
+    const fimHoje = inicioDoDia(addDias(hoje, 1)).getTime();
     return [...(atendimentosQuery.data ?? [])]
       .filter((a) => {
         const t = new Date(a.inicio).getTime();
-        return t >= inicioHoje.getTime() && t < fimHoje.getTime();
+        return t >= inicioHoje && t < fimHoje;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
   }, [atendimentosQuery.data]);

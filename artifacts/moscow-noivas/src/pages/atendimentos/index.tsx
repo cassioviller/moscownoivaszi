@@ -40,7 +40,7 @@ import { AlertCircle, CalendarDays, MessageCircle, Plus, Search } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
-import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
 import { instanteHora, instanteDiaMes } from "@/lib/formatos";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 
@@ -198,12 +198,14 @@ export default function Atendimentos() {
 
   // Fila (abertos): atrasados (data vencida, ainda em aberto), hoje e próximos.
   const { atrasados, deHoje, proximos } = useMemo(() => {
-    const inicioHoje = new Date();
-    inicioHoje.setHours(0, 0, 0, 0);
-    const inicioAmanha = new Date(inicioHoje);
-    inicioAmanha.setDate(inicioAmanha.getDate() + 1);
-    const t0 = inicioHoje.getTime();
-    const t1 = inicioAmanha.getTime();
+    // "Hoje" é o dia da LOJA, não o do aparelho: `new Date()` +
+    // `setHours(0,0,0,0)` dá a meia-noite do fuso do NAVEGADOR, e é a mesma
+    // classe que o E111 achou quatro vezes no servidor. A vendedora com o
+    // relógio fora de São Paulo lê a fila em três baldes trocados — atrasado
+    // que não está, e o de hoje caindo em "próximos".
+    const hoje = hojeLocal();
+    const t0 = inicioDoDia(hoje).getTime();
+    const t1 = inicioDoDia(addDias(hoje, 1)).getTime();
     if (historico) return { atrasados: [], deHoje: [], proximos: [] };
     return {
       atrasados: lista.filter((a) => new Date(a.inicio).getTime() < t0),

@@ -7,6 +7,7 @@ export {
   diaLocal,
   diaDeNegocio,
   hojeLocal,
+  inicioDoDia,
   competenciaValida,
   competenciaAtual,
   addDias,

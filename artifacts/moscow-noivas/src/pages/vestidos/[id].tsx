@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NaoEncontrado } from "@/components/estado";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
-import { hojeLocal } from "@/lib/financeiro/datas";
+import { hojeLocal, inicioDoDia } from "@/lib/financeiro/datas";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -197,8 +197,9 @@ export default function VestidoDetail() {
   });
 
   const proximosBloqueios = useMemo(() => {
-    const inicioHoje = new Date();
-    inicioHoje.setHours(0, 0, 0, 0);
+    // O dia da LOJA (E111) — o corte "futuro ou aberto" da reserva não pode
+    // depender do fuso do aparelho que abre a ficha do vestido.
+    const inicioHoje = inicioDoDia(hojeLocal());
     return (bloqueiosQuery.data ?? [])
       .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, inicioHoje))
       .sort((a, b) => {
