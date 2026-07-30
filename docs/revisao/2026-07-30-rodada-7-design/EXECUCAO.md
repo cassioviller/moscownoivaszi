@@ -69,7 +69,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha D — informação e busca | `d-informacao-busca.md` | ✅ | `33a60cb` |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ✅ | `3f0b3a6` |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | `87cfbb1` |
-| Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ⬜ | |
+| Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ✅ | |
 | Consolidação G | `g-consolidado.md` | ⬜ | |
 | Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ⬜ | |
 
@@ -203,3 +203,15 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   ajuste" (C) → F6/F7, "lente" (D) → F4; a da B (53 toasts crus) confirmada
   como C4 — a F acrescenta o TÍTULO do toast (F1), não o mecanismo. Nenhuma
   sobra nova fora do escopo de UX.
+- **Passada adversarial entregue.** A rodada não tem 🔴, então os **22 🟠**
+  das seis trilhas foram desafiados um a um: toda âncora relida no código de
+  verdade, 4 capturas reabertas, a conta de contraste do E4 refeita do zero
+  (2,68:1) e o `git log -S` usado onde a origem de uma suposta decisão
+  importava. Resultado: **21 sobreviveram, 1 caiu** — o A3 desce a 🟡 (as
+  "quatro caras" da navegação são dois gestos distintos com duas caras cada;
+  o custo é reconhecimento, não tempo/erro diário). Três notas para a
+  consolidação: o C4 carrega o número corrigido (47 toasts em 27 arquivos,
+  não 49 em 29), o épico do D2 atualiza o comentário sem medida de
+  `openapi.yaml:1243-1247` junto, e nenhuma das 22 âncoras se apoiava em dado
+  de fixture nem contrariava decisão registrada com medida de pé. Nenhuma
+  sobra nova.
