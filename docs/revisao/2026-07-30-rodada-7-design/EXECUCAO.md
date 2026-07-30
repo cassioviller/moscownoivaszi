@@ -105,7 +105,7 @@ para cada uma.
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ✅ | `cfa827f` |
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ✅ | `fce6368` |
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ✅ | `7d698ef` |
-| E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ⬜ | |
+| E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ✅ | |
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ⬜ | |
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ⬜ | |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ⬜ | |
@@ -573,3 +573,16 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   sucesso oferece "Completar agora" para a edição da peça recém-criada.
   Suítes: API 873 · front 413 → 414 · E2E completo 147/147 · typecheck verde.
   Nenhuma sobra nova.
+- **E135 entregue** (`execucao/E135.md`). A parede de filtros ganhou teto,
+  medida antes: **176 comboboxes** renderizados antes do primeiro vestido nas
+  duas viewports (fixture; o mecanismo sem teto é o real). Depois: 1280px
+  abre com **3** (atributos atrás de "Mais filtros (N aplicados)"); 390px
+  abre com **0** — o bloco inteiro atrás de "Filtrar (N)", chips dos ativos
+  visíveis mesmo fechado ("Tamanho M" com `?tamanho=M`), e a primeira dobra
+  voltou a ser acervo. Colapso é só exibição: o estado segue na URL (E129) e
+  o filtro em memória segue instantâneo (E99 parte 7 de pé). O spec 27
+  aprendeu o caminho novo (abrir "Mais filtros" antes do select). O executor
+  errou a ordem de declaração (TDZ em `dataSelecionada`) — pego pela
+  conferência visual, não pelo typecheck; adendo à lição do E126 no
+  relatório. Suítes: API 873 · front 414 · E2E completo 147/147 · typecheck
+  verde. Nenhuma sobra nova.

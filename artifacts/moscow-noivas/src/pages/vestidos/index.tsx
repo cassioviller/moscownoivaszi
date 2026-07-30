@@ -188,6 +188,7 @@ export default function Vestidos() {
     [atributos],
   );
 
+
   // Data do casamento na URL (?data=YYYY-MM-DD) para link compartilhável.
   const dataParam = searchParams.get("data");
   const dataSelecionada = dataParam && /^\d{4}-\d{2}-\d{2}$/.test(dataParam) ? dataParam : null;
@@ -195,6 +196,33 @@ export default function Vestidos() {
   function definirData(proxima: string | null) {
     setSearchParams((prev) => comFiltros(prev, { data: proxima }), { replace: true });
   }
+
+  /**
+   * E135/D8·E13: a parede tinha um select POR ATRIBUTO sem teto — medido no
+   * dev, 176 comboboxes antes do primeiro vestido; em 390px a primeira dobra
+   * era 100% filtro, e a vendedora com a noiva na cabine rolava formulário
+   * para chegar ao acervo. O colapso é SÓ exibição: o estado dos filtros mora
+   * na URL (E129) — nada se aplica nem se perde ao abrir/fechar. O contador é
+   * de filtros APLICADOS, nunca de disponíveis.
+   */
+  const [filtrosAbertosMobile, setFiltrosAbertosMobile] = useState(false);
+  const [maisFiltrosAbertos, setMaisFiltrosAbertos] = useState(false);
+  const chipsAtivos = useMemo(() => {
+    const chips: string[] = [];
+    if (busca.trim()) chips.push(`“${busca.trim()}”`);
+    if (tamanho !== TODOS) chips.push(`Tamanho ${tamanho}`);
+    if (cor !== TODOS) chips.push(cor);
+    if (categoria !== TODOS) chips.push(categoria);
+    for (const [attrId, opcaoId] of Object.entries(filtrosAtributo)) {
+      const attr = atributosAtivos.find((a) => a.id === attrId);
+      const opcao = attr?.opcoes?.find((o) => o.id === opcaoId);
+      if (attr && opcao) chips.push(`${attr.nome}: ${opcao.valor}`);
+    }
+    if (dataSelecionada) chips.push(format(parseDia(dataSelecionada), "dd/MM/yyyy"));
+    if (soDisponiveis) chips.push("Só disponíveis");
+    return chips;
+  }, [busca, tamanho, cor, categoria, filtrosAtributo, atributosAtivos, dataSelecionada, soDisponiveis]);
+  const nAtributosAtivos = Object.keys(filtrosAtributo).length;
 
   const disponibilidade = useCheckDisponibilidadeVestidos(
     activeLojaId!,
@@ -482,7 +510,38 @@ export default function Vestidos() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      {/* E135/E13: abaixo de md o bloco inteiro colapsa atrás de "Filtrar (N)"
+          — a primeira dobra volta a ter acervo. Os chips mostram o que está
+          aplicado mesmo com o bloco fechado. */}
+      <div className="space-y-2 md:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={filtrosAbertosMobile}
+            onClick={() => setFiltrosAbertosMobile((v) => !v)}
+            data-testid="botao-filtrar-mobile"
+          >
+            Filtrar{chipsAtivos.length > 0 ? ` (${chipsAtivos.length})` : ""}
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {filtrados.length} de {vestidos?.length ?? 0} vestidos
+          </span>
+        </div>
+        {!filtrosAbertosMobile && chipsAtivos.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {chipsAtivos.map((chip) => (
+              <Badge key={chip} variant="outline" className="font-normal">
+                {chip}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        className={`${filtrosAbertosMobile ? "flex" : "hidden"} flex-wrap items-center gap-3 md:flex`}
+      >
         <Input
           className="w-full sm:w-64"
           placeholder="Buscar nome ou código…"
@@ -522,26 +581,19 @@ export default function Vestidos() {
             ))}
           </SelectContent>
         </Select>
-        {/* E41: um filtro por atributo do catálogo (decote, volume…). */}
-        {atributosAtivos.map((attr) => (
-          <Select
-            key={attr.id}
-            value={filtrosAtributo[attr.id] ?? TODOS}
-            onValueChange={(v) => definirAtributo(attr.id, v)}
+        {/* E135/D8: os atributos do catálogo (E41) ganham teto — ficam atrás
+            de "Mais filtros", com a contagem dos APLICADOS sempre à vista. */}
+        {atributosAtivos.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={maisFiltrosAbertos}
+            onClick={() => setMaisFiltrosAbertos((v) => !v)}
+            data-testid="botao-mais-filtros"
           >
-            <SelectTrigger className="w-[150px]" data-testid={`filtro-atributo-${attr.id}`}>
-              <SelectValue placeholder={attr.nome} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={TODOS}>{attr.nome}: todos</SelectItem>
-              {(attr.opcoes ?? [])
-                .filter((o) => o.ativo)
-                .map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.valor}</SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        ))}
+            Mais filtros{nAtributosAtivos > 0 ? ` (${nAtributosAtivos})` : ""}
+          </Button>
+        )}
         <div className="flex items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
@@ -578,10 +630,38 @@ export default function Vestidos() {
             Só disponíveis
           </Button>
         )}
-        <div className="ml-auto text-sm text-muted-foreground whitespace-nowrap">
+        <div className="ml-auto hidden text-sm text-muted-foreground whitespace-nowrap md:block">
           {filtrados.length} de {vestidos?.length ?? 0} vestidos
         </div>
       </div>
+
+      {/* A parede de atributos, só quando pedida — e respeitando o colapso
+          mobile do bloco. */}
+      {maisFiltrosAbertos && (
+        <div
+          className={`${filtrosAbertosMobile ? "flex" : "hidden"} flex-wrap items-center gap-3 md:flex`}
+        >
+          {atributosAtivos.map((attr) => (
+            <Select
+              key={attr.id}
+              value={filtrosAtributo[attr.id] ?? TODOS}
+              onValueChange={(v) => definirAtributo(attr.id, v)}
+            >
+              <SelectTrigger className="w-[150px]" data-testid={`filtro-atributo-${attr.id}`}>
+                <SelectValue placeholder={attr.nome} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TODOS}>{attr.nome}: todos</SelectItem>
+                {(attr.opcoes ?? [])
+                  .filter((o) => o.ativo)
+                  .map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.valor}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          ))}
+        </div>
+      )}
 
       {dataSelecionada && disponibilidade.isError && (
         <Alert variant="destructive">
