@@ -66,7 +66,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | `1123cc2` |
 | Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ✅ | `00b1814` |
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | `e65c8b7` |
-| Trilha D — informação e busca | `d-informacao-busca.md` | ⬜ | |
+| Trilha D — informação e busca | `d-informacao-busca.md` | ✅ | |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ⬜ | |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ⬜ | |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ⬜ | |
@@ -94,6 +94,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D2 | **O manifest da captura não declara ambiente.** Viewport foi recuperado dos PNGs (1280×800 / 390×844); navegador e locale seguem desconhecidos. Enquanto isso, nenhum achado dependente de plataforma sobe de 🟡 sem contraprova (regra 6). | 🔵 | montagem da rodada |
 | S-D3 | **Quatro primitivos com 0 usos seguem em `src/components/ui/`** (`empty.tsx`, `avatar.tsx`, `pagination.tsx`, `progress.tsx` — contagem do inventário). O E99 mediu que a poda não muda um byte do bundle (tree-shaken), então o custo não é rede: é busca e manutenção — quatro arquivos que o `find` devolve e ninguém chama. Podar como higiene, ou adotar (`empty`/`pagination` têm candidatos nas trilhas C e D). | 🔵 | trilha A |
 | S-D4 | **`ContratoInput` aceita `vendedoraId` do CORPO** (`lib/api-spec/openapi.yaml:5652-5664`; validado só como "é da loja" em `api-server/src/routes/contratos.ts:149`), enquanto a régua do replit.md para autoria é "vem da SESSÃO, não do corpo". Aqui não é autoria pura — a vendedora da venda pode legitimamente ser outra pessoa (é o achado B1) —, mas a superfície permite atribuir a venda (e a comissão) a qualquer colega por curl, sem tela. Decidir na execução do B1 se o servidor passa a exigir coerência com `orcamento.vendedoraId` quando houver orçamento. | 🟡 | trilha B |
+| S-D5 | **`GET /lojas/:id/orcamentos` embute `itens: true` de todos os orçamentos da loja** (`api-server/src/routes/orcamentos.ts:126-131`) para uma lista que não desenha valor nenhum (achado D1) — o payload cresce com a história inteira e ninguém o lê. Quando o épico do D1 der busca/página à listagem, a rota deve mandar os itens só onde alguém os consome (`?leadId=` do perfil já os usa; a listagem geral não). | 🟡 | trilha D |
 
 ## Diário de sessões
 
@@ -148,3 +149,20 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   pistas laterais. Nenhuma sobra nova fora do escopo de UX; a pista da A
   (vazio de minha-comissao) recebeu veredito — não sobe a achado — e a da B
   (comentário F26) fica com o épico do B2, que já mexe naquelas linhas.
+- **Trilha D (informação e busca) entregue.** Tese: a informação do DIA está
+  bem servida (busca de noivas server-side que acha por dígitos do telefone,
+  recortes no banco, 13 filtros na URL) — o que não aguenta 3 anos de loja é o
+  ACERVO e a pergunta do telefone: contratos e orçamentos não têm busca nem
+  página e o servidor manda o mais ANTIGO primeiro (o contrato da semana
+  passada é o último de ~290 cards), a lista de noivas fica com o default
+  `antigos` que só ela não escolheu (a noiva de ontem na página 34), a ficha
+  não sabe quando é a próxima prova, o saldo devedor (R$ 5.880,00 de um
+  contrato de R$ 8.400,00 em 10×) só aparece no diálogo de CANCELAR, e o
+  filtro em `useState` de 6 telas morre a cada ida-e-volta, não só no F5.
+  Contagem: **0 🔴 · 5 🟠 · 5 🟡 · 0 🔵** (D1–D10), 9 itens de "está BEM"
+  ancorados, 5 pistas laterais (a mais cara: a listagem de orçamentos baixa
+  `itens` da história inteira para não mostrar valor nenhum — virou a sobra
+  S-D5). As pistas herdadas foram assumidas: valor no card de orçamento →
+  D1, selects sem teto de vestidos → D8, "Hoje na loja" sem link → D9; a do
+  C sobre o `:316` do dashboard fica com o épico do C3. Duas decisões
+  registradas conferidas e respeitadas (E99 parte 7, E100 parte 3).
