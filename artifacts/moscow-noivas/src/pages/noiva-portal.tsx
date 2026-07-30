@@ -320,7 +320,7 @@ export default function NoivaPortal() {
                         /* F37: ela já avisou. Sem isto o botão reapareceria e ela
                            clicaria de novo, achando que a primeira vez não valeu. */
                         <Badge variant="outline" className="ml-auto">
-                          Avisamos o atelier
+                          Avisamos o ateliê
                         </Badge>
                       ) : (
                         <span className="ml-auto flex flex-wrap items-center gap-2">
@@ -357,7 +357,7 @@ export default function NoivaPortal() {
                   ))}
                 </ul>
                 <p className="text-xs text-muted-foreground">
-                  Confirmar avisa o atelier que você vem. Se não puder, avise por aqui — a gente
+                  Confirmar avisa o ateliê que você vem. Se não puder, avise por aqui — a gente
                   libera o horário e entra em contato para remarcar.
                 </p>
               </section>

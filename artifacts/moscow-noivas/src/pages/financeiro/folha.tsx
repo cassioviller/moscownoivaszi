@@ -392,7 +392,7 @@ export default function Folha() {
         description:
           res.marcados === 0
             ? "Tudo do período já constava como enviado."
-            : `${res.pagamentos} saída(s) e ${res.parcelas} recebimento(s) do período.`,
+            : `${res.pagamentos} saída${res.pagamentos === 1 ? "" : "s"} e ${res.parcelas} recebimento${res.parcelas === 1 ? "" : "s"} do período.`,
       });
     } catch (err) {
       toast({

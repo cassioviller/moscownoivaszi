@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/form";
 
 const noivaSchema = z.object({
-  noivaNome: z.string().min(1, "Nome da noiva é obrigatório"),
+  noivaNome: z.string().min(1, "Informe o nome da noiva"),
   noivoNome: z.string().optional(),
   whatsapp: z.string().optional(),
   cerimonialista: z.string().optional(),

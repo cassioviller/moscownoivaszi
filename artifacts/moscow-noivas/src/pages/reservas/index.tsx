@@ -61,7 +61,7 @@ export default function Reservas() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif">{passadas ? "Reservas passadas" : "Reservas"}</h1>
+          <h1 className="text-3xl font-serif">{passadas ? "Reservas anteriores" : "Reservas"}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {passadas
               ? "Casamentos já realizados."
@@ -69,7 +69,7 @@ export default function Reservas() {
           </p>
         </div>
         <Button variant="outline" onClick={() => setPassadas((v) => !v)}>
-          {passadas ? "Voltar às próximas reservas" : "Ver reservas passadas"}
+          {passadas ? "Voltar às próximas reservas" : "Ver reservas anteriores"}
         </Button>
       </div>
 
@@ -83,7 +83,7 @@ export default function Reservas() {
         </div>
       ) : reservas.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{passadas ? "Nenhuma reserva passada." : "Nenhuma reserva por aqui ainda."}</p>
+          <p>{passadas ? "Nenhuma reserva anterior." : "Nenhuma reserva por aqui ainda."}</p>
           {!passadas && (
             <p className="text-sm mt-1">
               Quando um vestido for reservado para o casamento de uma noiva, ele aparece aqui, da

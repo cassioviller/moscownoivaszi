@@ -108,7 +108,7 @@ para cada uma.
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ✅ | `db5ed1d` |
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ✅ | `15737c0` |
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | `a3ecff2` |
-| E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ⬜ | |
+| E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ✅ | |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ⬜ | |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ⬜ | |
 | E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ⬜ | |
@@ -611,3 +611,26 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   zerados — os 2 restantes são `SelectTrigger`, primitivo fora do achado
   (sobra nova S-D18, com as abas custom na mesma classe). Suítes: API 873 ·
   front 414 · E2E completo 147/147 · typecheck verde.
+- **E138 entregue** (`execucao/E138.md`). A passada de voz, com o regrep da
+  primeira ação corrigindo três contagens envelhecidas (16 "é obrigatório",
+  não 20 — o E134 levou os de vestidos; "lente" já zero — saiu no E124; 2
+  "(s)", não 3). Num commit: "ateliê" (P4) nas 8 frases visíveis (2 ditas à
+  noiva); sentence case nos rótulos e "CPF Cliente" → "CPF da noiva" (o único
+  "cliente" num sistema que fala "noiva"); os 16 "é obrigatório" viraram
+  imperativo-que-ensina; "← Financeiro" nas 4 voltas e "Auditoria" no h1 (o
+  nome da porta); "anteriores" nas gêmeas; zero "(s)" (folha + o detalhe de
+  `agenda.ts`, a única linha de servidor — E2E completo por ela, regra 11);
+  "Remover este ajuste?" (o único AlertDialogTitle sem pergunta);
+  "Escolha…" ×2 e o placeholder "5000" → "5.000,00" no campo de dinheiro
+  mais digitado; a linha de propósito nas 5 telas mudas (uma frase, ponto
+  final); e o login trocou "Acesso ao sistema" por "O ateliê abre por aqui."
+  A regra 11 pagou o E2E em TRÊS passadas (144 → 146 → 147): specs 33/42
+  afirmavam o h1 renomeado (classe 05-leads), e o spec 18 desmascarou um
+  defeito REAL fora do épico — a colisão por retângulo do dnd-kit soltava o
+  card na cabine VIZINHA no fio do meio (a margem mudou com a limpeza de
+  cabines do E125); virou `pointerWithin`, uma linha comentada, no commit
+  pelo precedente do spec-49/E125. **E o executor commitou antes de ler a
+  suíte** — a primeira passada veio 144/147 com o commit já feito (o `tail
+  -4` cortou a saída); o conserto foi emendar ANTES de registrar o hash, e a
+  lição está no relatório. Suítes: API 873 · front 414 · E2E completo
+  147/147 na passada final · typecheck verde. Nenhuma sobra nova.

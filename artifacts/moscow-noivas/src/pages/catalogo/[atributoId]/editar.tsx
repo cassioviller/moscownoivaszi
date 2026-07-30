@@ -34,14 +34,14 @@ import { CACHE_ESTAVEL } from "@/lib/cache";
 import { Erro } from "@/components/estado";
 
 const editarAtributoSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   ativo: z.boolean(),
   // Opções nunca são apagadas (podem estar em uso em vestidos/interesses) —
   // apenas renomeadas ou desativadas.
   opcoes: z.array(
     z.object({
       id: z.string(),
-      valor: z.string().min(1, "Valor é obrigatório"),
+      valor: z.string().min(1, "Informe o valor"),
       ativo: z.boolean(),
     }),
   ),

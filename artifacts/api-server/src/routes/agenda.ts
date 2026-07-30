@@ -420,7 +420,7 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pr
   if (ajustes.length > 0) {
     res.status(409).json({
       error: "ATENDIMENTO_COM_AJUSTES",
-      detalhe: `Este atendimento tem ${ajustes.length} ajuste(s) de costura que sumiriam junto — remova-os antes.`,
+      detalhe: `Este atendimento tem ${ajustes.length} ajuste${ajustes.length === 1 ? "" : "s"} de costura que sumiriam junto — remova-os antes.`,
     });
     return;
   }

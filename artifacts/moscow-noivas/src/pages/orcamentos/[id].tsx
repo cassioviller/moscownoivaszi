@@ -978,7 +978,7 @@ export default function OrcamentoDetail() {
                       <FormItem className="w-32">
                         <FormLabel>Valor (R$)</FormLabel>
                         <FormControl>
-                          <Input inputMode="decimal" placeholder="5000" {...field} />
+                          <Input inputMode="decimal" placeholder="5.000,00" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1158,7 +1158,7 @@ export default function OrcamentoDetail() {
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger aria-label="Vendedora da venda" data-testid="select-vendedora-venda">
-                          <SelectValue placeholder="Selecione…" />
+                          <SelectValue placeholder="Escolha…" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -1204,7 +1204,7 @@ export default function OrcamentoDetail() {
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Escolha" />
+                            <SelectValue placeholder="Escolha…" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

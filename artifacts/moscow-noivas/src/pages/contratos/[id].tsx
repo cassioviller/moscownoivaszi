@@ -429,7 +429,7 @@ export default function ContratoDetail() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <span className="text-muted-foreground text-sm">Valor Total</span>
+              <span className="text-muted-foreground text-sm">Valor total</span>
               {/* E8: era `text-primary`. Lado a lado com o `text-destructive` da parcela
                   em atraso, o rosa da marca lia-se como um segundo alerta. O rosa fica
                   para o que é INTERATIVO; aqui é o número mais importante da tela, e o
@@ -449,14 +449,14 @@ export default function ContratoDetail() {
               </div>
             )}
             <div>
-              <span className="text-muted-foreground text-sm">Forma de Pagamento Base</span>
+              <span className="text-muted-foreground text-sm">Forma de pagamento base</span>
               <p className="font-medium">
                 {rotuloForma(contrato.formaPagamento) ?? "Não definida"}
               </p>
             </div>
             {contrato.cpf && (
               <div>
-                <span className="text-muted-foreground text-sm">CPF Cliente</span>
+                <span className="text-muted-foreground text-sm">CPF da noiva</span>
                 <p className="font-medium">{contrato.cpf}</p>
               </div>
             )}

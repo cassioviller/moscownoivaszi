@@ -69,7 +69,7 @@ import { instanteDia } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
 
 const novoMembroSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
   perfilId: z.string().min(1, "Selecione um perfil"),
@@ -77,7 +77,7 @@ const novoMembroSchema = z.object({
 type NovoMembroValues = z.infer<typeof novoMembroSchema>;
 
 const conviteSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   perfilId: z.string().min(1, "Selecione um perfil"),
 });
@@ -92,7 +92,7 @@ const ERROS_CONVITE: Record<string, string> = {
 };
 
 const editarMembroSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   perfilId: z.string().min(1, "Selecione um perfil"),
   ativo: z.boolean(),
 });

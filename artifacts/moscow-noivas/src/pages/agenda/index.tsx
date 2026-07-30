@@ -119,7 +119,10 @@ export default function Agenda() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-serif">Agenda</h1>
+        <div>
+          <h1 className="text-3xl font-serif">Agenda</h1>
+          <p className="text-sm text-muted-foreground mt-1">O dia da loja, cabine a cabine.</p>
+        </div>
         <div className="flex items-center gap-2">
           {activeLojaId && (
             <>
@@ -150,7 +153,7 @@ export default function Agenda() {
             <Button asChild>
               <Link to={`/loja/${activeLojaId}/atendimentos/novo?dia=${diaYMD}`}>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Agendamento
+                Novo agendamento
               </Link>
             </Button>
           )}

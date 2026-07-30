@@ -79,7 +79,7 @@ export default function Provas() {
           <p className="text-sm text-muted-foreground mt-1">
             {passadas
               ? "As provas já realizadas."
-              : "As próximas provas do atelier, da mais próxima à mais distante."}
+              : "As próximas provas do ateliê, da mais próxima à mais distante."}
           </p>
         </div>
         <Button variant="outline" onClick={() => setPassadas((v) => !v)}>
@@ -101,7 +101,7 @@ export default function Provas() {
           {!passadas && (
             <p className="text-sm mt-1">
               Quando uma prova for registrada na reserva de uma noiva, ela aparece aqui — para o
-              atelier acompanhar quem vem provar e quando.
+              ateliê acompanhar quem vem provar e quando.
             </p>
           )}
         </div>

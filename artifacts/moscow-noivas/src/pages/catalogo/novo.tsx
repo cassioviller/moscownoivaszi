@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 
 const novoAtributoSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   tipo: z.enum(["OPCAO_UNICA", "ESCALA"]),
   novasOpcoes: z.string().optional(),
 });

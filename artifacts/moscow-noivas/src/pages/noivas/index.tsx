@@ -185,7 +185,7 @@ export default function Noivas() {
         </div>
       ) : total === 0 && !temFiltro ? (
         <div className="flex flex-col items-center gap-4 rounded-lg border bg-card px-6 py-16 text-center">
-          <p className="text-lg font-serif">O atelier aguarda a primeira noiva.</p>
+          <p className="text-lg font-serif">O ateliê aguarda a primeira noiva.</p>
           <p className="max-w-md text-sm text-muted-foreground">
             {podeCriar
               ? "Cada história começa por um nome. Adicione a primeira noiva e acompanhe a jornada, prova a prova, até o grande dia."

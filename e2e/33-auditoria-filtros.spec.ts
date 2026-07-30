@@ -54,7 +54,7 @@ test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
 
   test("filtrar por ação estreita a lista e sobrevive ao compartilhar a URL", async ({ page }) => {
     await page.goto("/financeiro/auditoria");
-    await expect(page.getByRole("heading", { name: "Trilha de auditoria" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Auditoria", exact: true })).toBeVisible();
     await expect(page.getByText(descricao)).toBeVisible();
 
     await page.getByLabel("Ação").click();

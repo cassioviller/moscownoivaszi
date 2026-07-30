@@ -119,7 +119,7 @@ export default function Auditoria() {
           >
             ← Financeiro
           </Link>
-          <h1 className="text-3xl font-serif mt-1">Trilha de auditoria</h1>
+          <h1 className="text-3xl font-serif mt-1">Auditoria</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando.
           </p>

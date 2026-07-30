@@ -147,7 +147,7 @@ export default function FluxoCaixa() {
           <Badge variant="secondary">Realizado</Badge>
         </div>
         <p className="text-sm text-muted-foreground">
-          Fluxo de caixa: o que entrou e saiu do atelier — pelo que foi registrado aqui, não é o
+          Fluxo de caixa: o que entrou e saiu do ateliê — pelo que foi registrado aqui, não é o
           extrato do banco.
         </p>
         <div className="flex flex-wrap gap-4 pt-1 text-sm">

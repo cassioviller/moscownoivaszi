@@ -157,11 +157,14 @@ export default function Orcamentos() {
       {/* E126/E1: cabe por pouco a 390px — a quebra entra pelo padrão da
           classe, não por já ter estourado. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-serif">Orçamentos</h1>
+        <div>
+          <h1 className="text-3xl font-serif">Orçamentos</h1>
+          <p className="text-sm text-muted-foreground mt-1">As propostas da loja, do rascunho ao aceite.</p>
+        </div>
         {podeCriar && (
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Novo Orçamento
+            Novo orçamento
           </Button>
         )}
       </div>
@@ -197,7 +200,7 @@ export default function Orcamentos() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo Orçamento</DialogTitle>
+            <DialogTitle>Novo orçamento</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

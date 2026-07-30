@@ -78,7 +78,10 @@ export default function Configuracoes() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-serif">Configurações</h1>
+      <div>
+        <h1 className="text-3xl font-serif">Configurações</h1>
+        <p className="text-sm text-muted-foreground mt-1">O que está valendo na loja — e onde se muda.</p>
+      </div>
 
       {/* E130/A3: as duas línguas de navegação, decididas — ALTERNAR A VISÃO
           desta tela é a aba sublinhada (o desenho de Atendimentos, o gesto
@@ -88,7 +91,7 @@ export default function Configuracoes() {
       <div className="flex gap-1 border-b" role="tablist" aria-label="Configurações">
         {(
           [
-            { chave: "loja" as const, rotulo: "Loja Atual", Icone: Settings2 },
+            { chave: "loja" as const, rotulo: "Loja atual", Icone: Settings2 },
             ...(user?.isSuperAdmin
               ? [{ chave: "admin" as const, rotulo: "Administração", Icone: Building2 }]
               : []),
@@ -177,7 +180,7 @@ export default function Configuracoes() {
                       <span className="font-medium">{disponibilidade.provaDiasAntes} dias</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Duração Prova</span>
+                      <span className="text-muted-foreground">Duração da prova</span>
                       <span className="font-medium">{disponibilidade.provaDuracao} min</span>
                     </div>
                     <div className="flex justify-between">

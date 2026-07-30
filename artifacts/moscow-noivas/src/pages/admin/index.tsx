@@ -57,12 +57,12 @@ import {
 import { mensagemApi } from "@/lib/erro-api";
 
 const novaLojaSchema = z.object({
-  nome: z.string().min(1, "Nome da loja é obrigatório"),
+  nome: z.string().min(1, "Informe o nome da loja"),
 });
 type NovaLojaValues = z.infer<typeof novaLojaSchema>;
 
 const novoUsuarioSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
   isSuperAdmin: z.boolean(),
@@ -70,7 +70,7 @@ const novoUsuarioSchema = z.object({
 type NovoUsuarioValues = z.infer<typeof novoUsuarioSchema>;
 
 const editarLojaSchema = z.object({
-  nome: z.string().min(1, "Nome da loja é obrigatório"),
+  nome: z.string().min(1, "Informe o nome da loja"),
   cnpj: z.string(),
   endereco: z.string(),
   telefone: z.string(),
@@ -79,7 +79,7 @@ const editarLojaSchema = z.object({
 type EditarLojaValues = z.infer<typeof editarLojaSchema>;
 
 const editarUsuarioSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   senha: z
     .string()

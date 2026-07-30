@@ -82,7 +82,10 @@ export default function Contratos() {
       {/* E126/E1: sem quebra o botão desenhava por cima do título e terminava
           em 419px — fora dos 390. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-serif">Contratos</h1>
+        <div>
+          <h1 className="text-3xl font-serif">Contratos</h1>
+          <p className="text-sm text-muted-foreground mt-1">As vendas fechadas e o carnê de cada uma.</p>
+        </div>
         {/* Contrato nasce de um orçamento APROVADO — o botão leva ao funil certo. */}
         <Button onClick={() => navigate(`/loja/${lojaId}/orcamentos`)}>
           <Plus className="h-4 w-4 mr-2" />

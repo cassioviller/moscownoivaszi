@@ -404,7 +404,7 @@ export default function Pagar() {
         <div>
           <h1 className="text-3xl font-serif">Contas a pagar</h1>
           <p className="text-sm text-muted-foreground">
-            O que sai do caixa: despesas, fornecedores e a folha do atelier.
+            O que sai do caixa: despesas, fornecedores e a folha do ateliê.
           </p>
         </div>
         {/* E126/E1: o grupo de 3 botões sozinho passa dos 358px úteis —

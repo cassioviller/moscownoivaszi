@@ -58,8 +58,8 @@ import { CACHE_ESTAVEL } from "@/lib/cache";
 import { Erro, Vazio } from "@/components/estado";
 
 const novoVestidoSchema = z.object({
-  codigo: z.string().min(1, { message: "Código é obrigatório" }),
-  nome: z.string().min(1, { message: "Nome é obrigatório" }),
+  codigo: z.string().min(1, { message: "Informe o código" }),
+  nome: z.string().min(1, { message: "Informe o nome" }),
   // E134/E11: dinheiro é texto + parseValor — nunca type=number (a regra do
   // repo em dialogo-receber-parcela; null = vazio, NaN = sujo, molde E95).
   precoBase: z.string().superRefine((texto, ctx) => {
@@ -356,16 +356,19 @@ export default function Vestidos() {
 
   return (
     <div className="space-y-6">
-      {/* E126/E1: a fileira somava ~656px e "Novo Vestido" ficava 100% fora
+      {/* E126/E1: a fileira somava ~656px e "Novo vestido" ficava 100% fora
           dos 390px — o botão do dia invisível na tela em que ele mais é usado.
           A fileira quebra; o grupo de ações também. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* E82: o menu diz "Vestidos" (o acervo); "Catálogo" é a OUTRA tela. */}
-        <h1 className="text-3xl font-serif">Vestidos</h1>
+        <div>
+          <h1 className="text-3xl font-serif">Vestidos</h1>
+          <p className="text-sm text-muted-foreground mt-1">O acervo da loja — cada peça, seu estado e sua história.</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Cadastro completo (com características do catálogo) na página dedicada;
               o dialog continua como atalho rápido. Link (role=link) não colide com o
-              botão "Novo Vestido" (role=button) exercitado pelo E2E. */}
+              botão "Novo vestido" (role=button) exercitado pelo E2E. */}
           {/* Relatório de utilização (E15): leitura, qualquer perfil que vê o módulo. */}
           <Button variant="ghost" asChild>
             <Link to={`/loja/${activeLojaId}/vestidos/utilizacao`}>
@@ -385,12 +388,12 @@ export default function Vestidos() {
           {podeCriar && (
             <Button onClick={() => setOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Novo Vestido
+              Novo vestido
             </Button>
           )}
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Novo Vestido</DialogTitle>
+              <DialogTitle>Novo vestido</DialogTitle>
               {/* E134/B11 (P5): a porta rápida DECLARA o que não cria — sem
                   isto, quem usava sempre a primária povoava o acervo com peças
                   invisíveis para a curadoria (sem características, o vestido

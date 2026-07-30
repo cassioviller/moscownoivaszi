@@ -536,7 +536,7 @@ export default function ReservaDetalhe() {
         ) : (
           <Card>
             <CardContent className="pt-6 space-y-3">
-              <p className="text-sm">Vestido ainda no atelier.</p>
+              <p className="text-sm">Vestido ainda no ateliê.</p>
               {podeMovimentar && (
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="flex flex-col gap-1">
@@ -936,10 +936,9 @@ export default function ReservaDetalhe() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover ajuste</AlertDialogTitle>
+            <AlertDialogTitle>Remover este ajuste?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remover o ajuste "{ajusteParaRemover?.descricao}"? O checklist dele também será
-              removido.
+              "{ajusteParaRemover?.descricao}" sai da prova, e o checklist dele vai junto.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

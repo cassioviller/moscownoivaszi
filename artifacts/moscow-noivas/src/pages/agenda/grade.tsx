@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
+  pointerWithin,
   DragOverlay,
   PointerSensor,
   TouchSensor,
@@ -235,6 +236,11 @@ export function GradeDoDia({
   return (
     <>
     <DndContext
+      /* O drop é onde o PONTEIRO está — a colisão por retângulo (default)
+         compara o card inteiro contra as células e fica no fio do meio
+         quando a largura das colunas muda: o card pego pela alça esquerda
+         se espalha para a direita e podia cair na cabine vizinha. */
+      collisionDetection={pointerWithin}
       sensors={sensores}
       onDragStart={(e: DragStartEvent) =>
         setArrastando((e.active.data.current?.atendimento as Atendimento) ?? null)

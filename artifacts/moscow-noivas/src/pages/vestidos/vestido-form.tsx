@@ -25,8 +25,8 @@ import {
  * distingue vazio (null) de sujo (NaN), o molde do E95.
  */
 export const vestidoFormSchema = z.object({
-  codigo: z.string().min(1, { message: "Código é obrigatório" }),
-  nome: z.string().min(1, { message: "Nome é obrigatório" }),
+  codigo: z.string().min(1, { message: "Informe o código" }),
+  nome: z.string().min(1, { message: "Informe o nome" }),
   precoBase: z.string().superRefine((texto, ctx) => {
     const v = parseValor(texto);
     if (v === null) ctx.addIssue({ code: "custom", message: "Informe o preço (ex.: 4.200,50)" });

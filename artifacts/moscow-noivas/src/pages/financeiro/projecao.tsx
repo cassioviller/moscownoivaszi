@@ -216,7 +216,7 @@ export default function Projecao() {
     <div className="space-y-6">
       <header className="space-y-1.5">
         <Link to={naLoja("/financeiro")} className="text-sm text-muted-foreground hover:text-foreground">
-          ← Fluxo de caixa
+          ← Financeiro
         </Link>
         <h1 className="text-3xl font-serif">Projeção de caixa</h1>
         <p className="text-sm text-muted-foreground">

@@ -11,7 +11,7 @@ import { mensagemApi } from "@/lib/erro-api";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "E-mail inválido" }),
-  senha: z.string().min(1, { message: "Senha é obrigatória" }),
+  senha: z.string().min(1, { message: "Informe a senha" }),
 });
 
 export default function Login() {
@@ -55,7 +55,7 @@ export default function Login() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-serif text-primary">Moscow Noivas</h1>
-          <p className="text-muted-foreground">Acesso ao sistema</p>
+          <p className="text-muted-foreground">O ateliê abre por aqui.</p>
         </div>
 
         <div className="bg-card border rounded-lg p-6 shadow-sm">
