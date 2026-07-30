@@ -401,9 +401,13 @@ export default function NoivaPortal() {
                       )}
                       <figcaption className="space-y-1 p-3 text-center">
                         <p className="font-serif text-lg">{v.nome}</p>
-                        <p className="text-sm font-medium text-primary">
-                          {brl(v.precoBase)}
-                        </p>
+                        {/* E127/E4: o preço vivia em text-primary a 2,68:1 —
+                            no celular, ao sol, na tela da NOIVA — invisível
+                            para a varredura do E8 porque o prettier separou o
+                            par em duas linhas. Dinheiro usa a escala money-*,
+                            nunca o rosa da marca (o molde é o gêmeo do
+                            lookbook, que o E99 já tinha consertado). */}
+                        <p className="money-sm">{brl(v.precoBase)}</p>
                         {v.atributos.length > 0 && (
                           <p className="text-xs text-muted-foreground">
                             {v.atributos

@@ -518,7 +518,7 @@ export default function AdminConsole() {
 
       <Link
         to="/admin/perfis"
-        className="text-sm text-primary underline underline-offset-4 w-fit"
+        className="text-sm text-primary-texto underline underline-offset-4 w-fit"
       >
         Gerenciar perfis (modelos globais) →
       </Link>

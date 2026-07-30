@@ -515,7 +515,7 @@ export default function Equipe() {
             {podeGerir && activeLojaId && (
               <Link
                 to={`/loja/${activeLojaId}/permissoes`}
-                className="text-sm text-primary underline underline-offset-4 block"
+                className="text-sm text-primary-texto underline underline-offset-4 block"
               >
                 Gerenciar permissões desta loja →
               </Link>
@@ -643,7 +643,7 @@ export default function Equipe() {
               por algum canal.{" "}
               <button
                 type="button"
-                className="text-primary underline underline-offset-4"
+                className="text-primary-texto underline underline-offset-4"
                 onClick={() => {
                   setNovoAberto(false);
                   setConvidandoAberto(true);

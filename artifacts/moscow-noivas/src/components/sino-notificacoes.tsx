@@ -206,8 +206,11 @@ export function SinoNotificacoes() {
           <Bell className="h-5 w-5" />
           {visiveis.length > 0 && (
             <span
-              className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium text-white ${
-                urgentes ? "bg-destructive" : "bg-primary"
+              className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
+                /* E127/E4: text-white cru sobre bg-primary dava 2,79:1 num
+                   numeral de 10px — o par TESTADO de aparencia.test.ts é
+                   foreground sobre a própria cor, em cada ramo. */
+                urgentes ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
               }`}
               data-testid="sino-contador"
             >

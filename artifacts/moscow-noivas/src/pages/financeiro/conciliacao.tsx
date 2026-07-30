@@ -357,11 +357,11 @@ export default function Conciliacao() {
                 <CardTitle className="text-lg">No banco, mas não no sistema</CardTitle>
                 <CardDescription>
                   Entrou ou saiu dinheiro que o sistema não registrou — lance em{" "}
-                  <Link to={`/loja/${lojaId}/financeiro/receber`} className="text-primary underline underline-offset-4">
+                  <Link to={`/loja/${lojaId}/financeiro/receber`} className="text-primary-texto underline underline-offset-4">
                     receber
                   </Link>{" "}
                   ou{" "}
-                  <Link to={`/loja/${lojaId}/financeiro/pagar`} className="text-primary underline underline-offset-4">
+                  <Link to={`/loja/${lojaId}/financeiro/pagar`} className="text-primary-texto underline underline-offset-4">
                     pagar
                   </Link>
                   .

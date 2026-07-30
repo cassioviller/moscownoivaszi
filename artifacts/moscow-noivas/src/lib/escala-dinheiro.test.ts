@@ -54,14 +54,30 @@ describe("E6 — os três degraus existem, e nenhum esquece o tabular-nums", () 
 });
 
 describe("E8 — o rosa da marca não é cor de dinheiro", () => {
-  it("nenhum valor em `brl()` sai com text-primary", () => {
+  it("nenhum valor em `brl()` sai com text-primary — nem com o par quebrado em linhas", () => {
+    /**
+     * E127: a varredura lia LINHA a linha, e o prettier separou o par em
+     * `noiva-portal.tsx` — `className="… text-primary">` numa linha,
+     * `{brl(v.precoBase)}` na seguinte — e o preço que a noiva lê no celular
+     * viveu meses a 2,68:1 com CI verde (o gêmeo do lookbook, na mesma linha,
+     * foi pego pelo E99). Agora o par é procurado numa JANELA de 3 linhas:
+     * atributo e expressão de um mesmo elemento não se separam mais que isso.
+     *
+     * `hover:text-primary` fica de fora (cor de REPOUSO é o que a WCAG mede em
+     * texto parado; o alvo do hover ali é link, não o número) e
+     * `text-primary-foreground` também (é o texto SOBRE o rosa, o par testado
+     * de `aparencia.test.ts`). `text-primary-texto` NÃO escapa: continua sendo
+     * o rosa da marca lido como segundo alerta — dinheiro usa a escala
+     * `money-*`, nunca a cor da marca.
+     */
+    const rosaComoTexto = /(?<!hover:)text-primary(?!-foreground)/;
     const ofensores: string[] = [];
     for (const arquivo of arquivosTsx(RAIZ)) {
-      const fonte = readFileSync(arquivo, "utf8");
-      for (const linha of fonte.split("\n")) {
-        // A mesma linha renderiza dinheiro E pinta de rosa: é o E8 exato.
-        if (linha.includes("brl(") && linha.includes("text-primary")) {
-          ofensores.push(`${arquivo.replace(`${RAIZ}/`, "")}: ${linha.trim().slice(0, 90)}`);
+      const linhas = readFileSync(arquivo, "utf8").split("\n");
+      for (let i = 0; i < linhas.length; i++) {
+        const janela = linhas.slice(Math.max(0, i - 2), i + 1).join("\n");
+        if (linhas[i].includes("brl(") && rosaComoTexto.test(janela)) {
+          ofensores.push(`${arquivo.replace(`${RAIZ}/`, "")}:${i + 1}: ${linhas[i].trim().slice(0, 90)}`);
         }
       }
     }

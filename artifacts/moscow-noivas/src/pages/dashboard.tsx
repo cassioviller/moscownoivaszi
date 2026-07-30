@@ -410,7 +410,7 @@ export default function Dashboard() {
               ) : deHoje.length === 0 ? (
                 <div className="text-sm text-muted-foreground text-center py-8">
                   Nenhum atendimento hoje.{" "}
-                  <Link to={`/loja/${activeLojaId}/agenda`} className="text-primary underline underline-offset-4">
+                  <Link to={`/loja/${activeLojaId}/agenda`} className="text-primary-texto underline underline-offset-4">
                     Abrir a agenda
                   </Link>
                 </div>

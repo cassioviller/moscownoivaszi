@@ -591,7 +591,7 @@ export default function ReservaDetalhe() {
                               href={`/api/lojas/${activeLojaId}/avarias/${a.id}/foto`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary underline underline-offset-4"
+                              className="text-primary-texto underline underline-offset-4"
                             >
                               ver foto
                             </a>
@@ -710,7 +710,7 @@ export default function ReservaDetalhe() {
                     className="w-52"
                     aria-label="Custo do reparo"
                   />
-                  <label className="text-sm text-primary underline underline-offset-4 cursor-pointer">
+                  <label className="text-sm text-primary-texto underline underline-offset-4 cursor-pointer">
                     {avariaFotoNome ?? "Anexar foto"}
                     <input
                       type="file"

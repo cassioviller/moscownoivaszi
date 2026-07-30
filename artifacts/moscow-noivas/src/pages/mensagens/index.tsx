@@ -462,7 +462,7 @@ export default function MensagensDoDia() {
               A mensagem cita o valor e o atraso.{" "}
               <Link
                 to={`/loja/${lojaId}/financeiro/cobranca`}
-                className="text-primary underline underline-offset-4"
+                className="text-primary-texto underline underline-offset-4"
               >
                 Ver a cobrança completa
               </Link>

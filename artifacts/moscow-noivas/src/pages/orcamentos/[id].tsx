@@ -881,7 +881,7 @@ export default function OrcamentoDetail() {
 
           {acimaDoTeto && (
             <p
-              className="flex items-center justify-end gap-1.5 text-sm text-amber-700 dark:text-amber-400"
+              className="flex items-center justify-end gap-1.5 text-sm text-aviso"
               data-testid="aviso-acima-teto"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />

@@ -54,13 +54,15 @@ function tamanho(bytes: number | null | undefined): string {
  */
 type Saude = { cor: string; texto: string };
 function saude(ultimo: BackupLog | null): Saude {
-  if (!ultimo) return { cor: "bg-red-500", texto: "Nenhum backup ainda" };
-  if (ultimo.status === "em_andamento") return { cor: "bg-amber-500", texto: "Backup em andamento" };
-  if (ultimo.status === "erro") return { cor: "bg-red-500", texto: "Último backup falhou" };
+  /* E127/E7: a tela reinventava bg-red-500/bg-emerald-500 onde --destructive
+     e --positivo existem testados — e o âmbar à mão virou o token --aviso. */
+  if (!ultimo) return { cor: "bg-destructive", texto: "Nenhum backup ainda" };
+  if (ultimo.status === "em_andamento") return { cor: "bg-aviso", texto: "Backup em andamento" };
+  if (ultimo.status === "erro") return { cor: "bg-destructive", texto: "Último backup falhou" };
   const horas = (Date.now() - new Date(ultimo.iniciadoEm).getTime()) / 3_600_000;
-  if (horas <= 24) return { cor: "bg-emerald-500", texto: "Backup em dia" };
-  if (horas <= 48) return { cor: "bg-amber-500", texto: "Backup ficando velho" };
-  return { cor: "bg-red-500", texto: "Backup atrasado" };
+  if (horas <= 24) return { cor: "bg-positivo", texto: "Backup em dia" };
+  if (horas <= 48) return { cor: "bg-aviso", texto: "Backup ficando velho" };
+  return { cor: "bg-destructive", texto: "Backup atrasado" };
 }
 
 /**
@@ -188,7 +190,7 @@ export function BackupSistema() {
             {/* E89: a cópia só vale quando alguém provou que ela VOLTA — a
                 linha do drill mostra a última restauração conferida. */}
             <p
-              className={`text-xs ${drill.alerta ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+              className={`text-xs ${drill.alerta ? "text-aviso" : "text-muted-foreground"}`}
               data-testid="drill-restore"
             >
               {drill.texto}
@@ -215,7 +217,7 @@ export function BackupSistema() {
                         <a
                           href={`/api/admin/backup/${b.id}/download`}
                           download
-                          className="ml-auto text-xs text-primary underline underline-offset-4 whitespace-nowrap"
+                          className="ml-auto text-xs text-primary-texto underline underline-offset-4 whitespace-nowrap"
                           data-testid={`baixar-backup-${b.id}`}
                         >
                           Baixar

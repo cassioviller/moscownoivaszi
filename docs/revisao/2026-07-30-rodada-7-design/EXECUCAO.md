@@ -97,7 +97,7 @@ para cada uma.
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ✅ | `a0b18c1` |
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | `21695c4` |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ✅ | `413c99b` |
-| E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ⬜ | |
+| E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ✅ | |
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ⬜ | |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ⬜ | |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ⬜ | |
@@ -457,3 +457,21 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   no dev — o typecheck pegou; lição no relatório: typecheck antes de medir.
   Suítes: API 871 · front 357 · E2E completo 147/147 · typecheck verde.
   Nenhuma sobra nova.
+- **E127 entregue** (`execucao/E127.md`). As cores semânticas ganharam token
+  com a conta ao lado e entraram na varredura: `--primary-texto` (claro
+  350 30% 42% — 6,24/6,48/5,82 sobre background/card/muted; escuro 350 35% 72%
+  — 7,27/6,64) nos 10 links que usavam o rosa da marca a 2,68:1; o preço do
+  portal da noiva NÃO virou rosa-texto — virou `money-sm`, o molde do gêmeo do
+  lookbook (regra E8: dinheiro não é rosa). `--aviso` (claro 35 90% 30% —
+  5,60/5,82/5,22; escuro 40 85% 65% — 9,79/8,93) substituiu os 5 tons à mão de
+  cobrança (o degrau âmbar→laranja virou intensidade de borda), orçamento e
+  backup (que reinventava red/emerald onde `--destructive`/`--positivo` já
+  existem). O sino trocou `text-white` cru pelo par testado de cada ramo. A
+  fresta da varredura FECHOU com vermelho-antes literal: a varredura do E8
+  reformulada para janela de 3 linhas reprovou `noiva-portal.tsx:405` (o par
+  que o prettier separou) antes da migração — um ofensor, zero falsos
+  positivos; `text-primary-texto` não escapa dela. 12 pares novos em
+  `aparencia.test.ts`. Dois vistos de passagem no relatório (o "hoje" de
+  `semana.tsx:176` na mesma classe, fora da lista da trilha; a variante `link`
+  do Button com 0 usos). Suítes: API 871 · front 357 → 369 · E2E completo
+  147/147 · typecheck verde. Nenhuma sobra nova.

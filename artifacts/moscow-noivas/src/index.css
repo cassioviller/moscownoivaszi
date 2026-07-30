@@ -44,6 +44,13 @@
      ele, entrada rosa e saída vermelha eram dois avermelhados quase iguais. */
   --color-positivo: hsl(var(--positivo));
 
+  /* E127/E4: o rosa da marca como TEXTO pequeno dá 2,68:1 — --primary é cor de
+     superfície/CTA, nunca de texto. Quem quer "link rosa" usa ESTE token. */
+  --color-primary-texto: hsl(var(--primary-texto));
+  /* E127/E7: o terceiro estado semântico (nem alarme, nem ok) — antes eram 5
+     tons de âmbar/laranja à mão em 3 telas, nenhum coberto pelo teste. */
+  --color-aviso: hsl(var(--aviso));
+
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
   --color-chart-3: hsl(var(--chart-3));
@@ -138,6 +145,13 @@
      número. Texto escuro sobre o mesmo rosa dá 4,58:1. */
   --primary: 350 25% 65%;
   --primary-foreground: 20 20% 20%;
+  /* O rosa que PODE ser texto (E127/E4): a marca em 65% dá 2,68:1 como texto
+     pequeno — este tom escuro dá 6,24:1 sobre --background, 6,48:1 sobre
+     --card e 5,82:1 sobre --muted. A marca não muda; muda o que vira letra. */
+  --primary-texto: 350 30% 42%;
+  /* Aviso (E127/E7): âmbar ESCURO o bastante para ser texto — 5,60:1 sobre
+     --background, 5,82:1 sobre --card, 5,22:1 sobre --muted. */
+  --aviso: 35 90% 30%;
 
   /* Muted Gold / Taupe */
   --secondary: 40 15% 85%;
@@ -232,6 +246,12 @@
      card sobe de 4,56 para 6,03 (E92/E2). */
   --primary: 350 25% 68%;
   --primary-foreground: 20 20% 20%;
+  /* No escuro o rosa-texto clareia (o espelho de --destructive): 7,27:1 sobre
+     --background e 6,64:1 sobre --card. (E127/E4) */
+  --primary-texto: 350 35% 72%;
+  /* Aviso claro sobre fundo escuro: 9,79:1 sobre --background, 8,93:1 sobre
+     --card. (E127/E7) */
+  --aviso: 40 85% 65%;
 
   --secondary: 20 10% 25%;
   --secondary-foreground: 30 20% 95%;

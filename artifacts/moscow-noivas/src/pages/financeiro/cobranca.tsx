@@ -55,8 +55,12 @@ function ehFaixa(valor: string | null): valor is Faixa {
  * `mais60` ficava vermelho. Mantém o tom da tela: um marcador, não um alarme.
  */
 const CLASSE_ATRASO: Record<Faixa, string> = {
-  ate30: "border-amber-500/40 text-amber-700 dark:text-amber-400",
-  d31a60: "border-orange-500/50 text-orange-700 dark:text-orange-400",
+  /* E127/E7: os tons à mão (amber-700, orange-700…) viraram o token --aviso,
+     que vive na varredura de contraste. O degrau âmbar→laranja virou
+     intensidade de borda: a ESCALADA que importa continua sendo aviso →
+     destructive. */
+  ate30: "border-aviso/40 text-aviso",
+  d31a60: "border-aviso/70 text-aviso",
   mais60: "border-destructive/50 text-destructive",
 };
 

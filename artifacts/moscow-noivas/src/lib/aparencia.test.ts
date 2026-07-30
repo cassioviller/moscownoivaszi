@@ -131,6 +131,36 @@ describe("contraste dos tokens (WCAG 2.1 AA, 4,5:1 para texto)", () => {
   });
 
   /**
+   * E127/E4·E7: os dois tokens que NASCEM para ser texto. `--primary-texto`
+   * existe porque `--primary` (350 25% 65%) dá 2,68:1 como texto pequeno — 11
+   * pontos do app o usavam assim, um deles o preço no portal da noiva.
+   * `--aviso` existe porque o terceiro estado semântico era 5 tons de âmbar à
+   * mão em 3 telas, nenhum na varredura. Nos dois modos, sobre os três fundos
+   * onde o app põe texto.
+   */
+  it.each([
+    ["primary-texto", "background"],
+    ["primary-texto", "card"],
+    ["primary-texto", "muted"],
+    ["aviso", "background"],
+    ["aviso", "card"],
+    ["aviso", "muted"],
+  ])("claro · %s como texto sobre %s", (frente, fundo) => {
+    expect(razao(claro[frente], claro[fundo])).toBeGreaterThanOrEqual(AA);
+  });
+
+  it.each([
+    ["primary-texto", "background"],
+    ["primary-texto", "card"],
+    ["primary-texto", "muted"],
+    ["aviso", "background"],
+    ["aviso", "card"],
+    ["aviso", "muted"],
+  ])("escuro · %s como texto sobre %s", (frente, fundo) => {
+    expect(razao(escuro[frente], escuro[fundo])).toBeGreaterThanOrEqual(AA);
+  });
+
+  /**
    * O rosa da marca é intocável: se alguém "consertar" o contraste mexendo em
    * --primary no modo claro, este teste avisa que a correção foi pelo lado
    * errado. (Ver E92.md: no ESCURO o rosa clareia de propósito, como
