@@ -339,7 +339,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/proxima-janela", async (req, res)
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
   });
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -385,7 +385,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void>
   });
 
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -415,7 +415,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
    * ninguém a quem perguntar. O 404 saía da consulta pós-commit.
    */
   if (!(await vestidoNaLoja(vestidoId as string, lojaId as string))) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
   if (atributos !== undefined && !(await atributosDaLoja(atributos, lojaId as string))) {
@@ -454,7 +454,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
   });
 
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -492,7 +492,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
   });
 
   if (!foto || foto.vestido.lojaId !== lojaId) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Esta foto não existe nesta loja." });
     return;
   }
 
@@ -531,7 +531,7 @@ router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
   });
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -597,7 +597,7 @@ router.delete("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
   });
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
   await db.delete(vestidoFotosTable).where(and(eq(vestidoFotosTable.vestidoId, vestidoId as string), eq(vestidoFotosTable.ordem, ordem)));

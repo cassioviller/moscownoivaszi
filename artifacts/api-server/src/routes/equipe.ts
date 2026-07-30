@@ -274,7 +274,7 @@ router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", requireModulo(
     ))
     .returning();
   if (!renovado) {
-    res.status(404).json({ error: "Convite não encontrado" });
+    res.status(404).json({ error: "CONVITE_NAO_ENCONTRADO", detalhe: "Este convite não existe nesta loja." });
     return;
   }
   const [perfil] = await db
@@ -304,7 +304,7 @@ router.delete("/lojas/:lojaId/equipe/convites/:conviteId", async (req, res): Pro
     return linha;
   });
   if (!removido) {
-    res.status(404).json({ error: "Convite não encontrado" });
+    res.status(404).json({ error: "CONVITE_NAO_ENCONTRADO", detalhe: "Este convite não existe nesta loja." });
     return;
   }
   req.log.info({ conviteId, lojaId }, "convite_cancelado");
@@ -333,7 +333,7 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
   // e a derrubava (login recusado, sessões vivas encerradas), com a trilha
   // ficando na loja A, onde a vítima nunca olha.
   if (!(await usuarioNaLoja(params.data.usuarioId, params.data.lojaId))) {
-    res.status(404).json({ error: "Membro da equipe não encontrado" });
+    res.status(404).json({ error: "MEMBRO_NAO_ENCONTRADO", detalhe: "Este membro da equipe não existe nesta loja." });
     return;
   }
 
@@ -397,7 +397,7 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
     .where(and(eq(usuariosLojasTable.lojaId, params.data.lojaId), eq(usuariosLojasTable.usuarioId, params.data.usuarioId)));
 
   if (!membro) {
-    res.status(404).json({ error: "Membro da equipe não encontrado" });
+    res.status(404).json({ error: "MEMBRO_NAO_ENCONTRADO", detalhe: "Este membro da equipe não existe nesta loja." });
     return;
   }
 
@@ -416,7 +416,7 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
   // id do path: um DoS de sessão repetível contra qualquer conta do sistema,
   // com a rota respondendo 204 mesmo sem ter removido nada.
   if (!(await usuarioNaLoja(params.data.usuarioId, params.data.lojaId))) {
-    res.status(404).json({ error: "Membro da equipe não encontrado" });
+    res.status(404).json({ error: "MEMBRO_NAO_ENCONTRADO", detalhe: "Este membro da equipe não existe nesta loja." });
     return;
   }
 

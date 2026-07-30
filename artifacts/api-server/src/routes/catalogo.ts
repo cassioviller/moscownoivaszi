@@ -74,7 +74,7 @@ router.patch("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<v
     .returning();
 
   if (!atributo) {
-    res.status(404).json({ error: "Atributo not found" });
+    res.status(404).json({ error: "ATRIBUTO_NAO_ENCONTRADO", detalhe: "Este atributo não existe nesta loja." });
     return;
   }
 
@@ -108,7 +108,7 @@ router.post("/lojas/:lojaId/atributos/:atributoId/opcoes", async (req, res): Pro
     where: and(eq(atributosTable.id, params.data.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
   });
   if (!atributo) {
-    res.status(404).json({ error: "Atributo not found" });
+    res.status(404).json({ error: "ATRIBUTO_NAO_ENCONTRADO", detalhe: "Este atributo não existe nesta loja." });
     return;
   }
 
@@ -137,14 +137,14 @@ router.patch("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promi
     where: eq(atributoOpcoesTable.id, params.data.opcaoId),
   });
   if (!existing) {
-    res.status(404).json({ error: "Opção not found" });
+    res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
     return;
   }
   const atributo = await db.query.atributosTable.findFirst({
     where: and(eq(atributosTable.id, existing.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
   });
   if (!atributo) {
-    res.status(404).json({ error: "Opção not found" });
+    res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
     return;
   }
 
@@ -154,7 +154,7 @@ router.patch("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Promi
     .returning();
 
   if (!opcao) {
-    res.status(404).json({ error: "Opção not found" });
+    res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
     return;
   }
 
@@ -175,7 +175,7 @@ router.delete("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Prom
       where: and(eq(atributosTable.id, existing.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
     });
     if (!atributo) {
-      res.status(404).json({ error: "Opção not found" });
+      res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
       return;
     }
     await db.delete(atributoOpcoesTable).where(eq(atributoOpcoesTable.id, params.data.opcaoId));

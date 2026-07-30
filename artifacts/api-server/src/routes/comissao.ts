@@ -462,7 +462,7 @@ router.patch("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promis
     .where(and(eq(comissaoRegrasTable.id, regraId), eq(comissaoRegrasTable.lojaId, lojaId)))
     .returning();
   if (!atualizada) {
-    res.status(404).json({ error: "Regra not found" });
+    res.status(404).json({ error: "REGRA_NAO_ENCONTRADA", detalhe: "Esta regra não existe nesta loja." });
     return;
   }
   const [regra] = await carregarRegras(lojaId, [atualizada.vendedoraId]).then((rs) =>

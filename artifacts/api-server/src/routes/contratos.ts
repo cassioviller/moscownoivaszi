@@ -330,10 +330,16 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * `bloqueio.leadId` NULO é o caso legítimo e comum: a reserva nasceu sem
      * dona (a loja segurou a peça antes de saber de quem seria) e este contrato
      * é justamente quem lhe dá dono. Só o vínculo com OUTRA noiva é recusado.
+     *
+     * S-D12/E145 — o código era `REFERENCIA_INVALIDA`, o mesmo que o
+     * dicionário da tela de orçamento traduz como "Essa noiva não é desta
+     * loja." — a tradução genérica sombreava este `detalhe`, que é a frase
+     * certa. Código próprio, SEM entrada no dicionário: a régua do
+     * `mensagemApi` mostra o `detalhe` do servidor.
      */
     if (bloqueio.leadId && bloqueio.leadId !== contratoData.leadId) {
       res.status(422).json({
-        error: "REFERENCIA_INVALIDA",
+        error: "RESERVA_DE_OUTRA_NOIVA",
         detalhe: "Esta reserva de vestido é de outra noiva — escolha uma reserva desta noiva ou uma sem dona.",
         campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva pertence a outra noiva" }],
       });
@@ -548,7 +554,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   // E72: as reservas físicas presas por este contrato.
@@ -573,7 +579,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId/pdf", async (req, res): Promise
     with: { loja: true, lead: true, parcelas: true, itens: true },
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
 
@@ -637,7 +643,7 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     .returning();
 
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   res.json(UpdateContratoResponse.parse(contrato));
@@ -655,7 +661,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
     where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   if (contrato.status === "CANCELADO") {
@@ -831,7 +837,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
   const [existente] = await db.select().from(parcelasTable)
     .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
   if (!existente) {
-    res.status(404).json({ error: "Parcela not found" });
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
   if (existente.status === "PAGA") {
@@ -951,7 +957,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
   const [existente] = await db.select().from(parcelasTable)
     .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
   if (!existente) {
-    res.status(404).json({ error: "Parcela not found" });
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
   // PARCIAL também estorna (E49). O estorno é tudo-ou-nada: a parcela não tem
@@ -1039,7 +1045,7 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
   const [existente] = await db.select().from(parcelasTable)
     .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
   if (!existente) {
-    res.status(404).json({ error: "Parcela not found" });
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
   if (existente.status !== "PREVISTA") {
@@ -1137,7 +1143,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     with: { parcelas: true },
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   if (contrato.status !== "ATIVO") {

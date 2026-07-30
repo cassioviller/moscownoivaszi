@@ -81,7 +81,7 @@ router.get("/lojas/:lojaId/leads/:leadId/exportar", async (req, res): Promise<vo
     with: { interesse: { with: { atributos: true } } },
   });
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
   const [contatos, orcamentos, contratos] = await Promise.all([
@@ -476,7 +476,7 @@ router.get("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
   });
 
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
 
@@ -501,7 +501,7 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     where: and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)),
   });
   if (!existente) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
 
@@ -554,7 +554,7 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     .returning();
 
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
 
@@ -592,7 +592,7 @@ router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> =>
     .from(leadsTable)
     .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)));
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
 
@@ -642,7 +642,7 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
     where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
   });
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
 
@@ -722,7 +722,7 @@ router.get("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<v
     where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
   });
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
   // Histórico lê do mais recente para o mais antigo: o último contato é o que
@@ -754,7 +754,7 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
     where: and(eq(leadsTable.id, leadId), eq(leadsTable.lojaId, lojaId)),
   });
   if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
+    res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Esta noiva não existe nesta loja." });
     return;
   }
 

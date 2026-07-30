@@ -627,7 +627,7 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     }
   }
   if (!noLookbook && !noContrato) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Este registro não existe mais." });
     return;
   }
 
@@ -635,7 +635,7 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     where: and(eq(vestidoFotosTable.vestidoId, vestidoId), eq(vestidoFotosTable.ordem, ordem)),
   });
   if (!foto) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Este registro não existe mais." });
     return;
   }
 
@@ -695,7 +695,7 @@ router.post(
   async (req, res): Promise<void> => {
     const { lojaId, leadId } = req.params as { lojaId: string; leadId: string };
     if (!(await leadNaLoja(leadId, lojaId))) {
-      res.status(404).json({ error: "Lead not found" });
+      res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Este registro não existe mais." });
       return;
     }
 

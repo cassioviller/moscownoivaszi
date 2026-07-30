@@ -172,7 +172,7 @@ router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void>
     .where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)))
     .returning();
   if (!cabine) {
-    res.status(404).json({ error: "Cabine not found" });
+    res.status(404).json({ error: "CABINE_NAO_ENCONTRADA", detalhe: "Esta cabine não existe nesta loja." });
     return;
   }
   res.json(UpdateCabineResponse.parse(cabine));
@@ -299,7 +299,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     ),
   });
   if (!existente) {
-    res.status(404).json({ error: "Atendimento not found" });
+    res.status(404).json({ error: "ATENDIMENTO_NAO_ENCONTRADO", detalhe: "Este atendimento não existe nesta loja." });
     return;
   }
 
@@ -363,7 +363,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     .returning();
     
   if (!atendimento) {
-    res.status(404).json({ error: "Atendimento not found" });
+    res.status(404).json({ error: "ATENDIMENTO_NAO_ENCONTRADO", detalhe: "Este atendimento não existe nesta loja." });
     return;
   }
 
@@ -403,7 +403,7 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pr
     where: and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId)),
   });
   if (!atendimento) {
-    res.status(404).json({ error: "Atendimento not found" });
+    res.status(404).json({ error: "ATENDIMENTO_NAO_ENCONTRADO", detalhe: "Este atendimento não existe nesta loja." });
     return;
   }
   if (atendimento.situacao === "CONCLUIDO") {
@@ -466,7 +466,7 @@ router.post("/lojas/:lojaId/atendimentos/:atendimentoId/contato", requireModulo(
     ),
   });
   if (!existente) {
-    res.status(404).json({ error: "Atendimento not found" });
+    res.status(404).json({ error: "ATENDIMENTO_NAO_ENCONTRADO", detalhe: "Este atendimento não existe nesta loja." });
     return;
   }
   if (!existente.contatadoEm) {
@@ -499,7 +499,7 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, 
     ))
     .returning();
   if (!atualizado) {
-    res.status(404).json({ error: "Atendimento not found" });
+    res.status(404).json({ error: "ATENDIMENTO_NAO_ENCONTRADO", detalhe: "Este atendimento não existe nesta loja." });
     return;
   }
   const full = await db.query.atendimentosTable.findFirst({
@@ -603,7 +603,7 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
     .where(and(eq(ajustesTable.id, ajusteId as string), eq(ajustesTable.lojaId, lojaId as string)))
     .returning();
   if (!ajuste) {
-    res.status(404).json({ error: "Ajuste not found" });
+    res.status(404).json({ error: "AJUSTE_NAO_ENCONTRADO", detalhe: "Este ajuste não existe nesta loja." });
     return;
   }
   const fullAjuste = await db.query.ajustesTable.findFirst({
@@ -633,7 +633,7 @@ router.post("/lojas/:lojaId/ajustes/:ajusteId/checklist", async (req, res): Prom
     where: and(eq(ajustesTable.id, ajusteId as string), eq(ajustesTable.lojaId, lojaId as string)),
   });
   if (!ajuste) {
-    res.status(404).json({ error: "Ajuste not found" });
+    res.status(404).json({ error: "AJUSTE_NAO_ENCONTRADO", detalhe: "Este ajuste não existe nesta loja." });
     return;
   }
 
@@ -676,7 +676,7 @@ router.patch("/lojas/:lojaId/ajustes/checklist/:itemId", async (req, res): Promi
 
   const existente = await itemChecklistDaLoja(itemId as string, lojaId as string);
   if (!existente) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
 
@@ -692,7 +692,7 @@ router.delete("/lojas/:lojaId/ajustes/checklist/:itemId", async (req, res): Prom
   const { lojaId, itemId } = req.params;
   const existente = await itemChecklistDaLoja(itemId as string, lojaId as string);
   if (!existente) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
   await db.delete(ajusteChecklistItensTable).where(eq(ajusteChecklistItensTable.id, existente.id));
@@ -706,7 +706,7 @@ router.get("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
     where: eq(regraDisponibilidadeTable.lojaId, lojaId),
   });
   if (!regra) {
-    res.status(404).json({ error: "Regra not found" });
+    res.status(404).json({ error: "REGRA_NAO_ENCONTRADA", detalhe: "Esta regra não existe nesta loja." });
     return;
   }
   res.json(GetDisponibilidadeResponse.parse(regra));

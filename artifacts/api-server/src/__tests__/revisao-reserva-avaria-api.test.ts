@@ -78,7 +78,9 @@ describe("Reserva presa por um contrato só, e avaria com saída", () => {
     // do E107, que finalmente tem o que ler: o primeiro contrato deu dona à
     // reserva.
     const segundo = await fecharContrato(noivaC.id, bloqueio.id).expect(422);
-    expect(segundo.body.error).toBe("REFERENCIA_INVALIDA");
+    // E145/S-D12: o código deixou de ser o REFERENCIA_INVALIDA genérico — a
+    // recusa de reserva com outra dona tem código próprio.
+    expect(segundo.body.error).toBe("RESERVA_DE_OUTRA_NOIVA");
   });
 
   /**
@@ -132,7 +134,7 @@ describe("Reserva presa por um contrato só, e avaria com saída", () => {
     await fecharContrato(segunda.id, outro.id).expect(201);
   });
 
-  it("reserva de OUTRA noiva continua recusada com a mensagem do E107", async () => {
+  it("reserva de OUTRA noiva continua recusada — agora com o código próprio do E145", async () => {
     const noivaA = await criarLead(f);
     const noivaB = await criarLead(f);
     const bloqueio = await criarBloqueio(f, {
@@ -142,7 +144,9 @@ describe("Reserva presa por um contrato só, e avaria com saída", () => {
       casamentoData: dataFutura(90),
     });
     const r = await fecharContrato(noivaB.id, bloqueio.id).expect(422);
-    expect(r.body.error).toBe("REFERENCIA_INVALIDA");
+    // E145/S-D12: era REFERENCIA_INVALIDA — o mesmo código que a tela traduz
+    // como "Essa noiva não é desta loja.", sombreando o detalhe da reserva.
+    expect(r.body.error).toBe("RESERVA_DE_OUTRA_NOIVA");
   });
 
   // ───────────────────────── a avaria ─────────────────────────

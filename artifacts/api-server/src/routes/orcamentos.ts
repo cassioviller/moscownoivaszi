@@ -238,7 +238,7 @@ router.get("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise<v
     },
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   res.json(GetOrcamentoResponse.parse(orcamento));
@@ -256,7 +256,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     where: and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)),
   });
   if (!existente) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
 
@@ -302,7 +302,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     return atualizado;
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
@@ -324,7 +324,7 @@ router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promis
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "APROVADO") {
@@ -370,7 +370,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
 
   const orcamento = await db.query.orcamentosTable.findFirst({ where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)) });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   // E115 — um orçamento APROVADO é um acordo fechado: o aceite (ou a
@@ -411,7 +411,7 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   if (!pai) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
   if (pai.status === "APROVADO") {
@@ -427,7 +427,7 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
     .returning();
   if (!item) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
 
@@ -444,7 +444,7 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
     .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   if (!pai) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
   if (pai.status === "APROVADO") {
@@ -471,7 +471,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads"
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "RECUSADO") {
@@ -511,7 +511,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("lea
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "APROVADO" || orcamento.status === "RECUSADO") {
@@ -535,7 +535,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("lea
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "APROVADO" || orcamento.status === "RECUSADO") {
