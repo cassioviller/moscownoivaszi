@@ -389,11 +389,14 @@ export default function Cobranca() {
                 >
                   <CardHeader className="pb-2">
                     <CardDescription>{ROTULO_FAIXA[f]}</CardDescription>
-                    <CardTitle
-                      className={`text-2xl tabular-nums ${f === "mais60" && resumo.total > 0 ? "text-destructive" : ""}`}
+                    {/* E131/A2: o degrau maior é UM — estes 3 cards saíam sans
+                        (via CardTitle) enquanto receber/pagar/folha, o mesmo
+                        desenho, saem money-lg serif pelo ResumoCard. */}
+                    <p
+                      className={`money-lg ${f === "mais60" && resumo.total > 0 ? "text-destructive" : ""}`}
                     >
                       {brl(resumo.total)}
-                    </CardTitle>
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground">

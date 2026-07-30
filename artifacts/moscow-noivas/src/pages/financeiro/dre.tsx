@@ -194,7 +194,7 @@ export default function DRE() {
             </CardHeader>
             <CardContent className="space-y-1">
               <p
-                className={`money-lg text-4xl ${resultadoNegativo ? "text-destructive" : "text-positivo"}`}
+                className={`money-lg ${resultadoNegativo ? "text-destructive" : "text-positivo"}`}
                 data-testid="dre-resultado"
               >
                 {resultadoNegativo ? "−" : "+"}

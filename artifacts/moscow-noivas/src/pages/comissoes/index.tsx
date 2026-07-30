@@ -695,7 +695,7 @@ export default function Comissoes() {
                 <span className="text-xs uppercase tracking-widest text-muted-foreground">
                   Total do mês
                 </span>
-                <span className="money-lg shrink-0 text-2xl">
+                <span className="money-lg shrink-0">
                   {brl(resumoFechamento.total)}
                 </span>
               </li>

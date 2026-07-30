@@ -96,9 +96,9 @@ export default function MinhaComissao() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Vendas do mês</CardDescription>
-                <CardTitle className="font-serif text-2xl tabular-nums">
+                <p className="money-lg">
                   {brl(d.totalVendas)}
-                </CardTitle>
+                </p>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
                 {d.estornoPendente > 0
@@ -109,9 +109,9 @@ export default function MinhaComissao() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Comissão prevista</CardDescription>
-                <CardTitle className="font-serif text-2xl tabular-nums">
+                <p className="money-lg">
                   {brl(d.valorTotal)}
-                </CardTitle>
+                </p>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
                 {!d.temRegra
@@ -124,13 +124,13 @@ export default function MinhaComissao() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Próximo degrau</CardDescription>
-                <CardTitle className="font-serif text-2xl tabular-nums">
+                <p className="money-lg">
                   {d.faltaProximoDegrau !== null && d.faltaProximoDegrau !== undefined
                     ? `${brl(d.faltaProximoDegrau)}`
                     : d.temRegra
                       ? "No topo"
                       : "—"}
-                </CardTitle>
+                </p>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
                 {d.faltaProximoDegrau !== null && d.faltaProximoDegrau !== undefined
@@ -162,9 +162,9 @@ export default function MinhaComissao() {
             <Card data-testid="projecao-comissao">
               <CardHeader className="pb-2">
                 <CardDescription>No seu ritmo</CardDescription>
-                <CardTitle className="font-serif text-2xl tabular-nums">
+                <p className="money-lg">
                   {brl(d.projecao.valorTotalProjetado)}
-                </CardTitle>
+                </p>
               </CardHeader>
               <CardContent className="space-y-1 text-xs text-muted-foreground">
                 <p>

@@ -333,7 +333,7 @@ export default function Dashboard() {
                 <ArrowDownToLine className="h-4 w-4 text-positivo" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-positivo">
+                <div className="money-lg text-positivo">
                   {brl(dashboard?.receberProximos30Dias ?? 0)}
                 </div>
               </CardContent>
@@ -348,7 +348,7 @@ export default function Dashboard() {
                 <ArrowUpFromLine className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="money-lg">
                   {brl(dashboard?.pagarProximos30Dias ?? 0)}
                 </div>
               </CardContent>
@@ -378,7 +378,7 @@ export default function Dashboard() {
               <Wallet className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-              <div className="text-2xl font-bold">{brl(comissaoDoMes.valorTotal)}</div>
+              <div className="money-lg">{brl(comissaoDoMes.valorTotal)}</div>
               <p className="text-xs text-muted-foreground">
                 {brl(comissaoDoMes.totalVendas)} em vendas
                 {comissaoDoMes.faltaProximoDegrau !== null &&

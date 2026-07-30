@@ -101,7 +101,7 @@ para cada uma.
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | `ef33c43` |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ✅ | `c2fa5bd` |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ✅ | `8d14198` |
-| E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ⬜ | |
+| E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ✅ | |
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ⬜ | |
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ⬜ | |
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ⬜ | |
@@ -521,3 +521,16 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   ghosts por "Semana →"/"Fila de atendimentos →"); filtros intocados. Suítes:
   API 873 · front 389 → 401 · E2E completo 147/147 · typecheck verde. Nenhuma
   sobra nova.
+- **E131 entregue** (`execucao/E131.md`). O degrau maior do dinheiro entrou na
+  escala: o grep de reconferência achou **12 pontos** (não 11 — o cartão de
+  comissão do painel é do E66, posterior à medição da trilha), todos migrados
+  para `money-lg` mantendo cor semântica: dashboard ×3, os 3 cards de faixa da
+  cobrança (o `CardTitle` sans virou `<p className="money-lg">` — CardTitle
+  carrega `text-2xl font-semibold` de base e a disputa de utilitários é
+  decidida pela ordem do stylesheet, não do className), fluxo ×2 e
+  minha-comissão ×4 (o serif à mão num degrau inexistente). Os 2 overrides
+  caíram (`comissoes:698 text-2xl`, `dre:197 text-4xl`). Adoção medida, não
+  reescrita (cuidado a do E99): os 92 call-sites de `brl()` intocados. Visual:
+  o painel com R$ 46.864,00 no MESMO serif de Minha comissão
+  (`capturas/e131/`). Suítes: API 873 · front 401 · E2E completo 147/147 ·
+  typecheck verde. Nenhuma sobra nova.

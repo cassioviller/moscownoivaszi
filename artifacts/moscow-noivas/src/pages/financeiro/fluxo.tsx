@@ -292,14 +292,14 @@ export default function FluxoCaixa() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Link to="receber" className="rounded-lg border p-4 transition-colors hover:border-primary">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">A receber</p>
-                  <p className="text-xl font-semibold tabular-nums">{brl(horizonte.aReceber)}</p>
+                  <p className="money-lg">{brl(horizonte.aReceber)}</p>
                   {horizonte.aReceberAtraso > 0 && (
                     <p className="text-xs text-destructive">{brl(horizonte.aReceberAtraso)} em atraso</p>
                   )}
                 </Link>
                 <Link to="pagar" className="rounded-lg border p-4 transition-colors hover:border-primary">
                   <p className="text-xs uppercase tracking-wider text-muted-foreground">A pagar</p>
-                  <p className="text-xl font-semibold tabular-nums">{brl(horizonte.aPagar)}</p>
+                  <p className="money-lg">{brl(horizonte.aPagar)}</p>
                   {horizonte.aPagarAtraso > 0 && (
                     <p className="text-xs text-destructive">{brl(horizonte.aPagarAtraso)} em atraso</p>
                   )}
