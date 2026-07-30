@@ -107,7 +107,7 @@ para cada uma.
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ✅ | `7d698ef` |
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ✅ | `db5ed1d` |
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ✅ | `15737c0` |
-| E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ⬜ | |
+| E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ⬜ | |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ⬜ | |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ⬜ | |
@@ -136,6 +136,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D14 | **O seed do `16-cobranca-historico.spec.ts:31-37` lê `id` de `GET /equipe`, que expõe `usuarioId`** — o ramo de criar contrato só roda quando o banco não tem NENHUMA parcela vencida, então nunca roda no banco de dev cheio e o `vendedoraId: undefined` dormindo lá falharia com `CORPO_INVALIDO`. Descoberto porque o spec do E123 copiou o molde e o vermelho-antes veio do seed, não do assert. Consertar o 16 quando ele for tocado. | 🔵 | execução E123 |
 | S-D15 | **`{ error: "Lead not found" }` vive em 8 pontos de `routes/leads.ts`** (:81, :434, :459, :512, :550, :600, :680, :712) — a classe da S-D8/S-D11 (inglês no campo do código, sem `detalhe`), no arquivo que o E123 tocou. O 404 da rota nova do E123 já nasceu na régua (`REGISTRO_DE_COBRANCA_NAO_ENCONTRADO` + detalhe); os 8 vizinhos ficam para o épico que fechar a S-D11. | 🟡 | execução E123 |
 | S-D16 | **`orcamentos/[id].tsx:235` baixa a lista COMPLETA de contratos da loja para um único `find(c => c.orcamentoId === id)`** — 615.041 bytes medidos no banco de dev (518 contratos) só para alternar "Gerar/Ver contrato" quando o orçamento está APROVADO. Com o E124 a rota pagina, mas esta chamada segue sem página de propósito (o find precisa do acervo). Um `?orcamentoId=` no `GET /contratos` — a mesma classe do `?leadId=` do E62 — faz isso custar uma linha. | 🟡 | execução E124 |
+| S-D18 | **`SelectTrigger` fica em 36px no mobile** (`ui/select.tsx`, `h-9`) — o mesmo raciocínio que levou o Button `default` a `min-h-11 md:min-h-9` no E137 vale para ele (medido: os 2 únicos alvos <44px restantes de /atendimentos a 390px são SelectTriggers; todos os selects de filtro do app têm a mesma altura). As ABAS custom do tablist (E97/E130) medem ~37px — mesma classe. Fora do escopo dos achados E8/E9, que mediram Button; a mudança é uma palavra em cada primitivo. | 🔵 | execução E137 |
 | S-D17 | **14 specs do E2E criam recurso (lead, vestido, cabine, contrato…) e não têm `afterAll`** (levantamento por grep: 16, 17, 18, 19, 21, 24, 27, 28, 29, 30, 31, 35, 36, 37) — a família S18/S25. O spec 49 era o 15º e o único DETERMINISTICAMENTE explosivo (provas de 90 min acumulando no mesmo dia +6 da vendedora compartilhada saturaram o expediente na cadência de uma suíte por épico — 146/147 na primeira passada do E125); ganhou `afterAll` no próprio E125 porque bloqueava a regra 11. Os outros 14 vazam sem colidir (stamps únicos), mas são a fonte do acervo-lixo que a S25 mediu. Auditar e dar limpeza a cada um quando for tocado — ou de uma vez num épico de higiene de suíte. | 🟡 (infra de teste) | execução E125 |
 
 ## Diário de sessões
@@ -600,3 +601,13 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   errou o fio do onReagendar duas vezes (call site do DragOverlay, tipo no
   componente errado) — pego por typecheck + smoke. Suítes: API 873 · front
   414 · E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.
+- **E137 entregue** (`execucao/E137.md`). A régua dos 44px fechou em 3 linhas,
+  medida antes/depois: /atendimentos a 390px tinha **153 alvos abaixo de
+  44px** (os 36px eram o `default` do Button); o `default` ganhou
+  `min-h-11 md:min-h-9` (P3 pelo default — reverter é 1 linha) e os 2
+  overrides de 24px (X do sino, X do checklist de devolução) viraram
+  `md:h-6 md:w-6` — no mobile vale o 44 do próprio `size="icon"`. Depois:
+  /vestidos **0 de 763** alvos abaixo; /atendimentos com os `default`
+  zerados — os 2 restantes são `SelectTrigger`, primitivo fora do achado
+  (sobra nova S-D18, com as abas custom na mesma classe). Suítes: API 873 ·
+  front 414 · E2E completo 147/147 · typecheck verde.

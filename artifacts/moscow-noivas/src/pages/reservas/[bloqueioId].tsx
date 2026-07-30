@@ -847,7 +847,7 @@ export default function ReservaDetalhe() {
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6"
+                                            className="md:h-6 md:w-6"
                                             disabled={removeItem.isPending}
                                             onClick={() => removerItem(c.id)}
                                             aria-label={`Remover item ${c.descricao}`}

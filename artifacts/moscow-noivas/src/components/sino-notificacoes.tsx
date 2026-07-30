@@ -244,7 +244,7 @@ export function SinoNotificacoes() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 shrink-0"
+                  className="md:h-6 md:w-6 shrink-0"
                   aria-label={`Dispensar: ${n.titulo}`}
                   onClick={() => dispensar(n.id)}
                 >

@@ -34,7 +34,9 @@ const buttonVariants = cva(
       // desktop, onde há mouse, continua exatamente como estava.
       size: {
         // @replit changed sizes
-        default: "min-h-9 px-4 py-2",
+        // E137/E9 (P3): a régua que o comentário acima enuncia chega ao
+        // default — 44px abaixo de md; o desktop continua 36px.
+        default: "min-h-11 md:min-h-9 px-4 py-2",
         sm: "min-h-11 md:min-h-8 rounded-md px-3 text-xs",
         lg: "min-h-10 rounded-md px-8",
         icon: "h-11 w-11 md:h-9 md:w-9",
