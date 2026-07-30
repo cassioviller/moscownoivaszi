@@ -110,7 +110,7 @@ para cada uma.
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | `a3ecff2` |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ✅ | `7908493` |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ✅ | `f3af0dc` |
-| E140 | O WhatsApp no cadastro inline (B9) | P | ⬜ | |
+| E140 | O WhatsApp no cadastro inline (B9) | P | ✅ | |
 | E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ⬜ | |
 | E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ⬜ | |
 
@@ -136,6 +136,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D14 | **O seed do `16-cobranca-historico.spec.ts:31-37` lê `id` de `GET /equipe`, que expõe `usuarioId`** — o ramo de criar contrato só roda quando o banco não tem NENHUMA parcela vencida, então nunca roda no banco de dev cheio e o `vendedoraId: undefined` dormindo lá falharia com `CORPO_INVALIDO`. Descoberto porque o spec do E123 copiou o molde e o vermelho-antes veio do seed, não do assert. Consertar o 16 quando ele for tocado. | 🔵 | execução E123 |
 | S-D15 | **`{ error: "Lead not found" }` vive em 8 pontos de `routes/leads.ts`** (:81, :434, :459, :512, :550, :600, :680, :712) — a classe da S-D8/S-D11 (inglês no campo do código, sem `detalhe`), no arquivo que o E123 tocou. O 404 da rota nova do E123 já nasceu na régua (`REGISTRO_DE_COBRANCA_NAO_ENCONTRADO` + detalhe); os 8 vizinhos ficam para o épico que fechar a S-D11. | 🟡 | execução E123 |
 | S-D16 | **`orcamentos/[id].tsx:235` baixa a lista COMPLETA de contratos da loja para um único `find(c => c.orcamentoId === id)`** — 615.041 bytes medidos no banco de dev (518 contratos) só para alternar "Gerar/Ver contrato" quando o orçamento está APROVADO. Com o E124 a rota pagina, mas esta chamada segue sem página de propósito (o find precisa do acervo). Um `?orcamentoId=` no `GET /contratos` — a mesma classe do `?leadId=` do E62 — faz isso custar uma linha. | 🟡 | execução E124 |
+| S-D19 | **`lote17-agenda-concorrencia` flakou duas vezes hoje com `expected [201, 409] got [201, 500]`** — a corrida de reservas sob carga devolve 500 onde o teste espera o 409 da segunda chamada. Passou no rerun imediato as duas vezes (3/3), então é a família dos "três flakes" que o E104 da rodada 6 deixou anotados — mas um 500 numa corrida real é um defeito de rota, não só de teste: vale investigar se a transação converte conflito em erro genérico. | 🟡 | execução E140 |
 | S-D18 | **`SelectTrigger` fica em 36px no mobile** (`ui/select.tsx`, `h-9`) — o mesmo raciocínio que levou o Button `default` a `min-h-11 md:min-h-9` no E137 vale para ele (medido: os 2 únicos alvos <44px restantes de /atendimentos a 390px são SelectTriggers; todos os selects de filtro do app têm a mesma altura). As ABAS custom do tablist (E97/E130) medem ~37px — mesma classe. Fora do escopo dos achados E8/E9, que mediram Button; a mudança é uma palavra em cada primitivo. | 🔵 | execução E137 |
 | S-D17 | **14 specs do E2E criam recurso (lead, vestido, cabine, contrato…) e não têm `afterAll`** (levantamento por grep: 16, 17, 18, 19, 21, 24, 27, 28, 29, 30, 31, 35, 36, 37) — a família S18/S25. O spec 49 era o 15º e o único DETERMINISTICAMENTE explosivo (provas de 90 min acumulando no mesmo dia +6 da vendedora compartilhada saturaram o expediente na cadência de uma suíte por épico — 146/147 na primeira passada do E125); ganhou `afterAll` no próprio E125 porque bloqueava a regra 11. Os outros 14 vazam sem colidir (stamps únicos), mas são a fonte do acervo-lixo que a S25 mediu. Auditar e dar limpeza a cada um quando for tocado — ou de uma vez num épico de higiene de suíte. | 🟡 (infra de teste) | execução E125 |
 
@@ -644,3 +645,11 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   aberto. Pagar →" (com a janela na URL — E129), "134 movimentos não
   enviados". Suítes: API 873 · front 414 → 417 · E2E completo 147/147 ·
   typecheck verde. Nenhuma sobra nova.
+- **E140 entregue** (`execucao/E140.md`). O WhatsApp entrou no cadastro
+  inline do combobox — um `Input type="tel"` opcional no único momento em
+  que o número é grátis (a noiva está NO TELEFONE); preenchido vai no mesmo
+  POST (o shape já aceitava), vazio nada trava, e a decisão F4 (origem
+  obrigatória no mesmo clique) fica de pé. Medido de ponta a ponta: cadastro
+  com "11 98888-0140" → lead no banco com o número (smoke removido em
+  seguida). Suítes: API 873 · front 417 · E2E completo 147/147 · typecheck
+  verde. Nenhuma sobra nova.

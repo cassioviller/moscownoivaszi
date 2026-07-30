@@ -13,6 +13,7 @@ import { podeNoModulo } from "@/lib/permissoes";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Command,
   CommandEmpty,
@@ -72,6 +73,11 @@ export function ComboboxNoiva({
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
+  // E140/B9: a jornada é literalmente "a noiva está NO TELEFONE" — o número
+  // está na mão da recepcionista neste segundo, e sem ele a confirmação das
+  // 48h nem é oferecida e a fila degrada para "Sem WhatsApp". Opcional DE
+  // VERDADE: vazio, nada trava.
+  const [whatsappNovo, setWhatsappNovo] = useState("");
   const [buscaAplicada, setBuscaAplicada] = useState("");
   const { acessosModulos } = useAuth();
   const { toast } = useToast();
@@ -127,7 +133,11 @@ export function ComboboxNoiva({
     try {
       const criada = await createLead.mutateAsync({
         lojaId,
-        data: { noivaNome: nomeNovo, origem },
+        data: {
+          noivaNome: nomeNovo,
+          origem,
+          ...(whatsappNovo.trim() ? { whatsapp: whatsappNovo.trim() } : {}),
+        },
       });
       // A ficha recém-criada entra no cache pela mesma chave que o `useGetLead`
       // do gatilho consulta — sem isto o botão mostraria "…" até uma ida ao
@@ -136,6 +146,7 @@ export function ComboboxNoiva({
       await queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(lojaId) });
       onChange(criada.id);
       setBusca("");
+      setWhatsappNovo("");
       setAberto(false);
       toast({
         title: "Noiva cadastrada",
@@ -191,6 +202,14 @@ export function ComboboxNoiva({
                     <span className="font-medium text-foreground">«{nomeNovo}»</span>.
                     Cadastrar agora — de onde ela veio?
                   </p>
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="WhatsApp (opcional)"
+                    value={whatsappNovo}
+                    onChange={(e) => setWhatsappNovo(e.target.value)}
+                    data-testid="cadastrar-whatsapp"
+                  />
                   <div className="flex flex-wrap gap-1.5">
                     {ORIGENS.map((o) => (
                       <Button
