@@ -70,7 +70,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ✅ | `3f0b3a6` |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | `87cfbb1` |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ✅ | `71d3053` |
-| Consolidação G | `g-consolidado.md` | ✅ | |
+| Consolidação G | `g-consolidado.md` | ✅ | `0f1b794` |
 | Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ⬜ | |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
