@@ -656,6 +656,8 @@ export default function Pagar() {
                 : "A saída de caixa fica estornável a qualquer momento."}
             </DialogDescription>
           </DialogHeader>
+          {/* E136/E6: Enter conclui — o financeiro inteiro não tinha um <form>. */}
+          <form onSubmit={(e) => { e.preventDefault(); void onPagar(); }}>
           <div className="space-y-4">
             <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-3 text-sm">
               {contasSelecionadas.map((c) => (
@@ -727,14 +729,15 @@ export default function Pagar() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPagarOpen(false)}>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setPagarOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={onPagar} disabled={criarPagamento.isPending}>
+            <Button type="submit" disabled={criarPagamento.isPending}>
               {criarPagamento.isPending ? "Registrando…" : "Registrar pagamento"}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -746,6 +749,7 @@ export default function Pagar() {
               Salários e comissões nascem na folha do mês — aqui vão despesas e fornecedores.
             </DialogDescription>
           </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); void onCriarConta(); }}>
           <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="tipo">Tipo</Label>
@@ -804,14 +808,15 @@ export default function Pagar() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNovaOpen(false)}>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setNovaOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={onCriarConta} disabled={criarConta.isPending}>
+            <Button type="submit" disabled={criarConta.isPending}>
               {criarConta.isPending ? "Lançando…" : "Lançar"}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

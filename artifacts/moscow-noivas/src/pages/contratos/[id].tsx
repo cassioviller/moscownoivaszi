@@ -587,7 +587,15 @@ export default function ContratoDetail() {
                 )}
               </div>
             ) : podeCriarParcela && contratoAtivo ? (
-              <div className="space-y-3">
+              /* E136/E6: Enter conclui o plano — era o único fluxo de dinheiro
+                 desta tela e não tinha <form>. */
+              <form
+                className="space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void onGerarPlano();
+                }}
+              >
                 <p className="text-muted-foreground text-sm">
                   Nenhuma parcela registrada. Gere o plano de pagamento do contrato.
                 </p>
@@ -633,10 +641,10 @@ export default function ContratoDetail() {
                   As parcelas vencem todo mês no mesmo dia. Se o dia não existir no mês (31 em
                   fevereiro), a parcela cai no último dia dele. A entrada, se houver, vence hoje.
                 </p>
-                <Button onClick={onGerarPlano} disabled={gerarPlano.isPending}>
+                <Button type="submit" disabled={gerarPlano.isPending}>
                   {gerarPlano.isPending ? "Gerando…" : "Gerar plano"}
                 </Button>
-              </div>
+              </form>
             ) : (
               <p className="text-muted-foreground text-sm">Nenhuma parcela registrada.</p>
             )}

@@ -106,7 +106,7 @@ para cada uma.
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ✅ | `fce6368` |
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ✅ | `7d698ef` |
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ✅ | `db5ed1d` |
-| E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ⬜ | |
+| E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ✅ | |
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ⬜ | |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ⬜ | |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ⬜ | |
@@ -586,3 +586,17 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   conferência visual, não pelo typecheck; adendo à lição do E126 no
   relatório. Suítes: API 873 · front 414 · E2E completo 147/147 · typecheck
   verde. Nenhuma sobra nova.
+- **E136 entregue** (`execucao/E136.md`). Teclado e leitor de tela alcançam o
+  que o dedo alcança: os **5 fluxos de dinheiro ganharam `<form>`** (receber,
+  pagamento — inclusive rateado —, lançar despesa, gerar plano, folha; o
+  inventário confirmou o ZERO absoluto de forms no financeiro; Cancelar
+  virou `type="button"` explícito para não submeter), **as duas portas sem
+  arrasto nasceram** — "Mover para…" no cartão do funil (a MESMA decisão do
+  drop, incluindo o diálogo de motivo do PERDIDO; 10 etapas no menu, testado
+  vivo) e "Reagendar…" no cartão da grade (diálogo hora+cabine sobre o MESMO
+  PATCH, com form) — sensores de arrasto intocados; e **`CardTitle` virou
+  `h3`** (1 arquivo, 52 consumidores; o item cortável NÃO precisou ser
+  cortado — a suíte completa validou os seletores de heading). O executor
+  errou o fio do onReagendar duas vezes (call site do DragOverlay, tipo no
+  componente errado) — pego por typecheck + smoke. Suítes: API 873 · front
+  414 · E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.

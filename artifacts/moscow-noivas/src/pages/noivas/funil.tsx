@@ -1,4 +1,10 @@
 import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link } from "react-router";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +28,7 @@ import {
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Erro } from "@/components/estado";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -42,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GripVertical } from "lucide-react";
+import { GripVertical, ArrowRightLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { etapaLabel, PERDIDA_MOTIVO_LABELS } from "@/lib/formatos";
 import {
@@ -135,6 +142,17 @@ export function FunilNoivas({
     }
   }
 
+  /** E136/E10: a mesma decisão do aoSoltar, para a porta sem arrasto. */
+  function moverPorMenu(lead: Lead, destino: EtapaLead) {
+    if (destino === lead.etapa) return;
+    if (destino === "PERDIDO") {
+      setMotivoPerda("");
+      setPerdendo(lead);
+      return;
+    }
+    void moverPara(lead, destino);
+  }
+
   function aoSoltar(evento: DragEndEvent) {
     const lead = arrastando;
     setArrastando(null);
@@ -177,6 +195,7 @@ export function FunilNoivas({
               busca={busca}
               podeEditar={podeEditar}
               arrastando={arrastando}
+              onMover={moverPorMenu}
             />
           ))}
         </div>
@@ -254,6 +273,7 @@ function ColunaFunil({
   busca,
   podeEditar,
   arrastando,
+  onMover,
 }: {
   etapa: EtapaLead;
   activeLojaId: string;
@@ -261,6 +281,7 @@ function ColunaFunil({
   busca: string;
   podeEditar: boolean;
   arrastando: Lead | null;
+  onMover: (lead: Lead, destino: EtapaLead) => void;
 }) {
   const params = paramsDaColuna(etapa, busca);
   // E121/C3 — isError e refetch entram: a coluna dizia "Vazia" com total 0
@@ -323,6 +344,7 @@ function ColunaFunil({
               lojaId={lojaId}
               arrastavel={podeEditar}
               escondido={arrastando?.id === lead.id}
+              onMover={(destino) => onMover(lead, destino)}
             />
           ))
         )}
@@ -343,11 +365,14 @@ function CardNoiva({
   lojaId,
   arrastavel,
   escondido,
+  onMover,
 }: {
   lead: Lead;
   lojaId: string;
   arrastavel: boolean;
   escondido?: boolean;
+  /** E136/E10: a porta SEM arrasto — soma ao drag, não o substitui. */
+  onMover?: (destino: EtapaLead) => void;
 }) {
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: lead.id,
@@ -394,6 +419,32 @@ function CardNoiva({
               </span>
             )}
           </div>
+          {/* E136/E10: mover etapa só existia por arrasto — quem navega por
+              teclado não movia NUNCA, e no toque arrastar meia tela é
+              pontaria. O menu SOMA ao arrasto (que está bem — delay 200ms). */}
+          {arrastavel && onMover && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  aria-label={`Mover ${lead.noivaNome} para outra etapa`}
+                  data-testid={`mover-${lead.id}`}
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {ETAPAS_LEAD.filter((e) => e !== lead.etapa).map((etapa) => (
+                  <DropdownMenuItem key={etapa} onSelect={() => onMover(etapa)}>
+                    {etapaLabel(etapa)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {alerta && (

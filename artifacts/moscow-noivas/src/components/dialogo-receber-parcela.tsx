@@ -141,6 +141,16 @@ export function DialogoReceberParcela({
           </DialogTitle>
           {descricao && <DialogDescription>{descricao}</DialogDescription>}
         </DialogHeader>
+        {/* E136/E6: o diálogo de dinheiro MAIS usado do sistema não tinha
+            <form> — depois de digitar o valor, registrar custava
+            Tab→Tab→Tab→Tab→Enter (5 teclas onde a convenção é 1), e a tecla
+            "ir" do teclado numérico do celular morria no vazio. */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void onReceber();
+          }}
+        >
         <div className="space-y-4">
           <div className="space-y-1">
             <Label htmlFor="valorRecebido">Valor recebido</Label>
@@ -183,14 +193,15 @@ export function DialogoReceberParcela({
             </Select>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onFechar}>
+        <DialogFooter className="mt-4">
+          <Button type="button" variant="outline" onClick={onFechar}>
             Cancelar
           </Button>
-          <Button onClick={onReceber} disabled={receber.isPending} data-testid="confirmar-recebimento">
+          <Button type="submit" disabled={receber.isPending} data-testid="confirmar-recebimento">
             {receber.isPending ? "Registrando…" : "Registrar"}
           </Button>
         </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

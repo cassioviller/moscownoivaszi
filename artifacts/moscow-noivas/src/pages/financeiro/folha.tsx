@@ -727,6 +727,8 @@ export default function Folha() {
               lançada é o que foi combinado naquele mês.
             </DialogDescription>
           </DialogHeader>
+          {/* E136/E6: Enter salva — o diálogo de dinheiro não tinha <form>. */}
+          <form onSubmit={(e) => { e.preventDefault(); void onSalvarEdicao(); }}>
           <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="editValor">Valor (R$)</Label>
@@ -747,14 +749,15 @@ export default function Folha() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditando(null)}>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setEditando(null)}>
               Cancelar
             </Button>
-            <Button onClick={onSalvarEdicao} disabled={atualizarRecorrencia.isPending}>
+            <Button type="submit" disabled={atualizarRecorrencia.isPending}>
               {atualizarRecorrencia.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
