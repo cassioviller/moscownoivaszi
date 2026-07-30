@@ -68,7 +68,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | `e65c8b7` |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ✅ | `33a60cb` |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ✅ | `3f0b3a6` |
-| Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | |
+| Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | `87cfbb1` |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ⬜ | |
 | Consolidação G | `g-consolidado.md` | ⬜ | |
 | Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ⬜ | |
