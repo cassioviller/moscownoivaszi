@@ -91,7 +91,7 @@ para cada uma.
 | Épico | O que resolve | Esforço | Estado | Commit |
 |---|---|---|---|---|
 | E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ✅ | `8af14b4` |
-| E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ⬜ | |
+| E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ✅ | |
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ⬜ | |
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ⬜ | |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ⬜ | |
@@ -128,6 +128,8 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D6 | **`useIsMobile` tem 0 consumidores** (`moscow-noivas/src/hooks/use-mobile.tsx`; grep no `src/` inteiro — o app decide mobile por breakpoint CSS, que é o certo). Mesma classe da S-D3: podar como higiene, ou adotar se algum épico da rodada precisar de decisão em JS. | 🔵 | trilha E |
 | S-D7 | **As varreduras de grep por linha têm uma fresta de formatação.** O prettier separou `text-primary` de `brl(` em `noiva-portal.tsx:404-405` e o ofensor vive com CI verde porque `escala-dinheiro.test.ts:62-64` exige os dois NA MESMA linha (é o miolo do E4; o E127 fecha essa instância). Auditar as outras varreduras da mesma técnica (`destrutivas-varredura`, `datas-varredura`) contra a mesma quebra — pista da trilha E, assumida pela consolidação como trabalho de teste, fora do escopo de UX. | 🟡 | consolidação G |
 | S-D8 | **Dois erros do `POST /contratos` fora da régua de erro da casa:** `api-server/src/routes/contratos.ts:282` responde `{ error: "Bloqueio not found" }` (inglês, sem código) e `:346` responde `{ error: "dataCasamento do contrato diverge da data do bloqueio" }` — a FRASE no campo do CÓDIGO, sem `detalhe`. O `mensagemApi` da tela mapeia por código (`MENSAGENS_ERRO` de `orcamentos/[id].tsx`), então os dois caem no cru para a vendedora, no clique que fecha a venda. Candidato natural ao E122 (o épico do erro que mostra a frase do servidor). | 🟡 | execução E120 |
+| S-D9 | **O vazio de Permissões está fora da régua do `<Vazio>` e é quase inalcançável.** "Nenhum perfil encontrado." (`pages/permissoes/index.tsx`) não diz por que nem o próximo passo — e os perfis do sistema sempre existem: se a lista veio vazia, a notícia certa é outra. Decidir entre remover o ramo ou dar frase com saída. | 🔵 | execução E121 |
+| S-D10 | **O cartão da fila (F7) do dashboard aparece de repente.** `filaDeMensagens` deriva de 3 queries com `?? []`: enquanto elas contam, o cartão fica AUSENTE e salta na tela segundos depois do resto do painel. Mesma classe do E121 vestida de ausência — não afirma zero, por isso não subiu a conserto; o custo é o salto de layout na tela de abertura. | 🔵 | execução E121 |
 
 ## Diário de sessões
 
@@ -296,3 +298,33 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   `contrato.vendedoraId === maria.id` com a admin logada). Suítes: API
   852 → 855 · front 314 → 315 · E2E 137 → 139 · typecheck verde. Uma sobra
   nova (S-D8, os dois erros do `POST /contratos` fora da régua de erro).
+
+### Sessão 3 — 2026-07-30
+
+- **O E120 estava órfão: pronto, ✅ no rastreador, e sem commit.** A sessão 2
+  morreu entre escrever o relatório (05:27) e commitar. Esta sessão verificou
+  o working tree intocado — typecheck verde, front 315/315, API 855/855, as
+  contagens exatas do relatório — e o commitou sem mudar um byte (`8af14b4` +
+  `6786f39`); a suíte E2E completa desta sessão (139/139) cobriu os 2 specs
+  novos dele antes do commit do E121. A lição está no relatório do E121: o elo
+  mais fraco da rodada autônoma é o fim da sessão, não o código.
+- **E121 entregue** (`execucao/E121.md`). Três telas afirmavam zero enquanto
+  não sabiam, e a decisão de quando uma tela PODE afirmar virou função pura —
+  `lib/estado-consulta.ts`: pronto é unânime, erro ganha de carregando,
+  consulta desligada por permissão não conta. **C2** (o 🟠 mais perto de 🔴):
+  a conciliação desenhava "Bateu 0 · Só no banco 45" com o sistema em voo —
+  reproduzido em teste (`conciliarExtrato(45, []) → casadas 0, soExtrato 45`)
+  — e ensinava a relançar dinheiro; agora o veredito nem é computado sem as
+  duas respostas, com esqueleto por seção e `<Erro>` com refetch. **C1**: a
+  fila do dia lia 0 × o estado das 4 queries que dispara; o cabeçalho ganhou
+  "Contando a fila do dia…"/"Parte da fila não carregou" e cada seção o próprio
+  erro (`portais` fora do gate de propósito — só enriquece o link). **C3**: a
+  falha do painel virou UMA notícia com saída no lugar de seis zeros
+  ("A receber R$ 0,00" etc.), "Minha comissão" distingue falha de "sem regra",
+  o funil falhado diz "A coluna não carregou" (o arquivo não tinha UMA
+  ocorrência de `isError`) com total "—", e Permissões saiu do branco. A seção
+  Testes do backlog pediu render test que o repo decidiu não ter (E99,
+  comentário do `estado-erro.test.ts`) — convertido em decisão pura + varredura
+  de adoção nas cinco telas, vermelho antes com 4 AssertionError literais.
+  Suítes: API 855 (servidor intocado) · front 315 → 325 · E2E 139/139 completa
+  antes do commit · typecheck verde. Duas sobras novas (S-D9, S-D10).

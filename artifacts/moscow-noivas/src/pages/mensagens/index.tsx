@@ -19,6 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { SemWhatsApp } from "@/components/sem-whatsapp";
 import { PortalVencido } from "@/components/portal-vencido";
 import { Button } from "@/components/ui/button";
+import { Carregando, Erro } from "@/components/estado";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { MessageCircle, CalendarCheck, HandCoins, FileClock, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -192,14 +194,29 @@ export default function MensagensDoDia() {
 
   const totalFila = aContatar.length + inadimplentes.length + orcamentosVencendo.length;
 
+  /**
+   * E121/C1 — a fila disparava 4 queries e lia zero vezes isLoading/isError:
+   * numa oscilação de rede o cabeçalho afirmava "Fila vazia — ninguém
+   * esperando mensagem", a recepcionista fechava a tela e as confirmações das
+   * 48h não saíam. O estado das TRÊS consultas que enchem seções entra no
+   * cabeçalho; `portais` fica de fora de propósito — ele só enriquece a
+   * mensagem com o link do portal, e a fila inteira funciona sem ele.
+   * Consulta desligada por permissão não conta (é o contrato do helper).
+   */
+  const estadoFila = estadoDasConsultas(atendimentos, parcelas, orcamentos);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-serif">Mensagens de hoje</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {totalFila === 0
-            ? "Fila vazia — ninguém esperando mensagem."
-            : `${totalFila} mensagem${totalFila === 1 ? "" : "s"} pronta${totalFila === 1 ? "" : "s"} para enviar. Desça a fila clicando.`}
+          {estadoFila === "carregando"
+            ? "Contando a fila do dia…"
+            : estadoFila === "erro"
+              ? "Parte da fila não carregou — o erro e a saída estão na seção."
+              : totalFila === 0
+                ? "Fila vazia — ninguém esperando mensagem."
+                : `${totalFila} mensagem${totalFila === 1 ? "" : "s"} pronta${totalFila === 1 ? "" : "s"} para enviar. Desça a fila clicando.`}
         </p>
       </div>
 
@@ -271,7 +288,17 @@ export default function MensagensDoDia() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {aContatar.length === 0 ? (
+            {/* E121/C1 — "já foram procuradas" é afirmação; carregando e erro
+                não podem sair com a mesma cara dela. */}
+            {atendimentos.isError ? (
+              <Erro
+                titulo="A agenda das próximas 48h não carregou"
+                erro={atendimentos.error}
+                onTentarNovamente={() => void atendimentos.refetch()}
+              />
+            ) : atendimentos.isLoading ? (
+              <Carregando linhas={3} />
+            ) : aContatar.length === 0 ? (
               <p className="text-sm text-muted-foreground">Todas as noivas das próximas 48h já foram procuradas.</p>
             ) : (
               <ul className="divide-y">
@@ -384,7 +411,15 @@ export default function MensagensDoDia() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {inadimplentes.length === 0 ? (
+            {parcelas.isError ? (
+              <Erro
+                titulo="As parcelas em aberto não carregaram"
+                erro={parcelas.error}
+                onTentarNovamente={() => void parcelas.refetch()}
+              />
+            ) : parcelas.isLoading ? (
+              <Carregando linhas={3} />
+            ) : inadimplentes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Ninguém em atraso.</p>
             ) : (
               <ul className="divide-y">
@@ -449,7 +484,15 @@ export default function MensagensDoDia() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {orcamentosVencendo.length === 0 ? (
+            {orcamentos.isError ? (
+              <Erro
+                titulo="Os orçamentos enviados não carregaram"
+                erro={orcamentos.error}
+                onTentarNovamente={() => void orcamentos.refetch()}
+              />
+            ) : orcamentos.isLoading ? (
+              <Carregando linhas={3} />
+            ) : orcamentosVencendo.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum orçamento vencendo.</p>
             ) : (
               <ul className="divide-y">

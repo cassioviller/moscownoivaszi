@@ -17,6 +17,8 @@ import {
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Erro } from "@/components/estado";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 
@@ -32,10 +34,13 @@ export default function Permissoes() {
 
   const podeGerir = podeNoModulo(acessosModulos, "admin", "editar");
 
-  const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
+  // E121/C3 — as queries inteiras: com uma delas falhada, a tela ficava com o
+  // título e uma página em branco (`perfis === undefined` não caía em ramo
+  // nenhum) — nem erro, nem saída.
+  const perfisQuery = useListPerfis({
     query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId && podeGerir },
   });
-  const { data: overrides, isLoading: loadingOverrides } = useListPerfilOverrides(
+  const overridesQuery = useListPerfilOverrides(
     activeLojaId!,
     {
       query: {
@@ -44,6 +49,9 @@ export default function Permissoes() {
       },
     },
   );
+  const perfis = perfisQuery.data;
+  const overrides = overridesQuery.data;
+  const estado = estadoDasConsultas(perfisQuery, overridesQuery);
 
   const setOverride = useSetPerfilOverride();
   const deleteOverride = useDeletePerfilOverride();
@@ -99,8 +107,6 @@ export default function Permissoes() {
     );
   }
 
-  const carregando = loadingPerfis || loadingOverrides;
-
   return (
     <div className="space-y-6">
       <div>
@@ -111,7 +117,16 @@ export default function Permissoes() {
         </p>
       </div>
 
-      {carregando ? (
+      {estado === "erro" ? (
+        <Erro
+          titulo="As permissões não carregaram"
+          erro={perfisQuery.error ?? overridesQuery.error}
+          onTentarNovamente={() => {
+            void perfisQuery.refetch();
+            void overridesQuery.refetch();
+          }}
+        />
+      ) : estado === "carregando" ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
             <Card key={i} className="animate-pulse h-48" />

@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, FileUp, CheckCircle2 } from "lucide-react";
+import { Carregando, Erro } from "@/components/estado";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { brl, instanteDiaMes } from "@/lib/formatos";
 
 /**
@@ -110,8 +112,22 @@ export default function Conciliacao() {
     setNomeArquivo(arquivo.name);
   };
 
+  /**
+   * E121/C2 — o estado das DUAS consultas, lido antes de qualquer veredito.
+   *
+   * A sequência que enganava: a dona escolhe o arquivo → as queries são
+   * habilitadas naquele instante → no MESMO render o veredito rodava com
+   * `data ?? []` → um extrato de 45 transações dizia "Bateu 0 · Só no banco
+   * 45", com a instrução "lance em receber ou pagar" logo abaixo. Obedecer é
+   * contar o mesmo dinheiro duas vezes no caixa. E se uma query falhasse, o
+   * veredito errado ficava PARA SEMPRE, sem uma linha de erro.
+   */
+  const consultas = estadoDasConsultas(parcelas, pagamentos);
+
   const conciliacao = useMemo(() => {
     if (!transacoes || transacoes.length === 0 || !janela) return null;
+    // C2: sem as duas respostas não existe veredito — nem para computar.
+    if (!parcelas.data || !pagamentos.data) return null;
     const { de: inicio, ate: fim } = janela;
 
     const movimentos: MovimentoSistema[] = [];
@@ -259,6 +275,23 @@ export default function Conciliacao() {
         </CardContent>
       </Card>
 
+      {/* E121/C2 — enquanto o lado do sistema não respondeu, esqueleto (por
+          seção, não a página inteira); se falhou, a frase e a saída. O veredito
+          só desenha quando as duas consultas existem — `conciliacao` é null
+          antes disso. */}
+      {transacoes && transacoes.length > 0 && consultas === "erro" && (
+        <Erro
+          titulo="Não deu para comparar com o sistema"
+          erro={parcelas.error ?? pagamentos.error}
+          onTentarNovamente={() => {
+            void parcelas.refetch();
+            void pagamentos.refetch();
+          }}
+        />
+      )}
+      {transacoes && transacoes.length > 0 && consultas === "carregando" && (
+        <Carregando forma="cards" linhas={3} />
+      )}
       {conciliacao && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -22,6 +22,7 @@ import {
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Erro } from "@/components/estado";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -261,7 +262,9 @@ function ColunaFunil({
   arrastando: Lead | null;
 }) {
   const params = paramsDaColuna(etapa, busca);
-  const { data, isLoading } = useListLeads(activeLojaId, params, {
+  // E121/C3 — isError e refetch entram: a coluna dizia "Vazia" com total 0
+  // quando a query falhava, indistinguível de um funil realmente vazio.
+  const { data, isLoading, isError, error, refetch } = useListLeads(activeLojaId, params, {
     query: {
       queryKey: getListLeadsQueryKey(activeLojaId, params),
       enabled: !!activeLojaId,
@@ -296,11 +299,16 @@ function ColunaFunil({
             qualquer das duas vistas; o que faltava era o degrau abaixo dela —
             no funil, a etapa É a seção. */}
         <h2 className="truncate text-sm font-medium">{etapaLabel(etapa)}</h2>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{total}</span>
+        {/* Sem resposta não há contagem: "0" no topo da coluna é afirmação. */}
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          {data ? total : "—"}
+        </span>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        {isLoading ? (
+        {isError ? (
+          <Erro titulo="A coluna não carregou" erro={error} onTentarNovamente={() => void refetch()} />
+        ) : isLoading ? (
           <Card className="h-24 animate-pulse" />
         ) : itens.length === 0 ? (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">

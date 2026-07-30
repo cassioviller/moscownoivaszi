@@ -36,6 +36,7 @@ import {
 import { diaMesAno, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
+import { Erro } from "@/components/estado";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 
@@ -63,12 +64,19 @@ export default function Dashboard() {
   const veAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
 
-  const { data: dashboard, isLoading } = useGetDashboard(activeLojaId!, {
+  /**
+   * E121/C3 — a query inteira, não só `data`: falhou o GET do painel, os 4
+   * contadores e os 2 cards de dinheiro viravam medição ("Noivas ativas 0",
+   * "A receber R$ 0,00") — a dona lia o zero de falha com os mesmos pixels do
+   * zero de verdade e ligava para a vendedora achando que o mês parou.
+   */
+  const painelQuery = useGetDashboard(activeLojaId!, {
     query: {
       queryKey: getGetDashboardQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     }
   });
+  const { data: dashboard, isLoading } = painelQuery;
 
   // E79: a régua do funil roda no banco — o painel pede só as contagens e as
   // 10 piores, não a lista completa de leads.
@@ -246,6 +254,18 @@ export default function Dashboard() {
         </Link>
       )}
 
+      {/* E121/C3 — os contadores e o dinheiro saem da MESMA query: falhou,
+          é UMA notícia com saída, não seis zeros que parecem medição. O ramo
+          é o mesmo que os vizinhos do arquivo ("Hoje na loja", "Precisam de
+          contato") já tinham. */}
+      {painelQuery.isError ? (
+        <Erro
+          titulo="Os números do painel não carregaram"
+          erro={painelQuery.error}
+          onTentarNovamente={() => void painelQuery.refetch()}
+        />
+      ) : (
+        <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {veLeads && (
           <Card className="hover-elevate">
@@ -335,9 +355,19 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+        </>
+      )}
 
-      {/* A vendedora vê o próprio mês sem sair do painel (E11/E51). */}
-      {comissaoDoMes?.temRegra && (
+      {/* A vendedora vê o próprio mês sem sair do painel (E11/E51). O card
+          some quando NÃO HÁ REGRA (decisão do E11); a falha da query deixou
+          de usar o mesmo silêncio — falha tem frase e saída (E121/C3). */}
+      {minhaComissao.isError ? (
+        <Erro
+          titulo="Sua comissão do mês não carregou"
+          erro={minhaComissao.error}
+          onTentarNovamente={() => void minhaComissao.refetch()}
+        />
+      ) : comissaoDoMes?.temRegra && (
         <Link to={`/loja/${activeLojaId}/minha-comissao`}>
           <Card className="hover-elevate cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
