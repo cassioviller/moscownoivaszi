@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useListAtributos, useListCabines, useGetDisponibilidade, useListLojas, useListUsuarios, getListAtributosQueryKey, getListCabinesQueryKey, getGetDisponibilidadeQueryKey, getListLojasQueryKey, getListUsuariosQueryKey } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { varianteAtivo } from "@/lib/status-badge";
 import { Building2, Settings2, Users } from "lucide-react";
 import { tipoAtributoLabel } from "@/lib/formatos";
 import { Erro } from "@/components/estado";
@@ -39,6 +39,8 @@ function EditarEm({ to, o }: { to: string; o: string }) {
 export default function Configuracoes() {
   const { lojaId } = useParams();
   const { activeLojaId, user, acessosModulos } = useAuth();
+  // E130/A3: a visão da tela (aba sublinhada) — era a única pílula de ui/tabs.
+  const [aba, setAba] = useState<"loja" | "admin">("loja");
   // O endpoint do token é gateado por admin no backend — mesma régua aqui.
   const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
   // Tour do acesso (E24): reabrível a qualquer momento.
@@ -78,15 +80,39 @@ export default function Configuracoes() {
     <div className="space-y-6">
       <h1 className="text-3xl font-serif">Configurações</h1>
 
-      <Tabs defaultValue="loja" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="loja" className="gap-2"><Settings2 className="h-4 w-4"/> Loja Atual</TabsTrigger>
-          {user?.isSuperAdmin && (
-            <TabsTrigger value="admin" className="gap-2"><Building2 className="h-4 w-4"/> Administração</TabsTrigger>
-          )}
-        </TabsList>
+      {/* E130/A3: as duas línguas de navegação, decididas — ALTERNAR A VISÃO
+          desta tela é a aba sublinhada (o desenho de Atendimentos, o gesto
+          mais usado do app); IR A OUTRA TELA do domínio é o link-seta (o do
+          Financeiro). Esta era a única pílula de `ui/tabs` do app — a terceira
+          cara para o mesmo gesto. */}
+      <div className="flex gap-1 border-b" role="tablist" aria-label="Configurações">
+        {(
+          [
+            { chave: "loja" as const, rotulo: "Loja Atual", Icone: Settings2 },
+            ...(user?.isSuperAdmin
+              ? [{ chave: "admin" as const, rotulo: "Administração", Icone: Building2 }]
+              : []),
+          ]
+        ).map(({ chave, rotulo, Icone }) => (
+          <button
+            key={chave}
+            type="button"
+            role="tab"
+            aria-selected={aba === chave}
+            onClick={() => setAba(chave)}
+            className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              aba === chave
+                ? "border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground border-transparent"
+            }`}
+          >
+            <Icone className="h-4 w-4" /> {rotulo}
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="loja" className="space-y-6">
+      {aba === "loja" && (
+        <div className="space-y-6">
           {erroLoja && (
             <Erro
               titulo="Não deu para carregar as configurações da loja"
@@ -198,10 +224,11 @@ export default function Configuracoes() {
             {/* Privacidade (E77) — anonimização das perdidas antigas. */}
             {podeCaptacao && <PrivacidadeLgpd />}
           </div>
-        </TabsContent>
+        </div>
+      )}
 
-        {user?.isSuperAdmin && (
-          <TabsContent value="admin" className="space-y-6">
+      {user?.isSuperAdmin && aba === "admin" && (
+        <div className="space-y-6">
             {erroAdmin && (
               <Erro
                 titulo="Não deu para carregar a administração"
@@ -224,7 +251,9 @@ export default function Configuracoes() {
                           <span className="font-medium">{loja.nome}</span>
                           <span className="text-xs text-muted-foreground ml-2 block">{loja.cnpj || 'Sem CNPJ'}</span>
                         </div>
-                        <Badge variant={loja.ativo ? "default" : "secondary"}>{loja.ativo ? 'Ativa' : 'Inativa'}</Badge>
+                        {/* E130/A1: a mesma classe das 7 telas, vista de
+                            passagem — a tabela semântica vale aqui também. */}
+                        <Badge variant={varianteAtivo(loja.ativo ?? true)}>{loja.ativo ? 'Ativa' : 'Inativa'}</Badge>
                       </li>
                     ))}
                   </ul>
@@ -248,7 +277,7 @@ export default function Configuracoes() {
                           </span>
                           <span className="text-xs text-muted-foreground">{u.email}</span>
                         </div>
-                        <Badge variant={u.ativo ? "outline" : "secondary"}>{u.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                        <Badge variant={varianteAtivo(u.ativo ?? true)}>{u.ativo ? 'Ativo' : 'Inativo'}</Badge>
                       </li>
                     ))}
                   </ul>
@@ -258,9 +287,8 @@ export default function Configuracoes() {
               {/* Status de backup do sistema (E30) — o dump é do banco inteiro. */}
               <BackupSistema />
             </div>
-          </TabsContent>
-        )}
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }

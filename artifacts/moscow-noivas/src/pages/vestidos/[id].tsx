@@ -1,3 +1,4 @@
+import { varianteAtivo } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -277,11 +278,10 @@ export default function VestidoDetail() {
         chip={
           <span className="flex flex-wrap items-center gap-2">
             {renderBadgeHoje()}
-            {vestido.status === "ativo" ? (
-              <Badge variant="secondary" className="text-sm px-3 py-1">Ativo</Badge>
-            ) : (
-              <Badge variant="outline" className="text-sm px-3 py-1">Inativo</Badge>
-            )}
+            {/* E130/A1: a variante vem da tabela semântica. */}
+            <Badge variant={varianteAtivo(vestido.status === "ativo")} className="text-sm px-3 py-1">
+              {vestido.status === "ativo" ? "Ativo" : "Inativo"}
+            </Badge>
           </span>
         }
         acaoPrimaria={

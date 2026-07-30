@@ -1,3 +1,4 @@
+import { varianteSituacao } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { comFiltros } from "@/lib/filtro-url";
@@ -329,7 +330,10 @@ export default function Atendimentos() {
           </span>
 
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <Badge variant="secondary">
+            {/* E130/A1: era `secondary` fixo — "Faltou" saía no MESMO cinza de
+                "Agendado", e o estado que pede reação não se distinguia sem
+                ler. A variante vem da tabela semântica. */}
+            <Badge variant={varianteSituacao(a.situacao)}>
               {SITUACAO_LABELS[a.situacao] ?? a.situacao}
               {a.situacao === "CONCLUIDO" && a.desfecho
                 ? ` · ${DESFECHO_LABELS[a.desfecho] ?? a.desfecho}`

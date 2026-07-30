@@ -100,7 +100,7 @@ para cada uma.
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ✅ | `8ac81c6` |
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | `ef33c43` |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ✅ | `c2fa5bd` |
-| E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ⬜ | |
+| E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ✅ | |
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ⬜ | |
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ⬜ | |
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ⬜ | |
@@ -505,3 +505,19 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   de pé. Os testes de MemoryRouter do backlog convertidos em decisão pura
   (o repo não tem infra de render — E99/E121). Suítes: API 873 · front
   375 → 389 · E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.
+- **E130 entregue** (`execucao/E130.md`). O status ganhou gramática: a matriz
+  real montada por grep confirmou as 6 contradições ("Faltou" no MESMO cinza
+  de "Agendado" na fila; Recusado `outline` onde Cancelado é `destructive`;
+  cabine × vestido em pares opostos) e a tabela P6 virou
+  `lib/status-badge.ts` (em dia/em andamento → default · terminou bem →
+  secondary · terminou mal → destructive · inativo → outline · precisa de
+  reação → `aviso`, a variante NOVA de Badge sobre o token do E127). As 7
+  telas migraram + Configurações (2 instâncias da mesma classe, vistas ao
+  abrir o arquivo). A varredura nasceu com a JANELA de 3 linhas (lição
+  E127/S-D7 — a versão por linha teria deixado o dashboard escapar) e
+  reprovou 4 telas antes da migração, literal. A3: duas línguas declaradas e
+  aplicadas — alternar visão = aba sublinhada (Configurações deixou a única
+  pílula `ui/tabs` do app), ir a outra tela = link-seta (Agenda trocou os
+  ghosts por "Semana →"/"Fila de atendimentos →"); filtros intocados. Suítes:
+  API 873 · front 389 → 401 · E2E completo 147/147 · typecheck verde. Nenhuma
+  sobra nova.

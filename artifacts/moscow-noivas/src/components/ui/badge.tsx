@@ -22,6 +22,10 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow-xs",
           // @replit shadow-xs" - use badge outline variable
         outline: "text-foreground border [border-color:var(--badge-outline)]",
+        // E130 (P6): a semântica "precisa de reação" — o estado que pede gesto
+        // (Faltou) não pode dividir cor com o que está em dia. Sobre o token
+        // --aviso do E127 (testado em aparencia.test.ts), nunca cor crua.
+        aviso: "border-aviso/50 text-aviso",
       },
     },
     defaultVariants: {

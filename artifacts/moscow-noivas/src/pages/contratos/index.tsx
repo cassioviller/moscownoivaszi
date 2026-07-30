@@ -1,3 +1,4 @@
+import { varianteStatusContrato } from "@/lib/status-badge";
 import { useMemo } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -183,7 +184,7 @@ export default function Contratos() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="font-semibold">{brl(contrato.valorTotal)}</div>
-                    <Badge variant={contrato.status === 'ATIVO' ? 'default' : 'destructive'}>{statusContratoLabel(contrato.status)}</Badge>
+                    <Badge variant={varianteStatusContrato(contrato.status)}>{statusContratoLabel(contrato.status)}</Badge>
                   </div>
                 </CardContent>
               </Card>

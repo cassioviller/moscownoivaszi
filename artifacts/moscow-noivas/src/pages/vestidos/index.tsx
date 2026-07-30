@@ -1,3 +1,4 @@
+import { varianteAtivo } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -88,12 +89,14 @@ function fotoCapa(vestido: Vestido) {
   return vestido.fotos.reduce((menor, f) => (f.ordem < menor.ordem ? f : menor), vestido.fotos[0]);
 }
 
-/** Badge do status cadastral do vestido — rótulo tratado, nunca o valor cru. */
+/** Badge do status cadastral do vestido — rótulo tratado, nunca o valor cru.
+    E130/A1: a variante vem da tabela semântica — vestido e cabine ativos
+    falavam línguas opostas (secondary/outline × default/secondary). */
 function BadgeStatusVestido({ status }: { status: string }) {
-  return status === "ativo" ? (
-    <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm shadow-sm">Ativo</Badge>
-  ) : (
-    <Badge variant="outline" className="bg-background/80 backdrop-blur-sm shadow-sm">Inativo</Badge>
+  return (
+    <Badge variant={varianteAtivo(status === "ativo")} className="bg-background/80 backdrop-blur-sm shadow-sm">
+      {status === "ativo" ? "Ativo" : "Inativo"}
+    </Badge>
   );
 }
 

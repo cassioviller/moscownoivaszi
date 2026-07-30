@@ -1,3 +1,4 @@
+import { varianteStatusOrcamento } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -320,7 +321,10 @@ export default function Orcamentos() {
                     {orcamento.valorTotal != null && (
                       <div className="font-semibold">{brl(orcamento.valorTotal)}</div>
                     )}
-                    <Badge variant={orcamento.status === "APROVADO" ? "default" : orcamento.status === "RECUSADO" ? "outline" : "secondary"}>
+                    {/* E130/A1: "Recusado" era `outline` onde "Cancelado" é
+                        `destructive` — a mesma notícia com duas caras. A
+                        variante vem da tabela semântica. */}
+                    <Badge variant={varianteStatusOrcamento(orcamento.status)}>
                       {statusOrcamentoLabel(orcamento.status)}
                     </Badge>
                   </div>

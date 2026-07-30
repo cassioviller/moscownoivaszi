@@ -1,3 +1,4 @@
+import { varianteSituacao } from "@/lib/status-badge";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -451,14 +452,11 @@ export default function Dashboard() {
                           Iniciar
                         </Button>
                       )}
+                      {/* E130/A1: a variante vem da tabela semântica — era um
+                          mapeamento próprio desta tela (Agendado rosa aqui,
+                          cinza na fila). */}
                       <Badge
-                        variant={
-                          atendimento.situacao === "FALTOU"
-                            ? "outline"
-                            : atendimento.situacao === "CONCLUIDO"
-                              ? "secondary"
-                              : "default"
-                        }
+                        variant={varianteSituacao(atendimento.situacao)}
                         className="shrink-0 font-normal"
                       >
                         {atendimento.situacao === "AGENDADO" && "Agendado"}

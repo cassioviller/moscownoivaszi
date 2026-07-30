@@ -1,3 +1,4 @@
+import { varianteAtivo } from "@/lib/status-badge";
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -122,13 +123,21 @@ export default function Agenda() {
         <div className="flex items-center gap-2">
           {activeLojaId && (
             <>
-              {/* Visão semanal (E20): a grade semana × cabine. */}
-              <Button asChild variant="ghost">
-                <Link to={`/loja/${activeLojaId}/agenda/semana`}>Semana</Link>
-              </Button>
-              <Button asChild variant="ghost">
-                <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
-              </Button>
+              {/* E130/A3: ir a OUTRA tela do domínio é o link-seta (a língua
+                  do Financeiro) — os botões ghost eram uma terceira cara para
+                  o mesmo gesto. Visão semanal (E20): a grade semana × cabine. */}
+              <Link
+                to={`/loja/${activeLojaId}/agenda/semana`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Semana →
+              </Link>
+              <Link
+                to={`/loja/${activeLojaId}/atendimentos`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Fila de atendimentos →
+              </Link>
             </>
           )}
           {/* F12: agendar tem uma porta só, e é a de /atendimentos/novo. O
@@ -271,7 +280,9 @@ export default function Agenda() {
                 {cabines.data?.map(cabine => (
                   <li key={cabine.id} className="flex items-center justify-between text-sm">
                     <span>{cabine.nome}</span>
-                    <Badge variant={cabine.ativo ? "default" : "secondary"}>{cabine.ativo ? 'Ativa' : 'Inativa'}</Badge>
+                    {/* E130/A1: cabine e vestido falam a mesma língua (a
+                        tabela semântica) — inativa é `outline`, apagada. */}
+                    <Badge variant={varianteAtivo(cabine.ativo ?? true)}>{cabine.ativo ? 'Ativa' : 'Inativa'}</Badge>
                   </li>
                 ))}
               </ul>
