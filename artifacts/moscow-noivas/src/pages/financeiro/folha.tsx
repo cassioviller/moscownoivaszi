@@ -15,6 +15,8 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListContasPagar,
+  useListPendenciasComissao,
+  getListPendenciasComissaoQueryKey,
   getListContasPagarQueryKey,
   useListPagamentos,
   getListPagamentosQueryKey,
@@ -30,7 +32,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +66,8 @@ import {
 } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { ErroListagem, ResumoCard, invalidarCaixa } from "./helpers";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
+import { estadoDoPasso, type PassoEstado } from "@/lib/financeiro/fechar-mes";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
@@ -118,6 +122,20 @@ export default function Folha() {
   });
   const equipe = useListEquipe(activeLojaId!, {
     query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  /**
+   * E139/B10 — o roteiro de fechar o mês deriva dos MESMOS motores que as
+   * telas de destino consomem (cuidado b: nenhum agregado novo): as
+   * pendências de comissão são a régua do sino (vendedoras com venda sem
+   * fechamento), as contas em aberto vêm da janela da competência que esta
+   * tela já pede, e o envio é o pendentesEnvio logo abaixo.
+   */
+  const pendenciasComissao = useListPendenciasComissao(activeLojaId!, {
+    query: {
+      queryKey: getListPendenciasComissaoQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+      retry: false,
+    },
   });
 
   const gerarRecorrencias = useGerarRecorrencias();
@@ -454,6 +472,51 @@ export default function Folha() {
         <ResumoCard rotulo="A pagar" valor={resumo.aPagar} />
         <ResumoCard rotulo="Pago" valor={resumo.pago} />
       </div>
+
+      {/* E139/B10 — fechar o mês era 5 visitas a 4 telas com a ordem escrita
+          em lugar nenhum. O roteiro numera os três passos com o ESTADO real
+          (a decisão de exibição é estadoDoPasso — carregando nunca vira
+          pendente) e o link da tela de cada um. */}
+      <Card data-testid="roteiro-fechar-mes">
+        <CardHeader>
+          <CardTitle>Fechar {rotuloCompetencia(competencia)}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-3">
+            <PassoDoRoteiro
+              numero={1}
+              titulo="Comissões da competência fechadas"
+              estado={estadoDoPasso(
+                estadoDasConsultas(pendenciasComissao),
+                !(pendenciasComissao.data ?? []).some((pend) => pend.competencia === competencia),
+              )}
+              pendencia="Há vendedoras com venda no mês sem fechamento."
+              href={`/loja/${activeLojaId}/comissoes?competencia=${competencia}`}
+              rotuloLink="Fechar em Comissões →"
+            />
+            <PassoDoRoteiro
+              numero={2}
+              titulo="Contas da competência pagas"
+              estado={estadoDoPasso(
+                estadoDasConsultas(contas),
+                !(contas.data ?? []).some((c) => c.status === "PREVISTA"),
+              )}
+              pendencia={`${(contas.data ?? []).filter((c) => c.status === "PREVISTA").length} conta${(contas.data ?? []).filter((c) => c.status === "PREVISTA").length === 1 ? "" : "s"} em aberto no mês.`}
+              href={`/loja/${activeLojaId}/financeiro/pagar?ini=${janelaCompetencia.de}&fim=${janelaCompetencia.ate}`}
+              rotuloLink="Pagar →"
+            />
+            <PassoDoRoteiro
+              numero={3}
+              titulo="Período enviado à contabilidade"
+              estado={estadoDoPasso(
+                estadoDasConsultas(pagamentos),
+                pendentesEnvio.length === 0,
+              )}
+              pendencia={`${pendentesEnvio.length} movimento${pendentesEnvio.length === 1 ? "" : "s"} do período ainda não enviado${pendentesEnvio.length === 1 ? "" : "s"} — o envio é aqui embaixo, em "Fechar com a contabilidade".`}
+            />
+          </ol>
+        </CardContent>
+      </Card>
 
       {contas.isError ? (
         <ErroListagem mensagem="Falha ao buscar as contas da competência." onRetry={() => contas.refetch()} />
@@ -854,5 +917,57 @@ export default function Folha() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+
+/** E139: um passo do roteiro — número, estado honesto e a porta da tela. */
+function PassoDoRoteiro({
+  numero,
+  titulo,
+  estado,
+  pendencia,
+  href,
+  rotuloLink,
+}: {
+  numero: number;
+  titulo: string;
+  estado: PassoEstado;
+  pendencia: string;
+  href?: string;
+  rotuloLink?: string;
+}) {
+  return (
+    <li className="flex items-start gap-3" data-testid={`passo-fechar-${numero}`}>
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium ${
+          estado === "feito" ? "border-transparent bg-positivo text-white" : "text-muted-foreground"
+        }`}
+        aria-hidden="true"
+      >
+        {estado === "feito" ? "✓" : numero}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{titulo}</p>
+        <p className="text-xs text-muted-foreground">
+          {estado === "conferindo" && "Conferindo…"}
+          {estado === "semResposta" && "Sem resposta agora — recarregue para conferir este passo."}
+          {estado === "feito" && "Feito."}
+          {estado === "pendente" && (
+            <>
+              {pendencia}
+              {href && rotuloLink && (
+                <>
+                  {" "}
+                  <Link to={href} className="text-primary-texto underline underline-offset-4">
+                    {rotuloLink}
+                  </Link>
+                </>
+              )}
+            </>
+          )}
+        </p>
+      </div>
+    </li>
   );
 }

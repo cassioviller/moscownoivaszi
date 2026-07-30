@@ -109,7 +109,7 @@ para cada uma.
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ✅ | `15737c0` |
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | `a3ecff2` |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ✅ | `7908493` |
-| E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ⬜ | |
+| E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ✅ | |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ⬜ | |
 | E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ⬜ | |
 | E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ⬜ | |
@@ -634,3 +634,13 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   -4` cortou a saída); o conserto foi emendar ANTES de registrar o hash, e a
   lição está no relatório. Suítes: API 873 · front 414 · E2E completo
   147/147 na passada final · typecheck verde. Nenhuma sobra nova.
+- **E139 entregue** (`execucao/E139.md`). Fechar o mês virou roteiro na
+  Folha: o mapa executado provou que os três estados saem de rotas
+  EXISTENTES (as pendências de comissão do sino, as contas da janela que a
+  tela já pede, o `pendentesEnvio` que ela já derivava) — nenhum agregado
+  novo. A decisão de exibição é pura (`estadoDoPasso`, 3 testes): carregando
+  não vira pendente (E121 no nascimento), erro é "sem resposta". No app
+  vivo, os três estados distintos na mesma tela: ✓ comissões, "1 conta em
+  aberto. Pagar →" (com a janela na URL — E129), "134 movimentos não
+  enviados". Suítes: API 873 · front 414 → 417 · E2E completo 147/147 ·
+  typecheck verde. Nenhuma sobra nova.
