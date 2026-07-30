@@ -22,9 +22,12 @@ interrompida perde no máximo a fase em curso.
    passada adversarial antes de consolidar, rastreabilidade 100%, um épico por
    commit, sobras na tabela deste arquivo no mesmo commit, E2E completo quando
    muda o que alguma tela lê.
-5. Se a fila de execução estiver no meio: pegue o primeiro épico ⬜ da tabela
-   de épicos, leia o épico no backlog
-   (`docs/propostas/2026-07-30-rodada-7-design-backlog.md`) e as Sobras daqui.
+5. O diagnóstico e o backlog estão FECHADOS: a fila de execução começa no
+   E120. Pegue o primeiro épico ⬜ da tabela de épicos, leia o épico no backlog
+   (`docs/propostas/2026-07-30-rodada-7-design-backlog.md`) — incluindo a seção
+   "Perguntas ao dono" do topo, cujos defaults valem sem resposta — e as
+   Sobras daqui. Toda "Primeira ação" do backlog é mapear EXECUTANDO antes de
+   escrever.
 
 ## As capturas — a evidência visual desta rodada
 
@@ -71,18 +74,45 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | `87cfbb1` |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ✅ | `71d3053` |
 | Consolidação G | `g-consolidado.md` | ✅ | `0f1b794` |
-| Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ⬜ | |
+| Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ✅ | |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 
 ## Estado dos épicos
 
-*(a fase de backlog preenche esta tabela; épicos desta rodada começam em E120
-para não colidir com E105–E115 da rodada 6 nem com os E116+ que o fechamento
-dela possa reclamar)*
+A ordem da tabela é a ordem de execução (a numeração já satisfaz as
+dependências: E132 depois de E121, E138 depois de E122, E134/E135 adjacentes,
+E141 depois de E124). O detalhe de cada épico — A dor, escopo, cuidados,
+testes, primeira ação — está no backlog
+(`docs/propostas/2026-07-30-rodada-7-design-backlog.md`), que abre com as
+**6 perguntas ao dono (P1–P6)** e o default conservador que a execução segue
+para cada uma.
 
 | Épico | O que resolve | Esforço | Estado | Commit |
 |---|---|---|---|---|
+| E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ⬜ | |
+| E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ⬜ | |
+| E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ⬜ | |
+| E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ⬜ | |
+| E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ⬜ | |
+| E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ⬜ | |
+| E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
+| E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ⬜ | |
+| E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ⬜ | |
+| E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ⬜ | |
+| E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ⬜ | |
+| E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ⬜ | |
+| E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ⬜ | |
+| E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ⬜ | |
+| E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ⬜ | |
+| E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ⬜ | |
+| E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ⬜ | |
+| E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ⬜ | |
+| E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ⬜ | |
+| E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ⬜ | |
+| E140 | O WhatsApp no cadastro inline (B9) | P | ⬜ | |
+| E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ⬜ | |
+| E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ⬜ | |
 
 ## Sobras — visto de passagem sem épico
 
@@ -230,3 +260,19 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   E122, E134/E135 em sequência. As três notas da adversarial foram carregadas
   (C4=47/27, o comentário do openapi no E124, a conta 2,68:1 no E127). Uma
   sobra nova (S-D7, a fresta das varreduras por linha).
+- **Backlog em épicos entregue**
+  (`docs/propostas/2026-07-30-rodada-7-design-backlog.md`). Os 23 épicos
+  E120–E142 no formato da rodada 6 — A dor com âncoras / Feito significa /
+  Escopo técnico / Cuidados / Testes / Primeira ação —, cada "Primeira ação"
+  sendo mapear EXECUTANDO (um grep, um teste que falha, uma medição), a lição
+  das 5 vezes em que o backlog da rodada 6 errou por ler sem executar. As **6
+  decisões de produto viraram perguntas ao dono (P1–P6) com default
+  conservador escrito** — nenhum épico bloqueado: vendedora do contrato
+  rastreada e não travada (P1), recentes-primeiro (P2), `default` mobile a
+  44px (P3), grafia "ateliê" (P4), duas portas em Vestidos com a rápida
+  declarando o que falta (P5), a tabela semântica do badge (P6). Ordem de
+  execução = ordem numérica (as 4 dependências da consolidação ficam
+  satisfeitas por construção); esforço somado 4 P · 17 M · 2 G; regra 11
+  marcada explicitamente nos épicos que mudam o que a trilha grava ou o que a
+  tela lê (E120, E123, E124, E128, E138, E142 condicional). Tabela de épicos
+  deste rastreador preenchida com os 23 ⬜. Nenhuma sobra nova.
