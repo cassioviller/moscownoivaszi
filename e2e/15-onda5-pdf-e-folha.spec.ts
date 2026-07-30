@@ -145,7 +145,8 @@ test.describe("Onda 5 — PDF de contrato", () => {
 
     const contratos = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos`);
     expect(contratos.status()).toBe(200);
-    const lista = await contratos.json();
+    // E124: a resposta virou página `{ total, itens }`.
+    const lista = (await contratos.json()).itens;
     test.skip(lista.length === 0, "sem contrato no seed para exportar");
 
     const res = await request.get(

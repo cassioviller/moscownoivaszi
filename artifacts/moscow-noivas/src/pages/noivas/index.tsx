@@ -29,7 +29,7 @@ import {
   rotuloContagem,
   casamentoUrgente,
 } from "./helpers";
-import { Erro } from "@/components/estado";
+import { Erro, Vazio } from "@/components/estado";
 
 const TODAS_ETAPAS = "TODAS";
 const POR_PAGINA = 24;
@@ -70,6 +70,9 @@ export default function Noivas() {
       ...(etapa !== TODAS_ETAPAS ? { etapa: etapa as ListLeadsParams["etapa"] } : {}),
       pagina,
       porPagina: POR_PAGINA,
+      // E124/D2 (P2): a noiva de ontem na página 1, não na 34 — o funil e o
+      // combobox já pediam `recentes`; só esta lista ficava no default antigo.
+      ordem: "recentes",
     }),
     [buscaAplicada, etapa, pagina],
   );
@@ -195,7 +198,32 @@ export default function Noivas() {
           )}
         </div>
       ) : visiveis.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhuma noiva nesta lente no momento.</p>
+        /* C6/E124: o vazio de filtro nomeia o que filtrou e oferece a saída. */
+        <Vazio
+          titulo={
+            buscaAplicada
+              ? `Nenhuma noiva para “${buscaAplicada}”`
+              : "Nenhuma noiva nesta etapa"
+          }
+          descricao={
+            buscaAplicada
+              ? "A busca olha o nome da noiva, do noivo e o WhatsApp."
+              : etapa !== TODAS_ETAPAS
+                ? `Há noivas na loja — nenhuma está em “${etapaLabel(etapa as NonNullable<ListLeadsParams["etapa"]>)}”.`
+                : undefined
+          }
+          acao={
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBusca("");
+                setEtapa(TODAS_ETAPAS);
+              }}
+            >
+              Limpar filtros
+            </Button>
+          }
+        />
       ) : (
         <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

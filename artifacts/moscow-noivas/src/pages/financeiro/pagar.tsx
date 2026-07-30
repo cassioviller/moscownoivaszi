@@ -77,7 +77,8 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAno, diaParaISO } from "@/lib/formatos";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
-import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
+import { hojeLocal, resolverIntervalo, negocioNoIntervalo, addMeses } from "@/lib/financeiro/datas";
+import { Vazio } from "@/components/estado";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { ResumoCard, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
@@ -500,7 +501,28 @@ export default function Pagar() {
       ) : contas.isLoading ? (
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       ) : lista.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nada por aqui neste filtro.</p>
+        /* C6/E124 — o vazio nomeia a janela ativa e oferece a saída: era só
+           "Nada por aqui neste filtro.", com a janela decidindo em silêncio. */
+        <Vazio
+          titulo={`Nada com vencimento entre ${diaMesAno(intervalo.iniYMD)} e ${diaMesAno(intervalo.fimYMD)}`}
+          descricao="Pode haver contas em meses vizinhos — a janela acima decide o que aparece nesta lista."
+          acao={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => atualizarParams({ fim: addMeses(intervalo.fimYMD, 3) })}
+              >
+                Ver os próximos 3 meses
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => atualizarParams({ ini: "", fim: "", filtro: "" })}
+              >
+                Voltar ao mês atual
+              </Button>
+            </div>
+          }
+        />
       ) : (
         <Card>
           <CardContent className="p-0">

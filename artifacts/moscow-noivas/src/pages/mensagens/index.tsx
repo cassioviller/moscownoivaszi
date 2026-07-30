@@ -246,7 +246,7 @@ export default function MensagensDoDia() {
 
   // Orçamentos ENVIADOS com validade nas próximas 72h (ainda não vencidos).
   const orcamentosVencendo = useMemo(
-    () => orcamentosVencendoNaJanela(orcamentos.data ?? [], Date.now()),
+    () => orcamentosVencendoNaJanela(orcamentos.data?.itens ?? [], Date.now()),
     [orcamentos.data],
   );
 

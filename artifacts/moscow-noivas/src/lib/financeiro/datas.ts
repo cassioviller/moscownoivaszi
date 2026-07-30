@@ -11,6 +11,7 @@ export {
   competenciaValida,
   competenciaAtual,
   addDias,
+  addMeses,
   diasEntre,
   ultimasCompetencias,
   resolverIntervalo,

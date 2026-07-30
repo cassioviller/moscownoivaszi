@@ -8,7 +8,7 @@
  * tela é "o que vence nesta janela", não "o que entrou no caixa" — essa é a do
  * fluxo de caixa. Atraso é sempre derivado (`estaAtrasada`), nunca lido do status.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
@@ -36,9 +36,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAno } from "@/lib/formatos";
+import { casaComBusca, recorteDaConsulta } from "@/lib/financeiro/busca";
+import { Vazio } from "@/components/estado";
 import {
   rotuloForma,
   estaAtrasada,
@@ -47,7 +49,7 @@ import {
   saldoAberto,
   teveRecebimento,
 } from "@/lib/financeiro/forma";
-import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
+import { hojeLocal, resolverIntervalo, negocioNoIntervalo, addMeses } from "@/lib/financeiro/datas";
 import { reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import { ResumoCard, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
@@ -95,6 +97,15 @@ export default function Receber() {
     "abertas") as FiltroReceber;
   const intervalo = resolverIntervalo(searchParams.get("ini"), searchParams.get("fim"));
 
+  // E124/B4 — a busca do balcão. Debounce de 300ms (molde de noivas/index).
+  const [busca, setBusca] = useState("");
+  const [buscaAplicada, setBuscaAplicada] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaAplicada(busca.trim()), 300);
+    return () => clearTimeout(t);
+  }, [busca]);
+  const buscando = buscaAplicada.length > 0;
+
   // Recebimento — o diálogo virou componente no F28 (a cobrança precisa dele
   // também); daqui só sai QUAL parcela, e o preenchimento é dele.
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
@@ -118,9 +129,14 @@ export default function Receber() {
    * seja de ontem ou de dois anos.
    */
   const semJanela = filtro === "atrasadas";
-  const janelaVencimento = semJanela
-    ? { status: "abertas" as const }
-    : { de: intervalo.iniYMD, ate: intervalo.fimYMD };
+  // E124/B4: com busca ativa a janela também cai — "a pessoa na sua frente
+  // não tem janela". A decisão é pura e testada em `lib/financeiro/busca.ts`.
+  const janelaVencimento = recorteDaConsulta({
+    buscando,
+    semJanela,
+    iniYMD: intervalo.iniYMD,
+    fimYMD: intervalo.fimYMD,
+  });
   const parcelas = useListParcelas(activeLojaId!, janelaVencimento, {
     query: {
       queryKey: getListParcelasQueryKey(activeLojaId!, janelaVencimento),
@@ -141,13 +157,14 @@ export default function Receber() {
     setSearchParams(proximo, { replace: true });
   };
 
-  const naJanela = useMemo(
-    () =>
-      semJanela
-        ? (parcelas.data ?? [])
-        : (parcelas.data ?? []).filter((p) => negocioNoIntervalo(p.vencimento, intervalo)),
-    [parcelas.data, intervalo.iniYMD, intervalo.fimYMD, semJanela],
-  );
+  const naJanela = useMemo(() => {
+    const todas = parcelas.data ?? [];
+    // Buscando: o recorte é o NOME, não a janela (B4) — o nome da noiva desce
+    // em cada parcela desde o E3/E98; aqui ele finalmente vira busca.
+    if (buscando) return todas.filter((p) => casaComBusca(p.contrato?.lead?.noivaNome, buscaAplicada));
+    if (semJanela) return todas;
+    return todas.filter((p) => negocioNoIntervalo(p.vencimento, intervalo));
+  }, [parcelas.data, intervalo.iniYMD, intervalo.fimYMD, semJanela, buscando, buscaAplicada]);
 
   // Abertas contam o SALDO (E49): a parcela meio recebida entra aqui com o
   // que falta, e no "recebido" com o que entrou — as duas coisas ao mesmo
@@ -234,6 +251,25 @@ export default function Receber() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
+        {/* E124/B4 — a operação nº 1 da tela: achar a linha de quem está na
+            sua frente. Antes não havia busca nenhuma, e a parcela do mês que
+            vem exigia ajustar dois campos de data sabendo o vencimento. */}
+        <div className="space-y-1">
+          <Label htmlFor="busca-noiva">Noiva</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="busca-noiva"
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar noiva…"
+              aria-label="Buscar parcela pelo nome da noiva"
+              className="w-56 pl-9"
+              data-testid="input-busca-receber"
+            />
+          </div>
+        </div>
         <div className="space-y-1">
           <Label htmlFor="ini">De</Label>
           <Input
@@ -278,12 +314,17 @@ export default function Receber() {
       {/* Sem esta linha os campos de data pareceriam quebrados: eles continuam
           na tela e deixam de valer. Dizer isso é mais barato do que escondê-los
           — a pessoa precisa saber por que o número mudou. */}
-      {semJanela && (
+      {buscando ? (
+        <p className="text-muted-foreground text-sm">
+          Buscando por nome: isto mostra <strong>as parcelas em aberto de qualquer mês</strong> da
+          noiva buscada. O período acima não se aplica enquanto a busca estiver ativa.
+        </p>
+      ) : semJanela ? (
         <p className="text-muted-foreground text-sm">
           Atraso não tem janela: isto mostra <strong>tudo que venceu e não foi pago</strong>, de
           qualquer mês. O período acima não se aplica a este filtro.
         </p>
-      )}
+      ) : null}
 
       {parcelas.isError ? (
         <Alert variant="destructive">
@@ -299,7 +340,48 @@ export default function Receber() {
       ) : parcelas.isLoading ? (
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       ) : lista.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nada por aqui neste filtro.</p>
+        /* C6/E124 — o vazio sabe POR QUE está vazio (a janela, a busca) e
+           conta, com a saída junto: era só "Nada por aqui neste filtro." */
+        <Vazio
+          titulo={
+            buscando
+              ? `Nenhuma parcela em aberto para “${buscaAplicada}”`
+              : semJanela
+                ? "Nenhuma parcela atrasada"
+                : `Nada com vencimento entre ${diaMesAno(intervalo.iniYMD)} e ${diaMesAno(intervalo.fimYMD)}`
+          }
+          descricao={
+            buscando
+              ? "A busca olha as parcelas em aberto de todos os meses — pode ser que já esteja tudo recebido, ou o nome esteja diferente no cadastro."
+              : semJanela
+                ? "Tudo que venceu foi recebido."
+                : filtro === "abertas"
+                  ? "Pode haver parcelas em meses vizinhos — a janela acima decide o que aparece."
+                  : "A janela acima decide o que aparece nesta lista."
+          }
+          acao={
+            buscando ? (
+              <Button variant="outline" onClick={() => setBusca("")}>
+                Limpar busca
+              </Button>
+            ) : semJanela ? undefined : (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => atualizarParams({ fim: addMeses(intervalo.fimYMD, 3) })}
+                >
+                  Ver os próximos 3 meses
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => atualizarParams({ ini: "", fim: "", filtro: "" })}
+                >
+                  Voltar ao mês atual
+                </Button>
+              </div>
+            )
+          }
+        />
       ) : (
         <Card>
           <CardContent className="divide-y p-0">

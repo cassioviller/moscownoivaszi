@@ -111,7 +111,7 @@ export default function ReservaDetalhe() {
       },
     },
   );
-  const contratoAtivo = (contratosDaNoiva.data ?? []).find((c) => c.status === "ATIVO") ?? null;
+  const contratoAtivo = (contratosDaNoiva.data?.itens ?? []).find((c) => c.status === "ATIVO") ?? null;
   const createAvaria = useCreateAvaria();
   const deleteAvaria = useDeleteAvaria();
   const cobrarAvaria = useCobrarAvaria();

@@ -134,7 +134,7 @@ export default function Dashboard() {
     const agora = Date.now();
     const aContatar = aContatarNaJanela(atendimentosQuery.data ?? [], agora).length;
     const emAtraso = agingDeParcelas(parcelasAbertas.data ?? []).noivas.length;
-    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data ?? [], agora).length;
+    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], agora).length;
     return resumoDaFila(aContatar + emAtraso + vencendo);
   }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data]);
 

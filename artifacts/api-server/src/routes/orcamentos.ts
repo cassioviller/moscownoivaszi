@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, orcamentosTable, orcamentoItensTable, leadsTable, contratosTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, desc, count } from "drizzle-orm";
 import {
   ListOrcamentosResponse,
   ListOrcamentosQueryParams,
@@ -26,7 +26,14 @@ import { conteudoEnviado } from "../lib/conteudo-orcamento";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
-import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
+import {
+  addDias,
+  ancoraDeNegocio,
+  hojeLocal,
+  brutoEmCentavos,
+  liquidoEmCentavos,
+} from "@workspace/financeiro-core";
+import { leadsQueCasam } from "../lib/busca-lead";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -115,21 +122,65 @@ router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
   // E62: o perfil da noiva pede `?leadId=`; E83: mensagens pede `?status=` —
-  // os recortes acontecem no banco.
-  const orcamentos = await db.query.orcamentosTable.findMany({
-    where: and(
-      eq(orcamentosTable.lojaId, lojaId),
-      ...(query.data.leadId ? [eq(orcamentosTable.leadId, query.data.leadId)] : []),
-      ...(query.data.status ? [eq(orcamentosTable.status, query.data.status)] : []),
-    ),
-    with: {
-      lead: true,
-      vendedora: true,
-      itens: true
-    },
-    orderBy: orcamentosTable.createdAt,
-  });
-  res.json(ListOrcamentosResponse.parse(orcamentos));
+  // os recortes acontecem no banco. E124/D1: busca por noiva, página e
+  // recentes-primeiro (P2); e a listagem geral parou de embutir `itens`
+  // (S-D5 — 222 orçamentos desciam com a história inteira e nenhuma tela os
+  // lia): desce só o `valorTotal`, agregado aqui pela régua única.
+  const { leadId, status, q, pagina, porPagina, ordem } = query.data;
+  const condicoes = [eq(orcamentosTable.lojaId, lojaId)];
+  if (leadId) condicoes.push(eq(orcamentosTable.leadId, leadId));
+  if (status) condicoes.push(eq(orcamentosTable.status, status));
+  const busca = q?.trim();
+  if (busca) condicoes.push(inArray(orcamentosTable.leadId, leadsQueCasam(lojaId, busca)));
+  const where = and(...condicoes);
+
+  const paginado = pagina !== undefined || porPagina !== undefined;
+  const tamanho = porPagina ?? 24;
+  const [contagem, orcamentos] = await Promise.all([
+    db.select({ total: count() }).from(orcamentosTable).where(where),
+    db.query.orcamentosTable.findMany({
+      where,
+      with: {
+        lead: true,
+        // `vendedora` NÃO entra: o schema `Orcamento` nunca a teve e o parse
+        // da resposta a descartava — a rota pagava o join para jogar fora
+        // (medido no mapeamento: as chaves da resposta não tinham `vendedora`).
+        // O recorte `?leadId=` mantém os itens (contrato do E62); a listagem
+        // geral manda só o agregado.
+        ...(leadId ? { itens: true as const } : {}),
+      },
+      // id desempata createdAt igual — sem ordem estável, página 2 repete item.
+      orderBy:
+        ordem === "antigos"
+          ? [orcamentosTable.createdAt, orcamentosTable.id]
+          : [desc(orcamentosTable.createdAt), desc(orcamentosTable.id)],
+      ...(paginado ? { limit: tamanho, offset: ((pagina ?? 1) - 1) * tamanho } : {}),
+    }),
+  ]);
+
+  // O líquido de cada orçamento da página, em centavos, pela MESMA régua do
+  // `POST /contratos` (`liquidoEmCentavos`) — nunca uma segunda fórmula.
+  const ids = orcamentos.map((o) => o.id);
+  const itensDaPagina = ids.length
+    ? await db.select().from(orcamentoItensTable).where(inArray(orcamentoItensTable.orcamentoId, ids))
+    : [];
+  const itensPorOrcamento = new Map<string, typeof itensDaPagina>();
+  for (const item of itensDaPagina) {
+    const doOrcamento = itensPorOrcamento.get(item.orcamentoId);
+    if (doOrcamento) doOrcamento.push(item);
+    else itensPorOrcamento.set(item.orcamentoId, [item]);
+  }
+  const comValor = orcamentos.map((o) => ({
+    ...o,
+    valorTotal:
+      liquidoEmCentavos(
+        brutoEmCentavos(itensPorOrcamento.get(o.id) ?? []),
+        o.descontoTipo,
+        o.descontoValor,
+      ) / 100,
+  }));
+
+  res.json(ListOrcamentosResponse.parse({ total: contagem[0]!.total, itens: comValor }));
 });
 
 router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {

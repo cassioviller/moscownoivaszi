@@ -4466,12 +4466,25 @@ export const ListOrcamentosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const listOrcamentosQueryQMax = 200;
+
+
+export const listOrcamentosQueryPorPaginaMax = 100;
+
+export const listOrcamentosQueryOrdemDefault = `recentes`;
+
 export const ListOrcamentosQueryParams = zod.object({
   "leadId": zod.coerce.string().optional(),
-  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']).optional().describe('Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história')
+  "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']).optional().describe('Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história'),
+  "q": zod.coerce.string().max(listOrcamentosQueryQMax).optional().describe('Busca pela noiva: nome da noiva\/noivo e WhatsApp (dígitos), a mesma régua do listLeads'),
+  "pagina": zod.coerce.number().min(1).optional(),
+  "porPagina": zod.coerce.number().min(1).max(listOrcamentosQueryPorPaginaMax).optional(),
+  "ordem": zod.enum(['antigos', 'recentes']).default(listOrcamentosQueryOrdemDefault)
 })
 
-export const ListOrcamentosResponseItem = zod.object({
+export const ListOrcamentosResponse = zod.object({
+  "total": zod.number(),
+  "itens": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "leadId": zod.string(),
@@ -4526,9 +4539,10 @@ export const ListOrcamentosResponseItem = zod.object({
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
-})).optional()
+})).optional(),
+  "valorTotal": zod.number().optional()
+}))
 })
-export const ListOrcamentosResponse = zod.array(ListOrcamentosResponseItem)
 
 
 /**
@@ -4602,7 +4616,8 @@ export const CreateOrcamentoResponse = zod.object({
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
-})).optional()
+})).optional(),
+  "valorTotal": zod.number().optional()
 })
 
 
@@ -4666,7 +4681,8 @@ export const GetOrcamentoResponse = zod.object({
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
-})).optional()
+})).optional(),
+  "valorTotal": zod.number().optional()
 })
 
 
@@ -4738,7 +4754,8 @@ export const UpdateOrcamentoResponse = zod.object({
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
-})).optional()
+})).optional(),
+  "valorTotal": zod.number().optional()
 })
 
 
@@ -4871,7 +4888,8 @@ export const AprovarOrcamentoResponse = zod.object({
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
-})).optional()
+})).optional(),
+  "valorTotal": zod.number().optional()
 })
 
 
@@ -4935,7 +4953,8 @@ export const RecusarOrcamentoResponse = zod.object({
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
-})).optional()
+})).optional(),
+  "valorTotal": zod.number().optional()
 })
 
 
@@ -5232,11 +5251,25 @@ export const ListContratosParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const listContratosQueryQMax = 200;
+
+
+export const listContratosQueryPorPaginaMax = 100;
+
+export const listContratosQueryOrdemDefault = `recentes`;
+
 export const ListContratosQueryParams = zod.object({
-  "leadId": zod.coerce.string().optional()
+  "leadId": zod.coerce.string().optional(),
+  "q": zod.coerce.string().max(listContratosQueryQMax).optional().describe('Busca pela noiva: nome da noiva\/noivo e WhatsApp (dígitos), a mesma régua do listLeads'),
+  "status": zod.enum(['ATIVO', 'CANCELADO']).optional(),
+  "pagina": zod.coerce.number().min(1).optional(),
+  "porPagina": zod.coerce.number().min(1).max(listContratosQueryPorPaginaMax).optional(),
+  "ordem": zod.enum(['antigos', 'recentes']).default(listContratosQueryOrdemDefault)
 })
 
-export const ListContratosResponseItem = zod.object({
+export const ListContratosResponse = zod.object({
+  "total": zod.number(),
+  "itens": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "leadId": zod.string(),
@@ -5353,8 +5386,8 @@ export const ListContratosResponseItem = zod.object({
   "isSuperAdmin": zod.boolean(),
   "precisaTrocarSenha": zod.boolean().optional()
 }).optional()
+}))
 })
-export const ListContratosResponse = zod.array(ListContratosResponseItem)
 
 
 /**

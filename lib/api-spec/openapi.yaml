@@ -1240,11 +1240,12 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 100 }
-        # A lista lê como histórico (mais antiga primeiro); a coluna do funil
-        # mostra UMA página, e ali a ordem decide o que existe na tela — uma
-        # noiva recém-chegada no fim de 36 cairia na página 2, invisível
-        # justamente quando é mais urgente. Default preservado: os pickers de
-        # agenda/orçamentos e a lista já contam com a ordem antiga.
+        # Default `antigos` preservado por compatibilidade: os pickers de
+        # agenda/orçamentos dependem da lista cheia em ordem estável. As vistas
+        # que mostram GENTE pedem `recentes` explícito — o funil, o combobox e,
+        # desde o E124 (D2/P2), a lista de /noivas: a prosa que defendia
+        # antigos-primeiro para a lista não tinha medida, e o custo medido era
+        # a noiva de ontem na página 34, atrás de 33 cliques.
         - name: ordem
           in: query
           required: false
@@ -2201,6 +2202,8 @@ paths:
       tags: [orcamentos]
       # E62: o perfil da noiva filtra no banco, não baixando a loja inteira
       # para escolher no navegador. Query dentro do get: para não vazar ao POST.
+      # E124: busca por noiva, página e recentes-primeiro (P2) — o acervo de
+      # 3 anos se acha sem rolar a história inteira.
       parameters:
         - name: leadId
           in: query
@@ -2211,15 +2214,36 @@ paths:
           required: false
           description: "Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história"
           schema: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
+        - name: q
+          in: query
+          required: false
+          description: "Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads"
+          schema: { type: string, maxLength: 200 }
+        - name: pagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: porPagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        # Default `recentes` (P2): a pergunta da lista é "cadê o de semana
+        # passada?", e a ordem antiga punha o passado em cima.
+        - name: ordem
+          in: query
+          required: false
+          schema: { type: string, enum: [antigos, recentes], default: recentes }
       responses:
         "200":
-          description: List of orcamentos (opcionalmente só os de uma noiva)
+          description: >
+            Página de orçamentos (sem pagina/porPagina, vem tudo — a fila de
+            mensagens e o dashboard dependem da lista cheia). A listagem geral
+            NÃO embute `itens` (E124/S-D5 — ninguém os lia) e traz `valorTotal`
+            agregado; o recorte `?leadId=` mantém os itens.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Orcamento"
+                $ref: "#/components/schemas/OrcamentosPage"
     post:
       operationId: createOrcamento
       tags: [orcamentos]
@@ -2787,20 +2811,43 @@ paths:
       operationId: listContratos
       tags: [contratos]
       # E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
+      # E124: busca por noiva, página, status no banco e recentes-primeiro (P2)
+      # — com ~290 contratos em 3 anos, o da semana passada era o ÚLTIMO card.
       parameters:
         - name: leadId
           in: query
           required: false
           schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          description: "Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads"
+          schema: { type: string, maxLength: 200 }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [ATIVO, CANCELADO] }
+        - name: pagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: porPagina
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: ordem
+          in: query
+          required: false
+          schema: { type: string, enum: [antigos, recentes], default: recentes }
       responses:
         "200":
-          description: List of contratos (opcionalmente só os de uma noiva)
+          description: >
+            Página de contratos (sem pagina/porPagina, vem tudo — a ficha da
+            noiva e o detalhe do orçamento dependem da lista cheia).
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Contrato"
+                $ref: "#/components/schemas/ContratosPage"
     post:
       operationId: createContrato
       tags: [contratos]
@@ -5378,6 +5425,20 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OrcamentoItem"
+        # E124/S-D5: o líquido do orçamento, agregado no servidor pela régua
+        # única (`liquidoEmCentavos`) — a listagem baixava os `itens` da
+        # história inteira sem desenhar valor nenhum; agora desce só o número
+        # que o card mostra.
+        valorTotal: { type: number }
+    OrcamentosPage:
+      type: object
+      required: [itens, total]
+      properties:
+        total: { type: integer }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Orcamento"
     OrcamentoInput:
       type: object
       required: [leadId]
@@ -5662,6 +5723,15 @@ components:
           $ref: "#/components/schemas/Lead"
         vendedora:
           $ref: "#/components/schemas/Usuario"
+    ContratosPage:
+      type: object
+      required: [itens, total]
+      properties:
+        total: { type: integer }
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contrato"
     ContratoItem:
       type: object
       required: [id, lojaId, contratoId, tipo, descricao, valorUnitario, quantidade]

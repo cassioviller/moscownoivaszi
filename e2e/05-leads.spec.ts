@@ -16,7 +16,11 @@ test.describe("Leads → Noivas (E31)", () => {
   test("/leads redireciona para /noivas e lista os leads", async ({ page }) => {
     await page.goto("/leads");
     await expect(page).toHaveURL(/\/noivas(\?|$)/);
-    await expect(page.getByText("E2E Noiva Playwright")).toBeVisible();
+    // E124/D2: a lista abre recentes-primeiro, e a noiva do seed é a mais
+    // ANTIGA do banco persistente — afirmar a presença dela na página 1 era
+    // afirmar a ordem antiga. O caminho estável é o da vendedora: buscar.
+    await page.getByTestId("input-busca-noiva").fill("E2E Noiva Playwright");
+    await expect(page.getByText("E2E Noiva Playwright").first()).toBeVisible();
   });
 
   test("/leads/:id redireciona para o detalhe da noiva", async ({ page }) => {

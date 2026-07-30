@@ -77,6 +77,7 @@ import type {
   Contrato,
   ContratoInput,
   ContratoUpdate,
+  ContratosPage,
   ConversaoLeads,
   Convite,
   ConviteInput,
@@ -156,6 +157,7 @@ import type {
   OrcamentoItemUpdate,
   OrcamentoPublico,
   OrcamentoUpdate,
+  OrcamentosPage,
   Pagamento,
   PagamentoInput,
   PagarContaInput,
@@ -8087,9 +8089,9 @@ export const getListOrcamentosUrl = (lojaId: string,
 }
 
 export const listOrcamentos = async (lojaId: string,
-    params?: ListOrcamentosParams, options?: RequestInit): Promise<Orcamento[]> => {
+    params?: ListOrcamentosParams, options?: RequestInit): Promise<OrcamentosPage> => {
 
-  return customFetch<Orcamento[]>(getListOrcamentosUrl(lojaId,params),
+  return customFetch<OrcamentosPage>(getListOrcamentosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -9799,9 +9801,9 @@ export const getListContratosUrl = (lojaId: string,
 }
 
 export const listContratos = async (lojaId: string,
-    params?: ListContratosParams, options?: RequestInit): Promise<Contrato[]> => {
+    params?: ListContratosParams, options?: RequestInit): Promise<ContratosPage> => {
 
-  return customFetch<Contrato[]>(getListContratosUrl(lojaId,params),
+  return customFetch<ContratosPage>(getListContratosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'

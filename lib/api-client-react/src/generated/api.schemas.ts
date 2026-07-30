@@ -1420,6 +1420,12 @@ export interface Orcamento {
   createdAt: string;
   lead?: Lead;
   itens?: OrcamentoItem[];
+  valorTotal?: number;
+}
+
+export interface OrcamentosPage {
+  total: number;
+  itens: Orcamento[];
 }
 
 export type OrcamentoInputDescontoTipo = typeof OrcamentoInputDescontoTipo[keyof typeof OrcamentoInputDescontoTipo];
@@ -1813,6 +1819,11 @@ export interface Contrato {
   itens?: ContratoItem[];
   lead?: Lead;
   vendedora?: Usuario;
+}
+
+export interface ContratosPage {
+  total: number;
+  itens: Contrato[];
 }
 
 export type ContratoInputFormaPagamento = typeof ContratoInputFormaPagamento[keyof typeof ContratoInputFormaPagamento];
@@ -2653,6 +2664,21 @@ leadId?: string;
  * Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história
  */
 status?: ListOrcamentosStatus;
+/**
+ * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
+ * @maxLength 200
+ */
+q?: string;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListOrcamentosOrdem;
 };
 
 export type ListOrcamentosStatus = typeof ListOrcamentosStatus[keyof typeof ListOrcamentosStatus];
@@ -2663,6 +2689,14 @@ export const ListOrcamentosStatus = {
   ENVIADO: 'ENVIADO',
   APROVADO: 'APROVADO',
   RECUSADO: 'RECUSADO',
+} as const;
+
+export type ListOrcamentosOrdem = typeof ListOrcamentosOrdem[keyof typeof ListOrcamentosOrdem];
+
+
+export const ListOrcamentosOrdem = {
+  antigos: 'antigos',
+  recentes: 'recentes',
 } as const;
 
 export type GetOrcamentoPublicoParams = {
@@ -2740,7 +2774,39 @@ export type ListPortais200Item = {
 
 export type ListContratosParams = {
 leadId?: string;
+/**
+ * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
+ * @maxLength 200
+ */
+q?: string;
+status?: ListContratosStatus;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListContratosOrdem;
 };
+
+export type ListContratosStatus = typeof ListContratosStatus[keyof typeof ListContratosStatus];
+
+
+export const ListContratosStatus = {
+  ATIVO: 'ATIVO',
+  CANCELADO: 'CANCELADO',
+} as const;
+
+export type ListContratosOrdem = typeof ListContratosOrdem[keyof typeof ListContratosOrdem];
+
+
+export const ListContratosOrdem = {
+  antigos: 'antigos',
+  recentes: 'recentes',
+} as const;
 
 export type ListParcelasParams = {
 /**

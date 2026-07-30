@@ -283,7 +283,7 @@ export default function OrcamentoDetail() {
   const lead = leadCompleto.data;
 
   const contratoExistente = useMemo(
-    () => contratos.data?.find((c) => c.orcamentoId === orcamento?.id),
+    () => contratos.data?.itens.find((c) => c.orcamentoId === orcamento?.id),
     [contratos.data, orcamento?.id],
   );
 

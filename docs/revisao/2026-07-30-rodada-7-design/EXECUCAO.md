@@ -94,7 +94,7 @@ para cada uma.
 | E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ✅ | `f919679` |
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ✅ | `5b73445` |
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | `2c780b1` |
-| E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ⬜ | |
+| E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ✅ | |
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ⬜ | |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ⬜ | |
@@ -135,6 +135,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D13 | **A marca de "já cobrada" da fila de `/mensagens` é da sessão de tela** (E123/B3, `lib/mensagens-do-dia.ts` — `MarcasCobranca`): sobrevive à interrupção do telefone, que é o cenário do achado, e morre no F5 com os registros ainda no banco — depois do reload as linhas voltam à fila e um segundo clique grava um segundo registro do dia. Marcar "cobrada hoje" atravessando reload exigiria os registros do dia em LOTE (hoje `GET /leads/:leadId/cobrancas` é por noiva). Decisão de escopo do E123, registrada para o dono poder pedir a versão persistente. | 🔵 | execução E123 |
 | S-D14 | **O seed do `16-cobranca-historico.spec.ts:31-37` lê `id` de `GET /equipe`, que expõe `usuarioId`** — o ramo de criar contrato só roda quando o banco não tem NENHUMA parcela vencida, então nunca roda no banco de dev cheio e o `vendedoraId: undefined` dormindo lá falharia com `CORPO_INVALIDO`. Descoberto porque o spec do E123 copiou o molde e o vermelho-antes veio do seed, não do assert. Consertar o 16 quando ele for tocado. | 🔵 | execução E123 |
 | S-D15 | **`{ error: "Lead not found" }` vive em 8 pontos de `routes/leads.ts`** (:81, :434, :459, :512, :550, :600, :680, :712) — a classe da S-D8/S-D11 (inglês no campo do código, sem `detalhe`), no arquivo que o E123 tocou. O 404 da rota nova do E123 já nasceu na régua (`REGISTRO_DE_COBRANCA_NAO_ENCONTRADO` + detalhe); os 8 vizinhos ficam para o épico que fechar a S-D11. | 🟡 | execução E123 |
+| S-D16 | **`orcamentos/[id].tsx:235` baixa a lista COMPLETA de contratos da loja para um único `find(c => c.orcamentoId === id)`** — 615.041 bytes medidos no banco de dev (518 contratos) só para alternar "Gerar/Ver contrato" quando o orçamento está APROVADO. Com o E124 a rota pagina, mas esta chamada segue sem página de propósito (o find precisa do acervo). Um `?orcamentoId=` no `GET /contratos` — a mesma classe do `?leadId=` do E62 — faz isso custar uma linha. | 🟡 | execução E124 |
 
 ## Diário de sessões
 
@@ -377,3 +378,35 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   completo 141/141 (2 specs novos, `53-cobranca-duas-portas`) · typecheck
   verde. Três sobras novas (S-D13 marca de sessão, S-D14 seed do spec 16,
   S-D15 os 8 "Lead not found" de leads.ts).
+
+### Sessão 6 — 2026-07-30
+
+- **E124 entregue** (`execucao/E124.md`). O acervo de 3 anos se acha: a
+  primeira ação mediu o antes com o app de pé — `GET /contratos` devolvia
+  **615.041 bytes, 518 contratos, o de 2026-01-10 no topo** e o de hoje no fim;
+  `GET /orcamentos`, 246.611 bytes com 216 `itens` embutidos que **nenhuma tela
+  lia** (nem o `?leadId=` da ficha — a metade "o perfil já os usa" da S-D5 era
+  suposição, corrigida no relatório). Os dois GETs ganharam
+  `q`/`status`/`pagina`/`porPagina`/`ordem` (default `recentes`, P2) com a
+  busca do `listLeads` extraída para `lib/busca-lead.ts` (índices trigram já
+  cobrem: EXPLAIN em 0,685 ms), resposta paginada `{total, itens}` — o formato
+  atravessou 8 consumidores via typecheck —, telas com debounce+página no molde
+  de /noivas e o card de orçamento mostrando `brl(valorTotal)` agregado pela
+  régua única (2 × 3.000 − 10% = 5.400, com teste). **D2**: 1 linha
+  (`ordem: "recentes"`) e o comentário sem medida do openapi trocado pelo
+  motivo verdadeiro. **B4**: Receber ganhou a busca do balcão — com busca a
+  query pede abertas SEM janela ("a pessoa na sua frente não tem janela"),
+  decisão pura em `lib/financeiro/busca.ts` com 9 testes. **C6**: os vazios de
+  receber/pagar nomeiam a janela ("Nada com vencimento entre 01/07 e 31/07")
+  com "Ver os próximos 3 meses"/"Voltar ao mês atual", e /noivas trocou
+  "nesta lente" por `<Vazio>` com "Limpar filtros" (a instância de "lente" do
+  E138 saiu junto — nota no relatório). Duas correções de plano registradas:
+  `status` de contratos PRECISOU descer ao servidor (página fatiada +
+  refiltro no cliente = contagem mentirosa) e o join de `vendedora` que o Zod
+  descartava havia meses saiu da rota. A primeira passada completa do E2E
+  terminou 143/144 — o vermelho era a regra 11 pegando o que o mapa não pegou:
+  `05-leads.spec.ts` afirmava a noiva mais ANTIGA do banco na página 1, ou
+  seja, afirmava a ordem que o D2 inverteu; o spec passou a buscar pelo nome e
+  a segunda passada fechou 144/144 (spec novo `54-acervo-que-se-acha`).
+  Suítes: API 860 → 867 · front 337 → 346 · E2E completo 144/144 · typecheck
+  verde. Uma sobra nova (S-D16).

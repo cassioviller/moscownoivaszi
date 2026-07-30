@@ -12,7 +12,7 @@ import {
   usuariosTable,
   type InsertContratoItem,
 } from "@workspace/db";
-import { eq, and, isNull, inArray, sql } from "drizzle-orm";
+import { eq, and, isNull, inArray, sql, desc, count } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
@@ -47,6 +47,7 @@ import {
 } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
+import { leadsQueCasam } from "../lib/busca-lead";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
@@ -107,17 +108,37 @@ router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     return;
   }
   // E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
-  const contratos = await db.query.contratosTable.findMany({
-    where: query.data.leadId
-      ? and(eq(contratosTable.lojaId, lojaId), eq(contratosTable.leadId, query.data.leadId))
-      : eq(contratosTable.lojaId, lojaId),
-    with: {
-      lead: true,
-      vendedora: true,
-    },
-    orderBy: contratosTable.fechadoEm,
-  });
-  res.json(ListContratosResponse.parse(contratos));
+  // E124/D1: busca por noiva, status no banco, página e recentes-primeiro
+  // (P2) — o contrato da semana passada era o último de ~29.000px de rolagem.
+  const { leadId, q, status, pagina, porPagina, ordem } = query.data;
+  const condicoes = [eq(contratosTable.lojaId, lojaId)];
+  if (leadId) condicoes.push(eq(contratosTable.leadId, leadId));
+  if (status) condicoes.push(eq(contratosTable.status, status));
+  const busca = q?.trim();
+  if (busca) condicoes.push(inArray(contratosTable.leadId, leadsQueCasam(lojaId, busca)));
+  const where = and(...condicoes);
+
+  // Mesmo molde do listLeads: sem pagina/porPagina a resposta segue completa
+  // (a ficha da noiva e o detalhe do orçamento leem a lista cheia).
+  const paginado = pagina !== undefined || porPagina !== undefined;
+  const tamanho = porPagina ?? 24;
+  const [contagem, contratos] = await Promise.all([
+    db.select({ total: count() }).from(contratosTable).where(where),
+    db.query.contratosTable.findMany({
+      where,
+      with: {
+        lead: true,
+        vendedora: true,
+      },
+      // id desempata fechadoEm igual — sem ordem estável, página 2 repete item.
+      orderBy:
+        ordem === "antigos"
+          ? [contratosTable.fechadoEm, contratosTable.id]
+          : [desc(contratosTable.fechadoEm), desc(contratosTable.id)],
+      ...(paginado ? { limit: tamanho, offset: ((pagina ?? 1) - 1) * tamanho } : {}),
+    }),
+  ]);
+  res.json(ListContratosResponse.parse({ total: contagem[0]!.total, itens: contratos }));
 });
 
 router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {

@@ -114,8 +114,8 @@ export default function NoivaDetalhe() {
   const [motivoPerda, setMotivoPerda] = useState<LeadUpdatePerdidaMotivo | "">("");
   const [detalhePerda, setDetalhePerda] = useState("");
 
-  const orcamentosDaNoiva = orcamentos.data ?? [];
-  const contratosDaNoiva = contratos.data ?? [];
+  const orcamentosDaNoiva = orcamentos.data?.itens ?? [];
+  const contratosDaNoiva = contratos.data?.itens ?? [];
 
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
   // F1: agendar é do módulo AGENDA — quem só edita a ficha não marca horário.
