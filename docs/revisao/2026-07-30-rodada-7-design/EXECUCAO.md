@@ -136,9 +136,24 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D14 | **O seed do `16-cobranca-historico.spec.ts:31-37` lê `id` de `GET /equipe`, que expõe `usuarioId`** — o ramo de criar contrato só roda quando o banco não tem NENHUMA parcela vencida, então nunca roda no banco de dev cheio e o `vendedoraId: undefined` dormindo lá falharia com `CORPO_INVALIDO`. Descoberto porque o spec do E123 copiou o molde e o vermelho-antes veio do seed, não do assert. Consertar o 16 quando ele for tocado. | 🔵 | execução E123 |
 | S-D15 | **`{ error: "Lead not found" }` vive em 8 pontos de `routes/leads.ts`** (:81, :434, :459, :512, :550, :600, :680, :712) — a classe da S-D8/S-D11 (inglês no campo do código, sem `detalhe`), no arquivo que o E123 tocou. O 404 da rota nova do E123 já nasceu na régua (`REGISTRO_DE_COBRANCA_NAO_ENCONTRADO` + detalhe); os 8 vizinhos ficam para o épico que fechar a S-D11. | 🟡 | execução E123 |
 | S-D16 | **`orcamentos/[id].tsx:235` baixa a lista COMPLETA de contratos da loja para um único `find(c => c.orcamentoId === id)`** — 615.041 bytes medidos no banco de dev (518 contratos) só para alternar "Gerar/Ver contrato" quando o orçamento está APROVADO. Com o E124 a rota pagina, mas esta chamada segue sem página de propósito (o find precisa do acervo). Um `?orcamentoId=` no `GET /contratos` — a mesma classe do `?leadId=` do E62 — faz isso custar uma linha. | 🟡 | execução E124 |
-| S-D19 | **`lote17-agenda-concorrencia` flakou duas vezes hoje com `expected [201, 409] got [201, 500]`** — a corrida de reservas sob carga devolve 500 onde o teste espera o 409 da segunda chamada. Passou no rerun imediato as duas vezes (3/3), então é a família dos "três flakes" que o E104 da rodada 6 deixou anotados — mas um 500 numa corrida real é um defeito de rota, não só de teste: vale investigar se a transação converte conflito em erro genérico. | 🟡 | execução E140 |
+| S-D19 | **`lote17-agenda-concorrencia` flakou duas vezes hoje com `expected [201, 409] got [201, 500]`** — a corrida de reservas sob carga devolve 500 onde o teste espera o 409 da segunda chamada. Passou no rerun imediato as duas vezes (3/3), então é a família dos "três flakes" que o E104 da rodada 6 deixou anotados — mas um 500 numa corrida real é um defeito de rota, não só de teste: vale investigar se a transação converte conflito em erro genérico. **Fechada no E143** (`d7c2b7b`): não era transação — era o deadlock 40P01 da checagem especulativa do EXCLUDE gist, fora do mapa do handler; medido 34/300 corridas. | ✅ E143 | execução E140 |
 | S-D18 | **`SelectTrigger` fica em 36px no mobile** (`ui/select.tsx`, `h-9`) — o mesmo raciocínio que levou o Button `default` a `min-h-11 md:min-h-9` no E137 vale para ele (medido: os 2 únicos alvos <44px restantes de /atendimentos a 390px são SelectTriggers; todos os selects de filtro do app têm a mesma altura). As ABAS custom do tablist (E97/E130) medem ~37px — mesma classe. Fora do escopo dos achados E8/E9, que mediram Button; a mudança é uma palavra em cada primitivo. | 🔵 | execução E137 |
 | S-D17 | **14 specs do E2E criam recurso (lead, vestido, cabine, contrato…) e não têm `afterAll`** (levantamento por grep: 16, 17, 18, 19, 21, 24, 27, 28, 29, 30, 31, 35, 36, 37) — a família S18/S25. O spec 49 era o 15º e o único DETERMINISTICAMENTE explosivo (provas de 90 min acumulando no mesmo dia +6 da vendedora compartilhada saturaram o expediente na cadência de uma suíte por épico — 146/147 na primeira passada do E125); ganhou `afterAll` no próprio E125 porque bloqueava a regra 11. Os outros 14 vazam sem colidir (stamps únicos), mas são a fonte do acervo-lixo que a S25 mediu. Auditar e dar limpeza a cada um quando for tocado — ou de uma vez num épico de higiene de suíte. | 🟡 (infra de teste) | execução E125 |
+
+## Passada de sobras — 2026-07-30, depois do merge
+
+O dono escolheu executar as sobras que mais rendem antes de abrir a rodada
+de código. Plano: `docs/propostas/2026-07-30-passada-de-sobras.md` · branch
+`rodada-7-sobras` a partir de `5f1fc85` (o merge desta rodada em `main`).
+A numeração segue de onde a rodada parou; os relatórios vivem em
+`execucao/E14X.md` como os demais.
+
+| Épico | O que resolve | Estado | Commit |
+|---|---|---|---|
+| E143 | S-D19: 40P01 da corrida no EXCLUDE gist entra no mapa — nunca mais 500 onde é "outra pessoa chegou primeiro" | ✅ | `d7c2b7b` |
+| E144 | S-D16: `?orcamentoId=` no GET /contratos; a tela do orçamento para de baixar o acervo | ⬜ | — |
+| E145 | S-D11+S-D12+S-D15: as 79 ocorrências de `{ error: "… not found" }` entram na régua código+detalhe, com varredura | ⬜ | — |
+| E146 | S-D17 (+S-D14): os 14 specs E2E que criam recurso ganham `afterAll` | ⬜ | — |
 
 ## Encerramento — 2026-07-30
 

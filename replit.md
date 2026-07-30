@@ -11,6 +11,9 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm run typecheck` — typecheck de todos os pacotes
 - `pnpm run build` — typecheck + build
 - `pnpm --filter @workspace/api-server test` — testes da API (tocam o banco de `DATABASE_URL`)
+  - **Para rodar UM arquivo, entre no pacote:** `cd artifacts/api-server && ./node_modules/.bin/vitest run lote17`
+    (6 s). `pnpm --filter … test -- lote17` NÃO filtra — o `--` chega ao vitest
+    como argumento posicional ignorado e a suíte inteira roda (6 min). Medido no E143.
 - `pnpm --filter @workspace/moscow-noivas test` — testes da lógica pura do frontend
 - `pnpm run test:e2e` — Playwright (sobe API + frontend; ver `playwright.config.ts`)
 - `pnpm --filter @workspace/api-spec run codegen` — regenera cliente e Zod do OpenAPI
