@@ -68,7 +68,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | `e65c8b7` |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ✅ | `33a60cb` |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ✅ | `3f0b3a6` |
-| Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ⬜ | |
+| Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ⬜ | |
 | Consolidação G | `g-consolidado.md` | ⬜ | |
 | Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ⬜ | |
@@ -185,3 +185,21 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   /vestidos em 390px (D) → E13 (consolida com D8). Uma sobra nova (S-D6) e a
   locale das capturas provada en-US pelos próprios PNGs (evidência anotada na
   S-D2).
+- **Trilha F (a voz do sistema) entregue.** Tese: a voz que o E92/E96/E100
+  criaram é boa e é UMA (sucesso em "objeto + particípio" sem exceção, 15 de
+  16 confirmações perguntando com o objeto no título, zero
+  "Confirmar"/"OK"/inglês/código cru no app inteiro) — o que sobrou são cinco
+  formulações para "falhou" (76 toasts "Erro ao X" contra os 14 da voz que o
+  METODO celebra), duas gramáticas de validação (20 "é obrigatório" contra 10
+  imperativos que dizem o conserto — a mesma função da folha usa as duas),
+  "Ateliê" no menu contra "atelier" em 8 frases (duas ditas à noiva no
+  portal), "lente" dos documentos de revisão vazando para o vazio de
+  /noivas, e um bolsão pré-E92 mapeado: o módulo de cadastro de vestidos
+  concentra os únicos 3 "com sucesso", 4 dos 6 "..." e 3 dos 9 Title Case.
+  Contagem: **0 🔴 · 0 🟠 · 4 🟡 · 6 🔵** (F1–F10), 10 itens de "está BEM"
+  ancorados, 4 pistas laterais (a mais cara: F5+F8+F9+`type=number` da B
+  apontam o MESMO bolsão — um épico único no módulo vestidos fecha 6 desvios).
+  Pistas herdadas assumidas: "anteriores/passadas" (A) → F7, "(s)" e "Remover
+  ajuste" (C) → F6/F7, "lente" (D) → F4; a da B (53 toasts crus) confirmada
+  como C4 — a F acrescenta o TÍTULO do toast (F1), não o mecanismo. Nenhuma
+  sobra nova fora do escopo de UX.
