@@ -107,7 +107,7 @@ para cada uma.
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ✅ | `7d698ef` |
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ✅ | `db5ed1d` |
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ✅ | `15737c0` |
-| E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | |
+| E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | `a3ecff2` |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ⬜ | |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ⬜ | |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ⬜ | |
