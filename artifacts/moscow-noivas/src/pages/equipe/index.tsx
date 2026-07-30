@@ -66,6 +66,7 @@ import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { AtividadeEquipe } from "./atividade";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { instanteDia } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novoMembroSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -181,11 +182,9 @@ export default function Equipe() {
       formConvite.reset();
       setLinkGerado(criado.token);
     } catch (err) {
-      const e = err as { data?: { error?: string } };
       toast({
-        title: "Erro ao criar o convite",
-        description:
-          ERROS_CONVITE[e?.data?.error ?? ""] ?? (err instanceof Error ? err.message : "Tente novamente."),
+        title: "Não deu para criar o convite",
+        description: mensagemApi(err, "Tente novamente.", ERROS_CONVITE),
         variant: "destructive",
       });
     }
@@ -201,8 +200,8 @@ export default function Equipe() {
       await copiarLink(renovado.token);
     } catch (err) {
       toast({
-        title: "Erro ao reenviar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para reenviar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -215,8 +214,8 @@ export default function Equipe() {
       toast({ title: "Convite cancelado", description: "O link deixou de valer." });
     } catch (err) {
       toast({
-        title: "Erro ao cancelar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cancelar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -236,8 +235,8 @@ export default function Equipe() {
       setNovoAberto(false);
     } catch (err) {
       toast({
-        title: "Erro ao cadastrar membro",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cadastrar membro",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -265,8 +264,8 @@ export default function Equipe() {
       setEditando(null);
     } catch (err) {
       toast({
-        title: "Erro ao atualizar membro",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para atualizar membro",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -284,8 +283,8 @@ export default function Equipe() {
       setRemovendo(null);
     } catch (err) {
       toast({
-        title: "Erro ao remover membro",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para remover membro",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -397,7 +396,7 @@ export default function Equipe() {
           <CardContent>
             {erroEquipe ? (
               <Erro
-                titulo="Erro ao carregar a equipe"
+                titulo="Não deu para carregar a equipe"
                 erro={errEquipe}
                 onTentarNovamente={() => refetchEquipe()}
               />

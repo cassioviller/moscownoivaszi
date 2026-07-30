@@ -17,6 +17,7 @@ import { isoParaDia } from "../helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { converteu } from "@/lib/funil";
 import { mensagemApi } from "@/lib/erro-api";
+import { Erro } from "@/components/estado";
 
 /** Editar dados da noiva (porte da /noivas/[leadId]/editar) — volta ao perfil. */
 export default function EditarNoiva() {
@@ -63,8 +64,8 @@ export default function EditarNoiva() {
       navigate(`/loja/${lojaId}/noivas/${leadId}`);
     } catch (err) {
       toast({
-        title: "Erro ao salvar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -84,16 +85,7 @@ export default function EditarNoiva() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar a noiva</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar a noiva.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar a noiva" erro={error} onTentarNovamente={() => refetch()} />
       ) : !podeEditar ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />

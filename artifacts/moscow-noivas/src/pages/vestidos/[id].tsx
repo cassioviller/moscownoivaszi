@@ -21,16 +21,15 @@ import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NaoEncontrado } from "@/components/estado";
+import { Erro, NaoEncontrado } from "@/components/estado";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
+import { Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, diaMesAno } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
@@ -146,8 +145,8 @@ export default function VestidoDetail() {
       toast({ title: "Vestido marcado em manutenção" });
     } catch (err) {
       toast({
-        title: "Erro ao marcar manutenção",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para marcar manutenção",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -220,16 +219,11 @@ export default function VestidoDetail() {
 
   if (vestidoErro) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar o vestido</AlertTitle>
-        <AlertDescription className="flex items-center gap-3">
-          <span>{vestidoErroDetalhe instanceof Error ? vestidoErroDetalhe.message : "Falha inesperada ao buscar o vestido."}</span>
-          <Button variant="outline" size="sm" onClick={() => recarregarVestido()}>
-            Tentar novamente
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <Erro
+        titulo="Não deu para carregar o vestido"
+        erro={vestidoErroDetalhe}
+        onTentarNovamente={() => recarregarVestido()}
+      />
     );
   }
 
@@ -416,18 +410,7 @@ export default function VestidoDetail() {
               </p>
             )}
             {bloqueiosQuery.isError ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro ao carregar as reservas</AlertTitle>
-                <AlertDescription className="flex items-center gap-3">
-                  <span>
-                    {mensagemApi(bloqueiosQuery.error, "Falha inesperada ao buscar as reservas.")}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => bloqueiosQuery.refetch()}>
-                    Tentar novamente
-                  </Button>
-                </AlertDescription>
-              </Alert>
+              <Erro titulo="Não deu para carregar as reservas" erro={bloqueiosQuery.error} onTentarNovamente={() => bloqueiosQuery.refetch()} />
             ) : bloqueiosQuery.isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (

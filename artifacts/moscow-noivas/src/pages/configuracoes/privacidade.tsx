@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ShieldCheck } from "lucide-react";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * E77 (LGPD) — dado pessoal sem propósito é passivo. Anonimiza as noivas
@@ -49,8 +50,8 @@ export function PrivacidadeLgpd() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao anonimizar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para anonimizar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

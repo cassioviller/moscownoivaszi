@@ -160,7 +160,7 @@ export default function Projecao() {
       setValorConferido("");
     } catch (err) {
       toast({
-        title: "Erro ao registrar o saldo",
+        title: "Não deu para registrar o saldo",
         description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });

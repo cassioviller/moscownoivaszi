@@ -189,7 +189,7 @@ export default function Receber() {
       setParcelaEstornar(null);
     } catch (err) {
       toast({
-        title: "Erro ao estornar",
+        title: "Não deu para estornar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -288,7 +288,7 @@ export default function Receber() {
       {parcelas.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar</AlertTitle>
+          <AlertTitle>Não deu para carregar</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar as parcelas.</span>
             <Button variant="outline" size="sm" onClick={() => parcelas.refetch()}>

@@ -13,13 +13,12 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diasAteCasamento } from "../noivas/helpers";
 import { diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
+import { Erro } from "@/components/estado";
 
 /**
  * Ajustes — a fila da costureira (E14). O prazo que manda é a PRÓXIMA PROVA:
@@ -113,7 +112,7 @@ export default function Ajustes() {
       toast({ title: status === "FEITO" ? "Ajuste concluído" : "Ajuste reaberto" });
     } catch (err) {
       toast({
-        title: status === "FEITO" ? "Erro ao concluir o ajuste" : "Erro ao reabrir o ajuste",
+        title: status === "FEITO" ? "Não deu para concluir o ajuste" : "Não deu para reabrir o ajuste",
         description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
@@ -130,8 +129,8 @@ export default function Ajustes() {
       await invalidar();
     } catch (err) {
       toast({
-        title: "Erro ao marcar a peça",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para marcar a peça",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -180,16 +179,7 @@ export default function Ajustes() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar os ajustes</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar os ajustes.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar os ajustes" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <Card className="animate-pulse h-40" />
       ) : pendentes.length === 0 ? (

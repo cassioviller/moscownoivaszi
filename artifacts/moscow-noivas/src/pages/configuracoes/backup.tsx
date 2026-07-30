@@ -145,7 +145,7 @@ export function BackupSistema() {
       <CardContent className="space-y-6">
         {statusQ.isError ? (
           <Erro
-            titulo="Erro ao carregar o status do backup"
+            titulo="Não deu para carregar o status do backup"
             erro={statusQ.error}
             onTentarNovamente={() => statusQ.refetch()}
           />

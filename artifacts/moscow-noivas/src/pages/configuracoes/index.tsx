@@ -89,7 +89,7 @@ export default function Configuracoes() {
         <TabsContent value="loja" className="space-y-6">
           {erroLoja && (
             <Erro
-              titulo="Erro ao carregar as configurações da loja"
+              titulo="Não deu para carregar as configurações da loja"
               erro={errLoja}
               onTentarNovamente={recarregarLoja}
             />
@@ -204,7 +204,7 @@ export default function Configuracoes() {
           <TabsContent value="admin" className="space-y-6">
             {erroAdmin && (
               <Erro
-                titulo="Erro ao carregar a administração"
+                titulo="Não deu para carregar a administração"
                 erro={errAdmin}
                 onTentarNovamente={recarregarAdmin}
               />

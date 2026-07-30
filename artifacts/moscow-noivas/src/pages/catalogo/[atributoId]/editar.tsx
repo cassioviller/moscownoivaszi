@@ -30,6 +30,7 @@ import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { Erro } from "@/components/estado";
 
 const editarAtributoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -76,16 +77,7 @@ export default function EditarAtributo() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar o atributo</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar o atributo.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar o atributo" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading || !atributos ? (
         <Card className="animate-pulse h-64" />
       ) : !atributo ? (
@@ -169,8 +161,8 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
     } catch (err) {
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
       toast({
-        title: "Erro ao salvar atributo",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar atributo",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

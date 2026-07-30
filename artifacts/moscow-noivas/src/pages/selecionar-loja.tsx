@@ -56,7 +56,7 @@ export default function SelecionarLoja() {
     // padrão antigo, e era o ÚLTIMO do frontend inteiro.
     } catch (error) {
       toast({
-        title: "Erro ao selecionar loja",
+        title: "Não deu para selecionar loja",
         description: mensagemApi(error, "Não foi possível entrar na loja. Tente novamente."),
         variant: "destructive",
       });

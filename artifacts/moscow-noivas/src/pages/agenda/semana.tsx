@@ -136,7 +136,7 @@ export default function AgendaSemana() {
       {atendimentos.isError || cabines.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar a semana</AlertTitle>
+          <AlertTitle>Não deu para carregar a semana</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar a agenda.</span>
             <Button

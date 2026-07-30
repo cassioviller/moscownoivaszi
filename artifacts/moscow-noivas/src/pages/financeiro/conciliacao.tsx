@@ -27,6 +27,7 @@ import { AlertCircle, FileUp, CheckCircle2 } from "lucide-react";
 import { Carregando, Erro } from "@/components/estado";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { brl, instanteDiaMes } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * E70 — a conciliação que era planilha.
@@ -220,8 +221,8 @@ export default function Conciliacao() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao marcar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para marcar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
 import { NoivaForm, type NoivaFormValues } from "./noiva-form";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Adicionar noiva (porte da /noivas/nova) — ao criar, navega ao perfil. */
 export default function NovaNoiva() {
@@ -40,8 +41,8 @@ export default function NovaNoiva() {
       navigate(`/loja/${lojaId}/noivas/${criada.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao adicionar noiva",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para adicionar noiva",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

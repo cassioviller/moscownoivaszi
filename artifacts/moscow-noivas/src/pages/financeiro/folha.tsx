@@ -181,7 +181,7 @@ export default function Folha() {
       toast({ title: "Salário definido" });
     } catch (err) {
       toast({
-        title: "Erro ao definir o salário",
+        title: "Não deu para definir o salário",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -214,7 +214,7 @@ export default function Folha() {
       toast({ title: "Despesa recorrente criada" });
     } catch (err) {
       toast({
-        title: "Erro ao criar a despesa",
+        title: "Não deu para criar a despesa",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -242,7 +242,7 @@ export default function Folha() {
       toast({ title: "Recorrência atualizada" });
     } catch (err) {
       toast({
-        title: "Erro ao atualizar",
+        title: "Não deu para atualizar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -260,7 +260,7 @@ export default function Folha() {
       toast({ title: r.ativo ? "Recorrência desativada" : "Recorrência reativada" });
     } catch (err) {
       toast({
-        title: "Erro ao alterar",
+        title: "Não deu para alterar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -369,7 +369,7 @@ export default function Folha() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao gerar a competência",
+        title: "Não deu para gerar a competência",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -396,7 +396,7 @@ export default function Folha() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao marcar o envio",
+        title: "Não deu para marcar o envio",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

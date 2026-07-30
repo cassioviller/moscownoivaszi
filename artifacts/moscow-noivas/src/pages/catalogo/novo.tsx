@@ -23,6 +23,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novoAtributoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -73,8 +74,8 @@ export default function NovoAtributo() {
     } catch (err) {
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
       toast({
-        title: "Erro ao criar atributo",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar atributo",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { BookImage, Trash2 } from "lucide-react";
 import { instanteDiaMes } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Lookbook (E21) — o card na página da noiva: a vendedora escolhe os vestidos
@@ -112,8 +113,8 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
       await copiar(criado.token);
     } catch (err) {
       toast({
-        title: "Erro ao criar o lookbook",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar o lookbook",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -126,8 +127,8 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
       toast({ title: "Lookbook revogado", description: "O link parou de funcionar." });
     } catch (err) {
       toast({
-        title: "Erro ao revogar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para revogar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

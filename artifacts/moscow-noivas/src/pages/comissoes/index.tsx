@@ -282,7 +282,7 @@ export default function Comissoes() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao reabrir",
+        title: "Não deu para reabrir",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -353,7 +353,7 @@ export default function Comissoes() {
       const e = err as { data?: { error?: string; detalhe?: string } };
       const detalhe = e?.data?.error === "FAIXAS_INVALIDAS" ? MOTIVO_FAIXA[e.data.detalhe ?? ""] : undefined;
       toast({
-        title: "Erro ao salvar a regra",
+        title: "Não deu para salvar a regra",
         description: detalhe ?? mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -369,7 +369,7 @@ export default function Comissoes() {
       toast({ title: "Regra removida" });
     } catch (err) {
       toast({
-        title: "Erro ao remover",
+        title: "Não deu para remover",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -395,7 +395,7 @@ export default function Comissoes() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao gerar o fechamento",
+        title: "Não deu para gerar o fechamento",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -426,7 +426,7 @@ export default function Comissoes() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao baixar o estorno",
+        title: "Não deu para baixar o estorno",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -454,7 +454,7 @@ export default function Comissoes() {
       const e = err as { data?: { error?: string; detalhe?: string } };
       const detalhe = e?.data?.error === "FAIXAS_INVALIDAS" ? MOTIVO_FAIXA[e.data.detalhe ?? ""] : undefined;
       toast({
-        title: "Erro ao simular",
+        title: "Não deu para simular",
         description: detalhe ?? mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

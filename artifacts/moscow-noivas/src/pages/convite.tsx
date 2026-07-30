@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Página PÚBLICA do convite (/convite/:token) — irmã do /login. A convidada
@@ -67,10 +68,9 @@ export default function Convite() {
         navigate("/selecionar-loja");
       }
     } catch (err) {
-      const e = err as { status?: number; data?: { error?: string } };
       toast({
-        title: "Não foi possível aceitar o convite",
-        description: ERROS[e?.data?.error ?? ""] ?? (err instanceof Error ? err.message : "Tente novamente."),
+        title: "Não deu para aceitar o convite",
+        description: mensagemApi(err, "Tente novamente.", ERROS),
         variant: "destructive",
       });
     }

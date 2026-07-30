@@ -54,7 +54,7 @@ export function AtividadeEquipe() {
       <CardContent className="space-y-6">
         {atividade.isError ? (
           <Erro
-            titulo="Erro ao carregar a atividade"
+            titulo="Não deu para carregar a atividade"
             erro={atividade.error}
             onTentarNovamente={() => atividade.refetch()}
           />

@@ -10,11 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
 import { addDias, hojeLocal } from "@/lib/financeiro/datas";
-import { mensagemApi } from "@/lib/erro-api";
 import {
   Table,
   TableBody,
@@ -23,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Erro } from "@/components/estado";
 
 /**
  * Utilização por vestido (E15) — o relatório da dona: quantas provas, reservas
@@ -145,18 +143,7 @@ export default function UtilizacaoVestidos() {
       </div>
 
       {utilizacao.isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar a utilização</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>
-              {mensagemApi(utilizacao.error, "Falha inesperada ao buscar a utilização.")}
-            </span>
-            <Button variant="outline" size="sm" onClick={() => utilizacao.refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar a utilização" erro={utilizacao.error} onTentarNovamente={() => utilizacao.refetch()} />
       ) : utilizacao.isPending ? (
         <Skeleton className="h-72 rounded-lg" />
       ) : linhas.length === 0 ? (

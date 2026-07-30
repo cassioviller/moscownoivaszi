@@ -91,7 +91,7 @@ export default function ConversaoLeads() {
       </div>
 
       {q.isError ? (
-        <Erro titulo="Erro ao carregar a conversão" erro={q.error} onTentarNovamente={() => q.refetch()} />
+        <Erro titulo="Não deu para carregar a conversão" erro={q.error} onTentarNovamente={() => q.refetch()} />
       ) : q.isPending || !dados ? (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="h-40 animate-pulse rounded-lg bg-muted" />

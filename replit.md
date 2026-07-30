@@ -172,7 +172,13 @@ rode o codegen.
   `err.message` — a mensagem que o cliente gerado monta é `HTTP 404 Not Found`,
   e era isso que a vendedora lia no toast. A ordem é: código que a tela conhece
   → `detalhe` do servidor → régua por faixa (401 sessão, 403 permissão, 5xx e
-  rede "não consegui falar com o sistema") → o `fallback` da TELA.
+  rede "não consegui falar com o sistema") → o `fallback` da TELA. Desde o
+  E122: o builder (`lib/api-client-react/src/custom-fetch.ts`) também lê
+  `detalhe` (a grafia da casa) ao montar `err.message`; **o título da falha é
+  UM — "Não deu para <verbo>"** (exceções: "Não consegui entrar" no login e
+  "Essa mudança não é possível agora" nas recusas de transição); e
+  `lib/erro-cru-varredura.test.ts` reprova `err.message` em tela e título
+  começando em "Erro", varrendo o arquivo inteiro.
 - **A cor da marca é `--primary: 350 25% 65%` e não muda para consertar
   contraste** (E92) — quem muda é o que vai EM CIMA dela. `index.css` traz a
   razão WCAG ao lado de cada token, e `lib/aparencia.test.ts` lê o arquivo de

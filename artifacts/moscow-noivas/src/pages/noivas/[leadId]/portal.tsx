@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { instanteDiaMes } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Portal da noiva (E78) — o card na ficha: gerar/copiar/revogar o link único
@@ -98,8 +99,8 @@ export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?:
       await copiar(criado.token);
     } catch (err) {
       toast({
-        title: "Erro ao gerar o link",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para gerar o link",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -115,8 +116,8 @@ export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?:
       });
     } catch (err) {
       toast({
-        title: "Erro ao revogar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para revogar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

@@ -32,6 +32,7 @@ import {
   DETALHE_RECUSA,
   type Expediente,
 } from "@/lib/agenda";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * A grade do dia (E28): colunas = cabine, linhas = slot de 30 min. Substituiu a
@@ -163,8 +164,8 @@ export function GradeDoDia({
       });
     } catch (err) {
       toast({
-        title: "Não foi possível reagendar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para reagendar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

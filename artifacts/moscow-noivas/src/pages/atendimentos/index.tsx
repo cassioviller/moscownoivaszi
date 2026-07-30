@@ -43,6 +43,7 @@ import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import { hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
 import { instanteHora, instanteDiaMes } from "@/lib/formatos";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 const TODAS = "TODAS";
 
@@ -229,8 +230,8 @@ export default function Atendimentos() {
       navigate(`/loja/${lojaId}/orcamentos/${criado.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao criar orçamento",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar orçamento",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -260,7 +261,7 @@ export default function Atendimentos() {
     } catch (err) {
       toast({
         title: "Essa mudança não é possível agora",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -557,7 +558,7 @@ export default function Atendimentos() {
       {atendimentos.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar os atendimentos</AlertTitle>
+          <AlertTitle>Não deu para carregar os atendimentos</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar a fila.</span>
             <Button variant="outline" size="sm" onClick={() => atendimentos.refetch()}>

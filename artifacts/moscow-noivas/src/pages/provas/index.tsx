@@ -10,10 +10,7 @@ import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { diaMesAbrevAno } from "@/lib/formatos";
-import { mensagemApi } from "@/lib/erro-api";
 import {
   ROTULO_SITUACAO,
   agruparPorMes,
@@ -21,6 +18,7 @@ import {
   mesAbrevLocalFmt,
   mesAnoLocalFmt,
 } from "../reservas/helpers";
+import { Erro } from "@/components/estado";
 
 /** Prova a ≤7 dias pede atenção (mesmo limiar do orcamentos). */
 const JANELA_IMINENTE_DIAS = 7;
@@ -90,16 +88,7 @@ export default function Provas() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar as provas</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar as provas.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar as provas" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (

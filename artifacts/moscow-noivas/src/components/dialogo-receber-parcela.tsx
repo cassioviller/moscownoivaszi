@@ -125,7 +125,7 @@ export function DialogoReceberParcela({
       onFechar();
     } catch (err) {
       toast({
-        title: "Erro ao receber",
+        title: "Não deu para receber",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

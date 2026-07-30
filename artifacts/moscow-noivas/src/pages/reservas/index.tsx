@@ -10,12 +10,10 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";
 import { diasAteCasamento, casamentoUrgente } from "../noivas/helpers";
 import { agruparPorMes, mesAbrevFmt, mesAnoFmt } from "./helpers";
-import { mensagemApi } from "@/lib/erro-api";
+import { Erro } from "@/components/estado";
 
 /**
  * Livro de reservas (porte da /reservas do feat/orcamentos) — quem casa com
@@ -76,16 +74,7 @@ export default function Reservas() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar as reservas</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar as reservas.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar as reservas" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (

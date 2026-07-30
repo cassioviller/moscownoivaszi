@@ -21,6 +21,7 @@ import { Erro } from "@/components/estado";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Permissões por perfil na loja ativa: matriz FLAT (um boolean por módulo).
@@ -68,8 +69,8 @@ export default function Permissoes() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao restaurar o padrão",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para restaurar o padrão",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -87,8 +88,8 @@ export default function Permissoes() {
       toast({ title: "Permissões salvas", description: "Personalização aplicada a esta loja." });
     } catch (err) {
       toast({
-        title: "Erro ao salvar permissões",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar permissões",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

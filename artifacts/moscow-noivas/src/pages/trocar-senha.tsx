@@ -60,7 +60,7 @@ export default function TrocarSenha() {
       navigate("/");
     } catch (err) {
       toast({
-        title: "Não foi possível trocar a senha",
+        title: "Não deu para trocar a senha",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

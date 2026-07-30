@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { parseValor } from "@/lib/financeiro/dinheiro";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Interesses da noiva (porte da /noivas/[leadId]/interesses): atributos do
@@ -64,7 +65,7 @@ export default function InteressesNoiva() {
       {falhou ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar os interesses</AlertTitle>
+          <AlertTitle>Não deu para carregar os interesses</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar a noiva ou o catálogo.</span>
             <Button
@@ -169,8 +170,8 @@ function InteresseForm({
       navigate(`/loja/${lojaId}/noivas/${leadId}`);
     } catch (err) {
       toast({
-        title: "Erro ao salvar interesses",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar interesses",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

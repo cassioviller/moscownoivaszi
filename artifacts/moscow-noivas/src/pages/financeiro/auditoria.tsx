@@ -210,7 +210,7 @@ export default function Auditoria() {
       ) : trilha.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar a trilha</AlertTitle>
+          <AlertTitle>Não deu para carregar a trilha</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar os registros.</span>
             <Button variant="outline" size="sm" onClick={() => trilha.refetch()}>

@@ -52,6 +52,7 @@ import { isoParaDia } from "../noivas/helpers";
 import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
+import { Erro } from "@/components/estado";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -176,7 +177,7 @@ export default function ReservaDetalhe() {
         setAvariaFotoNome(null);
       },
       "Avaria registrada",
-      "Erro ao registrar a avaria",
+      "Não deu para registrar a avaria",
     );
   };
 
@@ -210,7 +211,7 @@ export default function ReservaDetalhe() {
         ]);
       },
       "Cobrança criada — entrou como parcela do contrato",
-      "Erro ao criar a cobrança",
+      "Não deu para criar a cobrança",
     );
   const provas = useMemo(
     () =>
@@ -281,7 +282,7 @@ export default function ReservaDetalhe() {
         if (campo === "devolucaoDataReal") setConferirDevolucao(true);
       },
       "Movimentação registrada",
-      "Erro ao registrar a movimentação",
+      "Não deu para registrar a movimentação",
     );
 
   // E61: a data registrada errada tem conserto — null explícito desfaz, e a
@@ -301,7 +302,7 @@ export default function ReservaDetalhe() {
         ]);
       },
       "Movimentação desfeita",
-      "Erro ao desfazer a movimentação",
+      "Não deu para desfazer a movimentação",
     );
 
   const alternarAjuste = (ajuste: Ajuste) =>
@@ -315,7 +316,7 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Ajuste atualizado",
-      "Erro ao atualizar o ajuste",
+      "Não deu para atualizar o ajuste",
     );
 
   const removerAjusteConfirmado = () => {
@@ -328,7 +329,7 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Ajuste removido",
-      "Erro ao remover o ajuste",
+      "Não deu para remover o ajuste",
     );
   };
 
@@ -348,7 +349,7 @@ export default function ReservaDetalhe() {
         setNovoAjuste((s) => ({ ...s, [atendimentoId]: "" }));
       },
       "Ajuste adicionado",
-      "Erro ao adicionar o ajuste",
+      "Não deu para adicionar o ajuste",
     );
   };
 
@@ -370,7 +371,7 @@ export default function ReservaDetalhe() {
         setNovoItem((s) => ({ ...s, [ajuste.id]: "" }));
       },
       "Checklist atualizado",
-      "Erro ao adicionar o item",
+      "Não deu para adicionar o item",
     );
   };
 
@@ -381,7 +382,7 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Checklist atualizado",
-      "Erro ao atualizar o item",
+      "Não deu para atualizar o item",
     );
 
   const removerItem = (itemId: string) =>
@@ -391,23 +392,12 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Checklist atualizado",
-      "Erro ao remover o item",
+      "Não deu para remover o item",
     );
 
   if (bloqueios.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar a reserva</AlertTitle>
-        <AlertDescription className="flex items-center gap-3">
-          <span>
-            {mensagemApi(bloqueios.error, "Falha inesperada ao buscar a reserva.")}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => bloqueios.refetch()}>
-            Tentar novamente
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <Erro titulo="Não deu para carregar a reserva" erro={bloqueios.error} onTentarNovamente={() => bloqueios.refetch()} />
     );
   }
 
@@ -687,7 +677,7 @@ export default function ReservaDetalhe() {
                                         });
                                       },
                                       "Avaria removida",
-                                      "Erro ao remover a avaria",
+                                      "Não deu para remover a avaria",
                                     )
                                   }
                                 >

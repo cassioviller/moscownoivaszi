@@ -375,7 +375,7 @@ export default function OrcamentoDetail() {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar o orçamento</AlertTitle>
+        <AlertTitle>Não deu para carregar o orçamento</AlertTitle>
         <AlertDescription className="flex items-center gap-3">
           <span>Falha ao buscar o orçamento.</span>
           <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
@@ -432,7 +432,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       await copiarLinkNoiva(r.token);
     } catch (err) {
-      toast({ title: "Erro ao gerar o link", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para gerar o link", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -463,7 +463,7 @@ export default function OrcamentoDetail() {
       await invalidar();
       itemForm.reset({ tipo: values.tipo, vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
-      toast({ title: "Erro ao adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -498,7 +498,7 @@ export default function OrcamentoDetail() {
       toast({ title: "Item atualizado" });
       setItemEmEdicao(null);
     } catch (err) {
-      toast({ title: "Erro ao atualizar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para atualizar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -507,7 +507,7 @@ export default function OrcamentoDetail() {
       await removeItem.mutateAsync({ lojaId: activeLojaId!, itemId });
       await invalidar();
     } catch (err) {
-      toast({ title: "Erro ao remover item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para remover item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -526,7 +526,7 @@ export default function OrcamentoDetail() {
       await invalidar();
       toast({ title: "Validade salva" });
     } catch (err) {
-      toast({ title: "Erro ao salvar a validade", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para salvar a validade", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -548,7 +548,7 @@ export default function OrcamentoDetail() {
       await invalidar();
       toast({ title: "Desconto aplicado" });
     } catch (err) {
-      toast({ title: "Erro ao aplicar desconto", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para aplicar desconto", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -558,7 +558,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: status === "ENVIADO" ? "Orçamento marcado como enviado" : "Orçamento voltou para rascunho" });
     } catch (err) {
-      toast({ title: "Erro ao mudar o status", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para mudar o status", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -568,7 +568,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Orçamento aprovado" });
     } catch (err) {
-      toast({ title: "Erro ao aprovar", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para aprovar", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -578,7 +578,7 @@ export default function OrcamentoDetail() {
       await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Orçamento recusado" });
     } catch (err) {
-      toast({ title: "Erro ao recusar", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+      toast({ title: "Não deu para recusar", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -648,7 +648,7 @@ export default function OrcamentoDetail() {
       // que a pessoa não lê.
       if (aplicarErroDoServidor(contratoForm, err)) return;
       toast({
-        title: "Erro ao gerar contrato",
+        title: "Não deu para gerar contrato",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

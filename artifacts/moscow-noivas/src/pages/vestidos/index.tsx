@@ -49,7 +49,7 @@ import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, Al
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
-import { Vazio } from "@/components/estado";
+import { Erro, Vazio } from "@/components/estado";
 
 const novoVestidoSchema = z.object({
   codigo: z.string().min(1, { message: "Código é obrigatório" }),
@@ -275,8 +275,8 @@ export default function Vestidos() {
       setOpen(false);
     } catch (err) {
       toast({
-        title: "Erro ao cadastrar vestido",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cadastrar vestido",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -530,7 +530,7 @@ export default function Vestidos() {
       {dataSelecionada && disponibilidade.isError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Não foi possível verificar a disponibilidade</AlertTitle>
+          <AlertTitle>Não deu para verificar a disponibilidade</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Os vestidos estão listados sem o status para a data selecionada.</span>
             <Button variant="outline" size="sm" onClick={() => disponibilidade.refetch()}>
@@ -541,16 +541,7 @@ export default function Vestidos() {
       )}
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar os vestidos</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar o catálogo.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar os vestidos" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => <Card key={i} className="h-64 animate-pulse" />)}

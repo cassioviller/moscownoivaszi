@@ -279,7 +279,14 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         eq(bloqueioVestidosTable.lojaId, lojaId),
       ));
     if (!bloqueio) {
-      res.status(404).json({ error: "Bloqueio not found" });
+      // S-D8/E122: era `{ error: "Bloqueio not found" }` — inglês, sem código
+      // nem detalhe, no clique que fecha a venda. A régua da casa é
+      // código + `detalhe` em português (a frase que o toast mostra).
+      res.status(404).json({
+        error: "RESERVA_NAO_ENCONTRADA",
+        detalhe: "A reserva de vestido indicada não existe nesta loja.",
+        campos: [{ campo: "bloqueioVestidoIds", motivo: "Reserva não encontrada nesta loja" }],
+      });
       return;
     }
     /**
@@ -343,7 +350,20 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       bloqueio.casamentoData &&
       diaLocal(contratoData.dataCasamento) !== diaLocal(bloqueio.casamentoData)
     ) {
-      res.status(422).json({ error: "dataCasamento do contrato diverge da data do bloqueio" });
+      // S-D8/E122: a FRASE morava no campo do CÓDIGO — `mensagemApi` mapeia
+      // por código e o cru chegava à vendedora. Agora há código, e o detalhe
+      // diz as duas datas em jeito de gente.
+      const ddmmaaaa = (ymd: string) => ymd.split("-").reverse().join("/");
+      const dataReserva = ddmmaaaa(diaLocal(bloqueio.casamentoData));
+      res.status(422).json({
+        error: "DATA_DIVERGE_DA_RESERVA",
+        detalhe:
+          `A data do casamento no contrato (${ddmmaaaa(diaLocal(contratoData.dataCasamento))}) ` +
+          `não bate com a da reserva do vestido (${dataReserva}). Ajuste a data ou a reserva.`,
+        campos: [
+          { campo: "dataCasamento", motivo: `A reserva do vestido é para ${dataReserva}` },
+        ],
+      });
       return;
     }
     const resultado = await verificarDisponibilidade({

@@ -46,7 +46,7 @@ import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
-import { ehNaoEncontrado } from "@/lib/erro-api";
+import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
 import {
   dataLongaFmt,
@@ -132,8 +132,8 @@ export default function NoivaDetalhe() {
       navigate(`/loja/${lojaId}/orcamentos/${criado.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao criar orçamento",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar orçamento",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -168,8 +168,8 @@ export default function NoivaDetalhe() {
       toast({ title: "Noiva marcada como perdida" });
     } catch (err) {
       toast({
-        title: "Erro ao marcar como perdida",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para marcar como perdida",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -186,8 +186,8 @@ export default function NoivaDetalhe() {
       toast({ title: "Noiva reativada", description: "De volta ao funil, como novo contato." });
     } catch (err) {
       toast({
-        title: "Erro ao reativar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para reativar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -212,7 +212,7 @@ export default function NoivaDetalhe() {
   if (isError) {
     return (
       <Erro
-        titulo="Erro ao carregar a noiva"
+        titulo="Não deu para carregar a noiva"
         erro={error}
         onTentarNovamente={() => refetch()}
       />

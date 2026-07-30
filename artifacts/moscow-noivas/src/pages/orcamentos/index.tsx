@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { diaParaISO, statusOrcamentoLabel, instanteDia } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { Vazio } from "@/components/estado";
+import { mensagemApi } from "@/lib/erro-api";
 
 const FILTROS: { chave: string; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -104,8 +105,8 @@ export default function Orcamentos() {
       navigate(`/loja/${activeLojaId}/orcamentos/${criado.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao criar orçamento",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar orçamento",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -204,7 +205,7 @@ export default function Orcamentos() {
         {isError ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Erro ao carregar os orçamentos</AlertTitle>
+            <AlertTitle>Não deu para carregar os orçamentos</AlertTitle>
             <AlertDescription className="flex items-center gap-3">
               <span>Falha ao buscar os orçamentos.</span>
               <Button variant="outline" size="sm" onClick={() => refetch()}>

@@ -191,7 +191,7 @@ export default function ContratoDetail() {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar o contrato</AlertTitle>
+        <AlertTitle>Não deu para carregar o contrato</AlertTitle>
         <AlertDescription className="flex items-center gap-3">
           <span>Falha ao buscar o contrato.</span>
           <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
@@ -242,7 +242,7 @@ export default function ContratoDetail() {
       setCancelarOpen(false);
     } catch (err) {
       toast({
-        title: "Erro ao cancelar",
+        title: "Não deu para cancelar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -281,7 +281,7 @@ export default function ContratoDetail() {
       toast({ title: "Plano de pagamento gerado" });
     } catch (err) {
       toast({
-        title: "Erro ao gerar o plano",
+        title: "Não deu para gerar o plano",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -318,7 +318,7 @@ export default function ContratoDetail() {
       setParcelaReceber(null);
     } catch (err) {
       toast({
-        title: "Erro ao receber",
+        title: "Não deu para receber",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -339,7 +339,7 @@ export default function ContratoDetail() {
       setConfirmacao(null);
     } catch (err) {
       toast({
-        title: tipo === "estornar" ? "Erro ao estornar" : "Erro ao remover",
+        title: tipo === "estornar" ? "Não deu para estornar" : "Não deu para remover",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

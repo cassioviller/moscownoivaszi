@@ -292,7 +292,7 @@ export default function Pagar() {
       setSelecionadas([]);
     } catch (err) {
       toast({
-        title: "Erro ao pagar",
+        title: "Não deu para pagar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -335,7 +335,7 @@ export default function Pagar() {
       setVencimento(hojeLocal());
     } catch (err) {
       toast({
-        title: "Erro ao lançar a conta",
+        title: "Não deu para lançar a conta",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -352,7 +352,7 @@ export default function Pagar() {
       setContaRemover(null);
     } catch (err) {
       toast({
-        title: "Erro ao remover",
+        title: "Não deu para remover",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -377,7 +377,7 @@ export default function Pagar() {
       setPagamentoEstornar(null);
     } catch (err) {
       toast({
-        title: "Erro ao estornar",
+        title: "Não deu para estornar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -489,7 +489,7 @@ export default function Pagar() {
       {contas.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar</AlertTitle>
+          <AlertTitle>Não deu para carregar</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar as contas.</span>
             <Button variant="outline" size="sm" onClick={() => contas.refetch()}>

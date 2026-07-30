@@ -20,6 +20,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
@@ -127,8 +128,8 @@ export default function ConfigAtendimentos() {
       toast({ title: "Horário salvo" });
     } catch (err) {
       toast({
-        title: "Erro ao salvar horário",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar horário",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -141,8 +142,8 @@ export default function ConfigAtendimentos() {
       toast({ title: "Cabines atualizadas" });
     } catch (err) {
       toast({
-        title: "Erro ao atualizar cabine",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para atualizar cabine",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -158,8 +159,8 @@ export default function ConfigAtendimentos() {
       setNomeCabine("");
     } catch (err) {
       toast({
-        title: "Erro ao adicionar cabine",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para adicionar cabine",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

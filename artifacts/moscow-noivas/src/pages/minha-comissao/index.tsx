@@ -76,7 +76,7 @@ export default function MinhaComissao() {
       {extrato.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar o extrato</AlertTitle>
+          <AlertTitle>Não deu para carregar o extrato</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar sua comissão.</span>
             <Button variant="outline" size="sm" onClick={() => extrato.refetch()}>

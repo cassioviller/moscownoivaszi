@@ -65,7 +65,7 @@ export function ResumoCard({
  */
 export function ErroListagem({ mensagem, onRetry }: { mensagem: string; onRetry: () => void }) {
   // A mensagem já veio traduzida pela tela; `detalhe` faz o `<Erro>` respeitá-la.
-  return <Erro titulo="Erro ao carregar" erro={{ data: { detalhe: mensagem } }} onTentarNovamente={onRetry} />;
+  return <Erro titulo="Não deu para carregar" erro={{ data: { detalhe: mensagem } }} onTentarNovamente={onRetry} />;
 }
 
 /**

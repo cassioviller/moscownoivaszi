@@ -53,6 +53,7 @@ import {
   type EtapaLead,
 } from "@/lib/funil";
 import { diaMesAbrevAno } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * O funil kanban (E27). Cada etapa é uma coluna e o card se arrasta de uma para
@@ -127,8 +128,8 @@ export function FunilNoivas({
       });
     } catch (err) {
       toast({
-        title: "Não foi possível mover",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para mover",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

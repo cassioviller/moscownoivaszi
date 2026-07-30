@@ -73,6 +73,7 @@ import {
 } from "@workspace/agenda-core";
 import { cn } from "@/lib/utils";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 const agendarSchema = z
   .object({
@@ -248,12 +249,10 @@ export default function NovoAtendimento() {
     } catch (err) {
       toast({
         title: "Não deu para reservar",
-        description:
-          err instanceof Error && err.message.includes("INDISPONIVEL")
-            ? "O vestido não está livre na data do casamento — escolha outro ou confira a ficha dele."
-            : err instanceof Error
-              ? err.message
-              : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente.", {
+          VESTIDO_INDISPONIVEL:
+            "O vestido não está livre na data do casamento — escolha outro ou confira a ficha dele.",
+        }),
         variant: "destructive",
       });
     }
@@ -357,9 +356,9 @@ export default function NovoAtendimento() {
       form.reset();
     } catch (err) {
       toast({
-        title: "Erro ao agendar",
+        title: "Não deu para agendar",
         description:
-          err instanceof Error ? err.message : "Verifique conflito de horário e tente novamente.",
+          mensagemApi(err, "Verifique conflito de horário e tente novamente."),
         variant: "destructive",
       });
     }
@@ -373,8 +372,8 @@ export default function NovoAtendimento() {
       toast({ title: "Atendimento cancelado" });
     } catch (err) {
       toast({
-        title: "Erro ao cancelar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cancelar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     } finally {

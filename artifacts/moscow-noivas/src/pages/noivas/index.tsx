@@ -12,7 +12,6 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -21,16 +20,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Plus, AlertCircle, Search, LayoutGrid, Columns3, BarChart3 } from "lucide-react";
+import { Plus, Search, LayoutGrid, Columns3, BarChart3 } from "lucide-react";
 import { diaMesAbrevAno, etapaLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { FunilNoivas } from "./funil";
-import { mensagemApi } from "@/lib/erro-api";
 import {
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
 } from "./helpers";
+import { Erro } from "@/components/estado";
 
 const TODAS_ETAPAS = "TODAS";
 const POR_PAGINA = 24;
@@ -174,16 +173,7 @@ export default function Noivas() {
           podeEditar={podeEditar}
         />
       ) : isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar as noivas</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar as noivas.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar as noivas" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (

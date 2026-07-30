@@ -4,12 +4,11 @@ import { useListAtributos, getListAtributosQueryKey } from "@workspace/api-clien
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { tipoAtributoLabel } from "@/lib/formatos";
-import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { Erro } from "@/components/estado";
 
 export default function Catalogo() {
   const { lojaId } = useParams();
@@ -49,16 +48,7 @@ export default function Catalogo() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar o catálogo</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{mensagemApi(error, "Falha inesperada ao buscar o catálogo.")}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar o catálogo" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (

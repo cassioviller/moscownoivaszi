@@ -92,7 +92,7 @@ para cada uma.
 |---|---|---|---|---|
 | E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ✅ | `8af14b4` |
 | E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ✅ | `f919679` |
-| E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ⬜ | |
+| E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ✅ | |
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ⬜ | |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ⬜ | |
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ⬜ | |
@@ -130,6 +130,8 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D8 | **Dois erros do `POST /contratos` fora da régua de erro da casa:** `api-server/src/routes/contratos.ts:282` responde `{ error: "Bloqueio not found" }` (inglês, sem código) e `:346` responde `{ error: "dataCasamento do contrato diverge da data do bloqueio" }` — a FRASE no campo do CÓDIGO, sem `detalhe`. O `mensagemApi` da tela mapeia por código (`MENSAGENS_ERRO` de `orcamentos/[id].tsx`), então os dois caem no cru para a vendedora, no clique que fecha a venda. Candidato natural ao E122 (o épico do erro que mostra a frase do servidor). | 🟡 | execução E120 |
 | S-D9 | **O vazio de Permissões está fora da régua do `<Vazio>` e é quase inalcançável.** "Nenhum perfil encontrado." (`pages/permissoes/index.tsx`) não diz por que nem o próximo passo — e os perfis do sistema sempre existem: se a lista veio vazia, a notícia certa é outra. Decidir entre remover o ramo ou dar frase com saída. | 🔵 | execução E121 |
 | S-D10 | **O cartão da fila (F7) do dashboard aparece de repente.** `filaDeMensagens` deriva de 3 queries com `?? []`: enquanto elas contam, o cartão fica AUSENTE e salta na tela segundos depois do resto do painel. Mesma classe do E121 vestida de ausência — não afirma zero, por isso não subiu a conserto; o custo é o salto de layout na tela de abertura. | 🔵 | execução E121 |
+| S-D11 | **A classe do S-D8 continua fora do `POST /contratos`:** `api-server/src/routes/reservas.ts:328,424,505,638` respondem `{ error: "Bloqueio not found" }`, `lookbooks.ts` tem 2 × "Foto not found", `admin.ts` tem "Loja/Perfil/Usuario not found" — inglês no campo do código, sem `detalhe`. Com o E122, `mensagemApi` mostra o `detalhe` do servidor em toda tela; nessas rotas ele cai no fallback genérico onde o servidor sabia o motivo. | 🟡 | execução E122 |
+| S-D12 | **O dicionário da tela sombreia o `detalhe` quando o código é reutilizado:** `MENSAGENS_ERRO` de `pages/orcamentos/[id].tsx:92` traduz `REFERENCIA_INVALIDA` como "Essa noiva não é desta loja.", mas `api-server/src/routes/contratos.ts:307` usa o MESMO código para reserva de outra noiva, com detalhe próprio e melhor — a régua lê o código primeiro e mostra a frase da noiva para um problema de reserva. Ou o servidor especializa o código, ou o dicionário sai da frente do detalhe nesse caso. | 🟡 | execução E122 |
 
 ## Diário de sessões
 
@@ -328,3 +330,25 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   de adoção nas cinco telas, vermelho antes com 4 AssertionError literais.
   Suítes: API 855 (servidor intocado) · front 315 → 325 · E2E 139/139 completa
   antes do commit · typecheck verde. Duas sobras novas (S-D9, S-D10).
+
+### Sessão 4 — 2026-07-30
+
+- **E122 entregue** (`execucao/E122.md`). O servidor escrevia a explicação e o
+  cliente a jogava fora em duas camadas: o builder (`custom-fetch.ts`) não lia
+  `detalhe` — o toast dizia "HTTP 409 Conflict: CONVITE_PENDENTE" e descartava
+  "Use reenviar ou cancele o convite existente" — e 47 toasts em 27 arquivos
+  (número da adversarial, conferido exato no mapa) ainda liam `err.message` no
+  lugar da régua `mensagemApi` (que passou de 23 para 47 arquivos). O título
+  canônico da falha foi decidido e aplicado: **"Não deu para <verbo>"** — os
+  76 `title: "Erro ao X"` migraram, mais 16 da mesma classe em ternários e
+  args de helper que o grep da trilha não contava, 36 títulos irmãos em
+  `AlertTitle`/`titulo=` e os 6 "Não foi possível X"; exceções deliberadas:
+  "Não consegui entrar" (login) e "Essa mudança não é possível agora" (recusa
+  de regra). Os 13 (não 14) blocos "Falha inesperada ao…" viraram o `<Erro>`
+  canônico. **S-D8 fechada**: os dois erros do `POST /contratos` entraram na
+  régua (`RESERVA_NAO_ENCONTRADA`; `DATA_DIVERGE_DA_RESERVA` convergindo para
+  o molde que o PATCH do mesmo arquivo já tinha, 240 linhas abaixo). Varredura
+  nova (`erro-cru-varredura.test.ts`, arquivo inteiro, lição S-D7): reprovava
+  27 arquivos por `err.message` e 49 por título "Erro …"; hoje zero e zero.
+  Suítes: API 855 → 856 · front 325 → 331 · E2E 139/139 completa antes do
+  commit · typecheck verde. Duas sobras novas (S-D11, S-D12).

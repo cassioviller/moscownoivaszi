@@ -54,6 +54,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novaLojaSchema = z.object({
   nome: z.string().min(1, "Nome da loja é obrigatório"),
@@ -227,8 +228,8 @@ export default function AdminConsole() {
       setLojaEmEdicao(null);
     } catch (err) {
       toast({
-        title: "Erro ao salvar a loja",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar a loja",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -253,8 +254,8 @@ export default function AdminConsole() {
       setUsuarioEmEdicao(null);
     } catch (err) {
       toast({
-        title: "Erro ao salvar o usuário",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar o usuário",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -268,8 +269,8 @@ export default function AdminConsole() {
       formLoja.reset();
     } catch (err) {
       toast({
-        title: "Erro ao criar loja",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar loja",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -283,8 +284,8 @@ export default function AdminConsole() {
       formUsuario.reset();
     } catch (err) {
       toast({
-        title: "Erro ao cadastrar usuário",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cadastrar usuário",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -310,7 +311,7 @@ export default function AdminConsole() {
           <CardContent className="pt-6 space-y-6">
             {erroLojas ? (
               <Erro
-                titulo="Erro ao carregar as lojas"
+                titulo="Não deu para carregar as lojas"
                 erro={errLojas}
                 onTentarNovamente={() => refetchLojas()}
               />
@@ -392,7 +393,7 @@ export default function AdminConsole() {
           <CardContent className="pt-6 space-y-6">
             {erroUsuarios ? (
               <Erro
-                titulo="Erro ao carregar os usuários"
+                titulo="Não deu para carregar os usuários"
                 erro={errUsuarios}
                 onTentarNovamente={() => refetchUsuarios()}
               />
