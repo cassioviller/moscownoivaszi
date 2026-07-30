@@ -95,7 +95,7 @@ quem escolheu a paleta:
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; **parte 4 (desfaz a regressão do Canvas que a parte 3 criou) em `0910ab6`**; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
 | E110 | A cobrança de avaria não colide com a entrada (achados 1 🔴 e 8 da revisão) | P | ✅ | `d437e97` · [notas](execucao/E110.md) |
 | E111 | A revisão do aplicativo inteiro: a loja da URL, o dinheiro na borda e o rastro do que some (58 achados) | G | ✅ | `58ea660` · [notas](execucao/E111.md) |
-| E115 | A segunda revisão do aplicativo inteiro: o caixa conta o que ficou, o carimbo tem dono e o DELETE deixa rastro (15 defeitos, 32 achados; fecha a S5 e partes do E112/E114 planejados) | G | ✅ | *(hash no commit de docs)* · [notas](execucao/E115.md) |
+| E115 | A segunda revisão do aplicativo inteiro: o caixa conta o que ficou, o carimbo tem dono e o DELETE deixa rastro (15 defeitos, 32 achados; fecha a S5 e partes do E112/E114 planejados) | G | ✅ | `9a2f4ca` · [notas](execucao/E115.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
