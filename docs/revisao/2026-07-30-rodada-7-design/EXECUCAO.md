@@ -110,7 +110,7 @@ para cada uma.
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ✅ | `a3ecff2` |
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ✅ | `7908493` |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ✅ | `f3af0dc` |
-| E140 | O WhatsApp no cadastro inline (B9) | P | ✅ | |
+| E140 | O WhatsApp no cadastro inline (B9) | P | ✅ | `45aecc2` |
 | E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ⬜ | |
 | E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ⬜ | |
 
