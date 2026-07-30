@@ -63,7 +63,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 
 | Fase | Arquivo | Estado | Commit |
 |---|---|---|---|
-| Trilha A — consistência visual | `a-consistencia-visual.md` | ⬜ | |
+| Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | |
 | Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ⬜ | |
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ⬜ | |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ⬜ | |
@@ -92,6 +92,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 |---|---|---|---|
 | S-D1 | **O script de captura de telas não existe no repo.** As 81 capturas de hoje foram geradas por um script de scratchpad que se perdeu (o diretório nasceu `undefined/` — a env var do destino não existia). Recriar como `scripts/` versionado, declarando ambiente (browser, locale, viewport) no manifest — é a ferramenta de verificação visual desta rodada e das próximas. | 🟡 | montagem da rodada |
 | S-D2 | **O manifest da captura não declara ambiente.** Viewport foi recuperado dos PNGs (1280×800 / 390×844); navegador e locale seguem desconhecidos. Enquanto isso, nenhum achado dependente de plataforma sobe de 🟡 sem contraprova (regra 6). | 🔵 | montagem da rodada |
+| S-D3 | **Quatro primitivos com 0 usos seguem em `src/components/ui/`** (`empty.tsx`, `avatar.tsx`, `pagination.tsx`, `progress.tsx` — contagem do inventário). O E99 mediu que a poda não muda um byte do bundle (tree-shaken), então o custo não é rede: é busca e manutenção — quatro arquivos que o `find` devolve e ninguém chama. Podar como higiene, ou adotar (`empty`/`pagination` têm candidatos nas trilhas C e D). | 🔵 | trilha A |
 
 ## Diário de sessões
 
@@ -104,3 +105,13 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   movidas para `capturas/`, dimensões medidas dos próprios PNGs; manifest e
   `AMBIENTE.md` commitados, PNGs fora do git. Duas sobras registradas (S-D1,
   S-D2).
+- **Trilha A (consistência visual) entregue.** Tese: o esqueleto é UM sistema
+  (tokens com WCAG provada, serif, `brl()` sem exceção); a colagem está nos
+  detalhes onde a régua existe e não chega — o badge de status sem gramática
+  (6 mapeamentos contraditórios em 7 telas, "Faltou" indistinguível de
+  "Agendado" na fila), o degrau maior do dinheiro fora da escala do dono em 11
+  de 15 pontos (o mesmo R$ 39.688,00 sans-bold no dashboard e serif em Minha
+  comissão), e a navegação entre visões irmãs com 4 caras em 4 grupos do menu.
+  Contagem: **0 🔴 · 3 🟠 · 3 🟡 · 1 🔵** (A1–A7), 9 itens de "está BEM"
+  ancorados, 6 pistas laterais (a mais cara: `text-primary` como texto normal a
+  2,71:1 em `mensagens/index.tsx:379` — trilha E). Uma sobra nova (S-D3).
