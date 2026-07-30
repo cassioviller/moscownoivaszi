@@ -18,6 +18,20 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm run test:e2e` — Playwright (sobe API + frontend; ver `playwright.config.ts`)
 - `pnpm --filter @workspace/api-spec run codegen` — regenera cliente e Zod do OpenAPI
 - `pnpm --filter @workspace/db run push` — aplica o schema no banco (dev)
+- **Configurar um ateliê do zero** (E147): `cd artifacts/api-server &&
+  ./node_modules/.bin/tsx src/scripts/seed.ts`. Cria só o que NÃO é trabalho da
+  loja — 4 perfis, a dona, 3 cabines, horário, 7 atributos de catálogo (41
+  opções), a escada de comissão e 4 recorrências —, é **idempotente e nunca
+  sobrescreve** (ids derivados da loja + `onConflictDoNothing`), e imprime o que
+  criou e o que já existia. Depois dele, o único primeiro passo pendente é
+  "cadastrar os primeiros vestidos". A mesma configuração roda sozinha na
+  SUBIDA quando o banco não tem nenhum usuário (`lib/seed.ts`), então um banco
+  provisionado do zero e um configurado à mão terminam idênticos.
+  Parametrização por env (branco = default): `SEED_LOJA_ID|NOME|CNPJ|ENDERECO|
+  TELEFONE`, `SEED_DONA_ID|NOME|EMAIL|SENHA|SUPERADMIN`,
+  `SEED_EXEMPLOS_FINANCEIROS=false` (sem escada nem recorrências).
+  **Ele não cadastra noiva, vestido, contrato nem parcela** — isso é trabalho da
+  loja, e entra pela tela.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.

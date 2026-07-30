@@ -57,6 +57,23 @@ describe("primeirosPassos — o que falta configurar, na ordem de fazer", () => 
     expect(lojaConfigurada(vazia)).toBe(false);
   });
 
+  it("a loja recém-semeada (E147) para num passo só: cadastrar os vestidos", () => {
+    // As contagens são as que `aplicarConfiguracaoInicial` deixa no banco, e o
+    // teste de API afirma cada uma delas
+    // (`api-server/src/__tests__/e147-configuracao-inicial-api.test.ts`).
+    // O par existe para que mexer no seed sem mexer aqui — ou o contrário —
+    // apareça: a promessa do seed é ESTA, e ela é uma frase de tela.
+    const semeada: ContagensDaLoja = {
+      cabines: 3,
+      temHorario: true,
+      atributos: 7,
+      vestidos: 0,
+      escadasDeComissao: 1,
+      recorrencias: 4,
+    };
+    expect(primeirosPassos(semeada).map((p) => p.chave)).toEqual(["vestidos"]);
+  });
+
   it("todo passo tem para onde ir", () => {
     for (const p of primeirosPassos(vazia)) {
       expect(p.href.startsWith("/")).toBe(true);

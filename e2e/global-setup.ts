@@ -88,7 +88,32 @@ export default async function globalSetup() {
     db.insert(lojasTable).values({ id: "e2e-loja-b", nome: "E2E Segunda Loja" }),
   );
 
-  const [maria] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, MARIA_EMAIL));
+  /**
+   * A vendedora da suíte é fixture DAQUI, não do seed (E147).
+   *
+   * Ela vinha do `scripts/seed.ts`, que era um seed de demonstração; agora
+   * aquele script aplica a CONFIGURAÇÃO inicial de um ateliê — perfis, cabines,
+   * horário, catálogo, escada, recorrências — e não cadastra gente que a loja
+   * não contratou. "Vendedora Maria" é personagem de teste e passa a ser criada
+   * e mantida por quem a usa, como o E146 fez com o resto das fixtures.
+   *
+   * O hash vem do admin em vez de ser gerado: as duas contas usam a mesma
+   * `SENHA`, e copiá-lo evita uma dependência de bcrypt só para o setup.
+   */
+  let [maria] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, MARIA_EMAIL));
+  if (!maria) {
+    [maria] = await db
+      .insert(usuariosTable)
+      .values({
+        id: "e2e-vendedora-maria",
+        nome: "Vendedora Maria",
+        email: MARIA_EMAIL,
+        senhaHash: admin.senhaHash,
+        ativo: true,
+        isSuperAdmin: false,
+      })
+      .returning();
+  }
   if (!maria) throw new Error("[e2e-setup] vendedora maria não existe");
 
   // 1. Vínculo da vendedora à loja (o seed original não cria — bug C12).
