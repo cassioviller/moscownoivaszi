@@ -63,7 +63,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 
 | Fase | Arquivo | Estado | Commit |
 |---|---|---|---|
-| Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | |
+| Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | `1123cc2` |
 | Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ⬜ | |
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ⬜ | |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ⬜ | |
