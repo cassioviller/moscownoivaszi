@@ -70,7 +70,22 @@ rode o codegen.
 - **Dinheiro soma em CENTAVOS INTEIROS.** A API fala reais (`decimal` com
   `mode: "number"`); converta na borda, some inteiro, volte para reais só ao
   exibir. Um DRE que fecha com um centavo de diferença do fluxo não tem conserto
-  depois: a divergência vira desconfiança no número.
+  depois: a divergência vira desconfiança no número. **E o dinheiro tem piso na
+  borda** (E115): `valorRecebido`/`valorPago` têm `minimum: 0.01` no spec — um
+  `-700` passava pelo único guard do servidor (o teto) e gravava −R$ 700,00 no
+  caixa realizado, com o saldo aberto da parcela subindo para MAIS que o
+  previsto.
+- **O recebimento é `recebidoEm + valorRecebido`, não uma lista de status**
+  (E115/S5). `teveRecebimento` no `financeiro-core` é a régua única: cancelar
+  um contrato com `destinoPago: "manter"` vira a PARCIAL em CANCELADA
+  preservando o que entrou — "o valor fica no caixa" é o contrato documentado
+  do `manter` —, e a lista `["PAGA","PARCIAL"]` tirava esses reais do fluxo,
+  do DRE e da tendência retroativamente. Quem filtra recebimento no SQL usa
+  `recebido_em IS NOT NULL` (superconjunto; o motor recorta). O estorno —
+  avulso E em massa — zera `valorRecebido`/`recebidoEm` e limpa os DOIS
+  carimbos (`conciliadoEm`, `enviadoContabilidadeEm`): o carimbo da contadora é
+  operacional (alimenta o `isNull` do próximo envio), não histórico — a
+  história mora na trilha.
 - **Data de negócio ≠ instante.** `vencimento`/`dataReferencia` são dias
   (ancorados ao meio-dia de São Paulo — o dia UTC já é o dia certo).
   `recebidoEm`/`pagamento.data` são INSTANTES, e o dia deles só existe num fuso:
@@ -127,14 +142,20 @@ rode o codegen.
   protege disso: ele consulta as permissões de `lojaAtivaId` e aprova. Middleware
   que precisa de um param **tem** de ser montado com o path, ou ler a URL.
 - **Ação destrutiva responde 404, conta o que vai junto e deixa rastro** — a
-  régua que o E91 (usuário), o E106 (loja) e o E111 (noiva, parcela, perfil)
-  aplicam igual: 404 antes de qualquer escrita, 409 LEGÍVEL dizendo o que segura
-  o registro (`LEAD_COM_CONTRATO`, `PERFIL_EM_USO`, `USUARIO_COM_HISTORICO`,
-  `LOJA_COM_HISTORICO`) em vez do 23503 genérico do banco, e `registrarAuditoria`
-  DENTRO da transação e ANTES do delete — depois dele não há linha de onde
-  reconstituir. A guarda de `DELETE /admin/usuarios/:id` conta as **seis** FKs
-  que apontam para `usuarios`, contando `recorrencias` (CASCADE: apagava o
-  salário em silêncio) e `comissao_regras` (restrict).
+  régua que o E91 (usuário), o E106 (loja), o E111 (noiva, parcela, perfil) e o
+  E115 (reserva, bloqueio, atendimento, orçamento, avaria) aplicam igual: 404
+  antes de qualquer escrita, 409 LEGÍVEL dizendo o que segura o registro
+  (`LEAD_COM_CONTRATO`, `PERFIL_EM_USO`, `USUARIO_COM_HISTORICO`,
+  `LOJA_COM_HISTORICO`, `RESERVA_COM_HISTORICO`, `ATENDIMENTO_CONCLUIDO`,
+  `ORCAMENTO_APROVADO`) em vez do 23503 genérico do banco, e
+  `registrarAuditoria` DENTRO da transação e ANTES do delete — depois dele não
+  há linha de onde reconstituir. A guarda de `DELETE /admin/usuarios/:id` conta
+  as **seis** FKs que apontam para `usuarios`, contando `recorrencias`
+  (CASCADE: apagava o salário em silêncio) e `comissao_regras` (restrict).
+  A cascata mais funda é a da RESERVA (E115): `bloqueio_vestidos.reserva_id` é
+  CASCADE e de cada bloqueio caem avarias (foto-prova de parcela já cobrada),
+  provas e vínculos de contratos ATIVOS — por isso reserva e bloqueio com
+  história recusam o DELETE e ensinam o soft-cancel.
 - **Todo dinheiro na tela sai de `brl()`, e ele já traz o `R$`** (E92).
   `moscow-noivas/src/lib/formatos.ts` é a régua única: `Intl.NumberFormat` com
   `style: "currency"`, o que põe um espaço RÍGIDO (U+00A0) entre o símbolo e o
@@ -164,10 +185,18 @@ rode o codegen.
   não OFERECER o que o servidor vai negar — a autoridade é sempre o servidor.
   **A ação vem do método E do caminho** (`acaoDoRequest`): POST que termina em
   verbo de mutação (`receber`, `pagar`, `cobrar`, `aprovar`, `cancelar`,
-  `estornar`, …) é `editar`, não `criar`. A lista é uma só, e a varredura de
-  `e101-acao-da-rota-api.test.ts` a IMPORTA — verbo novo sem classificação
-  reprova o teste. Sem isso, o guard de prefixo do router e o guard da rota
-  exigem ações DIFERENTES e a pessoa leva 403 numa ação que ela pode fazer.
+  `estornar`, `marcar`, `enviar`, …) é `editar`, não `criar`. A lista é uma só,
+  e a varredura de `e101-acao-da-rota-api.test.ts` a IMPORTA — verbo novo sem
+  classificação reprova o teste (e desde o E115 ela também vê POSTs
+  `<literal>/<verbo>`, a forma por onde `conciliacao/marcar` e
+  `contabilidade/enviar` escaparam). POST que muta com caminho de SUBSTANTIVO
+  entra em `POST_QUE_MUTA_POR_CAMINHO` (hoje só `/financeiro/pagamentos`, a
+  mesma operação da porta irmã que declara `editar`). E o guard deriva a ação
+  de `req.baseUrl + req.path`, nunca de `req.path` sozinho: dentro de um
+  `router.use(prefixo, fn)` o Express DESMONTA o prefixo casado — a mesma
+  pegadinha do `req.params` vazio do E111, na dimensão do caminho. Sem isso, o
+  guard de prefixo do router e o guard da rota exigem ações DIFERENTES e a
+  pessoa leva 403 numa ação que ela pode fazer.
 - **Uma reserva de vestido é de um contrato ATIVO só** (E111). `POST /contratos`
   recusa com 409 `RESERVA_JA_CONTRATADA` o bloqueio já preso por outro contrato
   ativo, **e grava `bloqueio_vestidos.lead_id`** — o contrato é quem dá dona à
@@ -250,6 +279,18 @@ rode o codegen.
   confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
   `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
   existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
+- **`drizzle-kit generate` tem o MESMO defeito sem-TTY, e mais um** (E115): com
+  snapshot anterior ele pergunta "criada ou renomeada?" e morre sem terminal; e
+  o `drizzle.config.ts` com caminho ABSOLUTO o quebra de um segundo jeito
+  (`ENOENT .//home/...`). O que funciona: a CLI com caminhos relativos, de
+  dentro de `lib/db` — `npx drizzle-kit generate --dialect postgresql --schema
+  ./src/schema/index.ts --out ./migrations`. **A baseline é regenerável
+  enquanto nenhum banco consumir o `migrate`** (o dev usa `push` e não tem
+  `__drizzle_migrations` — conferido no E115), e
+  `e115-migracao-snapshot-unit.test.ts` reprova schema com coluna fora do
+  snapshot: foi assim que o 0000 ficou SEIS migrações para trás e um banco
+  provisionado por `migrate` nascia sem `conciliado_em`, com o portal da noiva
+  respondendo 500 em toda abertura.
 - **`lib/api-zod` é consumido COMPILADO.** Depois do codegen, rode
   `npx tsc --build` na raiz, senão as rotas continuam vendo o contrato antigo e
   o erro de tipo aponta para o lugar errado.
@@ -291,7 +332,13 @@ rode o codegen.
   sessões precisa de fixture própria — o estado global muda sob os pés.
 - **Orçamento versiona no ENVIO** (E75): a noiva vê a última versão enviada,
   nunca o rascunho vivo; o aceite congela versão+hash. Editar depois de
-  enviado NÃO muda o que ela está vendo — crie/envie nova versão.
+  enviado NÃO muda o que ela está vendo — crie/envie nova versão. **APROVADO
+  congela de vez** (E115): item e desconto respondem 422 `ORCAMENTO_APROVADO`
+  (renegociar é criar novo orçamento), e o `POST /contratos` de um orçamento
+  com aceite reconstrói o conteúdo vivo pela MESMA régua do congelamento
+  (`conteudoEnviado`) e compara com o `aceiteHash` — divergiu, 422
+  `ORCAMENTO_DIVERGE_DO_ACEITE`: o contrato nasce do que a noiva viu, nunca de
+  um valor que ela não aceitou.
 - **A régua da ação destrutiva** (E10/E99). Toda ação que apaga, desfaz dinheiro
   ou tira acesso **pede confirmação**; a confirmação **nomeia o objeto** ("o
   portal de Marina", "Parcela 3") **e o que se perde** — o valor em dinheiro

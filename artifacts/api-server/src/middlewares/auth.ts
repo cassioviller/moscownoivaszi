@@ -112,7 +112,13 @@ export function requireModulo(modulo: string, acao?: Acao) {
       next();
       return;
     }
-    const exigida = acao ?? acaoDoRequest(req.method, req.path);
+    // `baseUrl + path`, não `path` (E115): dentro de um `router.use(prefixo,
+    // fn)` o Express DESMONTA o prefixo casado — `req.path` de
+    // `POST /lojas/X/financeiro/pagamentos` chega aqui como `/pagamentos`, e
+    // uma régua por caminho (`POST_QUE_MUTA_POR_CAMINHO`) nunca casaria. É a
+    // mesma pegadinha do `req.params` vazio que o E111 documentou no
+    // `lojaIdDaUrl`, na dimensão do caminho em vez da dos params.
+    const exigida = acao ?? acaoDoRequest(req.method, req.baseUrl + req.path);
     const permissoes = await getPermissoes(usuario.id, lojaId, false);
     if (!permissoes || !podeNoModulo(permissoes, modulo, exigida)) {
       res.status(403).json({ error: "ACESSO_NEGADO_MODULO", modulo, acao: exigida });

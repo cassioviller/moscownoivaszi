@@ -1915,6 +1915,7 @@ export const ReceberParcelaInputFormaRecebimento = {
 } as const;
 
 export interface ReceberParcelaInput {
+  /** @minimum 0.01 */
   valorRecebido: number;
   recebidoEm: string;
   formaRecebimento?: ReceberParcelaInputFormaRecebimento;
@@ -1996,6 +1997,7 @@ export interface ContaPagarInput {
 
 export interface PagarContaInput {
   data: string;
+  /** @minimum 0.01 */
   valorPago: number;
   forma?: string;
   observacoes?: string;

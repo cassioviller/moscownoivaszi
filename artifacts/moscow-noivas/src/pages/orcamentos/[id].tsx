@@ -27,7 +27,6 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,11 +62,11 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto } from "@/lib/formatos";
+import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto, diaMesAno } from "@/lib/formatos";
 import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
-import { ancoraDeNegocio, montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
+import { montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
 
 // E95: não existe aritmética de dinheiro neste arquivo. O `round2` que morava
@@ -126,7 +125,10 @@ type GerarContratoValues = z.infer<typeof gerarContratoSchema>;
 
 const FORMAS = ["PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "DINHEIRO", "BOLETO", "TRANSFERENCIA", "OUTRO"] as const;
 
-const diaCurto = (dia: string) => format(ancoraDeNegocio(dia), "dd/MM/yyyy");
+// E115: era `format(ancoraDeNegocio(dia), "dd/MM/yyyy")` — o date-fns desenha
+// no relógio do NAVEGADOR, e a âncora de meio-dia SP vira véspera para quem
+// abre de um fuso a leste de UTC+9. A régua dos dias de negócio é `diaMesAno`.
+const diaCurto = (dia: string) => diaMesAno(dia);
 
 /**
  * F16 — o carnê que vai ser criado, à vista, antes de criar.

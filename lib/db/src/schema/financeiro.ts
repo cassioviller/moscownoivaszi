@@ -28,8 +28,13 @@ export const parcelasTable = pgTable("parcelas", {
   conciliadoEm: timestamp("conciliado_em", { withTimezone: true }),
   // F34/E103: quando este RECEBIMENTO foi declarado à contabilidade. Irmã de
   // `pagamentos.enviado_contabilidade_em` — sem ela, fechar o mês carimbava só
-  // as saídas. O estorno NÃO limpa: ter sido declarado é fato histórico, e
-  // desfazer o recebimento não desfaz o que a contadora já recebeu.
+  // as saídas. O ESTORNO LIMPA (E115): este carimbo é operacional — é o
+  // `isNull` dele que decide o próximo envio —, e mantê-lo deixava um
+  // recebimento estornado e re-lançado fora de TODO pacote futuro (o de julho
+  // saía R$ 1.000,00 menor que o DRE de julho, sem aviso). O que a contadora
+  // já recebeu é fato histórico e mora na trilha (RECEBIMENTO_ESTORNADO), não
+  // aqui. A versão anterior deste comentário dizia o contrário e não via esse
+  // custo.
   enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({

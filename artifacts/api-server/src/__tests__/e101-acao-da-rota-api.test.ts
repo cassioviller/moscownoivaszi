@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { db, perfisTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { POST_QUE_MUTA } from "../lib/permissoes";
+import { POST_QUE_MUTA, POST_QUE_MUTA_POR_CAMINHO } from "../lib/permissoes";
 import {
   criarFixture,
   criarLead,
@@ -174,6 +174,67 @@ describe("nenhum POST de ação escapa da classificação (B5)", () => {
       }
     }
 
+    expect(naoClassificados).toEqual([]);
+  });
+
+  /**
+   * E115 — a segunda forma que a varredura acima não via: POST em
+   * `<literal>/<segmento>`, sem id de recurso no caminho. Foi por essa fresta
+   * que `conciliacao/marcar` e `contabilidade/enviar` — que CARIMBAM linhas
+   * existentes — derivaram `criar` por dois épicos: a estagiária com
+   * `{ver, criar}` fechava o mês à contadora, e a gerente com `{ver, editar}`
+   * levava 403 numa ação dela.
+   */
+
+  /** Coleções sob namespace literal: POST aqui CRIA um recurso. */
+  const COLECOES_LITERAIS = new Set([
+    "token", "fechamentos", "regras", "convites", "contas-pagar",
+    "recorrencias", "saldos-referencia",
+  ]);
+
+  /**
+   * Verbos que CRIAM (ou não escrevem nada) — perdão com razão, um por linha:
+   * - `simular`: não escreve; é POST só porque carrega corpo de cenário.
+   * - `gerar`: a folha do mês — cria as contas da competência, idempotente.
+   * - `gerar-plano`: cria o carnê. "Criar parcela É criar" (decisão E111).
+   */
+  const VERBOS_QUE_CRIAM = new Set(["simular", "gerar", "gerar-plano"]);
+
+  /** Sem sessão de loja ou sem gate de módulo — a régua deles é outra. */
+  const FORA_DO_GATE = ["/auth/", "/portal", "/admin/", "/captacao/", "/orcamentos/publico", "/equipe/convites/aceitar"];
+
+  it("todo POST <literal>/<segmento> é coleção, criação perdoada ou classificado", () => {
+    const naoClassificados: string[] = [];
+
+    for (const arquivo of readdirSync(raiz).filter((f) => f.endsWith(".ts"))) {
+      const conteudo = readFileSync(join(raiz, arquivo), "utf8");
+      const re = /router\.post\(\s*"([^"]+)"\s*(,\s*requireModulo\([^)]*\))?/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(conteudo)) !== null) {
+        const [, caminho, comRequire] = m;
+        if (FORA_DO_GATE.some((p) => caminho.startsWith(p) || caminho.includes(p))) continue;
+        const partes = caminho.split("/").filter(Boolean);
+        const ultimo = partes[partes.length - 1];
+        const penultimo = partes[partes.length - 2];
+
+        // Aqui é o complemento exato do bloco acima: último E penúltimo
+        // literais. Coleção sob o tenant (`/lojas/:lojaId/leads`) tem
+        // penúltimo `:lojaId` e continua sendo assunto do outro bloco.
+        if (!ultimo || ultimo.startsWith(":") || !penultimo || penultimo.startsWith(":")) continue;
+
+        if (COLECOES_LITERAIS.has(ultimo)) continue;
+        if (VERBOS_QUE_CRIAM.has(ultimo)) continue;
+        const classificado =
+          POST_QUE_MUTA.test(`/${ultimo}`) || POST_QUE_MUTA_POR_CAMINHO.test(caminho);
+        if (classificado || comRequire?.includes('"editar"')) continue;
+
+        naoClassificados.push(`${arquivo}: POST ${caminho}`);
+      }
+    }
+
+    // VERMELHO ANTES do E115: conciliacao/marcar, contabilidade/enviar e
+    // financeiro/pagamentos apareciam aqui — dois carimbos e a porta que a
+    // tela de Pagar usa, todos derivando `criar`.
     expect(naoClassificados).toEqual([]);
   });
 });

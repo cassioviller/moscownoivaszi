@@ -356,8 +356,11 @@ export default function Receber() {
                   </div>
 
                   {/* Uma parcela PARCIAL tem as DUAS saídas ao mesmo tempo:
-                      receber o que falta ou desfazer o que entrou. */}
-                  {podeMovimentar && (estaAberta(p) || teveRecebimento(p)) && (
+                      receber o que falta ou desfazer o que entrou. A CANCELADA
+                      que guardou dinheiro ('manter', E115) conta no resumo mas
+                      não oferece nada — o contrato dela morreu, e o servidor
+                      recusaria o estorno com CONTRATO_NAO_ATIVO. */}
+                  {podeMovimentar && p.status !== "CANCELADA" && (estaAberta(p) || teveRecebimento(p)) && (
                     <div className="flex justify-end gap-2 border-t pt-2">
                       {teveRecebimento(p) && (
                         <Button

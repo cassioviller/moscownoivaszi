@@ -2,6 +2,7 @@ import {
   getGetFluxoCaixaQueryKey,
   getGetDreQueryKey,
   getGetAlertaCaixaQueryKey,
+  getGetDashboardQueryKey,
   getListPagamentosQueryKey,
   getListParcelasQueryKey,
   getListContasPagarQueryKey,
@@ -32,5 +33,10 @@ export function chavesDoCaixa(lojaId: string): readonly (readonly unknown[])[] {
     getGetFluxoCaixaQueryKey(lojaId),
     getGetDreQueryKey(lojaId),
     getGetAlertaCaixaQueryKey(lojaId),
+    // E115 — o dashboard soma "a receber/pagar (30 dias)" das MESMAS tabelas
+    // que estas mutations mudam, e ficou fora da régua desde o D9: com o piso
+    // de staleTime, receber R$ 5.000,00 e voltar ao painel mostrava um
+    // a-receber que ainda somava o que acabou de entrar.
+    getGetDashboardQueryKey(lojaId),
   ];
 }

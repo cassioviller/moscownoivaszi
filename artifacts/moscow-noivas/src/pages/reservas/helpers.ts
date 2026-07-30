@@ -15,6 +15,7 @@
  * citando como prova uma tela que discorda. Comentário que aponta para o lugar
  * errado é pior que comentário nenhum: desliga a suspeita de quem lê.
  */
+import { diaLocal, diasEntre, hojeLocal } from "@/lib/financeiro/datas";
 
 /** O relógio da loja: um atendimento das 14h é às 14h em qualquer lugar. */
 const FUSO_LOJA = "America/Sao_Paulo";
@@ -61,13 +62,16 @@ export const ROTULO_SITUACAO: Record<string, string> = {
   FALTOU: "Faltou",
 };
 
-/** Dias-calendário (fuso local) até um instante — para provas (Agenda usa local). */
+/**
+ * Dias-calendário até um instante, no fuso DA LOJA (E115).
+ *
+ * Contava no fuso do NAVEGADOR — contradizendo o cabeçalho deste próprio
+ * arquivo ("exibir/contar no fuso da LOJA") e a Agenda, que sempre passou
+ * `America/Sao_Paulo`. Uma prova às 14h de SP vista de um fuso adiantado
+ * contava um dia a mais.
+ */
 export function diasAteLocal(iso: string): number {
-  const alvo = new Date(iso);
-  const hoje = new Date();
-  const alvoDia = Date.UTC(alvo.getFullYear(), alvo.getMonth(), alvo.getDate());
-  const hojeDia = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  return Math.round((alvoDia - hojeDia) / 86_400_000);
+  return diasEntre(hojeLocal(), diaLocal(iso));
 }
 
 /**
@@ -97,9 +101,12 @@ export function agruparPorMes<T>(
   const grupos: GrupoMes<T>[] = [];
   for (const item of itens) {
     const d = dataDe(item);
+    // E115: o ramo não-UTC montava a CHAVE no fuso do navegador e o RÓTULO no
+    // da loja — na virada do mês, o grupo abria com o nome de um mês e itens
+    // do outro. Instante agrupa pelo dia da LOJA, como o rótulo sempre fez.
     const chave = utc
       ? `${d.getUTCFullYear()}-${d.getUTCMonth()}`
-      : `${d.getFullYear()}-${d.getMonth()}`;
+      : diaLocal(d).slice(0, 7);
     let grupo = grupos.find((g) => g.chave === chave);
     if (!grupo) {
       grupo = { chave, rotulo: fmt.format(d), itens: [] };

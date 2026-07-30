@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { instanteHora } from "@/lib/formatos";
+import { diaLocal } from "@/lib/financeiro/datas";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -61,19 +62,30 @@ export default function AgendaSemana() {
   });
 
   const daSemana = useMemo(() => {
-    const fim = addDays(segunda, 7);
+    // E115: o recorte era por comparação de INSTANTE contra a meia-noite do
+    // NAVEGADOR — na borda da semana, o atendimento de segunda de manhã (ou de
+    // domingo à noite) sumia da grade para quem abre fora do fuso da loja. O
+    // dia do atendimento é o dia da LOJA (`diaLocal`); as colunas da grade são
+    // dias-calendário sintéticos, e a comparação certa é entre strings de dia.
+    const de = diaISO(dias[0]);
+    const ate = diaISO(dias[6]);
     return (atendimentos.data ?? [])
       .filter((a) => {
-        const inicio = new Date(a.inicio);
-        return inicio >= segunda && inicio < fim;
+        const dia = diaLocal(a.inicio);
+        return dia >= de && dia <= ate;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentos.data, segunda]);
+  }, [atendimentos.data, dias]);
 
   const porCabineEDia = useMemo(() => {
     const mapa = new Map<string, Atendimento[]>();
     for (const a of daSemana) {
-      const chave = `${a.cabineId}:${diaISO(new Date(a.inicio))}`;
+      // E115: a coluna saía de `format(new Date(a.inicio))` — o dia do
+      // NAVEGADOR. Uma prova às 14h de sexta em SP, vista de um fuso
+      // adiantado, caía na coluna de SÁBADO com a hora ainda dizendo "14:00"
+      // (a hora da célula sempre usou America/Sao_Paulo) — e a visão do DIA a
+      // mostrava na sexta. Duas telas de agenda discordando do dia da semana.
+      const chave = `${a.cabineId}:${diaLocal(a.inicio)}`;
       const lista = mapa.get(chave) ?? [];
       lista.push(a);
       mapa.set(chave, lista);

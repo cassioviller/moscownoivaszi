@@ -26,16 +26,29 @@ test.describe("Atendimento — início real (E36)", () => {
     const me = await request.get(`${API_URL}/api/auth/me`);
     const usuarioLogadoId = (await me.json()).usuario.id as string;
 
-    // Instante único dentro do expediente (09:00–18:00 de hoje) para não bater
-    // na trava anti-corrida (cabine/vendedora × instante) entre execuções.
-    const base = new Date();
-    base.setHours(9, 0, 0, 0);
-    const inicio = new Date(base.getTime() + (Date.now() % (9 * 3600_000))).toISOString();
+    // E115: o POST de atendimento passou a rodar as recusas de expediente e de
+    // sobreposição do agenda-core, e este spec pagou dois preços de uma vez. O
+    // "09:00" era `setHours` no relógio do PROCESSO — UTC no container, ou
+    // seja 06:00 em São Paulo, FORA_DO_HORARIO (a mesma classe de defeito que
+    // o E115 tirou do app). E a `e2e-cabine-1`, compartilhada num banco que
+    // persiste, colide por INTERVALO com as sobras das execuções passadas.
+    // Hora escrita no fuso da LOJA e cabine própria por execução (lição da S7).
+    const stamp = Date.now();
+    const cab = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/cabines`, {
+      data: { nome: `e22-${stamp}` },
+    });
+    expect(cab.status(), await cab.text()).toBe(201);
+    const cabineId = ((await cab.json()) as { id: string }).id;
+    const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const hh = String(9 + (stamp % 8)).padStart(2, "0");
+    const mm = String(Math.floor(stamp / 1000) % 60).padStart(2, "0");
+    const ss = String(stamp % 60).padStart(2, "0");
+    const inicio = `${ymd}T${hh}:${mm}:${ss}-03:00`;
 
     const criado = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos`, {
       data: {
         leadId: estado.leadId,
-        cabineId: "e2e-cabine-1",
+        cabineId,
         vendedoraId: usuarioLogadoId,
         tipo: "ATENDIMENTO",
         inicio,

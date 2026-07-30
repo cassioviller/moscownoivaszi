@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
+import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
-import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
   CreateCabineBody,
@@ -38,7 +39,6 @@ import {
   recusaDeMover,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
-  diaDaSemanaLocal,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
@@ -229,24 +229,38 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
 
   // As FKs vêm do corpo: garantir que lead, cabine e vendedora são DESTA loja,
   // senão o atendimento nasce referenciando outra (vazamento de tenant).
-  const [okLead, okCabine, okVend] = await Promise.all([
+  // E115: o `bloqueioId` opcional entrava sem a mesma prova — uma prova
+  // agendada sobre o vestido reservado de OUTRA loja.
+  const [okLead, okCabine, okVend, okBloqueio] = await Promise.all([
     leadNaLoja(parsed.data.leadId, lojaId),
     cabineNaLoja(parsed.data.cabineId, lojaId),
     vendedoraNaLoja(parsed.data.vendedoraId, lojaId),
+    parsed.data.bloqueioId ? bloqueioNaLoja(parsed.data.bloqueioId, lojaId) : true,
   ]);
-  if (!okLead || !okCabine || !okVend) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine ou vendedora não são desta loja" });
+  if (!okLead || !okCabine || !okVend || !okBloqueio) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine, vendedora ou bloqueio não são desta loja" });
     return;
   }
 
-  // E38: a criação não conferia funcionamento nenhum (só o form do cliente e o
-  // reagendamento faziam) — daí os órfãos. Barrar o dia fechado aqui: a loja
-  // não abre naquele dia da semana, então o atendimento não deveria nascer.
-  const regra = await db.query.regraDisponibilidadeTable.findFirst({
-    where: eq(regraDisponibilidadeTable.lojaId, lojaId),
-  });
-  if (regra && !regra.diasFuncionamento.includes(diaDaSemanaLocal(parsed.data.inicio))) {
-    res.status(422).json({ error: "LOJA_FECHADA", detalhe: DETALHE_RECUSA.LOJA_FECHADA });
+  // E115 — a criação só barrava o DIA fechado (E38), enquanto o reagendamento
+  // roda as QUATRO recusas do agenda-core: uma prova às 17h30 ocupava a cabine
+  // até 19h e o POST às 18h respondia 201 no mesmo lugar de onde o arrastar
+  // levava 422 CABINE_OCUPADA; e o POST às 22h criava um atendimento sem
+  // célula na grade — nascia invisível. A régua é a MESMA função do PATCH,
+  // com o atendimento novo no papel de "movido para onde quer nascer".
+  const recusa = await recusaDeMoverAtendimento(
+    lojaId,
+    {
+      id: "novo",
+      cabineId: parsed.data.cabineId,
+      vendedoraId: parsed.data.vendedoraId,
+      inicio: parsed.data.inicio,
+      tipo: parsed.data.tipo ?? "ATENDIMENTO",
+    },
+    {},
+  );
+  if (recusa) {
+    res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
     return;
   }
 
@@ -374,9 +388,55 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
   res.json(UpdateAtendimentoResponse.parse(fullAtendimento));
 });
 
+/**
+ * E115 — o cancelamento da agenda era um delete cru: 204 mesmo sem apagar
+ * nada, `ajustes.atendimento_id` em CASCADE levava a fila de costura junto, e
+ * um CONCLUÍDO — que é O QUE ACONTECEU com a noiva (a razão do restrict do
+ * E91/B2 na vendedora) — sumia da ficha sem rastro.
+ */
 router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Promise<void> => {
-  const { lojaId, atendimentoId } = req.params;
-  await db.delete(atendimentosTable).where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)));
+  const { lojaId, atendimentoId } = req.params as { lojaId: string; atendimentoId: string };
+  const atendimento = await db.query.atendimentosTable.findFirst({
+    where: and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId)),
+  });
+  if (!atendimento) {
+    res.status(404).json({ error: "Atendimento not found" });
+    return;
+  }
+  if (atendimento.situacao === "CONCLUIDO") {
+    res.status(409).json({
+      error: "ATENDIMENTO_CONCLUIDO",
+      detalhe: "Um atendimento concluído é a história da ficha da noiva — ele não se apaga.",
+    });
+    return;
+  }
+  const ajustes = await db
+    .select({ id: ajustesTable.id })
+    .from(ajustesTable)
+    .where(eq(ajustesTable.atendimentoId, atendimentoId));
+  if (ajustes.length > 0) {
+    res.status(409).json({
+      error: "ATENDIMENTO_COM_AJUSTES",
+      detalhe: `Este atendimento tem ${ajustes.length} ajuste(s) de costura que sumiriam junto — remova-os antes.`,
+    });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "ATENDIMENTO_REMOVIDO",
+      entidade: "atendimento",
+      entidadeId: atendimentoId,
+      detalhe: {
+        leadId: atendimento.leadId,
+        inicio: atendimento.inicio,
+        tipo: atendimento.tipo,
+        situacao: atendimento.situacao,
+      },
+    });
+    await tx.delete(atendimentosTable).where(and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
@@ -505,6 +565,15 @@ router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
   }
   
   const { atendimentoId, ...ajusteData } = parsed.data;
+
+  // E115 — o POST /atendimentos deste arquivo prova lead/cabine/vendedora e o
+  // checklist prova o pai; o ajuste não provava NADA: um `atendimentoId` da
+  // loja B punha a ficha da noiva dela (nome, WhatsApp, vestido) na fila de
+  // costura de A, e o conserto forjado aparecia no portal da noiva de B.
+  if (!(await atendimentoNaLoja(atendimentoId, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "atendimento não é desta loja" });
+    return;
+  }
 
   const [ajuste] = await db.insert(ajustesTable).values({
     id: randomUUID(),

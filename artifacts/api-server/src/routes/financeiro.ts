@@ -29,7 +29,6 @@ import {
   entradasPorMeio,
   dreDoIntervalo,
   STATUS_ABERTO,
-  STATUS_COM_RECEBIMENTO,
 } from "@workspace/financeiro-core";
 import {
   PagarContaPagarBody,
@@ -576,19 +575,23 @@ router.post(
     const { parcelaIds = [], pagamentoIds = [] } = parsed.data;
     const agora = new Date();
 
-    const [pcs, pgs] = await Promise.all([
-      parcelaIds.length
-        ? db.update(parcelasTable)
+    const { pcs, pgs } = await db.transaction(async (tx) => {
+      const pcs = parcelaIds.length
+        ? await tx.update(parcelasTable)
             .set({ conciliadoEm: agora })
             .where(and(
               eq(parcelasTable.lojaId, lojaId),
               inArray(parcelasTable.id, parcelaIds),
               isNull(parcelasTable.conciliadoEm),
+              // E115 — só o que TEM recebimento pode "bater com o extrato":
+              // uma PREVISTA conferida seria um movimento que o banco nunca
+              // viu carimbado como visto, e o carimbo é de mão única.
+              isNotNull(parcelasTable.recebidoEm),
             ))
             .returning({ id: parcelasTable.id })
-        : Promise.resolve([]),
-      pagamentoIds.length
-        ? db.update(pagamentosTable)
+        : [];
+      const pgs = pagamentoIds.length
+        ? await tx.update(pagamentosTable)
             .set({ conciliadoEm: agora })
             .where(and(
               eq(pagamentosTable.lojaId, lojaId),
@@ -596,8 +599,29 @@ router.post(
               isNull(pagamentosTable.conciliadoEm),
             ))
             .returning({ id: pagamentosTable.id })
-        : Promise.resolve([]),
-    ]);
+        : [];
+
+      // E115 — o carimbo irmão (`contabilidade/enviar`, mesmo épico E103)
+      // audita e este não auditava: dar um movimento por conferido é escrita
+      // de mão única sem rota que desfaça, e "quem conferiu, e quando?" ficava
+      // sem resposta. Clique que não carimbou nada não é um fato — não grava.
+      if (pcs.length + pgs.length > 0) {
+        await registrarAuditoria(tx, {
+          lojaId,
+          usuario: req.usuario!,
+          acao: "CONCILIACAO_MARCADA",
+          entidade: "conciliacao",
+          entidadeId: hojeLocal(),
+          detalhe: {
+            parcelas: pcs.length,
+            pagamentos: pgs.length,
+            parcelaIds: pcs.map((p) => p.id),
+            pagamentoIds: pgs.map((p) => p.id),
+          },
+        });
+      }
+      return { pcs, pgs };
+    });
 
     res.json(MarcarConciliadoResponse.parse({ parcelas: pcs.length, pagamentos: pgs.length }));
   },
@@ -1079,8 +1103,11 @@ router.get("/lojas/:lojaId/financeiro/alerta-caixa", async (req, res): Promise<v
         and(
           eq(parcelasTable.lojaId, lojaId),
           or(
+            // O recebimento é `recebido_em IS NOT NULL`, não uma lista de
+            // status (E115/S5): a CANCELADA de um cancelamento "manter" guarda
+            // dinheiro que entrou e ficou, e o motor (`teveRecebimento`) é quem
+            // recorta — este WHERE só entrega o superconjunto da janela.
             and(
-              inArray(parcelasTable.status, [...STATUS_COM_RECEBIMENTO]),
               gte(parcelasTable.recebidoEm, saldoDe),
               lt(parcelasTable.recebidoEm, saldoAte),
             ),

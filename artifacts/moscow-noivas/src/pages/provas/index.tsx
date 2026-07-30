@@ -6,7 +6,7 @@ import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
 } from "@workspace/api-client-react";
-import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -139,7 +139,10 @@ export default function Provas() {
                               iminente ? "text-destructive" : ""
                             }`}
                           >
-                            {inicio.getDate()}
+                            {/* E115: o dia saía do relógio do NAVEGADOR e o
+                                mês (linha de baixo) do da LOJA — a prova de
+                                31/07 às 23h aparecia como "1 JUL". */}
+                            {Number(diaLocal(inicio).slice(8, 10))}
                           </span>
                           <span className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
                             {mesAbrevLocalFmt.format(inicio).replace(".", "")}

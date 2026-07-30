@@ -5975,8 +5975,12 @@ export const ReceberParcelaParams = zod.object({
   "parcelaId": zod.coerce.string()
 })
 
+export const receberParcelaBodyValorRecebidoMin = 0.01;
+
+
+
 export const ReceberParcelaBody = zod.object({
-  "valorRecebido": zod.number(),
+  "valorRecebido": zod.number().min(receberParcelaBodyValorRecebidoMin),
   "recebidoEm": zod.coerce.date(),
   "formaRecebimento": zod.enum(['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'BOLETO', 'TRANSFERENCIA', 'OUTRO']).optional()
 })
@@ -6470,9 +6474,13 @@ export const PagarContaPagarParams = zod.object({
   "contaId": zod.coerce.string()
 })
 
+export const pagarContaPagarBodyValorPagoMin = 0.01;
+
+
+
 export const PagarContaPagarBody = zod.object({
   "data": zod.coerce.date(),
-  "valorPago": zod.number(),
+  "valorPago": zod.number().min(pagarContaPagarBodyValorPagoMin),
   "forma": zod.string().optional(),
   "observacoes": zod.string().optional()
 })

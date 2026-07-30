@@ -41,6 +41,12 @@ export const ROTULO_ACAO: Record<string, string> = {
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
   LEAD_REMOVIDO: "Noiva removida do cadastro",
   PARCELA_REMOVIDA: "Parcela removida",
+  CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
+  RESERVA_REMOVIDA: "Reserva removida",
+  BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",
+  ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
+  ORCAMENTO_REMOVIDO: "Orçamento removido",
+  AVARIA_REMOVIDA: "Avaria removida",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -68,6 +74,12 @@ export const ACOES_FILTRAVEIS = [
   "CONTABILIDADE_ENVIADA",
   "LEAD_REMOVIDO",
   "PARCELA_REMOVIDA",
+  "CONCILIACAO_MARCADA",
+  "RESERVA_REMOVIDA",
+  "BLOQUEIO_REMOVIDO",
+  "ATENDIMENTO_REMOVIDO",
+  "ORCAMENTO_REMOVIDO",
+  "AVARIA_REMOVIDA",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];

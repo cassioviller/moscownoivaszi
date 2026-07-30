@@ -12,6 +12,7 @@ import {
   atendimentosTable,
   contratoItensTable,
   bloqueioVestidosTable,
+  contratoBloqueiosTable,
   vestidoFotosTable,
   auditLogTable,
 } from "@workspace/db";
@@ -583,21 +584,47 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
           eq(lookbookItensTable.vestidoId, vestidoId),
         ))
     : [];
-  const [noContrato] = noLookbook
-    ? []
-    : await db.select({ id: contratosTable.id })
-        .from(contratosTable)
-        .innerJoin(
-          bloqueioVestidosTable,
-          eq(bloqueioVestidosTable.id, contratosTable.bloqueioVestidoId),
-        )
-        .where(and(
-          eq(contratosTable.lojaId, linha.portal.lojaId),
-          eq(contratosTable.leadId, linha.portal.leadId),
-          eq(contratosTable.status, "ATIVO"),
-          eq(bloqueioVestidosTable.vestidoId, vestidoId),
-          isNull(bloqueioVestidosTable.canceladoEm),
-        ));
+  // E115 — o caminho do contrato resolvia SÓ pela coluna singular legada
+  // (`contratos.bloqueio_vestido_id`), que o app nunca preenche (a tela manda
+  // `bloqueioVestidoIds`, o servidor grava o N:N): a seção "O seu vestido"
+  // aparecia e a foto respondia 404, permanentemente, no celular da noiva.
+  // A régua é a MESMA de `montarVestidoDaNoiva`: a UNIÃO do N:N com o legado
+  // ("lido, nunca mais escrito") — meu primeiro conserto trocou uma metade
+  // pela outra, e foi o teste do E100 (que monta pelo legado) que o pegou.
+  let noContrato = false;
+  if (!noLookbook) {
+    const contratos = await db
+      .select({ id: contratosTable.id, bloqueioVestidoId: contratosTable.bloqueioVestidoId })
+      .from(contratosTable)
+      .where(and(
+        eq(contratosTable.lojaId, linha.portal.lojaId),
+        eq(contratosTable.leadId, linha.portal.leadId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    if (contratos.length > 0) {
+      const vinculos = await db
+        .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+        .from(contratoBloqueiosTable)
+        .where(inArray(contratoBloqueiosTable.contratoId, contratos.map((c) => c.id)));
+      const bloqueioIds = [
+        ...new Set([
+          ...contratos.flatMap((c) => (c.bloqueioVestidoId ? [c.bloqueioVestidoId] : [])),
+          ...vinculos.map((v) => v.bloqueioId),
+        ]),
+      ];
+      if (bloqueioIds.length > 0) {
+        const [b] = await db
+          .select({ id: bloqueioVestidosTable.id })
+          .from(bloqueioVestidosTable)
+          .where(and(
+            inArray(bloqueioVestidosTable.id, bloqueioIds),
+            eq(bloqueioVestidosTable.vestidoId, vestidoId),
+            isNull(bloqueioVestidosTable.canceladoEm),
+          ));
+        noContrato = !!b;
+      }
+    }
+  }
   if (!noLookbook && !noContrato) {
     res.status(404).json({ error: "Foto not found" });
     return;

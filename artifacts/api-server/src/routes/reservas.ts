@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, reservasTable, bloqueioVestidosTable, vestidosTable } from "@workspace/db";
-import { eq, and, isNull, gte, lt, asc, desc, sql } from "drizzle-orm";
+import { db, reservasTable, bloqueioVestidosTable, vestidosTable, atendimentosTable, contratoBloqueiosTable } from "@workspace/db";
+import { eq, and, isNull, gte, lt, asc, desc, sql, inArray } from "drizzle-orm";
+import { registrarAuditoria } from "../lib/auditoria";
 import { leadNaLoja, reservaNaLoja } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
@@ -198,9 +199,80 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
   res.json(UpdateReservaResponse.parse(fullReserva));
 });
 
+/**
+ * E115 — este DELETE era cru (sem 404, sem contagem, sem trilha), e a cascata
+ * dele é a mais funda do domínio: `bloqueio_vestidos.reserva_id` é CASCADE, e
+ * de cada bloqueio caem as avarias (com a foto-prova que sustenta a parcela já
+ * cobrada — o 409 do E97/F23 não roda, porque a cascata não passa pela rota),
+ * os atendimentos/provas e os vínculos `contrato_bloqueios` de contratos
+ * ATIVOS — a peça voltava a aparecer disponível para outra noiva. A régua é a
+ * do E91/E106/E111: 404 antes, 409 legível dizendo o que segura, trilha DENTRO
+ * da transação e ANTES do delete.
+ */
 router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<void> => {
-  const { lojaId, reservaId } = req.params;
-  await db.delete(reservasTable).where(and(eq(reservasTable.id, reservaId as string), eq(reservasTable.lojaId, lojaId as string)));
+  const { lojaId, reservaId } = req.params as { lojaId: string; reservaId: string };
+  const reserva = await db.query.reservasTable.findFirst({
+    where: and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)),
+  });
+  if (!reserva) {
+    res.status(404).json({ error: "Reserva not found" });
+    return;
+  }
+
+  const bloqueios = await db
+    .select({ id: bloqueioVestidosTable.id })
+    .from(bloqueioVestidosTable)
+    .where(eq(bloqueioVestidosTable.reservaId, reservaId));
+  const bloqueioIds = bloqueios.map((b) => b.id);
+
+  const [avarias, vinculosAtivos, atendimentos] = await Promise.all([
+    bloqueioIds.length
+      ? db.select({ id: avariasTable.id }).from(avariasTable)
+          .where(inArray(avariasTable.bloqueioId, bloqueioIds))
+      : Promise.resolve([]),
+    bloqueioIds.length
+      ? db.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
+          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+          .where(and(
+            inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
+            eq(contratosTable.status, "ATIVO"),
+          ))
+      : Promise.resolve([]),
+    // Atendimento não aponta para a reserva: ele chega a ela pelo bloqueio
+    // (`atendimentos.bloqueio_id`), e é por esse caminho que a cascata o leva.
+    bloqueioIds.length
+      ? db.select({ id: atendimentosTable.id }).from(atendimentosTable)
+          .where(inArray(atendimentosTable.bloqueioId, bloqueioIds))
+      : Promise.resolve([]),
+  ]);
+
+  if (avarias.length + vinculosAtivos.length + atendimentos.length > 0) {
+    res.status(409).json({
+      error: "RESERVA_COM_HISTORICO",
+      detalhe:
+        "Esta reserva carrega história que sumiria junto: " +
+        `${vinculosAtivos.length} contrato(s) ativo(s) preso(s) ao vestido, ` +
+        `${avarias.length} avaria(s) registrada(s) e ${atendimentos.length} atendimento(s)/prova(s). ` +
+        "Cancele os bloqueios (soft-cancel) em vez de apagar a reserva.",
+      contratosAtivos: vinculosAtivos.length,
+      avarias: avarias.length,
+      atendimentos: atendimentos.length,
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    // ANTES do delete: depois dele não há linha de onde reconstituir.
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "RESERVA_REMOVIDA",
+      entidade: "reserva",
+      entidadeId: reservaId,
+      detalhe: { leadId: reserva.leadId, casamentoData: reserva.casamentoData, bloqueios: bloqueioIds.length },
+    });
+    await tx.delete(reservasTable).where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
@@ -418,9 +490,65 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
   res.json(UpdateBloqueioResponse.parse(bloqueio));
 });
 
+/**
+ * E115 — o mesmo defeito do DELETE de reserva, um nível abaixo: avarias,
+ * atendimentos e o vínculo com contrato ATIVO caem por cascata sem que nenhuma
+ * guarda de rota rode. Quem quer tirar a peça do caminho usa o soft-cancel
+ * (`canceladoEm`), que é o que o cancelamento de contrato faz.
+ */
 router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {
-  const { lojaId, bloqueioId } = req.params;
-  await db.delete(bloqueioVestidosTable).where(and(eq(bloqueioVestidosTable.id, bloqueioId as string), eq(bloqueioVestidosTable.lojaId, lojaId as string)));
+  const { lojaId, bloqueioId } = req.params as { lojaId: string; bloqueioId: string };
+  const bloqueio = await db.query.bloqueioVestidosTable.findFirst({
+    where: and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)),
+  });
+  if (!bloqueio) {
+    res.status(404).json({ error: "Bloqueio not found" });
+    return;
+  }
+
+  const [avarias, vinculosAtivos, legadoAtivo, atendimentos] = await Promise.all([
+    db.select({ id: avariasTable.id }).from(avariasTable)
+      .where(eq(avariasTable.bloqueioId, bloqueioId)),
+    db.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
+      .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+      .where(and(
+        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+        eq(contratosTable.status, "ATIVO"),
+      )),
+    // A coluna singular legada é lida em produção (portal, PDF) — um contrato
+    // ATIVO pendurado nela segura o bloqueio do mesmo jeito.
+    db.select({ id: contratosTable.id }).from(contratosTable)
+      .where(and(eq(contratosTable.bloqueioVestidoId, bloqueioId), eq(contratosTable.status, "ATIVO"))),
+    db.select({ id: atendimentosTable.id }).from(atendimentosTable)
+      .where(eq(atendimentosTable.bloqueioId, bloqueioId)),
+  ]);
+
+  const contratosAtivos = vinculosAtivos.length + legadoAtivo.length;
+  if (avarias.length + contratosAtivos + atendimentos.length > 0) {
+    res.status(409).json({
+      error: "BLOQUEIO_COM_HISTORICO",
+      detalhe:
+        "Este bloqueio carrega história que sumiria junto: " +
+        `${contratosAtivos} contrato(s) ativo(s), ${avarias.length} avaria(s) e ` +
+        `${atendimentos.length} atendimento(s)/prova(s). Cancele o bloqueio (soft-cancel) em vez de apagá-lo.`,
+      contratosAtivos,
+      avarias: avarias.length,
+      atendimentos: atendimentos.length,
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "BLOQUEIO_REMOVIDO",
+      entidade: "bloqueio",
+      entidadeId: bloqueioId,
+      detalhe: { vestidoId: bloqueio.vestidoId, leadId: bloqueio.leadId, tipo: bloqueio.tipo },
+    });
+    await tx.delete(bloqueioVestidosTable).where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
@@ -711,7 +839,9 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
     where: and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)),
   });
   if (!avaria) {
-    res.status(204).send();
+    // E115: era 204 — apagar o inexistente respondia "apagado", o 404
+    // cosmético que o E106 consertou na loja.
+    res.status(404).json({ error: "Avaria not found" });
     return;
   }
   // Mesma régua da cobrança: o que impede apagar a avaria é uma cobrança VIVA,
@@ -724,9 +854,26 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
     });
     return;
   }
-  await db
-    .delete(avariasTable)
-    .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));
+  // E115: destruir a foto-prova de um dano agora deixa rastro — era o único
+  // DELETE do módulo com guarda e sem trilha.
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "AVARIA_REMOVIDA",
+      entidade: "avaria",
+      entidadeId: avariaId as string,
+      detalhe: {
+        bloqueioId: avaria.bloqueioId,
+        descricao: avaria.descricao,
+        custoReparo: avaria.custoReparo,
+        temFoto: avaria.fotoBytes !== null,
+      },
+    });
+    await tx
+      .delete(avariasTable)
+      .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));
+  });
   res.status(204).send();
 });
 

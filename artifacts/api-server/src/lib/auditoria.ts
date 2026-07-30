@@ -60,6 +60,18 @@ export const ACOES_AUDITORIA = [
   // sem autor. O `entidadeId` carrega a JANELA, porque o fato é o período e não
   // um registro: é o que alguém procura ao perguntar "quem declarou junho?".
   "CONTABILIDADE_ENVIADA",
+  // E115: dar um movimento por conferido com o extrato (F32/E103). Carimbo de
+  // mão única sem rota que desfaça — era a única escrita irmã da de cima sem
+  // autor, e "quem deu este movimento por conferido?" ficava sem resposta.
+  "CONCILIACAO_MARCADA",
+  // E115: os DELETEs que eram crus — a régua do E91/E106/E111 ("nada some sem
+  // 404, contagem e rastro") aplicada a reserva, bloqueio, atendimento,
+  // orçamento e avaria. Depois do DELETE a trilha é o único rastro deles.
+  "RESERVA_REMOVIDA",
+  "BLOQUEIO_REMOVIDO",
+  "ATENDIMENTO_REMOVIDO",
+  "ORCAMENTO_REMOVIDO",
+  "AVARIA_REMOVIDA",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -100,6 +112,12 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PARCELA_REMOVIDA: "Parcela removida",
   CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
+  CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
+  RESERVA_REMOVIDA: "Reserva removida",
+  BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",
+  ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
+  ORCAMENTO_REMOVIDO: "Orçamento removido",
+  AVARIA_REMOVIDA: "Avaria removida",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -133,7 +151,14 @@ export interface RegistroAuditoria {
     | "usuario"
     | "convite"
     | "perfil"
-    | "lead";
+    | "lead"
+    // E115 — os DELETEs que ganharam trilha, e o carimbo de conciliação.
+    | "reserva"
+    | "bloqueio"
+    | "atendimento"
+    | "orcamento"
+    | "avaria"
+    | "conciliacao";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }

@@ -6,10 +6,15 @@ const LOJA = "loja-1";
 describe("chavesDoCaixa — o que um movimento de caixa muda", () => {
   const chaves = chavesDoCaixa(LOJA).map((c) => String(c[0]));
 
-  it("cobre os DOIS lados da operação e os TRÊS agregados", () => {
+  it("cobre os DOIS lados da operação, os TRÊS agregados e o dashboard", () => {
     // D9: `receber.tsx` invalidava só as parcelas. Estes são os endpoints que
     // um recebimento/pagamento muda de fato — o fluxo, o DRE e o alerta são o
     // número que a dona lê no dashboard e no sino, em toda tela.
+    //
+    // E115: o dashboard entrou — os cards "a receber/pagar (30 dias)" somam as
+    // MESMAS tabelas, e sem a chave aqui nenhuma mutation do app o invalidava:
+    // receber R$ 5.000,00 e voltar ao painel mostrava um a-receber que ainda
+    // somava o que acabou de entrar (o staleTime segurava o número velho).
     expect(chaves).toEqual([
       `/api/lojas/${LOJA}/financeiro/parcelas`,
       `/api/lojas/${LOJA}/financeiro/contas-pagar`,
@@ -17,6 +22,7 @@ describe("chavesDoCaixa — o que um movimento de caixa muda", () => {
       `/api/lojas/${LOJA}/financeiro/fluxo`,
       `/api/lojas/${LOJA}/financeiro/dre`,
       `/api/lojas/${LOJA}/financeiro/alerta-caixa`,
+      `/api/lojas/${LOJA}/dashboard`,
     ]);
   });
 

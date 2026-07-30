@@ -95,6 +95,7 @@ quem escolheu a paleta:
 | E104 | Higiene de repo, build e bundle (A4, D8, +5) | M | 🟨 | A4 em `13944da`; A7/A12/A13/B15/C10 em `97bf55b`; **D8 em `0c41f7b`**; S19 em `5a3fca8`; parte 3 (A6, A8 + as 3 roteadas) em `4bc5a0b`; **parte 4 (desfaz a regressão do Canvas que a parte 3 criou) em `0910ab6`**; faltam **S15** (precisa de rede), **S18** e os três flakes · [notas](execucao/E104.md) |
 | E110 | A cobrança de avaria não colide com a entrada (achados 1 🔴 e 8 da revisão) | P | ✅ | `d437e97` · [notas](execucao/E110.md) |
 | E111 | A revisão do aplicativo inteiro: a loja da URL, o dinheiro na borda e o rastro do que some (58 achados) | G | ✅ | `58ea660` · [notas](execucao/E111.md) |
+| E115 | A segunda revisão do aplicativo inteiro: o caixa conta o que ficou, o carimbo tem dono e o DELETE deixa rastro (15 defeitos, 32 achados; fecha a S5 e partes do E112/E114 planejados) | G | ✅ | *(hash no commit de docs)* · [notas](execucao/E115.md) |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado · ⏭️ adiado (com motivo no diário)
 
@@ -117,7 +118,7 @@ mora; esta tabela é onde o trabalho é reclamado.
 | ~~S2~~ | **Fechada pelo E107** (`4623ec1`). **`POST /contratos` não valida `bloqueioVestidoIds` contra o lead**, só contra a loja: um contrato pode prender a reserva física de OUTRA noiva da mesma loja. Não é vazamento entre lojas — por isso ficou fora do E91 —, mas é da mesma família. | 🟠 | [E91](execucao/E91.md) vp4 |
 | S3 | **Ato global de superadmin não deixa trilha.** `registrarAuditoria` exige `lojaId` (`audit_log.loja_id` é `notNull`) e `DELETE /admin/usuarios/:id` é global. Hoje sobra um `req.log.warn`. Registrar em cada loja da pessoa multiplica a mesma ação em N linhas; não registrar exige mudar o schema da trilha. Vale para S1 também. | 🟠 | [E91](execucao/E91.md) "ficou de fora" |
 | ~~S4~~ | **Fechada pelo E107** (`4623ec1`). **`DELETE /contas-pagar/:id` não grava auditoria.** Apagar uma conta prevista é sumir com uma obrigação sem rastro — mesma classe do B3, um degrau abaixo (não move caixa realizado). | 🟡 | [E94](execucao/E94.md) vp1 |
-| S5 | **A parcela PARCIAL sob `destinoPago: "manter"` é ambígua.** Ela vira CANCELADA, o que tira do horizonte o saldo que falta (certo) mas também tira do caixa realizado o que já entrou — e sob "manter" a loja está dizendo que ficou com o dinheiro. Representar "cancelada, mas o recebido permanece no caixa" exige decidir se o motor passa a olhar `valorRecebido` em vez do status: mudança de régua com alcance grande. Sob "estornar" não há ambiguidade. | decisão de produto | [E94](execucao/E94.md) vp2 |
+| ~~S5~~ | ~~**A parcela PARCIAL sob `destinoPago: "manter"` é ambígua.**~~ **Fechada pelo E115**: a decisão que ela pedia já estava tomada por escrito — o próprio código documenta `manter` como *"valor fica no caixa"* — e a revisão de 2026-07-30 a confirmou como defeito de dinheiro (os R$ 500,00 de uma PARCIAL mantida sumiam retroativamente do fluxo/DRE do dia em que entraram). O motor passou a perguntar ao RECEBIMENTO (`recebidoEm + valorRecebido`), não ao status; `STATUS_COM_RECEBIMENTO` deixou de existir, e o estorno (avulso e em massa) limpa os dois carimbos. | ~~decisão de produto~~ | [E94](execucao/E94.md) vp2 · [E115](execucao/E115.md) |
 | ~~S6~~ | **Fechada pelo E107** (`4623ec1`). **O estorno avulso de parcela tem a mesma leitura-fora-da-transação do B6**, mas o `SET` dele é absoluto (sempre PREVISTA/null): dois estornos simultâneos convergem. Pior caso é auditar duas vezes, não perder valor. | 🔵 | [E94](execucao/E94.md) vp3 |
 | S7 | **`e2e/25-confirmar-presenca` colide consigo mesma entre execuções.** Ela cria o atendimento sempre na cabine fixa `e2e-cabine-1`, às `14:mm:ss` de HOJE, num banco que persiste — quanto mais vezes a suíte roda no mesmo dia, maior a chance de 409 `Registro duplicado ou conflito de dados`. Mesma classe que a sobra da rodada 5 resolveu noutro spec ("recurso próprio por execução"). Um vermelho desses se lê como regressão de dinheiro e não é. | 🟠 (infra de teste) | [E95](execucao/E95.md) |
 | S8 | **`contratos.ts` mantém `cent`/`reais` locais**, idênticos aos do `financeiro-core`, com dezenas de call-sites — a mesma classe do `parseValor` quadruplicado que o E95 fechou, em volume maior. | 🟡 | [E95](execucao/E95.md) vp |
@@ -142,6 +143,11 @@ mora; esta tabela é onde o trabalho é reclamado.
 | S30 | **Quinze formatadores `Intl` vivem fora da régua, e ninguém verificou um a um se cada um se justifica.** O E92 consolidou 36 → 17 e parou ali de propósito; o E111 apagou mais cinco. A varredura mecânica (`varredura-reguas.test.ts`) travou o número: arquivo NOVO declarando formatador reprova o teste. O que fica aberto é o passivo — `reservas/helpers.ts` sozinho tem seis, e alguns podem ser opção-set que a régua não cobre (mês sozinho, mês no fuso da loja). Consolidar exige decidir quais viram função pública em `formatos.ts`, e isso é julgamento de API de tela, não limpeza. A lista está no teste declarada como **estado de hoje, não atestado**. | 🔵 | [E111](execucao/E111.md) adendo |
 | S28 | **Uma sonda do E2E provava a si mesma, e nada garante que fosse a única.** `e2e/08-contratos.spec.ts:56` comparava a MESMA string literal consigo mesma — o assert media o status de uma requisição contra o dele próprio e passava sempre, inclusive se as duas dessem 404. Consertada no E111 (a URL passou a sair de `getGetContratoUrl`, do cliente gerado). O que fica aberto é a **varredura**: a mesma classe de defeito cabe em qualquer `expect(x).toBe(x)` e em qualquer assert cujos dois lados nasçam da mesma expressão. O E101 já provou que uma lista para de crescer sozinha; um teste tautológico é pior, porque ele conta como cobertura. | 🟠 (infra de teste) | [E111](execucao/E111.md) vp3 |
 | S29 | **A raiz do workspace ganhou `@workspace/api-client-react` só para o E2E.** A sonda do S28 só testa algo se a URL vier do cliente GERADO, e importá-lo da raiz exigiu a devDependency. É decisão registrada, não descuido: sem o import, a sonda volta a repetir uma literal que o codegen pode invalidar sem ninguém notar. Se o dono preferir não pagar a dependência na raiz, o caminho alternativo é a sonda afirmar só o `200` na URL literal — mata a tautologia, perde a amarração com o codegen. | 🔵 | [E111](execucao/E111.md) vp4 |
+| S31 | **`lead_interesse_atributos.atributo_id` não tem cascade.** A cascata da loja tenta apagar o atributo antes das linhas do interesse e leva 23503; apagar um atributo com interesse de noiva referenciando dá 500 cru pela mesma FK. Descoberto pelo teardown do teste de fronteira do E115. | 🟡 | [E115](execucao/E115.md) vp1 |
+| S32 | **`requireSessaoComLoja` roda até 11 vezes por request** (22 consultas sequenciais de sessão+loja): os dez routers de domínio o montam em série e o Express atravessa todos até casar a rota. É o custo do conserto do E111, no caminho mais quente do servidor — medido pela revisão do E115 e fora do corte de severidade. | 🟡 | [E115](execucao/E115.md) vp2 |
+| S33 | **A guarda do E106 no `DELETE /admin/lojas` conta e apaga fora de transação** — entre a contagem do histórico e o delete cabe uma escrita. O verificador marcou PLAUSIBLE (mecanismo real, corrida não reproduzida). | 🔵 | [E115](execucao/E115.md) vp3 |
+| S34 | **`GET /pagamentos` devolve 400 com FRASE no campo `error`** ("Filtro inválido (de/ate esperam YYYY-MM-DD)") — a família da S12, que o E107 tinha zerado, tem uma sobrevivente; as oito rotas irmãs emitem código. | 🔵 | [E115](execucao/E115.md) vp4 |
+| S35 | **18 achados verificados da revisão E115 abaixo do corte, não aplicados**: duplicações (`competenciaValida`, três `-3h` à mão na comissão, `haQuanto` ×3 com tetos divergentes, `isoParaDia`, `normalizar` ×2, envelope CSV ×4, parse `de`/`ate` ×9, janela da folha inline), código morto (`compararSenha`, `useIsMobile`, `prazoCasamento`), N+1 (bloqueios do PATCH de contrato, simulador de comissão) e o dashboard executando consultas de dinheiro que descarta. Mais dois vistos de passagem: `pagar.tsx` sem gate de ação e os POSTs antigos da agenda respondendo 404 (não 422) a id de corpo inválido. Lista completa com âncoras no adendo do E115. | 🟡 | [E115](execucao/E115.md) adendo |
 | S24 | **A allowlist do `lote2` não cobra que cada perdão ainda tenha assunto** — foi assim que o `DELETE /ajustes/{ajusteId}` seguiu perdoado por tempo indeterminado depois de já estar no spec (`openapi.yaml:1767`). A guarda **não** foi escrita no E104 parte 3 porque o conjunto ficou VAZIO e ela não teria sujeito. Se a lista voltar a crescer, a guarda entra junto com a primeira entrada nova: toda entrada tem de estar no servidor **e** ausente do spec. | 🔵 | [E104](execucao/E104.md) parte 3 |
 
 ### Roteadas a um épico que ainda não rodou
@@ -1345,3 +1351,74 @@ produto. Sai em `docs/revisao/2026-07-2X-rodada-7/`.
      vista vermelha é decoração.
 - Suíte: API 815 → **824** (116 → 118 arquivos) · frontend **314** · E2E **137**
   · typecheck verde.
+
+### Sessão 11 — 2026-07-30
+
+- **E115 — a segunda revisão do aplicativo inteiro** (notas em
+  `execucao/E115.md`). Revisão de máximo esforço: 59 agentes, 50 candidatos,
+  cada um verificado por um agente independente, **0 refutados** — 15 defeitos
+  distintos reportados (32 achados agrupados por causa-raiz) e 18 verificados
+  abaixo do corte, que viraram a **S35** em vez de sumirem no diário do
+  workflow (a lição do E111, desta vez aplicada no mesmo dia).
+  1. **A consolidação pagou antes do código.** Três dos 15 já tinham dono: o
+     'manter'/PARCIAL é a **S5** (parada como "decisão de produto" — e a
+     decisão já estava escrita no próprio código: *"valor fica no caixa"*), os
+     carimbos que o estorno esquece são a tese do **E112 planejado**, e o
+     `marcar`/`enviar` derivando `criar` é metade do achado 12 do **E114** — a
+     revisão achou junto a metade que o plano não via (`POST
+     /financeiro/pagamentos`, a única porta que a tela de Pagar usa). E um
+     achado foi consertado no sentido OPOSTO ao sugerido: o mismatch do
+     `gerar-plano` se fecha na TELA, porque "criar parcela É criar" é decisão
+     escrita no teste do E111.
+  2. **O comentário do schema defendia o carimbo vitalício e não via o custo.**
+     `enviadoContabilidadeEm` dizia "o estorno NÃO limpa: fato histórico" — e o
+     carimbo é OPERACIONAL (alimenta o `isNull` do próximo envio): parcela
+     declarada em junho, estornada e re-recebida em julho saía de TODO pacote
+     futuro, R$ 1.000,00 a menos na declaração sem aviso. O comentário caiu com
+     a medida; a metade do achado no lado dos pagamentos morreu com a razão
+     escrita (lá o delete + trilha + recriação já produzem o pacote certo).
+  3. **Dois erros meus, e os dois testes que os pegaram valem mais que o diff.**
+     O guard por caminho do `financeiro/pagamentos` não funcionava como escrito
+     — dentro de `router.use(prefixo, fn)` o Express DESMONTA o prefixo e
+     `req.path` chega sem ele; o vermelho `expected 403, got 404` ensinou a ler
+     `baseUrl + path` (a pegadinha do E111, na dimensão do caminho). E meu
+     primeiro conserto da foto do portal trocou a metade legada pela metade
+     N:N em vez de UNIR as duas como `montarVestidoDaNoiva` faz — o teste do
+     E100, que monta o vínculo pelo legado, ficou vermelho na suíte completa e
+     me corrigiu.
+  4. **A régua dos DELETEs alcançou os cinco que faltavam** (reserva, bloqueio,
+     atendimento, orçamento, avaria — a cascata da reserva leva a foto-prova de
+     avaria JÁ COBRADA, provas e vínculos de contratos ATIVOS), seis ações
+     novas na trilha, e os três ids de corpo sem prova de loja fecharam com a
+     régua única (`atendimentoNaLoja`/`bloqueioNaLoja` em `escopo-loja.ts`).
+  5. **O aceite virou invariante executável**: APROVADO congela item e
+     desconto, e o `POST /contratos` de orçamento com aceite compara o conteúdo
+     vivo com o `aceiteHash` pela MESMA função que congela o envio
+     (`conteudoEnviado`) — a noiva não assina mais R$ 5.500,00 tendo aceitado
+     R$ 5.000,00.
+  6. **A quarta grafia do fuso entrou na varredura** (getter de calendário sem
+     UTC, perdão vazio), vista vermelha nomeando três arquivos; seis lugares
+     liam o calendário do navegador, incluindo a lista de Noivas dizendo "É
+     hoje" na VÉSPERA do casamento toda noite entre 21h e 24h.
+  7. **O `migrate` nasceu de novo**: banco efêmero provisionado pelo caminho
+     `migrate` respondia "migrations applied successfully!" sem
+     `conciliado_em` (42703 no portal da noiva). Baseline regenerada (seguro:
+     nenhum banco tem `__drizzle_migrations`), drill efêmero verde no desenho
+     do E89, e uma sonda compara schema × snapshot para sempre.
+  8. **O `lote17` ganhou um segundo final legítimo**: com a pré-checagem de
+     intervalo no POST (que fechou a porta dos fundos da agenda — 201 onde o
+     arrastar levava 422), o perdedor da corrida pode parar no 422 legível
+     antes do 409 da UNIQUE. O assert passou a olhar `r.body` — a lição da S20,
+     escrita naquele mesmo teste.
+- Suíte: API 824 → **852** (118 → 125 arquivos) · frontend **314** (duas
+  varreduras mais fortes) · E2E **137** · typecheck verde. O E2E rodou porque a
+  regra 11 mordeu duas vezes (a trilha ganhou ações e o spec mudou) — e pegou
+  **quatro specs com a mesma classe de defeito que o épico tirou do app**: 22 e
+  49 criavam atendimento às "09:00" do relógio do CONTAINER (06:00 em SP,
+  `FORA_DO_HORARIO` na recusa nova), e 24 e 25 colidiam por intervalo com as
+  sobras acumuladas da cabine e da VENDEDORA compartilhadas (os flakes da
+  S7/S22, agora determinísticos — a segunda passada completa foi necessária
+  para ver a segunda camada). O conserto virou helper
+  (`criarAtendimentoLivre`): recurso próprio por execução, horário livre
+  procurado como a recepção procura, e o spec apaga o que cria com o DELETE
+  que o próprio épico criou.

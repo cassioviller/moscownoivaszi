@@ -128,6 +128,11 @@ export default function ContratoDetail() {
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  // E115 — gerar o plano é CRIAR parcelas, e o servidor cobra exatamente isso
+  // (decisão escrita no E111: "criar parcela É criar"). O gate era `editar`:
+  // a gerente sem `criar` via o formulário e levava 403 ao clicar, e quem tem
+  // `criar` sem `editar` não via um formulário que o servidor aceitaria.
+  const podeCriarParcela = podeNoModulo(acessosModulos, "leads", "criar");
 
   const parcelas = useMemo(
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),
@@ -535,7 +540,11 @@ export default function ContratoDetail() {
                             </Button>
                           </div>
                         )}
-                        {podeEditar && teveRecebimento(parcela) && (
+                        {/* E115: `teveRecebimento` agora vê a CANCELADA que
+                            guardou dinheiro ('manter') — mas estorná-la o
+                            servidor recusa (contrato não está ativo), então o
+                            botão só existe com o contrato de pé. */}
+                        {podeMexer && teveRecebimento(parcela) && (
                           <div className="flex gap-2">
                             <Button size="sm" variant="ghost" onClick={() => setConfirmacao({ tipo: "estornar", parcela })}>
                               Estornar
@@ -561,7 +570,7 @@ export default function ContratoDetail() {
                   </Alert>
                 )}
               </div>
-            ) : podeMexer ? (
+            ) : podeCriarParcela && contratoAtivo ? (
               <div className="space-y-3">
                 <p className="text-muted-foreground text-sm">
                   Nenhuma parcela registrada. Gere o plano de pagamento do contrato.

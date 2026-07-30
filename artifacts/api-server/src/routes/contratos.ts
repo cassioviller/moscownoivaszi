@@ -46,6 +46,7 @@ import {
 } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
+import { conteudoEnviado } from "../lib/conteudo-orcamento";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -191,6 +192,26 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     }
     const itens = await db.select().from(orcamentoItensTable)
       .where(eq(orcamentoItensTable.orcamentoId, contratoData.orcamentoId));
+
+    // E115 — quando há aceite, o contrato tem de nascer do que a noiva VIU.
+    // O E75 deixa editar os itens vivos depois do envio (a noiva vê a versão
+    // congelada); se ela aceitou e o vivo divergiu do enviado, criar o
+    // contrato pelos itens vivos faria a noiva assinar R$ 5.500 tendo aceite
+    // registrado de R$ 5.000. A conferência é pelo MESMO hash do aceite
+    // (`conteudoEnviado`, a régua única do congelamento).
+    if (orcamento.aceiteHash) {
+      const vivo = conteudoEnviado(itens, orcamento.descontoTipo, orcamento.descontoValor);
+      if (vivo.hash !== orcamento.aceiteHash) {
+        res.status(422).json({
+          error: "ORCAMENTO_DIVERGE_DO_ACEITE",
+          detalhe:
+            "Os itens mudaram depois do envio que a noiva aceitou — o contrato tem de nascer do que ela viu. " +
+            "Refaça os itens como estavam, ou crie e envie um novo orçamento para novo aceite.",
+        });
+        return;
+      }
+    }
+
     itensSnapshot = itens.map((it) => ({
       tipo: it.tipo,
       vestidoId: it.vestidoId,
@@ -612,6 +633,14 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
           valorRecebido: null,
           recebidoEm: null,
           formaRecebimento: null,
+          // E115 — o estorno em massa esquecia os dois carimbos que o avulso
+          // limpa. `conciliadoEm` é o invariante da própria coluna ("movimento
+          // que deixou de existir não pode continuar conferido"); e
+          // `enviadoContabilidadeEm` é OPERACIONAL — alimenta o isNull do
+          // próximo envio, então mantê-lo deixaria um recebimento re-lançado
+          // fora de todo pacote futuro da contadora.
+          conciliadoEm: null,
+          enviadoContabilidadeEm: null,
         })
         .where(and(
           eq(parcelasTable.contratoId, contrato.id),
@@ -874,6 +903,10 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
         // "conferido com o extrato". Sem esta linha o carimbo fica órfão e a
         // conciliação seguinte pula uma linha que voltou a ser divergência.
         conciliadoEm: null,
+        // E115: o carimbo da contadora sai junto. Ele não guarda história (a
+        // trilha guarda) — ele alimenta o `isNull` do próximo envio, e mantê-lo
+        // faria o recebimento re-lançado nunca entrar em pacote nenhum.
+        enviadoContabilidadeEm: null,
       })
       .where(and(
         eq(parcelasTable.id, existente.id),

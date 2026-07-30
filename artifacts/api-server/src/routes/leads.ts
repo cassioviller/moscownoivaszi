@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable } from "@workspace/db";
 import { eq, and, desc, or, ilike, sql, count, inArray } from "drizzle-orm";
+import { atributosDaLoja } from "../lib/escopo-loja";
 import {
   ListLeadsResponse,
   ListLeadsQueryParams,
@@ -602,30 +603,44 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
 
   const { atributos, ...insertData } = parsed.data;
 
-  const [interesse] = await db.insert(leadInteressesTable)
-    .values({
-      id: randomUUID(),
-      leadId,
-      ...insertData,
-    })
-    .onConflictDoUpdate({
-      target: leadInteressesTable.leadId,
-      set: { ...insertData, updatedAt: new Date() },
-    })
-    .returning();
-
-  if (atributos !== undefined) {
-    await db.delete(leadInteresseAtributosTable).where(eq(leadInteresseAtributosTable.leadInteresseId, interesse.id));
-    if (atributos.length > 0) {
-      await db.insert(leadInteresseAtributosTable).values(
-        atributos.map(a => ({
-          leadInteresseId: interesse.id,
-          atributoId: a.atributoId,
-          opcaoId: a.opcaoId,
-        }))
-      );
-    }
+  // E115 — os pares (atributo, opção) vinham do corpo sem prova de loja: o
+  // interesse da noiva podia apontar para o vocabulário de OUTRA loja (a mesma
+  // classe que o E111 fechou no PATCH /vestidos, com a mesma régua).
+  if (atributos !== undefined && !(await atributosDaLoja(atributos, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "atributo/opção não são desta loja" });
+    return;
   }
+
+  // E115 — upsert, delete e insert corriam em três statements FORA de
+  // transação: uma falha no meio deixava o interesse gravado sem atributo
+  // nenhum. Mesmo padrão que o E111 fechou em vestidos.
+  const interesse = await db.transaction(async (tx) => {
+    const [interesse] = await tx.insert(leadInteressesTable)
+      .values({
+        id: randomUUID(),
+        leadId,
+        ...insertData,
+      })
+      .onConflictDoUpdate({
+        target: leadInteressesTable.leadId,
+        set: { ...insertData, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (atributos !== undefined) {
+      await tx.delete(leadInteresseAtributosTable).where(eq(leadInteresseAtributosTable.leadInteresseId, interesse.id));
+      if (atributos.length > 0) {
+        await tx.insert(leadInteresseAtributosTable).values(
+          atributos.map(a => ({
+            leadInteresseId: interesse.id,
+            atributoId: a.atributoId,
+            opcaoId: a.opcaoId,
+          }))
+        );
+      }
+    }
+    return interesse;
+  });
 
   const fullInteresse = await db.query.leadInteressesTable.findFirst({
     where: eq(leadInteressesTable.id, interesse.id),

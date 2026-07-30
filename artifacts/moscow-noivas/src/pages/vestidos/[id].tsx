@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NaoEncontrado } from "@/components/estado";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
-import { hojeLocal, inicioDoDia } from "@/lib/financeiro/datas";
+import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -91,12 +91,17 @@ function textoPeriodo(b: BloqueioVestido): string {
   return `${format(inicio, "dd/MM")} – ${format(fim, "dd/MM")}`;
 }
 
-/** Bloqueio ainda relevante: janela aberta ou com fim de hoje em diante. */
-function bloqueioFuturoOuAberto(b: BloqueioVestido, hoje: Date): boolean {
+/**
+ * Bloqueio ainda relevante: janela aberta ou com fim de hoje em diante.
+ *
+ * E115: o fim era rebatido para a meia-noite do NAVEGADOR e comparado com um
+ * `hoje` de outra régua — a ocupação que termina hoje sumia (ou sobrava) para
+ * quem abre fora do fuso da loja. Dias comparam como STRINGS da loja.
+ */
+function bloqueioFuturoOuAberto(b: BloqueioVestido, hojeYMD: string): boolean {
   const { fim } = periodoDoBloqueio(b);
   if (!fim) return true;
-  const fimDia = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate());
-  return fimDia.getTime() >= hoje.getTime();
+  return diaLocal(fim) >= hojeYMD;
 }
 
 export default function VestidoDetail() {
@@ -197,11 +202,13 @@ export default function VestidoDetail() {
   });
 
   const proximosBloqueios = useMemo(() => {
-    // O dia da LOJA (E111) — o corte "futuro ou aberto" da reserva não pode
-    // depender do fuso do aparelho que abre a ficha do vestido.
-    const inicioHoje = inicioDoDia(hojeLocal());
+    // O dia da LOJA (E111/E115) — o corte "futuro ou aberto" da reserva não
+    // pode depender do fuso do aparelho que abre a ficha do vestido. E115: a
+    // comparação passou a ser entre DIAS da loja ("YYYY-MM-DD"), porque a
+    // versão por instante rebatia o fim na meia-noite do navegador.
+    const hojeYMD = hojeLocal();
     return (bloqueiosQuery.data ?? [])
-      .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, inicioHoje))
+      .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, hojeYMD))
       .sort((a, b) => {
         const inicioA = periodoDoBloqueio(a).inicio?.getTime() ?? Number.MAX_SAFE_INTEGER;
         const inicioB = periodoDoBloqueio(b).inicio?.getTime() ?? Number.MAX_SAFE_INTEGER;

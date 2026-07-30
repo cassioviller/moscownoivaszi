@@ -7,6 +7,8 @@ import {
   vestidosTable,
   atributosTable,
   atributoOpcoesTable,
+  atendimentosTable,
+  bloqueioVestidosTable,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -86,4 +88,23 @@ export async function reservaNaLoja(reservaId: string, lojaId: string): Promise<
   const [r] = await db.select({ id: reservasTable.id }).from(reservasTable)
     .where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId))).limit(1);
   return !!r;
+}
+
+/**
+ * E115 — o ajuste de costura referencia um atendimento pelo corpo, e era a
+ * única FK de corpo do módulo sem prova: um `atendimentoId` da loja B entrava
+ * na fila de costura de A, e o GET enriquecido (ajuste → atendimento → lead)
+ * trazia a ficha da noiva da outra loja para dentro desta.
+ */
+export async function atendimentoNaLoja(atendimentoId: string, lojaId: string): Promise<boolean> {
+  const [a] = await db.select({ id: atendimentosTable.id }).from(atendimentosTable)
+    .where(and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId))).limit(1);
+  return !!a;
+}
+
+/** E115 — irmã da de cima: o `bloqueioId` opcional do POST /atendimentos. */
+export async function bloqueioNaLoja(bloqueioId: string, lojaId: string): Promise<boolean> {
+  const [b] = await db.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)
+    .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId))).limit(1);
+  return !!b;
 }

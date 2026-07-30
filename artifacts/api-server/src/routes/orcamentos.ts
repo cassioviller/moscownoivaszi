@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, orcamentosTable, orcamentoItensTable, leadsTable } from "@workspace/db";
+import { db, orcamentosTable, orcamentoItensTable, leadsTable, contratosTable } from "@workspace/db";
+import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and } from "drizzle-orm";
 import {
   ListOrcamentosResponse,
@@ -19,19 +20,13 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { leadNaLoja } from "../lib/escopo-loja";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
+import { conteudoEnviado } from "../lib/conteudo-orcamento";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
-import {
-  addDias,
-  ancoraDeNegocio,
-  brutoEmCentavos,
-  hojeLocal,
-  liquidoEmCentavos,
-  reais,
-} from "@workspace/financeiro-core";
+import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -79,29 +74,13 @@ async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: stri
   });
   if (!orcamento) return;
 
-  const itens = orcamento.itens
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    .map((it) => ({
-      tipo: it.tipo,
-      descricao: it.descricao,
-      valorUnitario: it.valorUnitario,
-      quantidade: it.quantidade,
-    }));
-  // E95/C1: a MESMA régua que o `POST /contratos` usa para validar. O que se
-  // congela aqui é o número que a noiva aceita e que o contrato terá de bater.
-  const totalBruto = reais(brutoEmCentavos(itens));
-  const totalLiquido = reais(
-    liquidoEmCentavos(brutoEmCentavos(itens), orcamento.descontoTipo, orcamento.descontoValor),
+  // E95/C1 + E115: a MESMA régua que o `POST /contratos` usa — congelamento e
+  // conferência do aceite saem de `conteudoEnviado`, um lugar só.
+  const { itens, totalBruto, totalLiquido, hash } = conteudoEnviado(
+    orcamento.itens,
+    orcamento.descontoTipo,
+    orcamento.descontoValor,
   );
-
-  const conteudo = {
-    itens,
-    descontoTipo: orcamento.descontoTipo,
-    descontoValor: orcamento.descontoValor,
-    totalBruto,
-    totalLiquido,
-  };
-  const hash = createHash("sha256").update(JSON.stringify(conteudo)).digest("hex");
 
   const [{ maior }] = await tx
     .select({ maior: sql<number>`coalesce(max(${orcamentoVersoesTable.numero}), 0)`.mapWith(Number) })
@@ -239,6 +218,19 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     return;
   }
 
+  // E115 — o desconto muda o líquido tanto quanto um item: em APROVADO ele
+  // também congela, senão a guarda dos itens tem uma porta dos fundos.
+  if (
+    existente.status === "APROVADO" &&
+    (parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined)
+  ) {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
+
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
   const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
   // B11/E95: a marca de ENVIADO e a versão congelada nascem juntas ou não
@@ -269,9 +261,50 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   res.json(UpdateOrcamentoResponse.parse(fullOrcamento));
 });
 
+/**
+ * E115 — o DELETE era cru, e `orcamento_versoes` (que carrega a versão
+ * CONGELADA e o hash que a noiva aceitou — E74/E75) cai em cascata: apagar um
+ * APROVADO destruía o comprovante do aceite; apagar um com contrato deixava o
+ * contrato sem proveniência (`contratos.orcamento_id` é SET NULL).
+ */
 router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise<void> => {
-  const { lojaId, orcamentoId } = req.params;
-  await db.delete(orcamentosTable).where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)));
+  const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+  });
+  if (!orcamento) {
+    res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  if (orcamento.status === "APROVADO") {
+    res.status(409).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "O aceite da noiva (versão e hash) mora neste orçamento — ele não se apaga.",
+    });
+    return;
+  }
+  const [contrato] = await db
+    .select({ id: contratosTable.id })
+    .from(contratosTable)
+    .where(eq(contratosTable.orcamentoId, orcamentoId));
+  if (contrato) {
+    res.status(409).json({
+      error: "ORCAMENTO_COM_CONTRATO",
+      detalhe: "Este orçamento virou contrato — apagá-lo deixaria o contrato sem origem.",
+    });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "ORCAMENTO_REMOVIDO",
+      entidade: "orcamento",
+      entidadeId: orcamentoId,
+      detalhe: { leadId: orcamento.leadId, status: orcamento.status },
+    });
+    await tx.delete(orcamentosTable).where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
@@ -287,6 +320,17 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
   const orcamento = await db.query.orcamentosTable.findFirst({ where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)) });
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  // E115 — um orçamento APROVADO é um acordo fechado: o aceite (ou a
+  // aprovação manual) congelou o conteúdo, e mexer nos itens depois deixaria
+  // aceite, portal e contrato falando de números diferentes. ENVIADO continua
+  // editável de propósito (E75): a noiva vê a versão congelada, não o vivo.
+  if (orcamento.status === "APROVADO") {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
     return;
   }
 
@@ -309,6 +353,24 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     return;
   }
 
+  // E115 — mesma guarda do POST de item: acordo fechado não muda.
+  const [pai] = await db
+    .select({ status: orcamentosTable.status })
+    .from(orcamentoItensTable)
+    .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
+    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+  if (!pai) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  if (pai.status === "APROVADO") {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
+
   const [item] = await db.update(orcamentoItensTable)
     .set(parsed.data)
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
@@ -324,6 +386,23 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
 router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const itemId = req.params.itemId as string;
+  // E115 — mesma guarda do POST/PATCH de item, e o 404 que o delete cru não tinha.
+  const [pai] = await db
+    .select({ status: orcamentosTable.status })
+    .from(orcamentoItensTable)
+    .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
+    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+  if (!pai) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  if (pai.status === "APROVADO") {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
   await db.delete(orcamentoItensTable).where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   res.status(204).send();
 });

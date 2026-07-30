@@ -8,6 +8,7 @@
 import type { ReceberParcelaInputFormaRecebimento } from './receberParcelaInputFormaRecebimento';
 
 export interface ReceberParcelaInput {
+  /** @minimum 0.01 */
   valorRecebido: number;
   recebidoEm: Date;
   formaRecebimento?: ReceberParcelaInputFormaRecebimento;

@@ -100,7 +100,19 @@ export function acaoDoMetodo(metodo: string): Acao {
  * registrar o Pix de R$ 700 pago no balcão, e a mensagem culpava "criar".
  */
 export const POST_QUE_MUTA =
-  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar)$/;
+  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar|marcar|enviar)$/;
+
+/**
+ * POSTs que mutam mas cujo caminho termina em SUBSTANTIVO, não em verbo — a
+ * exceção, um caminho por linha, com o porquê:
+ *
+ * - `/financeiro/pagamentos` é a MESMA operação da porta irmã
+ *   `/contas-pagar/:id/pagar` (quitarContas, e a irmã declara `editar` desde o
+ *   E101): a saída multi-conta muta as contas que quita. Sem esta entrada, o
+ *   perfil só-`criar` pagava as contas do mês e a gerente só-`editar` levava
+ *   403 — na única porta que a tela de Pagar usa (E115).
+ */
+export const POST_QUE_MUTA_POR_CAMINHO = /\/financeiro\/pagamentos$/;
 
 /**
  * Ação exigida a partir do método E do caminho. Cancelar/estornar/receber e os
@@ -108,8 +120,21 @@ export const POST_QUE_MUTA =
  * existe — são `editar`, não `criar`. Sem isto, um perfil com `criar` e sem
  * `editar` (estado válido) cancelava contrato e estornava recebimento: o guard
  * derivava `criar` do método e a rota mentia sobre o que faz.
+ *
+ * E115: `marcar` e `enviar` entraram na lista — `conciliacao/marcar` e
+ * `contabilidade/enviar` carimbam linhas EXISTENTES (a segunda é "a escrita
+ * mais irreversível do financeiro" nas palavras do próprio código), e derivavam
+ * `criar`: a estagiária com `{ver, criar}` fechava o mês à contadora, e a
+ * gerente com `{ver, editar}` levava 403 numa ação dela. A varredura do E101
+ * não via nenhuma das duas, porque só inspecionava POSTs na forma
+ * `/:id/<verbo>` — estas duas são `<literal>/<verbo>`.
  */
 export function acaoDoRequest(metodo: string, caminho: string): Acao {
-  if (metodo.toUpperCase() === "POST" && POST_QUE_MUTA.test(caminho)) return "editar";
+  if (
+    metodo.toUpperCase() === "POST" &&
+    (POST_QUE_MUTA.test(caminho) || POST_QUE_MUTA_POR_CAMINHO.test(caminho))
+  ) {
+    return "editar";
+  }
   return acaoDoMetodo(metodo);
 }

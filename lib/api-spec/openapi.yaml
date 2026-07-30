@@ -5761,7 +5761,11 @@ components:
         # O que entrou AGORA, não o total (E49): receber duas vezes acumula, e o
         # acumulado é que decide entre PARCIAL e PAGA. Valor acima do que falta
         # é recusado (422) em vez de aceito — inflaria o caixa realizado.
-        valorRecebido: { type: number }
+        # O piso é um centavo (E115): −700 passava pelo único guard do servidor
+        # (o teto) e gravava −R$ 700,00 no caixa realizado; 0 virava PARCIAL
+        # "recebida" sem dinheiro. O piso morava só na tela, que é exatamente a
+        # régua que o E91 disse que não pode morar só no cliente.
+        valorRecebido: { type: number, minimum: 0.01 }
         recebidoEm: { type: string, format: date-time }
         formaRecebimento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
     ContaPagar:
@@ -5814,7 +5818,9 @@ components:
       required: [data, valorPago]
       properties:
         data: { type: string, format: date-time }
-        valorPago: { type: number }
+        # Piso de um centavo (E115), como a porta irmã PagamentoInput já tinha:
+        # uma saída negativa entraria no caixa como dinheiro voltando.
+        valorPago: { type: number, minimum: 0.01 }
         forma: { type: string }
         observacoes: { type: string }
     # Uma saída de caixa quita N contas (pagamento_itens já modela o rateio).

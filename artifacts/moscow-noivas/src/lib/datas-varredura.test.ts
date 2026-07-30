@@ -80,20 +80,38 @@ function semFusoExplicito(codigoComComentarios: string): string[] {
     if (!m[1]!.includes("timeZone")) achados.push(m[0].replace(/\s+/g, " ").slice(0, 90));
   }
 
+  // E115 — a QUARTA grafia: getters de calendário do NAVEGADOR. Um "hoje" (ou
+  // um dia de instante) montado por getFullYear/getMonth/getDate sem UTC é a
+  // meia-noite do aparelho — foi assim que a contagem até o casamento errava
+  // toda noite entre 21h e 24h, a grade da semana punha a prova de sexta na
+  // coluna de sábado e a ficha do vestido cortava a ocupação no dia errado. A
+  // revisão de 59 agentes achou seis; esta linha acha todos. Getter UTC
+  // (`getUTCDate` etc.) não casa aqui: data de negócio em UTC é a convenção.
+  const getterLocal = /\.get(?:FullYear|Month|Date)\(\)/g;
+  while ((m = getterLocal.exec(fonte)) !== null) {
+    const ini = Math.max(0, m.index - 40);
+    achados.push(fonte.slice(ini, m.index + m[0].length).replace(/\s+/g, " ").slice(-70));
+  }
+
   return achados;
 }
 
 describe("D15 — nenhuma data sai no relógio de quem abre", () => {
-  it("a régua pega as DUAS grafias do mesmo defeito", () => {
+  it("a régua pega as QUATRO grafias do mesmo defeito", () => {
     expect(semFusoExplicito(`new Intl.DateTimeFormat("pt-BR", { hour: "2-digit" })`)).toHaveLength(1);
     expect(semFusoExplicito(`new Date(x).toLocaleDateString("pt-BR")`)).toHaveLength(1);
-    // Com o fuso dito, passa nas duas.
+    // E115: o getter local — a grafia com que seis lugares liam o calendário
+    // do navegador e que as três regras acima não viam.
+    expect(semFusoExplicito(`const dia = hoje.` + `getDate();`)).toHaveLength(1);
+    expect(semFusoExplicito(`Date.UTC(alvo.` + `getFullYear(), alvo.` + `getMonth())`)).toHaveLength(2);
+    // Com o fuso dito (ou o getter UTC), passa em todas.
     expect(
       semFusoExplicito(`new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", hour: "2-digit" })`),
     ).toHaveLength(0);
     expect(
       semFusoExplicito(`new Date(x).toLocaleDateString("pt-BR", { timeZone: "UTC" })`),
     ).toHaveLength(0);
+    expect(semFusoExplicito(`casamento.getUTCDate()`)).toHaveLength(0);
   });
 
   it("nenhum arquivo do app formata data sem dizer o fuso", () => {
