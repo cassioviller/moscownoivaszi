@@ -76,6 +76,7 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAno, diaParaISO } from "@/lib/formatos";
+import { fraseEstornoPagamento, fraseRemocaoConta } from "@/lib/financeiro/confirmacoes";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
 import { hojeLocal, resolverIntervalo, negocioNoIntervalo, addMeses } from "@/lib/financeiro/datas";
 import { Vazio } from "@/components/estado";
@@ -144,7 +145,14 @@ export default function Pagar() {
 
   // Confirmações
   const [contaRemover, setContaRemover] = useState<ContaPagar | null>(null);
-  const [pagamentoEstornar, setPagamentoEstornar] = useState<{ pagamentoId: string; contas: number } | null>(null);
+  // E128/C7: o diálogo do estorno só sabia {id, contas} — confirmava uma saída
+  // de caixa sem dizer valor nem de quê. A linha clicada sempre teve os dois.
+  const [pagamentoEstornar, setPagamentoEstornar] = useState<{
+    pagamentoId: string;
+    contas: number;
+    descricao: string;
+    valorDaLinha: number;
+  } | null>(null);
 
   // D2: o recorte acontece no SERVIDOR; o filtro client-side abaixo permanece
   // como cinto de segurança da mesma regra.
@@ -615,6 +623,10 @@ export default function Pagar() {
                             setPagamentoEstornar({
                               pagamentoId: pagamento.id,
                               contas: pagamento.contas,
+                              descricao: c.descricao,
+                              // A fatia rateada DESTA conta — numa saída
+                              // conjunta o total não desce por linha.
+                              valorDaLinha: pagamento.valor ?? c.valorPrevisto,
                             })
                           }
                         >
@@ -808,8 +820,9 @@ export default function Pagar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover esta conta?</AlertDialogTitle>
             <AlertDialogDescription>
-              {contaRemover?.descricao} sai da carteira de contas a pagar. Só contas em aberto podem
-              ser removidas.
+              {/* E128/C7: "Remover esta conta?" calava o valor — a régua E10
+                  manda a confirmação citar o dinheiro quando houver. */}
+              {contaRemover && fraseRemocaoConta(contaRemover)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -829,9 +842,7 @@ export default function Pagar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Estornar este pagamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pagamentoEstornar && pagamentoEstornar.contas > 1
-                ? `A saída de caixa some e as ${pagamentoEstornar.contas} contas que ela quitou voltam para em aberto.`
-                : "A saída de caixa some e a conta volta para em aberto."}
+              {pagamentoEstornar && fraseEstornoPagamento(pagamentoEstornar)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

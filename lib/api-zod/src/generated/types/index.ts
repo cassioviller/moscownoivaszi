@@ -272,6 +272,8 @@ export * from './portalNoivaVestidoFotosItem';
 export * from './portalParcela';
 export * from './portalParcelaStatus';
 export * from './portalStatus';
+export * from './previaExpurgoLeadsPerdidos200';
+export * from './previaExpurgoLeadsPerdidosParams';
 export * from './previewComissaoParams';
 export * from './projecaoComissao';
 export * from './proximaJanelaVestido';

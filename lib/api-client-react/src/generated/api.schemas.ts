@@ -2592,6 +2592,17 @@ export type ExpurgarLeadsPerdidos200 = {
   anonimizadas: number;
 };
 
+export type PreviaExpurgoLeadsPerdidosParams = {
+/**
+ * @minimum 6
+ */
+mesesInatividade?: number;
+};
+
+export type PreviaExpurgoLeadsPerdidos200 = {
+  aAnonimizar: number;
+};
+
 export type GetDesempenhoVendedoras200Item = {
   vendedoraId: string;
   nome: string;

@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useExpurgarLeadsPerdidos,
+  usePreviaExpurgoLeadsPerdidos,
+  getPreviaExpurgoLeadsPerdidosQueryKey,
   getListLeadsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -33,6 +35,19 @@ export function PrivacidadeLgpd() {
   const queryClient = useQueryClient();
   const [confirmando, setConfirmando] = useState(false);
   const expurgar = useExpurgarLeadsPerdidos();
+  // E128/C7: a contagem só chegava no toast, DEPOIS do clique irreversível —
+  // a dona confirmava às cegas se eram 3 ou 300. A prévia (read-only, o MESMO
+  // recorte do expurgo no servidor) responde ANTES; só é pedida com o diálogo
+  // aberto, e o refetch a cada abertura evita confirmar uma contagem velha.
+  const previa = usePreviaExpurgoLeadsPerdidos(activeLojaId!, undefined, {
+    query: {
+      queryKey: getPreviaExpurgoLeadsPerdidosQueryKey(activeLojaId!, undefined),
+      enabled: !!activeLojaId && confirmando,
+      refetchOnMount: "always",
+      staleTime: 0,
+    },
+  });
+  const contagem = previa.data?.aAnonimizar;
 
   const rodar = async () => {
     try {
@@ -82,15 +97,24 @@ export function PrivacidadeLgpd() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Anonimizar noivas perdidas?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Nome, contato e local do casamento das noivas perdidas há mais de 24 meses
-                serão removidos DE FORMA IRREVERSÍVEL. O funil e os relatórios continuam
-                contando essas linhas.
+              <AlertDialogDescription data-testid="texto-previa-lgpd">
+                {/* E121: enquanto a prévia conta, o diálogo não afirma número
+                    nenhum; se ela falhar, a frase antiga (sem contagem) fica —
+                    a prévia enriquece, não bloqueia. */}
+                {previa.isLoading
+                  ? "Contando quantas noivas entram no corte…"
+                  : contagem === 0
+                    ? "Nenhuma noiva perdida há mais de 24 meses — nada a anonimizar hoje."
+                    : contagem !== undefined
+                      ? `Isto vai anonimizar ${contagem} noiva${contagem === 1 ? "" : "s"}: nome, contato e local do casamento saem DE FORMA IRREVERSÍVEL. O funil e os relatórios continuam contando essas linhas.`
+                      : "Nome, contato e local do casamento das noivas perdidas há mais de 24 meses serão removidos DE FORMA IRREVERSÍVEL. O funil e os relatórios continuam contando essas linhas."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={rodar}>Anonimizar</AlertDialogAction>
+              <AlertDialogAction onClick={rodar} disabled={previa.isLoading || contagem === 0}>
+                Anonimizar
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

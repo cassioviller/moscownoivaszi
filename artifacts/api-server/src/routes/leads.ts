@@ -20,6 +20,8 @@ import {
   GetDesempenhoVendedorasResponse,
   ExpurgarLeadsPerdidosBody,
   ExpurgarLeadsPerdidosResponse,
+  PreviaExpurgoLeadsPerdidosQueryParams,
+  PreviaExpurgoLeadsPerdidosResponse,
   GetLeadsParadosResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
@@ -277,6 +279,40 @@ router.get("/lojas/:lojaId/leads/parados", async (req, res): Promise<void> => {
 });
 
 // E77: dado pessoal sem propósito é passivo. Anonimiza os leads PERDIDOS com
+/**
+ * E128: o MESMO recorte para a prévia e para o expurgo — duas escritas da
+ * condição divergiriam em silêncio e a contagem do diálogo mentiria sobre a
+ * ação, que é exatamente o defeito que a prévia existe para fechar.
+ */
+function condicaoDoExpurgo(lojaId: string, corte: Date) {
+  return and(
+    eq(leadsTable.lojaId, lojaId),
+    eq(leadsTable.etapa, "PERDIDO"),
+    sql`${leadsTable.perdidaEm} < ${corte}`,
+    sql`${leadsTable.anonimizadaEm} is null`,
+  );
+}
+
+// E128: a confirmação da LGPD dizia o QUE se perde mas não QUANTAS — a
+// contagem só chegava no toast, DEPOIS do clique irreversível. Read-only de
+// verdade: um SELECT count, nenhuma escrita. Antes do :leadId para o path não
+// virar id.
+router.get("/lojas/:lojaId/leads/expurgo/previa", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = PreviaExpurgoLeadsPerdidosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json(erroDeValidacao(query.error));
+    return;
+  }
+  const meses = query.data.mesesInatividade ?? 24;
+  const corte = inicioDoDia(addMeses(hojeLocal(), -meses));
+  const [linha] = await db
+    .select({ total: count() })
+    .from(leadsTable)
+    .where(condicaoDoExpurgo(lojaId, corte));
+  res.json(PreviaExpurgoLeadsPerdidosResponse.parse({ aAnonimizar: linha?.total ?? 0 }));
+});
+
 // perda mais antiga que a janela: a linha fica (funil e conversão continuam
 // contando), a PII sai. Irreversível por desenho; deixa rastro. Antes do
 // :leadId para o path não virar id.
@@ -311,12 +347,7 @@ router.post("/lojas/:lojaId/leads/expurgo", requireModulo("leads", "editar"), as
         anonimizadaEm: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(leadsTable.lojaId, lojaId),
-        eq(leadsTable.etapa, "PERDIDO"),
-        sql`${leadsTable.perdidaEm} < ${corte}`,
-        sql`${leadsTable.anonimizadaEm} is null`,
-      ))
+      .where(condicaoDoExpurgo(lojaId, corte))
       .returning({ id: leadsTable.id });
 
     if (linhas.length > 0) {

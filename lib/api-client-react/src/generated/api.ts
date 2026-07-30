@@ -172,6 +172,8 @@ import type {
   PerfilUpdate,
   PortalNoiva,
   PortalStatus,
+  PreviaExpurgoLeadsPerdidos200,
+  PreviaExpurgoLeadsPerdidosParams,
   PreviewComissaoParams,
   ProximaJanelaVestido,
   ReaberturaComissao,
@@ -5100,6 +5102,96 @@ export const useExpurgarLeadsPerdidos = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getExpurgarLeadsPerdidosMutationOptions(options));
     }
+
+export const getPreviaExpurgoLeadsPerdidosUrl = (lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/leads/expurgo/previa?${stringifiedParams}` : `/api/lojas/${lojaId}/leads/expurgo/previa`
+}
+
+/**
+ * E128: a confirmação da LGPD dizia O QUE se perde mas não QUANTAS — a contagem só chegava no toast, DEPOIS do clique irreversível; a dona confirmava às cegas se eram 3 ou 300. Esta prévia responde a contagem para o diálogo exibir ANTES, com o MESMO recorte do expurgo (PERDIDO, perda mais antiga que a janela, ainda não anonimizada). Não escreve nada.
+ * @summary Quantas noivas o expurgo anonimizaria HOJE (prévia read-only)
+ */
+export const previaExpurgoLeadsPerdidos = async (lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams, options?: RequestInit): Promise<PreviaExpurgoLeadsPerdidos200> => {
+
+  return customFetch<PreviaExpurgoLeadsPerdidos200>(getPreviaExpurgoLeadsPerdidosUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviaExpurgoLeadsPerdidosQueryKey = (lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/expurgo/previa`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getPreviaExpurgoLeadsPerdidosQueryOptions = <TData = Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviaExpurgoLeadsPerdidosQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>> = ({ signal }) => previaExpurgoLeadsPerdidos(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviaExpurgoLeadsPerdidosQueryResult = NonNullable<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>>
+export type PreviaExpurgoLeadsPerdidosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Quantas noivas o expurgo anonimizaria HOJE (prévia read-only)
+ */
+
+export function usePreviaExpurgoLeadsPerdidos<TData = Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviaExpurgoLeadsPerdidosQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDesempenhoVendedorasUrl = (lojaId: string,) => {
 

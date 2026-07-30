@@ -25,6 +25,7 @@ export {
   ListContratosParams,
   CreateParcelaAvulsaBody,
   ExpurgarLeadsPerdidosBody,
+  PreviaExpurgoLeadsPerdidosParams,
   GetFluxoCaixaParams,
   GetDreParams,
   ListAtendimentosParams,

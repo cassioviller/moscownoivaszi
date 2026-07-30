@@ -1385,6 +1385,36 @@ paths:
                 properties:
                   anonimizadas: { type: integer }
 
+  /lojas/{lojaId}/leads/expurgo/previa:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: previaExpurgoLeadsPerdidos
+      tags: [leads]
+      summary: Quantas noivas o expurgo anonimizaria HOJE (prévia read-only)
+      description: >
+        E128: a confirmação da LGPD dizia O QUE se perde mas não QUANTAS — a
+        contagem só chegava no toast, DEPOIS do clique irreversível; a dona
+        confirmava às cegas se eram 3 ou 300. Esta prévia responde a contagem
+        para o diálogo exibir ANTES, com o MESMO recorte do expurgo (PERDIDO,
+        perda mais antiga que a janela, ainda não anonimizada). Não escreve
+        nada.
+      parameters:
+        - name: mesesInatividade
+          in: query
+          required: false
+          schema: { type: integer, minimum: 6, default: 24 }
+      responses:
+        "200":
+          description: Quantas noivas entram no corte hoje
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [aAnonimizar]
+                properties:
+                  aAnonimizar: { type: integer }
+
   /lojas/{lojaId}/leads/desempenho-vendedoras:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

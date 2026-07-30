@@ -98,7 +98,7 @@ para cada uma.
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | `21695c4` |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ✅ | `413c99b` |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ✅ | `8ac81c6` |
-| E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ⬜ | |
+| E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ⬜ | |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ⬜ | |
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ⬜ | |
@@ -475,3 +475,19 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   `semana.tsx:176` na mesma classe, fora da lista da trilha; a variante `link`
   do Button com 0 usos). Suítes: API 871 · front 357 → 369 · E2E completo
   147/147 · typecheck verde. Nenhuma sobra nova.
+- **E128 entregue** (`execucao/E128.md`). A confirmação de dinheiro diz o
+  número certo, com a foto do antes: o diálogo de estorno aberto numa parcela
+  PARCIAL viva do dev dizia **R$ 1.000,00** onde o caixa perde **R$ 400,00**
+  (`capturas/e128/`). As frases viraram decisão pura
+  (`lib/financeiro/confirmacoes.ts`, 6 testes com os casos literais): estorno
+  cita o RECEBIDO, remoção de parcela o previsto (que ali é o certo), remoção
+  de conta ganha o valor, estorno de pagamento nomeia descrição + fatia da
+  linha (numa saída conjunta o total não desce por linha — a frase diz o lote
+  e a fatia). A LGPD parou de confirmar às cegas: nasceu
+  `GET /leads/expurgo/previa` (read-only, a MESMA `condicaoDoExpurgo` do
+  UPDATE — uma escrita só) e o diálogo conta ANTES, na régua do E121
+  (carregando não afirma; 0 desabilita; falha cai na frase sem contagem). O
+  teste de API prova prévia = expurgo na mesma fixtura (2 = 2 → 0) e que o GET
+  não escreve. De carona, o único asterisco-de-obrigatório do app saiu. Suítes:
+  API 871 → 873 · front 369 → 375 · E2E completo 147/147 · typecheck verde.
+  Nenhuma sobra nova.

@@ -1474,6 +1474,28 @@ export const ExpurgarLeadsPerdidosResponse = zod.object({
 
 
 /**
+ * E128: a confirmação da LGPD dizia O QUE se perde mas não QUANTAS — a contagem só chegava no toast, DEPOIS do clique irreversível; a dona confirmava às cegas se eram 3 ou 300. Esta prévia responde a contagem para o diálogo exibir ANTES, com o MESMO recorte do expurgo (PERDIDO, perda mais antiga que a janela, ainda não anonimizada). Não escreve nada.
+ * @summary Quantas noivas o expurgo anonimizaria HOJE (prévia read-only)
+ */
+export const PreviaExpurgoLeadsPerdidosParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const previaExpurgoLeadsPerdidosQueryMesesInatividadeDefault = 24;
+export const previaExpurgoLeadsPerdidosQueryMesesInatividadeMin = 6;
+
+
+
+export const PreviaExpurgoLeadsPerdidosQueryParams = zod.object({
+  "mesesInatividade": zod.coerce.number().min(previaExpurgoLeadsPerdidosQueryMesesInatividadeMin).default(previaExpurgoLeadsPerdidosQueryMesesInatividadeDefault)
+})
+
+export const PreviaExpurgoLeadsPerdidosResponse = zod.object({
+  "aAnonimizar": zod.number()
+})
+
+
+/**
  * E73: a comissão media o resultado, mas não o CAMINHO — quantos atendimentos cada vendedora conclui, quantos terminam em "reservou" (E37) e quantos viram contrato, com o ticket médio. Os desfechos e os contratos sempre estiveram gravados; faltava cruzar.
  * @summary Atendimento → contrato por vendedora, com ticket médio
  */

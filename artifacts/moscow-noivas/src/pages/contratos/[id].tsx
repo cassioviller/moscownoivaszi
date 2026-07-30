@@ -51,6 +51,7 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
+import { fraseEstornoParcela, fraseRemocaoParcela } from "@/lib/financeiro/confirmacoes";
 import {
   ROTULO_FORMA,
   rotuloForma,
@@ -705,7 +706,7 @@ export default function ContratoDetail() {
               </div>
             </RadioGroup>
             <Textarea
-              placeholder="Motivo do cancelamento *"
+              placeholder="Motivo do cancelamento"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             />
@@ -780,9 +781,14 @@ export default function ContratoDetail() {
               {confirmacao?.tipo === "estornar" ? "Estornar recebimento?" : "Remover parcela?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmacao?.tipo === "estornar"
-                ? `O recebimento de ${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será desfeito e a parcela volta a ficar em aberto.`
-                : `${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será removida do plano. Esta ação não pode ser desfeita.`}
+              {/* E128/C5: o estorno citava o PREVISTO onde o caixa perde o
+                  RECEBIDO — parcela de R$ 1.000,00 com R$ 300,00 recebidos, o
+                  diálogo dizia desfazer R$ 1.000,00. A frase (e o número que
+                  ela cita) é decisão pura em lib/financeiro/confirmacoes. */}
+              {confirmacao &&
+                (confirmacao.tipo === "estornar"
+                  ? fraseEstornoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela)
+                  : fraseRemocaoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
