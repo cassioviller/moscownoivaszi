@@ -15,9 +15,5 @@ export interface GerarPlanoInput {
      */
   numParcelas: number;
   primeiroVencimento: Date;
-  /**
-     * @minimum 1
-     * @maximum 3650
-     */
-  periodicidadeDias?: number;
+  vencimentoEntrada?: Date;
 }

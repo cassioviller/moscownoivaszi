@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -60,12 +61,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { AtividadeEquipe } from "./atividade";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { instanteDia } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novoMembroSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
   perfilId: z.string().min(1, "Selecione um perfil"),
@@ -73,7 +77,7 @@ const novoMembroSchema = z.object({
 type NovoMembroValues = z.infer<typeof novoMembroSchema>;
 
 const conviteSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   perfilId: z.string().min(1, "Selecione um perfil"),
 });
@@ -88,13 +92,14 @@ const ERROS_CONVITE: Record<string, string> = {
 };
 
 const editarMembroSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   perfilId: z.string().min(1, "Selecione um perfil"),
   ativo: z.boolean(),
 });
 type EditarMembroValues = z.infer<typeof editarMembroSchema>;
 
 export default function Equipe() {
+  const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -116,11 +121,18 @@ export default function Equipe() {
     error: errEquipe,
     refetch: refetchEquipe,
   } = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const { data: perfis, isLoading: loadingPerfis } = useListPerfis({
-    query: { queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey(), enabled: !!activeLojaId },
   });
+
+  // F43: os perfis já vêm para o seletor — a linha do membro passa a ler deles
+  // o que a pessoa alcança, sem nenhuma consulta a mais.
+  const acessosDoPerfil = useMemo(
+    () => new Map((perfis ?? []).map((p) => [p.id, p.acessosModulos])),
+    [perfis],
+  );
 
   const addMembro = useAddMembroEquipe();
   const updateMembro = useUpdateMembroEquipe();
@@ -170,11 +182,9 @@ export default function Equipe() {
       formConvite.reset();
       setLinkGerado(criado.token);
     } catch (err) {
-      const e = err as { data?: { error?: string } };
       toast({
-        title: "Erro ao criar o convite",
-        description:
-          ERROS_CONVITE[e?.data?.error ?? ""] ?? (err instanceof Error ? err.message : "Tente novamente."),
+        title: "Não deu para criar o convite",
+        description: mensagemApi(err, "Tente novamente.", ERROS_CONVITE),
         variant: "destructive",
       });
     }
@@ -190,8 +200,8 @@ export default function Equipe() {
       await copiarLink(renovado.token);
     } catch (err) {
       toast({
-        title: "Erro ao reenviar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para reenviar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -204,8 +214,8 @@ export default function Equipe() {
       toast({ title: "Convite cancelado", description: "O link deixou de valer." });
     } catch (err) {
       toast({
-        title: "Erro ao cancelar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cancelar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -225,8 +235,8 @@ export default function Equipe() {
       setNovoAberto(false);
     } catch (err) {
       toast({
-        title: "Erro ao cadastrar membro",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cadastrar membro",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -254,8 +264,8 @@ export default function Equipe() {
       setEditando(null);
     } catch (err) {
       toast({
-        title: "Erro ao atualizar membro",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para atualizar membro",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -273,8 +283,8 @@ export default function Equipe() {
       setRemovendo(null);
     } catch (err) {
       toast({
-        title: "Erro ao remover membro",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para remover membro",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -311,7 +321,10 @@ export default function Equipe() {
         {podeGerir && (
           <div className="flex flex-wrap gap-2">
             {/* Caminho primário: a própria pessoa define a senha. O cadastro
-                com senha digitada continua como secundário na transição. */}
+                com senha digitada continua como secundário na transição.
+                F42/E101: a HIERARQUIA já vinha do E6; o que faltava era a
+                pessoa saber POR QUE ela existe — a frase mora no diálogo, que
+                é onde a decisão é tomada. */}
             <Button onClick={() => setConvidandoAberto(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Convidar por link
@@ -340,7 +353,7 @@ export default function Equipe() {
                     <div className="font-medium truncate">{c.nome}</div>
                     <div className="text-sm text-muted-foreground truncate">
                       {c.email} · {c.perfilNome ?? c.perfilId} · expira{" "}
-                      {new Date(c.expiraEm).toLocaleDateString("pt-BR")}
+                      {instanteDia(c.expiraEm)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -378,12 +391,12 @@ export default function Equipe() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Membros da Equipe</CardTitle>
+            <CardTitle>Membros da equipe</CardTitle>
           </CardHeader>
           <CardContent>
             {erroEquipe ? (
-              <EstadoErro
-                titulo="Erro ao carregar a equipe"
+              <Erro
+                titulo="Não deu para carregar a equipe"
                 erro={errEquipe}
                 onTentarNovamente={() => refetchEquipe()}
               />
@@ -396,14 +409,21 @@ export default function Equipe() {
             ) : equipe?.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 Nenhum membro cadastrado ainda.
-                {podeGerir && " Cadastre a primeira vendedora em “Novo membro”."}
+                {/* F42: apontava para um botão chamado “Novo membro”, que não
+                    existe desde o E6 — e mandava para o caminho pior dos dois.
+                    O vazio agora nomeia o botão certo, que é o que está lá em
+                    cima e o que a loja deve usar. */}
+                {podeGerir && " Traga a primeira vendedora em “Convidar por link”."}
               </p>
             ) : (
               <ul className="space-y-4">
+                {/* E126/E5: sem quebra sobravam ~136px para nome + e-mail +
+                    acessos e duas "Vendedora…" ficavam idênticas até nos 6
+                    caracteres visíveis. O molde é o <li> dos convites, acima. */}
                 {equipe?.map((membro) => (
                   <li
                     key={membro.usuarioId}
-                    className="flex justify-between items-center gap-3 p-3 border rounded-md"
+                    className="flex flex-wrap justify-between items-center gap-3 p-3 border rounded-md"
                   >
                     <div className="min-w-0">
                       <div className="font-medium flex items-center gap-2">
@@ -415,9 +435,30 @@ export default function Equipe() {
                       <div className="text-sm text-muted-foreground truncate">
                         {membro.email}
                       </div>
+                      {/* F43: o nome do perfil não diz o que a pessoa ALCANÇA —
+                          "Vendedora" e "Recepção" são rótulos, e quem precisa
+                          conferir um acesso tinha de abrir /permissoes e cruzar
+                          na cabeça. A frase já existia (`resumoAcessos`, E24) e
+                          só era usada na lista de perfis, ao lado. */}
+                      {acessosDoPerfil.get(membro.perfilId) !== undefined && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {resumoAcessos(acessosDoPerfil.get(membro.perfilId)!)}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="secondary">{membro.perfilNome}</Badge>
+                      {podeGerir ? (
+                        <Button asChild variant="ghost" size="sm" className="h-auto py-1">
+                          <Link
+                            to={`/loja/${lojaId}/permissoes`}
+                            aria-label={`Ver o que o perfil ${membro.perfilNome} libera`}
+                          >
+                            <Badge variant="secondary">{membro.perfilNome}</Badge>
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary">{membro.perfilNome}</Badge>
+                      )}
                       {podeGerir && (
                         <>
                           <Button
@@ -448,7 +489,7 @@ export default function Equipe() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Perfis de Acesso</CardTitle>
+            <CardTitle>Perfis de acesso</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {loadingPerfis ? (
@@ -474,7 +515,7 @@ export default function Equipe() {
             {podeGerir && activeLojaId && (
               <Link
                 to={`/loja/${activeLojaId}/permissoes`}
-                className="text-sm text-primary underline underline-offset-4 block"
+                className="text-sm text-primary-texto underline underline-offset-4 block"
               >
                 Gerenciar permissões desta loja →
               </Link>
@@ -581,10 +622,37 @@ export default function Equipe() {
         </DialogContent>
       </Dialog>
 
+      {/* F42/E101 — o caminho secundário diz quando serve, e o que acontece
+          com a senha.
+
+          O admin escolhia no escuro entre dois caminhos. A hierarquia visual
+          existe desde o E6, mas ela só SUGERE; sem a frase, quem clica aqui não
+          sabe que a senha que vai digitar é jogada fora no primeiro acesso
+          (`equipe.ts:128` grava `precisaTrocarSenha: true`) — ou seja, que está
+          trocando um link por uma senha que vai viajar num WhatsApp e não vai
+          nem ser usada. É uma decisão de segurança tomada por acaso, por quem
+          não tem contexto para decidir; o conserto é dar o contexto. */}
       <Dialog open={novoAberto} onOpenChange={setNovoAberto}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo membro</DialogTitle>
+            <DialogTitle>Cadastrar com senha</DialogTitle>
+            <DialogDescription>
+              Use quando a pessoa não tem WhatsApp nem e-mail para receber o
+              link. A senha é <strong>provisória</strong>: ela será obrigada a
+              trocá-la no primeiro acesso, e até lá você precisa transmiti-la
+              por algum canal.{" "}
+              <button
+                type="button"
+                className="text-primary-texto underline underline-offset-4"
+                onClick={() => {
+                  setNovoAberto(false);
+                  setConvidandoAberto(true);
+                }}
+              >
+                Convidar por link
+              </button>{" "}
+              evita as duas coisas.
+            </DialogDescription>
           </DialogHeader>
           <Form {...formNovo}>
             <form onSubmit={formNovo.handleSubmit(onCadastrar)} className="space-y-4">

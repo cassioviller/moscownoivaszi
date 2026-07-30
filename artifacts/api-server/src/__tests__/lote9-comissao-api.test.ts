@@ -39,7 +39,6 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
 
   afterAll(async () => {
     await limparFixture(f);
-    await fecharPool();
   });
 
   it("GET regras devolve a escada aninhada e ordenada", async () => {
@@ -314,7 +313,20 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
     expect(agosto.body).toEqual([]);
   });
 
-  it("estorno maior que o mês CARREGA — não some sem ninguém pagar", async () => {
+  /**
+   * E102/C5 — ESTE TESTE MUDOU DE ASSERÇÃO, e a mudança é a decisão do dono
+   * (2026-07-25), não um ajuste de conveniência.
+   *
+   * ANTES ele se chamava "estorno maior que o mês CARREGA" e afirmava que
+   * novembro ainda via os **20.000 cheios** depois de outubro ter zerado. Isso
+   * era o defeito: outubro consumiu a base dele (5.000 de venda viraram
+   * comissão zero) e o estorno voltou inteiro, então o mesmo dinheiro era
+   * descontado duas, três vezes. No caso medido pela trilha C a vendedora
+   * recebia R$ 500 em vez de R$ 1.800.
+   *
+   * AGORA o mês absorve `min(bruto, pendente)` e carrega só o resto.
+   */
+  it("estorno maior que o mês é absorvido em PARTE — o resto carrega, sem descontar duas vezes", async () => {
     const outra = await criarFixture();
     try {
       const ag = await loginComLoja(outra.superAdminEmail, outra.lojaId);
@@ -350,18 +362,36 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
         .post(`/api/lojas/${outra.lojaId}/comissao/fechamentos`)
         .send({ competencia: "2025-10" })
         .expect(201);
-      // A base gravada nunca é negativa, mas o estorno não foi absorvido…
+      // Outubro absorve os 5.000 que tinha e zera a própria comissão.
       expect(outubro.body[0].totalVendas).toBe(0);
       expect(outubro.body[0].valorTotal).toBe(0);
+      expect(outubro.body[0].estornoAbsorvido).toBe(5000);
 
-      // …então segue pendente: novembro ainda vê os 20000.
+      // E novembro vê 15.000, não 20.000: o que outubro pagou não volta a
+      // pesar. Era exatamente aqui que o mesmo dinheiro era cobrado de novo.
       const leadC = await criarLead(outra);
       await criarContrato(outra, { leadId: leadC.id, valorTotal: 8000, fechadoEm: dia("2025-11-15") });
       const novembro = await ag
         .get(`/api/lojas/${outra.lojaId}/comissao/preview`)
         .query({ competencia: "2025-11" })
         .expect(200);
-      expect(novembro.body[0].estornoPendente).toBe(20000);
+      expect(novembro.body[0].estornoPendente).toBe(15000);
+
+      // Fechando novembro, ele absorve os 8.000 dele e sobram 7.000.
+      const nov = await ag
+        .post(`/api/lojas/${outra.lojaId}/comissao/fechamentos`)
+        .send({ competencia: "2025-11" })
+        .expect(201);
+      expect(nov.body[0].estornoAbsorvido).toBe(8000);
+
+      const leadD = await criarLead(outra);
+      await criarContrato(outra, { leadId: leadD.id, valorTotal: 30000, fechadoEm: dia("2025-12-15") });
+      const dezembro = await ag
+        .get(`/api/lojas/${outra.lojaId}/comissao/preview`)
+        .query({ competencia: "2025-12" })
+        .expect(200);
+      expect(dezembro.body[0].estornoPendente).toBe(7000);
+      // 5.000 + 8.000 + 7.000 = 20.000: o estorno foi cobrado UMA vez.
     } finally {
       await limparFixture(outra);
     }
@@ -551,5 +581,70 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
       .send({ competencia: "2024-01" })
       .expect(422);
     expect(res.body.error).toBe("SEM_MOVIMENTO");
+  });
+});
+
+/**
+ * E102/C7 — a escada de comissão é POR MÊS, e o sistema recusa o meio dele.
+ *
+ * **Decisão do dono em 2026-07-25.** A vigência sempre foi resolvida por
+ * competência inteira: uma escada criada dia 20 reprecificava os 19 dias
+ * anteriores, e o preview saltava de R$ 2.000 para R$ 6.400 no instante em que
+ * ela era salva. O docstring prometia "a regra que valia naquele mês" e o único
+ * teste usava virada de mês — **o caso do meio do mês nunca foi exercitado**,
+ * que é por que ninguém tinha visto.
+ */
+describe("E102/C7 — a vigência tem granularidade de MÊS", () => {
+  let f: Fixture;
+
+  beforeAll(async () => {
+    f = await criarFixture();
+  });
+
+  afterAll(async () => {
+    await limparFixture(f);
+    await fecharPool();
+  });
+
+  it("vigência no meio do mês é recusada, dizendo qual data usar", async () => {
+    const ag = await loginComLoja(f.superAdminEmail, f.lojaId);
+    const r = await ag
+      .post(`/api/lojas/${f.lojaId}/comissao/regras`)
+      .send({
+        vendedoraId: f.vendedoraId,
+        vigenciaInicio: dia("2025-06-20").toISOString(),
+        faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual: 10 }],
+      })
+      .expect(422);
+
+    expect(r.body.error).toBe("VIGENCIA_FORA_DA_COMPETENCIA");
+    expect(r.body.campos[0].campo).toBe("vigenciaInicio");
+    expect(r.body.campos[0].motivo).toContain("2025-06");
+  });
+
+  it("o primeiro dia passa, em qualquer hora do dia", async () => {
+    const ag = await loginComLoja(f.superAdminEmail, f.lojaId);
+    // `dia()` ancora ao meio-dia SP; `limitesCompetencia` à meia-noite. São o
+    // mesmo primeiro dia — comparar o instante reprovaria um deles.
+    await ag
+      .post(`/api/lojas/${f.lojaId}/comissao/regras`)
+      .send({
+        vendedoraId: f.vendedoraId,
+        vigenciaInicio: dia("2025-07-01").toISOString(),
+        faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual: 10 }],
+      })
+      .expect(201);
+  });
+
+  it("o último dia do mês também é recusado — não é começo de nada", async () => {
+    const ag = await loginComLoja(f.superAdminEmail, f.lojaId);
+    await ag
+      .post(`/api/lojas/${f.lojaId}/comissao/regras`)
+      .send({
+        vendedoraId: f.vendedoraId,
+        vigenciaInicio: dia("2025-08-31").toISOString(),
+        faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual: 10 }],
+      })
+      .expect(422);
   });
 });

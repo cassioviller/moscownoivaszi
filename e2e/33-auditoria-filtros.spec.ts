@@ -39,7 +39,12 @@ test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
     });
     expect(conta.status(), await conta.text()).toBe(201);
 
-    // Pagar é o que deixa linha na trilha (CONTA_PAGA), com o admin como autor.
+    // Pagar é o que deixa linha na trilha, com o admin como autor. A ação é
+    // PAGAMENTO_REGISTRADO desde o A2/E94: as duas portas de pagar (esta, de
+    // uma conta, e a multi-conta que a UI usa) eram a MESMA operação com
+    // trilhas diferentes — quem consultasse a trilha por conta a pagar só
+    // encontrava metade dos pagamentos. Agora a linha é indexada pelo
+    // pagamento, que é o fato de caixa, e o detalhe traz as contas que quitou.
     const pago = await request.post(
       `${API_URL}/api/lojas/${estado.lojaId}/contas-pagar/${(await conta.json()).id}/pagar`,
       { data: { data: new Date().toISOString(), valorPago: 123.45, forma: "PIX" } },
@@ -49,19 +54,19 @@ test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
 
   test("filtrar por ação estreita a lista e sobrevive ao compartilhar a URL", async ({ page }) => {
     await page.goto("/financeiro/auditoria");
-    await expect(page.getByRole("heading", { name: "Trilha de auditoria" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Auditoria", exact: true })).toBeVisible();
     await expect(page.getByText(descricao)).toBeVisible();
 
     await page.getByLabel("Ação").click();
-    await page.getByRole("option", { name: "Conta paga" }).click();
+    await page.getByRole("option", { name: "Pagamento registrado" }).click();
 
     // O filtro vai para a URL: auditoria é tela que se manda por link.
-    await expect(page).toHaveURL(/acao=CONTA_PAGA/);
+    await expect(page).toHaveURL(/acao=PAGAMENTO_REGISTRADO/);
     await expect(page.getByText(descricao)).toBeVisible();
     await expect(page.getByText("Parcela recebida")).toHaveCount(0);
 
     // E a URL colada sozinha reconstrói a mesma vista.
-    await page.goto("/financeiro/auditoria?acao=CONTA_PAGA");
+    await page.goto("/financeiro/auditoria?acao=PAGAMENTO_REGISTRADO");
     await expect(page.getByText(descricao)).toBeVisible();
   });
 
@@ -71,14 +76,14 @@ test.describe("Trilha de auditoria — filtros e CSV (E47)", () => {
   });
 
   test("a linha leva à entidade que ela tocou", async ({ page }) => {
-    await page.goto("/financeiro/auditoria?acao=CONTA_PAGA");
+    await page.goto("/financeiro/auditoria?acao=PAGAMENTO_REGISTRADO");
     const linha = page.locator("li").filter({ hasText: descricao });
     await linha.getByRole("link", { name: /Ver em contas a pagar/ }).click();
     await expect(page.getByRole("heading", { name: "Contas a pagar" })).toBeVisible();
   });
 
   test("o CSV sai com o filtro em vista", async ({ page }) => {
-    await page.goto("/financeiro/auditoria?acao=CONTA_PAGA");
+    await page.goto("/financeiro/auditoria?acao=PAGAMENTO_REGISTRADO");
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),

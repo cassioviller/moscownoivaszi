@@ -53,7 +53,11 @@ test.describe("Permissões: personalizar e restaurar padrão", () => {
     await expect(restaurar).toBeVisible();
 
     // Restaurar: volta ao modelo global.
+    // E10/E99: restaurar passou a confirmar — a personalização desta loja é
+    // apagada e não é versionada, então o diálogo nomeia o PERFIL.
     await restaurar.click();
+    await expect(page.getByText("Restaurar o padrão de Vendedora?")).toBeVisible();
+    await page.getByRole("button", { name: "Restaurar padrão", exact: true }).click();
     await expect(page.getByText("Padrão restaurado").first()).toBeVisible();
     await expect(page.getByTestId("restaurar-padrao-Vendedora")).not.toBeVisible();
     void cardVendedora;

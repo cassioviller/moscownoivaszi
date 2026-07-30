@@ -70,6 +70,35 @@ describe("agingDeParcelas", () => {
     });
   });
 
+  /**
+   * F28/E98 — a linha é por noiva e agrega N parcelas; "Receber" nela precisa
+   * dizer QUAL. A escolha é a mais antiga, que é a que define os dias e a faixa
+   * mostrados na própria linha e a que a mensagem de cobrança cita.
+   */
+  it("oferece para receber a parcela MAIS ANTIGA da noiva", () => {
+    const aging = agingDeParcelas([vencida(10), vencida(45)], HOJE);
+    expect(aging.noivas[0]!.parcelaMaisAntigaId).toBe("p-lead-1-45");
+  });
+
+  it("a escolha não depende da ordem em que as parcelas chegaram", () => {
+    const crescente = agingDeParcelas([vencida(10), vencida(45)], HOJE);
+    const decrescente = agingDeParcelas([vencida(45), vencida(10)], HOJE);
+    expect(crescente.noivas[0]!.parcelaMaisAntigaId).toBe(decrescente.noivas[0]!.parcelaMaisAntigaId);
+  });
+
+  it("empate de vencimento desempata pelo id, não pela ordem da resposta", () => {
+    const a = vencida(30, { id: "p-aaa" } as Partial<ParcelaComNoiva>);
+    const b = vencida(30, { id: "p-bbb" } as Partial<ParcelaComNoiva>);
+    expect(agingDeParcelas([a, b], HOJE).noivas[0]!.parcelaMaisAntigaId).toBe("p-aaa");
+    expect(agingDeParcelas([b, a], HOJE).noivas[0]!.parcelaMaisAntigaId).toBe("p-aaa");
+  });
+
+  it("a parcela oferecida é de quem AINDA está aberta — a paga não entra no aging", () => {
+    const paga = vencida(90, { id: "p-paga", status: "PAGA" } as Partial<ParcelaComNoiva>);
+    const aberta = vencida(20, { id: "p-aberta" } as Partial<ParcelaComNoiva>);
+    expect(agingDeParcelas([paga, aberta], HOJE).noivas[0]!.parcelaMaisAntigaId).toBe("p-aberta");
+  });
+
   it("cada parcela conta na SUA faixa, mesmo sendo da mesma noiva", () => {
     const aging = agingDeParcelas([vencida(10), vencida(45)], HOJE);
     expect(aging.faixas.ate30).toEqual({ total: 100, qtdNoivas: 1 });

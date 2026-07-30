@@ -28,5 +28,7 @@ export interface Parcela {
   recebidoEm?: Date | null;
   /** @nullable */
   formaRecebimento?: ParcelaFormaRecebimento;
+  /** @nullable */
+  conciliadoEm?: Date | null;
   contrato?: ParcelaContrato | null;
 }

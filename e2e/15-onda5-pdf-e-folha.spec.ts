@@ -25,15 +25,19 @@ test.describe("Onda 5 — folha", () => {
   test("/financeiro/folha monta e carrega dados sem erro de API", async ({ page }) => {
     const falhas = observarApi(page);
     await page.goto("/financeiro/folha");
-    await expect(page.getByRole("heading", { name: "Recorrências do mês", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(falhas, `Chamadas de API falharam: ${falhas.join(", ")}`).toEqual([]);
   });
 
+  // E103/F31: o H1 dizia "Recorrências do mês" e o link dizia "Folha do mês" —
+  // quem procurava "folha" não achava, e quem achava lia outro nome. A loja
+  // chama de folha, e a tela entrou na sidebar (era alcançável só por um botão
+  // secundário dentro de contas a pagar).
   test("a folha é alcançável a partir de contas a pagar", async ({ page }) => {
     await page.goto("/financeiro/pagar");
     await page.getByRole("link", { name: /Folha/ }).first().click();
-    await expect(page.getByRole("heading", { name: "Recorrências do mês", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Folha do mês", exact: true })).toBeVisible();
   });
 
   test("nenhum 'Invalid Date' ou 'NaN' nas recorrências", async ({ page }) => {
@@ -60,13 +64,52 @@ test.describe("Onda 5 — folha", () => {
     // BOM: sem ele o Excel lê UTF-8 como latin-1.
     expect(await res.text()).toMatch(/^﻿/);
 
-    // O GET tem que ser seguro: baixar o arquivo não pode carimbar o período.
-    // Marcar é um POST explícito — conferir antes de mandar precisa ser possível.
+    /**
+     * O GET tem que ser seguro: baixar o arquivo não pode carimbar o período.
+     * Marcar é um POST explícito — conferir antes de mandar precisa ser possível.
+     *
+     * **A asserção olha UM pagamento, criado aqui, e não todos os da loja.**
+     * Ela varria a carteira inteira, e isso a tornava uma mina: qualquer carimbo
+     * de qualquer origem — outro spec, a tela de fechar o mês do F34 — a
+     * deixaria vermelha em TODA execução futura, num banco que persiste. E um
+     * vermelho desses se lê como regressão de dinheiro. A intenção do teste é
+     * sobre o VERBO (GET não escreve), não sobre o estado global da loja.
+     */
+    const conta = await request.post(
+      `${API_URL}/api/lojas/${estado.lojaId}/financeiro/contas-pagar`,
+      {
+        data: {
+          tipo: "DESPESA",
+          descricao: `Probe GET seguro ${Date.now()}`,
+          valorPrevisto: 10,
+          vencimento: new Date().toISOString(),
+        },
+      },
+    );
+    expect(conta.status(), await conta.text()).toBe(201);
+    const pago = await request.post(
+      `${API_URL}/api/lojas/${estado.lojaId}/financeiro/pagamentos`,
+      {
+        data: {
+          data: new Date().toISOString(),
+          contaIds: [(await conta.json()).id],
+          valorPago: 10,
+        },
+      },
+    );
+    expect(pago.status(), await pago.text()).toBe(201);
+    const meuId = (await pago.json()).id as string;
+
+    // O export de novo, agora com o pagamento deste spec dentro da janela.
+    await request.get(
+      `${API_URL}/api/lojas/${estado.lojaId}/financeiro/folha/exportar?de=2020-01-01&ate=2099-12-31`,
+    );
+
     const pagamentos = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/pagamentos`);
     expect(pagamentos.status()).toBe(200);
-    for (const p of await pagamentos.json()) {
-      expect(p.enviadoContabilidadeEm ?? null).toBeNull();
-    }
+    const meu = (await pagamentos.json()).find((x: { id: string }) => x.id === meuId);
+    expect(meu, "o pagamento criado pelo spec sumiu da lista").toBeTruthy();
+    expect(meu.enviadoContabilidadeEm ?? null).toBeNull();
   });
 
   test("PROBE API: gerar a competência é idempotente", async ({ request }) => {
@@ -102,7 +145,8 @@ test.describe("Onda 5 — PDF de contrato", () => {
 
     const contratos = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos`);
     expect(contratos.status()).toBe(200);
-    const lista = await contratos.json();
+    // E124: a resposta virou página `{ total, itens }`.
+    const lista = (await contratos.json()).itens;
     test.skip(lista.length === 0, "sem contrato no seed para exportar");
 
     const res = await request.get(

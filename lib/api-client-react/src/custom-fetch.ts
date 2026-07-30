@@ -157,7 +157,11 @@ function buildErrorMessage(response: Response, data: unknown): string {
   }
 
   const title = getStringField(data, "title");
-  const detail = getStringField(data, "detail");
+  // `detalhe` é a grafia da casa (o corpo de erro do api-server é
+  // `{ error: CODIGO, detalhe: "frase em português" }`); `detail` fica como
+  // fallback de compatibilidade. Sem isto o toast mostrava o código em caixa
+  // alta e jogava fora a frase que o servidor escreveu (C4/E122).
+  const detail = getStringField(data, "detalhe") ?? getStringField(data, "detail");
   const message =
     getStringField(data, "message") ??
     getStringField(data, "error_description") ??

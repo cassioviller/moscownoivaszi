@@ -1,7 +1,6 @@
 import { useGetMe, useLogin, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useStoreStore } from "@/lib/store";
 import { useNavigate, useParams } from "react-router";
-import { useEffect } from "react";
 
 export function useAuth() {
   const { data: session, isLoading, error } = useGetMe({
@@ -19,12 +18,15 @@ export function useAuth() {
 
   const user = session?.usuario;
 
-  // Sync active loja from session if available
-  useEffect(() => {
-    if (session?.lojaAtivaId && session.lojaAtivaId !== activeLojaId) {
-      setActiveLojaId(session.lojaAtivaId);
-    }
-  }, [session, activeLojaId, setActiveLojaId]);
+  // D1 (E93): aqui existia um efeito que copiava `session.lojaAtivaId` para o
+  // store. Ele e o efeito de `app-layout.tsx` (URL → store) escreviam o MESMO
+  // valor a partir de fontes OPOSTAS, ambos com `activeLojaId` nas
+  // dependências: com a loja da URL diferente da loja da sessão, cada `set`
+  // reativava o outro até "Maximum update depth exceeded" (reproduzido no
+  // navegador: aba travada, tela em branco, e um 403 da API por baixo).
+  // Agora o store tem UM escritor — o `AppLayout`, a partir da URL — e este
+  // hook só LÊ. A sessão continua entrando na resolução abaixo, como último
+  // fallback, sem escrever em lugar nenhum. Ver `lib/loja-ativa.ts`.
 
   const logout = async () => {
     await logoutMutation.mutateAsync(undefined);

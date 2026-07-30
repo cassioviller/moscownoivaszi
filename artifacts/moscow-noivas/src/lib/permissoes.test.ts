@@ -64,13 +64,18 @@ describe("moduloLiberado", () => {
 
 describe("resumoAcessos", () => {
   it("rotula os módulos liberados, nunca a chave crua, na ordem canônica", () => {
-    expect(resumoAcessos({ financeiro: VER, leads: TUDO })).toBe("Leads, Financeiro");
+    // E92/E16: o módulo se chamava "Leads" na tela de Permissões enquanto a
+    // sidebar, a ficha e os toasts diziam "Noivas" — e ele governa TRÊS itens
+    // de menu, o que o nome de antes não contava.
+    expect(resumoAcessos({ financeiro: VER, leads: TUDO })).toBe(
+      "Noivas, orçamentos e contratos · Financeiro",
+    );
   });
 
   it("omite módulo sem nenhuma ação — não conta o objeto como truthy", () => {
     // O bug do D8: `.filter(([, v]) => v)` mostrava um módulo NADA (objeto
     // sempre truthy). Agora ele some.
-    expect(resumoAcessos({ financeiro: NADA, leads: VER })).toBe("Leads");
+    expect(resumoAcessos({ financeiro: NADA, leads: VER })).toBe("Noivas, orçamentos e contratos");
   });
 
   it("perfil sem nenhum acesso vira 'sem acessos'", () => {

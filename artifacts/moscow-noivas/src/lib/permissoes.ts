@@ -53,7 +53,10 @@ export function moduloLiberado(acesso: unknown): boolean {
  * (a lista `MODULOS` do api-server). Fonte única dos nomes de módulo na tela.
  */
 export const MODULOS_ROTULOS: Record<string, string> = {
-  leads: "Leads",
+  // E92/E16: "Leads" era a única tela do app que chamava a noiva de lead — e
+  // logo NA tela onde se decide quem vê o quê. O rótulo agora diz o alcance
+  // real do módulo: ele governa três itens de menu, não um.
+  leads: "Noivas, orçamentos e contratos",
   agenda: "Agenda",
   vestidos: "Vestidos",
   financeiro: "Financeiro",
@@ -72,7 +75,10 @@ export function resumoAcessos(acessos: Acessos): string {
     .concat(Object.keys(acessos).filter((m) => !(m in MODULOS_ROTULOS)))
     .filter((m) => moduloLiberado(acessos[m]))
     .map((m) => MODULOS_ROTULOS[m] ?? m);
-  return nomes.join(", ") || "sem acessos";
+  // Separador " · " e não ", ": desde o E92/E16 o rótulo de `leads` tem
+  // vírgulas dentro ("Noivas, orçamentos e contratos"), e uma lista de itens
+  // com vírgula separada por vírgula não diz onde um termina.
+  return nomes.join(" · ") || "sem acessos";
 }
 
 /**

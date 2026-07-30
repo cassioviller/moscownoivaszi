@@ -1,19 +1,28 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { podeNoModulo } from "@/lib/permissoes";
+import { DialogoReceberParcela } from "@/components/dialogo-receber-parcela";
 import {
   useListParcelas,
   getListParcelasQueryKey,
   useListPortais,
   getListPortaisQueryKey,
+  useCreateRegistroCobranca,
+  getListRegistrosCobrancaQueryKey,
+  type Parcela,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ErroListagem, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { HistoricoContato } from "@/components/historico-contato";
+import { SemWhatsApp } from "@/components/sem-whatsapp";
 import { MessageCircle, ChevronDown } from "lucide-react";
 import { brl } from "@/lib/formatos";
 import {
@@ -46,8 +55,12 @@ function ehFaixa(valor: string | null): valor is Faixa {
  * `mais60` ficava vermelho. Mantém o tom da tela: um marcador, não um alarme.
  */
 const CLASSE_ATRASO: Record<Faixa, string> = {
-  ate30: "border-amber-500/40 text-amber-700 dark:text-amber-400",
-  d31a60: "border-orange-500/50 text-orange-700 dark:text-orange-400",
+  /* E127/E7: os tons à mão (amber-700, orange-700…) viraram o token --aviso,
+     que vive na varredura de contraste. O degrau âmbar→laranja virou
+     intensidade de borda: a ESCALADA que importa continua sendo aviso →
+     destructive. */
+  ate30: "border-aviso/40 text-aviso",
+  d31a60: "border-aviso/70 text-aviso",
   mais60: "border-destructive/50 text-destructive",
 };
 
@@ -56,11 +69,19 @@ function LinhaNoiva({
   noiva,
   lojaNome,
   portalUrl,
+  podeReceber,
+  onReceber,
+  onCobrar,
 }: {
   noiva: NoivaInadimplente;
   lojaNome?: string | null;
   /** E84: o portal VIVO da noiva entra na mensagem; sem ele, nada muda. */
   portalUrl?: string | null;
+  /** F28: dar baixa é `financeiro.editar` — ver a fila de cobrança não é. */
+  podeReceber: boolean;
+  onReceber: (noiva: NoivaInadimplente) => void;
+  /** E123/B2: abrir o WhatsApp carimba o registro — a paridade com /mensagens. */
+  onCobrar: (leadId: string) => void;
 }) {
   const naLoja = useCaminhoDaLoja();
   const wa = linkWhatsApp(
@@ -107,11 +128,15 @@ function LinhaNoiva({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          {/* E126/E3: a linha de ações somava ~594px num card de ~326px e o
+              WhatsApp — a ação que só faz sentido no celular — ficava
+              invisível. As ações caem para a linha de baixo, como o card
+              irmão de receber já faz. */}
+          <div className="flex flex-wrap items-center gap-3">
             <span
               className={`font-semibold tabular-nums whitespace-nowrap ${critico ? "text-destructive" : ""}`}
             >
-              R$ {brl(noiva.totalVencido)}
+              {brl(noiva.totalVencido)}
             </span>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -121,20 +146,43 @@ function LinhaNoiva({
                 />
               </Button>
             </CollapsibleTrigger>
+            {/* F28: a fila existe para cobrar, e cobrar dava certo — a noiva
+                pagava na hora e a vendedora tinha de trocar de tela, achar a
+                parcela no meio da carteira e só então lançar. O diálogo é o
+                MESMO de /financeiro/receber (componente compartilhado), e a
+                parcela é a mais antiga: é a que define os dias e a faixa que
+                esta linha mostra, e a que a mensagem de cobrança cita. */}
+            {podeReceber && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReceber(noiva)}
+                data-testid={`receber-${noiva.leadId}`}
+              >
+                Receber
+              </Button>
+            )}
             <Button asChild variant="outline" size="sm">
               <Link to={naLoja(`/contratos/${noiva.contratoId}`)}>Contrato</Link>
             </Button>
             {wa ? (
               <Button asChild variant="outline" size="sm">
-                <a href={wa} target="_blank" rel="noopener noreferrer">
+                {/* E123/B2: o clique carimba o registro — no CLIQUE, não no
+                    retorno do wa.me (aba nova não volta). Em /mensagens o
+                    mesmo gesto já gravava; aqui, a tela de quem tem volume,
+                    registrar custava +3 gestos no formulário do histórico. */}
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => onCobrar(noiva.leadId)}
+                >
                   <MessageCircle className="mr-1 h-4 w-4" />
                   WhatsApp
                 </a>
               </Button>
             ) : (
-              <Badge variant="secondary" title="Sem WhatsApp válido no cadastro">
-                Sem WhatsApp
-              </Badge>
+              <SemWhatsApp leadId={noiva.leadId} />
             )}
           </div>
         </div>
@@ -148,8 +196,61 @@ function LinhaNoiva({
 
 export default function Cobranca() {
   const naLoja = useCaminhoDaLoja();
-  const { activeLojaId, session } = useAuth();
+  const { activeLojaId, acessosModulos, session } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  /**
+   * E123/B2 — cobrar por AQUI passa a deixar o mesmo rastro de /mensagens.
+   *
+   * O botão WhatsApp abria o wa.me e não registrava nada: registrar custava +3
+   * gestos por noiva no formulário do histórico (numa sexta com 10 em atraso,
+   * 30 gestos que a porta irmã fazia de graça) — e quem os pulava deixava a
+   * noiva cobrada constando como parada, porque é o registro que zera o
+   * relógio do "parado há N dias".
+   *
+   * O carimbo é no CLIQUE (aba nova não volta), com o mesmo dedup por sessão
+   * de tela da porta irmã: o servidor não sabe que dois POSTs a um segundo de
+   * distância são o mesmo dedo. A autoria vem da SESSÃO — o corpo nem tem
+   * campo para ela (régua do contrato). O gate é o do endpoint (`leads`):
+   * sem a permissão, o clique abre o WhatsApp como sempre, sem gravar.
+   */
+  const registraCobranca = podeNoModulo(acessosModulos, "leads", "criar");
+  const cobradas = useRef<Set<string>>(new Set());
+  const criarRegistroCobranca = useCreateRegistroCobranca({
+    mutation: {
+      onSuccess: (_registro, vars) => {
+        // O histórico da noiva (o Collapsible desta tela e a ficha) mostra o
+        // carimbo sem reabrir a página.
+        queryClient.invalidateQueries({
+          queryKey: getListRegistrosCobrancaQueryKey(activeLojaId!, vars.leadId),
+        });
+      },
+    },
+  });
+  const registrarCobranca = (leadId: string) => {
+    if (!registraCobranca || cobradas.current.has(leadId)) return;
+    cobradas.current.add(leadId);
+    criarRegistroCobranca.mutate(
+      {
+        lojaId: activeLojaId!,
+        leadId,
+        data: {
+          data: new Date().toISOString(),
+          canal: "WHATSAPP",
+          observacao: "mensagem de cobrança enviada pela fila de cobrança",
+        },
+      },
+      {
+        // O wa.me abriu, o rastro não: liberar o dedup deixa tentar de novo.
+        onError: () => {
+          cobradas.current.delete(leadId);
+          toast({ title: "Não deu para registrar a cobrança", variant: "destructive" });
+        },
+      },
+    );
+  };
 
   // Nome da loja para a mensagem de cobrança ("Aqui é da Moscow Noivas") — vem
   // da sessão, como na agenda; sem request extra.
@@ -180,6 +281,43 @@ export default function Cobranca() {
   const portalUrls = useMemo(() => urlsDePortalPorLead(portais.data), [portais.data]);
 
   const aging = useMemo(() => agingDeParcelas(parcelas.data ?? []), [parcelas.data]);
+
+  /**
+   * F28 — dar baixa sem sair da fila.
+   *
+   * A parcela vem do `agingDeParcelas`, que já escolheu a mais antiga da noiva,
+   * e é procurada na MESMA lista que desenhou a tela — nada de request novo. Se
+   * ela não estiver mais lá (alguém recebeu noutra aba entre o desenho e o
+   * clique), a tela diz isso em vez de abrir um diálogo sobre nada.
+   */
+  /**
+   * O gate da TELA tem de ser o mesmo do endpoint, e eram módulos diferentes.
+   *
+   * Aqui se pedia `financeiro.editar`, mas quem guarda
+   * `POST /lojas/:lojaId/parcelas/:parcelaId/receber` é o módulo **leads**
+   * (contratos.ts:76 e :611) — e isso não é descuido do servidor, é a decisão
+   * B9/E101 escrita lá: *a noiva paga na mão de quem a atendeu*. O resultado do
+   * desencontro era o pior dos dois: quem tem financeiro e não tem leads via o
+   * botão e levava 403 depois do clique, e quem tem leads e recebe de verdade
+   * não via o botão nesta fila.
+   *
+   * Estar NESTA tela já exige `financeiro.ver` (a rota é gateada). O que a
+   * ação exige, e portanto o que o botão exige, é `leads.editar`.
+   */
+  const podeReceber = podeNoModulo(acessosModulos, "leads", "editar");
+  const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
+  const abrirRecebimento = (noiva: NoivaInadimplente) => {
+    const parcela = (parcelas.data ?? []).find((p) => p.id === noiva.parcelaMaisAntigaId);
+    if (!parcela) {
+      toast({
+        title: "Esta parcela mudou",
+        description: "Alguém já deu baixa nela — a lista vai se atualizar.",
+      });
+      parcelas.refetch();
+      return;
+    }
+    setParcelaReceber(parcela);
+  };
 
   const noivasVisiveis = useMemo(
     () => (faixaAtiva ? aging.noivas.filter((n) => n.faixaMaisAntiga === faixaAtiva) : aging.noivas),
@@ -251,11 +389,14 @@ export default function Cobranca() {
                 >
                   <CardHeader className="pb-2">
                     <CardDescription>{ROTULO_FAIXA[f]}</CardDescription>
-                    <CardTitle
-                      className={`text-2xl tabular-nums ${f === "mais60" && resumo.total > 0 ? "text-destructive" : ""}`}
+                    {/* E131/A2: o degrau maior é UM — estes 3 cards saíam sans
+                        (via CardTitle) enquanto receber/pagar/folha, o mesmo
+                        desenho, saem money-lg serif pelo ResumoCard. */}
+                    <p
+                      className={`money-lg ${f === "mais60" && resumo.total > 0 ? "text-destructive" : ""}`}
                     >
-                      R$ {brl(resumo.total)}
-                    </CardTitle>
+                      {brl(resumo.total)}
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground">
@@ -298,6 +439,9 @@ export default function Cobranca() {
                       noiva={n}
                       lojaNome={lojaNome}
                       portalUrl={portalUrls.get(n.leadId)}
+                      podeReceber={podeReceber}
+                      onReceber={abrirRecebimento}
+                      onCobrar={registrarCobranca}
                     />
                   ))}
                 </ul>
@@ -306,6 +450,13 @@ export default function Cobranca() {
           </Card>
         </>
       )}
+
+      <DialogoReceberParcela
+        lojaId={activeLojaId!}
+        parcela={parcelaReceber}
+        onFechar={() => setParcelaReceber(null)}
+        descricao="Baixa da parcela mais antiga em atraso desta noiva."
+      />
     </div>
   );
 }

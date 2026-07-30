@@ -70,12 +70,14 @@ describe("Lote 17 — agendamento sob concorrência", () => {
   });
 
   afterAll(async () => {
-    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
+    // limparFixture ANTES (E91): `atendimentos.vendedora_id` é RESTRICT, e a
+    // segunda vendedora agendou — ela só sai depois do cascade da loja.
     await limparFixture(f);
+    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
     await fecharPool();
   });
 
-  it("mesma cabine + mesmo início sob corrida: [201, 409], um só no banco", async () => {
+  it("mesma cabine + mesmo início sob corrida: um 201, o outro recusado, um só no banco", async () => {
     const [leadA, leadB] = await Promise.all([criarLead(f), criarLead(f)]);
     const inicio = dia("2027-03-10").toISOString();
 
@@ -89,7 +91,16 @@ describe("Lote 17 — agendamento sob concorrência", () => {
       }),
     ]);
 
-    expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    // E115: o POST ganhou a pré-checagem de intervalo do PATCH. O perdedor
+    // agora tem DOIS finais legítimos — 422 CABINE_OCUPADA se a pré-checagem
+    // viu a linha já commitada, 409 da UNIQUE se a corrida foi apertada e os
+    // dois passaram pela checagem. O invariante que importa não mudou: um só
+    // no banco. (E o corpo entra no assert — a lição da S20: um vermelho que
+    // descarta r.body não se explica sozinho.)
+    const [vencedor, perdedor] = r1.status === 201 ? [r1, r2] : [r2, r1];
+    expect(vencedor.status).toBe(201);
+    expect([409, 422]).toContain(perdedor.status);
+    if (perdedor.status === 422) expect(perdedor.body.error).toBe("CABINE_OCUPADA");
     const gravados = await db
       .select({ id: atendimentosTable.id })
       .from(atendimentosTable)
@@ -100,7 +111,7 @@ describe("Lote 17 — agendamento sob concorrência", () => {
     expect(gravados).toHaveLength(1);
   });
 
-  it("mesma vendedora + mesmo início em cabines diferentes: [201, 409], um só no banco", async () => {
+  it("mesma vendedora + mesmo início em cabines diferentes: um 201, o outro recusado, um só no banco", async () => {
     const [leadA, leadB] = await Promise.all([criarLead(f), criarLead(f)]);
     const inicio = dia("2027-03-11").toISOString();
 
@@ -114,7 +125,11 @@ describe("Lote 17 — agendamento sob concorrência", () => {
       }),
     ]);
 
-    expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    // E115: mesmos dois finais legítimos do caso da cabine, acima.
+    const [vencedor, perdedor] = r1.status === 201 ? [r1, r2] : [r2, r1];
+    expect(vencedor.status).toBe(201);
+    expect([409, 422]).toContain(perdedor.status);
+    if (perdedor.status === 422) expect(perdedor.body.error).toBe("VENDEDORA_OCUPADA");
     const gravados = await db
       .select({ id: atendimentosTable.id })
       .from(atendimentosTable)

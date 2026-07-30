@@ -95,16 +95,35 @@ function rodarPgDump(): Promise<string> {
     dump.stdout.pipe(createGzip()).pipe(saida);
     saida.on("error", (e) => reject(e));
 
+    /**
+     * A Promise resolve quando as DUAS pontas terminaram, em qualquer ordem.
+     *
+     * Antes, `finish` só resolvia se `codigo` já fosse 0 — e `codigo` só é
+     * preenchido no `close` do processo. Nada garante essa ordem: chegando o
+     * `finish` do gzip primeiro, ele via `codigo === null`, não resolvia, e o
+     * `close` seguinte com código 0 não resolvia nada porque só sabe rejeitar.
+     * A Promise ficava pendurada para sempre — e ela é `await`ada pelo
+     * Scheduled Deployment do backup, que passaria a nunca terminar, com a
+     * linha do `backup_log` presa em execução e nenhuma mensagem de erro.
+     * Silêncio é o pior desfecho possível para uma rotina de backup.
+     */
+    let arquivoFechado = false;
+    const talvezResolver = () => {
+      if (arquivoFechado && codigo === 0) resolve(arquivo);
+    };
     dump.on("close", (code) => {
       codigo = code;
       if (code !== 0) {
         reject(new Error(`pg_dump saiu com código ${code}: ${stderr.trim().slice(0, 300)}`));
+        return;
       }
+      talvezResolver();
     });
-    // Só resolve quando o gzip terminou de escrever o arquivo — o "close" do
-    // pg_dump vem antes do flush final da compressão.
+    // O arquivo só está íntegro depois do flush final da compressão, que vem
+    // DEPOIS do "close" do pg_dump — daí esperar as duas pontas, e não uma.
     saida.on("finish", () => {
-      if (codigo === 0) resolve(arquivo);
+      arquivoFechado = true;
+      talvezResolver();
     });
   });
 }

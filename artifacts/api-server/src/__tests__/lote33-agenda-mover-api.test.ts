@@ -88,9 +88,11 @@ describe("Agenda — mover atendimento (E28)", () => {
   });
 
   afterAll(async () => {
+    // limparFixture ANTES (E91): `atendimentos.vendedora_id` é RESTRICT, e a
+    // segunda vendedora agendou — ela só sai depois do cascade das lojas.
     await db.delete(lojasTable).where(eq(lojasTable.id, lojaVizinhaId));
-    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
     await limparFixture(f);
+    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
     await fecharPool();
   });
 

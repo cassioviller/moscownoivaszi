@@ -9,6 +9,7 @@ import {
   FileText,
   ScrollText,
   CircleDollarSign,
+  CalendarClock,
   Percent,
   Wallet,
   UsersRound,
@@ -22,13 +23,28 @@ import {
   Scissors,
   Bookmark,
   MessageCircle,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SinoNotificacoes } from "@/components/sino-notificacoes";
 import { moduloLiberado } from "@/lib/permissoes";
 
-type NavItem = { icon: typeof LayoutDashboard; label: string; href: string; modulo?: string };
+type NavItem = {
+  icon: typeof LayoutDashboard;
+  label: string;
+  href: string;
+  modulo?: string;
+  /**
+   * F9/E98 — gate de OU. "Mensagens de hoje" é construída por PARTES: os três
+   * blocos (confirmar presença, cobrar, orçamento vencendo) são gateados
+   * separadamente lá dentro, e cada um funciona sozinho. O item de menu, porém,
+   * exigia `agenda` — então quem cuida do financeiro nunca alcançava a tela que
+   * lista as noivas em atraso, embora o bloco dela fosse visível para essa
+   * pessoa. O menu era mais restritivo que a própria tela.
+   */
+  modulos?: string[];
+};
 
 // Agrupado por contexto: uma lista plana de 17 itens vira uma parede de leitura
 // serial. `modulo` espelha o gate de backend; item sem módulo é sempre visível.
@@ -41,7 +57,7 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
       { icon: Gem, label: "Noivas", href: "/noivas", modulo: "leads" },
       { icon: Calendar, label: "Agenda", href: "/agenda", modulo: "agenda" },
       { icon: CalendarCheck, label: "Atendimentos", href: "/atendimentos", modulo: "agenda" },
-      { icon: MessageCircle, label: "Mensagens de hoje", href: "/mensagens", modulo: "agenda" },
+      { icon: MessageCircle, label: "Mensagens de hoje", href: "/mensagens", modulos: ["agenda", "financeiro", "leads"] },
     ],
   },
   {
@@ -61,6 +77,11 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
       { icon: FileText, label: "Orçamentos", href: "/orcamentos", modulo: "leads" },
       { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "leads" },
       { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro", modulo: "financeiro" },
+      // F31/E103: a tela mais crítica do fechamento do mês NÃO estava na
+      // sidebar nem na barra do hub — chegava-se a ela só por um botão
+      // secundário dentro de "Contas a pagar". Fechar o mês são oito telas sem
+      // ordem declarada, e a que a loja mais precisa achar era a escondida.
+      { icon: CalendarClock, label: "Folha do mês", href: "/financeiro/folha", modulo: "financeiro" },
       { icon: Percent, label: "Comissões", href: "/comissoes", modulo: "comissao" },
       // Sem `modulo` de propósito: é o extrato da PRÓPRIA pessoa (a rota
       // filtra pela sessão) — a vendedora sem o módulo comissao precisa ver.
@@ -82,14 +103,21 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
  * dentro do Sheet (mobile) — por isso ocupa `h-full w-full`, sem largura/borda
  * próprias (quem contém decide). `onNavigate` fecha o drawer ao navegar.
  */
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({ onNavigate, onBuscar }: { onNavigate?: () => void; onBuscar?: () => void }) {
   const { pathname } = useLocation();
   const { lojaId } = useParams();
-  const { logout, user, acessosModulos } = useAuth();
+  const { logout, user, acessosModulos, session } = useAuth();
+  // E92/F44: com uma loja só, "Trocar de Loja" é o item mais destacado de uma
+  // sidebar inteira apontando para uma tela com um botão. Some para quem não
+  // tem para onde trocar — e o superadmin, que tem, continua vendo.
+  const podeTrocarDeLoja = (session?.lojas?.length ?? 0) > 1;
   const base = `/loja/${lojaId}`;
 
-  const podeVer = (item: NavItem) =>
-    !item.modulo || !acessosModulos || moduloLiberado(acessosModulos[item.modulo]);
+  const podeVer = (item: NavItem) => {
+    if (!acessosModulos) return true;
+    if (item.modulos) return item.modulos.some((m) => moduloLiberado(acessosModulos[m]));
+    return !item.modulo || moduloLiberado(acessosModulos[item.modulo]);
+  };
 
   return (
     <div className="flex h-full w-full flex-col bg-sidebar overflow-y-auto">
@@ -100,20 +128,36 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <span className="font-serif text-xl font-medium text-sidebar-foreground">Moscow</span>
         </Link>
-        {/* E68: o sino mora onde toda tela mora. */}
-        <SinoNotificacoes />
+        <span className="flex items-center gap-1">
+          {/* E141: a busca de noivas a um atalho — o gatilho visível. */}
+          {onBuscar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Buscar noiva (Ctrl+K)"
+              data-testid="abrir-busca-global-sidebar"
+              onClick={onBuscar}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          )}
+          {/* E68: o sino mora onde toda tela mora. */}
+          <SinoNotificacoes />
+        </span>
       </div>
 
-      <div className="px-4 pb-4">
-        <Link
-          to="/selecionar-loja"
-          onClick={onNavigate}
-          className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground text-sm font-medium hover:bg-sidebar-accent transition-colors border border-sidebar-border"
-        >
-          <Store className="h-4 w-4" />
-          <span>Trocar de Loja</span>
-        </Link>
-      </div>
+      {podeTrocarDeLoja && (
+        <div className="px-4 pb-4">
+          <Link
+            to="/selecionar-loja"
+            onClick={onNavigate}
+            className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/50 text-sidebar-accent-foreground text-sm font-medium hover:bg-sidebar-accent transition-colors border border-sidebar-border"
+          >
+            <Store className="h-4 w-4" />
+            <span>Trocar de loja</span>
+          </Link>
+        </div>
+      )}
 
       <nav className="flex-1 px-4 space-y-4 pb-4">
         {grupos.map((grupo, i) => {

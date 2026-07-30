@@ -9,17 +9,29 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 test.describe("Agenda", () => {
   test("página abre com cabines listadas", async ({ page }) => {
     await page.goto("/agenda");
-    await expect(page.getByText("Atendimentos do Dia")).toBeVisible();
+    await expect(page.getByText("Atendimentos do dia")).toBeVisible();
     // A cabine agora é coluna da grade (E28) além de item da lista lateral —
     // `.first()` desfaz a ambiguidade de o nome aparecer nos dois lugares.
     await expect(page.getByText("E2E Cabine").first()).toBeVisible();
   });
 
-  // Era achado C4 (botão sem handler); hoje abre o formulário.
-  test("botão Novo Agendamento abre formulário", async ({ page }) => {
-    await page.goto("/agenda");
-    await page.getByRole("button", { name: "Novo Agendamento" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+  // Era achado C4 (botão sem handler); virou diálogo próprio; e no E98/F12 virou
+  // link para a ÚNICA tela de agendar. O diálogo daqui criava o atendimento com
+  // o instante do navegador, punha a vendedora logada como responsável sem
+  // perguntar e aceitava PROVA sem reserva — três defeitos que a tela não tem.
+  test("Novo Agendamento leva à tela de agendar, no dia que está na grade", async ({ page }) => {
+    const dia = "2028-02-14";
+    await page.goto(`/agenda?dia=${dia}`);
+    await page.getByRole("link", { name: "Novo Agendamento" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/atendimentos/novo\\?dia=${dia}$`));
+    await expect(page.getByRole("heading", { name: "Agendar" })).toBeVisible();
+    // O dia da grade chega preenchido: sem isso o link custaria a redigitação
+    // de uma data que já estava na tela anterior.
+    await expect(page.getByLabel("Data")).toHaveValue(dia);
+    // E a volta devolve a agenda do MESMO dia, que é o que o diálogo dava de graça.
+    await page.getByRole("link", { name: "← Agenda" }).click();
+    await expect(page).toHaveURL(new RegExp(`/agenda\\?dia=${dia}$`));
   });
 
   // Era achado agenda-dia (a lista mostrava a história inteira, sem filtro de

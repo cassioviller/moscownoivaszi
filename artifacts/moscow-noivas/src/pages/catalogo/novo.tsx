@@ -6,6 +6,7 @@ import {
   getListAtributosQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,9 +24,10 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novoAtributoSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   tipo: z.enum(["OPCAO_UNICA", "ESCALA"]),
   novasOpcoes: z.string().optional(),
 });
@@ -46,6 +48,10 @@ export default function NovoAtributo() {
     resolver: zodResolver(novoAtributoSchema),
     defaultValues: { nome: "", tipo: "OPCAO_UNICA", novasOpcoes: "" },
   });
+
+  // E133/B7: fechar/recarregar com trabalho digitado avisa; cala após o
+  // submit bem-sucedido (a tela navega sem reset).
+  useConfirmarSaida(form.formState.isDirty && !form.formState.isSubmitSuccessful);
 
   const salvando = createAtributo.isPending || createOpcao.isPending;
 
@@ -73,8 +79,8 @@ export default function NovoAtributo() {
     } catch (err) {
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
       toast({
-        title: "Erro ao criar atributo",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar atributo",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

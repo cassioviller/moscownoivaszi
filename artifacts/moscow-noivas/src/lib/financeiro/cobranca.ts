@@ -68,6 +68,20 @@ export type NoivaInadimplente = {
   qtdParcelas: number;
   diasMaisAntigo: number;
   faixaMaisAntiga: Faixa;
+  /**
+   * F28/E98 — a parcela que a linha recebe.
+   *
+   * A linha é por NOIVA e agrega N parcelas vencidas, então "Receber" nela
+   * precisa dizer qual. É a **mais antiga**: é por ela que a fila se ordena, é
+   * ela que define a faixa e os dias mostrados na própria linha, e é ela que a
+   * mensagem de cobrança cita ("desde N dias"). Receber qualquer outra primeiro
+   * deixaria a linha dizendo um atraso que não é o que acabou de ser pago.
+   *
+   * Empate de vencimento se desfaz pelo id — sem isso a escolha dependeria da
+   * ordem em que o servidor devolveu as parcelas, e a mesma tela ofereceria
+   * parcelas diferentes entre dois carregamentos.
+   */
+  parcelaMaisAntigaId: string;
 };
 export type FaixaResumo = { total: number; qtdNoivas: number };
 export type Aging = {
@@ -93,7 +107,15 @@ export function agingDeParcelas(
   const faixaNoivas: Record<Faixa, Set<string>> = { ate30: new Set(), d31a60: new Set(), mais60: new Set() };
   const porNoiva = new Map<
     string,
-    { noivaNome: string | null; whatsapp: string | null; contratoId: string; totalC: number; qtd: number; vencMaisAntigo: string }
+    {
+      noivaNome: string | null;
+      whatsapp: string | null;
+      contratoId: string;
+      totalC: number;
+      qtd: number;
+      vencMaisAntigo: string;
+      parcelaMaisAntigaId: string;
+    }
   >();
 
   for (const p of parcelas) {
@@ -122,12 +144,18 @@ export function agingDeParcelas(
         totalC: 0,
         qtd: 0,
         vencMaisAntigo: venc,
+        parcelaMaisAntigaId: p.id,
       };
       porNoiva.set(leadId, n);
     }
     n.totalC += valorC;
     n.qtd += 1;
-    if (venc < n.vencMaisAntigo) n.vencMaisAntigo = venc;
+    // Empate de vencimento desempata pelo id: sem isso a parcela oferecida
+    // dependeria da ordem em que o servidor devolveu a lista.
+    if (venc < n.vencMaisAntigo || (venc === n.vencMaisAntigo && p.id < n.parcelaMaisAntigaId)) {
+      n.vencMaisAntigo = venc;
+      n.parcelaMaisAntigaId = p.id;
+    }
   }
 
   const noivas: NoivaInadimplente[] = [...porNoiva.entries()]
@@ -142,6 +170,7 @@ export function agingDeParcelas(
         qtdParcelas: n.qtd,
         diasMaisAntigo,
         faixaMaisAntiga: faixaDeAtraso(diasMaisAntigo),
+        parcelaMaisAntigaId: n.parcelaMaisAntigaId,
       };
     })
     .sort((a, b) => b.diasMaisAntigo - a.diasMaisAntigo);

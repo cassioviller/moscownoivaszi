@@ -54,8 +54,39 @@ export default async function globalSetup() {
     if (!admin) throw new Error("[e2e-setup] seed não criou o admin");
   }
 
-  const [loja] = await db.select().from(lojasTable).limit(1);
+  /**
+   * A loja da suíte é a MAIS ANTIGA do banco, e a ordem é explícita.
+   *
+   * Era `limit(1)` sem `order by`, o que em Postgres devolve a linha que a
+   * varredura encontrar primeiro — ou seja, **posição física no heap**. Duas
+   * coisas quebram isso, e as duas estão neste banco:
+   *
+   * 1. qualquer `UPDATE` em `lojas` reescreve a linha no fim do heap e reelege
+   *    outra loja no run seguinte (foi o que aconteceu: o spec 45 passou a
+   *    gravar telefone/endereço da loja para o rodapé do E100/F35);
+   * 2. as "Loja Teste" que as fixtures de API deixam no banco de dev (sobra do
+   *    E104) são candidatas à eleição — e uma delas ganhou.
+   *
+   * O sintoma não foi um teste vermelho: foi o SEED estourando com `duplicate
+   * key ... regra_disponibilidade_pkey`, porque a regra abaixo já existia
+   * apontando para a loja da eleição anterior. A loja de verdade é a primeira
+   * que existiu; fixture nasce sempre depois.
+   */
+  const todasAsLojas = await db.select().from(lojasTable);
+  const loja = todasAsLojas.sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+  )[0];
   if (!loja) throw new Error("[e2e-setup] nenhuma loja no banco");
+
+  // E93/D1: uma SEGUNDA loja da mesma pessoa. Sem ela a fixture não conseguia
+  // exprimir a divergência "URL em B, sessão em A" — que é o estado exato em
+  // que os dois efeitos de sincronização se reativavam até o React abortar.
+  // Um bookmark e duas abas são os dois caminhos normais até aqui, e nenhum
+  // deles era testável com uma loja só.
+  const [lojaB] = await db.select().from(lojasTable).where(eq(lojasTable.id, "e2e-loja-b"));
+  await garantir(lojaB, () =>
+    db.insert(lojasTable).values({ id: "e2e-loja-b", nome: "E2E Segunda Loja" }),
+  );
 
   const [maria] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, MARIA_EMAIL));
   if (!maria) throw new Error("[e2e-setup] vendedora maria não existe");
@@ -69,6 +100,21 @@ export default async function globalSetup() {
       usuarioId: maria.id,
       lojaId: loja.id,
       perfilId: perfilVendedora?.id ?? "perfil-vendedora",
+    }),
+  );
+
+  // 1b. Vínculo da admin com a segunda loja (E93/D1). A admin é superadmin e
+  // `buscarLojasUsuario` já lhe devolveria as duas — mas o vínculo explícito é
+  // o que o E91 passou a cobrar em toda escrita, e é ele que faz o cenário do
+  // bookmark valer para gente comum e não só para quem tem a chave-mestra.
+  const [perfilAdmin] = await db.select().from(perfisTable).where(eq(perfisTable.sistema, true));
+  const [vinculoAdminB] = await db.select().from(usuariosLojasTable)
+    .where(and(eq(usuariosLojasTable.usuarioId, admin.id), eq(usuariosLojasTable.lojaId, "e2e-loja-b")));
+  await garantir(vinculoAdminB, () =>
+    db.insert(usuariosLojasTable).values({
+      usuarioId: admin.id,
+      lojaId: "e2e-loja-b",
+      perfilId: perfilAdmin?.id ?? perfilVendedora?.id ?? "perfil-admin",
     }),
   );
 
@@ -107,9 +153,13 @@ export default async function globalSetup() {
   // abre TODOS os dias (E38): assim os testes que criam atendimento "hoje" não
   // dependem de o dia da suíte cair num dia fechado. O teste do E38 gere e
   // restaura sua própria configuração de dias.
+  // O conflito é resolvido pelo `id`, e não pelo `lojaId`: a tabela tem as duas
+  // restrições únicas, e só a do `id` cobre o caso que estourou — a linha
+  // `e2e-regra-disp` sobrevivendo de um run que elegeu OUTRA loja. Reapontar é
+  // o conserto; recusar era o bug.
   await db.insert(regraDisponibilidadeTable)
     .values({ id: "e2e-regra-disp", lojaId: loja.id, provaDiasAntes: 14, usoDiasAntes: 3, usoDiasDepois: 2, lavagemDiasDepois: 7, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] })
-    .onConflictDoUpdate({ target: regraDisponibilidadeTable.lojaId, set: { diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] } });
+    .onConflictDoUpdate({ target: regraDisponibilidadeTable.id, set: { lojaId: loja.id, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] } });
 
   // Escada de comissão da admin — alvo da tela de comissões. Vigência bem no
   // passado para valer em qualquer competência que o teste olhe. As faixas são
@@ -191,6 +241,9 @@ export default async function globalSetup() {
   const state = {
     lojaId: loja.id,
     lojaNome: loja.nome,
+    // E93/D1: a segunda loja da admin — o "B" do bookmark com a sessão em A.
+    lojaBId: "e2e-loja-b",
+    lojaBNome: "E2E Segunda Loja",
     adminEmail: ADMIN_EMAIL,
     mariaEmail: MARIA_EMAIL,
     senha: SENHA,

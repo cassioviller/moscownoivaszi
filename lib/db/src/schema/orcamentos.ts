@@ -13,7 +13,10 @@ export const orcamentosTable = pgTable("orcamentos", {
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
   leadId: text("lead_id").notNull().references(() => leadsTable.id, { onDelete: "cascade" }),
   atendimentoId: text("atendimento_id").references(() => atendimentosTable.id, { onDelete: "set null" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): mesma regra de `contratos.vendedoraId` — a coluna é
+  // notNull, então o `set null` da autoria não é possível e apagar a vendedora
+  // apagaria a proposta que a noiva aceitou. Recusa-se o delete; inative.
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   status: orcamentoStatusEnum("status").notNull().default("RASCUNHO"),
   descontoTipo: descontoTipoEnum("desconto_tipo"),
   descontoValor: decimal("desconto_valor", { precision: 10, scale: 2, mode: "number" }),

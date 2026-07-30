@@ -17,7 +17,9 @@ import { contasPagarTable } from "./financeiro";
 export const comissaoRegrasTable = pgTable("comissao_regras", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): a escada versionada é o que EXPLICA cada fechamento
+  // passado. Apagá-la junto com a pessoa deixaria o valor pago sem régua.
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   /** A regra passa a valer deste dia em diante; a mais recente já iniciada vence. */
   vigenciaInicio: timestamp("vigencia_inicio", { withTimezone: true }).notNull(),
   /** Ligado: os bônus dos degraus já vencidos se somam. Desligado: só o da faixa final. */
@@ -72,7 +74,9 @@ export type ComissaoFaixa = typeof comissaoFaixasTable.$inferSelect;
 export const comissaoFechamentosTable = pgTable("comissao_fechamentos", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): o fechamento é dinheiro que a loja PAGOU. Ele não pode
+  // sumir porque o cadastro de quem recebeu foi excluído.
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   competencia: text("competencia").notNull(), // "YYYY-MM"
   /** Base líquida já com o estorno §6.4 abatido. Nunca negativa. */
   totalVendas: decimal("total_vendas", { precision: 10, scale: 2, mode: "number" }).notNull(),
@@ -92,6 +96,20 @@ export const comissaoFechamentosTable = pgTable("comissao_fechamentos", {
    * guardou a lista; `[]` = não havia estorno a reconciliar.
    */
   estornoContratoIds: jsonb("estorno_contrato_ids").$type<string[]>(),
+  /**
+   * E102/C5: quanto do estorno pendente ESTE fechamento absorveu.
+   *
+   * O §6.4 era tudo-ou-nada: se o mês não cobria o estorno inteiro, nada era
+   * reconciliado e o valor CHEIO voltava no mês seguinte — com a base daquele
+   * mês já consumida. Medido pela trilha C: R$ 38.000 vendidos em três meses,
+   * R$ 20.000 de estorno, e a vendedora recebendo R$ 500 em vez de R$ 1.800,
+   * porque os R$ 20.000 foram descontados três vezes.
+   *
+   * Absorção parcial não cabe em granularidade de CONTRATO (um cancelamento de
+   * R$ 20.000 abatido pela metade não é "meio contrato reconciliado"), e por
+   * isso ela mora aqui, em valor.
+   */
+  estornoAbsorvido: decimal("estorno_absorvido", { precision: 10, scale: 2, mode: "number" }).notNull().default(0),
   fechadoEm: timestamp("fechado_em", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   unq: unique().on(t.lojaId, t.vendedoraId, t.competencia),

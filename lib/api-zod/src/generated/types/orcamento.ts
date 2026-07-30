@@ -39,4 +39,5 @@ export interface Orcamento {
   createdAt: Date;
   lead?: Lead;
   itens?: OrcamentoItem[];
+  valorTotal?: number;
 }

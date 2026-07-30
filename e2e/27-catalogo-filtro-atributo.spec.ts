@@ -55,7 +55,9 @@ test.describe("Catálogo — filtro por atributo (E41)", () => {
     await expect(page.getByText(comAtributo)).toBeVisible();
     await expect(page.getByText(semAtributo)).toBeVisible();
 
-    // Filtra pela opção do atributo.
+    // Filtra pela opção do atributo — desde o E135 a parede de atributos tem
+    // teto e mora atrás de "Mais filtros"; o caminho da vendedora abre antes.
+    await page.getByTestId("botao-mais-filtros").click();
     await page.getByTestId(`filtro-atributo-${atributoId}`).click();
     await page.getByRole("option", { name: valorOpcao }).click();
 

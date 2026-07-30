@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { VestidoForm, type VestidoFormValues } from "./vestido-form";
 import { podeNoModulo } from "@/lib/permissoes";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Cadastro completo de vestido (com características do catálogo) — portado de vestidos/novo do orcamentos. */
 export default function NovoVestido() {
@@ -27,7 +29,7 @@ export default function NovoVestido() {
   const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
 
   const catalogoQuery = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const createVestido = useCreateVestido();
 
@@ -47,12 +49,12 @@ export default function NovoVestido() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) });
-      toast({ title: "Vestido cadastrado com sucesso" });
+      toast({ title: "Vestido cadastrado" });
       navigate(`/loja/${lojaId}/vestidos/${criado.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao cadastrar vestido",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cadastrar vestido",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

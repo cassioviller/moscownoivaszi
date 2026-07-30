@@ -1,4 +1,6 @@
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -20,7 +22,7 @@ import {
 } from "@/components/ui/form";
 
 const noivaSchema = z.object({
-  noivaNome: z.string().min(1, "Nome da noiva é obrigatório"),
+  noivaNome: z.string().min(1, "Informe o nome da noiva"),
   noivoNome: z.string().optional(),
   whatsapp: z.string().optional(),
   cerimonialista: z.string().optional(),
@@ -28,13 +30,26 @@ const noivaSchema = z.object({
   casamentoHorario: z.string().optional(),
   casamentoLocal: z.string().optional(),
   // SITE/INSTAGRAM nascem da captação externa (E19); aqui aparecem para a
-  // edição não engasgar com um lead captado (a origem é imutável na edição).
-  origem: z.enum(["LOJA", "WHATSAPP", "SITE", "INSTAGRAM"]),
+  // edição não engasgar com um lead captado.
+  origem: z.enum(["LOJA", "WHATSAPP", "SITE", "INSTAGRAM"], {
+    message: "Escolha de onde ela veio",
+  }),
 });
 
 export type NoivaFormValues = z.infer<typeof noivaSchema>;
 
-const VAZIO: NoivaFormValues = {
+/**
+ * F2 — a origem NASCE VAZIA, e é por isso que o tipo aqui não é
+ * `NoivaFormValues`.
+ *
+ * Ela vinha `"LOJA"` já escolhida, e o select mostrava "Loja" como se alguém
+ * tivesse respondido. Quem cadastrava sem olhar aquele campo — o caso comum,
+ * porque ele fica no meio de sete outros — criava uma noiva de canal LOJA para
+ * sempre: `/noivas/conversao` existe para dizer quanto cada canal traz, e o
+ * default silencioso somava toda captação de Instagram na coluna da loja
+ * física. O `z.enum` já era obrigatório; faltava não responder por ela.
+ */
+const VAZIO: DefaultValues<NoivaFormValues> = {
   noivaNome: "",
   noivoNome: "",
   whatsapp: "",
@@ -42,7 +57,7 @@ const VAZIO: NoivaFormValues = {
   casamentoData: "",
   casamentoHorario: "",
   casamentoLocal: "",
-  origem: "LOJA",
+  origem: undefined,
 };
 
 /**
@@ -54,23 +69,47 @@ export function NoivaForm({
   submitLabel,
   pending,
   onSubmit,
-  origemDisabled,
+  origemTravada,
 }: {
   defaults?: Partial<NoivaFormValues>;
   submitLabel: string;
   pending: boolean;
   onSubmit: (values: NoivaFormValues) => void | Promise<void>;
-  /** Na edição a origem não é alterável (LeadUpdate do main não tem o campo). */
-  origemDisabled?: boolean;
+  /**
+   * F2 — a origem é corrigível até a noiva CONVERTER; depois disso o relatório
+   * de conversão já a contou naquele canal, e a rota devolve 422
+   * ORIGEM_IMUTAVEL. A tela repete a régua do servidor para o campo não
+   * convidar a uma edição que vai falhar no salvar.
+   */
+  origemTravada?: boolean;
 }) {
   const form = useForm<NoivaFormValues>({
     resolver: zodResolver(noivaSchema),
     defaultValues: { ...VAZIO, ...defaults },
   });
 
+  /**
+   * D14 — o cuidado (c) do épico, e é a armadilha real deste item.
+   *
+   * As duas telas que usam este formulário NAVEGAM depois de salvar, e o
+   * react-hook-form continua `isDirty` até o `reset()` — que aqui nunca
+   * acontece, porque a tela some. Sem este `salvou`, salvar uma noiva
+   * perguntaria "quer descartar as alterações?" logo depois de a pessoa ter
+   * salvado: um aviso que treina quem usa a ignorar.
+   */
+  const [salvou, setSalvou] = useState(false);
+  useConfirmarSaida(form.formState.isDirty && !salvou);
+
+  const submeter = async (values: NoivaFormValues) => {
+    await onSubmit(values);
+    // Só depois do await: se o `onSubmit` lançar, o formulário continua sujo e
+    // protegido — que é o caso em que perder o que foi digitado dói mais.
+    setSalvou(true);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-md space-y-5">
+      <form onSubmit={form.handleSubmit(submeter)} className="max-w-md space-y-5">
         <FormField
           control={form.control}
           name="noivaNome"
@@ -89,11 +128,11 @@ export function NoivaForm({
           name="origem"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Origem</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange} disabled={origemDisabled}>
+              <FormLabel>Origem *</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange} disabled={origemTravada}>
                 <FormControl>
                   <SelectTrigger data-testid="select-noiva-origem">
-                    <SelectValue />
+                    <SelectValue placeholder="De onde ela veio?" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -103,6 +142,12 @@ export function NoivaForm({
                   <SelectItem value="INSTAGRAM">Instagram</SelectItem>
                 </SelectContent>
               </Select>
+              {origemTravada && (
+                <p className="text-xs text-muted-foreground">
+                  A noiva já fechou contrato — o relatório de conversão já contou
+                  esta origem, e mudá-la agora reescreveria um número lido.
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -130,7 +175,16 @@ export function NoivaForm({
             <FormItem>
               <FormLabel>WhatsApp</FormLabel>
               <FormControl>
-                <Input placeholder="(11) 99999-9999" data-testid="input-noiva-whatsapp" {...field} />
+                {/* E92/E20: o teclado numérico de telefone. O WhatsApp digitado
+                    torto quebra em silêncio os links wa.me da fila de mensagens. */}
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(11) 99999-9999"
+                  data-testid="input-noiva-whatsapp"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

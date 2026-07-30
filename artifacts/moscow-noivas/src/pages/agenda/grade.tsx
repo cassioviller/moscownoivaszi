@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
+  pointerWithin,
   DragOverlay,
   PointerSensor,
   TouchSensor,
@@ -19,18 +20,38 @@ import {
   type Cabine,
 } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { instanteHora } from "@/lib/formatos";
+import { CalendarClock, GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   slotsDoDia,
   slotDe,
   instanteDoSlot,
+  horaLocal,
   chaveCelula,
   lerChaveCelula,
   recusaDeMover,
   DETALHE_RECUSA,
   type Expediente,
 } from "@/lib/agenda";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * A grade do dia (E28): colunas = cabine, linhas = slot de 30 min. Substituiu a
@@ -92,6 +113,41 @@ export function GradeDoDia({
   );
 
   const cabinesAtivas = useMemo(() => cabines.filter((c) => c.ativo), [cabines]);
+
+  /**
+   * E136/E10 — reagendar SEM arrasto: os dois kanbans só ligavam
+   * Pointer/Touch, e não havia formulário nenhum que editasse horário de
+   * atendimento marcado — quem navega por teclado não reagendava NUNCA, e no
+   * toque arrastar meia tela em 390px é pontaria. O diálogo SOMA ao arrasto
+   * (que está bem — delay 200ms) sobre o MESMO PATCH.
+   */
+  const [reagendando, setReagendando] = useState<Atendimento | null>(null);
+  const [reagHora, setReagHora] = useState("");
+  const [reagCabineId, setReagCabineId] = useState("");
+  function abrirReagendar(a: Atendimento) {
+    const { hora, minuto } = horaLocal(a.inicio);
+    setReagHora(`${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")}`);
+    setReagCabineId(a.cabineId);
+    setReagendando(a);
+  }
+  async function onReagendarPorDialogo() {
+    if (!reagendando || !reagHora || !reagCabineId) return;
+    const inicio = instanteDoSlot(diaYMD, reagHora);
+    try {
+      await updateAtendimento.mutateAsync({
+        lojaId: activeLojaId,
+        atendimentoId: reagendando.id,
+        data: { cabineId: reagCabineId, inicio: inicio.toISOString() },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId) });
+      const cabine = cabinesAtivas.find((c) => c.id === reagCabineId);
+      toast({ title: `${nomePorLead.get(reagendando.leadId) ?? "Atendimento"} → ${cabine?.nome ?? "cabine"}, ${reagHora}` });
+      setReagendando(null);
+    } catch (err) {
+      toast({ title: "Não deu para reagendar", description: mensagemApi(err, "Tente novamente."), variant: "destructive" });
+    }
+  }
+
 
   // Cada atendimento no seu par (cabine, slot). Os que caem fora do expediente
   // não têm célula — vão para `orfaos` em vez de desaparecer da tela.
@@ -162,8 +218,8 @@ export function GradeDoDia({
       });
     } catch (err) {
       toast({
-        title: "Não foi possível reagendar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para reagendar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -178,7 +234,13 @@ export function GradeDoDia({
   }
 
   return (
+    <>
     <DndContext
+      /* O drop é onde o PONTEIRO está — a colisão por retângulo (default)
+         compara o card inteiro contra as células e fica no fio do meio
+         quando a largura das colunas muda: o card pego pela alça esquerda
+         se espalha para a direita e podia cair na cabine vizinha. */
+      collisionDetection={pointerWithin}
       sensors={sensores}
       onDragStart={(e: DragStartEvent) =>
         setArrastando((e.active.data.current?.atendimento as Atendimento) ?? null)
@@ -220,6 +282,7 @@ export function GradeDoDia({
                   expediente={expediente}
                   podeEditar={podeEditar}
                   nomePorLead={nomePorLead}
+                  onReagendar={abrirReagendar}
                 />
               ))}
             </Fragment>
@@ -235,11 +298,10 @@ export function GradeDoDia({
           </p>
           {orfaos.map((a) => (
             <div key={a.id} className="text-sm" data-testid={`orfao-agenda-${a.id}`}>
-              {new Intl.DateTimeFormat("pt-BR", {
-                timeZone: "America/Sao_Paulo",
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(new Date(a.inicio))}{" "}
+              {/* Era um Intl.DateTimeFormat construído DENTRO do .map() — um
+                  formatador novo por órfão, com as mesmas opções de
+                  `instanteHora`, a régua do relógio da loja. */}
+              {instanteHora(a.inicio)}{" "}
               — {nomePorLead.get(a.leadId) ?? "Noiva"}
             </div>
           ))}
@@ -259,6 +321,58 @@ export function GradeDoDia({
         ) : null}
       </DragOverlay>
     </DndContext>
+
+    <Dialog open={!!reagendando} onOpenChange={(aberto) => !aberto && setReagendando(null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            Reagendar{reagendando ? ` — ${nomePorLead.get(reagendando.leadId) ?? "atendimento"}` : ""}
+          </DialogTitle>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void onReagendarPorDialogo();
+          }}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="reag-hora">Horário (dia {diaYMD.slice(8, 10)}/{diaYMD.slice(5, 7)})</Label>
+              <Input
+                id="reag-hora"
+                type="time"
+                step={1800}
+                required
+                value={reagHora}
+                onChange={(e) => setReagHora(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="reag-cabine">Cabine</Label>
+              <Select value={reagCabineId} onValueChange={setReagCabineId}>
+                <SelectTrigger id="reag-cabine">
+                  <SelectValue placeholder="Escolha a cabine" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cabinesAtivas.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setReagendando(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={updateAtendimento.isPending}>
+              {updateAtendimento.isPending ? "Reagendando…" : "Reagendar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -273,6 +387,7 @@ function Celula({
   expediente,
   podeEditar,
   nomePorLead,
+  onReagendar,
 }: {
   cabineId: string;
   slot: string;
@@ -285,6 +400,7 @@ function Celula({
   expediente: Expediente;
   podeEditar: boolean;
   nomePorLead: Map<string, string>;
+  onReagendar: (a: Atendimento) => void;
 }) {
   // A MESMA função que o PATCH consulta: a célula que o servidor recusaria não
   // aceita o card, em vez de aceitar e devolver 422 depois da animação.
@@ -329,6 +445,7 @@ function Celula({
           nome={nomePorLead.get(a.leadId) ?? "Noiva"}
           arrastavel={podeEditar}
           escondido={arrastando?.id === a.id}
+          onReagendar={onReagendar}
         />
       ))}
     </div>
@@ -340,11 +457,14 @@ function CartaoAtendimento({
   nome,
   arrastavel,
   escondido,
+  onReagendar,
 }: {
   atendimento: Atendimento;
   nome: string;
   arrastavel: boolean;
   escondido?: boolean;
+  /** E136/E10: a porta sem arrasto — soma ao drag, não o substitui. */
+  onReagendar?: (a: Atendimento) => void;
 }) {
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: atendimento.id,
@@ -375,6 +495,17 @@ function CartaoAtendimento({
           </button>
         )}
         <span className="min-w-0 flex-1 truncate font-medium">{nome}</span>
+        {arrastavel && onReagendar && (
+          <button
+            type="button"
+            className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label={`Reagendar atendimento de ${nome}`}
+            data-testid={`reagendar-${atendimento.id}`}
+            onClick={() => onReagendar(atendimento)}
+          >
+            <CalendarClock className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <div className="mt-1 flex items-center gap-1">
         <Badge variant="secondary" className="px-1 py-0 text-[10px] font-normal">

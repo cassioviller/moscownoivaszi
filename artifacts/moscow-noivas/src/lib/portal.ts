@@ -33,3 +33,33 @@ export function urlsDePortalPorLead(
   }
   return mapa;
 }
+
+/**
+ * F38/E100 — quem some do mapa acima **por vencimento**, e só por isso.
+ *
+ * O mapa de cima responde "há link?" e é tudo o que a mensagem precisa saber.
+ * O que ele não conta é POR QUE alguém não está nele, e a diferença é toda:
+ *
+ * - **vencido** — a loja gerou, a noiva não voltou em 30 dias. Ninguém decidiu
+ *   isso; simplesmente aconteceu, e a mensagem passa a sair sem o link em
+ *   silêncio. É o único caso que merece aviso.
+ * - **revogado** — a loja MATOU o link de propósito. Cobrar um novo seria
+ *   discutir com a decisão de quem a tomou.
+ * - **sem portal nenhum** — ela nunca teve um. Marcar isso poria um alerta em
+ *   quase toda linha da fila, e aviso que aparece sempre não é lido nunca.
+ */
+export function portalVencido(p: PortalStatusLike | null | undefined): boolean {
+  if (!p || p.revogadoEm) return false;
+  return new Date(p.expiraEm) <= new Date();
+}
+
+/** O mesmo veredito sobre o lote de `GET /portais`, por leadId. */
+export function leadsComPortalVencido(
+  portais: readonly (PortalStatusLike & { leadId: string })[] | undefined,
+): Set<string> {
+  const vencidos = new Set<string>();
+  for (const p of portais ?? []) {
+    if (portalVencido(p)) vencidos.add(p.leadId);
+  }
+  return vencidos;
+}

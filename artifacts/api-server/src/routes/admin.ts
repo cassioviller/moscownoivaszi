@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, pagamentosTable, vestidosTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable, comissaoRegrasTable, recorrenciasTable, convitesTable } from "@workspace/db";
+import { eq, and, sql, count, inArray, isNull } from "drizzle-orm";
+import { STATUS_ABERTO, hojeLocal, inicioDoDia, primeiroDiaDoMes } from "@workspace/financeiro-core";
 import { 
   ListLojasResponse, 
   CreateLojaBody, 
@@ -43,6 +44,7 @@ import { backupLogTable } from "@workspace/db";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -59,7 +61,7 @@ router.get("/admin/lojas", async (_req, res): Promise<void> => {
 router.post("/admin/lojas", async (req, res): Promise<void> => {
   const parsed = CreateLojaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [loja] = await db.insert(lojasTable).values({
@@ -72,12 +74,12 @@ router.post("/admin/lojas", async (req, res): Promise<void> => {
 router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   const params = UpdateLojaParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateLojaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [loja] = await db.update(lojasTable)
@@ -91,13 +93,84 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   res.json(UpdateLojaResponse.parse(loja));
 });
 
+/**
+ * E106/S1 🔴 — apagar uma loja deixa de ser um clique sem volta.
+ *
+ * A rota tinha o gate certo (`requireSuperAdmin`, acima) e **nenhuma guarda de
+ * destruição**: `DELETE FROM lojas WHERE id = ?` e 204. `lojas` é referenciada
+ * por **31 FKs em CASCADE** — medidas em `pg_constraint`, não estimadas —, e
+ * entre elas estão `parcelas` (com `recebido_em` preenchido), `pagamentos`,
+ * `contratos`, `vestidos` (o acervo inteiro), `usuarios_lojas` (os vínculos da
+ * equipe) e `audit_log`. Uma linha some e leva 31 tabelas junto.
+ *
+ * É o irmão maior do B2, que o E91 fechou em `DELETE /admin/usuarios/:id`, e
+ * ganha a mesma forma: contar o que seria destruído, **recusar com 409 legível**
+ * e ensinar o caminho que preserva. Aqui a diferença é o alcance — lá morria o
+ * histórico de UMA pessoa, aqui morre o de uma loja inteira.
+ *
+ * **A contagem não é só de dinheiro, e isso é decisão.** Uma loja sem contrato
+ * nenhum pode ter 200 vestidos fotografados e seis pessoas na equipe: é trabalho,
+ * e some igual. Por isso o acervo e a equipe entram na régua ao lado das
+ * parcelas.
+ *
+ * **A trilha não é gravada aqui, e o motivo é o próprio defeito:**
+ * `audit_log.loja_id` é `notNull` + CASCADE, então registrar "loja X apagada"
+ * dentro da loja X apaga o registro junto com ela. Fica o `req.log.warn`
+ * estruturado — o mesmo veredito do `DELETE /admin/usuarios/:id` do E91, pela
+ * mesma razão. A sobra **S3** é onde isso vira épico; com a guarda de cima, o
+ * que ainda pode ser apagado é uma loja VAZIA, e o rastro pesado deixa de ser
+ * urgente.
+ */
 router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   const params = DeleteLojaParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
-  await db.delete(lojasTable).where(eq(lojasTable.id, params.data.lojaId));
+  const lojaId = params.data.lojaId;
+
+  // 404 ANTES de qualquer coisa. O `delete` devolvia 204 mesmo sem ter removido
+  // linha nenhuma — o mesmo 404 cosmético que o E91 corrigiu no DELETE da
+  // equipe: quem chamou não distinguia "apaguei" de "não existia".
+  const [loja] = await db.select().from(lojasTable).where(eq(lojasTable.id, lojaId));
+  if (!loja) {
+    res.status(404).json({ error: "Loja not found" });
+    return;
+  }
+
+  const [[l], [c], [p], [pg], [v], [e]] = await Promise.all([
+    db.select({ n: count() }).from(leadsTable).where(eq(leadsTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(parcelasTable).where(eq(parcelasTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(pagamentosTable).where(eq(pagamentosTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(vestidosTable).where(eq(vestidosTable.lojaId, lojaId)),
+    db.select({ n: count() }).from(usuariosLojasTable).where(eq(usuariosLojasTable.lojaId, lojaId)),
+  ]);
+
+  // A ordem é a do estrago: dinheiro primeiro, porque é o irreversível de
+  // verdade — o resto se recadastra, uma parcela recebida não.
+  const historico = [
+    p.n > 0 ? `${p.n} parcela(s)` : null,
+    pg.n > 0 ? `${pg.n} pagamento(s)` : null,
+    c.n > 0 ? `${c.n} contrato(s)` : null,
+    l.n > 0 ? `${l.n} noiva(s)` : null,
+    v.n > 0 ? `${v.n} vestido(s) no acervo` : null,
+    e.n > 0 ? `${e.n} pessoa(s) na equipe` : null,
+  ].filter(Boolean);
+
+  if (historico.length > 0) {
+    res.status(409).json({
+      error: "LOJA_COM_HISTORICO",
+      detalhe: `Esta loja tem ${historico.join(", ")} — excluir apagaria tudo isso, inclusive parcelas já recebidas. Desative a loja em vez de excluir: ela sai dos seletores e ninguém entra nela, e nada é perdido.`,
+    });
+    return;
+  }
+
+  await db.delete(lojasTable).where(eq(lojasTable.id, lojaId));
+  req.log.warn(
+    { lojaId, lojaNome: loja.nome, porUsuarioId: req.usuario!.id },
+    "loja_excluida",
+  );
   res.status(204).send();
 });
 
@@ -119,7 +192,7 @@ router.get("/admin/perfis", async (_req, res): Promise<void> => {
 router.post("/admin/perfis", async (req, res): Promise<void> => {
   const parsed = CreatePerfilBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [perfil] = await db.insert(perfisTable).values({
@@ -133,12 +206,12 @@ router.post("/admin/perfis", async (req, res): Promise<void> => {
 router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
   const params = UpdatePerfilParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdatePerfilBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   // E80: o perfil do sistema é intocável pela API — hoje só a UI protegia, e
@@ -172,7 +245,7 @@ router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
 router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
   const params = DeletePerfilParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   // E80: apagar o perfil do sistema deixaria a loja sem Admin — recusa igual.
@@ -182,6 +255,36 @@ router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
     res.status(403).json({ error: "PERFIL_SISTEMA", detalhe: "o perfil do sistema não pode ser removido" });
     return;
   }
+  if (!alvo) {
+    res.status(404).json({ error: "Perfil not found" });
+    return;
+  }
+  // Mesma régua do DELETE de usuário: o 409 LEGÍVEL sai antes de o banco
+  // levantar o 23503, e ele diz QUEM depende do perfil. Sem isto, a resposta
+  // era o `VINCULO_EXISTENTE` genérico ("há registros dependendo deste") — que
+  // não diz se são pessoas, convites ou overrides, nem em que loja, e deixa
+  // quem administra sem próximo passo.
+  const [[vinculos], [convites], [overrides]] = await Promise.all([
+    db.select({ n: count() }).from(usuariosLojasTable)
+      .where(eq(usuariosLojasTable.perfilId, params.data.perfilId)),
+    db.select({ n: count() }).from(convitesTable)
+      .where(and(eq(convitesTable.perfilId, params.data.perfilId), isNull(convitesTable.usadoEm))),
+    db.select({ n: count() }).from(perfilOverridesLojasTable)
+      .where(eq(perfilOverridesLojasTable.perfilId, params.data.perfilId)),
+  ]);
+  const emUso = [
+    vinculos.n > 0 ? `${vinculos.n} pessoa(s)` : null,
+    convites.n > 0 ? `${convites.n} convite(s) pendente(s)` : null,
+    overrides.n > 0 ? `${overrides.n} personalização(ões) de loja` : null,
+  ].filter(Boolean);
+  if (emUso.length > 0) {
+    res.status(409).json({
+      error: "PERFIL_EM_USO",
+      detalhe: `Este perfil está em uso por ${emUso.join(", ")}. Mova quem o usa para outro perfil antes de removê-lo.`,
+    });
+    return;
+  }
+
   await db.delete(perfisTable).where(eq(perfisTable.id, params.data.perfilId));
   res.status(204).send();
 });
@@ -216,7 +319,7 @@ router.get("/admin/usuarios", async (_req, res): Promise<void> => {
 router.post("/admin/usuarios", async (req, res): Promise<void> => {
   const parsed = CreateUsuarioBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const senhaHash = await hashSenha(parsed.data.senha);
@@ -235,16 +338,25 @@ router.post("/admin/usuarios", async (req, res): Promise<void> => {
 router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   const params = UpdateUsuarioParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateUsuarioBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
   const updateData: any = { ...parsed.data };
+  // O e-mail entra pela MESMA borda do cadastro (linha do POST) e do login,
+  // que procura por `email` já em minúsculas. Gravando o texto cru, corrigir a
+  // ficha de alguém digitando "Ana@Moscow.com" trancava a pessoa para fora: o
+  // login não achava linha nenhuma e devolvia 401 com a senha certa, sem nada
+  // na tela do admin mostrando o que mudou. Pior, a unicidade é sobre o texto
+  // cru (`email` .unique()), então as duas grafias conviviam e só uma logava.
+  if (typeof updateData.email === "string") {
+    updateData.email = updateData.email.toLowerCase().trim();
+  }
   if (updateData.senha) {
     updateData.senhaHash = await hashSenha(updateData.senha);
     delete updateData.senha;
@@ -253,10 +365,22 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
     updateData.precisaTrocarSenha = true;
   }
 
-  const [usuario] = await db.update(usuariosTable)
-    .set(updateData)
-    .where(eq(usuariosTable.id, params.data.usuarioId))
-    .returning();
+  // B12 — trocar a credencial ou inativar tem de DERRUBAR as sessões vivas, na
+  // MESMA transação. Sem isso, o superadmin reseta a senha de quem foi
+  // desligado às pressas e a aba já aberta segue valendo por até 8h
+  // (SESSAO_TTL_MS): a pessoa continua fechando contrato e recebendo parcela
+  // com a identidade dela na trilha, enquanto o admin acredita ter fechado a
+  // porta. É a mesma regra de `/auth/senha` e dos overrides de perfil.
+  const mudouAcesso = parsed.data.senha !== undefined || parsed.data.ativo === false;
+
+  const usuario = await db.transaction(async (tx) => {
+    const [linha] = await tx.update(usuariosTable)
+      .set(updateData)
+      .where(eq(usuariosTable.id, params.data.usuarioId))
+      .returning();
+    if (linha && mudouAcesso) await encerrarSessoesDoUsuario(tx, params.data.usuarioId);
+    return linha;
+  });
   if (!usuario) {
     res.status(404).json({ error: "Usuario not found" });
     return;
@@ -267,10 +391,66 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
 router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   const params = DeleteUsuarioParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
+  // B2 🔴 — a exclusão passa a ser RECUSADA quando a pessoa tem histórico.
+  //
+  // As FKs de vendedora eram ON DELETE CASCADE: este `delete` apagava os
+  // contratos dela, as parcelas PAGAS (com `recebidoEm`), o snapshot de itens,
+  // os orçamentos, os atendimentos e os fechamentos de comissão — o caixa
+  // realizado mudava para trás, sem confirmação e sem trilha. O DDL do E91 as
+  // trocou por `restrict`; aqui damos o 409 LEGÍVEL antes de o banco levantar o
+  // 23503 genérico ("Operação viola vínculos existentes"), e a mensagem ensina
+  // o caminho certo: inativar preserva tudo.
+  //
+  // A contagem tem de cobrir TODAS as FKs que apontam para `usuarios`, e
+  // cobria quatro de seis. As duas que faltavam falhavam em direções opostas:
+  //
+  // - `recorrencias.usuario_id` é CASCADE. Uma costureira com salário ativo de
+  //   R$ 2.800 e nada mais passava pelas quatro contagens, o DELETE ia adiante
+  //   e o banco apagava a recorrência junto. No mês seguinte a folha vinha
+  //   R$ 2.800 menor, sem erro e sem linha nenhuma que explicasse.
+  // - `comissao_regras.vendedora_id` é restrict. Uma vendedora que só tem
+  //   regra de comissão também passava, e morria no 23503 do banco — devolvendo
+  //   o `409 VINCULO_EXISTENTE` genérico em vez da mensagem que ensina a
+  //   inativar, que era exatamente o ponto desta guarda.
+  const usuarioId = params.data.usuarioId;
+  const [[c1], [c2], [c3], [c4], [c5], [c6]] = await Promise.all([
+    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(comissaoFechamentosTable).where(eq(comissaoFechamentosTable.vendedoraId, usuarioId)),
+    db.select({ n: count() }).from(recorrenciasTable).where(eq(recorrenciasTable.usuarioId, usuarioId)),
+    db.select({ n: count() }).from(comissaoRegrasTable).where(eq(comissaoRegrasTable.vendedoraId, usuarioId)),
+  ]);
+  const contratos = c1.n, orcamentos = c2.n, atendimentos = c3.n, comissoes = c4.n;
+  const recorrencias = c5.n, regras = c6.n;
+
+  const historico = [
+    contratos > 0 ? `${contratos} contrato(s)` : null,
+    orcamentos > 0 ? `${orcamentos} orçamento(s)` : null,
+    atendimentos > 0 ? `${atendimentos} atendimento(s)` : null,
+    comissoes > 0 ? `${comissoes} fechamento(s) de comissão` : null,
+    recorrencias > 0 ? `${recorrencias} lançamento(s) recorrente(s) — salário` : null,
+    regras > 0 ? `${regras} regra(s) de comissão` : null,
+  ].filter(Boolean);
+
+  if (historico.length > 0) {
+    res.status(409).json({
+      error: "USUARIO_COM_HISTORICO",
+      detalhe: `Esta pessoa tem ${historico.join(", ")} — excluir apagaria esse histórico (inclusive parcelas já recebidas). Inative em vez de excluir.`,
+    });
+    return;
+  }
+
   await db.delete(usuariosTable).where(eq(usuariosTable.id, params.data.usuarioId));
+  // Sem loja, não há `registrarAuditoria` (a trilha é por loja). O log fica
+  // greppável para quem for reconstituir "quem sumiu do cadastro".
+  req.log.warn(
+    { usuarioId: params.data.usuarioId, porUsuarioId: req.usuario!.id },
+    "usuario_excluido",
+  );
   res.status(204).send();
 });
 
@@ -278,7 +458,7 @@ router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
 router.get("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => {
   const params = ListPerfilOverridesParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const overrides = await db.select().from(perfilOverridesLojasTable).where(eq(perfilOverridesLojasTable.lojaId, params.data.lojaId));
@@ -292,12 +472,12 @@ router.get("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
 router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => {
   const params = SetPerfilOverrideParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = SetPerfilOverrideBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -351,7 +531,7 @@ router.put("/admin/lojas/:lojaId/overrides", async (req, res): Promise<void> => 
 router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Promise<void> => {
   const params = DeletePerfilOverrideParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
 
@@ -395,9 +575,12 @@ router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Prom
 // E76: a rede numa tela. Quatro agregados por loja, cada um numa consulta com
 // GROUP BY — nada de N+1 por loja.
 router.get("/admin/consolidado", async (_req, res): Promise<void> => {
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
+  // "Recebido no mês" é o mês da LOJA, não o do relógio do processo. Com
+  // `setDate(1)` + `setHours(0,0,0,0)` num container UTC, o corte caía às 21h
+  // do último dia do mês anterior em São Paulo: todo recebimento entre 21h e a
+  // meia-noite do dia 31 entrava no mês seguinte, e o número que a rede vê no
+  // console não batia com o DRE de nenhuma das lojas.
+  const inicioMes = inicioDoDia(primeiroDiaDoMes(hojeLocal()));
 
   const [lojas, leadsPorLoja, contratosPorLoja, recebidoPorLoja, abertoPorLoja] = await Promise.all([
     db.select({ id: lojasTable.id, nome: lojasTable.nome }).from(lojasTable)
@@ -422,7 +605,9 @@ router.get("/admin/consolidado", async (_req, res): Promise<void> => {
       total: sql<number>`coalesce(sum(${parcelasTable.valorPrevisto} - coalesce(${parcelasTable.valorRecebido}, 0)), 0)`.mapWith(Number),
     })
       .from(parcelasTable)
-      .where(sql`${parcelasTable.status} in ('PREVISTA', 'PARCIAL')`)
+      // A lista vem do core (C4/E94) — era a quarta cópia à mão da mesma
+      // regra, aqui em SQL cru, onde nem o typecheck a alcançava.
+      .where(inArray(parcelasTable.status, [...STATUS_ABERTO]))
       .groupBy(parcelasTable.lojaId),
   ]);
 
@@ -467,7 +652,7 @@ router.post("/admin/backup", async (req, res): Promise<void> => {
 router.get("/admin/backup/:backupId/download", async (req, res): Promise<void> => {
   const params = DownloadBackupParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const [registro] = await db

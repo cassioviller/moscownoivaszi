@@ -9,8 +9,15 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ErrorResponseCamposItem = {
+  campo: string;
+  motivo: string;
+};
+
 export interface ErrorResponse {
   error: string;
+  detalhe?: string;
+  campos?: ErrorResponseCamposItem[];
 }
 
 export interface LoginInput {
@@ -231,29 +238,6 @@ export interface MembroAtividade {
   acoes30d: number;
 }
 
-export type AuditoriaItemAcao = typeof AuditoriaItemAcao[keyof typeof AuditoriaItemAcao];
-
-
-export const AuditoriaItemAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
-  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
-  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
-  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
-  CONVITE_CRIADO: 'CONVITE_CRIADO',
-  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
-  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
-  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
-  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
-  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
-  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
-} as const;
-
 /**
  * @nullable
  */
@@ -261,7 +245,8 @@ export type AuditoriaItemDetalhe = { [key: string]: unknown } | null;
 
 export interface AuditoriaItem {
   id: string;
-  acao: AuditoriaItemAcao;
+  /** Código da ação, versionado pela aplicação (ver ACOES_AUDITORIA no api-server). Aberto de propósito: consumidor antigo lendo trilha nova mostra o código cru, nunca quebra. */
+  acao: string;
   entidade: string;
   entidadeId: string;
   /** @nullable */
@@ -653,6 +638,19 @@ export const LeadUpdatePerdidaMotivo = {
   OUTRO: 'OUTRO',
 } as const;
 
+/**
+ * Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)
+ */
+export type LeadUpdateOrigem = typeof LeadUpdateOrigem[keyof typeof LeadUpdateOrigem];
+
+
+export const LeadUpdateOrigem = {
+  LOJA: 'LOJA',
+  WHATSAPP: 'WHATSAPP',
+  SITE: 'SITE',
+  INSTAGRAM: 'INSTAGRAM',
+} as const;
+
 export interface LeadUpdate {
   etapa?: LeadUpdateEtapa;
   noivaNome?: string;
@@ -665,6 +663,8 @@ export interface LeadUpdate {
   /** Obrigatório quando etapa vira PERDIDO; ignorado nas demais */
   perdidaMotivo?: LeadUpdatePerdidaMotivo;
   perdidaDetalhe?: string;
+  /** Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além) */
+  origem?: LeadUpdateOrigem;
 }
 
 export interface LeadInteresseInput {
@@ -1033,6 +1033,10 @@ export interface Atendimento {
   atendidoEm?: string | null;
   /** @nullable */
   confirmadoEm?: string | null;
+  /** @nullable */
+  contatadoEm?: string | null;
+  /** @nullable */
+  remarcacaoPedidaEm?: string | null;
   situacao: AtendimentoSituacao;
   /** @nullable */
   desfecho?: AtendimentoDesfecho;
@@ -1224,8 +1228,19 @@ export interface Avaria {
   /** A foto vem por /avarias/{id}/foto */
   temFoto: boolean;
   /** @nullable */
+  parcelaId?: string | null;
+  /** @nullable */
   registradoPorNome?: string | null;
   criadaEm: string;
+}
+
+export interface CobrarAvariaInput {
+  contratoId: string;
+  /**
+     * @minimum 0
+     * @maximum 365
+     */
+  prazoDias?: number;
 }
 
 export interface AvariaInput {
@@ -1405,6 +1420,12 @@ export interface Orcamento {
   createdAt: string;
   lead?: Lead;
   itens?: OrcamentoItem[];
+  valorTotal?: number;
+}
+
+export interface OrcamentosPage {
+  total: number;
+  itens: Orcamento[];
 }
 
 export type OrcamentoInputDescontoTipo = typeof OrcamentoInputDescontoTipo[keyof typeof OrcamentoInputDescontoTipo];
@@ -1539,6 +1560,14 @@ export interface OrcamentoPublico {
   itens: OrcamentoPublicoItem[];
 }
 
+export type PortalNoivaResumoPagamento = {
+  faltaPagar: number;
+  /** @nullable */
+  proximaEm?: string | null;
+  /** @nullable */
+  proximaValor?: number | null;
+} | null;
+
 export type PortalNoivaLookbook = {
   vestidos: LookbookPublicoVestido[];
 } | null;
@@ -1548,7 +1577,50 @@ export type PortalNoivaProvasItem = {
   inicio: string;
   /** @nullable */
   confirmadoEm?: string | null;
+  /** @nullable */
+  remarcacaoPedidaEm?: string | null;
 };
+
+export type PortalNoivaContratoDescontoTipo = typeof PortalNoivaContratoDescontoTipo[keyof typeof PortalNoivaContratoDescontoTipo] | null;
+
+
+export const PortalNoivaContratoDescontoTipo = {
+  PERCENTUAL: 'PERCENTUAL',
+  VALOR: 'VALOR',
+} as const;
+
+export type PortalNoivaContrato = {
+  valorTotal: number;
+  totalBruto: number;
+  descontoTipo?: PortalNoivaContratoDescontoTipo;
+  /** @nullable */
+  descontoValor?: number | null;
+  fechadoEm: string;
+  /** @nullable */
+  dataCasamento?: string | null;
+  itens: OrcamentoPublicoItem[];
+} | null;
+
+export type PortalNoivaVestidoFotosItem = {
+  ordem: number;
+  atualizadaEm: string;
+};
+
+export type PortalNoivaVestidoAjustesItem = {
+  descricao: string;
+  pronto: boolean;
+};
+
+export type PortalNoivaVestido = {
+  vestidoId: string;
+  nome: string;
+  fotos: PortalNoivaVestidoFotosItem[];
+  /** @nullable */
+  retiradaPrevista?: string | null;
+  /** @nullable */
+  retiradaFeitaEm?: string | null;
+  ajustes: PortalNoivaVestidoAjustesItem[];
+} | null;
 
 export type PortalParcelaStatus = typeof PortalParcelaStatus[keyof typeof PortalParcelaStatus];
 
@@ -1574,10 +1646,17 @@ export interface PortalParcela {
 export interface PortalNoiva {
   noivaNome: string;
   lojaNome: string;
+  /** @nullable */
+  lojaEndereco: string | null;
+  /** @nullable */
+  lojaTelefone: string | null;
+  resumoPagamento?: PortalNoivaResumoPagamento;
   orcamento: OrcamentoPublico | null;
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];
   parcelas: PortalParcela[];
+  contrato: PortalNoivaContrato;
+  vestido: PortalNoivaVestido;
 }
 
 export interface PortalStatus {
@@ -1675,6 +1754,8 @@ export interface Parcela {
   recebidoEm?: string | null;
   /** @nullable */
   formaRecebimento?: ParcelaFormaRecebimento;
+  /** @nullable */
+  conciliadoEm?: string | null;
   contrato?: ParcelaContrato | null;
 }
 
@@ -1738,6 +1819,11 @@ export interface Contrato {
   itens?: ContratoItem[];
   lead?: Lead;
   vendedora?: Usuario;
+}
+
+export interface ContratosPage {
+  total: number;
+  itens: Contrato[];
 }
 
 export type ContratoInputFormaPagamento = typeof ContratoInputFormaPagamento[keyof typeof ContratoInputFormaPagamento];
@@ -1823,11 +1909,7 @@ export interface GerarPlanoInput {
      */
   numParcelas: number;
   primeiroVencimento: string;
-  /**
-     * @minimum 1
-     * @maximum 3650
-     */
-  periodicidadeDias?: number;
+  vencimentoEntrada?: string;
 }
 
 export type ReceberParcelaInputFormaRecebimento = typeof ReceberParcelaInputFormaRecebimento[keyof typeof ReceberParcelaInputFormaRecebimento];
@@ -1844,6 +1926,7 @@ export const ReceberParcelaInputFormaRecebimento = {
 } as const;
 
 export interface ReceberParcelaInput {
+  /** @minimum 0.01 */
   valorRecebido: number;
   recebidoEm: string;
   formaRecebimento?: ReceberParcelaInputFormaRecebimento;
@@ -1867,6 +1950,18 @@ export const ContaPagarStatus = {
   PAGA: 'PAGA',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ContaPagarPagamento = {
+  id: string;
+  data: string;
+  /** @nullable */
+  forma?: string | null;
+  valor: number;
+  contas: number;
+} | null;
+
 export interface ContaPagar {
   id: string;
   lojaId: string;
@@ -1885,6 +1980,8 @@ export interface ContaPagar {
   status: ContaPagarStatus;
   /** @nullable */
   recorrenciaId?: string | null;
+  /** @nullable */
+  pagamento?: ContaPagarPagamento;
 }
 
 export type ContaPagarInputTipo = typeof ContaPagarInputTipo[keyof typeof ContaPagarInputTipo];
@@ -1911,6 +2008,7 @@ export interface ContaPagarInput {
 
 export interface PagarContaInput {
   data: string;
+  /** @minimum 0.01 */
   valorPago: number;
   forma?: string;
   observacoes?: string;
@@ -1935,6 +2033,17 @@ export interface PagamentoItem {
   contaPagar?: ContaPagar;
 }
 
+export interface MarcarConciliadoInput {
+  parcelaIds?: string[];
+  pagamentoIds?: string[];
+}
+
+export interface MarcarConciliadoResultado {
+  /** Quantas parcelas passaram de nao-conciliadas a conciliadas */
+  parcelas: number;
+  pagamentos: number;
+}
+
 export interface Pagamento {
   id: string;
   lojaId: string;
@@ -1948,6 +2057,8 @@ export interface Pagamento {
   observacoes?: string | null;
   /** @nullable */
   enviadoContabilidadeEm?: string | null;
+  /** @nullable */
+  conciliadoEm?: string | null;
   colaborador?: Usuario | null;
   itens?: PagamentoItem[];
 }
@@ -2030,7 +2141,11 @@ export interface EnviarContabilidadeInput {
 }
 
 export interface EnviarContabilidadeResultado {
+  /** Total (parcelas + pagamentos) */
   marcados: number;
+  /** Recebimentos declarados — o lado que NÃO existia antes do F34 */
+  parcelas: number;
+  pagamentos: number;
 }
 
 export interface SaldoReferencia {
@@ -2228,6 +2343,7 @@ export interface ComissaoFechamento {
   competencia: string;
   /** Base líquida, já com o estorno abatido */
   totalVendas: number;
+  estornoAbsorvido?: number;
   /** @nullable */
   percentualAplicado?: number | null;
   valorComissao: number;
@@ -2304,8 +2420,8 @@ export interface DashboardSummary {
   totalVestidosAtivos: number;
   totalOrcamentosAbertos: number;
   totalContratosAtivos: number;
-  receberProximos30Dias: number;
-  pagarProximos30Dias: number;
+  receberProximos30Dias?: number;
+  pagarProximos30Dias?: number;
   atendimentosHoje?: number;
 }
 
@@ -2433,6 +2549,19 @@ export const ListLeadsOrdem = {
   recentes: 'recentes',
 } as const;
 
+export type GetConversaoLeadsParams = {
+/**
+ * Início do recorte por entrada do lead (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do recorte por entrada do lead (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
 export type GetSazonalidadeCasamentos200Item = {
   /** YYYY-MM */
   competencia: string;
@@ -2476,6 +2605,17 @@ export type ExpurgarLeadsPerdidos200 = {
   anonimizadas: number;
 };
 
+export type PreviaExpurgoLeadsPerdidosParams = {
+/**
+ * @minimum 6
+ */
+mesesInatividade?: number;
+};
+
+export type PreviaExpurgoLeadsPerdidos200 = {
+  aAnonimizar: number;
+};
+
 export type GetDesempenhoVendedoras200Item = {
   vendedoraId: string;
   nome: string;
@@ -2491,6 +2631,10 @@ export type GetDesempenhoVendedoras200Item = {
 export type ExportarDadosLead200 = { [key: string]: unknown };
 
 export type ListAtendimentosParams = {
+/**
+ * Só a agenda desta noiva (E125) — a ficha pergunta pela próxima prova DELA, não pela agenda da loja
+ */
+leadId?: string;
 /**
  * Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva
  */
@@ -2548,6 +2692,21 @@ leadId?: string;
  * Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história
  */
 status?: ListOrcamentosStatus;
+/**
+ * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
+ * @maxLength 200
+ */
+q?: string;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListOrcamentosOrdem;
 };
 
 export type ListOrcamentosStatus = typeof ListOrcamentosStatus[keyof typeof ListOrcamentosStatus];
@@ -2558,6 +2717,14 @@ export const ListOrcamentosStatus = {
   ENVIADO: 'ENVIADO',
   APROVADO: 'APROVADO',
   RECUSADO: 'RECUSADO',
+} as const;
+
+export type ListOrcamentosOrdem = typeof ListOrcamentosOrdem[keyof typeof ListOrcamentosOrdem];
+
+
+export const ListOrcamentosOrdem = {
+  antigos: 'antigos',
+  recentes: 'recentes',
 } as const;
 
 export type GetOrcamentoPublicoParams = {
@@ -2592,6 +2759,14 @@ export type ConfirmarProvaPortal200 = {
   confirmadoEm: string;
 };
 
+export type PedirRemarcacaoPortalParams = {
+token: string;
+};
+
+export type PedirRemarcacaoPortal200 = {
+  remarcacaoPedidaEm: string;
+};
+
 export type GetPortalFotoParams = {
 token: string;
 vestidoId: string;
@@ -2611,6 +2786,10 @@ export const GetPortalFotoVariante = {
   thumb: 'thumb',
 } as const;
 
+export type GetPortalContratoPdfParams = {
+token: string;
+};
+
 export type ListPortais200Item = {
   leadId: string;
   token: string;
@@ -2623,7 +2802,39 @@ export type ListPortais200Item = {
 
 export type ListContratosParams = {
 leadId?: string;
+/**
+ * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
+ * @maxLength 200
+ */
+q?: string;
+status?: ListContratosStatus;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListContratosOrdem;
 };
+
+export type ListContratosStatus = typeof ListContratosStatus[keyof typeof ListContratosStatus];
+
+
+export const ListContratosStatus = {
+  ATIVO: 'ATIVO',
+  CANCELADO: 'CANCELADO',
+} as const;
+
+export type ListContratosOrdem = typeof ListContratosOrdem[keyof typeof ListContratosOrdem];
+
+
+export const ListContratosOrdem = {
+  antigos: 'antigos',
+  recentes: 'recentes',
+} as const;
 
 export type ListParcelasParams = {
 /**
@@ -2782,6 +2993,30 @@ export type GetDre200 = {
   porMeio: GetDre200PorMeio;
 };
 
+export type ListContasPagarParams = {
+/**
+ * Início do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do intervalo de vencimento (inclusivo, dia local America/Sao_Paulo)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+/**
+ * abertas = só o que ainda não foi pago (PREVISTA)
+ */
+status?: ListContasPagarStatus;
+};
+
+export type ListContasPagarStatus = typeof ListContasPagarStatus[keyof typeof ListContasPagarStatus];
+
+
+export const ListContasPagarStatus = {
+  abertas: 'abertas',
+} as const;
+
 export type ExportarContasPagarParams = {
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
@@ -2824,9 +3059,9 @@ colaboradorId?: string;
 
 export type ListAuditoriaParams = {
 /**
- * Uma das ações da união fechada (ACOES_AUDITORIA)
+ * Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve lista vazia, não erro.
  */
-acao?: ListAuditoriaAcao;
+acao?: string;
 /**
  * Autor da ação (id; o nome na linha é desnormalizado)
  */
@@ -2843,31 +3078,11 @@ de?: string;
 ate?: string;
 };
 
-export type ListAuditoriaAcao = typeof ListAuditoriaAcao[keyof typeof ListAuditoriaAcao];
-
-
-export const ListAuditoriaAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
-  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
-  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
-  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
-  CONVITE_CRIADO: 'CONVITE_CRIADO',
-  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
-  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
-  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
-  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
-  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
-  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
-} as const;
-
 export type ExportarAuditoriaParams = {
-acao?: ExportarAuditoriaAcao;
+/**
+ * Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve planilha vazia, não erro.
+ */
+acao?: string;
 usuarioId?: string;
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)
@@ -2880,29 +3095,6 @@ de?: string;
  */
 ate?: string;
 };
-
-export type ExportarAuditoriaAcao = typeof ExportarAuditoriaAcao[keyof typeof ExportarAuditoriaAcao];
-
-
-export const ExportarAuditoriaAcao = {
-  PARCELA_RECEBIDA: 'PARCELA_RECEBIDA',
-  RECEBIMENTO_ESTORNADO: 'RECEBIMENTO_ESTORNADO',
-  CONTA_PAGA: 'CONTA_PAGA',
-  PAGAMENTO_REGISTRADO: 'PAGAMENTO_REGISTRADO',
-  PAGAMENTO_ESTORNADO: 'PAGAMENTO_ESTORNADO',
-  ESTORNO_COMISSAO_BAIXADO: 'ESTORNO_COMISSAO_BAIXADO',
-  COMISSAO_FECHAMENTO_REABERTO: 'COMISSAO_FECHAMENTO_REABERTO',
-  MEMBRO_ADICIONADO: 'MEMBRO_ADICIONADO',
-  MEMBRO_ALTERADO: 'MEMBRO_ALTERADO',
-  MEMBRO_REMOVIDO: 'MEMBRO_REMOVIDO',
-  CONVITE_CRIADO: 'CONVITE_CRIADO',
-  CONVITE_CANCELADO: 'CONVITE_CANCELADO',
-  PERMISSOES_ALTERADAS: 'PERMISSOES_ALTERADAS',
-  PERMISSOES_RESTAURADAS: 'PERMISSOES_RESTAURADAS',
-  ORCAMENTO_ACEITO: 'ORCAMENTO_ACEITO',
-  PROVA_CONFIRMADA: 'PROVA_CONFIRMADA',
-  LEADS_ANONIMIZADOS: 'LEADS_ANONIMIZADOS',
-} as const;
 
 export type ExportarFolhaParams = {
 /**

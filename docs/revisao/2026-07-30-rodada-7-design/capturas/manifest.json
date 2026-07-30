@@ -1,0 +1,142 @@
+{
+  "dir": "/home/runner/workspace/undefined",
+  "capturadas": {
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/dashboard": [
+      "dashboard--claro.png",
+      "dashboard--escuro.png",
+      "dashboard--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/noivas": [
+      "noivas--claro.png",
+      "noivas--escuro.png",
+      "noivas--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/noivas/e2e-lead-1": [
+      "noivas-ficha--claro.png",
+      "noivas-ficha--escuro.png",
+      "noivas-ficha--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/agenda": [
+      "agenda--claro.png",
+      "agenda--escuro.png",
+      "agenda--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/agenda/semana": [
+      "agenda-semana--claro.png",
+      "agenda-semana--escuro.png",
+      "agenda-semana--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/atendimentos": [
+      "atendimentos--claro.png",
+      "atendimentos--escuro.png",
+      "atendimentos--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/provas": [
+      "provas--claro.png",
+      "provas--escuro.png",
+      "provas--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/reservas": [
+      "reservas--claro.png",
+      "reservas--escuro.png",
+      "reservas--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/vestidos": [
+      "vestidos--claro.png",
+      "vestidos--escuro.png",
+      "vestidos--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/vestidos/e2e-vestido-1": [
+      "vestido-detalhe--claro.png",
+      "vestido-detalhe--escuro.png",
+      "vestido-detalhe--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/orcamentos": [
+      "orcamentos--claro.png",
+      "orcamentos--escuro.png",
+      "orcamentos--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/orcamentos/e2e-orcamento-1": [
+      "orcamento-detalhe--claro.png",
+      "orcamento-detalhe--escuro.png",
+      "orcamento-detalhe--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/contratos": [
+      "contratos--claro.png",
+      "contratos--escuro.png",
+      "contratos--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/mensagens": [
+      "mensagens--claro.png",
+      "mensagens--escuro.png",
+      "mensagens--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro": [
+      "financeiro--claro.png",
+      "financeiro--escuro.png",
+      "financeiro--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/receber": [
+      "financeiro-receber--claro.png",
+      "financeiro-receber--escuro.png",
+      "financeiro-receber--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/pagar": [
+      "financeiro-pagar--claro.png",
+      "financeiro-pagar--escuro.png",
+      "financeiro-pagar--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/cobranca": [
+      "financeiro-cobranca--claro.png",
+      "financeiro-cobranca--escuro.png",
+      "financeiro-cobranca--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/conciliacao": [
+      "financeiro-conciliacao--claro.png",
+      "financeiro-conciliacao--escuro.png",
+      "financeiro-conciliacao--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/dre": [
+      "financeiro-dre--claro.png",
+      "financeiro-dre--escuro.png",
+      "financeiro-dre--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/folha": [
+      "financeiro-folha--claro.png",
+      "financeiro-folha--escuro.png",
+      "financeiro-folha--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/financeiro/auditoria": [
+      "financeiro-auditoria--claro.png",
+      "financeiro-auditoria--escuro.png",
+      "financeiro-auditoria--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/equipe": [
+      "equipe--claro.png",
+      "equipe--escuro.png",
+      "equipe--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/configuracoes": [
+      "configuracoes--claro.png",
+      "configuracoes--escuro.png",
+      "configuracoes--390.png"
+    ],
+    "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/minha-comissao": [
+      "minha-comissao--claro.png",
+      "minha-comissao--escuro.png",
+      "minha-comissao--390.png"
+    ],
+    "/login": [
+      "login--claro.png",
+      "login--escuro.png",
+      "login--390.png"
+    ],
+    "/noiva/<token>": [
+      "portal-noiva--claro.png",
+      "portal-noiva--escuro.png",
+      "portal-noiva--390.png"
+    ]
+  },
+  "falharam": [],
+  "notas": []
+}

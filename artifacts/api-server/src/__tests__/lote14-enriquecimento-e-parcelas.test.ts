@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, contratosTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { diaDeNegocio } from "@workspace/financeiro-core";
 import {
   criarBloqueio,
   criarContrato,
@@ -129,7 +130,12 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
 
     const plano = await agent
       .post(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas/gerar-plano`)
-      .send({ entrada: 100, numParcelas: 3, primeiroVencimento: dataFutura(10).toISOString(), periodicidadeDias: 30 })
+      .send({
+        entrada: 100,
+        numParcelas: 3,
+        primeiroVencimento: dataFutura(10).toISOString(),
+        vencimentoEntrada: dataFutura(0).toISOString(),
+      })
       .expect(201);
 
     expect(plano.body).toHaveLength(4);
@@ -139,10 +145,19 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
     // 900 / 3 = 300 exato; soma tem de bater com o total.
     const soma = plano.body.reduce((acc: number, p: any) => acc + p.valorPrevisto, 0);
     expect(soma).toBe(1000);
-    // Entrada e parcela 1 são separadas por um período.
-    const venc0 = new Date(plano.body[0].vencimento).getTime();
-    const venc1 = new Date(plano.body[1].vencimento).getTime();
-    expect(venc1 - venc0).toBe(30 * 86_400_000);
+    // E95 mudou esta asserção de propósito — é a decisão do épico, não um
+    // ajuste de teste. ANTES: a entrada era carimbada com `primeiroVencimento`
+    // e a parcela 1 caía trinta dias corridos DEPOIS dela, então este bloco
+    // afirmava `venc1 − venc0 === 30 dias`. O mesmo campo significava a entrada
+    // aqui e a parcela 1 na tela, e o dia do vencimento andava para trás todo
+    // mês. AGORA: a entrada tem data própria, `primeiroVencimento` é sempre a
+    // parcela 1, e o dia se repete mês a mês (a âncora é 25/09/2027).
+    expect(plano.body.map((p: any) => diaDeNegocio(new Date(p.vencimento)))).toEqual([
+      "2027-09-15", // entrada, com data própria
+      "2027-09-25",
+      "2027-10-25",
+      "2027-11-25",
+    ]);
 
     await agent
       .post(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas/gerar-plano`)
@@ -251,8 +266,12 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
     await agent.delete(`/api/lojas/${f.lojaId}/parcelas/${p1.id}`).expect(422);
 
     await agent.delete(`/api/lojas/${f.lojaId}/parcelas/${p2.id}`).expect(204);
-    const lista = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas`).expect(200);
-    expect(lista.body.find((p: any) => p.id === p2.id)).toBeUndefined();
+    // A8/E104: as parcelas vêm do GET do CONTRATO, que é de onde a tela as lê.
+    // A rota dedicada foi removida — nunca esteve no spec, nunca teve hook, e
+    // este era o seu único consumidor. Trocar por /financeiro/parcelas daria
+    // 403: o agente deste arquivo é a vendedora, que não tem o módulo.
+    const lista = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}`).expect(200);
+    expect(lista.body.parcelas.find((p: any) => p.id === p2.id)).toBeUndefined();
   });
 
   it("cancelar contrato com destinoPago=manter preserva PAGAs; estornar cancela e zera as PAGAs", async () => {

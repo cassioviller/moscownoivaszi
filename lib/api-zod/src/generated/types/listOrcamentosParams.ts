@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListOrcamentosOrdem } from './listOrcamentosOrdem';
 import type { ListOrcamentosStatus } from './listOrcamentosStatus';
 
 export type ListOrcamentosParams = {
@@ -13,4 +14,19 @@ leadId?: string;
  * Só um status (E83) — mensagens de hoje pede os ENVIADOS, não a história
  */
 status?: ListOrcamentosStatus;
+/**
+ * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
+ * @maxLength 200
+ */
+q?: string;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListOrcamentosOrdem;
 };

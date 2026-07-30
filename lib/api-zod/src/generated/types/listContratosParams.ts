@@ -5,7 +5,25 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListContratosOrdem } from './listContratosOrdem';
+import type { ListContratosStatus } from './listContratosStatus';
 
 export type ListContratosParams = {
 leadId?: string;
+/**
+ * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
+ * @maxLength 200
+ */
+q?: string;
+status?: ListContratosStatus;
+/**
+ * @minimum 1
+ */
+pagina?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+porPagina?: number;
+ordem?: ListContratosOrdem;
 };

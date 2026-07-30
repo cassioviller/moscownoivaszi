@@ -20,12 +20,17 @@ const HTTP_METHODS = ["get", "post", "put", "patch", "delete"] as const;
 // Rotas implementadas no servidor mas (ainda) não documentadas no spec.
 // Se adicionar uma rota nova ao servidor, documente-a no spec — só adicione
 // aqui em último caso, com justificativa.
-const SERVER_ONLY_ALLOWLIST = new Set<string>([
-  // Parcelas de um contrato específico (o spec só documenta a listagem geral)
-  "GET /lojas/{lojaId}/contratos/{contratoId}/parcelas",
-  // Delete de ajuste (spec documenta apenas o PATCH)
-  "DELETE /lojas/{lojaId}/ajustes/{ajusteId}",
-]);
+// A8/E104 — **VAZIA, e é para continuar assim.**
+//
+// Tinha duas entradas, e as duas eram mentira. A primeira dizia "o spec só
+// documenta a listagem geral" — falso: o spec documenta o POST no MESMO path.
+// A rota foi removida (não tinha spec, nem hook, nem tela, nem E2E; o único
+// consumidor era um teste, e o GET do contrato já devolve as parcelas). A
+// segunda, o DELETE de ajuste, **já estava no spec** desde que alguém o
+// documentou — era entrada morta perdoando o que não precisava de perdão.
+//
+// Com a lista vazia, o invariante **spec = servidor** passa a ser TOTAL.
+const SERVER_ONLY_ALLOWLIST = new Set<string>([]);
 
 function extractSpecEndpoints(): Set<string> {
   const raw = readFileSync(SPEC_PATH, "utf-8");

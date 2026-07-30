@@ -23,7 +23,7 @@ describe("classificarErro", () => {
     const c = classificarErro(zerr);
     expect(c.status).toBe(500);
     // Não vaza schema para o cliente...
-    expect(c.body).toEqual({ error: "Erro interno do servidor" });
+    expect(c.body).toEqual({ error: "ERRO_INTERNO", detalhe: "Erro interno do servidor" });
     // ...mas o log distingue de um 500 qualquer.
     expect(c.logLevel).toBe("error");
     expect(c.logMsg).toContain("RESPOSTA_FORA_DO_CONTRATO");
@@ -32,13 +32,41 @@ describe("classificarErro", () => {
   it("violação de unicidade (23505) vira 409", () => {
     const c = classificarErro({ code: "23505" });
     expect(c.status).toBe(409);
+    expect(c.body.error).toBe("REGISTRO_DUPLICADO");
     expect(c.logLevel).toBe("warn");
   });
 
   it("código do Postgres embrulhado em cause também é lido", () => {
     const c = classificarErro({ cause: { code: "23503" } });
     expect(c.status).toBe(409);
-    expect(c.body.error).toContain("vínculos");
+    expect(c.body.error).toBe("VINCULO_EXISTENTE");
+  });
+
+  /**
+   * S12/E107 — o invariante que faltava, e que este arquivo violava sem notar.
+   *
+   * O E96 estabeleceu que `error` carrega CÓDIGO e a prosa mora em `detalhe`.
+   * O `classificarErro` era a última fonte de texto livre no campo — e o teste
+   * acima **afirmava a frase** (`toContain("vínculos")`), congelando o defeito
+   * num assert. Este caso olha os quatro caminhos do módulo de uma vez.
+   *
+   * A régua: código é MAIÚSCULA_COM_UNDERSCORE, sem espaço e sem acento. Se um
+   * dia alguém acrescentar um caminho novo com frase, cai aqui.
+   */
+  it("nenhum caminho põe frase no campo `error` — ele é código, sempre", () => {
+    const casos = [
+      zodErrorFake(),
+      { code: "23505" },
+      { code: "23503" },
+      { code: "23P01" },
+      new Error("qualquer outra coisa"),
+    ];
+    for (const err of casos) {
+      const { error, detalhe } = classificarErro(err).body;
+      expect(error, `código inválido: ${error}`).toMatch(/^[A-Z][A-Z_]*$/);
+      // E a frase não se perdeu: ela existe, só mudou de campo.
+      expect(detalhe, `sem detalhe para ${error}`).toBeTruthy();
+    }
   });
 
   it("conflito de disponibilidade (23P01) vira 409", () => {

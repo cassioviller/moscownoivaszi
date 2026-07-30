@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable } from "@workspace/db";
-import { eq, and, desc, or, ilike, sql, count, inArray } from "drizzle-orm";
+import { eq, and, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
+import { atributosDaLoja } from "../lib/escopo-loja";
 import {
   ListLeadsResponse,
   ListLeadsQueryParams,
@@ -19,13 +20,18 @@ import {
   GetDesempenhoVendedorasResponse,
   ExpurgarLeadsPerdidosBody,
   ExpurgarLeadsPerdidosResponse,
+  PreviaExpurgoLeadsPerdidosQueryParams,
+  GetConversaoLeadsQueryParams,
+  PreviaExpurgoLeadsPerdidosResponse,
   GetLeadsParadosResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
-import { transicaoLeadValida, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
+import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
+import { addDias, addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -170,7 +176,7 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateLeadBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -193,6 +199,19 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
  */
 router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  // E142/D7: `de`/`ate` recortam pelo dia de ENTRADA do lead (dia local) —
+  // numerador e denominador do MESMO período por construção (o WHERE é um).
+  // Sem params, a história inteira, como sempre foi.
+  const query = GetConversaoLeadsQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json(erroDeValidacao(query.error));
+    return;
+  }
+  const { de, ate } = query.data;
+  const janela = [
+    ...(de ? [gte(leadsTable.createdAt, inicioDoDia(de))] : []),
+    ...(ate ? [lt(leadsTable.createdAt, inicioDoDia(addDias(ate, 1)))] : []),
+  ];
 
   const porOrigem = await db
     .select({
@@ -201,13 +220,13 @@ router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => 
       convertidos: sql<number>`count(*) filter (where ${inArray(leadsTable.etapa, [...ETAPAS_CONVERTIDA])})`.mapWith(Number),
     })
     .from(leadsTable)
-    .where(eq(leadsTable.lojaId, lojaId))
+    .where(and(eq(leadsTable.lojaId, lojaId), ...janela))
     .groupBy(leadsTable.origem);
 
   const porMotivoPerda = await db
     .select({ motivo: leadsTable.perdidaMotivo, total: count() })
     .from(leadsTable)
-    .where(and(eq(leadsTable.lojaId, lojaId), eq(leadsTable.etapa, "PERDIDO")))
+    .where(and(eq(leadsTable.lojaId, lojaId), eq(leadsTable.etapa, "PERDIDO"), ...janela))
     .groupBy(leadsTable.perdidaMotivo);
 
   res.json(
@@ -274,19 +293,60 @@ router.get("/lojas/:lojaId/leads/parados", async (req, res): Promise<void> => {
 });
 
 // E77: dado pessoal sem propósito é passivo. Anonimiza os leads PERDIDOS com
+/**
+ * E128: o MESMO recorte para a prévia e para o expurgo — duas escritas da
+ * condição divergiriam em silêncio e a contagem do diálogo mentiria sobre a
+ * ação, que é exatamente o defeito que a prévia existe para fechar.
+ */
+function condicaoDoExpurgo(lojaId: string, corte: Date) {
+  return and(
+    eq(leadsTable.lojaId, lojaId),
+    eq(leadsTable.etapa, "PERDIDO"),
+    sql`${leadsTable.perdidaEm} < ${corte}`,
+    sql`${leadsTable.anonimizadaEm} is null`,
+  );
+}
+
+// E128: a confirmação da LGPD dizia o QUE se perde mas não QUANTAS — a
+// contagem só chegava no toast, DEPOIS do clique irreversível. Read-only de
+// verdade: um SELECT count, nenhuma escrita. Antes do :leadId para o path não
+// virar id.
+router.get("/lojas/:lojaId/leads/expurgo/previa", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = PreviaExpurgoLeadsPerdidosQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json(erroDeValidacao(query.error));
+    return;
+  }
+  const meses = query.data.mesesInatividade ?? 24;
+  const corte = inicioDoDia(addMeses(hojeLocal(), -meses));
+  const [linha] = await db
+    .select({ total: count() })
+    .from(leadsTable)
+    .where(condicaoDoExpurgo(lojaId, corte));
+  res.json(PreviaExpurgoLeadsPerdidosResponse.parse({ aAnonimizar: linha?.total ?? 0 }));
+});
+
 // perda mais antiga que a janela: a linha fica (funil e conversão continuam
 // contando), a PII sai. Irreversível por desenho; deixa rastro. Antes do
 // :leadId para o path não virar id.
-router.post("/lojas/:lojaId/leads/expurgo", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/leads/expurgo", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = ExpurgarLeadsPerdidosBody.safeParse(req.body ?? {});
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const meses = parsed.data.mesesInatividade ?? 24;
-  const corte = new Date();
-  corte.setMonth(corte.getMonth() - meses);
+  /**
+   * `setMonth(getMonth() - meses)` TRANSBORDA quando o dia de hoje não existe
+   * no mês alvo: rodado em 31/03 com 1 mês, o corte vira 03/03 — o Date corrige
+   * "31/02" para frente. O expurgo é irreversível por desenho (anonimiza a
+   * noiva), e um corte que anda três dias para o FUTURO anonimiza fichas que
+   * ainda estavam dentro do prazo de retenção. `addMeses` grampeia ao último
+   * dia do mês curto (31/03 −1 mês = 28/02), que é a régua do carnê.
+   */
+  const corte = inicioDoDia(addMeses(hojeLocal(), -meses));
 
   const anonimizadas = await db.transaction(async (tx) => {
     const linhas = await tx
@@ -301,12 +361,7 @@ router.post("/lojas/:lojaId/leads/expurgo", async (req, res): Promise<void> => {
         anonimizadaEm: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(leadsTable.lojaId, lojaId),
-        eq(leadsTable.etapa, "PERDIDO"),
-        sql`${leadsTable.perdidaEm} < ${corte}`,
-        sql`${leadsTable.anonimizadaEm} is null`,
-      ))
+      .where(condicaoDoExpurgo(lojaId, corte))
       .returning({ id: leadsTable.id });
 
     if (linhas.length > 0) {
@@ -438,7 +493,7 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
   const { lojaId, leadId } = req.params;
   const parsed = UpdateLeadBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -455,6 +510,21 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     res.status(422).json({
       error: "TRANSICAO_INVALIDA",
       detalhe: `Lead não pode ir de ${existente.etapa} para ${parsed.data.etapa}`,
+    });
+    return;
+  }
+
+  // F2: corrigir a origem é permitido enquanto a noiva não CONVERTEU, e a régua
+  // é `converteu()` — a mesma que /leads/conversao usa para contar. O backlog
+  // dizia "enquanto não tem contrato", e não é a mesma pergunta: o relatório
+  // conta por ETAPA, então um contrato cancelado continua contado e um lead em
+  // EM_PROVAS que nunca passou por CONTRATO_FECHADO tem contrato e não é
+  // contado. Travar pelo contrato deixaria a conversão já publicada mudar de
+  // canal debaixo de quem leu o relatório.
+  if (parsed.data.origem && parsed.data.origem !== existente.origem && converteu(existente.etapa)) {
+    res.status(422).json({
+      error: "ORIGEM_IMUTAVEL",
+      detalhe: "A noiva já converteu: mudar a origem agora reescreveria um número que o relatório de conversão já contou.",
     });
     return;
   }
@@ -502,9 +572,60 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
   }));
 });
 
+/**
+ * Apagar a noiva é a operação mais destrutiva do cadastro comercial — e era um
+ * `delete` cru: sem 404, sem contagem do que ia junto e sem trilha, o oposto da
+ * régua que o E91 aplicou ao DELETE de usuário e o E106 ao de loja.
+ *
+ * O que o cascade leva é atendimento, orçamento, interesse e registro de
+ * cobrança. Contrato NÃO: `contratos.lead_id` é `restrict` de propósito
+ * (histórico financeiro), e o banco levantava o 23503 genérico. Aqui o 409 sai
+ * antes, LEGÍVEL, dizendo quantos contratos seguram a ficha.
+ *
+ * A trilha grava o que sumiu ANTES de sumir — depois do delete não há de onde
+ * reconstituir, que é exatamente o motivo de a trilha existir.
+ */
 router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
   const { lojaId, leadId } = req.params;
-  await db.delete(leadsTable).where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)));
+  const [lead] = await db
+    .select({ id: leadsTable.id, noivaNome: leadsTable.noivaNome, etapa: leadsTable.etapa })
+    .from(leadsTable)
+    .where(and(eq(leadsTable.id, leadId as string), eq(leadsTable.lojaId, lojaId as string)));
+  if (!lead) {
+    res.status(404).json({ error: "Lead not found" });
+    return;
+  }
+
+  const [[c1], [c2], [c3]] = await Promise.all([
+    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.leadId, lead.id)),
+    db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.leadId, lead.id)),
+    db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.leadId, lead.id)),
+  ]);
+  if (c1.n > 0) {
+    res.status(409).json({
+      error: "LEAD_COM_CONTRATO",
+      detalhe: `Esta noiva tem ${c1.n} contrato(s) — excluir apagaria o histórico financeiro dela. Marque como PERDIDO, ou use o expurgo para anonimizar.`,
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "LEAD_REMOVIDO",
+      entidade: "lead",
+      entidadeId: lead.id,
+      detalhe: {
+        noivaNome: lead.noivaNome,
+        etapa: lead.etapa,
+        orcamentos: c2.n,
+        atendimentos: c3.n,
+      },
+    });
+    await tx.delete(leadsTable)
+      .where(and(eq(leadsTable.id, lead.id), eq(leadsTable.lojaId, lojaId as string)));
+  });
   res.status(204).send();
 });
 
@@ -513,7 +634,7 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
   const leadId = req.params.leadId as string;
   const parsed = SetLeadInteresseBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -527,30 +648,44 @@ router.put("/lojas/:lojaId/leads/:leadId/interesse", async (req, res): Promise<v
 
   const { atributos, ...insertData } = parsed.data;
 
-  const [interesse] = await db.insert(leadInteressesTable)
-    .values({
-      id: randomUUID(),
-      leadId,
-      ...insertData,
-    })
-    .onConflictDoUpdate({
-      target: leadInteressesTable.leadId,
-      set: { ...insertData, updatedAt: new Date() },
-    })
-    .returning();
-
-  if (atributos !== undefined) {
-    await db.delete(leadInteresseAtributosTable).where(eq(leadInteresseAtributosTable.leadInteresseId, interesse.id));
-    if (atributos.length > 0) {
-      await db.insert(leadInteresseAtributosTable).values(
-        atributos.map(a => ({
-          leadInteresseId: interesse.id,
-          atributoId: a.atributoId,
-          opcaoId: a.opcaoId,
-        }))
-      );
-    }
+  // E115 — os pares (atributo, opção) vinham do corpo sem prova de loja: o
+  // interesse da noiva podia apontar para o vocabulário de OUTRA loja (a mesma
+  // classe que o E111 fechou no PATCH /vestidos, com a mesma régua).
+  if (atributos !== undefined && !(await atributosDaLoja(atributos, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "atributo/opção não são desta loja" });
+    return;
   }
+
+  // E115 — upsert, delete e insert corriam em três statements FORA de
+  // transação: uma falha no meio deixava o interesse gravado sem atributo
+  // nenhum. Mesmo padrão que o E111 fechou em vestidos.
+  const interesse = await db.transaction(async (tx) => {
+    const [interesse] = await tx.insert(leadInteressesTable)
+      .values({
+        id: randomUUID(),
+        leadId,
+        ...insertData,
+      })
+      .onConflictDoUpdate({
+        target: leadInteressesTable.leadId,
+        set: { ...insertData, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (atributos !== undefined) {
+      await tx.delete(leadInteresseAtributosTable).where(eq(leadInteresseAtributosTable.leadInteresseId, interesse.id));
+      if (atributos.length > 0) {
+        await tx.insert(leadInteresseAtributosTable).values(
+          atributos.map(a => ({
+            leadInteresseId: interesse.id,
+            atributoId: a.atributoId,
+            opcaoId: a.opcaoId,
+          }))
+        );
+      }
+    }
+    return interesse;
+  });
 
   const fullInteresse = await db.query.leadInteressesTable.findFirst({
     where: eq(leadInteressesTable.id, interesse.id),
@@ -611,7 +746,7 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
   const leadId = req.params.leadId as string;
   const parsed = CreateRegistroCobrancaBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -640,6 +775,51 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
   res.status(201).json(
     CreateRegistroCobrancaResponse.parse(paraContrato(cobranca!, vendedor.nome)),
   );
+});
+
+/**
+ * E123/B3 — o desfazer. O registro nasce do clique num link que abre OUTRA ABA
+ * (a fila de /mensagens): errar o botão é barato, e sem esta rota o histórico
+ * afirmava um contato que não houve e o relógio do "parado há N dias" zerava
+ * em falso. É a mesma decisão do DELETE de contato do atendimento (E97), com a
+ * diferença de que aqui some uma LINHA — então vale a régua do E91/E106/E111:
+ * 404 antes de qualquer escrita, escopo por loja E lead, e trilha DENTRO da
+ * transação — depois do DELETE, ela é o único registro do que existiu.
+ */
+router.delete("/lojas/:lojaId/leads/:leadId/cobrancas/:registroId", async (req, res): Promise<void> => {
+  const { lojaId, leadId, registroId } = req.params;
+  const registro = await db.query.registrosCobrancaTable.findFirst({
+    where: and(
+      eq(registrosCobrancaTable.id, registroId as string),
+      eq(registrosCobrancaTable.leadId, leadId as string),
+      eq(registrosCobrancaTable.lojaId, lojaId as string),
+    ),
+  });
+  if (!registro) {
+    res.status(404).json({
+      error: "REGISTRO_DE_COBRANCA_NAO_ENCONTRADO",
+      detalhe: "Este registro de contato não existe mais — talvez já tenha sido desfeito.",
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "REGISTRO_COBRANCA_DESFEITO",
+      entidade: "registro_cobranca",
+      entidadeId: registro.id,
+      detalhe: {
+        leadId: registro.leadId,
+        canal: registro.canal,
+        observacao: registro.observacao,
+        contatoData: registro.contatoData.toISOString(),
+      },
+    });
+    await tx.delete(registrosCobrancaTable).where(eq(registrosCobrancaTable.id, registro.id));
+  });
+  res.status(204).send();
 });
 
 export default router;

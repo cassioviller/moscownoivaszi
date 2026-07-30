@@ -1,6 +1,8 @@
-import { useParams } from "react-router";
+import type { QueryClient } from "@tanstack/react-query";
+import { chavesDoCaixa } from "@/lib/financeiro/cache";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Erro } from "@/components/estado";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { brl } from "@/lib/formatos";
@@ -11,27 +13,20 @@ import { brl } from "@/lib/formatos";
  * erro e mostrar um número.
  */
 
-/**
- * Datas de NEGÓCIO (vencimento) — o dia já é o dia, e lê-lo em UTC não o
- * escorrega. Instantes (recebidoEm, pagamento.data) NÃO passam por aqui: eles
- * só têm dia dentro de um fuso, e o de São Paulo é o da loja (ver datas.ts).
- */
-export const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "UTC",
-});
+// `dataFmt` morava aqui: cópia campo a campo de `diaMesAno` (formatos.ts) —
+// mesmas opções, mesmo `timeZone: "UTC"`, mesmo propósito declarado. Data de
+// negócio tem UMA régua, e ela é a de `lib/formatos.ts`; as três telas do
+// financeiro que a usavam passaram a chamar `diaMesAno` direto.
 
 /**
- * Caminho dentro da loja atual. As rotas reais vivem sob `/loja/:lojaId/…`; um
- * link absoluto tipo `/contratos/x` só chega lá pelo catch-all LegacyRedirect,
- * que é compatibilidade transitória para deep-links antigos — e uma ida e volta
- * de navegação a cada clique. Mesma montagem da sidebar.
+ * Um movimento de caixa invalida TUDO o que ele muda (D9/E93) — a lista das
+ * chaves e o porquê moram em `lib/financeiro/cache.ts`, com teste. Chamada por
+ * receber, estornar, pagar, estornar-pagamento, lançar e remover conta.
  */
-export function useCaminhoDaLoja(): (caminho: string) => string {
-  const { lojaId } = useParams();
-  return (caminho) => `/loja/${lojaId}${caminho}`;
+export function invalidarCaixa(queryClient: QueryClient, lojaId: string): Promise<void> {
+  return Promise.all(
+    chavesDoCaixa(lojaId).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  ).then(() => undefined);
 }
 
 export function ResumoCard({
@@ -44,48 +39,44 @@ export function ResumoCard({
   destaque?: boolean;
 }) {
   return (
-    <Card className="min-w-[9rem] flex-1">
+    /* E126/E2: `min-w-[9rem]` (144px) não comporta o `money-lg` real — medido
+       a 390px, "R$ 100.500,00" ocupa 190px e o flex não encolhe abaixo do
+       conteúdo: R$ 90.100,00 e R$ 90.100,09 viravam a mesma imagem. Abaixo de
+       `sm` o card ocupa a linha inteira (os três pais já têm flex-wrap); um
+       min-w maior só empurraria o corte para o próximo dígito. */
+    <Card className="min-w-[9rem] flex-1 max-sm:basis-full">
       <CardContent className="pt-6">
         <p className="text-xs text-muted-foreground">{rotulo}</p>
         {/* Destaque só fica vermelho quando HÁ o quê alarmar (valor > 0). "Em
             atraso: R$ 0,00" é a boa notícia — vermelho ali seria alarme falso. */}
-        <p className={`text-2xl font-serif tabular-nums ${destaque && valor > 0 ? "text-destructive" : ""}`}>
-          R$ {brl(valor)}
+        {/* E6: o degrau maior da escala. Era `text-2xl font-serif tabular-nums`
+            escrito à mão aqui e com outras quatro combinações nas telas vizinhas. */}
+        <p className={`money-lg ${destaque && valor > 0 ? "text-destructive" : ""}`}>
+          {brl(valor)}
         </p>
       </CardContent>
     </Card>
   );
 }
 
+/**
+ * E99: o desenho saiu daqui e virou `<Erro>` em `@/components/estado`. Esta
+ * função continua como porta fina para as seis telas do financeiro que já a
+ * chamam com a mensagem PRONTA — reescrever os seis call-sites para passar o
+ * erro cru seria mexer em código correto para trocar de nome, e o cuidado (a)
+ * do épico é explícito: poda e adoção onde a divergência já custou, nada mais.
+ *
+ * O que importa é que agora existe UM desenho, não três.
+ */
 export function ErroListagem({ mensagem, onRetry }: { mensagem: string; onRetry: () => void }) {
-  return (
-    <Alert variant="destructive">
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Erro ao carregar</AlertTitle>
-      <AlertDescription className="flex items-center gap-3">
-        <span>{mensagem}</span>
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          Tentar novamente
-        </Button>
-      </AlertDescription>
-    </Alert>
-  );
+  // A mensagem já veio traduzida pela tela; `detalhe` faz o `<Erro>` respeitá-la.
+  return <Erro titulo="Não deu para carregar" erro={{ data: { detalhe: mensagem } }} onTentarNovamente={onRetry} />;
 }
 
 /**
- * Traduz o erro da API. O mapa de códigos é por tela — cada uma conhece as
- * falhas do seu endpoint — mas a ordem de fallback é a mesma em todas:
- * código conhecido → detalhe do servidor → mensagem crua → texto da tela.
+ * E92/E4: a régua de erro subiu para `@/lib/erro-api`. Ela deixou de ser
+ * "coisa do financeiro" quando as telas de noiva, vestido e reserva passaram a
+ * precisar dela — e lá tem teste próprio, então a perna que devolvia
+ * `err.message` (e com ela o "HTTP 404 Not Found" no toast) não volta sem a
+ * suíte reclamar.
  */
-export function mensagemApi(
-  err: unknown,
-  fallback: string,
-  mensagens: Record<string, string> = {},
-): string {
-  const e = err as { data?: { error?: string; detalhe?: string } } | undefined;
-  const codigo = e?.data?.error;
-  if (codigo && mensagens[codigo]) return mensagens[codigo];
-  if (e?.data?.detalhe) return e.data.detalhe;
-  if (err instanceof Error && err.message) return err.message;
-  return fallback;
-}

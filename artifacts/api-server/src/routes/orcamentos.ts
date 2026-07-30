@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, orcamentosTable, orcamentoItensTable, leadsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, orcamentosTable, orcamentoItensTable, leadsTable, contratosTable } from "@workspace/db";
+import { registrarAuditoria } from "../lib/auditoria";
+import { eq, and, inArray, desc, count } from "drizzle-orm";
 import {
   ListOrcamentosResponse,
   ListOrcamentosQueryParams,
@@ -18,12 +19,22 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { randomUUID, createHash } from "node:crypto";
+import { leadNaLoja } from "../lib/escopo-loja";
+import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
+import { conteudoEnviado } from "../lib/conteudo-orcamento";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
-import { round2 } from "../lib/dinheiro";
+import {
+  addDias,
+  ancoraDeNegocio,
+  hojeLocal,
+  brutoEmCentavos,
+  liquidoEmCentavos,
+} from "@workspace/financeiro-core";
+import { leadsQueCasam } from "../lib/busca-lead";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -41,49 +52,52 @@ async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<vo
 }
 
 /**
+ * F18/E95: quantos dias um orçamento vale quando ninguém disse.
+ *
+ * Trinta é o ciclo do resto do sistema (competência, folha, carnê) e o prazo
+ * comercial usual. Decidido pelo dono em 2026-07-27; virar configuração por
+ * loja é épico próprio, não uma coluna nova enfiada aqui.
+ */
+const VALIDADE_PADRAO_DIAS = 30;
+
+/** Aceita o `db` global ou a transação em curso — mesmo idioma do E56/E94. */
+type Cliente = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
  * E75: marcar ENVIADO congela uma versão — itens, desconto e totais, com hash
  * sha256 do conteúdo canônico. É a esta versão que o link público e o aceite
  * da noiva (E74) apontam; a edição posterior não muda o que ela viu.
+ *
+ * B11/E95: roda na MESMA transação que marca ENVIADO. Antes eram duas
+ * escritas soltas, e entre elas cabia uma falha: o orçamento ficava ENVIADO
+ * sem versão congelada, e o portal caía no ramo de fallback que mostra o
+ * conteúdo VIVO — a noiva via o rascunho de agora em vez do que lhe foi
+ * enviado, em silêncio, e o aceite dela congelaria outra coisa.
  */
-async function criarVersaoEnviada(lojaId: string, orcamentoId: string): Promise<void> {
-  const orcamento = await db.query.orcamentosTable.findFirst({
+async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: string): Promise<void> {
+  const orcamento = await tx.query.orcamentosTable.findFirst({
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
     with: { itens: true },
   });
   if (!orcamento) return;
 
-  const itens = orcamento.itens
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    .map((it) => ({
-      tipo: it.tipo,
-      descricao: it.descricao,
-      valorUnitario: it.valorUnitario,
-      quantidade: it.quantidade,
-    }));
-  const totalBruto = round2(itens.reduce((acc, it) => acc + it.quantidade * it.valorUnitario, 0));
-  let totalLiquido = totalBruto;
-  if (orcamento.descontoTipo === "PERCENTUAL" && orcamento.descontoValor) {
-    totalLiquido = round2(totalBruto * (1 - orcamento.descontoValor / 100));
-  } else if (orcamento.descontoTipo === "VALOR" && orcamento.descontoValor) {
-    totalLiquido = round2(totalBruto - orcamento.descontoValor);
-  }
-  totalLiquido = Math.max(0, totalLiquido);
+  // E95/C1 + E115: a MESMA régua que o `POST /contratos` usa — congelamento e
+  // conferência do aceite saem de `conteudoEnviado`, um lugar só.
+  const { itens, totalBruto, totalLiquido, hash } = conteudoEnviado(
+    orcamento.itens,
+    orcamento.descontoTipo,
+    orcamento.descontoValor,
+  );
 
-  const conteudo = {
-    itens,
-    descontoTipo: orcamento.descontoTipo,
-    descontoValor: orcamento.descontoValor,
-    totalBruto,
-    totalLiquido,
-  };
-  const hash = createHash("sha256").update(JSON.stringify(conteudo)).digest("hex");
-
-  const [{ maior }] = await db
+  const [{ maior }] = await tx
     .select({ maior: sql<number>`coalesce(max(${orcamentoVersoesTable.numero}), 0)`.mapWith(Number) })
     .from(orcamentoVersoesTable)
     .where(eq(orcamentoVersoesTable.orcamentoId, orcamentoId));
 
-  await db.insert(orcamentoVersoesTable).values({
+  // O `numero` é derivado dentro da transação, e o índice único
+  // (orcamentoId, numero) é a rede embaixo: dois envios simultâneos leriam o
+  // mesmo `maior`, e o segundo insert falha em vez de gravar duas versões 1.
+  await tx.insert(orcamentoVersoesTable).values({
     id: randomUUID(),
     lojaId,
     orcamentoId,
@@ -108,31 +122,84 @@ router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
   // E62: o perfil da noiva pede `?leadId=`; E83: mensagens pede `?status=` —
-  // os recortes acontecem no banco.
-  const orcamentos = await db.query.orcamentosTable.findMany({
-    where: and(
-      eq(orcamentosTable.lojaId, lojaId),
-      ...(query.data.leadId ? [eq(orcamentosTable.leadId, query.data.leadId)] : []),
-      ...(query.data.status ? [eq(orcamentosTable.status, query.data.status)] : []),
-    ),
-    with: {
-      lead: true,
-      vendedora: true,
-      itens: true
-    },
-    orderBy: orcamentosTable.createdAt,
-  });
-  res.json(ListOrcamentosResponse.parse(orcamentos));
+  // os recortes acontecem no banco. E124/D1: busca por noiva, página e
+  // recentes-primeiro (P2); e a listagem geral parou de embutir `itens`
+  // (S-D5 — 222 orçamentos desciam com a história inteira e nenhuma tela os
+  // lia): desce só o `valorTotal`, agregado aqui pela régua única.
+  const { leadId, status, q, pagina, porPagina, ordem } = query.data;
+  const condicoes = [eq(orcamentosTable.lojaId, lojaId)];
+  if (leadId) condicoes.push(eq(orcamentosTable.leadId, leadId));
+  if (status) condicoes.push(eq(orcamentosTable.status, status));
+  const busca = q?.trim();
+  if (busca) condicoes.push(inArray(orcamentosTable.leadId, leadsQueCasam(lojaId, busca)));
+  const where = and(...condicoes);
+
+  const paginado = pagina !== undefined || porPagina !== undefined;
+  const tamanho = porPagina ?? 24;
+  const [contagem, orcamentos] = await Promise.all([
+    db.select({ total: count() }).from(orcamentosTable).where(where),
+    db.query.orcamentosTable.findMany({
+      where,
+      with: {
+        lead: true,
+        // `vendedora` NÃO entra: o schema `Orcamento` nunca a teve e o parse
+        // da resposta a descartava — a rota pagava o join para jogar fora
+        // (medido no mapeamento: as chaves da resposta não tinham `vendedora`).
+        // O recorte `?leadId=` mantém os itens (contrato do E62); a listagem
+        // geral manda só o agregado.
+        ...(leadId ? { itens: true as const } : {}),
+      },
+      // id desempata createdAt igual — sem ordem estável, página 2 repete item.
+      orderBy:
+        ordem === "antigos"
+          ? [orcamentosTable.createdAt, orcamentosTable.id]
+          : [desc(orcamentosTable.createdAt), desc(orcamentosTable.id)],
+      ...(paginado ? { limit: tamanho, offset: ((pagina ?? 1) - 1) * tamanho } : {}),
+    }),
+  ]);
+
+  // O líquido de cada orçamento da página, em centavos, pela MESMA régua do
+  // `POST /contratos` (`liquidoEmCentavos`) — nunca uma segunda fórmula.
+  const ids = orcamentos.map((o) => o.id);
+  const itensDaPagina = ids.length
+    ? await db.select().from(orcamentoItensTable).where(inArray(orcamentoItensTable.orcamentoId, ids))
+    : [];
+  const itensPorOrcamento = new Map<string, typeof itensDaPagina>();
+  for (const item of itensDaPagina) {
+    const doOrcamento = itensPorOrcamento.get(item.orcamentoId);
+    if (doOrcamento) doOrcamento.push(item);
+    else itensPorOrcamento.set(item.orcamentoId, [item]);
+  }
+  const comValor = orcamentos.map((o) => ({
+    ...o,
+    valorTotal:
+      liquidoEmCentavos(
+        brutoEmCentavos(itensPorOrcamento.get(o.id) ?? []),
+        o.descontoTipo,
+        o.descontoValor,
+      ) / 100,
+  }));
+
+  res.json(ListOrcamentosResponse.parse({ total: contagem[0]!.total, itens: comValor }));
 });
 
 router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateOrcamentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
+  // B4 — o `leadId` vem do CORPO e precisa ser desta loja. Sem isto, um
+  // `POST /lojas/A/orcamentos` com a noiva da loja B criava a linha em A, e o
+  // `GET /lojas/A/orcamentos` (que faz `with: { lead: true }`) devolvia a ficha
+  // inteira dela — nome, whatsapp, data e local do casamento — para a loja A.
+  if (!(await leadNaLoja(parsed.data.leadId, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "Noiva não é desta loja" });
+    return;
+  }
+
   // Quem abriu vem da SESSÃO, nunca do corpo: aceitar um `vendedoraId` do
   // cliente deixava atribuir o orçamento (e a comissão que nasce dele) a
   // outra pessoa — mesma regra do vendedorId da cobrança.
@@ -140,6 +207,13 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     id: randomUUID(),
     lojaId,
     ...parsed.data,
+    // F18/E95: validade por construção. Os dois atalhos naturais de criar
+    // orçamento (a ficha da noiva e o desfecho do atendimento) nunca a
+    // mandavam, e sem ela o orçamento não entra na fila de lembrete do E69 —
+    // justamente as propostas feitas no calor da venda ficavam sem cobrança.
+    // O default é do SERVIDOR de propósito: um cliente novo não pode nascer
+    // com o buraco de novo.
+    validade: parsed.data.validade ?? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS)),
     vendedoraId: req.usuario!.id,
   }).returning();
 
@@ -174,7 +248,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   const { lojaId, orcamentoId } = req.params;
   const parsed = UpdateOrcamentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
@@ -195,23 +269,41 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     return;
   }
 
+  // E115 — o desconto muda o líquido tanto quanto um item: em APROVADO ele
+  // também congela, senão a guarda dos itens tem uma porta dos fundos.
+  if (
+    existente.status === "APROVADO" &&
+    (parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined)
+  ) {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
+
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
   const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
-  const [orcamento] = await db.update(orcamentosTable)
-    .set({
-      ...parsed.data,
-      ...(virandoAprovado ? { aprovadoEm: new Date() } : {}),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)))
-    .returning();
+  // B11/E95: a marca de ENVIADO e a versão congelada nascem juntas ou não
+  // nascem — ver `criarVersaoEnviada`.
+  const orcamento = await db.transaction(async (tx) => {
+    const [atualizado] = await tx.update(orcamentosTable)
+      .set({
+        ...parsed.data,
+        ...(virandoAprovado ? { aprovadoEm: new Date() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)))
+      .returning();
+    if (!atualizado) return null;
+    if (virandoEnviado) {
+      await criarVersaoEnviada(tx, lojaId as string, orcamentoId as string);
+    }
+    return atualizado;
+  });
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
     return;
-  }
-  // E75: cada envio congela uma versão — é a ela que o link e o aceite apontam.
-  if (virandoEnviado) {
-    await criarVersaoEnviada(lojaId as string, orcamentoId as string);
   }
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
     where: eq(orcamentosTable.id, orcamento.id),
@@ -220,9 +312,50 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   res.json(UpdateOrcamentoResponse.parse(fullOrcamento));
 });
 
+/**
+ * E115 — o DELETE era cru, e `orcamento_versoes` (que carrega a versão
+ * CONGELADA e o hash que a noiva aceitou — E74/E75) cai em cascata: apagar um
+ * APROVADO destruía o comprovante do aceite; apagar um com contrato deixava o
+ * contrato sem proveniência (`contratos.orcamento_id` é SET NULL).
+ */
 router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise<void> => {
-  const { lojaId, orcamentoId } = req.params;
-  await db.delete(orcamentosTable).where(and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)));
+  const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+  });
+  if (!orcamento) {
+    res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  if (orcamento.status === "APROVADO") {
+    res.status(409).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "O aceite da noiva (versão e hash) mora neste orçamento — ele não se apaga.",
+    });
+    return;
+  }
+  const [contrato] = await db
+    .select({ id: contratosTable.id })
+    .from(contratosTable)
+    .where(eq(contratosTable.orcamentoId, orcamentoId));
+  if (contrato) {
+    res.status(409).json({
+      error: "ORCAMENTO_COM_CONTRATO",
+      detalhe: "Este orçamento virou contrato — apagá-lo deixaria o contrato sem origem.",
+    });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "ORCAMENTO_REMOVIDO",
+      entidade: "orcamento",
+      entidadeId: orcamentoId,
+      detalhe: { leadId: orcamento.leadId, status: orcamento.status },
+    });
+    await tx.delete(orcamentosTable).where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
@@ -231,13 +364,24 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
   const orcamentoId = req.params.orcamentoId as string;
   const parsed = AddOrcamentoItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
   const orcamento = await db.query.orcamentosTable.findFirst({ where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)) });
   if (!orcamento) {
     res.status(404).json({ error: "Orcamento not found" });
+    return;
+  }
+  // E115 — um orçamento APROVADO é um acordo fechado: o aceite (ou a
+  // aprovação manual) congelou o conteúdo, e mexer nos itens depois deixaria
+  // aceite, portal e contrato falando de números diferentes. ENVIADO continua
+  // editável de propósito (E75): a noiva vê a versão congelada, não o vivo.
+  if (orcamento.status === "APROVADO") {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
     return;
   }
 
@@ -256,7 +400,25 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
   const itemId = req.params.itemId as string;
   const parsed = UpdateOrcamentoItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+
+  // E115 — mesma guarda do POST de item: acordo fechado não muda.
+  const [pai] = await db
+    .select({ status: orcamentosTable.status })
+    .from(orcamentoItensTable)
+    .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
+    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+  if (!pai) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  if (pai.status === "APROVADO") {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
     return;
   }
 
@@ -275,6 +437,23 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
 router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const itemId = req.params.itemId as string;
+  // E115 — mesma guarda do POST/PATCH de item, e o 404 que o delete cru não tinha.
+  const [pai] = await db
+    .select({ status: orcamentosTable.status })
+    .from(orcamentoItensTable)
+    .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
+    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+  if (!pai) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  if (pai.status === "APROVADO") {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
   await db.delete(orcamentoItensTable).where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   res.status(204).send();
 });
@@ -285,7 +464,7 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
  * validade recomeça. Gerar link de um RASCUNHO marca ENVIADO — compartilhar
  * É enviar; RECUSADO não gera (não há o que a noiva rever de um não).
  */
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({
@@ -302,24 +481,30 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", async (req, res): Pro
 
   const token = gerarTokenConvite();
   const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
-  await db.update(orcamentosTable)
-    .set({
-      publicoToken: token,
-      publicoExpiraEm: expiraEm,
-      ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(orcamentosTable.id, orcamento.id));
+  // B11/E95: o link, a marca de ENVIADO e a versão congelada, na mesma
+  // transação. Esta rota é a mais exposta ao buraco: ela ENTREGA o link no
+  // mesmo instante, então uma falha entre as duas escritas mandava a noiva
+  // direto para o ramo de fallback do portal.
+  await db.transaction(async (tx) => {
+    await tx.update(orcamentosTable)
+      .set({
+        publicoToken: token,
+        publicoExpiraEm: expiraEm,
+        ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(orcamentosTable.id, orcamento.id));
 
-  // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
-  if (orcamento.status === "RASCUNHO") {
-    await criarVersaoEnviada(lojaId, orcamentoId);
-  }
+    // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
+    if (orcamento.status === "RASCUNHO") {
+      await criarVersaoEnviada(tx, lojaId, orcamentoId);
+    }
+  });
 
   res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });
 
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({
@@ -343,7 +528,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", async (req, res): 
   res.status(204).send();
 });
 
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({

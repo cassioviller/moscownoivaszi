@@ -5,13 +5,12 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { ListAuditoriaAcao } from './listAuditoriaAcao';
 
 export type ListAuditoriaParams = {
 /**
- * Uma das ações da união fechada (ACOES_AUDITORIA)
+ * Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve lista vazia, não erro.
  */
-acao?: ListAuditoriaAcao;
+acao?: string;
 /**
  * Autor da ação (id; o nome na linha é desnormalizado)
  */

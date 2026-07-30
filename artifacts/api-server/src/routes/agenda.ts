@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
+import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
-import { leadNaLoja, cabineNaLoja, vendedoraNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
   CreateCabineBody,
@@ -30,18 +31,19 @@ import {
   GetDisponibilidadeResponse,
   SetDisponibilidadeBody,
   SetDisponibilidadeResponse,
-  ConfirmarAtendimentoResponse
+  RegistrarContatoAtendimentoResponse,
+  DesfazerContatoAtendimentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import {
   recusaDeMover,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
-  diaDaSemanaLocal,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
@@ -117,7 +119,12 @@ const ATENDIMENTO_WITH = {
   vendedora: true,
   bloqueio: { with: { vestido: true } },
   ajustes: {
-    with: { checklist: { orderBy: (t: typeof ajusteChecklistItensTable, { asc }: any) => [asc(t.ordem)] } },
+    // E104/A13: sem anotação explícita nos parâmetros. Com `strictFunctionTypes`
+    // ligado, um callback com parâmetro anotado é checado de forma
+    // CONTRAVARIANTE contra o que o drizzle espera, e a query relacional inteira
+    // deixa de tipar. Deixar o TS inferir é o que faz a flag valer sem
+    // desligá-la de novo.
+    with: { checklist: { orderBy: (t: any, { asc }: any) => [asc(t.ordem)] } },
   },
 } as const;
 
@@ -138,7 +145,7 @@ router.post("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateCabineBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [cabine] = await db.insert(cabinesTable).values({
@@ -152,12 +159,12 @@ router.post("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
 router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = UpdateCabineParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateCabineBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [cabine] = await db.update(cabinesTable)
@@ -174,7 +181,7 @@ router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void>
 router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = DeleteCabineParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   await db.delete(cabinesTable).where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)));
@@ -193,7 +200,9 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     res.status(400).json({ error: "FILTRO_INVALIDO" });
     return;
   }
-  const { bloqueioId, tipo, de, ate } = query.data;
+  // E125: recorte por noiva — a ficha pergunta pela próxima prova DELA e não
+  // tem por que baixar a agenda da loja inteira (a classe do E62).
+  const { leadId, bloqueioId, tipo, de, ate } = query.data;
   if (de && ate && de > ate) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -201,6 +210,7 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   const atendimentos = await db.query.atendimentosTable.findMany({
     where: and(
       eq(atendimentosTable.lojaId, lojaId),
+      ...(leadId ? [eq(atendimentosTable.leadId, leadId)] : []),
       ...(bloqueioId ? [eq(atendimentosTable.bloqueioId, bloqueioId)] : []),
       ...(tipo ? [eq(atendimentosTable.tipo, tipo)] : []),
       ...(de ? [gte(atendimentosTable.inicio, inicioDoDia(de))] : []),
@@ -216,30 +226,44 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateAtendimentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
   // As FKs vêm do corpo: garantir que lead, cabine e vendedora são DESTA loja,
   // senão o atendimento nasce referenciando outra (vazamento de tenant).
-  const [okLead, okCabine, okVend] = await Promise.all([
+  // E115: o `bloqueioId` opcional entrava sem a mesma prova — uma prova
+  // agendada sobre o vestido reservado de OUTRA loja.
+  const [okLead, okCabine, okVend, okBloqueio] = await Promise.all([
     leadNaLoja(parsed.data.leadId, lojaId),
     cabineNaLoja(parsed.data.cabineId, lojaId),
     vendedoraNaLoja(parsed.data.vendedoraId, lojaId),
+    parsed.data.bloqueioId ? bloqueioNaLoja(parsed.data.bloqueioId, lojaId) : true,
   ]);
-  if (!okLead || !okCabine || !okVend) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine ou vendedora não são desta loja" });
+  if (!okLead || !okCabine || !okVend || !okBloqueio) {
+    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine, vendedora ou bloqueio não são desta loja" });
     return;
   }
 
-  // E38: a criação não conferia funcionamento nenhum (só o form do cliente e o
-  // reagendamento faziam) — daí os órfãos. Barrar o dia fechado aqui: a loja
-  // não abre naquele dia da semana, então o atendimento não deveria nascer.
-  const regra = await db.query.regraDisponibilidadeTable.findFirst({
-    where: eq(regraDisponibilidadeTable.lojaId, lojaId),
-  });
-  if (regra && !regra.diasFuncionamento.includes(diaDaSemanaLocal(parsed.data.inicio))) {
-    res.status(422).json({ error: "LOJA_FECHADA", detalhe: DETALHE_RECUSA.LOJA_FECHADA });
+  // E115 — a criação só barrava o DIA fechado (E38), enquanto o reagendamento
+  // roda as QUATRO recusas do agenda-core: uma prova às 17h30 ocupava a cabine
+  // até 19h e o POST às 18h respondia 201 no mesmo lugar de onde o arrastar
+  // levava 422 CABINE_OCUPADA; e o POST às 22h criava um atendimento sem
+  // célula na grade — nascia invisível. A régua é a MESMA função do PATCH,
+  // com o atendimento novo no papel de "movido para onde quer nascer".
+  const recusa = await recusaDeMoverAtendimento(
+    lojaId,
+    {
+      id: "novo",
+      cabineId: parsed.data.cabineId,
+      vendedoraId: parsed.data.vendedoraId,
+      inicio: parsed.data.inicio,
+      tipo: parsed.data.tipo ?? "ATENDIMENTO",
+    },
+    {},
+  );
+  if (recusa) {
+    res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
     return;
   }
 
@@ -261,7 +285,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
   const { lojaId, atendimentoId } = req.params;
   const parsed = UpdateAtendimentoBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -308,8 +332,33 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
       ? { atendidoEm: new Date() }
       : {};
 
+  /**
+   * E97/F15 — o dado fantasma. **A medição que o backlog mandou fazer antes de
+   * escrever código deu o resultado oposto ao que ele supunha**: este PATCH
+   * NUNCA limpou `atendidoEm` nem `desfecho`. O `set` aplica só o que veio no
+   * corpo, e voltar para agendado manda `{situacao: "AGENDADO"}` e mais nada.
+   *
+   * O efeito é uma contradição de estado que sobrevive para sempre: um
+   * atendimento AGENDADO — que por definição ainda não aconteceu — carregando
+   * "começou às 14h" e "desfecho: RESERVOU" de uma vida passada. A espera
+   * medida pelo E36 (`atendidoEm − inicio`) conta um atendimento que o sistema
+   * diz não ter ocorrido, e o funil lê um desfecho de quem ainda nem chegou.
+   *
+   * A régua segue a máquina de estados, não o gosto:
+   *   - **AGENDADO** = não aconteceu → limpa os dois.
+   *   - **EM_ATENDIMENTO** vindo de CONCLUIDO = está acontecendo de novo →
+   *     limpa só o desfecho; `atendidoEm` fica, que é o que o E36 quis
+   *     preservar ("reabrir e reentrar não reescreve o primeiro início").
+   */
+  const limpeza: Partial<typeof atendimentosTable.$inferInsert> =
+    parsed.data.situacao === "AGENDADO" && existente.situacao !== "AGENDADO"
+      ? { atendidoEm: null, desfecho: null }
+      : parsed.data.situacao === "EM_ATENDIMENTO" && existente.situacao === "CONCLUIDO"
+        ? { desfecho: null }
+        : {};
+
   const [atendimento] = await db.update(atendimentosTable)
-    .set({ ...parsed.data, ...carimbo, updatedAt: new Date() })
+    .set({ ...parsed.data, ...carimbo, ...limpeza, updatedAt: new Date() })
     .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))
     .returning();
     
@@ -342,15 +391,73 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
   res.json(UpdateAtendimentoResponse.parse(fullAtendimento));
 });
 
+/**
+ * E115 — o cancelamento da agenda era um delete cru: 204 mesmo sem apagar
+ * nada, `ajustes.atendimento_id` em CASCADE levava a fila de costura junto, e
+ * um CONCLUÍDO — que é O QUE ACONTECEU com a noiva (a razão do restrict do
+ * E91/B2 na vendedora) — sumia da ficha sem rastro.
+ */
 router.delete("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Promise<void> => {
-  const { lojaId, atendimentoId } = req.params;
-  await db.delete(atendimentosTable).where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)));
+  const { lojaId, atendimentoId } = req.params as { lojaId: string; atendimentoId: string };
+  const atendimento = await db.query.atendimentosTable.findFirst({
+    where: and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId)),
+  });
+  if (!atendimento) {
+    res.status(404).json({ error: "Atendimento not found" });
+    return;
+  }
+  if (atendimento.situacao === "CONCLUIDO") {
+    res.status(409).json({
+      error: "ATENDIMENTO_CONCLUIDO",
+      detalhe: "Um atendimento concluído é a história da ficha da noiva — ele não se apaga.",
+    });
+    return;
+  }
+  const ajustes = await db
+    .select({ id: ajustesTable.id })
+    .from(ajustesTable)
+    .where(eq(ajustesTable.atendimentoId, atendimentoId));
+  if (ajustes.length > 0) {
+    res.status(409).json({
+      error: "ATENDIMENTO_COM_AJUSTES",
+      detalhe: `Este atendimento tem ${ajustes.length} ajuste${ajustes.length === 1 ? "" : "s"} de costura que sumiriam junto — remova-os antes.`,
+    });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "ATENDIMENTO_REMOVIDO",
+      entidade: "atendimento",
+      entidadeId: atendimentoId,
+      detalhe: {
+        leadId: atendimento.leadId,
+        inicio: atendimento.inicio,
+        tipo: atendimento.tipo,
+        situacao: atendimento.situacao,
+      },
+    });
+    await tx.delete(atendimentosTable).where(and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
-// E39: marcar que a presença foi confirmada por WhatsApp. Carimba do relógio do
-// servidor, idempotente — reconfirmar não reescreve o primeiro contato.
-router.post("/lojas/:lojaId/atendimentos/:atendimentoId/confirmar", async (req, res): Promise<void> => {
+/**
+ * E97/F6 — a loja registra que MANDOU mensagem. Carimba `contatadoEm`, do
+ * relógio do servidor, idempotente.
+ *
+ * Esta rota se chamava `/confirmar` e escrevia em `confirmadoEm` — o MESMO
+ * campo que `POST /portal/provas/:id/confirmar` usa quando a noiva clica. Os
+ * dois fatos ficavam indistinguíveis depois de gravados: a linha sumia da fila
+ * do dia e da contagem do sino tanto quando a recepção abriu o WhatsApp (sem
+ * escrever nada ainda) quanto quando a noiva respondeu de verdade. E é sobre o
+ * segundo que o ateliê toma decisão física.
+ *
+ * O carimbo continua acontecendo no clique, e continua sendo honesto — porque
+ * agora ele afirma só o que aconteceu: a loja procurou.
+ */
+router.post("/lojas/:lojaId/atendimentos/:atendimentoId/contato", requireModulo("agenda", "editar"), async (req, res): Promise<void> => {
   const { lojaId, atendimentoId } = req.params;
   const existente = await db.query.atendimentosTable.findFirst({
     where: and(
@@ -362,23 +469,52 @@ router.post("/lojas/:lojaId/atendimentos/:atendimentoId/confirmar", async (req, 
     res.status(404).json({ error: "Atendimento not found" });
     return;
   }
-  if (!existente.confirmadoEm) {
+  if (!existente.contatadoEm) {
     await db.update(atendimentosTable)
-      .set({ confirmadoEm: new Date(), updatedAt: new Date() })
+      .set({ contatadoEm: new Date(), updatedAt: new Date() })
       .where(eq(atendimentosTable.id, atendimentoId as string));
   }
   const full = await db.query.atendimentosTable.findFirst({
     where: eq(atendimentosTable.id, atendimentoId as string),
     with: ATENDIMENTO_WITH,
   });
-  res.json(ConfirmarAtendimentoResponse.parse(full));
+  res.json(RegistrarContatoAtendimentoResponse.parse(full));
+});
+
+/**
+ * O desfazer. O carimbo nasce do clique num link que abre OUTRA ABA, então
+ * errar o botão é barato — e sem esta rota a noiva saía da fila do dia sem
+ * ninguém ter falado com ela, silenciosamente.
+ *
+ * Não toca `confirmadoEm`: desfazer o que a loja fez não pode apagar o que a
+ * noiva respondeu.
+ */
+router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, res): Promise<void> => {
+  const { lojaId, atendimentoId } = req.params;
+  const [atualizado] = await db.update(atendimentosTable)
+    .set({ contatadoEm: null, updatedAt: new Date() })
+    .where(and(
+      eq(atendimentosTable.id, atendimentoId as string),
+      eq(atendimentosTable.lojaId, lojaId as string),
+    ))
+    .returning();
+  if (!atualizado) {
+    res.status(404).json({ error: "Atendimento not found" });
+    return;
+  }
+  const full = await db.query.atendimentosTable.findFirst({
+    where: eq(atendimentosTable.id, atendimentoId as string),
+    with: ATENDIMENTO_WITH,
+  });
+  res.json(DesfazerContatoAtendimentoResponse.parse(full));
 });
 
 // Ajustes
 // Contexto relacional da fila da costureira: ajuste → atendimento →
 // bloqueio → {noiva, vestido, casamentoData} + checklist ordenado.
 const AJUSTE_WITH = {
-  checklist: { orderBy: (t: typeof ajusteChecklistItensTable, { asc }: any) => [asc(t.ordem)] },
+  // Ver a nota do ATENDIMENTO_WITH: sem anotação de parâmetro (E104/A13).
+  checklist: { orderBy: (t: any, { asc }: any) => [asc(t.ordem)] },
   atendimento: { with: { lead: true, bloqueio: { with: { vestido: true } } } },
 } as const;
 
@@ -427,11 +563,20 @@ router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateAjusteBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   
   const { atendimentoId, ...ajusteData } = parsed.data;
+
+  // E115 — o POST /atendimentos deste arquivo prova lead/cabine/vendedora e o
+  // checklist prova o pai; o ajuste não provava NADA: um `atendimentoId` da
+  // loja B punha a ficha da noiva dela (nome, WhatsApp, vestido) na fila de
+  // costura de A, e o conserto forjado aparecia no portal da noiva de B.
+  if (!(await atendimentoNaLoja(atendimentoId, lojaId))) {
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "atendimento não é desta loja" });
+    return;
+  }
 
   const [ajuste] = await db.insert(ajustesTable).values({
     id: randomUUID(),
@@ -450,7 +595,7 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
   const { lojaId, ajusteId } = req.params;
   const parsed = UpdateAjusteBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const [ajuste] = await db.update(ajustesTable)
@@ -480,7 +625,7 @@ router.post("/lojas/:lojaId/ajustes/:ajusteId/checklist", async (req, res): Prom
   const { lojaId, ajusteId } = req.params;
   const parsed = AddChecklistItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -525,7 +670,7 @@ router.patch("/lojas/:lojaId/ajustes/checklist/:itemId", async (req, res): Promi
   const { lojaId, itemId } = req.params;
   const parsed = UpdateChecklistItemBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -571,7 +716,7 @@ router.put("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
   const lojaId = req.params.lojaId as string;
   const parsed = SetDisponibilidadeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 

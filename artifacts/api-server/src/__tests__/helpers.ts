@@ -38,6 +38,8 @@ export const SENHA_TESTE = "senha-teste-123";
 export interface Fixture {
   lojaId: string;
   perfilId: string;
+  /** Perfil do superadmin na loja — SEPARADO do da vendedora de propósito. */
+  perfilAdminId: string;
   vendedoraId: string;
   vendedoraEmail: string;
   superAdminId: string;
@@ -54,11 +56,19 @@ export async function criarFixture(): Promise<Fixture> {
   await db.insert(lojasTable).values({ id: lojaId, nome: `Loja Teste ${sufixo}` });
 
   const perfilId = randomUUID();
-  await db.insert(perfisTable).values({
-    id: perfilId,
-    nome: `Perfil Teste ${sufixo}`,
-    acessosModulos: { leads: true, vestidos: true, agenda: true },
-  });
+  const perfilAdminId = randomUUID();
+  await db.insert(perfisTable).values([
+    {
+      id: perfilId,
+      nome: `Perfil Teste ${sufixo}`,
+      acessosModulos: { leads: true, vestidos: true, agenda: true },
+    },
+    {
+      id: perfilAdminId,
+      nome: `Perfil Admin Teste ${sufixo}`,
+      acessosModulos: { leads: true, vestidos: true, agenda: true, admin: true, financeiro: true, comissao: true },
+    },
+  ]);
 
   const vendedoraId = randomUUID();
   const vendedoraEmail = `vendedora-${sufixo}@teste.local`;
@@ -70,17 +80,39 @@ export async function criarFixture(): Promise<Fixture> {
     { id: superAdminId, nome: `Super Admin Teste ${sufixo}`, email: superAdminEmail, senhaHash, isSuperAdmin: true },
   ]);
 
-  await db.insert(usuariosLojasTable).values({ usuarioId: vendedoraId, lojaId, perfilId });
+  // Os DOIS entram na loja. O superadmin já era tratado como gente da loja
+  // pelos testes (fecha contrato, tem escada de comissão, aparece no ranking);
+  // o vínculo só passou a ser obrigatório com o E91, que exige prova de
+  // pertencimento para todo id de pessoa que entra numa escrita. Sem ele, a
+  // fixture descrevia alguém que a UI nunca ofereceria como vendedora — o
+  // `GET /equipe`, que alimenta o seletor, lista exatamente estes vínculos.
+  //
+  // Em PERFIL PRÓPRIO, e isso importa: mudar permissão derruba as sessões de
+  // quem tem AQUELE perfil na loja (E56/E60). Compartilhando o perfil, todo
+  // teste que personaliza a matriz derrubaria a própria sessão do admin.
+  await db.insert(usuariosLojasTable).values([
+    { usuarioId: vendedoraId, lojaId, perfilId },
+    { usuarioId: superAdminId, lojaId, perfilId: perfilAdminId },
+  ]);
 
-  return { lojaId, perfilId, vendedoraId, vendedoraEmail, superAdminId, superAdminEmail };
+  return { lojaId, perfilId, perfilAdminId, vendedoraId, vendedoraEmail, superAdminId, superAdminEmail };
 }
 
 // Remove somente o que a fixture criou. Usuários cascateiam sessões e vínculos;
 // a loja cascateia entidades de teste criadas sob ela.
+//
+// A ORDEM importa desde o E91: as FKs de vendedora deixaram de ser CASCADE e
+// viraram RESTRICT (apagar a pessoa não pode apagar contrato, parcela paga,
+// orçamento, atendimento nem fechamento de comissão). Some primeiro o que é da
+// LOJA e só então as pessoas. Os contratos saem numa instrução própria porque
+// `contratos.leadId` é RESTRICT: deixar o cascade da loja apagar lead e
+// contrato na mesma varredura depende da ordem em que o Postgres dispara os
+// gatilhos, que não é garantida.
 export async function limparFixture(f: Fixture): Promise<void> {
-  await db.delete(usuariosTable).where(inArray(usuariosTable.id, [f.vendedoraId, f.superAdminId]));
+  await db.delete(contratosTable).where(eq(contratosTable.lojaId, f.lojaId));
   await db.delete(lojasTable).where(eq(lojasTable.id, f.lojaId));
-  await db.delete(perfisTable).where(eq(perfisTable.id, f.perfilId));
+  await db.delete(usuariosTable).where(inArray(usuariosTable.id, [f.vendedoraId, f.superAdminId]));
+  await db.delete(perfisTable).where(inArray(perfisTable.id, [f.perfilId, f.perfilAdminId]));
 }
 
 export async function fecharPool(): Promise<void> {

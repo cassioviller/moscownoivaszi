@@ -5,7 +5,6 @@ import {
   getGetContratoQueryKey,
   useCancelarContrato,
   getListContratosQueryKey,
-  getListParcelasQueryKey,
   useGerarPlanoParcelas,
   useReceberParcela,
   useEstornarParcela,
@@ -18,6 +17,8 @@ import { Link, useParams } from "react-router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,17 +50,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusContratoLabel } from "@/lib/formatos";
+import { brl, diaParaISO, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
+import { fraseEstornoParcela, fraseRemocaoParcela } from "@/lib/financeiro/confirmacoes";
 import {
   ROTULO_FORMA,
   rotuloForma,
   estaAtrasada,
   estaAberta,
   saldoAberto,
+  abertoEmCentavos,
   teveRecebimento,
 } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
-import { centavos, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { mensagemApi } from "@/lib/erro-api";
+// E95: o `parseValor` desta tela era uma QUARTA cópia da mesma função, letra
+// por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
+// a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
+// defeito que o épico existe para fechar.
+import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 
 const MENSAGENS_ERRO: Record<string, string> = {
@@ -71,37 +80,20 @@ const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PREVISTA: "Só parcelas em aberto podem ser removidas.",
   PARCELA_JA_RECEBIDA: "Esta parcela já foi recebida.",
   PARCELA_CANCELADA: "Parcela cancelada não pode ser recebida.",
+  // B6/E94 — ver o comentário em financeiro/receber.tsx: as duas telas recebem
+  // pela mesma rota, então as duas precisam saber traduzir o 409.
+  PARCELA_MUDOU: "Alguém acabou de receber nesta parcela — confira o valor e lance de novo.",
 };
 
-function mensagemApi(err: unknown, fallback: string): string {
-  const e = err as { data?: { error?: string; detalhe?: string } } | undefined;
-  const codigo = e?.data?.error;
-  if (codigo && MENSAGENS_ERRO[codigo]) return MENSAGENS_ERRO[codigo];
-  if (e?.data?.detalhe) return e.data.detalhe;
-  if (err instanceof Error && err.message) return err.message;
-  return fallback;
-}
-
-/**
- * "1.234,56" ou "1234.56" → número em reais; null quando vazio; NaN quando
- * inválido. O ponto só vale como decimal quando não pode ser separador de
- * milhar pt-BR (exatamente 3 dígitos após o último ponto): "1.234" é mil
- * duzentos e trinta e quatro, "1.23" é um e vinte e três.
- */
-function parseValor(texto: string): number | null {
-  const t = texto.trim();
-  if (!t) return null;
-  let normalizado: string;
-  if (t.includes(",")) {
-    normalizado = t.replace(/\./g, "").replace(",", ".");
-  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
-    normalizado = t.replace(/\./g, "");
-  } else {
-    normalizado = t;
-  }
-  const n = Number(normalizado);
-  return Number.isFinite(n) ? n : Number.NaN;
-}
+// E96: aqui vivia uma CÓPIA LOCAL do `mensagemApi`, e ela era a única tela que
+// não adotou a função do E92 — cinco outras (folha, pagar, receber, comissões,
+// trocar-senha) já a importam passando o dicionário local, que é o desenho
+// certo: função uma, dicionário de cada tela. A cópia ainda tinha a perna que o
+// E92 matou (`return err.message`), então esta tela seguia capaz de mostrar
+// "HTTP 422 Unprocessable Entity" na cara de quem recebe dinheiro.
+//
+// O backlog do E96 apontava este arquivo como a REFERÊNCIA a copiar. O que ele
+// tinha de bom era o dicionário; a função era o desvio.
 
 export default function ContratoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -119,7 +111,6 @@ export default function ContratoDetail() {
   const [entrada, setEntrada] = useState("");
   const [numParcelas, setNumParcelas] = useState("1");
   const [primeiroVencimento, setPrimeiroVencimento] = useState("");
-  const [periodicidadeDias, setPeriodicidadeDias] = useState("30");
 
   // Receber parcela
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
@@ -139,6 +130,11 @@ export default function ContratoDetail() {
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  // E115 — gerar o plano é CRIAR parcelas, e o servidor cobra exatamente isso
+  // (decisão escrita no E111: "criar parcela É criar"). O gate era `editar`:
+  // a gerente sem `criar` via o formulário e levava 403 ao clicar, e quem tem
+  // `criar` sem `editar` não via um formulário que o servidor aceitaria.
+  const podeCriarParcela = podeNoModulo(acessosModulos, "leads", "criar");
 
   const parcelas = useMemo(
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),
@@ -147,6 +143,30 @@ export default function ContratoDetail() {
   const hoje = hojeLocal();
   const atrasada = (p: Parcela) => estaAtrasada(p, hoje);
 
+  /**
+   * F33/E94 — o que o cancelamento vai desfazer, calculado ANTES de ele
+   * acontecer.
+   *
+   * O diálogo pedia uma decisão de dinheiro ("mantém no caixa" ou "estorna")
+   * sem mostrar dinheiro nenhum: dois rótulos genéricos e um campo de motivo. A
+   * pessoa escolhia entre duas frases sem saber que havia R$ 2.000 recebidos em
+   * 12/06, nem que sobravam R$ 8.000 a cobrar. Os dados sempre estiveram em
+   * mãos — `contrato.parcelas` traz `valorRecebido` e `recebidoEm` de cada uma;
+   * só não eram lidos aqui.
+   */
+  const oQueSeraDesfeito = useMemo(() => {
+    const comRecebimento = parcelas.filter((p) => (p.valorRecebido ?? 0) > 0);
+    const abertas = parcelas.filter((p) => estaAberta(p));
+    return {
+      comRecebimento,
+      recebido: reais(somaCentavos(comRecebimento, (p) => p.valorRecebido ?? 0)),
+      abertas: abertas.length,
+      // E125/D4: a soma do aberto é a régua única do core — a MESMA do
+      // "falta pagar" do portal da noiva e do "Falta receber" ali de cima.
+      aberto: reais(abertoEmCentavos(parcelas)),
+    };
+  }, [parcelas]);
+
   const totalPlanoCentavos = useMemo(
     () => somaCentavos(parcelas.filter((p) => p.status !== "CANCELADA"), (p) => p.valorPrevisto),
     [parcelas],
@@ -154,17 +174,28 @@ export default function ContratoDetail() {
   const planoDivergente =
     parcelas.length > 0 && contrato != null && totalPlanoCentavos !== centavos(contrato.valorTotal);
 
+  /**
+   * Receber, estornar, remover parcela e cancelar contrato são MOVIMENTO DE
+   * CAIXA, e a régua deles é `chavesDoCaixa` (D9/E93) — não a lista desta tela.
+   *
+   * Esta função invalidava só o contrato e as parcelas. O diálogo de receber
+   * foi migrado para `invalidarCaixa`; este segundo call-site do MESMO endpoint
+   * ficou para trás: recebida a entrada de R$ 5.000 pelo botão da linha da
+   * parcela, o DRE e o Fluxo continuavam mostrando a receita sem ela, e o sino
+   * do layout — montado em toda tela — seguia avisando que o caixa fura na data
+   * antiga. `chavesDoCaixa` já inclui a lista de parcelas.
+   */
   const invalidarParcelas = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, id!) }),
-      queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) }),
+      invalidarCaixa(queryClient, activeLojaId!),
     ]);
 
   if (isError) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar o contrato</AlertTitle>
+        <AlertTitle>Não deu para carregar o contrato</AlertTitle>
         <AlertDescription className="flex items-center gap-3">
           <span>Falha ao buscar o contrato.</span>
           <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
@@ -175,14 +206,14 @@ export default function ContratoDetail() {
   if (isLoading) return <div className="animate-pulse h-64 bg-muted rounded-lg"></div>;
   if (!contrato) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Contrato não encontrado — pode ter sido removido, ou o link veio errado.
-        </p>
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/loja/${lojaId}/contratos`}>Voltar aos contratos</Link>
-        </Button>
-      </div>
+      <NaoEncontrado
+        titulo="Este contrato não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${lojaId}/contratos`}>Voltar aos contratos</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -215,8 +246,8 @@ export default function ContratoDetail() {
       setCancelarOpen(false);
     } catch (err) {
       toast({
-        title: "Erro ao cancelar",
-        description: mensagemApi(err, "Tente novamente."),
+        title: "Não deu para cancelar",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -237,11 +268,6 @@ export default function ContratoDetail() {
       toast({ title: "Informe o primeiro vencimento", variant: "destructive" });
       return;
     }
-    const periodicidade = Number(periodicidadeDias);
-    if (!Number.isInteger(periodicidade) || periodicidade < 1) {
-      toast({ title: "Periodicidade inválida", variant: "destructive" });
-      return;
-    }
     try {
       await gerarPlano.mutateAsync({
         lojaId: activeLojaId!,
@@ -249,16 +275,18 @@ export default function ContratoDetail() {
         data: {
           ...(entradaValor ? { entrada: entradaValor } : {}),
           numParcelas: n,
+          // E95: a data é a da PARCELA 1. Antes esta rota a usava como data da
+          // ENTRADA quando havia entrada, e a parcela 1 caía 30 dias depois —
+          // o mesmo campo com dois sentidos, e nenhum deles era o do rótulo.
           primeiroVencimento: diaParaISO(primeiroVencimento),
-          periodicidadeDias: periodicidade,
         },
       });
       await invalidarParcelas();
       toast({ title: "Plano de pagamento gerado" });
     } catch (err) {
       toast({
-        title: "Erro ao gerar o plano",
-        description: mensagemApi(err, "Tente novamente."),
+        title: "Não deu para gerar o plano",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -294,8 +322,8 @@ export default function ContratoDetail() {
       setParcelaReceber(null);
     } catch (err) {
       toast({
-        title: "Erro ao receber",
-        description: mensagemApi(err, "Tente novamente."),
+        title: "Não deu para receber",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -315,8 +343,8 @@ export default function ContratoDetail() {
       setConfirmacao(null);
     } catch (err) {
       toast({
-        title: tipo === "estornar" ? "Erro ao estornar" : "Erro ao remover",
-        description: mensagemApi(err, "Tente novamente."),
+        title: tipo === "estornar" ? "Não deu para estornar" : "Não deu para remover",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
@@ -342,51 +370,54 @@ export default function ContratoDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-serif">
-            {noivaNome ? (
-              <Link to={`/loja/${lojaId}/noivas/${contrato.leadId}`} className="hover:text-primary hover:underline">
-                {noivaNome}
-              </Link>
-            ) : (
-              `Contrato #${contrato.id.slice(0, 6)}`
-            )}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Fechado em {new Date(contrato.fechadoEm).toLocaleDateString("pt-BR")}
-            {contrato.dataCasamento && ` • Casamento ${new Date(contrato.dataCasamento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}`}
+      {/* E9: o status saiu da fileira de botões (onde o Badge rosa "Ativo" era o
+          elemento mais clicável dos três, sem ser clicável) e virou chip de
+          leitura ao lado do nome. "Cancelar contrato" saiu do mesmo tamanho dos
+          vizinhos para dentro do menu, em vermelho. */}
+      <CabecalhoDetalhe
+        trilha={[
+          { rotulo: "Noivas", para: "/noivas" },
+          ...(noivaNome && contrato.leadId
+            ? [{ rotulo: noivaNome, para: `/noivas/${contrato.leadId}` }]
+            : []),
+          { rotulo: "Contrato" },
+        ]}
+        titulo={noivaNome ?? `Contrato #${contrato.id.slice(0, 6)}`}
+        chip={
+          <Badge variant={contratoAtivo ? "default" : "destructive"} className="text-sm px-3 py-1">
+            {statusContratoLabel(contrato.status)}
+          </Badge>
+        }
+        subtitulo={
+          <>
+            Fechado em {instanteDia(contrato.fechadoEm)}
+            {contrato.dataCasamento && ` • Casamento ${diaMesAno(contrato.dataCasamento)}`}
             {contrato.vendedora && ` • Vendedora: ${contrato.vendedora.nome}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Âncora crua, e não o client gerado: o PDF é um download do navegador
-              (cookie de sessão vai junto), sem passar pelo react-query. */}
+          </>
+        }
+        acaoPrimaria={
+          /* Âncora crua, e não o client gerado: o PDF é um download do navegador
+             (cookie de sessão vai junto), sem passar pelo react-query. */
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/lojas/${lojaId}/contratos/${contrato.id}/pdf`} target="_blank" rel="noreferrer">
               Baixar PDF
             </a>
           </Button>
-          {contrato.orcamentoId && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to={`/loja/${lojaId}/orcamentos/${contrato.orcamentoId}`}>Ver orçamento de origem</Link>
-            </Button>
-          )}
-          <Badge variant={contratoAtivo ? 'default' : 'destructive'} className="text-sm px-3 py-1">
-            {statusContratoLabel(contrato.status)}
-          </Badge>
-          {podeMexer && (
-            <Button variant="outline" size="sm" onClick={() => setCancelarOpen(true)}>
-              Cancelar contrato
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        acoes={[
+          ...(contrato.orcamentoId
+            ? [{ rotulo: "Ver orçamento de origem", para: `/orcamentos/${contrato.orcamentoId}` }]
+            : []),
+          ...(podeMexer
+            ? [{ rotulo: "Cancelar contrato", onClick: () => setCancelarOpen(true), destrutiva: true }]
+            : []),
+        ]}
+      />
 
       {contrato.status === "CANCELADO" && contrato.canceladoMotivo && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Contrato cancelado{contrato.canceladoEm && ` em ${new Date(contrato.canceladoEm).toLocaleDateString("pt-BR")}`}</AlertTitle>
+          <AlertTitle>Contrato cancelado{contrato.canceladoEm && ` em ${instanteDia(contrato.canceladoEm)}`}</AlertTitle>
           <AlertDescription>Motivo: {contrato.canceladoMotivo}</AlertDescription>
         </Alert>
       )}
@@ -394,22 +425,38 @@ export default function ContratoDetail() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Detalhes Financeiros</CardTitle>
+            <CardTitle>Detalhes financeiros</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <span className="text-muted-foreground text-sm">Valor Total</span>
-              <p className="text-2xl font-semibold text-primary">R$ {brl(contrato.valorTotal)}</p>
+              <span className="text-muted-foreground text-sm">Valor total</span>
+              {/* E8: era `text-primary`. Lado a lado com o `text-destructive` da parcela
+                  em atraso, o rosa da marca lia-se como um segundo alerta. O rosa fica
+                  para o que é INTERATIVO; aqui é o número mais importante da tela, e o
+                  que ele precisa é de TAMANHO. */}
+              <p className="money-lg">{brl(contrato.valorTotal)}</p>
             </div>
+            {/* E125/D4: "quanto falta pagar?" é a pergunta do telefone, e a
+                soma só existia DENTRO do diálogo de cancelar — a vendedora
+                abria o diálogo só para LER o número, ou somava 7 parcelas de
+                cabeça. É a mesma derivação do diálogo (uma conta só). */}
+            {contratoAtivo && parcelas.length > 0 && (
+              <div>
+                <span className="text-muted-foreground text-sm">Falta receber</span>
+                <p className="money-md" data-testid="text-falta-receber">
+                  {brl(oQueSeraDesfeito.aberto)}
+                </p>
+              </div>
+            )}
             <div>
-              <span className="text-muted-foreground text-sm">Forma de Pagamento Base</span>
+              <span className="text-muted-foreground text-sm">Forma de pagamento base</span>
               <p className="font-medium">
                 {rotuloForma(contrato.formaPagamento) ?? "Não definida"}
               </p>
             </div>
             {contrato.cpf && (
               <div>
-                <span className="text-muted-foreground text-sm">CPF Cliente</span>
+                <span className="text-muted-foreground text-sm">CPF da noiva</span>
                 <p className="font-medium">{contrato.cpf}</p>
               </div>
             )}
@@ -426,7 +473,7 @@ export default function ContratoDetail() {
                   {contrato.itens.map((item) => (
                     <li key={item.id} className="flex justify-between text-sm">
                       <span>{item.quantidade}× {item.descricao}</span>
-                      <span className="font-medium">R$ {brl(item.quantidade * item.valorUnitario)}</span>
+                      <span className="font-medium">{brl(item.quantidade * item.valorUnitario)}</span>
                     </li>
                   ))}
                 </ul>
@@ -434,18 +481,22 @@ export default function ContratoDetail() {
                     fecha a conta: subtotal − desconto = total. O abatimento é
                     bruto − total, então reconcilia sempre. */}
                 {contrato.descontoTipo && (() => {
-                  const brutoC = contrato.itens!.reduce((a, it) => a + centavos(it.valorUnitario) * it.quantidade, 0);
+                  // `brutoEmCentavos` é a régua do core (E95/C1) — a mesma que
+                  // o PDF do MESMO contrato usa. O `reduce` inline aqui era a
+                  // terceira escrita da conta, e a tela e o papel divergirem
+                  // sobre o subtotal é o defeito que a régua existe para impedir.
+                  const brutoC = brutoEmCentavos(contrato.itens!);
                   const abatimentoC = brutoC - centavos(contrato.valorTotal);
                   const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
                   return (
                     <div className="mt-2 space-y-1 border-t pt-2 text-sm">
                       <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal</span>
-                        <span>R$ {brl(reais(brutoC))}</span>
+                        <span>{brl(reais(brutoC))}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
                         <span>Desconto{rotulo}</span>
-                        <span>− R$ {brl(reais(abatimentoC))}</span>
+                        <span>− {brl(reais(abatimentoC))}</span>
                       </div>
                     </div>
                   );
@@ -457,7 +508,7 @@ export default function ContratoDetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Plano de Pagamento</CardTitle>
+            <CardTitle>Plano de pagamento</CardTitle>
           </CardHeader>
           <CardContent>
             {parcelas.length > 0 ? (
@@ -473,16 +524,16 @@ export default function ContratoDetail() {
                               {rotuloParcela(parcela)}
                             </p>
                             <p className={`text-xs ${atrasada(parcela) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                              Venc: {new Date(parcela.vencimento).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                              Venc: {diaMesAno(parcela.vencimento)}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className={`font-semibold text-sm ${atrasada(parcela) ? "text-destructive" : ""}`}>
-                              R$ {brl(parcela.valorPrevisto)}
+                              {brl(parcela.valorPrevisto)}
                             </p>
                             {parcela.status === "PARCIAL" && (
                               <p className="text-[10px] text-muted-foreground tabular-nums">
-                                faltam R$ {brl(saldoAberto(parcela))}
+                                faltam {brl(saldoAberto(parcela))}
                               </p>
                             )}
                             <Badge variant={st.variante} className="text-[10px]">
@@ -505,7 +556,11 @@ export default function ContratoDetail() {
                             </Button>
                           </div>
                         )}
-                        {podeEditar && teveRecebimento(parcela) && (
+                        {/* E115: `teveRecebimento` agora vê a CANCELADA que
+                            guardou dinheiro ('manter') — mas estorná-la o
+                            servidor recusa (contrato não está ativo), então o
+                            botão só existe com o contrato de pé. */}
+                        {podeMexer && teveRecebimento(parcela) && (
                           <div className="flex gap-2">
                             <Button size="sm" variant="ghost" onClick={() => setConfirmacao({ tipo: "estornar", parcela })}>
                               Estornar
@@ -519,20 +574,28 @@ export default function ContratoDetail() {
                 <div className="flex justify-between items-center pt-1">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">Total do plano</span>
                   <span className={`font-semibold text-sm ${planoDivergente ? "text-destructive" : ""}`}>
-                    R$ {brl(reais(totalPlanoCentavos))}
+                    {brl(reais(totalPlanoCentavos))}
                   </span>
                 </div>
                 {planoDivergente && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      O total do plano difere do valor total do contrato (R$ {brl(contrato.valorTotal)}).
+                      O total do plano difere do valor total do contrato ({brl(contrato.valorTotal)}).
                     </AlertDescription>
                   </Alert>
                 )}
               </div>
-            ) : podeMexer ? (
-              <div className="space-y-3">
+            ) : podeCriarParcela && contratoAtivo ? (
+              /* E136/E6: Enter conclui o plano — era o único fluxo de dinheiro
+                 desta tela e não tinha <form>. */
+              <form
+                className="space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void onGerarPlano();
+                }}
+              >
                 <p className="text-muted-foreground text-sm">
                   Nenhuma parcela registrada. Gere o plano de pagamento do contrato.
                 </p>
@@ -541,6 +604,7 @@ export default function ContratoDetail() {
                     <Label htmlFor="plano-entrada">Entrada (opcional)</Label>
                     <Input
                       id="plano-entrada"
+                      inputMode="decimal"
                       placeholder="0,00"
                       value={entrada}
                       onChange={(e) => setEntrada(e.target.value)}
@@ -558,7 +622,7 @@ export default function ContratoDetail() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="plano-vencimento">1º vencimento *</Label>
+                    <Label htmlFor="plano-vencimento">1ª parcela vence em *</Label>
                     <Input
                       id="plano-vencimento"
                       type="date"
@@ -567,21 +631,20 @@ export default function ContratoDetail() {
                       onChange={(e) => setPrimeiroVencimento(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="plano-periodicidade">A cada (dias)</Label>
-                    <Input
-                      id="plano-periodicidade"
-                      type="number"
-                      min={1}
-                      value={periodicidadeDias}
-                      onChange={(e) => setPeriodicidadeDias(e.target.value)}
-                    />
-                  </div>
                 </div>
-                <Button onClick={onGerarPlano} disabled={gerarPlano.isPending}>
+                {/* E95: o campo "A cada (dias)" saiu. Ele espaçava o carnê por
+                    N dias corridos — o dia do vencimento andava para trás todo
+                    mês e duas parcelas podiam cair na mesma competência. A
+                    régua agora é mensal por dia fixo, a mesma que a tela de
+                    orçamento sempre usou. */}
+                <p className="text-muted-foreground text-sm">
+                  As parcelas vencem todo mês no mesmo dia. Se o dia não existir no mês (31 em
+                  fevereiro), a parcela cai no último dia dele. A entrada, se houver, vence hoje.
+                </p>
+                <Button type="submit" disabled={gerarPlano.isPending}>
                   {gerarPlano.isPending ? "Gerando…" : "Gerar plano"}
                 </Button>
-              </div>
+              </form>
             ) : (
               <p className="text-muted-foreground text-sm">Nenhuma parcela registrada.</p>
             )}
@@ -597,8 +660,45 @@ export default function ContratoDetail() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              As parcelas em aberto serão anuladas e o vestido será liberado. Sobre o que já foi recebido:
+              {oQueSeraDesfeito.abertas > 0 ? (
+                <>
+                  <strong className="text-foreground">
+                    {oQueSeraDesfeito.abertas}{" "}
+                    {oQueSeraDesfeito.abertas === 1 ? "parcela" : "parcelas"} em aberto,{" "}
+                    {brl(oQueSeraDesfeito.aberto)}
+                  </strong>{" "}
+                  deixarão de ser cobradas, e o vestido será liberado.
+                </>
+              ) : (
+                <>Não há parcelas em aberto. O vestido será liberado.</>
+              )}
             </p>
+
+            {/* F33: o que já entrou, item a item — a decisão abaixo é sobre ESTE
+                dinheiro, e ela era pedida sem mostrá-lo. */}
+            {oQueSeraDesfeito.comRecebimento.length > 0 && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2" data-testid="cancelar-recebido">
+                <p className="text-sm font-medium">
+                  Já recebido nesta venda: {brl(oQueSeraDesfeito.recebido)}
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  {oQueSeraDesfeito.comRecebimento.map((p) => (
+                    <li key={p.id} className="flex justify-between gap-3">
+                      <span>
+                        {p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`}
+                        {p.recebidoEm &&
+                          ` — ${instanteDia(p.recebidoEm)}`}
+                      </span>
+                      <span className="tabular-nums">{brl(p.valorRecebido ?? 0)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {oQueSeraDesfeito.comRecebimento.length > 0 && (
+              <p className="text-sm text-muted-foreground">Sobre o que já foi recebido:</p>
+            )}
             <RadioGroup value={destinoPago} onValueChange={(v) => setDestinoPago(v as "manter" | "estornar")}>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="manter" id="destino-manter" />
@@ -609,12 +709,12 @@ export default function ContratoDetail() {
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="estornar" id="destino-estornar" />
                 <Label htmlFor="destino-estornar" className="font-normal">
-                  Devolvi o valor — estorna do caixa
+                  Devolvi o valor — estorna {brl(oQueSeraDesfeito.recebido)} do caixa
                 </Label>
               </div>
             </RadioGroup>
             <Textarea
-              placeholder="Motivo do cancelamento *"
+              placeholder="Motivo do cancelamento"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             />
@@ -643,6 +743,7 @@ export default function ContratoDetail() {
               <Label htmlFor="receber-valor">Valor recebido</Label>
               <Input
                 id="receber-valor"
+                inputMode="decimal"
                 placeholder="0,00"
                 value={valorRecebido}
                 onChange={(e) => setValorRecebido(e.target.value)}
@@ -688,9 +789,14 @@ export default function ContratoDetail() {
               {confirmacao?.tipo === "estornar" ? "Estornar recebimento?" : "Remover parcela?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmacao?.tipo === "estornar"
-                ? `O recebimento de ${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (R$ ${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será desfeito e a parcela volta a ficar em aberto.`
-                : `${confirmacao ? rotuloParcela(confirmacao.parcela) : ""} (R$ ${confirmacao ? brl(confirmacao.parcela.valorPrevisto) : ""}) será removida do plano. Esta ação não pode ser desfeita.`}
+              {/* E128/C5: o estorno citava o PREVISTO onde o caixa perde o
+                  RECEBIDO — parcela de R$ 1.000,00 com R$ 300,00 recebidos, o
+                  diálogo dizia desfazer R$ 1.000,00. A frase (e o número que
+                  ela cita) é decisão pura em lib/financeiro/confirmacoes. */}
+              {confirmacao &&
+                (confirmacao.tipo === "estornar"
+                  ? fraseEstornoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela)
+                  : fraseRemocaoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

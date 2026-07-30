@@ -68,7 +68,12 @@ test.describe("Recebimento parcial (E49)", () => {
 
     // A parcela vira PARCIAL e diz o que falta — não some, nem finge inteira.
     await expect(linha.getByText("Parcial", { exact: false })).toBeVisible();
-    await expect(linha.getByText(/faltam R\$ 600,00/)).toBeVisible();
+    // `\s` e não " ": desde o E92 o dinheiro sai de `brl()`, e o `Intl` do
+    // pt-BR separa "R$" do número com espaço RÍGIDO (U+00A0). Playwright
+    // normaliza espaço quando o seletor é string, mas NÃO quando é regex — foi
+    // exatamente aqui que a troca deixou três testes vermelhos sem que uma
+    // linha de comportamento mudasse.
+    await expect(linha.getByText(/faltam R\$\s600,00/)).toBeVisible();
   });
 
   test("o botão passa a oferecer exatamente o restante", async ({ page }) => {

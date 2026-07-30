@@ -112,7 +112,7 @@ describe("Contrato com N bloqueios (E72)", () => {
       casamentoData: dataFutura(90),
     });
 
-    await agent
+    const r = await agent
       .post(`/api/lojas/${f.lojaId}/contratos`)
       .send({
         leadId: lead.id,
@@ -121,8 +121,42 @@ describe("Contrato com N bloqueios (E72)", () => {
         bloqueioVestidoIds: [bloqueioAlheio.id],
       })
       .expect(404);
+    // S-D8/E122: era `{ error: "Bloqueio not found" }` — inglês, sem código nem
+    // detalhe, e o toast mostrava o cru no clique que fecha a venda.
+    expect(r.body.error).toBe("RESERVA_NAO_ENCONTRADA");
+    expect(r.body.detalhe).toBe("A reserva de vestido indicada não existe nesta loja.");
 
     await db.delete(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, bloqueioAlheio.id));
     await limparFixture(outra);
+  });
+
+  /**
+   * S-D8/E122 — a FRASE morava no campo do CÓDIGO: o POST respondia
+   * `{ error: "dataCasamento do contrato diverge da data do bloqueio" }`,
+   * sem `detalhe`, enquanto o PATCH do MESMO arquivo já tinha o formato certo
+   * (`DATA_DIVERGE_DA_RESERVA` + detalhe). O POST converge para o irmão.
+   */
+  it("data do casamento longe da reserva: código DATA_DIVERGE_DA_RESERVA e detalhe com as duas datas", async () => {
+    const lead = await criarLead(f);
+    const bloqueio = await criarBloqueio(f, {
+      tipo: "RESERVA_CASAMENTO",
+      vestidoId: (await criarVestido(f)).id,
+      leadId: lead.id,
+      casamentoData: dataFutura(90),
+    });
+
+    const r = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send({
+        leadId: lead.id,
+        vendedoraId: f.vendedoraId,
+        valorTotal: 5000,
+        bloqueioVestidoIds: [bloqueio.id],
+        dataCasamento: dataFutura(120).toISOString(),
+      })
+      .expect(422);
+    expect(r.body.error).toBe("DATA_DIVERGE_DA_RESERVA");
+    // O detalhe fala em datas dd/mm/aaaa, não em nome de campo.
+    expect(r.body.detalhe).toMatch(/não bate com a da reserva do vestido \(\d{2}\/\d{2}\/\d{4}\)/);
   });
 });

@@ -13,7 +13,9 @@ import {
   ehPerfilAdmin,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Templates globais de perfil — rota top-level /admin/perfis (fora de /loja). */
 export default function AdminPerfis() {
@@ -27,7 +29,7 @@ export default function AdminPerfis() {
     error,
     refetch,
   } = useListPerfis({
-    query: { queryKey: getListPerfisQueryKey() },
+    query: { ...CACHE_ESTAVEL, queryKey: getListPerfisQueryKey() },
   });
   const updatePerfil = useUpdatePerfil();
 
@@ -41,8 +43,8 @@ export default function AdminPerfis() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao atualizar perfil",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para atualizar perfil",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -66,8 +68,8 @@ export default function AdminPerfis() {
         </div>
 
         {isError ? (
-          <EstadoErro
-            titulo="Erro ao carregar os perfis"
+          <Erro
+            titulo="Não deu para carregar os perfis"
             erro={error}
             onTentarNovamente={() => refetch()}
           />

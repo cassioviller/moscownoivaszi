@@ -29,11 +29,17 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
+/**
+ * E136/E12: <h3>, não <div> — navegar por cabeçalhos é o gesto nº 1 de leitor
+ * de tela, e com o título do card fora da árvore a página tinha o h1 e depois
+ * nada. h3 sob h1 sem h2 é aceitável (Radix/axe); o peso visual não muda (as
+ * classes é que mandam).
+ */
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <h3
     ref={ref}
     className={cn("font-semibold leading-none tracking-tight", className)}
     {...props}

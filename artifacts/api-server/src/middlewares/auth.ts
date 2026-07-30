@@ -2,6 +2,39 @@ import type { Request, Response, NextFunction } from "express";
 import { buscarSessao, buscarLoja, getPermissoes, COOKIE_NOME } from "../lib/auth";
 import { acaoDoMetodo, acaoDoRequest, podeNoModulo, type Acao } from "../lib/permissoes";
 
+/**
+ * O `:lojaId` da URL — o da rota quando ele existe, e o do caminho cru quando não.
+ *
+ * `router.use(fn)` SEM path roda com `req.params` vazio: o Express só preenche
+ * os params do padrão com que o middleware foi montado, e um `use` sem path não
+ * tem padrão nenhum. Os dez routers de domínio (leads, contratos, financeiro,
+ * comissão, agenda, reservas, vestidos, orçamentos, catálogo, equipe) montam
+ * assim, então `req.params.lojaId` era `undefined` ali e a conferência de loja
+ * abaixo era pulada em SILÊNCIO — nunca falhava, nunca rodava.
+ *
+ * O que isso deixava passar, medido nesta árvore com uma vendedora comum da
+ * loja A e a sessão em A: `GET /api/lojas/<B>/leads` respondia 200 com a ficha
+ * da noiva de B, o `PATCH` renomeava, e o `DELETE` apagava. `requireModulo`
+ * não segura nada disso — ele consulta as permissões de `sessao.lojaAtivaId`,
+ * que é A, e aprova; o handler então consulta `where lojaId = B`. O E91 fechou
+ * os ids do CORPO e deixou aberto o id do PATH.
+ *
+ * Ler o caminho cru é a única fonte que enxerga o id nas DUAS montagens, com
+ * path e sem. Todas as rotas de loja vivem sob `/api/lojas/:lojaId/...`.
+ */
+export function lojaIdDaUrl(req: Request): string | undefined {
+  const doParam = Array.isArray(req.params.lojaId) ? req.params.lojaId[0] : req.params.lojaId;
+  if (doParam) return doParam;
+  const caminho = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
+  const achado = /\/lojas\/([^/?#]+)/.exec(caminho)?.[1];
+  if (!achado) return undefined;
+  try {
+    return decodeURIComponent(achado);
+  } catch {
+    return achado;
+  }
+}
+
 export async function requireSessao(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies[COOKIE_NOME];
   if (!sessionId) {
@@ -39,7 +72,7 @@ export async function requireSessaoComLoja(req: Request, res: Response, next: Ne
     return;
   }
 
-  const lojaIdParam = Array.isArray(req.params.lojaId) ? req.params.lojaId[0] : req.params.lojaId;
+  const lojaIdParam = lojaIdDaUrl(req);
   if (lojaIdParam && lojaIdParam !== data.sessao.lojaAtivaId) {
     res.status(403).json({ error: "Acesso negado a esta loja" });
     return;
@@ -79,7 +112,13 @@ export function requireModulo(modulo: string, acao?: Acao) {
       next();
       return;
     }
-    const exigida = acao ?? acaoDoRequest(req.method, req.path);
+    // `baseUrl + path`, não `path` (E115): dentro de um `router.use(prefixo,
+    // fn)` o Express DESMONTA o prefixo casado — `req.path` de
+    // `POST /lojas/X/financeiro/pagamentos` chega aqui como `/pagamentos`, e
+    // uma régua por caminho (`POST_QUE_MUTA_POR_CAMINHO`) nunca casaria. É a
+    // mesma pegadinha do `req.params` vazio que o E111 documentou no
+    // `lojaIdDaUrl`, na dimensão do caminho em vez da dos params.
+    const exigida = acao ?? acaoDoRequest(req.method, req.baseUrl + req.path);
     const permissoes = await getPermissoes(usuario.id, lojaId, false);
     if (!permissoes || !podeNoModulo(permissoes, modulo, exigida)) {
       res.status(403).json({ error: "ACESSO_NEGADO_MODULO", modulo, acao: exigida });

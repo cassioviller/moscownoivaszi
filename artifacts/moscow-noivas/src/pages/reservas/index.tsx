@@ -10,11 +10,10 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { etapaLabel } from "@/lib/formatos";
 import { diasAteCasamento, casamentoUrgente } from "../noivas/helpers";
 import { agruparPorMes, mesAbrevFmt, mesAnoFmt } from "./helpers";
+import { Erro } from "@/components/estado";
 
 /**
  * Livro de reservas (porte da /reservas do feat/orcamentos) — quem casa com
@@ -62,7 +61,7 @@ export default function Reservas() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif">{passadas ? "Reservas passadas" : "Reservas"}</h1>
+          <h1 className="text-3xl font-serif">{passadas ? "Reservas anteriores" : "Reservas"}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {passadas
               ? "Casamentos já realizados."
@@ -70,21 +69,12 @@ export default function Reservas() {
           </p>
         </div>
         <Button variant="outline" onClick={() => setPassadas((v) => !v)}>
-          {passadas ? "Voltar às próximas reservas" : "Ver reservas passadas"}
+          {passadas ? "Voltar às próximas reservas" : "Ver reservas anteriores"}
         </Button>
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar as reservas</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar as reservas" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
@@ -93,7 +83,7 @@ export default function Reservas() {
         </div>
       ) : reservas.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{passadas ? "Nenhuma reserva passada." : "Nenhuma reserva por aqui ainda."}</p>
+          <p>{passadas ? "Nenhuma reserva anterior." : "Nenhuma reserva por aqui ainda."}</p>
           {!passadas && (
             <p className="text-sm mt-1">
               Quando um vestido for reservado para o casamento de uma noiva, ele aparece aqui, da
@@ -148,10 +138,18 @@ export default function Reservas() {
                                 {etapaLabel(r.lead.etapa)}
                               </span>
                             )}
+                            {/* E126/E5: código + nome chegavam a 436px num
+                                card de 390 — o chip trunca em vez de dar
+                                rolagem lateral à página. */}
                             {r.vestido && (
-                              <Link to={`/loja/${lojaId}/vestidos/${r.vestidoId}`}>
-                                <Badge variant="secondary" className="hover:bg-secondary/80">
-                                  {r.vestido.codigo} · {r.vestido.nome}
+                              <Link
+                                to={`/loja/${lojaId}/vestidos/${r.vestidoId}`}
+                                className="min-w-0 max-w-full"
+                              >
+                                <Badge variant="secondary" className="hover:bg-secondary/80 max-w-full">
+                                  <span className="truncate">
+                                    {r.vestido.codigo} · {r.vestido.nome}
+                                  </span>
                                 </Badge>
                               </Link>
                             )}

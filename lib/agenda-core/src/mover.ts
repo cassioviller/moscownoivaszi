@@ -1,6 +1,7 @@
 import {
   dentroDoFuncionamento,
   diaDaSemanaLocal,
+  horaLocal,
   instanteDoSlot,
   slotsDoDia,
   SLOT_MINUTOS,
@@ -50,10 +51,14 @@ export type Expediente = {
 
 const SLOT_MS = SLOT_MINUTOS * 60_000;
 
+/** Slots que a marcação ocupa: PROVA ocupa `provaDuracao`, o resto ocupa 1. */
+function duracaoSlots(m: Marcacao, provaDuracao?: number): number {
+  return m.tipo === "PROVA" ? Math.max(1, provaDuracao ?? 1) : 1;
+}
+
 /** Duração da marcação em milissegundos: PROVA ocupa `provaDuracao` slots. */
 function duracaoMs(m: Marcacao, provaDuracao?: number): number {
-  const slots = m.tipo === "PROVA" ? Math.max(1, provaDuracao ?? 1) : 1;
-  return slots * SLOT_MS;
+  return duracaoSlots(m, provaDuracao) * SLOT_MS;
 }
 
 /** Dois intervalos [iniA,fimA) e [iniB,fimB) se cruzam? */
@@ -88,6 +93,27 @@ export function recusaDeMover(
     return "LOJA_FECHADA";
   }
   if (!dentroDoFuncionamento(destino.inicio, expediente.aberturaHora, expediente.fechamentoHora)) {
+    return "FORA_DO_HORARIO";
+  }
+  /**
+   * E o FIM também tem de caber no expediente.
+   *
+   * Só o início era conferido, e uma PROVA ocupa `provaDuracao` slots: com
+   * prova de 90 min e fechamento às 19h, `slotsDoDia` produz 18:30, esta função
+   * aprovava (18 < 19) e a grade OFERECIA o slot. A prova ficava marcada das
+   * 18:30 às 20:00 — uma hora depois de a loja fechar —, e a noiva recebia a
+   * confirmação por WhatsApp de um horário em que não há ninguém na loja. A
+   * mesma conta (`duracaoSlots`) já era usada para bloquear as cabines
+   * vizinhas; só o expediente não era consultado.
+   *
+   * A conta é em minutos do dia LOCAL, e não sobre o instante do fim, porque é
+   * o relógio da loja que define o fechamento — a mesma régua de
+   * `dentroDoFuncionamento`.
+   */
+  const { hora, minuto } = horaLocal(destino.inicio);
+  const fimEmMinutos =
+    hora * 60 + minuto + duracaoSlots(movida, expediente.provaDuracao) * SLOT_MINUTOS;
+  if (fimEmMinutos > expediente.fechamentoHora * 60) {
     return "FORA_DO_HORARIO";
   }
 

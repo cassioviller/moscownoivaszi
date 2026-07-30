@@ -6,8 +6,9 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { ROTULO_ACAO, resumoDetalhe } from "../financeiro/auditoria";
+import { instanteCurto } from "@/lib/formatos";
 
 /**
  * Log de atividade da equipe (E18) — o card da dona na tela de Equipe: quando
@@ -16,14 +17,6 @@ import { ROTULO_ACAO, resumoDetalhe } from "../financeiro/auditoria";
  * dinheiro").
  */
 
-const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /** "há 5 min", "há 3 h", "há 12 dias" — ou null para cair na data absoluta. */
 function haQuanto(instante: string): string | null {
@@ -60,8 +53,8 @@ export function AtividadeEquipe() {
       </CardHeader>
       <CardContent className="space-y-6">
         {atividade.isError ? (
-          <EstadoErro
-            titulo="Erro ao carregar a atividade"
+          <Erro
+            titulo="Não deu para carregar a atividade"
             erro={atividade.error}
             onTentarNovamente={() => atividade.refetch()}
           />
@@ -91,7 +84,7 @@ export function AtividadeEquipe() {
                     <p>
                       {m.ultimoAcesso
                         ? (haQuanto(m.ultimoAcesso) ??
-                          quandoFmt.format(new Date(m.ultimoAcesso)).replace(", ", " às "))
+                          instanteCurto(m.ultimoAcesso).replace(", ", " às "))
                         : "nunca entrou"}
                     </p>
                     <p>
@@ -111,7 +104,7 @@ export function AtividadeEquipe() {
                   {atividade.data.eventos.slice(0, 10).map((e) => (
                     <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-3 py-2">
                       <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
-                        {quandoFmt.format(new Date(e.criadoEm)).replace(", ", " às ")}
+                        {instanteCurto(e.criadoEm).replace(", ", " às ")}
                       </span>
                       <Badge variant="secondary" className="font-normal">
                         {ROTULO_ACAO[e.acao] ?? e.acao}

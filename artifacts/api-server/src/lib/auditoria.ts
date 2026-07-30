@@ -16,6 +16,12 @@ export const ACOES_AUDITORIA = [
   "PAGAMENTO_ESTORNADO",
   "ESTORNO_COMISSAO_BAIXADO",
   "COMISSAO_FECHAMENTO_REABERTO",
+  // B3/E94: cancelar contrato é a MAIOR ação de dinheiro do sistema — anula as
+  // parcelas previstas e, com `destinoPago: "estornar"`, zera o recebido das
+  // PAGAS, tirando da receita dinheiro que já tinha entrado. Ela não deixava
+  // rastro nenhum, enquanto a ação irmã e menor (estornar UMA parcela) sempre
+  // deixou. Quem conferisse o caixa via a receita cair sem nada que explicasse.
+  "CONTRATO_CANCELADO",
   // Administração (E56): mexer em quem entra e no que cada um pode é ação
   // sensível — a trilha era 100% financeira, e o feed do E18 mostrava "sem
   // ações sensíveis" justamente para quem só administra.
@@ -30,7 +36,53 @@ export const ACOES_AUDITORIA = [
   "ORCAMENTO_ACEITO",
   // E85: a noiva confirmou a presença pelo portal — mesma mecânica do aceite.
   "PROVA_CONFIRMADA",
+  // E100/F37: e a noiva avisou que NÃO pode ir. Ela já era gravada desde a
+  // parte 2, mas ficara fora desta união — o CSV da contadora caía no código
+  // cru. Terceiro fato da mesma família do E97.
+  "REMARCACAO_PEDIDA",
   "LEADS_ANONIMIZADOS",
+  // Apagar a ficha da noiva leva junto atendimento, orçamento, interesse e
+  // registro de cobrança pelo cascade. Era um `delete` cru — sem 404, sem
+  // contagem e sem rastro —, e depois dele não há linha nenhuma de onde
+  // reconstituir quem foi apagada. O detalhe guarda o nome e o que foi junto.
+  "LEAD_REMOVIDO",
+  // Remover uma parcela some com uma obrigação do carnê da noiva. É a operação
+  // espelho do CONTA_PAGAR_REMOVIDA do E107, e ficou sem trilha pelo mesmo
+  // tempo em que a irmã já tinha a dela.
+  "PARCELA_REMOVIDA",
+  // S4/E107: apagar uma conta PREVISTA some com uma obrigação. Não move caixa
+  // realizado (a paga é recusada antes), e por isso é um degrau abaixo do B3 —
+  // mas depois do DELETE não há linha para consultar, então o que não estiver
+  // no detalhe da trilha está perdido.
+  "CONTA_PAGAR_REMOVIDA",
+  // F34/E103: declarar o mês à contabilidade. O carimbo é de MÃO ÚNICA — não há
+  // rota que o limpe —, e a ação era a única escrita irreversível do financeiro
+  // sem autor. O `entidadeId` carrega a JANELA, porque o fato é o período e não
+  // um registro: é o que alguém procura ao perguntar "quem declarou junho?".
+  "CONTABILIDADE_ENVIADA",
+  // E115: dar um movimento por conferido com o extrato (F32/E103). Carimbo de
+  // mão única sem rota que desfaça — era a única escrita irmã da de cima sem
+  // autor, e "quem deu este movimento por conferido?" ficava sem resposta.
+  "CONCILIACAO_MARCADA",
+  // E115: os DELETEs que eram crus — a régua do E91/E106/E111 ("nada some sem
+  // 404, contagem e rastro") aplicada a reserva, bloqueio, atendimento,
+  // orçamento e avaria. Depois do DELETE a trilha é o único rastro deles.
+  "RESERVA_REMOVIDA",
+  "BLOQUEIO_REMOVIDO",
+  "ATENDIMENTO_REMOVIDO",
+  "ORCAMENTO_REMOVIDO",
+  "AVARIA_REMOVIDA",
+  // E120/S-D4: contrato nascido de orçamento com OUTRA vendedora no corpo. A
+  // divergência é aceita (P1 — a venda pode legitimamente ser de outra pessoa)
+  // mas é ela que decide de quem é a comissão, então deixa rastro: quem montou
+  // o orçamento, em nome de quem o contrato nasceu, e quem clicou (a sessão).
+  "CONTRATO_VENDEDORA_DIVERGENTE",
+  // E123/B3: desfazer um registro de cobrança. O registro nasce do clique num
+  // link que abre outra aba (a fila de /mensagens) — errar é barato, e o
+  // desfazer devolve a verdade ao histórico. Depois do DELETE a trilha é o
+  // único lugar que lembra o que o registro dizia, então o detalhe carrega
+  // canal, observação e o instante do contato desfeito.
+  "REGISTRO_COBRANCA_DESFEITO",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -55,6 +107,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PAGAMENTO_ESTORNADO: "Pagamento estornado",
   ESTORNO_COMISSAO_BAIXADO: "Estorno de comissão baixado",
   COMISSAO_FECHAMENTO_REABERTO: "Fechamento de comissão reaberto",
+  CONTRATO_CANCELADO: "Contrato cancelado",
   MEMBRO_ADICIONADO: "Membro adicionado",
   MEMBRO_ALTERADO: "Membro alterado",
   MEMBRO_REMOVIDO: "Membro removido",
@@ -64,7 +117,20 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
   PROVA_CONFIRMADA: "Prova confirmada pela noiva",
+  REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
+  LEAD_REMOVIDO: "Noiva removida do cadastro",
+  PARCELA_REMOVIDA: "Parcela removida",
+  CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
+  CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
+  CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
+  RESERVA_REMOVIDA: "Reserva removida",
+  BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",
+  ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
+  ORCAMENTO_REMOVIDO: "Orçamento removido",
+  AVARIA_REMOVIDA: "Avaria removida",
+  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
+  REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -98,7 +164,16 @@ export interface RegistroAuditoria {
     | "usuario"
     | "convite"
     | "perfil"
-    | "lead";
+    | "lead"
+    // E115 — os DELETEs que ganharam trilha, e o carimbo de conciliação.
+    | "reserva"
+    | "bloqueio"
+    | "atendimento"
+    | "orcamento"
+    | "avaria"
+    | "conciliacao"
+    // E123 — o desfazer do registro de cobrança.
+    | "registro_cobranca";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }

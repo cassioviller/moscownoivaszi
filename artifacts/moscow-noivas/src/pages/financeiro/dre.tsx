@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErroListagem, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import {
   Select,
   SelectContent,
@@ -16,11 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import { brl, capitalizar } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
 import { baixarCsv, linhasDre } from "@/lib/financeiro/exportar";
-import { competenciaAtual, competenciaValida, ultimasCompetencias } from "@/lib/financeiro/datas";
+import { competenciaAtual, competenciaValida, rotuloCompetencia, ultimasCompetencias } from "@/lib/financeiro/datas";
 
 /**
  * DRE em REGIME DE CAIXA: só entra no número o dinheiro que se moveu dentro da
@@ -34,16 +35,9 @@ import { competenciaAtual, competenciaValida, ultimasCompetencias } from "@/lib/
 
 const MESES_NO_SELETOR = 12;
 
-const mesFmt = new Intl.DateTimeFormat("pt-BR", {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-/** "2026-07" → "julho de 2026". Meio-dia UTC evita escorregar de mês. */
-function rotuloCompetencia(competencia: string): string {
-  return mesFmt.format(new Date(`${competencia}-01T12:00:00.000Z`));
-}
+// `mesFmt` morava aqui, declarado e nunca usado: a tela formata competência por
+// `rotuloCompetencia`, que já embrulha um formatador idêntico. Régua morta ao
+// lado da viva é convite para a próxima linha usar a errada.
 
 /** Desloca uma competência em `n` meses. */
 function deslocarCompetencia(competencia: string, n: number): string {
@@ -145,8 +139,8 @@ export default function DRE() {
           </SelectTrigger>
           <SelectContent>
             {competencias.map((c) => (
-              <SelectItem key={c} value={c} className="capitalize">
-                {rotuloCompetencia(c)}
+              <SelectItem key={c} value={c}>
+                {capitalizar(rotuloCompetencia(c))}
               </SelectItem>
             ))}
           </SelectContent>
@@ -190,14 +184,37 @@ export default function DRE() {
         </Card>
       ) : (
         <div className="space-y-4">
+          {/* E14: o resultado é a PERGUNTA da tela — quem abre o DRE quer saber
+              se sobrou, e a resposta morava no rodapé, depois de três cartões.
+              Agora ele é o herói e as duas metades ficam abaixo, explicando-o.
+              O padrão é o de `fluxo.tsx`, que já resolvia isso. */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Sobrou em {rotuloCompetencia(competencia)}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <p
+                className={`money-lg ${resultadoNegativo ? "text-destructive" : "text-positivo"}`}
+                data-testid="dre-resultado"
+              >
+                {resultadoNegativo ? "−" : "+"}
+                {brl(Math.abs(dre.resultado))}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {brl(dre.receitas)} recebidos menos {brl(dre.totalDespesas)} pagos.
+                {resultadoNegativo && " O mês fechou no vermelho."}
+              </p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Recebimentos</CardTitle>
               <CardDescription>Parcelas recebidas no mês.</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold tabular-nums text-positivo">
-                R$ {brl(dre.receitas)}
+              <p className="money-md text-positivo">
+                {brl(dre.receitas)}
               </p>
             </CardContent>
           </Card>
@@ -231,7 +248,7 @@ export default function DRE() {
                     >
                       <span className="min-w-0 truncate">{despesa.rotulo}</span>
                       <span className="shrink-0 tabular-nums text-destructive">
-                        − R$ {brl(despesa.total)}
+                        − {brl(despesa.total)}
                       </span>
                     </li>
                   ))}
@@ -240,27 +257,11 @@ export default function DRE() {
                       Total de despesas
                     </span>
                     <span className="shrink-0 font-semibold tabular-nums text-destructive">
-                      − R$ {brl(dre.totalDespesas)}
+                      − {brl(dre.totalDespesas)}
                     </span>
                   </li>
                 </ul>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Resultado do mês</CardTitle>
-              <CardDescription>Recebimentos menos despesas, pelo caixa.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p
-                className={`text-3xl font-semibold tabular-nums ${
-                  resultadoNegativo ? "text-destructive" : "text-positivo"
-                }`}
-              >
-                R$ {brl(dre.resultado)}
-              </p>
             </CardContent>
           </Card>
         </div>
