@@ -23,6 +23,7 @@ import {
   Scissors,
   Bookmark,
   MessageCircle,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -102,7 +103,7 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
  * dentro do Sheet (mobile) — por isso ocupa `h-full w-full`, sem largura/borda
  * próprias (quem contém decide). `onNavigate` fecha o drawer ao navegar.
  */
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({ onNavigate, onBuscar }: { onNavigate?: () => void; onBuscar?: () => void }) {
   const { pathname } = useLocation();
   const { lojaId } = useParams();
   const { logout, user, acessosModulos, session } = useAuth();
@@ -127,8 +128,22 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <span className="font-serif text-xl font-medium text-sidebar-foreground">Moscow</span>
         </Link>
-        {/* E68: o sino mora onde toda tela mora. */}
-        <SinoNotificacoes />
+        <span className="flex items-center gap-1">
+          {/* E141: a busca de noivas a um atalho — o gatilho visível. */}
+          {onBuscar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Buscar noiva (Ctrl+K)"
+              data-testid="abrir-busca-global-sidebar"
+              onClick={onBuscar}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          )}
+          {/* E68: o sino mora onde toda tela mora. */}
+          <SinoNotificacoes />
+        </span>
       </div>
 
       {podeTrocarDeLoja && (

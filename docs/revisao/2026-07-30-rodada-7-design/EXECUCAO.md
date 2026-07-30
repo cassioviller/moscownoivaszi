@@ -111,7 +111,7 @@ para cada uma.
 | E138 | Uma passada de voz: grafia, capitalização, validação, linha de propósito (11 achados A/F) | M | ✅ | `7908493` |
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ✅ | `f3af0dc` |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ✅ | `45aecc2` |
-| E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ⬜ | |
+| E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ✅ | |
 | E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ⬜ | |
 
 ## Sobras — visto de passagem sem épico
@@ -652,4 +652,17 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   obrigatória no mesmo clique) fica de pé. Medido de ponta a ponta: cadastro
   com "11 98888-0140" → lead no banco com o número (smoke removido em
   seguida). Suítes: API 873 · front 417 · E2E completo 147/147 · typecheck
+  verde. Nenhuma sobra nova.
+- **E141 entregue** (`execucao/E141.md`). ⌘K/Ctrl+K abre a busca de noivas
+  de qualquer tela logada — a MESMA busca server-side das listas (nome,
+  noivo, dígitos), Enter navega à ficha; gatilho visível ao lado do sino
+  (sidebar e header mobile); mudo com foco em input (cuidado b) e gateado
+  por `leads.ver` (cuidado c). O cuidado (a) medido: entrada 333,87 →
+  335,08 kB (+0,38 kB gzip — o listener e dois botões); o diálogo é um chunk
+  LAZY de 1,59 kB que só desce no primeiro ⌘K. O executor errou o
+  `CommandDialog` pronto (não repassa `shouldFilter` — o cmdk filtrava
+  os uuids contra o texto e a lista vinha vazia; o smoke pegou): cmdk sobre
+  busca de servidor é sempre `shouldFilter={false}`, como o combobox já
+  sabia. Entradas de navegação "de carona" cortadas sem culpa (o backlog
+  permitia). Suítes: API 873 · front 417 · E2E completo 147/147 · typecheck
   verde. Nenhuma sobra nova.
