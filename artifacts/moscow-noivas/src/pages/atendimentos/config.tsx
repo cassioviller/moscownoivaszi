@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useForm, Controller } from "react-hook-form";
 import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -83,6 +84,10 @@ export default function ConfigAtendimentos() {
       : undefined,
     resetOptions: { keepDirtyValues: true },
   });
+
+  // E133/B7: o sujo desta tela tem DUAS fontes — o form do horário (que dá
+  // reset ao salvar) e o nome de cabine digitado no input solto.
+  useConfirmarSaida(form.formState.isDirty || nomeCabine.trim() !== "");
 
   const salvarHorario = async () => {
     const { abertura, fechamento, dias } = form.getValues();

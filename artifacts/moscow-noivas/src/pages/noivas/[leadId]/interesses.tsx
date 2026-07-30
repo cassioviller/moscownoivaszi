@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -125,6 +126,24 @@ function InteresseForm({
     i?.tetoOrcamento != null ? String(i.tetoOrcamento) : "",
   );
 
+  // E133/B7: ESTE é o formulário preenchido durante o atendimento, com a
+  // noiva falando — zerado por um recarregar de conferência. O estado é
+  // useState solto, então o "sujo" é derivação explícita contra o que veio do
+  // servidor (entries ordenadas: a ordem de seleção não é sujeira), e cala
+  // depois de salvar (a tela navega ao concluir).
+  const [salvou, setSalvou] = useState(false);
+  const inicial = {
+    selecoes: Object.fromEntries((i?.atributos ?? []).map((a) => [a.atributoId, a.opcaoId])),
+    algoAMais: i?.algoAMais ?? "",
+    naoQuerUsar: i?.naoQuerUsar ?? "",
+    tetoOrcamento: i?.tetoOrcamento != null ? String(i.tetoOrcamento) : "",
+  };
+  const retrato = (v: typeof inicial) =>
+    JSON.stringify([Object.entries(v.selecoes).sort(), v.algoAMais, v.naoQuerUsar, v.tetoOrcamento]);
+  useConfirmarSaida(
+    !salvou && retrato({ selecoes, algoAMais, naoQuerUsar, tetoOrcamento }) !== retrato(inicial),
+  );
+
   const onSelecao = (atributoId: string, opcaoId: string | null) => {
     setSelecoes((atual) => {
       const proximo = { ...atual };
@@ -167,6 +186,7 @@ function InteresseForm({
         queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(activeLojaId!) }),
       ]);
       toast({ title: "Interesses salvos" });
+      setSalvou(true);
       navigate(`/loja/${lojaId}/noivas/${leadId}`);
     } catch (err) {
       toast({

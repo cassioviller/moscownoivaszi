@@ -103,7 +103,7 @@ para cada uma.
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ✅ | `8d14198` |
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ✅ | `6182e57` |
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ✅ | `cfa827f` |
-| E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ⬜ | |
+| E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ✅ | |
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ⬜ | |
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ⬜ | |
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ⬜ | |
@@ -551,3 +551,13 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   caiu 146/147; dado consertado (+300 dias), segunda passada 147/147, lição no
   relatório. Suítes: API 873 · front 401 → 406 · E2E completo 146/147 →
   147/147 · typecheck verde. Nenhuma sobra nova.
+- **E133 entregue** (`execucao/E133.md`). O hook de saída (E97) chegou às 6
+  telas nuas — a pior delas o formulário de interesses, preenchido durante o
+  atendimento com a noiva falando. O mapa da primeira ação pegou o que o plano
+  de gabinete erraria: `vestido-form` e `config` são RHF **e** estado solto ao
+  mesmo tempo (seleções de catálogo, nome de cabine) — o sujo honesto é a
+  disjunção; interesses derivou o retrato contra o servidor (entries
+  ordenadas) calando após salvar. Varredura de adoção nova
+  (`confirmar-saida-adocao.test.ts`, 7 telas — as 5 migradas + as 2 do E97).
+  Roteador intocado (S13 segue sobra). Suítes: API 873 · front 406 → 413 ·
+  E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.

@@ -9,6 +9,7 @@ import {
   type Atributo,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -119,6 +120,10 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
       novasOpcoes: "",
     },
   });
+
+  // E133/B7: fechar/recarregar com trabalho digitado avisa; cala após o
+  // submit bem-sucedido (a tela navega sem reset).
+  useConfirmarSaida(form.formState.isDirty && !form.formState.isSubmitSuccessful);
   const { fields } = useFieldArray({ control: form.control, name: "opcoes" });
 
   const salvando = updateAtributo.isPending || createOpcao.isPending || updateOpcao.isPending;
