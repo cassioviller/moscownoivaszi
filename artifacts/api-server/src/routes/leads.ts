@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable } from "@workspace/db";
-import { eq, and, desc, or, ilike, sql, count, inArray } from "drizzle-orm";
+import { eq, and, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
 import { atributosDaLoja } from "../lib/escopo-loja";
 import {
   ListLeadsResponse,
@@ -21,6 +21,7 @@ import {
   ExpurgarLeadsPerdidosBody,
   ExpurgarLeadsPerdidosResponse,
   PreviaExpurgoLeadsPerdidosQueryParams,
+  GetConversaoLeadsQueryParams,
   PreviaExpurgoLeadsPerdidosResponse,
   GetLeadsParadosResponse
 } from "@workspace/api-zod";
@@ -29,7 +30,7 @@ import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
-import { addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
+import { addDias, addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -198,6 +199,19 @@ router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
  */
 router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  // E142/D7: `de`/`ate` recortam pelo dia de ENTRADA do lead (dia local) —
+  // numerador e denominador do MESMO período por construção (o WHERE é um).
+  // Sem params, a história inteira, como sempre foi.
+  const query = GetConversaoLeadsQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json(erroDeValidacao(query.error));
+    return;
+  }
+  const { de, ate } = query.data;
+  const janela = [
+    ...(de ? [gte(leadsTable.createdAt, inicioDoDia(de))] : []),
+    ...(ate ? [lt(leadsTable.createdAt, inicioDoDia(addDias(ate, 1)))] : []),
+  ];
 
   const porOrigem = await db
     .select({
@@ -206,13 +220,13 @@ router.get("/lojas/:lojaId/leads/conversao", async (req, res): Promise<void> => 
       convertidos: sql<number>`count(*) filter (where ${inArray(leadsTable.etapa, [...ETAPAS_CONVERTIDA])})`.mapWith(Number),
     })
     .from(leadsTable)
-    .where(eq(leadsTable.lojaId, lojaId))
+    .where(and(eq(leadsTable.lojaId, lojaId), ...janela))
     .groupBy(leadsTable.origem);
 
   const porMotivoPerda = await db
     .select({ motivo: leadsTable.perdidaMotivo, total: count() })
     .from(leadsTable)
-    .where(and(eq(leadsTable.lojaId, lojaId), eq(leadsTable.etapa, "PERDIDO")))
+    .where(and(eq(leadsTable.lojaId, lojaId), eq(leadsTable.etapa, "PERDIDO"), ...janela))
     .groupBy(leadsTable.perdidaMotivo);
 
   res.json(

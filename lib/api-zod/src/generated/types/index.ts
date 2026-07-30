@@ -133,6 +133,7 @@ export * from './folhaInput';
 export * from './gerarComissaoFechamentoInput';
 export * from './gerarPlanoInput';
 export * from './getConsolidado200Item';
+export * from './getConversaoLeadsParams';
 export * from './getConviteInfoParams';
 export * from './getDesempenhoVendedoras200Item';
 export * from './getDre200';

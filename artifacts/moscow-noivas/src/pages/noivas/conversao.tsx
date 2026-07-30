@@ -1,4 +1,8 @@
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
+import { comFiltros } from "@/lib/filtro-url";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetConversaoLeads,
@@ -47,8 +51,20 @@ export default function ConversaoLeads() {
   const { activeLojaId } = useAuth();
   const { lojaId } = useParams();
 
-  const q = useGetConversaoLeads(activeLojaId!, {
-    query: { queryKey: getGetConversaoLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E142/D7: o período mora na URL (E129) — default FORA (sem params, a
+  // história inteira, o comportamento de sempre). O recorte é por dia de
+  // ENTRADA do lead, no servidor; numerador e denominador do mesmo período.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const de = searchParams.get("de") ?? "";
+  const ate = searchParams.get("ate") ?? "";
+  const definirPeriodo = (nome: "de" | "ate", valor: string) =>
+    setSearchParams((prev) => comFiltros(prev, { [nome]: valor }), { replace: true });
+  const paramsConversao = {
+    ...(de ? { de } : {}),
+    ...(ate ? { ate } : {}),
+  };
+  const q = useGetConversaoLeads(activeLojaId!, paramsConversao, {
+    query: { queryKey: getGetConversaoLeadsQueryKey(activeLojaId!, paramsConversao), enabled: !!activeLojaId },
   });
   // E73: a demanda de arara dos próximos 12 meses — a data do casamento
   // sempre esteve no banco, faltava somar.
@@ -88,6 +104,43 @@ export default function ConversaoLeads() {
         <p className="text-sm text-muted-foreground mt-1">
           De onde as noivas vêm, quantas fecham e por que as outras se perdem.
         </p>
+      </div>
+
+      {/* E142/D7: a pergunta "e neste período?" — a campanha do trimestre
+          deixava de sumir na média de 3 anos. Sem datas, a história inteira. */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="conv-de">Entraram de</Label>
+          <Input
+            id="conv-de"
+            type="date"
+            className="w-40"
+            value={de}
+            onChange={(e) => definirPeriodo("de", e.target.value)}
+            data-testid="conversao-de"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="conv-ate">Até</Label>
+          <Input
+            id="conv-ate"
+            type="date"
+            className="w-40"
+            value={ate}
+            onChange={(e) => definirPeriodo("ate", e.target.value)}
+            data-testid="conversao-ate"
+          />
+        </div>
+        {(de || ate) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSearchParams((prev) => comFiltros(prev, { de: null, ate: null }), { replace: true })}
+          >
+            Ver a história inteira
+          </Button>
+        )}
       </div>
 
       {q.isError ? (

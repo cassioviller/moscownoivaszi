@@ -26,6 +26,7 @@ export {
   CreateParcelaAvulsaBody,
   ExpurgarLeadsPerdidosBody,
   PreviaExpurgoLeadsPerdidosParams,
+  GetConversaoLeadsParams,
   GetFluxoCaixaParams,
   GetDreParams,
   ListAtendimentosParams,

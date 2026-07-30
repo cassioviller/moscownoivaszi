@@ -112,7 +112,7 @@ para cada uma.
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ✅ | `f3af0dc` |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ✅ | `45aecc2` |
 | E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ✅ | `c6911a6` |
-| E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ⬜ | |
+| E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ✅ | |
 
 ## Sobras — visto de passagem sem épico
 
@@ -666,3 +666,16 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   sabia. Entradas de navegação "de carona" cortadas sem culpa (o backlog
   permitia). Suítes: API 873 · front 417 · E2E completo 147/147 · typecheck
   verde. Nenhuma sobra nova.
+- **E142 entregue** (`execucao/E142.md`) — **e com ele a fila dos 23 épicos
+  FECHA: E120–E142, todos ✅ com hash.** O relatório de conversão aprendeu
+  "e neste período?": o teste de duas épocas provou o vermelho em número
+  (pedindo 30 dias, a época de 2024 vinha junto), `de`/`ate` entraram no
+  contrato e o recorte por `createdAt` (dia local) vale para os DOIS
+  agregados — numerador e denominador do mesmo período por construção; sem
+  params, a história inteira, como sempre. A tela ganhou o seletor com o
+  estado na URL (gramática do E129) e "Ver a história inteira". O executor
+  quase perdeu o `openapi.yaml`: um `String.replace` com `$'` no texto
+  de replacement duplicou 40.893 linhas em silêncio e o codegen apagou
+  `generated/` ao falhar — restaurado do HEAD, refeito com replacer em
+  FUNÇÃO; a regra operacional está no relatório. Suítes: API 873 → 875 ·
+  front 417 · E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.

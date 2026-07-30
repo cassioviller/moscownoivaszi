@@ -1390,11 +1390,20 @@ export const CreateLeadResponse = zod.object({
 
 
 /**
- * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+ * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam. E142: `de`/`ate` recortam pelo dia de ENTRADA do lead (createdAt, dia local) — a campanha do trimestre deixa de sumir na média de 3 anos; sem params, a história inteira, como sempre foi.
  * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
  */
 export const GetConversaoLeadsParams = zod.object({
   "lojaId": zod.coerce.string()
+})
+
+export const getConversaoLeadsQueryDeRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getConversaoLeadsQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetConversaoLeadsQueryParams = zod.object({
+  "de": zod.coerce.string().regex(getConversaoLeadsQueryDeRegExp).optional().describe('Início do recorte por entrada do lead (inclusivo, dia local)'),
+  "ate": zod.coerce.string().regex(getConversaoLeadsQueryAteRegExp).optional().describe('Fim do recorte por entrada do lead (inclusivo, dia local)')
 })
 
 export const GetConversaoLeadsResponse = zod.object({

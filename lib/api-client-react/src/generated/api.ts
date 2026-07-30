@@ -100,6 +100,7 @@ import type {
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
   GetConsolidado200Item,
+  GetConversaoLeadsParams,
   GetConviteInfoParams,
   GetDesempenhoVendedoras200Item,
   GetDre200,
@@ -4797,21 +4798,30 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateLeadMutationOptions(options));
     }
 
-export const getGetConversaoLeadsUrl = (lojaId: string,) => {
+export const getGetConversaoLeadsUrl = (lojaId: string,
+    params?: GetConversaoLeadsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/leads/conversao`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/leads/conversao?${stringifiedParams}` : `/api/lojas/${lojaId}/leads/conversao`
 }
 
 /**
- * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+ * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam. E142: `de`/`ate` recortam pelo dia de ENTRADA do lead (createdAt, dia local) — a campanha do trimestre deixa de sumir na média de 3 anos; sem params, a história inteira, como sempre foi.
  * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
  */
-export const getConversaoLeads = async (lojaId: string, options?: RequestInit): Promise<ConversaoLeads> => {
+export const getConversaoLeads = async (lojaId: string,
+    params?: GetConversaoLeadsParams, options?: RequestInit): Promise<ConversaoLeads> => {
 
-  return customFetch<ConversaoLeads>(getGetConversaoLeadsUrl(lojaId),
+  return customFetch<ConversaoLeads>(getGetConversaoLeadsUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -4824,23 +4834,25 @@ export const getConversaoLeads = async (lojaId: string, options?: RequestInit): 
 
 
 
-export const getGetConversaoLeadsQueryKey = (lojaId: string,) => {
+export const getGetConversaoLeadsQueryKey = (lojaId: string,
+    params?: GetConversaoLeadsParams,) => {
     return [
-    `/api/lojas/${lojaId}/leads/conversao`
+    `/api/lojas/${lojaId}/leads/conversao`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetConversaoLeadsQueryOptions = <TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetConversaoLeadsQueryOptions = <TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: GetConversaoLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetConversaoLeadsQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getGetConversaoLeadsQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConversaoLeads>>> = ({ signal }) => getConversaoLeads(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConversaoLeads>>> = ({ signal }) => getConversaoLeads(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -4858,11 +4870,12 @@ export type GetConversaoLeadsQueryError = ErrorType<unknown>
  */
 
 export function useGetConversaoLeads<TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: GetConversaoLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetConversaoLeadsQueryOptions(lojaId,options)
+  const queryOptions = getGetConversaoLeadsQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

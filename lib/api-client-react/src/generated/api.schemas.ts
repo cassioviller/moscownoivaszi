@@ -2549,6 +2549,19 @@ export const ListLeadsOrdem = {
   recentes: 'recentes',
 } as const;
 
+export type GetConversaoLeadsParams = {
+/**
+ * Início do recorte por entrada do lead (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+de?: string;
+/**
+ * Fim do recorte por entrada do lead (inclusivo, dia local)
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ate?: string;
+};
+
 export type GetSazonalidadeCasamentos200Item = {
   /** YYYY-MM */
   competencia: string;
