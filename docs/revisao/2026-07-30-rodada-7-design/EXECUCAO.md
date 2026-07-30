@@ -67,7 +67,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ✅ | `00b1814` |
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | `e65c8b7` |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ✅ | `33a60cb` |
-| Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ⬜ | |
+| Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ✅ | |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ⬜ | |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ⬜ | |
 | Consolidação G | `g-consolidado.md` | ⬜ | |
@@ -91,10 +91,11 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | # | O quê | Peso | Origem |
 |---|---|---|---|
 | S-D1 | **O script de captura de telas não existe no repo.** As 81 capturas de hoje foram geradas por um script de scratchpad que se perdeu (o diretório nasceu `undefined/` — a env var do destino não existia). Recriar como `scripts/` versionado, declarando ambiente (browser, locale, viewport) no manifest — é a ferramenta de verificação visual desta rodada e das próximas. | 🟡 | montagem da rodada |
-| S-D2 | **O manifest da captura não declara ambiente.** Viewport foi recuperado dos PNGs (1280×800 / 390×844); navegador e locale seguem desconhecidos. Enquanto isso, nenhum achado dependente de plataforma sobe de 🟡 sem contraprova (regra 6). | 🔵 | montagem da rodada |
+| S-D2 | **O manifest da captura não declara ambiente.** Viewport foi recuperado dos PNGs (1280×800 / 390×844); navegador segue desconhecido. A trilha E provou a locale pelos próprios PNGs: interface **en-US** ("July 2026" em `financeiro-folha--390.png`, `mm/dd/yyyy` em `financeiro-auditoria--390.png`). O script recriado (S-D1) deve declarar isso no manifest. | 🔵 | montagem da rodada |
 | S-D3 | **Quatro primitivos com 0 usos seguem em `src/components/ui/`** (`empty.tsx`, `avatar.tsx`, `pagination.tsx`, `progress.tsx` — contagem do inventário). O E99 mediu que a poda não muda um byte do bundle (tree-shaken), então o custo não é rede: é busca e manutenção — quatro arquivos que o `find` devolve e ninguém chama. Podar como higiene, ou adotar (`empty`/`pagination` têm candidatos nas trilhas C e D). | 🔵 | trilha A |
 | S-D4 | **`ContratoInput` aceita `vendedoraId` do CORPO** (`lib/api-spec/openapi.yaml:5652-5664`; validado só como "é da loja" em `api-server/src/routes/contratos.ts:149`), enquanto a régua do replit.md para autoria é "vem da SESSÃO, não do corpo". Aqui não é autoria pura — a vendedora da venda pode legitimamente ser outra pessoa (é o achado B1) —, mas a superfície permite atribuir a venda (e a comissão) a qualquer colega por curl, sem tela. Decidir na execução do B1 se o servidor passa a exigir coerência com `orcamento.vendedoraId` quando houver orçamento. | 🟡 | trilha B |
 | S-D5 | **`GET /lojas/:id/orcamentos` embute `itens: true` de todos os orçamentos da loja** (`api-server/src/routes/orcamentos.ts:126-131`) para uma lista que não desenha valor nenhum (achado D1) — o payload cresce com a história inteira e ninguém o lê. Quando o épico do D1 der busca/página à listagem, a rota deve mandar os itens só onde alguém os consome (`?leadId=` do perfil já os usa; a listagem geral não). | 🟡 | trilha D |
+| S-D6 | **`useIsMobile` tem 0 consumidores** (`moscow-noivas/src/hooks/use-mobile.tsx`; grep no `src/` inteiro — o app decide mobile por breakpoint CSS, que é o certo). Mesma classe da S-D3: podar como higiene, ou adotar se algum épico da rodada precisar de decisão em JS. | 🔵 | trilha E |
 
 ## Diário de sessões
 
@@ -166,3 +167,21 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   D1, selects sem teto de vestidos → D8, "Hoje na loja" sem link → D9; a do
   C sobre o `:316` do dashboard fica com o épico do C3. Duas decisões
   registradas conferidas e respeitadas (E99 parte 7, E100 parte 3).
+- **Trilha E (responsividade e ambiente adverso) entregue.** Tese: o miolo
+  aguenta os 390px (tabelas rolam por dentro, o toque arrasta com delay certo,
+  `brl()` não dobra linha em 27 capturas) — o que estoura é a MOLDURA: fileiras
+  de flex sem quebra dão rolagem lateral à página e escondem o botão do dia
+  ("Novo Vestido" 100% fora da tela, o WhatsApp da Cobrança invisível numa
+  linha de ~560px para um card de ~326px, o total "Recebido R$ 90.100,00" com
+  os dígitos finais fora da borda), e duas réguas do próprio repo ficaram pela
+  metade — os 44px que não chegaram ao botão `default` (36px, os 60 alvos que
+  o E92 mediu e adiou) e o contraste que não chegou ao rosa como texto (2,71:1
+  em 11 pontos, um deles o preço no portal da noiva, vivo porque a varredura
+  do E8 lê linha a linha e o prettier quebrou o par). Enter não conclui nenhum
+  fluxo de dinheiro: zero `<form>` no financeiro (5 teclas onde a convenção é
+  1). Contagem: **0 🔴 · 4 🟠 · 9 🟡 · 0 🔵** (E1–E13), 10 itens de "está BEM"
+  ancorados, 2 pistas laterais. Pistas herdadas assumidas: contraste do
+  `text-primary` (A) → E4, dinheiro em `type=number` (B) → E11, filtros de
+  /vestidos em 390px (D) → E13 (consolida com D8). Uma sobra nova (S-D6) e a
+  locale das capturas provada en-US pelos próprios PNGs (evidência anotada na
+  S-D2).
