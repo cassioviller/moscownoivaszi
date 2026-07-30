@@ -50,6 +50,9 @@ export const ROTULO_ACAO: Record<string, string> = {
   // E120: a venda que trocou de dona entre o orçamento e o contrato — é ela
   // que decide de quem é a comissão, por isso a linha existe e é filtrável.
   CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
+  // E123: o desfazer da cobrança registrada por engano — depois do DELETE a
+  // trilha é o único lugar que lembra o que o registro dizia.
+  REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -84,6 +87,7 @@ export const ACOES_FILTRAVEIS = [
   "ORCAMENTO_REMOVIDO",
   "AVARIA_REMOVIDA",
   "CONTRATO_VENDEDORA_DIVERGENTE",
+  "REGISTRO_COBRANCA_DESFEITO",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];

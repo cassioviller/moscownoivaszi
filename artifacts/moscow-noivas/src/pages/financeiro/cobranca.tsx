@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -9,6 +10,8 @@ import {
   getListParcelasQueryKey,
   useListPortais,
   getListPortaisQueryKey,
+  useCreateRegistroCobranca,
+  getListRegistrosCobrancaQueryKey,
   type Parcela,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -64,6 +67,7 @@ function LinhaNoiva({
   portalUrl,
   podeReceber,
   onReceber,
+  onCobrar,
 }: {
   noiva: NoivaInadimplente;
   lojaNome?: string | null;
@@ -72,6 +76,8 @@ function LinhaNoiva({
   /** F28: dar baixa é `financeiro.editar` — ver a fila de cobrança não é. */
   podeReceber: boolean;
   onReceber: (noiva: NoivaInadimplente) => void;
+  /** E123/B2: abrir o WhatsApp carimba o registro — a paridade com /mensagens. */
+  onCobrar: (leadId: string) => void;
 }) {
   const naLoja = useCaminhoDaLoja();
   const wa = linkWhatsApp(
@@ -153,7 +159,16 @@ function LinhaNoiva({
             </Button>
             {wa ? (
               <Button asChild variant="outline" size="sm">
-                <a href={wa} target="_blank" rel="noopener noreferrer">
+                {/* E123/B2: o clique carimba o registro — no CLIQUE, não no
+                    retorno do wa.me (aba nova não volta). Em /mensagens o
+                    mesmo gesto já gravava; aqui, a tela de quem tem volume,
+                    registrar custava +3 gestos no formulário do histórico. */}
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => onCobrar(noiva.leadId)}
+                >
                   <MessageCircle className="mr-1 h-4 w-4" />
                   WhatsApp
                 </a>
@@ -175,7 +190,59 @@ export default function Cobranca() {
   const naLoja = useCaminhoDaLoja();
   const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  /**
+   * E123/B2 — cobrar por AQUI passa a deixar o mesmo rastro de /mensagens.
+   *
+   * O botão WhatsApp abria o wa.me e não registrava nada: registrar custava +3
+   * gestos por noiva no formulário do histórico (numa sexta com 10 em atraso,
+   * 30 gestos que a porta irmã fazia de graça) — e quem os pulava deixava a
+   * noiva cobrada constando como parada, porque é o registro que zera o
+   * relógio do "parado há N dias".
+   *
+   * O carimbo é no CLIQUE (aba nova não volta), com o mesmo dedup por sessão
+   * de tela da porta irmã: o servidor não sabe que dois POSTs a um segundo de
+   * distância são o mesmo dedo. A autoria vem da SESSÃO — o corpo nem tem
+   * campo para ela (régua do contrato). O gate é o do endpoint (`leads`):
+   * sem a permissão, o clique abre o WhatsApp como sempre, sem gravar.
+   */
+  const registraCobranca = podeNoModulo(acessosModulos, "leads", "criar");
+  const cobradas = useRef<Set<string>>(new Set());
+  const criarRegistroCobranca = useCreateRegistroCobranca({
+    mutation: {
+      onSuccess: (_registro, vars) => {
+        // O histórico da noiva (o Collapsible desta tela e a ficha) mostra o
+        // carimbo sem reabrir a página.
+        queryClient.invalidateQueries({
+          queryKey: getListRegistrosCobrancaQueryKey(activeLojaId!, vars.leadId),
+        });
+      },
+    },
+  });
+  const registrarCobranca = (leadId: string) => {
+    if (!registraCobranca || cobradas.current.has(leadId)) return;
+    cobradas.current.add(leadId);
+    criarRegistroCobranca.mutate(
+      {
+        lojaId: activeLojaId!,
+        leadId,
+        data: {
+          data: new Date().toISOString(),
+          canal: "WHATSAPP",
+          observacao: "mensagem de cobrança enviada pela fila de cobrança",
+        },
+      },
+      {
+        // O wa.me abriu, o rastro não: liberar o dedup deixa tentar de novo.
+        onError: () => {
+          cobradas.current.delete(leadId);
+          toast({ title: "Não deu para registrar a cobrança", variant: "destructive" });
+        },
+      },
+    );
+  };
 
   // Nome da loja para a mensagem de cobrança ("Aqui é da Moscow Noivas") — vem
   // da sessão, como na agenda; sem request extra.
@@ -363,6 +430,7 @@ export default function Cobranca() {
                       portalUrl={portalUrls.get(n.leadId)}
                       podeReceber={podeReceber}
                       onReceber={abrirRecebimento}
+                      onCobrar={registrarCobranca}
                     />
                   ))}
                 </ul>

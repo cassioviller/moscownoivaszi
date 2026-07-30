@@ -93,7 +93,7 @@ para cada uma.
 | E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ✅ | `8af14b4` |
 | E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ✅ | `f919679` |
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ✅ | `5b73445` |
-| E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ⬜ | |
+| E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ⬜ | |
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ⬜ | |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
@@ -132,6 +132,9 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D10 | **O cartão da fila (F7) do dashboard aparece de repente.** `filaDeMensagens` deriva de 3 queries com `?? []`: enquanto elas contam, o cartão fica AUSENTE e salta na tela segundos depois do resto do painel. Mesma classe do E121 vestida de ausência — não afirma zero, por isso não subiu a conserto; o custo é o salto de layout na tela de abertura. | 🔵 | execução E121 |
 | S-D11 | **A classe do S-D8 continua fora do `POST /contratos`:** `api-server/src/routes/reservas.ts:328,424,505,638` respondem `{ error: "Bloqueio not found" }`, `lookbooks.ts` tem 2 × "Foto not found", `admin.ts` tem "Loja/Perfil/Usuario not found" — inglês no campo do código, sem `detalhe`. Com o E122, `mensagemApi` mostra o `detalhe` do servidor em toda tela; nessas rotas ele cai no fallback genérico onde o servidor sabia o motivo. | 🟡 | execução E122 |
 | S-D12 | **O dicionário da tela sombreia o `detalhe` quando o código é reutilizado:** `MENSAGENS_ERRO` de `pages/orcamentos/[id].tsx:92` traduz `REFERENCIA_INVALIDA` como "Essa noiva não é desta loja.", mas `api-server/src/routes/contratos.ts:307` usa o MESMO código para reserva de outra noiva, com detalhe próprio e melhor — a régua lê o código primeiro e mostra a frase da noiva para um problema de reserva. Ou o servidor especializa o código, ou o dicionário sai da frente do detalhe nesse caso. | 🟡 | execução E122 |
+| S-D13 | **A marca de "já cobrada" da fila de `/mensagens` é da sessão de tela** (E123/B3, `lib/mensagens-do-dia.ts` — `MarcasCobranca`): sobrevive à interrupção do telefone, que é o cenário do achado, e morre no F5 com os registros ainda no banco — depois do reload as linhas voltam à fila e um segundo clique grava um segundo registro do dia. Marcar "cobrada hoje" atravessando reload exigiria os registros do dia em LOTE (hoje `GET /leads/:leadId/cobrancas` é por noiva). Decisão de escopo do E123, registrada para o dono poder pedir a versão persistente. | 🔵 | execução E123 |
+| S-D14 | **O seed do `16-cobranca-historico.spec.ts:31-37` lê `id` de `GET /equipe`, que expõe `usuarioId`** — o ramo de criar contrato só roda quando o banco não tem NENHUMA parcela vencida, então nunca roda no banco de dev cheio e o `vendedoraId: undefined` dormindo lá falharia com `CORPO_INVALIDO`. Descoberto porque o spec do E123 copiou o molde e o vermelho-antes veio do seed, não do assert. Consertar o 16 quando ele for tocado. | 🔵 | execução E123 |
+| S-D15 | **`{ error: "Lead not found" }` vive em 8 pontos de `routes/leads.ts`** (:81, :434, :459, :512, :550, :600, :680, :712) — a classe da S-D8/S-D11 (inglês no campo do código, sem `detalhe`), no arquivo que o E123 tocou. O 404 da rota nova do E123 já nasceu na régua (`REGISTRO_DE_COBRANCA_NAO_ENCONTRADO` + detalhe); os 8 vizinhos ficam para o épico que fechar a S-D11. | 🟡 | execução E123 |
 
 ## Diário de sessões
 
@@ -352,3 +355,25 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   27 arquivos por `err.message` e 49 por título "Erro …"; hoje zero e zero.
   Suítes: API 855 → 856 · front 325 → 331 · E2E 139/139 completa antes do
   commit · typecheck verde. Duas sobras novas (S-D11, S-D12).
+
+### Sessão 5 — 2026-07-30
+
+- **E123 entregue** (`execucao/E123.md`). As duas portas de cobrar passaram a
+  deixar o MESMO rastro: o WhatsApp de `/financeiro/cobranca` carimba o
+  `registro-cobranca` no clique (B2 — antes registrar custava +3 gestos por
+  noiva; o vermelho-antes foi o E2E esperando um POST que nunca saiu:
+  `waitForResponse: Test timeout of 60000ms exceeded`), e a fila de
+  `/mensagens` adota o desenho da seção irmã (B3): a linha sai ao cobrar para
+  "Já cobradas · nome · valor · hora", com "Não cobrei" de volta — o dedup
+  `enviadas` virou estado com forma (`MarcasCobranca`, 4 funções puras + 6
+  testes em `mensagens-do-dia`). O que o backlog não listou: **"com desfazer"
+  exigia uma rota** — desfazer só no visual deixaria no banco um contato que
+  não houve — e nasceu `DELETE /leads/:leadId/cobrancas/:registroId` na régua
+  do E115 (404 com código+detalhe, escopo loja+lead, trilha
+  `REGISTRO_COBRANCA_DESFEITO` dentro da transação; 4 testes de API,
+  vermelho-antes `expected 204, got 404`). A prosa de
+  `mensagens/index.tsx:149-153` que afirmava a paridade inexistente foi
+  corrigida no mesmo commit. Suítes: API 856 → 860 · front 331 → 337 · E2E
+  completo 141/141 (2 specs novos, `53-cobranca-duas-portas`) · typecheck
+  verde. Três sobras novas (S-D13 marca de sessão, S-D14 seed do spec 16,
+  S-D15 os 8 "Lead not found" de leads.ts).

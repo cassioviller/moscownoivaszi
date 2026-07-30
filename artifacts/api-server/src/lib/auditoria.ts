@@ -77,6 +77,12 @@ export const ACOES_AUDITORIA = [
   // mas é ela que decide de quem é a comissão, então deixa rastro: quem montou
   // o orçamento, em nome de quem o contrato nasceu, e quem clicou (a sessão).
   "CONTRATO_VENDEDORA_DIVERGENTE",
+  // E123/B3: desfazer um registro de cobrança. O registro nasce do clique num
+  // link que abre outra aba (a fila de /mensagens) — errar é barato, e o
+  // desfazer devolve a verdade ao histórico. Depois do DELETE a trilha é o
+  // único lugar que lembra o que o registro dizia, então o detalhe carrega
+  // canal, observação e o instante do contato desfeito.
+  "REGISTRO_COBRANCA_DESFEITO",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -124,6 +130,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
   CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
+  REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -164,7 +171,9 @@ export interface RegistroAuditoria {
     | "atendimento"
     | "orcamento"
     | "avaria"
-    | "conciliacao";
+    | "conciliacao"
+    // E123 — o desfazer do registro de cobrança.
+    | "registro_cobranca";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }

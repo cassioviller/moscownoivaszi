@@ -112,6 +112,76 @@ export function orcamentosVencendoNaJanela<T extends OrcamentoDaFila>(
 }
 
 /**
+ * E123/B3 — a marca de "já cobrada" da fila de inadimplentes.
+ *
+ * A seção irmã ("Procurar para confirmar") tira a linha da fila no clique e
+ * oferece "Não procurei" — porque o carimbo dela mora no atendimento e a query
+ * recarrega. A cobrança não tem esse luxo: a fila deriva do aging das PARCELAS,
+ * que o registro de cobrança não altera. A marca vive então na sessão de tela
+ * (o mesmo lugar do dedup que já existia): sobrevive à interrupção do telefone
+ * — o cenário do B3 — e morre no F5, quando os registros continuam no banco.
+ *
+ * `registroId` chega DEPOIS (é a resposta do POST): o desfazer só ganha alvo
+ * quando ele existe, e é por isso que o botão espera por ele.
+ */
+export type MarcaCobranca = {
+  /** Instante do clique (ISO) — vira o "cobrada às HH:mm" da linha. */
+  quando: string;
+  /** O id que o servidor devolveu; sem ele o desfazer ainda não tem alvo. */
+  registroId?: string;
+};
+
+export type MarcasCobranca = ReadonlyMap<string, MarcaCobranca>;
+
+/** O clique marca. O SEGUNDO clique não remarca nem duplica: o primeiro manda. */
+export function comMarcaDeCobranca(
+  marcas: MarcasCobranca,
+  leadId: string,
+  quando: string,
+): MarcasCobranca {
+  if (marcas.has(leadId)) return marcas;
+  return new Map(marcas).set(leadId, { quando });
+}
+
+/** A resposta do POST chegou: o desfazer ganha alvo. Marca já desfeita não ressuscita. */
+export function comRegistroDaCobranca(
+  marcas: MarcasCobranca,
+  leadId: string,
+  registroId: string,
+): MarcasCobranca {
+  const marca = marcas.get(leadId);
+  if (!marca) return marcas;
+  return new Map(marcas).set(leadId, { ...marca, registroId });
+}
+
+/** O desfazer (ou o POST que falhou): a linha volta para a fila. */
+export function semMarcaDeCobranca(marcas: MarcasCobranca, leadId: string): MarcasCobranca {
+  if (!marcas.has(leadId)) return marcas;
+  const proximo = new Map(marcas);
+  proximo.delete(leadId);
+  return proximo;
+}
+
+/**
+ * A fila em duas: quem falta cobrar e quem já saiu — na MESMA ordem da fila
+ * (piores primeiro), para a recepcionista interrompida achar onde parou.
+ * Noiva sem `leadId` não é marcável (o registro é por noiva) e fica na fila.
+ */
+export function particionaPorCobranca<T extends { leadId?: string | null }>(
+  noivas: readonly T[],
+  marcas: MarcasCobranca,
+): { aCobrar: T[]; cobradas: { noiva: T; marca: MarcaCobranca }[] } {
+  const aCobrar: T[] = [];
+  const cobradas: { noiva: T; marca: MarcaCobranca }[] = [];
+  for (const noiva of noivas) {
+    const marca = noiva.leadId ? marcas.get(noiva.leadId) : undefined;
+    if (marca) cobradas.push({ noiva, marca });
+    else aCobrar.push(noiva);
+  }
+  return { aCobrar, cobradas };
+}
+
+/**
  * A frase da fila, com o total.
  *
  * `null` quando não há nada a enviar, e isso é o item inteiro do F7: o cartão

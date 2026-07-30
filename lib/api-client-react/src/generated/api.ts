@@ -5679,6 +5679,81 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateRegistroCobrancaMutationOptions(options));
     }
 
+export const getDesfazerRegistroCobrancaUrl = (lojaId: string,
+    leadId: string,
+    registroId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/cobrancas/${registroId}`
+}
+
+/**
+ * Remove o registro, devolvendo a noiva à fila de cobrança. Existe porque o registro nasce no clique de um link que abre outra aba (a fila de /mensagens): errar o botão é barato e, sem desfazer, o histórico afirmava um contato que não houve — e o relógio do "parado há N dias" zerava em falso. A remoção deixa rastro na trilha de auditoria: depois do DELETE, ela é o único registro do que existiu.
+ * @summary Desfaz um registro de cobrança (E123)
+ */
+export const desfazerRegistroCobranca = async (lojaId: string,
+    leadId: string,
+    registroId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDesfazerRegistroCobrancaUrl(lojaId,leadId,registroId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDesfazerRegistroCobrancaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, TError,{lojaId: string;leadId: string;registroId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, TError,{lojaId: string;leadId: string;registroId: string}, TContext> => {
+
+const mutationKey = ['desfazerRegistroCobranca'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, {lojaId: string;leadId: string;registroId: string}> = (props) => {
+          const {lojaId,leadId,registroId} = props ?? {};
+
+          return  desfazerRegistroCobranca(lojaId,leadId,registroId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DesfazerRegistroCobrancaMutationResult = NonNullable<Awaited<ReturnType<typeof desfazerRegistroCobranca>>>
+
+    export type DesfazerRegistroCobrancaMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Desfaz um registro de cobrança (E123)
+ */
+export const useDesfazerRegistroCobranca = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, TError,{lojaId: string;leadId: string;registroId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof desfazerRegistroCobranca>>,
+        TError,
+        {lojaId: string;leadId: string;registroId: string},
+        TContext
+      > => {
+      return useMutation(getDesfazerRegistroCobrancaMutationOptions(options));
+    }
+
 export const getListCabinesUrl = (lojaId: string,) => {
 
 

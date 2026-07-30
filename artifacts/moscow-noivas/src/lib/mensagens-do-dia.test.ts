@@ -5,6 +5,11 @@ import {
   pediramRemarcacaoNaJanela,
   orcamentosVencendoNaJanela,
   resumoDaFila,
+  comMarcaDeCobranca,
+  comRegistroDaCobranca,
+  semMarcaDeCobranca,
+  particionaPorCobranca,
+  type MarcasCobranca,
 } from "./mensagens-do-dia";
 
 /**
@@ -144,5 +149,59 @@ describe("o resumo do dashboard", () => {
 
   it("fala no plural a partir de duas", () => {
     expect(resumoDaFila(4)?.frase).toBe("4 mensagens prontas para enviar");
+  });
+});
+
+/**
+ * E123/B3 — a fila marca o que já saiu. O desenho é o da seção irmã ("Procurar
+ * para confirmar"): a linha sai ao cobrar e o desfazer devolve. Estes casos são
+ * a versão pura do que a tela faz — o repo decidiu não ter render test (E99),
+ * então o que se afirma aqui é a DECISÃO, e o E2E afirma o gesto.
+ */
+describe("a marca de cobrada da fila de inadimplentes", () => {
+  const vazia: MarcasCobranca = new Map();
+  const ana = { leadId: "ana", noivaNome: "Ana" };
+  const bia = { leadId: "bia", noivaNome: "Bia" };
+  const semLead = { leadId: null, noivaNome: "Órfã de contrato" };
+
+  it("o clique marca, e a linha muda de lado: sai de aCobrar, entra em cobradas", () => {
+    const marcas = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
+    const { aCobrar, cobradas } = particionaPorCobranca([ana, bia], marcas);
+    expect(aCobrar).toEqual([bia]);
+    expect(cobradas).toEqual([{ noiva: ana, marca: { quando: "2026-07-30T10:00:00.000Z" } }]);
+  });
+
+  it("o SEGUNDO clique não remarca nem duplica — o primeiro manda (é o dedup)", () => {
+    const primeira = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
+    const segunda = comMarcaDeCobranca(primeira, "ana", "2026-07-30T10:05:00.000Z");
+    expect(segunda).toBe(primeira);
+    expect(segunda.get("ana")!.quando).toBe("2026-07-30T10:00:00.000Z");
+  });
+
+  it("a resposta do POST dá alvo ao desfazer, sem mexer no instante", () => {
+    let marcas = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
+    expect(marcas.get("ana")!.registroId).toBeUndefined();
+    marcas = comRegistroDaCobranca(marcas, "ana", "reg-1");
+    expect(marcas.get("ana")).toEqual({ quando: "2026-07-30T10:00:00.000Z", registroId: "reg-1" });
+  });
+
+  it("resposta atrasada de marca já desfeita não ressuscita a linha", () => {
+    const marcada = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
+    const desfeita = semMarcaDeCobranca(marcada, "ana");
+    expect(comRegistroDaCobranca(desfeita, "ana", "reg-1").has("ana")).toBe(false);
+  });
+
+  it("o desfazer devolve a linha à fila, na posição dela (a ordem é a do atraso)", () => {
+    const marcas = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
+    const depois = semMarcaDeCobranca(marcas, "ana");
+    const { aCobrar, cobradas } = particionaPorCobranca([ana, bia], depois);
+    expect(aCobrar).toEqual([ana, bia]);
+    expect(cobradas).toEqual([]);
+  });
+
+  it("noiva sem leadId não é marcável e fica na fila — o registro é por noiva", () => {
+    const marcas = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
+    const { aCobrar } = particionaPorCobranca([semLead], marcas);
+    expect(aCobrar).toEqual([semLead]);
   });
 });

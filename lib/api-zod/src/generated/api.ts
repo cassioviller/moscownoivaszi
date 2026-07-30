@@ -1664,6 +1664,19 @@ export const CreateRegistroCobrancaResponse = zod.object({
 })
 
 
+/**
+ * Remove o registro, devolvendo a noiva à fila de cobrança. Existe porque o registro nasce no clique de um link que abre outra aba (a fila de /mensagens): errar o botão é barato e, sem desfazer, o histórico afirmava um contato que não houve — e o relógio do "parado há N dias" zerava em falso. A remoção deixa rastro na trilha de auditoria: depois do DELETE, ela é o único registro do que existiu.
+ * @summary Desfaz um registro de cobrança (E123)
+ */
+export const DesfazerRegistroCobrancaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "leadId": zod.coerce.string(),
+  "registroId": zod.coerce.string()
+})
+
+export const DesfazerRegistroCobrancaResponse = zod.void()
+
+
 export const ListCabinesParams = zod.object({
   "lojaId": zod.coerce.string()
 })

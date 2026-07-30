@@ -732,4 +732,49 @@ router.post("/lojas/:lojaId/leads/:leadId/cobrancas", async (req, res): Promise<
   );
 });
 
+/**
+ * E123/B3 — o desfazer. O registro nasce do clique num link que abre OUTRA ABA
+ * (a fila de /mensagens): errar o botão é barato, e sem esta rota o histórico
+ * afirmava um contato que não houve e o relógio do "parado há N dias" zerava
+ * em falso. É a mesma decisão do DELETE de contato do atendimento (E97), com a
+ * diferença de que aqui some uma LINHA — então vale a régua do E91/E106/E111:
+ * 404 antes de qualquer escrita, escopo por loja E lead, e trilha DENTRO da
+ * transação — depois do DELETE, ela é o único registro do que existiu.
+ */
+router.delete("/lojas/:lojaId/leads/:leadId/cobrancas/:registroId", async (req, res): Promise<void> => {
+  const { lojaId, leadId, registroId } = req.params;
+  const registro = await db.query.registrosCobrancaTable.findFirst({
+    where: and(
+      eq(registrosCobrancaTable.id, registroId as string),
+      eq(registrosCobrancaTable.leadId, leadId as string),
+      eq(registrosCobrancaTable.lojaId, lojaId as string),
+    ),
+  });
+  if (!registro) {
+    res.status(404).json({
+      error: "REGISTRO_DE_COBRANCA_NAO_ENCONTRADO",
+      detalhe: "Este registro de contato não existe mais — talvez já tenha sido desfeito.",
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId: lojaId as string,
+      usuario: req.usuario!,
+      acao: "REGISTRO_COBRANCA_DESFEITO",
+      entidade: "registro_cobranca",
+      entidadeId: registro.id,
+      detalhe: {
+        leadId: registro.leadId,
+        canal: registro.canal,
+        observacao: registro.observacao,
+        contatoData: registro.contatoData.toISOString(),
+      },
+    });
+    await tx.delete(registrosCobrancaTable).where(eq(registrosCobrancaTable.id, registro.id));
+  });
+  res.status(204).send();
+});
+
 export default router;

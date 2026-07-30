@@ -1,7 +1,8 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
@@ -12,6 +13,8 @@ import {
   useListOrcamentos,
   getListOrcamentosQueryKey,
   useCreateRegistroCobranca,
+  useDesfazerRegistroCobranca,
+  getListRegistrosCobrancaQueryKey,
   useListPortais,
   getListPortaisQueryKey,
 } from "@workspace/api-client-react";
@@ -38,6 +41,11 @@ import {
   jaContatadasNaJanela,
   pediramRemarcacaoNaJanela,
   orcamentosVencendoNaJanela,
+  comMarcaDeCobranca,
+  comRegistroDaCobranca,
+  semMarcaDeCobranca,
+  particionaPorCobranca,
+  type MarcasCobranca,
 } from "@/lib/mensagens-do-dia";
 import { brl, instanteDiaHora, instanteDiaMes } from "@/lib/formatos";
 
@@ -58,10 +66,14 @@ export default function MensagensDoDia() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos, session } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const veAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
   const veLeads = podeNoModulo(acessosModulos, "leads", "ver");
+  // O registro de cobrança é gateado por `leads` no servidor: sem a permissão,
+  // o clique abre o WhatsApp como sempre — sem marcar o que não vai gravar.
+  const registraCobranca = podeNoModulo(acessosModulos, "leads", "criar");
 
   // E83: a fila pede os recortes, não a história — a janela de 48h dos
   // atendimentos (o corte fino por hora continua no cliente), as parcelas
@@ -145,39 +157,79 @@ export default function MensagensDoDia() {
   );
 
   /**
-   * F26/E97 — cobrar pela fila do dia passa a deixar rastro.
+   * F26/E97 — cobrar pela fila do dia deixa rastro; E123 fez o mesmo valer na
+   * porta irmã (`/financeiro/cobranca` carimba no clique desde então — a
+   * paridade que este comentário afirmava antes de existir). "Essa noiva foi
+   * cobrada?" tem a mesma resposta pelas duas portas, e o relógio de "parado
+   * há N dias" do funil zera nas duas.
    *
-   * A MESMA cobrança feita por `/financeiro/cobranca` já gravava um
-   * `registro-cobranca`; feita por aqui — que é o caminho rápido, o que a tela
-   * pede que se use — não gravava nada. "Essa noiva foi cobrada?" tinha
-   * resposta diferente conforme a porta, e o relógio de "parado há N dias" do
-   * funil não zerava: a noiva virava alerta de lead frio no dia seguinte a ter
-   * sido cobrada.
-   *
-   * Cuidado (b) do épico: duplo clique não pode gerar duas linhas. O `enviadas`
-   * guarda os leads já registrados nesta sessão de tela — o servidor não tem
-   * como saber que dois POSTs a um segundo de distância são o mesmo dedo.
+   * Cuidado (b) do épico: duplo clique não pode gerar duas linhas. As `marcas`
+   * guardam os leads já registrados nesta sessão de tela — o servidor não tem
+   * como saber que dois POSTs a um segundo de distância são o mesmo dedo. O
+   * E123 fez o dedup render juros: a marca virou o estado visual da fila (a
+   * linha sai, com desfazer — o desenho da seção irmã, 20 linhas acima).
    */
-  const enviadas = useRef<Set<string>>(new Set());
+  const [marcas, setMarcas] = useState<MarcasCobranca>(new Map());
   const criarRegistroCobranca = useCreateRegistroCobranca({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_registro, vars) => {
         queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) });
+        queryClient.invalidateQueries({
+          queryKey: getListRegistrosCobrancaQueryKey(activeLojaId!, vars.leadId),
+        });
       },
     },
   });
   const registrarCobranca = (leadId: string) => {
-    if (enviadas.current.has(leadId)) return;
-    enviadas.current.add(leadId);
-    criarRegistroCobranca.mutate({
-      lojaId: activeLojaId!,
-      leadId,
-      data: {
-        data: new Date().toISOString(),
-        canal: "WHATSAPP",
-        observacao: "mensagem de cobrança enviada pela fila do dia",
+    if (!registraCobranca || marcas.has(leadId)) return;
+    setMarcas((m) => comMarcaDeCobranca(m, leadId, new Date().toISOString()));
+    criarRegistroCobranca.mutate(
+      {
+        lojaId: activeLojaId!,
+        leadId,
+        data: {
+          data: new Date().toISOString(),
+          canal: "WHATSAPP",
+          observacao: "mensagem de cobrança enviada pela fila do dia",
+        },
       },
-    });
+      {
+        onSuccess: (registro) => setMarcas((m) => comRegistroDaCobranca(m, leadId, registro.id)),
+        // O wa.me abriu, o rastro não: a linha VOLTA para a fila — marcá-la de
+        // cobrada sem registro seria afirmar o que não aconteceu.
+        onError: () => {
+          setMarcas((m) => semMarcaDeCobranca(m, leadId));
+          toast({ title: "Não deu para registrar a cobrança", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  /**
+   * O desfazer da cobrança (E123/B3). O DELETE leva o registro embora com
+   * rastro na trilha; só então a linha volta — desfazer otimista deixaria a
+   * fila dizer "falta cobrar" com o registro ainda de pé.
+   */
+  const desfazerRegistro = useDesfazerRegistroCobranca({
+    mutation: {
+      onSuccess: (_res, vars) => {
+        queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) });
+        queryClient.invalidateQueries({
+          queryKey: getListRegistrosCobrancaQueryKey(activeLojaId!, vars.leadId),
+        });
+      },
+    },
+  });
+  const desfazerCobranca = (leadId: string) => {
+    const marca = marcas.get(leadId);
+    if (!marca?.registroId) return;
+    desfazerRegistro.mutate(
+      { lojaId: activeLojaId!, leadId, registroId: marca.registroId },
+      {
+        onSuccess: () => setMarcas((m) => semMarcaDeCobranca(m, leadId)),
+        onError: () => toast({ title: "Não deu para desfazer a cobrança", variant: "destructive" }),
+      },
+    );
   };
 
   // A mesma régua da tela de cobrança (financeiro-core) — piores primeiro.
@@ -186,13 +238,20 @@ export default function MensagensDoDia() {
     return [...aging.noivas].sort((a, b) => b.diasMaisAntigo - a.diasMaisAntigo);
   }, [parcelas.data]);
 
+  // E123/B3 — a fila em duas: quem falta e quem já saiu nesta sessão de tela.
+  const filaCobranca = useMemo(
+    () => particionaPorCobranca(inadimplentes, marcas),
+    [inadimplentes, marcas],
+  );
+
   // Orçamentos ENVIADOS com validade nas próximas 72h (ainda não vencidos).
   const orcamentosVencendo = useMemo(
     () => orcamentosVencendoNaJanela(orcamentos.data ?? [], Date.now()),
     [orcamentos.data],
   );
 
-  const totalFila = aContatar.length + inadimplentes.length + orcamentosVencendo.length;
+  // Quem já foi cobrada nesta sessão não é mais "mensagem pronta para enviar".
+  const totalFila = aContatar.length + filaCobranca.aCobrar.length + orcamentosVencendo.length;
 
   /**
    * E121/C1 — a fila disparava 4 queries e lia zero vezes isLoading/isError:
@@ -421,9 +480,13 @@ export default function MensagensDoDia() {
               <Carregando linhas={3} />
             ) : inadimplentes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Ninguém em atraso.</p>
+            ) : filaCobranca.aCobrar.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Todas as noivas em atraso já foram cobradas.
+              </p>
             ) : (
               <ul className="divide-y">
-                {inadimplentes.map((n) => {
+                {filaCobranca.aCobrar.map((n) => {
                   const wa = linkWhatsApp(
                     n.whatsapp,
                     msgCobranca({
@@ -467,6 +530,42 @@ export default function MensagensDoDia() {
                   );
                 })}
               </ul>
+            )}
+
+            {/* E123/B3 — o que já saiu, com o desfazer. O desenho é o da seção
+                irmã ("Já procuradas, sem resposta"): o registro nasce do clique
+                num link que abre OUTRA ABA, errar é barato, e sem esta lista a
+                recepcionista interrompida relia a fila inteira — ou cobrava a
+                mesma noiva duas vezes (o dedup protege o banco, não a conversa). */}
+            {filaCobranca.cobradas.length > 0 && (
+              <div className="mt-4 space-y-1.5 border-t pt-3">
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">
+                  Já cobradas
+                </p>
+                {filaCobranca.cobradas.map(({ noiva: n, marca }) => (
+                  <div
+                    key={n.leadId}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="min-w-0 truncate">
+                      {n.noivaNome ?? "Noiva"}
+                      <span className="text-muted-foreground">
+                        {" "}· {brl(n.totalVencido)} · cobrada {instanteDiaHora(marca.quando)}
+                      </span>
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => n.leadId && desfazerCobranca(n.leadId)}
+                      disabled={!marca.registroId || desfazerRegistro.isPending}
+                    >
+                      <Undo2 className="mr-1 h-4 w-4" />
+                      Não cobrei
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
