@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer, unique, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, index, unique, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -20,12 +20,43 @@ export const parcelasTable = pgTable("parcelas", {
   valorRecebido: decimal("valor_recebido", { precision: 10, scale: 2, mode: "number" }),
   recebidoEm: timestamp("recebido_em", { withTimezone: true }),
   formaRecebimento: formaPagamentoEnum("forma_recebimento"),
+  // F32/E103: quando este recebimento casou com uma linha do extrato do banco.
+  // NÃO é `pagamentos.enviado_contabilidade_em` — conciliar é "bateu com o
+  // banco", enviar é "declarei à contabilidade", e um existe sem o outro nas
+  // duas direções. O ESTORNO limpa: movimento que deixou de existir não pode
+  // continuar conferido.
+  conciliadoEm: timestamp("conciliado_em", { withTimezone: true }),
+  // F34/E103: quando este RECEBIMENTO foi declarado à contabilidade. Irmã de
+  // `pagamentos.enviado_contabilidade_em` — sem ela, fechar o mês carimbava só
+  // as saídas. O ESTORNO LIMPA (E115): este carimbo é operacional — é o
+  // `isNull` dele que decide o próximo envio —, e mantê-lo deixava um
+  // recebimento estornado e re-lançado fora de TODO pacote futuro (o de julho
+  // saía R$ 1.000,00 menor que o DRE de julho, sem aviso). O que a contadora
+  // já recebeu é fato histórico e mora na trilha (RECEBIMENTO_ESTORNADO), não
+  // aqui. A versão anterior deste comentário dizia o contrário e não via esse
+  // custo.
+  enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // gerar-plano checa "já tem parcela?" e insere, sem rede: dois POSTs
   // simultâneos passam ambos e dobram o plano. Um contrato não tem dois números
   // iguais — o segundo insert do número 0 colide e vira 409.
   numeroUnico: unique().on(t.contratoId, t.numero),
+  // B10/E91: toda query começa em `loja_id = ?` e segue por uma faixa de data.
+  // O Postgres NÃO cria índice para FK — sem estes dois, o fluxo, o DRE, o
+  // alerta de caixa (chamado pelo sino a cada poll) e o dashboard varrem a
+  // tabela inteira de TODAS as lojas para responder por uma.
+  lojaVencimentoIdx: index("parcelas_loja_vencimento_idx").on(t.lojaId, t.vencimento),
+  lojaRecebidoEmIdx: index("parcelas_loja_recebido_em_idx").on(t.lojaId, t.recebidoEm),
+  // F32: o filtro "só o não conciliado" abre por loja + data e descarta o resto.
+  // Índice PARCIAL (o idioma de `contas_pagar_recorrencia_unica`): ele guarda só
+  // o que a query procura, e encolhe conforme o mês fecha.
+  naoConciliadasIdx: index("parcelas_nao_conciliadas_idx")
+    .on(t.lojaId, t.recebidoEm)
+    .where(sql`conciliado_em IS NULL`),
+  naoEnviadasIdx: index("parcelas_nao_enviadas_idx")
+    .on(t.lojaId, t.recebidoEm)
+    .where(sql`enviado_contabilidade_em IS NULL`),
 }));
 
 export const insertParcelaSchema = createInsertSchema(parcelasTable).omit({ createdAt: true });
@@ -59,6 +90,8 @@ export const contasPagarTable = pgTable("contas_pagar", {
   recorrenciaUnica: uniqueIndex("contas_pagar_recorrencia_unica")
     .on(t.lojaId, t.competencia, t.recorrenciaId)
     .where(sql`${t.recorrenciaId} is not null`),
+  // B10/E91: o recorte de "o que vence" abre por loja + vencimento.
+  lojaVencimentoIdx: index("contas_pagar_loja_vencimento_idx").on(t.lojaId, t.vencimento),
 }));
 
 export const insertContaPagarSchema = createInsertSchema(contasPagarTable).omit({ createdAt: true });
@@ -74,8 +107,16 @@ export const pagamentosTable = pgTable("pagamentos", {
   forma: text("forma"),
   observacoes: text("observacoes"),
   enviadoContabilidadeEm: timestamp("enviado_contabilidade_em", { withTimezone: true }),
+  /** F32/E103: casou com o extrato do banco. O estorno limpa. */
+  conciliadoEm: timestamp("conciliado_em", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // B10/E91: a saída de caixa é lida por loja + dia em fluxo, DRE e alerta.
+  lojaDataIdx: index("pagamentos_loja_data_idx").on(t.lojaId, t.data),
+  naoConciliadosIdx: index("pagamentos_nao_conciliados_idx")
+    .on(t.lojaId, t.data)
+    .where(sql`conciliado_em IS NULL`),
+}));
 
 export const insertPagamentoSchema = createInsertSchema(pagamentosTable).omit({ createdAt: true });
 export type InsertPagamento = z.infer<typeof insertPagamentoSchema>;
@@ -87,7 +128,10 @@ export const pagamentoItensTable = pgTable("pagamento_itens", {
   pagamentoId: text("pagamento_id").notNull().references(() => pagamentosTable.id, { onDelete: "cascade" }),
   contaPagarId: text("conta_pagar_id").notNull().unique().references(() => contasPagarTable.id, { onDelete: "cascade" }),
   valor: decimal("valor", { precision: 10, scale: 2, mode: "number" }).notNull(),
-});
+}, (t) => ({
+  // B10/E91: toda montagem de extrato faz o join por `pagamento_id`.
+  pagamentoIdx: index("pagamento_itens_pagamento_idx").on(t.pagamentoId),
+}));
 
 export const insertPagamentoItemSchema = createInsertSchema(pagamentoItensTable);
 export type InsertPagamentoItem = z.infer<typeof insertPagamentoItemSchema>;

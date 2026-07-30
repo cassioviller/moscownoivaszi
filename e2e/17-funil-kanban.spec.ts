@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { inArray } from "drizzle-orm";
+import { db, leadsTable } from "../lib/db/src/index";
 import { lerEstado, API_URL, arrastar } from "./helpers";
 
 const estado = lerEstado();
@@ -16,6 +18,7 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 
 test.describe("Funil kanban das noivas", () => {
   let leadId: string;
+  let tardiaId: string;
   const nome = `E2E Funil ${Date.now()}`;
 
   test.beforeAll(async ({ request }) => {
@@ -29,6 +32,14 @@ test.describe("Funil kanban das noivas", () => {
     });
     expect(criado.status(), await criado.text()).toBe(201);
     leadId = (await criado.json()).id;
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste e o arraste só avança etapas: sem limpar, cada
+    // run soma duas noivas ao funil, cada vez mais adiante. Saem só as duas
+    // que ESTE spec criou (nada as referencia — não têm contrato nem agenda).
+    const criadas = [leadId, tardiaId].filter(Boolean);
+    if (criadas.length > 0) await db.delete(leadsTable).where(inArray(leadsTable.id, criadas));
   });
 
   test("o alternador mostra as colunas do funil", async ({ page }) => {
@@ -78,7 +89,7 @@ test.describe("Funil kanban das noivas", () => {
     const criada = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
       data: { noivaNome: `${nome} tardia` },
     });
-    const tardiaId = (await criada.json()).id;
+    tardiaId = (await criada.json()).id;
     await request.patch(`${API_URL}/api/lojas/${estado.lojaId}/leads/${tardiaId}`, {
       data: { etapa: "DEVOLVIDO" },
     });

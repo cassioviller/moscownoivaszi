@@ -23,7 +23,7 @@ describe("classificarErro", () => {
     const c = classificarErro(zerr);
     expect(c.status).toBe(500);
     // Não vaza schema para o cliente...
-    expect(c.body).toEqual({ error: "Erro interno do servidor" });
+    expect(c.body).toEqual({ error: "ERRO_INTERNO", detalhe: "Erro interno do servidor" });
     // ...mas o log distingue de um 500 qualquer.
     expect(c.logLevel).toBe("error");
     expect(c.logMsg).toContain("RESPOSTA_FORA_DO_CONTRATO");
@@ -32,17 +32,61 @@ describe("classificarErro", () => {
   it("violação de unicidade (23505) vira 409", () => {
     const c = classificarErro({ code: "23505" });
     expect(c.status).toBe(409);
+    expect(c.body.error).toBe("REGISTRO_DUPLICADO");
     expect(c.logLevel).toBe("warn");
   });
 
   it("código do Postgres embrulhado em cause também é lido", () => {
     const c = classificarErro({ cause: { code: "23503" } });
     expect(c.status).toBe(409);
-    expect(c.body.error).toContain("vínculos");
+    expect(c.body.error).toBe("VINCULO_EXISTENTE");
+  });
+
+  /**
+   * S12/E107 — o invariante que faltava, e que este arquivo violava sem notar.
+   *
+   * O E96 estabeleceu que `error` carrega CÓDIGO e a prosa mora em `detalhe`.
+   * O `classificarErro` era a última fonte de texto livre no campo — e o teste
+   * acima **afirmava a frase** (`toContain("vínculos")`), congelando o defeito
+   * num assert. Este caso olha os quatro caminhos do módulo de uma vez.
+   *
+   * A régua: código é MAIÚSCULA_COM_UNDERSCORE, sem espaço e sem acento. Se um
+   * dia alguém acrescentar um caminho novo com frase, cai aqui.
+   */
+  it("nenhum caminho põe frase no campo `error` — ele é código, sempre", () => {
+    const casos = [
+      zodErrorFake(),
+      { code: "23505" },
+      { code: "23503" },
+      { code: "23P01" },
+      { code: "40P01" },
+      { code: "40001" },
+      new Error("qualquer outra coisa"),
+    ];
+    for (const err of casos) {
+      const { error, detalhe } = classificarErro(err).body;
+      expect(error, `código inválido: ${error}`).toMatch(/^[A-Z][A-Z_]*$/);
+      // E a frase não se perdeu: ela existe, só mudou de campo.
+      expect(detalhe, `sem detalhe para ${error}`).toBeTruthy();
+    }
   });
 
   it("conflito de disponibilidade (23P01) vira 409", () => {
     expect(classificarErro({ code: "23P01" }).status).toBe(409);
+  });
+
+  /**
+   * S-D19/E143 — a corrida do EXCLUDE gist nem sempre termina em 23P01: em
+   * 300 pares de INSERTs concorrentes, 34 perdedores levaram DEADLOCK (40P01)
+   * e viravam 500 — o flake [201, 500] do lote17. Deadlock e falha de
+   * serialização (40001) são concorrência, não quebra: 409, tente de novo.
+   */
+  it("deadlock (40P01) e falha de serialização (40001) viram 409, mesmo em cause", () => {
+    const dead = classificarErro({ code: "40P01" });
+    expect(dead.status).toBe(409);
+    expect(dead.body.error).toBe("OPERACAO_CONCORRENTE");
+    expect(dead.logLevel).toBe("warn");
+    expect(classificarErro({ cause: { code: "40001" } }).status).toBe(409);
   });
 
   it("erro desconhecido é 500 genérico, logado como erro", () => {

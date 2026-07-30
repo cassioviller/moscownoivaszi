@@ -13,6 +13,7 @@
 
 import { competenciaValida } from "./comissao";
 import { montarCsv } from "./csv";
+import { diaLocal } from "@workspace/financeiro-core";
 
 export { competenciaValida };
 // Extraído para lib/csv.ts quando pagar/receber ganharam exportação (E5);
@@ -40,16 +41,18 @@ export type ItemContabil = {
 const CABECALHO = ["Data", "Colaborador", "Descrição", "Competência", "Valor", "Forma"];
 
 
-const formatadorDiaSP = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-
-/** Dia (DD/MM/AAAA) em que um INSTANTE caiu no fuso da loja. */
+/**
+ * Dia (DD/MM/AAAA) em que um INSTANTE caiu no fuso da loja.
+ *
+ * O dia sai de `diaLocal` do core — a régua ÚNICA de "que dia é este instante
+ * em São Paulo". Aqui só a APRESENTAÇÃO muda (DD/MM/AAAA para a contadora, em
+ * vez de YYYY-MM-DD), e essa é a única diferença que justificava um segundo
+ * `Intl.DateTimeFormat` com o mesmo fuso — que é justamente o que ele não fazia:
+ * mantinha uma segunda leitura do fuso ao lado da primeira.
+ */
 export function diaLocalSP(instante: Date): string {
-  return formatadorDiaSP.format(instante);
+  const [ano, mes, dia] = diaLocal(instante).split("-");
+  return `${dia}/${mes}/${ano}`;
 }
 
 /**

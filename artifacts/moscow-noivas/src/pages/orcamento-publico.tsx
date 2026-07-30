@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
-import { brl } from "@/lib/formatos";
+import { brl, instanteLongo, tipoItemLabel } from "@/lib/formatos";
 
 /**
  * Página PÚBLICA do orçamento (/orcamento/:token) — o que a noiva abre pelo
@@ -28,16 +28,6 @@ const ERROS: Record<string, string> = {
   LINK_INVALIDO: "Link inválido — confira se ele veio inteiro do WhatsApp.",
 };
 
-const ROTULO_TIPO: Record<string, string> = {
-  VESTIDO: "Vestido",
-  SERVICO: "Serviço",
-  AJUSTE: "Ajuste",
-};
-
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "long",
-  timeZone: "America/Sao_Paulo",
-});
 
 export default function OrcamentoPublico() {
   const { token } = useParams();
@@ -99,12 +89,12 @@ export default function OrcamentoPublico() {
                     <div className="min-w-0">
                       <p className="text-sm">{it.descricao}</p>
                       <p className="text-xs text-muted-foreground">
-                        {ROTULO_TIPO[it.tipo] ?? it.tipo}
-                        {it.quantidade > 1 && ` · ${it.quantidade}× R$ ${brl(it.valorUnitario)}`}
+                        {tipoItemLabel(it.tipo)}
+                        {it.quantidade > 1 && ` · ${it.quantidade}× ${brl(it.valorUnitario)}`}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm tabular-nums">
-                      R$ {brl(it.quantidade * it.valorUnitario)}
+                      {brl(it.quantidade * it.valorUnitario)}
                     </span>
                   </li>
                 ))}
@@ -115,14 +105,14 @@ export default function OrcamentoPublico() {
                   <>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Soma dos itens</span>
-                      <span className="tabular-nums">R$ {brl(dados!.totalBruto)}</span>
+                      <span className="tabular-nums">{brl(dados!.totalBruto)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Desconto</span>
                       <span className="tabular-nums">
                         {dados!.descontoTipo === "PERCENTUAL"
                           ? `${dados!.descontoValor}%`
-                          : `R$ ${brl(dados!.descontoValor)}`}
+                          : `${brl(dados!.descontoValor)}`}
                       </span>
                     </div>
                   </>
@@ -130,7 +120,7 @@ export default function OrcamentoPublico() {
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
                   <span className="font-serif text-xl tabular-nums">
-                    R$ {brl(dados!.totalLiquido)}
+                    {brl(dados!.totalLiquido)}
                   </span>
                 </div>
               </div>
@@ -147,7 +137,7 @@ export default function OrcamentoPublico() {
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <span>
                     Você aceitou esta proposta em{" "}
-                    <span className="font-medium">{dataFmt.format(new Date(dados!.aceitoEm))}</span>.
+                    <span className="font-medium">{instanteLongo(dados!.aceitoEm)}</span>.
                     A sua vendedora já foi avisada.
                   </span>
                 </div>
@@ -169,7 +159,7 @@ export default function OrcamentoPublico() {
 
               <p className="text-xs text-muted-foreground border-t pt-3">
                 {dados!.validade
-                  ? `Proposta válida até ${dataFmt.format(new Date(dados!.validade))}. `
+                  ? `Proposta válida até ${instanteLongo(dados!.validade)}. `
                   : ""}
                 Dúvidas ou quer fechar? É só responder à sua vendedora no WhatsApp.
               </p>

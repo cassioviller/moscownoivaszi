@@ -5,10 +5,12 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { ExportarAuditoriaAcao } from './exportarAuditoriaAcao';
 
 export type ExportarAuditoriaParams = {
-acao?: ExportarAuditoriaAcao;
+/**
+ * Código da ação (ver ACOES_AUDITORIA no api-server). Aberto: filtrar por código desconhecido devolve planilha vazia, não erro.
+ */
+acao?: string;
 usuarioId?: string;
 /**
  * Início do intervalo (inclusivo, dia local America/Sao_Paulo)

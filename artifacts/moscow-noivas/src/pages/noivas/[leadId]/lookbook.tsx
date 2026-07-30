@@ -15,6 +15,16 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -24,6 +34,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { BookImage, Trash2 } from "lucide-react";
+import { instanteDiaMes } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Lookbook (E21) — o card na página da noiva: a vendedora escolhe os vestidos
@@ -33,11 +45,6 @@ import { BookImage, Trash2 } from "lucide-react";
 
 const linkDoLookbook = (token: string) => `${window.location.origin}/lookbook/${token}`;
 
-const dataFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "America/Sao_Paulo",
-});
 
 export function LookbookNoiva({ leadId }: { leadId: string }) {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -46,6 +53,8 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
   const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
   const [aberto, setAberto] = useState(false);
+  /** E10/E99: o lookbook que a noiva tem no favorito morre na hora — confirma. */
+  const [revogandoId, setRevogandoId] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
 
@@ -104,8 +113,8 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
       await copiar(criado.token);
     } catch (err) {
       toast({
-        title: "Erro ao criar o lookbook",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar o lookbook",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -118,8 +127,8 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
       toast({ title: "Lookbook revogado", description: "O link parou de funcionar." });
     } catch (err) {
       toast({
-        title: "Erro ao revogar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para revogar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -164,10 +173,10 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
                       {l.vestidos.map((v) => v.nome).join(", ") || "Sem vestidos"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      criado em {dataFmt.format(new Date(l.criadoEm))}
+                      criado em {instanteDiaMes(l.criadoEm)}
                       {expirado
                         ? " · expirado"
-                        : ` · vale até ${dataFmt.format(new Date(l.expiraEm))}`}
+                        : ` · vale até ${instanteDiaMes(l.expiraEm)}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -182,7 +191,7 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
                         size="icon"
                         aria-label="Revogar lookbook"
                         disabled={revogar.isPending}
-                        onClick={() => onRevogar(l.id)}
+                        onClick={() => setRevogandoId(l.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -251,6 +260,43 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* E10/E99 — revogar era um ícone de lixeira sem confirmação nenhuma, numa
+          LISTA: o alvo do clique é a linha, e a linha não se identifica depois
+          do gesto. O link que a noiva guardou morre na hora, e criar outro não
+          desfaz o que ela já não consegue abrir. */}
+      <AlertDialog
+        open={!!revogandoId}
+        onOpenChange={(aberto) => !aberto && setRevogandoId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revogar este lookbook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A seleção de{" "}
+              <span className="font-medium">
+                {lookbooks.data?.find((l) => l.id === revogandoId)?.vestidos?.length ?? 0}{" "}
+                vestido(s)
+              </span>{" "}
+              para de abrir para a noiva na hora. Você pode criar outra seleção,
+              mas o link que ela já tem não volta a funcionar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const id = revogandoId!;
+                setRevogandoId(null);
+                void onRevogar(id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revogar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

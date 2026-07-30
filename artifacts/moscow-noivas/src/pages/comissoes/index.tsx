@@ -17,7 +17,6 @@ import {
   useListPendenciasComissao,
   getListPendenciasComissaoQueryKey,
   useReabrirComissaoFechamento,
-  getListContasPagarQueryKey,
   useListEquipe,
   getListEquipeQueryKey,
   useSimularComissao,
@@ -28,6 +27,15 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,11 +70,15 @@ import {
 import { Trash2, Plus, FlaskConical, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { brl } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 import { competenciaAtual, ultimasCompetencias } from "@/lib/financeiro/datas";
-import { parseValor } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, mensagemApi } from "@/pages/financeiro/helpers";
+import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { rotuloCompetencia } from "@/lib/financeiro/datas";
+import { capitalizar } from "@/lib/formatos";
+import { ErroListagem, invalidarCaixa } from "@/pages/financeiro/helpers";
+import { mensagemApi } from "@/lib/erro-api";
 import { serieDeComissao } from "@/lib/comissao-serie";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /**
  * Comissões: a escada de cada vendedora, o ranking ao vivo do mês e o
@@ -100,25 +112,40 @@ const MOTIVO_FAIXA: Record<string, string> = {
 /** Quantos meses fechados a série mostra — um ano dá para ver sazonalidade. */
 const MESES_NA_SERIE = 12;
 
-const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
-const rotuloCompetencia = (c: string) => mesFmt.format(new Date(`${c}-01T12:00:00.000Z`));
-
-const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 /** Uma faixa em edição — strings, porque vêm do teclado. */
-type FaixaForm = { minAcumulado: string; maxAcumulado: string; percentual: string; bonusFixo: string };
+/**
+ * D11/E99 — a faixa carrega um id LOCAL, e ele existe só para o React.
+ *
+ * As linhas eram keyadas por índice num editor onde se REMOVE do meio
+ * (`filter((_, j) => j !== i)`): ao apagar a segunda de três, o React reaproveita
+ * o nó da terceira como se fosse a segunda, e o foco salta de campo — no meio
+ * da digitação de uma escada de comissão, que é uma tela de dinheiro. O id não
+ * viaja para o servidor: o payload continua sendo min/max/percentual/bônus.
+ */
+type FaixaForm = {
+  id: string;
+  minAcumulado: string;
+  maxAcumulado: string;
+  percentual: string;
+  bonusFixo: string;
+};
 
-const FAIXA_VAZIA: FaixaForm = { minAcumulado: "", maxAcumulado: "", percentual: "", bonusFixo: "" };
+/** Uma faixa nova, com identidade própria desde o nascimento. */
+function faixaVazia(): FaixaForm {
+  return { id: crypto.randomUUID(), minAcumulado: "", maxAcumulado: "", percentual: "", bonusFixo: "" };
+}
+
 
 function descreverFaixa(f: ComissaoFaixa): string {
   const ate = f.maxAcumulado === null || f.maxAcumulado === undefined
     ? "acima"
-    : `até R$ ${brl(f.maxAcumulado)}`;
+    : `até ${brl(f.maxAcumulado)}`;
   const paga = [
     f.percentual ? `${f.percentual}%` : null,
-    f.bonusFixo ? `+ R$ ${brl(f.bonusFixo)}` : null,
+    f.bonusFixo ? `+ ${brl(f.bonusFixo)}` : null,
   ].filter(Boolean).join(" ");
-  return `De R$ ${brl(f.minAcumulado)} ${ate} → ${paga}`;
+  return `De ${brl(f.minAcumulado)} ${ate} → ${paga}`;
 }
 
 export default function Comissoes() {
@@ -135,7 +162,7 @@ export default function Comissoes() {
     query: { queryKey: getListComissaoRegrasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const paramsPreview = { competencia };
   const preview = usePreviewComissao(activeLojaId!, paramsPreview, {
@@ -144,13 +171,12 @@ export default function Comissoes() {
       enabled: !!activeLojaId,
     },
   });
-  const paramsFech = { competencia };
-  const fechamentos = useListComissaoFechamentos(activeLojaId!, paramsFech, {
-    query: {
-      queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech),
-      enabled: !!activeLojaId,
-    },
-  });
+  // D10 (E93): aqui havia uma SEGUNDA chamada ao mesmo endpoint, com
+  // {competencia} — um recorte estrito do que o `historico` abaixo já traz em
+  // mãos. Um request a menos no mount, uma invalidação a menos por ação, e a
+  // lista de fechados parou de piscar a cada troca de competência no seletor
+  // (o histórico não muda quando a competência muda).
+  //
   // Sem filtro: a série (E52) é sobre o histórico, não sobre a competência em
   // vista. A lista é pequena por natureza — uma linha por vendedora por mês.
   const historico = useListComissaoFechamentos(activeLojaId!, undefined, {
@@ -184,11 +210,26 @@ export default function Comissoes() {
   // Resultado da simulação (E23) — abre o dialog quando chega.
   const [simulacao, setSimulacao] = useState<SimulacaoComissao | null>(null);
 
+  /**
+   * D7/E99 — "ainda não sei" não é "zero".
+   *
+   * O `resumoFechamento` abaixo devolve `qtd: 0` nos DOIS casos: quando não há
+   * comissão a lançar e quando o preview ainda está no ar. O diálogo tratava os
+   * dois igual e afirmava "nenhuma comissão a lançar" antes de saber — numa
+   * ação que fecha o mês e não tem desfazer.
+   */
+  const calculando = preview.isPending;
+
   // Resumo do que o fechamento vai LANÇAR em contas a pagar — o número que dá
   // confiança antes de uma ação irreversível.
   const resumoFechamento = useMemo(() => {
     const linhas = (preview.data ?? []).filter((l) => l.valorTotal > 0);
-    return { qtd: linhas.length, total: linhas.reduce((soma, l) => soma + l.valorTotal, 0) };
+    // C11: soma em CENTAVOS INTEIROS. Em float, seis vendedoras a R$ 1.234,57
+    // fecham com um centavo a menos que a soma das linhas — e um total que não
+    // bate com o que está impresso acima dele vira desconfiança no número.
+    // somaCentavos recebe o valor em REAIS e converte por dentro — passar
+    // centavos() aqui dobraria a conversão.
+    return { qtd: linhas.length, total: reais(somaCentavos(linhas, (l) => l.valorTotal)) };
   }, [preview.data]);
 
   // A série do custo de comissão (E52): agregação pura sobre o histórico já
@@ -225,11 +266,12 @@ export default function Comissoes() {
         fechamentoId: fechamentoReabrindo.id,
       });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech) }),
         queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!) }),
         queryClient.invalidateQueries({ queryKey: getListPendenciasComissaoQueryKey(activeLojaId!) }),
         queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) }),
-        queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
+        // D9: fechar/reabrir MEXE em conta a pagar — a curva do alerta de caixa
+        // (dashboard e sino) muda com ela, não só a lista de contas.
+        invalidarCaixa(queryClient, activeLojaId!),
       ]);
       setFechamentoReabrindo(null);
       toast({
@@ -240,7 +282,7 @@ export default function Comissoes() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao reabrir",
+        title: "Não deu para reabrir",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -249,7 +291,7 @@ export default function Comissoes() {
 
   const [vendedoraId, setVendedoraId] = useState("");
   const [bonusAcumula, setBonusAcumula] = useState(false);
-  const [faixas, setFaixas] = useState<FaixaForm[]>([{ ...FAIXA_VAZIA }]);
+  const [faixas, setFaixas] = useState<FaixaForm[]>([faixaVazia()]);
 
   const competenciasDisponiveis = useMemo(
     () => ultimasCompetencias(competenciaAtual(), 12).reverse(),
@@ -303,7 +345,7 @@ export default function Comissoes() {
       });
       await queryClient.invalidateQueries({ queryKey: getListComissaoRegrasQueryKey(activeLojaId!) });
       await queryClient.invalidateQueries({ queryKey: getPreviewComissaoQueryKey(activeLojaId!, paramsPreview) });
-      setFaixas([{ ...FAIXA_VAZIA }]);
+      setFaixas([faixaVazia()]);
       setVendedoraId("");
       setBonusAcumula(false);
       toast({ title: "Regra salva" });
@@ -311,7 +353,7 @@ export default function Comissoes() {
       const e = err as { data?: { error?: string; detalhe?: string } };
       const detalhe = e?.data?.error === "FAIXAS_INVALIDAS" ? MOTIVO_FAIXA[e.data.detalhe ?? ""] : undefined;
       toast({
-        title: "Erro ao salvar a regra",
+        title: "Não deu para salvar a regra",
         description: detalhe ?? mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -327,7 +369,7 @@ export default function Comissoes() {
       toast({ title: "Regra removida" });
     } catch (err) {
       toast({
-        title: "Erro ao remover",
+        title: "Não deu para remover",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -338,8 +380,9 @@ export default function Comissoes() {
     try {
       const criados = await gerarFechamento.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListComissaoFechamentosQueryKey(activeLojaId!, paramsFech) }),
-        queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
+        // D9: fechar/reabrir MEXE em conta a pagar — a curva do alerta de caixa
+        // (dashboard e sino) muda com ela, não só a lista de contas.
+        invalidarCaixa(queryClient, activeLojaId!),
         // O histórico alimenta a série (E52) e a varredura alimenta o alerta
         // (E53): fechar acabou de mudar os dois, e um alerta que sobrevive à
         // ação que o resolve é pior do que alerta nenhum.
@@ -352,7 +395,7 @@ export default function Comissoes() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao gerar o fechamento",
+        title: "Não deu para gerar o fechamento",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -379,11 +422,11 @@ export default function Comissoes() {
       setMotivoBaixa("");
       toast({
         title: "Estorno baixado",
-        description: `R$ ${brl(r.valorBaixado)} de ${estornoBaixando.nome} — o valor deixa de carregar.`,
+        description: `${brl(r.valorBaixado)} de ${estornoBaixando.nome} — o valor deixa de carregar.`,
       });
     } catch (err) {
       toast({
-        title: "Erro ao baixar o estorno",
+        title: "Não deu para baixar o estorno",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -411,7 +454,7 @@ export default function Comissoes() {
       const e = err as { data?: { error?: string; detalhe?: string } };
       const detalhe = e?.data?.error === "FAIXAS_INVALIDAS" ? MOTIVO_FAIXA[e.data.detalhe ?? ""] : undefined;
       toast({
-        title: "Erro ao simular",
+        title: "Não deu para simular",
         description: detalhe ?? mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -455,7 +498,12 @@ export default function Comissoes() {
       .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [regras.data, nomePorUsuario]);
 
-  const jaFechada = (fechamentos.data?.length ?? 0) > 0;
+  // Os fechamentos DESTA competência, recortados do histórico já carregado.
+  const fechamentosDaCompetencia = useMemo(
+    () => (historico.data ?? []).filter((f) => f.competencia === competencia),
+    [historico.data, competencia],
+  );
+  const jaFechada = fechamentosDaCompetencia.length > 0;
 
   return (
     <div className="space-y-6">
@@ -484,13 +532,13 @@ export default function Comissoes() {
               <div key={p.competencia} className="flex flex-wrap items-baseline gap-x-2">
                 <button
                   type="button"
-                  className="font-medium capitalize underline underline-offset-4"
+                  className="font-medium underline underline-offset-4"
                   onClick={() => trocarCompetencia(p.competencia)}
                 >
-                  {rotuloCompetencia(p.competencia)}
+                  {capitalizar(rotuloCompetencia(p.competencia))}
                 </button>
                 <span className="text-xs">
-                  R$ {brl(p.totalVendas)} em vendas · {p.vendedoras}{" "}
+                  {brl(p.totalVendas)} em vendas · {p.vendedoras}{" "}
                   {p.vendedoras === 1 ? "vendedora" : "vendedoras"} sem fechamento
                 </span>
               </div>
@@ -510,8 +558,8 @@ export default function Comissoes() {
             </SelectTrigger>
             <SelectContent>
               {competenciasDisponiveis.map((c) => (
-                <SelectItem key={c} value={c} className="capitalize">
-                  {rotuloCompetencia(c)}
+                <SelectItem key={c} value={c}>
+                  {capitalizar(rotuloCompetencia(c))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -526,16 +574,27 @@ export default function Comissoes() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Fechar {rotuloCompetencia(competencia)}?</AlertDialogTitle>
+              {/* D7/E99 — a tela AFIRMAVA "nenhuma comissão a lançar" enquanto
+                  o preview ainda estava carregando: `resumoFechamento.qtd` é 0
+                  tanto quando não há comissão quanto quando ainda não se sabe.
+                  A frase saía idêntica nos dois casos, num diálogo que fecha o
+                  mês de forma IRREVERSÍVEL. É a tela mentindo sobre dinheiro
+                  para acelerar um clique que não tem volta. */}
               <AlertDialogDescription>
-                {resumoFechamento.qtd === 0
-                  ? "Nenhuma comissão a lançar nesta competência — o fechamento apenas trava o mês."
-                  : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando R$ ${brl(resumoFechamento.total)}.`}
+                {calculando
+                  ? "Calculando o que será lançado…"
+                  : resumoFechamento.qtd === 0
+                    ? "Nenhuma comissão a lançar nesta competência — o fechamento apenas trava o mês."
+                    : `Isto vai lançar ${resumoFechamento.qtd} ${resumoFechamento.qtd === 1 ? "comissão" : "comissões"} em contas a pagar, somando ${brl(resumoFechamento.total)}.`}
                 {" "}O mês fica fechado e a ação não pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={onGerarFechamento} disabled={gerarFechamento.isPending}>
+              <AlertDialogAction
+                onClick={onGerarFechamento}
+                disabled={gerarFechamento.isPending || calculando}
+              >
                 {gerarFechamento.isPending ? "Fechando…" : "Fechar competência"}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -548,8 +607,8 @@ export default function Comissoes() {
       <Card>
         <CardHeader>
           <CardTitle>Como está o mês</CardTitle>
-          <CardDescription className="capitalize">
-            {rotuloCompetencia(competencia)} — o que seria pago se fechasse agora.
+          <CardDescription>
+            {capitalizar(rotuloCompetencia(competencia))} — o que seria pago se fechasse agora.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -574,18 +633,18 @@ export default function Comissoes() {
                       <p className="text-xs text-muted-foreground">Sem vendas nesta competência</p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Vendeu R$ {brl(linha.totalVendas)}
+                        Vendeu {brl(linha.totalVendas)}
                         {linha.percentualAplicado !== null && linha.percentualAplicado !== undefined
                           ? ` · ${linha.percentualAplicado}%`
                           : " · sem faixa atingida"}
-                        {!!linha.valorBonus && ` · bônus R$ ${brl(linha.valorBonus)}`}
+                        {!!linha.valorBonus && ` · bônus ${brl(linha.valorBonus)}`}
                       </p>
                     )}
                     {!!linha.estornoPendente && (
                       <p className="text-xs text-destructive">
                         {soEstorno
-                          ? `R$ ${brl(linha.estornoPendente)} de estorno esperando — segue pendente até ela voltar a vender`
-                          : `R$ ${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
+                          ? `${brl(linha.estornoPendente)} de estorno esperando — segue pendente até ela voltar a vender`
+                          : `${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
                       </p>
                     )}
                     {soEstorno && podeBaixarEstorno && (
@@ -606,7 +665,7 @@ export default function Comissoes() {
                     )}
                     {linha.faltaProximoDegrau !== null && linha.faltaProximoDegrau !== undefined && (
                       <p className="text-xs text-muted-foreground">
-                        Faltam R$ {brl(linha.faltaProximoDegrau)} para o próximo degrau
+                        Faltam {brl(linha.faltaProximoDegrau)} para o próximo degrau
                       </p>
                     )}
                     {/* E51: para onde o mês está indo, não só onde está. É o
@@ -614,7 +673,7 @@ export default function Comissoes() {
                     {linha.projecao && (
                       <p className="text-xs text-muted-foreground" data-testid="projecao-linha">
                         No ritmo ({linha.projecao.diasDecorridos}/{linha.projecao.diasNoMes} dias):
-                        R$ {brl(linha.projecao.valorTotalProjetado)}
+                        {brl(linha.projecao.valorTotalProjetado)}
                         {linha.projecao.percentualProjetado !== null &&
                           linha.projecao.percentualProjetado !== undefined &&
                           ` na faixa de ${linha.projecao.percentualProjetado}%`}
@@ -622,11 +681,24 @@ export default function Comissoes() {
                     )}
                   </div>
                   <span className="shrink-0 font-serif text-xl tabular-nums">
-                    R$ {brl(linha.valorTotal)}
+                    {brl(linha.valorTotal)}
                   </span>
                 </li>
                 );
               })}
+              {/* E92/E13: "quanto vou pagar de comissão este mês?" é A pergunta
+                  de gestão desta tela, e a única forma de ver a resposta era
+                  clicar em "Fechar competência" e ler o texto do alerta — ou
+                  seja, encostar o dedo no gatilho da ação que não se desfaz.
+                  Mesmo tratamento do "Total de despesas" do DRE. */}
+              <li className="flex items-center justify-between gap-4 pt-3">
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Total do mês
+                </span>
+                <span className="money-lg shrink-0">
+                  {brl(resumoFechamento.total)}
+                </span>
+              </li>
             </ul>
           )}
         </CardContent>
@@ -644,7 +716,7 @@ export default function Comissoes() {
               <span className="font-medium">
                 {serie.taxaEfetivaMedia !== null ? `${serie.taxaEfetivaMedia}%` : "—"}
               </span>{" "}
-              (R$ {brl(serie.custoTotal)} sobre R$ {brl(serie.totalVendas)} vendidos).
+              ({brl(serie.custoTotal)} sobre {brl(serie.totalVendas)} vendidos).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -652,13 +724,13 @@ export default function Comissoes() {
               {serie.pontos.map((p) => (
                 <li key={p.competencia} className="space-y-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <span className="text-sm capitalize">{rotuloCompetencia(p.competencia)}</span>
+                    <span className="text-sm">{capitalizar(rotuloCompetencia(p.competencia))}</span>
                     <span className="text-xs text-muted-foreground">
-                      base R$ {brl(p.totalVendas)} · {p.vendedoras}{" "}
+                      base {brl(p.totalVendas)} · {p.vendedoras}{" "}
                       {p.vendedoras === 1 ? "vendedora" : "vendedoras"}
                     </span>
                     <span className="shrink-0 tabular-nums">
-                      R$ {brl(p.custoComissao)}
+                      {brl(p.custoComissao)}
                       {p.taxaEfetiva !== null && (
                         <span className="ml-2 text-xs text-muted-foreground">
                           {p.taxaEfetiva}%
@@ -692,22 +764,22 @@ export default function Comissoes() {
           </CardHeader>
           <CardContent>
             <ul className="divide-y">
-              {fechamentos.data?.map((f) => (
+              {fechamentosDaCompetencia.map((f) => (
                 <li key={f.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div>
                     <p className="font-medium">
                       {f.vendedoraNome ?? nomePorUsuario.get(f.vendedoraId) ?? "Vendedora"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Base R$ {brl(f.totalVendas)}
+                      Base {brl(f.totalVendas)}
                       {f.percentualAplicado !== null && f.percentualAplicado !== undefined && ` · ${f.percentualAplicado}%`}
-                      {" · comissão "}R$ {brl(f.valorComissao)}
-                      {!!f.valorBonus && ` · bônus R$ ${brl(f.valorBonus)}`}
-                      {f.fechadoEm && ` · fechado em ${diaFmt.format(new Date(f.fechadoEm))}`}
+                      {" · comissão "}{brl(f.valorComissao)}
+                      {!!f.valorBonus && ` · bônus ${brl(f.valorBonus)}`}
+                      {f.fechadoEm && ` · fechado em ${diaMesAno(f.fechadoEm)}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="font-serif text-xl tabular-nums">R$ {brl(f.valorTotal)}</span>
+                    <span className="font-serif text-xl tabular-nums">{brl(f.valorTotal)}</span>
                     {/* E54: fechou errado, dá para desfazer sem SQL. Só admin —
                         a mesma régua da baixa de estorno, que também mexe em
                         dinheiro já apurado. */}
@@ -745,7 +817,7 @@ export default function Comissoes() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reabrir o fechamento de {fechamentoReabrindo?.nome}?</AlertDialogTitle>
             <AlertDialogDescription>
-              O fechamento de {rotuloCompetencia(competencia)} some, e com ele a conta a pagar de R${" "}
+              O fechamento de {rotuloCompetencia(competencia)} some, e com ele a conta a pagar de{" "}
               {brl(fechamentoReabrindo?.valor ?? 0)}. Estornos que este mês tinha reconciliado voltam
               a pendentes. A competência fica aberta para ser fechada de novo, e a reabertura fica
               registrada na trilha de auditoria.
@@ -779,12 +851,12 @@ export default function Comissoes() {
                     <p className="text-xs text-muted-foreground">
                       {b.noivaNome && `Contrato de ${b.noivaNome} · `}
                       baixado por {b.baixadoPorNome ?? "—"}
-                      {b.baixadoEm && ` em ${diaFmt.format(new Date(b.baixadoEm))}`}
+                      {b.baixadoEm && ` em ${diaMesAno(b.baixadoEm)}`}
                       {b.motivo && ` · ${b.motivo}`}
                     </p>
                   </div>
                   <span className="shrink-0 font-serif text-xl tabular-nums text-destructive">
-                    R$ {brl(b.valor)}
+                    {brl(b.valor)}
                   </span>
                 </li>
               ))}
@@ -796,7 +868,7 @@ export default function Comissoes() {
       {/* — Escada por vendedora — */}
       <Card>
         <CardHeader>
-          <CardTitle>Regras de Comissão</CardTitle>
+          <CardTitle>Regras de comissão</CardTitle>
           <CardDescription>
             Cada vendedora tem a sua escada, versionada no tempo: redefinir cria uma versão nova e
             as antigas ficam na linha do tempo — é aí que se responde “por que março pagou
@@ -839,26 +911,26 @@ export default function Comissoes() {
                               {vigente ? (
                                 <>
                                   <Badge className="mr-2 font-normal">vigente</Badge>
-                                  desde {diaFmt.format(inicio)}
+                                  desde {diaMesAno(inicio)}
                                 </>
                               ) : futura ? (
                                 <>
                                   <Badge variant="secondary" className="mr-2 font-normal">
                                     futura
                                   </Badge>
-                                  entra em vigor em {diaFmt.format(inicio)}
+                                  entra em vigor em {diaMesAno(inicio)}
                                 </>
                               ) : !regra.ativo ? (
                                 <>
                                   <Badge variant="outline" className="mr-2 font-normal">
                                     inativa
                                   </Badge>
-                                  definida para {diaFmt.format(inicio)}
+                                  definida para {diaMesAno(inicio)}
                                 </>
                               ) : (
                                 <>
-                                  valeu de {diaFmt.format(inicio)}
-                                  {fim ? ` a ${diaFmt.format(fim)}` : ""}
+                                  valeu de {diaMesAno(inicio)}
+                                  {fim ? ` a ${diaMesAno(fim)}` : ""}
                                 </>
                               )}
                               {regra.bonusAcumulaFaixas && " · bônus acumulam"}
@@ -866,7 +938,7 @@ export default function Comissoes() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Remover a versão de ${diaFmt.format(inicio)} de ${vendedora.nome}`}
+                              aria-label={`Remover a versão de ${diaMesAno(inicio)} de ${vendedora.nome}`}
                               disabled={removerRegra.isPending}
                               onClick={() =>
                                 setRegraRemovendo({ id: regra.id, nome: vendedora.nome })
@@ -922,7 +994,7 @@ export default function Comissoes() {
 
             <div className="space-y-2">
               {faixas.map((f, i) => (
-                <div key={i} className="flex flex-wrap items-end gap-2">
+                <div key={f.id} className="flex flex-wrap items-end gap-2">
                   <div className="grid gap-1">
                     <Label className="text-xs text-muted-foreground">De (R$)</Label>
                     <Input
@@ -981,7 +1053,7 @@ export default function Comissoes() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setFaixas((prev) => [...prev, { ...FAIXA_VAZIA }])}
+                onClick={() => setFaixas((prev) => [...prev, faixaVazia()])}
               >
                 <Plus className="mr-1 h-4 w-4" />
                 Adicionar faixa
@@ -1015,46 +1087,52 @@ export default function Comissoes() {
           </DialogHeader>
           {simulacao && (
             <div className="space-y-3">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-1.5 pr-2 font-normal">Mês</th>
-                    <th className="px-2 py-1.5 text-right font-normal">Vendas</th>
-                    <th className="px-2 py-1.5 text-right font-normal">Pago</th>
-                    <th className="px-2 py-1.5 text-right font-normal">Simulado</th>
-                    <th className="py-1.5 pl-2 text-right font-normal">Diferença</th>
-                  </tr>
-                </thead>
-                <tbody>
+              {/* E19/E99 — a única das cinco tabelas com dor MEDIDA: ela vive
+                  num `DialogContent max-w-lg` e não tinha contêiner de rolagem
+                  nenhum entre os dois. Cinco colunas de dinheiro num diálogo
+                  estreito eram cortadas sem saída. O `<Table>` embrulha num
+                  `div.relative.w-full.overflow-auto` — é esse wrapper o ganho,
+                  não a marcação. */}
+              <Table className="text-sm">
+                <TableHeader>
+                  <TableRow className="text-left text-xs text-muted-foreground hover:bg-transparent">
+                    <TableHead className="h-auto py-1.5 pl-0 pr-2 font-normal">Mês</TableHead>
+                    <TableHead className="h-auto px-2 py-1.5 text-right font-normal">Vendas</TableHead>
+                    <TableHead className="h-auto px-2 py-1.5 text-right font-normal">Pago</TableHead>
+                    <TableHead className="h-auto px-2 py-1.5 text-right font-normal">Simulado</TableHead>
+                    <TableHead className="h-auto py-1.5 pl-2 pr-0 text-right font-normal">Diferença</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {simulacao.linhas.map((l) => (
-                    <tr key={l.competencia} className="border-b last:border-0">
-                      <td className="py-1.5 pr-2">
-                        {rotuloCompetencia(l.competencia)}
+                    <TableRow key={l.competencia} className="last:border-0 hover:bg-transparent">
+                      <TableCell className="py-1.5 pl-0 pr-2">
+                        {capitalizar(rotuloCompetencia(l.competencia))}
                         {!l.fechada && (
                           <span className="ml-1 text-xs text-muted-foreground">(sem fechamento)</span>
                         )}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.base)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.pagoReal)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">R$ {brl(l.simulado)}</td>
-                      <td
-                        className={`py-1.5 pl-2 text-right tabular-nums ${
+                      </TableCell>
+                      <TableCell className="px-2 py-1.5 text-right tabular-nums">{brl(l.base)}</TableCell>
+                      <TableCell className="px-2 py-1.5 text-right tabular-nums">{brl(l.pagoReal)}</TableCell>
+                      <TableCell className="px-2 py-1.5 text-right tabular-nums">{brl(l.simulado)}</TableCell>
+                      <TableCell
+                        className={`py-1.5 pl-2 pr-0 text-right tabular-nums ${
                           l.diferenca > 0 ? "text-destructive" : l.diferenca < 0 ? "text-positivo" : ""
                         }`}
                       >
-                        {l.diferenca > 0 ? "+" : ""}R$ {brl(l.diferenca)}
-                      </td>
-                    </tr>
+                        {l.diferenca > 0 ? "+" : ""}{brl(l.diferenca)}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="font-medium">
-                    <td className="py-2 pr-2">Total</td>
-                    <td />
-                    <td className="px-2 py-2 text-right tabular-nums">R$ {brl(simulacao.totalPagoReal)}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">R$ {brl(simulacao.totalSimulado)}</td>
-                    <td
-                      className={`py-2 pl-2 text-right tabular-nums ${
+                </TableBody>
+                <TableFooter className="bg-transparent">
+                  <TableRow className="font-medium hover:bg-transparent">
+                    <TableCell className="py-2 pl-0 pr-2">Total</TableCell>
+                    <TableCell />
+                    <TableCell className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalPagoReal)}</TableCell>
+                    <TableCell className="px-2 py-2 text-right tabular-nums">{brl(simulacao.totalSimulado)}</TableCell>
+                    <TableCell
+                      className={`py-2 pl-2 pr-0 text-right tabular-nums ${
                         simulacao.totalDiferenca > 0
                           ? "text-destructive"
                           : simulacao.totalDiferenca < 0
@@ -1062,11 +1140,11 @@ export default function Comissoes() {
                             : ""
                       }`}
                     >
-                      {simulacao.totalDiferenca > 0 ? "+" : ""}R$ {brl(simulacao.totalDiferenca)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                      {simulacao.totalDiferenca > 0 ? "+" : ""}{brl(simulacao.totalDiferenca)}
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
               <p className="text-xs text-muted-foreground">
                 Diferença positiva = a escada nova teria pago MAIS do que foi pago.
               </p>
@@ -1087,7 +1165,7 @@ export default function Comissoes() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Dar baixa em R$ {estornoBaixando ? brl(estornoBaixando.valor) : ""} de {estornoBaixando?.nome}?
+              Dar baixa em {estornoBaixando ? brl(estornoBaixando.valor) : ""} de {estornoBaixando?.nome}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               O estorno deixa de carregar para os próximos meses. Use quando a vendedora

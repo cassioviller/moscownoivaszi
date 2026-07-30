@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { mensagemApi } from "@/pages/financeiro/helpers";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Trocar a própria senha (E57).
@@ -60,7 +60,7 @@ export default function TrocarSenha() {
       navigate("/");
     } catch (err) {
       toast({
-        title: "Não foi possível trocar a senha",
+        title: "Não deu para trocar a senha",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });

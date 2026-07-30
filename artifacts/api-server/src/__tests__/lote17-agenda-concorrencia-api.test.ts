@@ -70,12 +70,14 @@ describe("Lote 17 — agendamento sob concorrência", () => {
   });
 
   afterAll(async () => {
-    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
+    // limparFixture ANTES (E91): `atendimentos.vendedora_id` é RESTRICT, e a
+    // segunda vendedora agendou — ela só sai depois do cascade da loja.
     await limparFixture(f);
+    await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedora2));
     await fecharPool();
   });
 
-  it("mesma cabine + mesmo início sob corrida: [201, 409], um só no banco", async () => {
+  it("mesma cabine + mesmo início sob corrida: um 201, o outro recusado, um só no banco", async () => {
     const [leadA, leadB] = await Promise.all([criarLead(f), criarLead(f)]);
     const inicio = dia("2027-03-10").toISOString();
 
@@ -89,7 +91,16 @@ describe("Lote 17 — agendamento sob concorrência", () => {
       }),
     ]);
 
-    expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    // E115: o POST ganhou a pré-checagem de intervalo do PATCH. O perdedor
+    // agora tem DOIS finais legítimos — 422 CABINE_OCUPADA se a pré-checagem
+    // viu a linha já commitada, 409 da UNIQUE se a corrida foi apertada e os
+    // dois passaram pela checagem. O invariante que importa não mudou: um só
+    // no banco. (E o corpo entra no assert — a lição da S20: um vermelho que
+    // descarta r.body não se explica sozinho.)
+    const [vencedor, perdedor] = r1.status === 201 ? [r1, r2] : [r2, r1];
+    expect(vencedor.status).toBe(201);
+    expect([409, 422]).toContain(perdedor.status);
+    if (perdedor.status === 422) expect(perdedor.body.error).toBe("CABINE_OCUPADA");
     const gravados = await db
       .select({ id: atendimentosTable.id })
       .from(atendimentosTable)
@@ -100,7 +111,7 @@ describe("Lote 17 — agendamento sob concorrência", () => {
     expect(gravados).toHaveLength(1);
   });
 
-  it("mesma vendedora + mesmo início em cabines diferentes: [201, 409], um só no banco", async () => {
+  it("mesma vendedora + mesmo início em cabines diferentes: um 201, o outro recusado, um só no banco", async () => {
     const [leadA, leadB] = await Promise.all([criarLead(f), criarLead(f)]);
     const inicio = dia("2027-03-11").toISOString();
 
@@ -114,7 +125,11 @@ describe("Lote 17 — agendamento sob concorrência", () => {
       }),
     ]);
 
-    expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    // E115: mesmos dois finais legítimos do caso da cabine, acima.
+    const [vencedor, perdedor] = r1.status === 201 ? [r1, r2] : [r2, r1];
+    expect(vencedor.status).toBe(201);
+    expect([409, 422]).toContain(perdedor.status);
+    if (perdedor.status === 422) expect(perdedor.body.error).toBe("VENDEDORA_OCUPADA");
     const gravados = await db
       .select({ id: atendimentosTable.id })
       .from(atendimentosTable)
@@ -127,9 +142,13 @@ describe("Lote 17 — agendamento sob concorrência", () => {
 
   it("mesmo vestido + janelas sobrepostas sob corrida: [201, 409], um bloqueio só", async () => {
     // O check da rota (verificarDisponibilidade) roda ANTES do insert, sem
-    // transação: sob corrida os dois passam. Quem decide é o EXCLUDE gist de
-    // vestido×daterange — o perdedor leva 23P01, que o handler traduz em 409
-    // (sem a lista amigável de conflitos, mas nunca 500 e nunca duplicata).
+    // transação: numa corrida apertada os dois passam por ele e quem decide é
+    // o EXCLUDE gist de vestido×daterange — o perdedor leva 23P01, ou DEADLOCK
+    // 40P01 quando os dois se cruzam na checagem especulativa do índice
+    // (medido: 34 em 300 corridas). O handler traduz os dois em 409 (E143 —
+    // o 40P01 fora do mapa era o flake [201, 500] desta suíte). Numa corrida
+    // frouxa o perdedor nem chega ao banco: a pré-checagem já viu a linha do
+    // vencedor e responde 409 VESTIDO_INDISPONIVEL. Nunca 500, nunca duplicata.
     const vestido = await criarVestido(f);
     const [leadA, leadB] = await Promise.all([criarLead(f), criarLead(f)]);
     const casamento = dia("2027-09-18").toISOString();
@@ -144,6 +163,16 @@ describe("Lote 17 — agendamento sob concorrência", () => {
     ]);
 
     expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    // O corpo entra no assert (lição da S20): o perdedor tem TRÊS finais
+    // legítimos — a pré-checagem da rota viu a linha do vencedor commitada
+    // (VESTIDO_INDISPONIVEL, o mesmo padrão do 422 do E115 acima), a exclusão
+    // do gist (23P01 → CONFLITO_DE_DISPONIBILIDADE) ou o deadlock da checagem
+    // especulativa (40P01 → OPERACAO_CONCORRENTE). A primeira versão deste
+    // assert listava só os dois últimos e flakou em 1/20 passadas — o
+    // vermelho está no E143.md.
+    const perdedor = r1.status === 409 ? r1 : r2;
+    expect(["VESTIDO_INDISPONIVEL", "CONFLITO_DE_DISPONIBILIDADE", "OPERACAO_CONCORRENTE"])
+      .toContain(perdedor.body.error);
     const gravados = await db
       .select({ id: bloqueioVestidosTable.id })
       .from(bloqueioVestidosTable)

@@ -10,10 +10,12 @@ test.describe("Seleção de loja", () => {
     await expect(page.getByText(estado.lojaNome)).toBeVisible();
   });
 
-  // FALHA ESPERADA no main (achado NOVO descoberto na execução): clicar na
-  // loja grava a sessão no servidor, mas a SPA volta para /selecionar-loja —
-  // selecionar-loja.tsx:15 não invalida o getMe e app-layout.tsx:27 redireciona
-  // porque o activeLojaId em memória continua null. Só um F5 destrava.
+  // Era FALHA ESPERADA no main: clicar na loja gravava a sessão no servidor mas
+  // a SPA voltava para /selecionar-loja, porque a tela não invalidava o getMe e
+  // o AppLayout redirecionava com o `activeLojaId` em memória ainda null — só
+  // um F5 destravava. Passa desde a Onda 0 (rotas aninhadas) + a adoção do
+  // fix/auditoria; conferido em 2026-07-25 revertendo o D1/E93, que NÃO é o
+  // conserto deste caso. O comentário anterior dizia o contrário e envelheceu.
   test("selecionar a loja navega ao dashboard sem precisar de F5", async ({ page }) => {
     await loginViaUI(page, estado.adminEmail, estado.senha);
     await expect(page).toHaveURL(/selecionar-loja/);
@@ -24,9 +26,10 @@ test.describe("Seleção de loja", () => {
     ).toHaveURL(/dashboard/, { timeout: 8_000 });
   });
 
-  // FALHA ESPERADA no main (achado C5): selecionar-loja.tsx usa useListLojas()
-  // → GET /api/admin/lojas (superadmin-only) em vez das lojas da sessão.
-  // A vendedora COM vínculo no banco vê "Nenhuma loja encontrada" e trava aqui.
+  // Era FALHA ESPERADA no main (achado C5): a tela consumia `useListLojas()` →
+  // GET /api/admin/lojas (superadmin-only) em vez das lojas da sessão, e a
+  // vendedora COM vínculo no banco via "Nenhuma loja encontrada". Corrigido —
+  // `selecionar-loja.tsx` lê `session.lojas` do /auth/me. Verde em 2026-07-25.
   test("vendedora com vínculo vê a própria loja para selecionar", async ({ page }) => {
     await loginViaUI(page, estado.mariaEmail, estado.senha);
     await expect(page).toHaveURL(/selecionar-loja/);

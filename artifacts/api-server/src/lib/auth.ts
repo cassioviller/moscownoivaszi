@@ -140,25 +140,34 @@ export async function buscarLojasUsuario(usuarioId: string, isSuperAdmin: boolea
 export async function getPermissoes(usuarioId: string, lojaId: string, isSuperAdmin: boolean) {
   if (isSuperAdmin) return null; // Bypass
 
-  const [vinculo] = await db
+  /**
+   * Vínculo e override numa consulta só.
+   *
+   * Eram duas SEQUENCIAIS (a segunda esperando o `perfilId` da primeira), e
+   * esta função roda em TODA request protegida por `requireModulo` — o caminho
+   * mais quente do servidor. O `leftJoin` resolve com o mesmo resultado: o
+   * override é opcional por definição, e a chave dele é (loja, perfil), que a
+   * própria linha do vínculo já dá.
+   */
+  const [linha] = await db
     .select({
-      perfilId: usuariosLojasTable.perfilId,
       acessosModulos: perfisTable.acessosModulos,
+      override: perfilOverridesLojasTable.acessosModulos,
     })
     .from(usuariosLojasTable)
     .innerJoin(perfisTable, eq(perfisTable.id, usuariosLojasTable.perfilId))
+    .leftJoin(
+      perfilOverridesLojasTable,
+      and(
+        eq(perfilOverridesLojasTable.perfilId, usuariosLojasTable.perfilId),
+        eq(perfilOverridesLojasTable.lojaId, lojaId),
+      ),
+    )
     .where(and(eq(usuariosLojasTable.usuarioId, usuarioId), eq(usuariosLojasTable.lojaId, lojaId)));
 
-  if (!vinculo) return null;
-
-  const [override] = await db
-    .select({
-      acessosModulos: perfilOverridesLojasTable.acessosModulos,
-    })
-    .from(perfilOverridesLojasTable)
-    .where(and(eq(perfilOverridesLojasTable.lojaId, lojaId), eq(perfilOverridesLojasTable.perfilId, vinculo.perfilId)));
+  if (!linha) return null;
 
   // Havendo override, ele SUBSTITUI o template — não se mistura. Um override
   // meio-aplicado seria impossível de auditar depois ("de onde veio o acesso?").
-  return resolverAcessosEfetivos(vinculo.acessosModulos, override?.acessosModulos ?? null);
+  return resolverAcessosEfetivos(linha.acessosModulos, linha.override ?? null);
 }

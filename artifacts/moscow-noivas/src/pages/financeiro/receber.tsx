@@ -1,22 +1,22 @@
 /**
  * Contas a receber — a carteira de entrada da loja: o que vem das noivas.
  *
- * A API devolve TODAS as parcelas da loja (`listParcelas` não tem params), então
- * filtro e intervalo são resolvidos no cliente. O intervalo mira o VENCIMENTO
+ * O intervalo é recortado no SERVIDOR (`listParcelas` recebe `de`/`ate` por
+ * vencimento desde o E79) e refiltrado aqui como cinto de segurança; o filtro
+ * por status é do cliente. O intervalo mira o VENCIMENTO
  * (data de negócio) em todos os filtros, inclusive "recebidas": a pergunta da
  * tela é "o que vence nesta janela", não "o que entrou no caixa" — essa é a do
  * fluxo de caixa. Atraso é sempre derivado (`estaAtrasada`), nunca lido do status.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListParcelas,
   getListParcelasQueryKey,
-  useReceberParcela,
   useEstornarParcela,
   getExportarParcelasUrl,
   type Parcela,
-  type ReceberParcelaInputFormaRecebimento,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
@@ -25,21 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,12 +36,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
+import { casaComBusca, recorteDaConsulta } from "@/lib/financeiro/busca";
+import { Vazio } from "@/components/estado";
 import {
-  ROTULO_FORMA,
-  FORMAS,
   rotuloForma,
   estaAtrasada,
   vencidas,
@@ -63,15 +49,24 @@ import {
   saldoAberto,
   teveRecebimento,
 } from "@/lib/financeiro/forma";
-import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
-import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { hojeLocal, resolverIntervalo, negocioNoIntervalo, addMeses } from "@/lib/financeiro/datas";
+import { reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { ResumoCard, invalidarCaixa } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
+import { mensagemApi } from "@/lib/erro-api";
+import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   PARCELA_NAO_PAGA: "Este recebimento não está pago — nada a estornar.",
   PARCELA_JA_RECEBIDA: "Esta parcela já foi recebida.",
   PARCELA_CANCELADA: "Parcela cancelada não pode ser recebida.",
   CONTRATO_NAO_ATIVO: "Contrato cancelado — sem movimentação de parcelas.",
+  // B6/E94: a rota passou a recusar o recebimento quando a parcela mudou entre
+  // a leitura e a gravação — é o que impede dois lançamentos simultâneos de
+  // perderem um. Sem esta linha, trocaríamos perda de dinheiro por um "HTTP
+  // 409" na cara da vendedora. A ação que resolve é reabrir e conferir, e a
+  // lista atrás do diálogo já foi invalidada pelo movimento que venceu.
+  PARCELA_MUDOU: "Alguém acabou de receber nesta parcela — confira o valor e lance de novo.",
 };
 
 
@@ -88,7 +83,12 @@ type FiltroReceber = (typeof FILTROS)[number]["chave"];
 
 export default function Receber() {
   const naLoja = useCaminhoDaLoja();
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // Receber e estornar parcela são guardados pelo módulo **leads** no servidor
+  // (contratos.ts:76 — B9/E101, "a noiva paga na mão de quem a atendeu"), e
+  // esta tela não tinha gate nenhum: os dois botões apareciam para toda gente
+  // do financeiro e o 403 só chegava depois do clique, no diálogo.
+  const podeMovimentar = podeNoModulo(acessosModulos, "leads", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -97,19 +97,46 @@ export default function Receber() {
     "abertas") as FiltroReceber;
   const intervalo = resolverIntervalo(searchParams.get("ini"), searchParams.get("fim"));
 
-  // Recebimento
+  // E124/B4 — a busca do balcão. Debounce de 300ms (molde de noivas/index).
+  const [busca, setBusca] = useState("");
+  const [buscaAplicada, setBuscaAplicada] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaAplicada(busca.trim()), 300);
+    return () => clearTimeout(t);
+  }, [busca]);
+  const buscando = buscaAplicada.length > 0;
+
+  // Recebimento — o diálogo virou componente no F28 (a cobrança precisa dele
+  // também); daqui só sai QUAL parcela, e o preenchimento é dele.
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
-  const [valorRecebido, setValorRecebido] = useState("");
-  const [dataRecebimento, setDataRecebimento] = useState(hojeLocal());
-  const [formaRecebimento, setFormaRecebimento] = useState<ReceberParcelaInputFormaRecebimento | "">("");
 
   // Estorno
   const [parcelaEstornar, setParcelaEstornar] = useState<Parcela | null>(null);
 
-  // A tela é "o que vence nesta janela" — o recorte agora acontece no servidor
-  // (de/ate por vencimento, dia local). O filtro client-side abaixo permanece
-  // como cinto de segurança da mesma regra.
-  const janelaVencimento = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
+  /**
+   * A tela é "o que vence nesta janela" — o recorte acontece no servidor
+   * (de/ate por vencimento, dia local). O filtro client-side abaixo permanece
+   * como cinto de segurança da mesma regra.
+   *
+   * **F29/E98 — menos "Atrasadas".** Este filtro rodava sobre a janela do mês
+   * corrente, então quem clicava lia os atrasos de julho achando que lia a
+   * inadimplência inteira: uma parcela vencida em março simplesmente não
+   * existia na tela. É a pergunta de dinheiro mais perigosa do sistema para se
+   * responder pela metade — e a régua certa já existia no produto, em
+   * `/cobranca`, que pede `status: "abertas"` SEM janela.
+   *
+   * Atrasado não tem janela por definição: se venceu e não foi pago, é atraso,
+   * seja de ontem ou de dois anos.
+   */
+  const semJanela = filtro === "atrasadas";
+  // E124/B4: com busca ativa a janela também cai — "a pessoa na sua frente
+  // não tem janela". A decisão é pura e testada em `lib/financeiro/busca.ts`.
+  const janelaVencimento = recorteDaConsulta({
+    buscando,
+    semJanela,
+    iniYMD: intervalo.iniYMD,
+    fimYMD: intervalo.fimYMD,
+  });
   const parcelas = useListParcelas(activeLojaId!, janelaVencimento, {
     query: {
       queryKey: getListParcelasQueryKey(activeLojaId!, janelaVencimento),
@@ -117,7 +144,6 @@ export default function Receber() {
     },
   });
 
-  const receber = useReceberParcela();
   const estornar = useEstornarParcela();
 
   const hoje = hojeLocal();
@@ -131,10 +157,14 @@ export default function Receber() {
     setSearchParams(proximo, { replace: true });
   };
 
-  const naJanela = useMemo(
-    () => (parcelas.data ?? []).filter((p) => negocioNoIntervalo(p.vencimento, intervalo)),
-    [parcelas.data, intervalo.iniYMD, intervalo.fimYMD],
-  );
+  const naJanela = useMemo(() => {
+    const todas = parcelas.data ?? [];
+    // Buscando: o recorte é o NOME, não a janela (B4) — o nome da noiva desce
+    // em cada parcela desde o E3/E98; aqui ele finalmente vira busca.
+    if (buscando) return todas.filter((p) => casaComBusca(p.contrato?.lead?.noivaNome, buscaAplicada));
+    if (semJanela) return todas;
+    return todas.filter((p) => negocioNoIntervalo(p.vencimento, intervalo));
+  }, [parcelas.data, intervalo.iniYMD, intervalo.fimYMD, semJanela, buscando, buscaAplicada]);
 
   // Abertas contam o SALDO (E49): a parcela meio recebida entra aqui com o
   // que falta, e no "recebido" com o que entrou — as duas coisas ao mesmo
@@ -159,68 +189,24 @@ export default function Receber() {
     return filtrada.sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   }, [naJanela, filtro, hoje]);
 
-  const invalidarParcelas = () =>
-    queryClient.invalidateQueries({ queryKey: getListParcelasQueryKey(activeLojaId!) });
+  // D9: um recebimento não muda só as parcelas — muda o fluxo, o DRE, o alerta
+  // de caixa (montado no dashboard e no sino) e o realizado. A lista mora em
+  // `lib/financeiro/cache.ts`.
+  const invalidarMovimento = () => invalidarCaixa(queryClient, activeLojaId!);
 
   const rotuloParcela = (p: Parcela) =>
     p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`;
-
-  const abrirReceber = (parcela: Parcela) => {
-    // Sugere o que FALTA, não o previsto: numa parcela meio recebida, repetir
-    // o valor cheio faria a vendedora cobrar de novo o que já entrou.
-    setValorRecebido(saldoAberto(parcela).toFixed(2).replace(".", ","));
-    setDataRecebimento(hojeLocal());
-    setFormaRecebimento("");
-    setParcelaReceber(parcela);
-  };
-
-  const onReceber = async () => {
-    if (!parcelaReceber) return;
-    const valor = parseValor(valorRecebido);
-    if (valor === null || Number.isNaN(valor) || valor <= 0) {
-      toast({ title: "Valor recebido inválido", variant: "destructive" });
-      return;
-    }
-    if (!dataRecebimento) {
-      toast({ title: "Informe a data do recebimento", variant: "destructive" });
-      return;
-    }
-    // `recebidoEm` é um INSTANTE: para hoje vale o agora real; para um dia
-    // passado, meio-dia de São Paulo mantém o dia local correto.
-    const recebidoEm =
-      dataRecebimento === hojeLocal() ? new Date().toISOString() : diaParaISO(dataRecebimento);
-    try {
-      await receber.mutateAsync({
-        lojaId: activeLojaId!,
-        parcelaId: parcelaReceber.id,
-        data: {
-          valorRecebido: valor,
-          recebidoEm,
-          ...(formaRecebimento ? { formaRecebimento } : {}),
-        },
-      });
-      await invalidarParcelas();
-      toast({ title: "Recebimento registrado" });
-      setParcelaReceber(null);
-    } catch (err) {
-      toast({
-        title: "Erro ao receber",
-        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
-        variant: "destructive",
-      });
-    }
-  };
 
   const onEstornar = async () => {
     if (!parcelaEstornar) return;
     try {
       await estornar.mutateAsync({ lojaId: activeLojaId!, parcelaId: parcelaEstornar.id });
-      await invalidarParcelas();
+      await invalidarMovimento();
       toast({ title: "Recebimento estornado" });
       setParcelaEstornar(null);
     } catch (err) {
       toast({
-        title: "Erro ao estornar",
+        title: "Não deu para estornar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -265,6 +251,25 @@ export default function Receber() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
+        {/* E124/B4 — a operação nº 1 da tela: achar a linha de quem está na
+            sua frente. Antes não havia busca nenhuma, e a parcela do mês que
+            vem exigia ajustar dois campos de data sabendo o vencimento. */}
+        <div className="space-y-1">
+          <Label htmlFor="busca-noiva">Noiva</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="busca-noiva"
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar noiva…"
+              aria-label="Buscar parcela pelo nome da noiva"
+              className="w-56 pl-9"
+              data-testid="input-busca-receber"
+            />
+          </div>
+        </div>
         <div className="space-y-1">
           <Label htmlFor="ini">De</Label>
           <Input
@@ -306,10 +311,25 @@ export default function Receber() {
         ))}
       </div>
 
+      {/* Sem esta linha os campos de data pareceriam quebrados: eles continuam
+          na tela e deixam de valer. Dizer isso é mais barato do que escondê-los
+          — a pessoa precisa saber por que o número mudou. */}
+      {buscando ? (
+        <p className="text-muted-foreground text-sm">
+          Buscando por nome: isto mostra <strong>as parcelas em aberto de qualquer mês</strong> da
+          noiva buscada. O período acima não se aplica enquanto a busca estiver ativa.
+        </p>
+      ) : semJanela ? (
+        <p className="text-muted-foreground text-sm">
+          Atraso não tem janela: isto mostra <strong>tudo que venceu e não foi pago</strong>, de
+          qualquer mês. O período acima não se aplica a este filtro.
+        </p>
+      ) : null}
+
       {parcelas.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar</AlertTitle>
+          <AlertTitle>Não deu para carregar</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar as parcelas.</span>
             <Button variant="outline" size="sm" onClick={() => parcelas.refetch()}>
@@ -320,7 +340,48 @@ export default function Receber() {
       ) : parcelas.isLoading ? (
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       ) : lista.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nada por aqui neste filtro.</p>
+        /* C6/E124 — o vazio sabe POR QUE está vazio (a janela, a busca) e
+           conta, com a saída junto: era só "Nada por aqui neste filtro." */
+        <Vazio
+          titulo={
+            buscando
+              ? `Nenhuma parcela em aberto para “${buscaAplicada}”`
+              : semJanela
+                ? "Nenhuma parcela atrasada"
+                : `Nada com vencimento entre ${diaMesAno(intervalo.iniYMD)} e ${diaMesAno(intervalo.fimYMD)}`
+          }
+          descricao={
+            buscando
+              ? "A busca olha as parcelas em aberto de todos os meses — pode ser que já esteja tudo recebido, ou o nome esteja diferente no cadastro."
+              : semJanela
+                ? "Tudo que venceu foi recebido."
+                : filtro === "abertas"
+                  ? "Pode haver parcelas em meses vizinhos — a janela acima decide o que aparece."
+                  : "A janela acima decide o que aparece nesta lista."
+          }
+          acao={
+            buscando ? (
+              <Button variant="outline" onClick={() => setBusca("")}>
+                Limpar busca
+              </Button>
+            ) : semJanela ? undefined : (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => atualizarParams({ fim: addMeses(intervalo.fimYMD, 3) })}
+                >
+                  Ver os próximos 3 meses
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => atualizarParams({ ini: "", fim: "", filtro: "" })}
+                >
+                  Voltar ao mês atual
+                </Button>
+              </div>
+            )
+          }
+        />
       ) : (
         <Card>
           <CardContent className="divide-y p-0">
@@ -329,11 +390,31 @@ export default function Receber() {
               const atrasada = estaAtrasada(p, hoje);
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
+                  {/* E126/E1: a linha PARCIAL ("R$ 400,00 recebido · faltam…")
+                      passava 3px dos 390 — a quebra devolve o dígito à tela. */}
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    {/* E3/E98 — a tela mais trabalhosa do sistema mostrava
+                        quatro linhas visualmente IDÊNTICAS ("Entrada · vence
+                        16/07 · R$ 1.000,00"), e o nome da noiva só existia no
+                        CSV. Quem recebe precisava abrir o contrato de cada uma
+                        para saber de quem era. O dado sempre veio junto — o
+                        `contrato.lead` do GET (o spec até documenta que ele
+                        existe "para a cobrança juntar por aqui"); esta tela só
+                        não o lia. O nome vira a linha 1 e o link. */}
                     <div className="flex min-w-0 flex-col">
-                      <span className="truncate">{rotuloParcela(p)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Vence {dataFmt.format(new Date(p.vencimento))} ·{" "}
+                      {p.contrato?.leadId ? (
+                        <Link
+                          to={naLoja(`/noivas/${p.contrato.leadId}`)}
+                          className="truncate font-medium underline-offset-2 hover:underline"
+                        >
+                          {p.contrato.lead?.noivaNome ?? "Noiva"}
+                        </Link>
+                      ) : (
+                        <span className="truncate font-medium">{rotuloParcela(p)}</span>
+                      )}
+                      <span className="text-muted-foreground text-xs">
+                        {p.contrato?.leadId ? <>{rotuloParcela(p)} · </> : null}
+                        Vence {diaMesAno(p.vencimento)} ·{" "}
                         <Link to={naLoja(`/contratos/${p.contratoId}`)} className="underline underline-offset-2 hover:text-primary">
                           contrato
                         </Link>
@@ -343,14 +424,14 @@ export default function Receber() {
                       <Badge variant={status.variante}>{status.rotulo}</Badge>
                       <div className="flex flex-col items-end">
                         <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
-                          R$ {brl(p.valorPrevisto)}
+                          {brl(p.valorPrevisto)}
                         </span>
                         {/* Mostra a conta, não só o resultado: numa parcela
                             meio recebida o valor da parcela sozinho não diz o
                             que ainda falta — e é o que falta que se cobra. */}
                         {p.status === "PARCIAL" && (
                           <span className="text-xs text-muted-foreground tabular-nums">
-                            R$ {brl(p.valorRecebido ?? 0)} recebido · faltam R${" "}
+                            {brl(p.valorRecebido ?? 0)} recebido · faltam{" "}
                             {brl(saldoAberto(p))}
                           </span>
                         )}
@@ -359,8 +440,11 @@ export default function Receber() {
                   </div>
 
                   {/* Uma parcela PARCIAL tem as DUAS saídas ao mesmo tempo:
-                      receber o que falta ou desfazer o que entrou. */}
-                  {(estaAberta(p) || teveRecebimento(p)) && (
+                      receber o que falta ou desfazer o que entrou. A CANCELADA
+                      que guardou dinheiro ('manter', E115) conta no resumo mas
+                      não oferece nada — o contrato dela morreu, e o servidor
+                      recusaria o estorno com CONTRATO_NAO_ATIVO. */}
+                  {podeMovimentar && p.status !== "CANCELADA" && (estaAberta(p) || teveRecebimento(p)) && (
                     <div className="flex justify-end gap-2 border-t pt-2">
                       {teveRecebimento(p) && (
                         <Button
@@ -373,7 +457,7 @@ export default function Receber() {
                         </Button>
                       )}
                       {estaAberta(p) && (
-                        <Button size="sm" variant="outline" onClick={() => abrirReceber(p)}>
+                        <Button size="sm" variant="outline" onClick={() => setParcelaReceber(p)}>
                           {p.status === "PARCIAL" ? "Receber o restante" : "Receber"}
                         </Button>
                       )}
@@ -386,68 +470,42 @@ export default function Receber() {
         </Card>
       )}
 
-      <Dialog open={!!parcelaReceber} onOpenChange={(aberto) => !aberto && setParcelaReceber(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Registrar recebimento{parcelaReceber ? ` — ${rotuloParcela(parcelaReceber)}` : ""}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="valorRecebido">Valor recebido</Label>
-              <Input
-                id="valorRecebido"
-                value={valorRecebido}
-                onChange={(e) => setValorRecebido(e.target.value)}
-                placeholder="0,00"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="dataRecebimento">Data</Label>
-              <Input
-                id="dataRecebimento"
-                type="date"
-                value={dataRecebimento}
-                onChange={(e) => setDataRecebimento(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="formaRecebimento">Forma</Label>
-              <Select
-                value={formaRecebimento || undefined}
-                onValueChange={(v) => setFormaRecebimento(v as ReceberParcelaInputFormaRecebimento)}
-              >
-                <SelectTrigger id="formaRecebimento">
-                  <SelectValue placeholder="Selecione (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FORMAS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {ROTULO_FORMA[f]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setParcelaReceber(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={onReceber} disabled={receber.isPending}>
-              {receber.isPending ? "Registrando…" : "Registrar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DialogoReceberParcela
+        lojaId={activeLojaId!}
+        parcela={parcelaReceber}
+        onFechar={() => setParcelaReceber(null)}
+      />
 
       <AlertDialog open={!!parcelaEstornar} onOpenChange={(aberto) => !aberto && setParcelaEstornar(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Estornar este recebimento?</AlertDialogTitle>
+            {/* E10/E99 — a confirmação NOMEIA o objeto e o valor.
+
+                Ela dizia "a parcela volta para em aberto e o valor sai do caixa
+                realizado": nem de quem, nem de quanto. Numa tela que lista
+                dezenas de parcelas, quem clica na linha errada não tem como
+                perceber antes de confirmar.
+
+                E o valor é o RECEBIDO, não o previsto — a distinção não é
+                cosmética. Numa PARCIAL de R$ 1.000,00 com R$ 300,00 recebidos, o
+                estorno tira **R$ 300,00** do caixa; escrever R$ 1.000,00 aqui
+                seria a tela mentindo sobre dinheiro num clique sem volta. */}
             <AlertDialogDescription>
-              A parcela volta para em aberto e o valor sai do caixa realizado.
+              {parcelaEstornar && (
+                <>
+                  Os{" "}
+                  <span className="font-medium">
+                    {brl(parcelaEstornar.valorRecebido ?? 0)}
+                  </span>{" "}
+                  recebidos de{" "}
+                  <span className="font-medium">
+                    {parcelaEstornar.contrato?.lead?.noivaNome ?? "esta noiva"}
+                  </span>{" "}
+                  ({rotuloParcela(parcelaEstornar)}) saem do caixa realizado e a
+                  parcela volta para em aberto.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

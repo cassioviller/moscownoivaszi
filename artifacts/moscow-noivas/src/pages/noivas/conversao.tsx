@@ -1,4 +1,8 @@
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
+import { comFiltros } from "@/lib/filtro-url";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useGetConversaoLeads,
@@ -10,8 +14,16 @@ import {
 } from "@workspace/api-client-react";
 import { brl } from "@/lib/formatos";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { EstadoErro } from "@/components/estado-erro";
-import { origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
+import { Erro } from "@/components/estado";
+import { capitalizar, origemLabel, perdidaMotivoLabel } from "@/lib/formatos";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Relatório de conversão (E34): o consumidor que faltava para o motivo de perda
@@ -39,8 +51,20 @@ export default function ConversaoLeads() {
   const { activeLojaId } = useAuth();
   const { lojaId } = useParams();
 
-  const q = useGetConversaoLeads(activeLojaId!, {
-    query: { queryKey: getGetConversaoLeadsQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E142/D7: o período mora na URL (E129) — default FORA (sem params, a
+  // história inteira, o comportamento de sempre). O recorte é por dia de
+  // ENTRADA do lead, no servidor; numerador e denominador do mesmo período.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const de = searchParams.get("de") ?? "";
+  const ate = searchParams.get("ate") ?? "";
+  const definirPeriodo = (nome: "de" | "ate", valor: string) =>
+    setSearchParams((prev) => comFiltros(prev, { [nome]: valor }), { replace: true });
+  const paramsConversao = {
+    ...(de ? { de } : {}),
+    ...(ate ? { ate } : {}),
+  };
+  const q = useGetConversaoLeads(activeLojaId!, paramsConversao, {
+    query: { queryKey: getGetConversaoLeadsQueryKey(activeLojaId!, paramsConversao), enabled: !!activeLojaId },
   });
   // E73: a demanda de arara dos próximos 12 meses — a data do casamento
   // sempre esteve no banco, faltava somar.
@@ -62,7 +86,10 @@ export default function ConversaoLeads() {
   const dados = q.data;
   const maiorMes = Math.max(1, ...(sazonalidade.data ?? []).map((m) => m.total));
 
-  const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" });
+    // A competência já é ancorada ao meio-dia de SP na linha abaixo, então o fuso
+  // não mudava a resposta — mas deixá-lo implícito era o convite para a próxima
+  // cópia deste formatador nascer sem âncora nenhuma.
+  const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" });
   const rotuloMes = (competencia: string) =>
     mesFmt.format(new Date(`${competencia}-15T12:00:00-03:00`));
   const maiorMotivo = dados ? Math.max(1, ...dados.porMotivoPerda.map((m) => m.total)) : 1;
@@ -79,8 +106,45 @@ export default function ConversaoLeads() {
         </p>
       </div>
 
+      {/* E142/D7: a pergunta "e neste período?" — a campanha do trimestre
+          deixava de sumir na média de 3 anos. Sem datas, a história inteira. */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="conv-de">Entraram de</Label>
+          <Input
+            id="conv-de"
+            type="date"
+            className="w-40"
+            value={de}
+            onChange={(e) => definirPeriodo("de", e.target.value)}
+            data-testid="conversao-de"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="conv-ate">Até</Label>
+          <Input
+            id="conv-ate"
+            type="date"
+            className="w-40"
+            value={ate}
+            onChange={(e) => definirPeriodo("ate", e.target.value)}
+            data-testid="conversao-ate"
+          />
+        </div>
+        {(de || ate) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSearchParams((prev) => comFiltros(prev, { de: null, ate: null }), { replace: true })}
+          >
+            Ver a história inteira
+          </Button>
+        )}
+      </div>
+
       {q.isError ? (
-        <EstadoErro titulo="Erro ao carregar a conversão" erro={q.error} onTentarNovamente={() => q.refetch()} />
+        <Erro titulo="Não deu para carregar a conversão" erro={q.error} onTentarNovamente={() => q.refetch()} />
       ) : q.isPending || !dados ? (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="h-40 animate-pulse rounded-lg bg-muted" />
@@ -184,7 +248,7 @@ export default function ConversaoLeads() {
                 (sazonalidade.data ?? []).map((m) => (
                   <div key={m.competencia} className="space-y-1">
                     <div className="flex items-baseline justify-between gap-3 text-sm">
-                      <span className="font-medium capitalize">{rotuloMes(m.competencia)}</span>
+                      <span className="font-medium">{capitalizar(rotuloMes(m.competencia))}</span>
                       <span className="text-muted-foreground tabular-nums">
                         {m.comContrato} com contrato · {m.total} no total
                       </span>
@@ -214,26 +278,26 @@ export default function ConversaoLeads() {
                   caminho.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-xs text-muted-foreground">
-                      <th className="py-2 pr-3 font-normal">Vendedora</th>
-                      <th className="py-2 px-3 font-normal text-right">Atendimentos</th>
-                      <th className="py-2 px-3 font-normal text-right">Reservou</th>
-                      <th className="py-2 px-3 font-normal text-right">Contratos</th>
-                      <th className="py-2 px-3 font-normal text-right">Receita</th>
-                      <th className="py-2 pl-3 font-normal text-right">Ticket médio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <CardContent>
+                <Table className="text-sm">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b text-left text-xs text-muted-foreground">
+                      <TableHead className="py-2 pr-3 font-normal">Vendedora</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Atendimentos</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Reservou</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Contratos</TableHead>
+                      <TableHead className="py-2 px-3 font-normal text-right">Receita</TableHead>
+                      <TableHead className="py-2 pl-3 font-normal text-right">Ticket médio</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {(desempenho.data ?? []).map((v) => (
-                      <tr key={v.vendedoraId} className="border-b last:border-0">
-                        <td className="py-2.5 pr-3 font-medium">{v.nome}</td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">
+                      <TableRow key={v.vendedoraId} className="border-b last:border-0">
+                        <TableCell className="py-2.5 pr-3 font-medium">{v.nome}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">
                           {v.atendimentosConcluidos}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">
+                        </TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">
                           {v.reservou}
                           {v.atendimentosConcluidos > 0 && (
                             <span className="text-muted-foreground">
@@ -241,18 +305,18 @@ export default function ConversaoLeads() {
                               ({pct(v.reservou, v.atendimentosConcluidos)}%)
                             </span>
                           )}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</td>
-                        <td className="py-2.5 px-3 text-right tabular-nums">
-                          {v.receita > 0 ? `R$ ${brl(v.receita)}` : "—"}
-                        </td>
-                        <td className="py-2.5 pl-3 text-right tabular-nums">
-                          {v.contratos > 0 ? `R$ ${brl(v.receita / v.contratos)}` : "—"}
-                        </td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">{v.contratos}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-right tabular-nums">
+                          {v.receita > 0 ? `${brl(v.receita)}` : "—"}
+                        </TableCell>
+                        <TableCell className="py-2.5 pl-3 text-right tabular-nums">
+                          {v.contratos > 0 ? `${brl(v.receita / v.contratos)}` : "—"}
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           )}

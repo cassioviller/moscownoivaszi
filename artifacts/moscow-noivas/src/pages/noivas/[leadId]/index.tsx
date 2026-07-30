@@ -12,10 +12,14 @@ import {
   useCreateOrcamento,
   useListContratos,
   getListContratosQueryKey,
+  useListAtendimentos,
+  getListAtendimentosQueryKey,
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { HistoricoContato } from "@/components/historico-contato";
+import { Erro, NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { LookbookNoiva } from "./lookbook";
 import { PortalNoiva } from "./portal";
 import { Badge } from "@/components/ui/badge";
@@ -40,18 +44,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, Plus, Pencil } from "lucide-react";
+import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM } from "@/lib/formatos";
+import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
+import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
+import { proximoPasso } from "@/lib/proximo-passo";
+import { proximaVisita } from "@/lib/proxima-visita";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
+import { abertoEmCentavos } from "@/lib/financeiro/forma";
+import { reais } from "@/lib/financeiro/dinheiro";
+import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
 import {
   dataLongaFmt,
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
-  moedaFmt,
   whatsappDigits,
-  } from "../helpers";
+} from "../helpers";
 
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -103,6 +113,18 @@ export default function NoivaDetalhe() {
       enabled: !!activeLojaId && !!leadId,
     },
   });
+  const podeVerAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
+  // E125/D3: a pergunta mais frequente do telefone é "que dia é a minha
+  // prova?" — a agenda DELA, recortada no banco e com janela de hoje em
+  // diante (nunca o histórico). Gate de permissão: quem não vê o módulo
+  // agenda não dispara a consulta, e a ficha fica como era.
+  const paramsAgenda = { leadId: leadId!, de: hojeLocal() };
+  const agenda = useListAtendimentos(activeLojaId!, paramsAgenda, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsAgenda),
+      enabled: !!activeLojaId && !!leadId && podeVerAgenda,
+    },
+  });
   const createOrcamento = useCreateOrcamento();
   const updateLead = useUpdateLead();
 
@@ -111,10 +133,12 @@ export default function NoivaDetalhe() {
   const [motivoPerda, setMotivoPerda] = useState<LeadUpdatePerdidaMotivo | "">("");
   const [detalhePerda, setDetalhePerda] = useState("");
 
-  const orcamentosDaNoiva = orcamentos.data ?? [];
-  const contratosDaNoiva = contratos.data ?? [];
+  const orcamentosDaNoiva = orcamentos.data?.itens ?? [];
+  const contratosDaNoiva = contratos.data?.itens ?? [];
 
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  // F1: agendar é do módulo AGENDA — quem só edita a ficha não marca horário.
+  const podeAgendar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const novoOrcamento = async () => {
     try {
@@ -127,8 +151,8 @@ export default function NoivaDetalhe() {
       navigate(`/loja/${lojaId}/orcamentos/${criado.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao criar orçamento",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar orçamento",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -163,8 +187,8 @@ export default function NoivaDetalhe() {
       toast({ title: "Noiva marcada como perdida" });
     } catch (err) {
       toast({
-        title: "Erro ao marcar como perdida",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para marcar como perdida",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -181,25 +205,36 @@ export default function NoivaDetalhe() {
       toast({ title: "Noiva reativada", description: "De volta ao funil, como novo contato." });
     } catch (err) {
       toast({
-        title: "Erro ao reativar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para reativar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
   }
 
+  // E12: 404 não é falha. A ficha de uma noiva que não existe mostrava o mesmo
+  // alerta destrutivo de um 500, com "Tentar novamente" — um botão que não pode
+  // dar certo, porque a busca vai devolver 404 de novo.
+  if (ehNaoEncontrado(error)) {
+    return (
+      <NaoEncontrado
+        titulo="Esta noiva não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${lojaId}/noivas`}>Voltar às noivas</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
   if (isError) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar a noiva</AlertTitle>
-        <AlertDescription className="flex items-center gap-3">
-          <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Tentar novamente
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <Erro
+        titulo="Não deu para carregar a noiva"
+        erro={error}
+        onTentarNovamente={() => refetch()}
+      />
     );
   }
 
@@ -217,66 +252,91 @@ export default function NoivaDetalhe() {
   const urgente = dias !== null && casamentoUrgente(dias);
   const digits = whatsappDigits(lead.whatsapp);
 
+  // F5/E98: o que falta, em uma frase — em vez de ler oito cards para descobrir.
+  const contratoAtivo = contratosDaNoiva.find((c) => c.status === "ATIVO") ?? null;
+  // E125/D3: a visita marcada cala a sugestão de agendar. Enquanto a agenda
+  // conta, o banner espera (E121: sugerir "Agendar" e trocar de ideia um
+  // segundo depois é afirmar o que não se sabe); se ela falhou, o banner cai
+  // no comportamento antigo — a agenda aqui só enriquece a decisão.
+  const visita = proximaVisita(agenda.data ?? []);
+  const agendaContando = podeVerAgenda && estadoDasConsultas(agenda) === "carregando";
+  const passo = agendaContando
+    ? null
+    : proximoPasso({
+        etapa: lead.etapa,
+        leadId: leadId!,
+        temContratoAtivo: !!contratoAtivo,
+        contratoAtivoId: contratoAtivo?.id,
+        temOrcamento: orcamentosDaNoiva.length > 0,
+        ...(podeVerAgenda && !agenda.isError ? { temVisitaFutura: visita !== null } : {}),
+      });
+
   return (
     <div className="space-y-6">
-      <Link
-        to={`/loja/${lojaId}/noivas`}
-        className="inline-block text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Noivas
-      </Link>
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-serif" data-testid="text-noiva-nome">
+      <CabecalhoDetalhe
+        trilha={[{ rotulo: "Noivas", para: "/noivas" }, { rotulo: lead.noivaNome }]}
+        titulo={
+          <span data-testid="text-noiva-nome">
             {lead.noivaNome}
             {lead.noivoNome && <span className="text-muted-foreground"> &amp; {lead.noivoNome}</span>}
-          </h1>
-          <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"} className="mt-2">
+          </span>
+        }
+        chip={
+          <Badge variant={lead.etapa === "PERDIDO" ? "outline" : "secondary"}>
             {etapaLabel(lead.etapa)}
             {lead.etapa === "PERDIDO" && lead.perdidaMotivo && ` · ${perdidaMotivoLabel(lead.perdidaMotivo)}`}
           </Badge>
-          {lead.etapa === "PERDIDO" && lead.perdidaDetalhe && (
-            <p className="mt-1 text-xs text-muted-foreground">{lead.perdidaDetalhe}</p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {podeEditar && lead.etapa === "PERDIDO" && (
-            <Button
-              variant="outline"
-              onClick={reativar}
-              disabled={updateLead.isPending}
-              data-testid="button-reativar-noiva"
-            >
-              {updateLead.isPending ? "Reativando…" : "Reativar"}
-            </Button>
-          )}
-          {podeEditar && lead.etapa !== "PERDIDO" && (
-            <Button
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setPerdendo(true)}
-              data-testid="button-marcar-perdida"
-            >
-              Marcar como perdida
-            </Button>
-          )}
-          {podeEditar && (
-            <Button asChild variant="outline" data-testid="button-editar-noiva">
-              <Link to={`/loja/${lojaId}/noivas/${leadId}/editar`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Editar dados
+        }
+        subtitulo={
+          lead.etapa === "PERDIDO" && lead.perdidaDetalhe ? lead.perdidaDetalhe : undefined
+        }
+        acaoPrimaria={
+          /* F1/E98 — o link que faltava no caminho mais percorrido do app: a
+             ficha sabe o `leadId` e o formulário já aceita `?noiva=`, mas daqui
+             não havia caminho, e agendar custava uma navegação de sidebar mais
+             uma busca por nome — com a noiva do lado, esperando. */
+          podeAgendar && lead.etapa !== "PERDIDO" ? (
+            <Button asChild data-testid="button-agendar-da-ficha">
+              <Link to={`/loja/${lojaId}/atendimentos/novo?noiva=${leadId}`}>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Agendar atendimento
               </Link>
             </Button>
-          )}
-          {/* E77 (LGPD): o direito de acesso — a noiva pede, a loja entrega. */}
-          <Button asChild variant="ghost" size="sm" data-testid="button-exportar-dados">
-            <a href={`/api/lojas/${lojaId}/leads/${leadId}/exportar`} download>
-              Exportar dados (LGPD)
-            </a>
+          ) : undefined
+        }
+        acoes={[
+          ...(podeEditar ? [{ rotulo: "Editar dados", para: `/noivas/${leadId}/editar` }] : []),
+          ...(podeEditar && lead.etapa === "PERDIDO"
+            ? [{ rotulo: updateLead.isPending ? "Reativando…" : "Reativar", onClick: reativar, desabilitada: updateLead.isPending }]
+            : []),
+          /* E77 (LGPD): o direito de acesso — a noiva pede, a loja entrega. */
+          { rotulo: "Exportar dados (LGPD)", href: `/api/lojas/${lojaId}/leads/${leadId}/exportar` },
+          ...(podeEditar && lead.etapa !== "PERDIDO"
+            ? [{ rotulo: "Marcar como perdida", onClick: () => setPerdendo(true), destrutiva: true }]
+            : []),
+        ]}
+      />
+
+      {/* F5/E98 — o que falta, em uma frase e um botão.
+
+          A ficha mostra oito cards, e quando a noiva é nova quase todos estão
+          vazios: a vendedora lia os oito para descobrir que o passo era marcar
+          o primeiro atendimento. A regra é pura e testada
+          (`lib/proximo-passo.ts`), e devolve `null` quando não há o que fazer —
+          uma faixa que aparece sempre vira moldura e ninguém lê. */}
+      {passo && (
+        <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+          <div className="min-w-0">
+            <p className="font-medium">{passo.titulo}</p>
+            {passo.detalhe && (
+              <p className="text-muted-foreground text-sm">{passo.detalhe}</p>
+            )}
+          </div>
+          <Button asChild size="sm" className="shrink-0" data-testid="button-proximo-passo">
+            <Link to={`/loja/${lojaId}${passo.href}`}>{passo.rotuloAcao}</Link>
           </Button>
         </div>
-      </div>
+      )}
 
       <AlertDialog
         open={perdendo}
@@ -367,6 +427,23 @@ export default function NoivaDetalhe() {
             <div className="flex flex-wrap gap-x-10 gap-y-3">
               <Dado rotulo="Horário" valor={lead.casamentoHorario} />
               <Dado rotulo="Local" valor={lead.casamentoLocal} />
+              {/* E125/D3: a resposta de "que dia mesmo é a minha prova?" —
+                  antes custava 2 telas e uma digitação (/atendimentos → aba
+                  Provas → buscar o nome). O link cai na agenda do dia. */}
+              {visita && (
+                <div>
+                  <span className="block text-xs uppercase tracking-wider text-muted-foreground">
+                    {visita.tipo === "PROVA" ? "Próxima prova" : "Próximo atendimento"}
+                  </span>
+                  <Link
+                    to={`/loja/${lojaId}/agenda?dia=${diaLocal(visita.inicio)}`}
+                    className="text-sm underline underline-offset-4 hover:text-primary"
+                    data-testid="link-proxima-visita"
+                  >
+                    {instanteDiaHora(visita.inicio)}
+                  </Link>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -456,7 +533,7 @@ export default function NoivaDetalhe() {
                       className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-primary"
                     >
                       <span>
-                        Criado em {new Date(o.createdAt).toLocaleDateString("pt-BR")}
+                        Criado em {instanteDia(o.createdAt)}
                       </span>
                       <Badge variant={o.status === "APROVADO" ? "default" : o.status === "RECUSADO" ? "outline" : "secondary"}>
                         {STATUS_ORCAMENTO[o.status] ?? o.status}
@@ -489,7 +566,20 @@ export default function NoivaDetalhe() {
                       <span className={c.status === "CANCELADO" ? "text-muted-foreground line-through" : undefined}>
                         {STATUS_CONTRATO[c.status] ?? c.status}
                       </span>
-                      <span className="tabular-nums">{moedaFmt.format(c.valorTotal)}</span>
+                      <span className="text-right">
+                        <span className="block tabular-nums">{brl(c.valorTotal)}</span>
+                        {/* E125/D4: "quanto falta pagar?" respondida na ficha —
+                            o recorte ?leadId= embute o carnê, e a soma é a
+                            régua única do core (a mesma do portal da noiva). */}
+                        {c.status === "ATIVO" && (c.parcelas?.length ?? 0) > 0 && (
+                          <span
+                            className="block text-xs text-muted-foreground tabular-nums"
+                            data-testid="text-falta-receber-ficha"
+                          >
+                            falta receber {brl(reais(abertoEmCentavos(c.parcelas!)))}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -499,7 +589,7 @@ export default function NoivaDetalhe() {
         </Card>
 
         {/* Portal (E78): o link único que substitui gradualmente os soltos. */}
-        <PortalNoiva leadId={leadId!} />
+        <PortalNoiva leadId={leadId!} noivaNome={lead.noivaNome} />
 
         {/* Lookbook (E21): a seleção provada vira link para rever em casa. */}
         <LookbookNoiva leadId={leadId!} />

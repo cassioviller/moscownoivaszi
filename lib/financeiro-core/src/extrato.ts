@@ -1,4 +1,4 @@
-import { centavos } from "./dinheiro";
+import { centavos, parseValor } from "./dinheiro";
 
 /**
  * E70 — conciliação por importação de extrato, sem tocar a rede.
@@ -67,19 +67,43 @@ function diaDeCSV(cru: string): string | null {
   return null;
 }
 
-/** Valor pt-BR ("1.234,56", "-100,00") ou com ponto decimal ("‑100.00"). */
-function valorDeCSV(cru: string): number | null {
-  const t = cru.trim().replace(/^"|"$/g, "").replace(/^R\$\s*/i, "");
-  if (!t) return null;
-  const normalizado = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
-  const n = Number(normalizado);
-  return Number.isFinite(n) && n !== 0 ? n : null;
+/**
+ * Uma célula numérica do CSV, e se ela está escrita como DINHEIRO.
+ *
+ * `monetario` é o que separa a quantia do número de documento: valor de
+ * extrato vem com as duas casas (`1.500,00`, `-230.50`) ou com `R$` na frente;
+ * documento vem inteiro, e quase sempre com zeros à esquerda (`000123`).
+ *
+ * A leitura pt-BR é a mesma régua do `parseValor` — `1.500` sem casas é mil e
+ * quinhentos, não um e meio, e o parser antigo lia isso mil vezes menor.
+ */
+function valorDeCSV(cru: string): { valor: number; monetario: boolean } | null {
+  const bruto = cru.trim().replace(/^"|"$/g, "");
+  const semMoeda = bruto.replace(/^R\$\s*/i, "").trim();
+  if (!semMoeda) return null;
+  const n = parseValor(semMoeda);
+  if (n === null || !Number.isFinite(n) || n === 0) return null;
+  const monetario = /[.,]\d{2}$/.test(semMoeda) || /^R\$/i.test(bruto);
+  return { valor: n, monetario };
 }
 
 /**
  * CSV de extrato: cada linha vira transação quando UMA célula parece data e
  * OUTRA parece valor — cabeçalhos e rodapés de total falham o teste e caem
  * fora sozinhos, sem exigir um layout fixo de banco.
+ *
+ * **O valor é a primeira célula escrita como DINHEIRO, não a primeira célula
+ * numérica.** No layout `Data;Documento;Histórico;Valor;Saldo` — comum em
+ * banco brasileiro — a regra antiga tomava o documento: a linha
+ * `15/07/2026;000123;PIX RECEBIDO MARIA;1.500,00;12.345,67` saía valendo
+ * R$ 123,00 no lugar de R$ 1.500,00. Como a conciliação casa por valor EXATO
+ * em centavos, o recebimento verdadeiro caía em `soSistema`, um fantasma de
+ * R$ 123,00 caía em `soExtrato`, e com toda linha do arquivo sofrendo o mesmo
+ * a tela declarava o mês inteiro divergente — devolvendo à mão exatamente o
+ * trabalho que o E70 existe para eliminar.
+ *
+ * As demais numéricas (o saldo acumulado, o documento) são descartadas: não
+ * são o movimento e também não são descrição.
  */
 export function parseExtratoCSV(texto: string): TransacaoExtrato[] {
   const transacoes: TransacaoExtrato[] = [];
@@ -87,7 +111,8 @@ export function parseExtratoCSV(texto: string): TransacaoExtrato[] {
     if (!linha.trim()) continue;
     const celulas = linha.split(linha.includes(";") ? ";" : ",");
     let data: string | null = null;
-    let valor: number | null = null;
+    let monetario: number | null = null;
+    let qualquerNumero: number | null = null;
     const resto: string[] = [];
     for (const celula of celulas) {
       const comoDia = diaDeCSV(celula);
@@ -97,14 +122,15 @@ export function parseExtratoCSV(texto: string): TransacaoExtrato[] {
       }
       const comoValor = valorDeCSV(celula);
       if (comoValor !== null) {
-        // O valor do movimento é a PRIMEIRA célula numérica; as seguintes
-        // (saldo acumulado) são descartadas — saldo não é movimento nem
-        // descrição.
-        if (valor === null) valor = comoValor;
+        if (comoValor.monetario && monetario === null) monetario = comoValor.valor;
+        if (qualquerNumero === null) qualquerNumero = comoValor.valor;
         continue;
       }
       resto.push(celula.trim().replace(/^"|"$/g, ""));
     }
+    // Sem nenhuma célula escrita como dinheiro (extrato sem centavos), a
+    // primeira numérica volta a ser a aposta — é tudo o que a linha oferece.
+    const valor = monetario ?? qualquerNumero;
     if (data && valor !== null) {
       transacoes.push({ data, descricao: resto.filter(Boolean).join(" ").trim(), valor });
     }

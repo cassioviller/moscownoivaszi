@@ -33,6 +33,22 @@ export type ObrigacaoPrevista = {
 };
 
 /**
+ * A lista de status ABERTO, para quem precisa filtrar ANTES de ter o objeto —
+ * isto é, no SQL (C4/E94).
+ *
+ * O predicado `estaAberta` só serve depois do SELECT, em memória. Quem monta um
+ * `WHERE` precisa da lista, e por não existir uma cada rota reescrevia a sua à
+ * mão: o `/financeiro/fluxo` acertou (`["PREVISTA","PARCIAL"]`), o
+ * `/alerta-caixa` escreveu `eq(status,'PAGA')` e `eq(status,'PREVISTA')` e
+ * perdeu a parcela meio recebida das DUAS pernas, e o dashboard repetiu o mesmo
+ * esquecimento numa terceira query. Três cópias da mesma regra, uma delas certa.
+ *
+ * Exportar a lista e derivar o predicado dela é o que impede a quarta cópia:
+ * agora só existe um lugar onde a resposta muda.
+ */
+export const STATUS_ABERTO = ["PREVISTA", "PARCIAL"] as const;
+
+/**
  * Uma obrigação segue ABERTA enquanto sobra saldo — PREVISTA ou PARCIAL (E49).
  *
  * Antes "aberta" era `status === "PREVISTA"`, e a parcela meio paga sumia do
@@ -40,16 +56,30 @@ export type ObrigacaoPrevista = {
  * de "o que falta" passa por aqui: uma régua só, num lugar só.
  */
 export function estaAberta(obrigacao: { status: string }): boolean {
-  return obrigacao.status === "PREVISTA" || obrigacao.status === "PARCIAL";
+  return (STATUS_ABERTO as readonly string[]).includes(obrigacao.status);
 }
 
 /**
- * Uma obrigação ENTROU no caixa quando algum dinheiro dela chegou — PAGA ou
- * PARCIAL. O valor é sempre `valorRecebido`, nunca o previsto: o caixa
- * realizado só conhece o que de fato entrou.
+ * Uma obrigação ENTROU no caixa quando algum dinheiro dela chegou — e a
+ * pergunta é ao RECEBIMENTO, não ao status (E115/S5).
+ *
+ * Até o E115 isto era a lista `["PAGA","PARCIAL"]`, e ela mentia num caso que
+ * custa dinheiro: cancelar um contrato com `destinoPago: "manter"` vira a
+ * PARCIAL em CANCELADA **preservando** `valorRecebido` — "o valor fica no
+ * caixa" é o contrato documentado do `manter` —, e a lista tirava esses reais
+ * do fluxo, do DRE e da tendência RETROATIVAMENTE, no dia em que entraram. O
+ * extrato do banco continuava mostrando o movimento; o mês parava de bater.
+ *
+ * O estorno (avulso ou em massa) zera `valorRecebido`/`recebidoEm`, então a
+ * mesma pergunta responde "não" para o que foi devolvido. Não existe mais
+ * lista de status para o recebimento: quem precisa disso no SQL filtra por
+ * `recebido_em IS NOT NULL` — que é o que fluxo e DRE já faziam.
  */
-export function teveRecebimento(obrigacao: { status: string }): boolean {
-  return obrigacao.status === "PAGA" || obrigacao.status === "PARCIAL";
+export function teveRecebimento(obrigacao: {
+  recebidoEm?: string | Date | null;
+  valorRecebido?: number | null;
+}): boolean {
+  return obrigacao.recebidoEm != null && centavos(obrigacao.valorRecebido ?? 0) > 0;
 }
 
 /** Centavos que ainda faltam. Nunca negativo — pagar a mais não vira crédito. */
@@ -219,8 +249,15 @@ export function horizonteAberto(
   };
 }
 
-/** Soma do SALDO do que segue aberto — quitado ou cancelado saiu do horizonte. */
-function abertoEmCentavos(itens: readonly ObrigacaoPrevista[]): number {
+/**
+ * Soma do SALDO do que segue aberto — quitado ou cancelado saiu do horizonte.
+ *
+ * Exportada desde o E125: é O saldo devedor de um contrato ("falta receber",
+ * na tela da loja; "falta pagar", no portal da noiva). A conta existia aqui
+ * (privada), no diálogo de cancelar do contrato e no portal — três escritas do
+ * mesmo número, que é a classe de defeito mais cara do repo. Agora é uma.
+ */
+export function abertoEmCentavos(itens: readonly ObrigacaoPrevista[]): number {
   return itens.reduce((s, i) => (estaAberta(i) ? s + saldoAbertoC(i) : s), 0);
 }
 

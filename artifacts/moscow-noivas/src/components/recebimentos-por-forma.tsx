@@ -34,7 +34,7 @@ export function RecebimentosPorFormaLista({ dados }: { dados: RecebimentosPorFor
                   {l.qtd} {l.qtd === 1 ? "recebimento" : "recebimentos"}
                 </span>
               </span>
-              <span className="shrink-0 tabular-nums text-positivo">R$ {brl(l.total)}</span>
+              <span className="shrink-0 tabular-nums text-positivo">{brl(l.total)}</span>
             </div>
             <div className="h-1.5 rounded-sm bg-muted" aria-hidden="true">
               <div

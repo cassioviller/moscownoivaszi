@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
+import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
+import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -12,7 +14,6 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -21,16 +22,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Plus, AlertCircle, Search, LayoutGrid, Columns3, BarChart3 } from "lucide-react";
-import { etapaLabel } from "@/lib/formatos";
+import { Plus, Search, LayoutGrid, Columns3, BarChart3 } from "lucide-react";
+import { diaMesAbrevAno, etapaLabel } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { FunilNoivas } from "./funil";
 import {
-  dataCurtaFmt,
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
-  } from "./helpers";
+} from "./helpers";
+import { Erro, Vazio } from "@/components/estado";
 
 const TODAS_ETAPAS = "TODAS";
 const POR_PAGINA = 24;
@@ -44,26 +45,24 @@ const POR_PAGINA = 24;
 export default function Noivas() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
-  const [busca, setBusca] = useState("");
-  const [buscaAplicada, setBuscaAplicada] = useState("");
-  const [etapa, setEtapa] = useState<string>(TODAS_ETAPAS);
-  const [pagina, setPagina] = useState(1);
-  // E68: ?vista=funil deep-linka direto no quadro (o sino aponta para cá).
-  const [searchParams] = useSearchParams();
-  const [vista, setVista] = useState<"lista" | "funil">(
-    searchParams.get("vista") === "funil" ? "funil" : "lista",
-  );
-
-  // Debounce: a query só muda quando a digitação assenta (300ms).
-  useEffect(() => {
-    const t = setTimeout(() => setBuscaAplicada(busca.trim()), 300);
-    return () => clearTimeout(t);
-  }, [busca]);
-
+  // E129/D5: busca, etapa, página e vista moram na URL — conferir a ficha na
+  // página 3 e voltar volta NA página 3, e o link filtrado abre filtrado.
+  // (?vista=funil já deep-linkava desde o E68 — mas era só lido no mount.)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const etapa = searchParams.get("etapa") ?? TODAS_ETAPAS;
+  const pagina = paginaDaUrl(searchParams);
+  const vista: "lista" | "funil" = searchParams.get("vista") === "funil" ? "funil" : "lista";
+  const [busca, setBusca] = useBuscaNaUrl();
+  const buscaAplicada = searchParams.get("q") ?? "";
   // Filtro novo recomeça da página 1 — página 3 de outro filtro não existe.
-  useEffect(() => {
-    setPagina(1);
-  }, [buscaAplicada, etapa]);
+  const definirEtapa = (valor: string) =>
+    setSearchParams((p) => comFiltros(p, { etapa: valor, pagina: null }, { etapa: TODAS_ETAPAS }), {
+      replace: true,
+    });
+  const definirPagina = (n: number) =>
+    setSearchParams((p) => comFiltros(p, { pagina: n }, { pagina: "1" }), { replace: true });
+  const definirVista = (v: "lista" | "funil") =>
+    setSearchParams((p) => comFiltros(p, { vista: v }, { vista: "lista" }), { replace: true });
 
   const params = useMemo<ListLeadsParams>(
     () => ({
@@ -71,6 +70,9 @@ export default function Noivas() {
       ...(etapa !== TODAS_ETAPAS ? { etapa: etapa as ListLeadsParams["etapa"] } : {}),
       pagina,
       porPagina: POR_PAGINA,
+      // E124/D2 (P2): a noiva de ontem na página 1, não na 34 — o funil e o
+      // combobox já pediam `recentes`; só esta lista ficava no default antigo.
+      ordem: "recentes",
     }),
     [buscaAplicada, etapa, pagina],
   );
@@ -135,7 +137,7 @@ export default function Noivas() {
         </div>
         {/* No funil a etapa é a coluna — filtrar por etapa esvaziaria as outras dez. */}
         {vista === "lista" && (
-          <Select value={etapa} onValueChange={setEtapa}>
+          <Select value={etapa} onValueChange={definirEtapa}>
             <SelectTrigger className="w-56" aria-label="Filtrar por etapa" data-testid="select-filtro-etapa">
               <SelectValue />
             </SelectTrigger>
@@ -153,7 +155,7 @@ export default function Noivas() {
         <ToggleGroup
           type="single"
           value={vista}
-          onValueChange={(v) => v && setVista(v as "lista" | "funil")}
+          onValueChange={(v) => v && definirVista(v as "lista" | "funil")}
           className="ml-auto"
           aria-label="Como ver as noivas"
         >
@@ -174,16 +176,7 @@ export default function Noivas() {
           podeEditar={podeEditar}
         />
       ) : isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar as noivas</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar as noivas" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
@@ -192,7 +185,7 @@ export default function Noivas() {
         </div>
       ) : total === 0 && !temFiltro ? (
         <div className="flex flex-col items-center gap-4 rounded-lg border bg-card px-6 py-16 text-center">
-          <p className="text-lg font-serif">O atelier aguarda a primeira noiva.</p>
+          <p className="text-lg font-serif">O ateliê aguarda a primeira noiva.</p>
           <p className="max-w-md text-sm text-muted-foreground">
             {podeCriar
               ? "Cada história começa por um nome. Adicione a primeira noiva e acompanhe a jornada, prova a prova, até o grande dia."
@@ -205,7 +198,32 @@ export default function Noivas() {
           )}
         </div>
       ) : visiveis.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhuma noiva nesta lente no momento.</p>
+        /* C6/E124: o vazio de filtro nomeia o que filtrou e oferece a saída. */
+        <Vazio
+          titulo={
+            buscaAplicada
+              ? `Nenhuma noiva para “${buscaAplicada}”`
+              : "Nenhuma noiva nesta etapa"
+          }
+          descricao={
+            buscaAplicada
+              ? "A busca olha o nome da noiva, do noivo e o WhatsApp."
+              : etapa !== TODAS_ETAPAS
+                ? `Há noivas na loja — nenhuma está em “${etapaLabel(etapa as NonNullable<ListLeadsParams["etapa"]>)}”.`
+                : undefined
+          }
+          acao={
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBusca("");
+                definirEtapa(TODAS_ETAPAS);
+              }}
+            >
+              Limpar filtros
+            </Button>
+          }
+        />
       ) : (
         <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -237,7 +255,7 @@ export default function Noivas() {
                     <span>Casamento</span>
                     <span className="text-right">
                       <span className="tabular-nums text-foreground">
-                        {n.casamentoData ? dataCurtaFmt.format(new Date(n.casamentoData)) : "a definir"}
+                        {n.casamentoData ? diaMesAbrevAno(n.casamentoData) : "a definir"}
                       </span>
                       {mostrarContagem && (
                         <span className={`block text-xs ${urgente ? "text-destructive" : ""}`}>
@@ -272,7 +290,7 @@ export default function Noivas() {
                 variant="outline"
                 size="sm"
                 disabled={pagina <= 1}
-                onClick={() => setPagina((p) => p - 1)}
+                onClick={() => definirPagina(pagina - 1)}
               >
                 Anterior
               </Button>
@@ -280,7 +298,7 @@ export default function Noivas() {
                 variant="outline"
                 size="sm"
                 disabled={pagina >= totalPaginas}
-                onClick={() => setPagina((p) => p + 1)}
+                onClick={() => definirPagina(pagina + 1)}
               >
                 Próxima
               </Button>

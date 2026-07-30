@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, contratosTable, parcelasTable, registrosCobrancaTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -14,6 +16,11 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  * atraso: contrato + plano com o primeiro vencimento no passado.
  */
 test.describe("Cobrança — histórico por noiva", () => {
+  // Nulo = este run não criou (a fila já tinha atraso): o afterAll só apaga o
+  // que ELE criou, nunca o atraso de outrem.
+  let contratoId: string | null = null;
+  let registroCobrancaId: string | null = null;
+
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
@@ -28,18 +35,20 @@ test.describe("Cobrança — histórico por noiva", () => {
     const jaTemAtraso = lista.some((p) => p.status === "PREVISTA" && p.vencimento < hoje);
     if (jaTemAtraso) return;
 
+    // A rota /equipe expõe `usuarioId`, não `id` — tipar errado fazia o POST
+    // abaixo nascer com vendedoraId undefined (CORPO_INVALIDO).
     const equipe = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/equipe`);
-    const vendedoras = (await equipe.json()) as { id: string }[];
+    const vendedoras = (await equipe.json()) as { usuarioId: string }[];
 
     const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
       data: {
         leadId: estado.leadId,
-        vendedoraId: vendedoras[0]!.id,
+        vendedoraId: vendedoras[0]!.usuarioId,
         valorTotal: 3000,
       },
     });
     expect(contrato.status(), await contrato.text()).toBe(201);
-    const { id: contratoId } = (await contrato.json()) as { id: string };
+    contratoId = ((await contrato.json()) as { id: string }).id;
 
     // 120 dias atrás: cai na faixa "mais de 60 dias" e não depende de quando a
     // suíte roda.
@@ -49,6 +58,19 @@ test.describe("Cobrança — histórico por noiva", () => {
       { data: { numParcelas: 1, primeiroVencimento: vencido } },
     );
     expect(plano.status(), await plano.text()).toBe(201);
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste entre execuções: sem limpar, cada run soma mais
+    // uma noiva "em atraso" ao acervo. Parcelas antes do contrato; o lead é o
+    // do seed e fica.
+    if (registroCobrancaId) {
+      await db.delete(registrosCobrancaTable).where(eq(registrosCobrancaTable.id, registroCobrancaId));
+    }
+    if (contratoId) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
+      await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
+    }
   });
 
   test("abrir o histórico busca só o da noiva aberta, e o contato registrado aparece", async ({
@@ -98,7 +120,15 @@ test.describe("Cobrança — histórico por noiva", () => {
 
     const recado = `E2E ligou em ${Date.now()}`;
     await linha.getByLabel("O que ficou combinado").fill(recado);
-    await linha.getByRole("button", { name: "Registrar contato" }).click();
+    // O id do registro criado fica guardado para o afterAll apagar — só ele,
+    // não o histórico que a fila acumulou de outros lugares.
+    const [respostaPost] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.url().includes("/cobrancas"),
+      ),
+      linha.getByRole("button", { name: "Registrar contato" }).click(),
+    ]);
+    registroCobrancaId = ((await respostaPost.json()) as { id: string }).id;
 
     await expect(linha.getByText(recado)).toBeVisible();
     await expect(registros).toHaveCount(antes + 1);

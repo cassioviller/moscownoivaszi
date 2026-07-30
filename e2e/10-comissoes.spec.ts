@@ -14,7 +14,7 @@ test.describe("Comissões", () => {
   test("página abre sem crash", async ({ page }) => {
     await page.goto("/comissoes");
     await expect(page.getByRole("heading", { name: "Comissões" })).toBeVisible();
-    await expect(page.getByText("Regras de Comissão")).toBeVisible();
+    await expect(page.getByText("Regras de comissão")).toBeVisible();
   });
 
   // Regressão do achado C9-faixas: a faixa existia no banco e a tela não a

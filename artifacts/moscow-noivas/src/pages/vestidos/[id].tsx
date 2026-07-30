@@ -1,3 +1,4 @@
+import { varianteAtivo } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,15 +22,19 @@ import { format, parseISO } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Erro, NaoEncontrado } from "@/components/estado";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
+import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, Image as ImageIcon, Pencil } from "lucide-react";
+import { Image as ImageIcon, Pencil } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl, dataDia } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 /** Rotula as seleções do vestido com nome do atributo e valor da opção (linguagem legível). */
 function rotularSelecoes(
@@ -86,12 +91,17 @@ function textoPeriodo(b: BloqueioVestido): string {
   return `${format(inicio, "dd/MM")} – ${format(fim, "dd/MM")}`;
 }
 
-/** Bloqueio ainda relevante: janela aberta ou com fim de hoje em diante. */
-function bloqueioFuturoOuAberto(b: BloqueioVestido, hoje: Date): boolean {
+/**
+ * Bloqueio ainda relevante: janela aberta ou com fim de hoje em diante.
+ *
+ * E115: o fim era rebatido para a meia-noite do NAVEGADOR e comparado com um
+ * `hoje` de outra régua — a ocupação que termina hoje sumia (ou sobrava) para
+ * quem abre fora do fuso da loja. Dias comparam como STRINGS da loja.
+ */
+function bloqueioFuturoOuAberto(b: BloqueioVestido, hojeYMD: string): boolean {
   const { fim } = periodoDoBloqueio(b);
   if (!fim) return true;
-  const fimDia = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate());
-  return fimDia.getTime() >= hoje.getTime();
+  return diaLocal(fim) >= hojeYMD;
 }
 
 export default function VestidoDetail() {
@@ -136,8 +146,8 @@ export default function VestidoDetail() {
       toast({ title: "Vestido marcado em manutenção" });
     } catch (err) {
       toast({
-        title: "Erro ao marcar manutenção",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para marcar manutenção",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -161,12 +171,15 @@ export default function VestidoDetail() {
 
   // Catálogo de atributos para rotular as características do vestido.
   const catalogoQuery = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   // "Estado atual" do vestido: consulta batch de disponibilidade com a data de
   // hoje (new Date() aqui é aceitável — é UI de estado presente).
-  const hoje = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  // D15: era `format(new Date(), "yyyy-MM-dd")`, o HOJE do navegador. Depois
+  // das 21h de São Paulo um navegador em UTC já está no dia seguinte, e a
+  // ocupação do vestido passaria a ser calculada contra a data errada.
+  const hoje = useMemo(() => hojeLocal(), []);
   const disponibilidadeHoje = useCheckDisponibilidadeVestidos(
     activeLojaId!,
     { data: hoje },
@@ -189,10 +202,13 @@ export default function VestidoDetail() {
   });
 
   const proximosBloqueios = useMemo(() => {
-    const inicioHoje = new Date();
-    inicioHoje.setHours(0, 0, 0, 0);
+    // O dia da LOJA (E111/E115) — o corte "futuro ou aberto" da reserva não
+    // pode depender do fuso do aparelho que abre a ficha do vestido. E115: a
+    // comparação passou a ser entre DIAS da loja ("YYYY-MM-DD"), porque a
+    // versão por instante rebatia o fim na meia-noite do navegador.
+    const hojeYMD = hojeLocal();
     return (bloqueiosQuery.data ?? [])
-      .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, inicioHoje))
+      .filter((b) => b.vestidoId === id && b.canceladoEm == null && bloqueioFuturoOuAberto(b, hojeYMD))
       .sort((a, b) => {
         const inicioA = periodoDoBloqueio(a).inicio?.getTime() ?? Number.MAX_SAFE_INTEGER;
         const inicioB = periodoDoBloqueio(b).inicio?.getTime() ?? Number.MAX_SAFE_INTEGER;
@@ -204,29 +220,24 @@ export default function VestidoDetail() {
 
   if (vestidoErro) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar o vestido</AlertTitle>
-        <AlertDescription className="flex items-center gap-3">
-          <span>{vestidoErroDetalhe instanceof Error ? vestidoErroDetalhe.message : "Falha inesperada ao buscar o vestido."}</span>
-          <Button variant="outline" size="sm" onClick={() => recarregarVestido()}>
-            Tentar novamente
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <Erro
+        titulo="Não deu para carregar o vestido"
+        erro={vestidoErroDetalhe}
+        onTentarNovamente={() => recarregarVestido()}
+      />
     );
   }
 
   if (!vestido) {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Vestido não encontrado — pode ter saído do acervo, ou o link veio errado.
-        </p>
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/loja/${lojaId}/vestidos`}>Voltar ao acervo</Link>
-        </Button>
-      </div>
+      <NaoEncontrado
+        titulo="Este vestido não existe"
+        voltarPara={
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/loja/${lojaId}/vestidos`}>Voltar ao acervo</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -260,28 +271,30 @@ export default function VestidoDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-mono text-muted-foreground">{vestido.codigo}</div>
-          <h1 className="text-3xl font-serif">{vestido.nome}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {renderBadgeHoje()}
-          {vestido.status === "ativo" ? (
-            <Badge variant="secondary" className="text-sm px-3 py-1">Ativo</Badge>
-          ) : (
-            <Badge variant="outline" className="text-sm px-3 py-1">Inativo</Badge>
-          )}
-          {podeEditar && (
+      <CabecalhoDetalhe
+        trilha={[{ rotulo: "Acervo", para: "/vestidos" }, { rotulo: vestido.codigo }]}
+        titulo={vestido.nome}
+        subtitulo={<span className="font-mono">{vestido.codigo}</span>}
+        chip={
+          <span className="flex flex-wrap items-center gap-2">
+            {renderBadgeHoje()}
+            {/* E130/A1: a variante vem da tabela semântica. */}
+            <Badge variant={varianteAtivo(vestido.status === "ativo")} className="text-sm px-3 py-1">
+              {vestido.status === "ativo" ? "Ativo" : "Inativo"}
+            </Badge>
+          </span>
+        }
+        acaoPrimaria={
+          podeEditar ? (
             <Button variant="outline" asChild>
               <Link to={editarHref}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Editar vestido
               </Link>
             </Button>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {vestido.fotos && vestido.fotos.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto pb-1">
@@ -314,7 +327,7 @@ export default function VestidoDetail() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Preço Base</p>
-                <p className="font-medium text-lg">R$ {brl(vestido.precoBase)}</p>
+                <p className="font-medium text-lg">{brl(vestido.precoBase)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Categoria</p>
@@ -389,7 +402,7 @@ export default function VestidoDetail() {
                   <span className="font-medium">
                     {proximaJanela.data.proximaData === proximaJanela.data.aPartirDe
                       ? "a partir de hoje"
-                      : dataDia(proximaJanela.data.proximaData)}
+                      : diaMesAno(proximaJanela.data.proximaData)}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">nenhuma no próximo ano</span>
@@ -397,20 +410,7 @@ export default function VestidoDetail() {
               </p>
             )}
             {bloqueiosQuery.isError ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro ao carregar os bloqueios</AlertTitle>
-                <AlertDescription className="flex items-center gap-3">
-                  <span>
-                    {bloqueiosQuery.error instanceof Error
-                      ? bloqueiosQuery.error.message
-                      : "Falha inesperada ao buscar os bloqueios."}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => bloqueiosQuery.refetch()}>
-                    Tentar novamente
-                  </Button>
-                </AlertDescription>
-              </Alert>
+              <Erro titulo="Não deu para carregar as reservas" erro={bloqueiosQuery.error} onTentarNovamente={() => bloqueiosQuery.refetch()} />
             ) : bloqueiosQuery.isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (

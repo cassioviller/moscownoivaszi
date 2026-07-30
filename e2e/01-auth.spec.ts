@@ -6,7 +6,10 @@ const estado = lerEstado();
 test.describe("Autenticação", () => {
   test("senha errada mostra erro e permanece no login", async ({ page }) => {
     await loginViaUI(page, estado.adminEmail, "senha-completamente-errada");
-    await expect(page.getByText("Erro ao fazer login").first()).toBeVisible();
+    // O título mudou no E92 ("Erro ao fazer login" → "Não consegui entrar"),
+    // junto com a `mensagemApi` que tirou o "HTTP 401 Unauthorized" do corpo do
+    // toast. O que o teste cobra é o mesmo de sempre: a pessoa fica sabendo.
+    await expect(page.getByText("Não consegui entrar").first()).toBeVisible();
     await expect(page).toHaveURL(/login/);
   });
 

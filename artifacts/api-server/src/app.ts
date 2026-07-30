@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
+import { requireSessaoComLoja, requireModulo } from "./middlewares/auth";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { classificarErro } from "./lib/erros";
@@ -51,7 +52,17 @@ app.use(cookieParser());
 // global — o primeiro parser marca req._body e o segundo pula; na ordem
 // inversa, o global (100kb) estoura antes e NENHUMA foto real entra (era o
 // estado até aqui: upload de foto de verdade dava 500).
-app.use("/api/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", express.json({ limit: "6mb" }));
+// B15/E104: o gate vem ANTES do parser. Este era o único ponto do servidor
+// onde trabalho não trivial acontecia antes da autenticação — qualquer um podia
+// fazer o processo montar 6 MB de JSON sem estar logado. O parser continua
+// aqui (e não dentro do router) pelo motivo acima: o global de 100kb não pode
+// vir primeiro. O que mudou é que agora ele só roda para quem passou.
+app.use(
+  "/api/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem",
+  requireSessaoComLoja,
+  requireModulo("vestidos"),
+  express.json({ limit: "6mb" }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

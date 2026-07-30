@@ -72,7 +72,7 @@ export function HistoricoContato({
         onRegistrado?.();
         toast({ title: "Contato registrado" });
       },
-      onError: () => toast({ title: "Não foi possível registrar o contato", variant: "destructive" }),
+      onError: () => toast({ title: "Não deu para registrar o contato", variant: "destructive" }),
     },
   });
 

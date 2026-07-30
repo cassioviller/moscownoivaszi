@@ -70,8 +70,12 @@ test.describe("Custo de comissão no tempo (E52)", () => {
 
     const card = page.getByTestId("serie-comissao");
     await expect(card).toBeVisible();
-    await expect(card).toContainText("fevereiro de 2025");
-    await expect(card).toContainText("março de 2025");
+    // Regex e não string: o E92 unificou as quatro cópias de
+    // `rotuloCompetencia()` numa só, em MINÚSCULA, e pôs `capitalizar()` no
+    // call-site — a tela mostra "Fevereiro de 2025". O que importa aqui é que
+    // cada mês fechado apareça, não de que lado a inicial caiu.
+    await expect(card).toContainText(/fevereiro de 2025/i);
+    await expect(card).toContainText(/março de 2025/i);
 
     // Cada competência com o próprio custo — não o total somado numa linha só.
     await expect(card).toContainText("1.000,00");

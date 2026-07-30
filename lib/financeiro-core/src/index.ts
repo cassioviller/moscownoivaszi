@@ -9,6 +9,7 @@
  */
 export * from "./dinheiro";
 export * from "./datas";
+export * from "./plano";
 export * from "./caixa";
 export * from "./dre";
 export * from "./saldo";

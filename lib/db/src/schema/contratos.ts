@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, index, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -17,7 +17,14 @@ export const contratosTable = pgTable("contratos", {
   leadId: text("lead_id").notNull().references(() => leadsTable.id, { onDelete: "restrict" }),
   orcamentoId: text("orcamento_id").unique().references(() => orcamentosTable.id, { onDelete: "set null" }),
   bloqueioVestidoId: text("bloqueio_vestido_id").references(() => bloqueioVestidosTable.id, { onDelete: "set null" }),
-  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  // restrict (E91/B2): a regra do repo é que autoria é `set null` porque perder
+  // QUEM fez é recuperável e perder O QUE aconteceu não é. Aqui a coluna é
+  // notNull, então `set null` não existe — a única saída honesta é RECUSAR o
+  // delete. Com `cascade`, excluir uma vendedora apagava os contratos dela, as
+  // parcelas PAGAS (com `recebidoEm`), o snapshot de itens e os fechamentos de
+  // comissão: o caixa realizado mudava para trás, sem erro e sem trilha.
+  // O caminho suportado para quem sai do ateliê é INATIVAR (`usuarios.ativo`).
+  vendedoraId: text("vendedora_id").notNull().references(() => usuariosTable.id, { onDelete: "restrict" }),
   status: contratoStatusEnum("status").notNull().default("ATIVO"),
   cpf: text("cpf"),
   vestidoDescricao: text("vestido_descricao"),
@@ -47,7 +54,10 @@ export const contratosTable = pgTable("contratos", {
   comissaoEstornoBaixaMotivo: text("comissao_estorno_baixa_motivo"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // B10/E91: comissão, dashboard e conversão abrem por loja + data do fecho.
+  lojaFechadoEmIdx: index("contratos_loja_fechado_em_idx").on(t.lojaId, t.fechadoEm),
+}));
 
 export const insertContratoSchema = createInsertSchema(contratosTable).omit({ createdAt: true, updatedAt: true });
 export type InsertContrato = z.infer<typeof insertContratoSchema>;
@@ -67,7 +77,10 @@ export const contratoItensTable = pgTable("contrato_itens", {
   valorUnitario: decimal("valor_unitario", { precision: 10, scale: 2, mode: "number" }).notNull(),
   quantidade: integer("quantidade").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // B10/E91: o snapshot é lido por join em toda montagem de contrato/PDF.
+  contratoIdx: index("contrato_itens_contrato_idx").on(t.contratoId),
+}));
 
 export const insertContratoItemSchema = createInsertSchema(contratoItensTable).omit({ createdAt: true });
 export type InsertContratoItem = z.infer<typeof insertContratoItemSchema>;

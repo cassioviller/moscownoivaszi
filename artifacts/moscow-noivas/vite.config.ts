@@ -57,6 +57,38 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        /**
+         * D8/E104 — o que é COMPARTILHADO por muitas rotas sai do pedaço de cada
+         * uma e vira um pedaço próprio, cacheável entre navegações e entre
+         * deploys que não mexem nele.
+         *
+         * Sem isto, o `React.lazy` por rota resolve metade do problema: as 50
+         * rotas passam a ser 50 pedaços, mas cada um carrega a fatia do cliente
+         * gerado e do date-fns que usa, e o que é comum acaba duplicado ou
+         * empurrado de volta para o chunk de entrada.
+         *
+         * A régua é por ORIGEM, não por nome de arquivo: o que vem de
+         * `@workspace/api-client-react` é contrato de API (regenera junto com o
+         * `openapi.yaml`); `date-fns` e o `react-day-picker` que o usa são
+         * biblioteca de terceiros que muda em outro ritmo. Separá-los faz o
+         * cache do navegador sobreviver ao deploy que só mexe em tela.
+         */
+        manualChunks(id) {
+          if (id.includes("api-client-react") || id.includes("@workspace/api-zod")) {
+            return "api-client";
+          }
+          if (id.includes("node_modules/date-fns") || id.includes("react-day-picker")) {
+            return "datas";
+          }
+          if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/")) {
+            return "react";
+          }
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     port,

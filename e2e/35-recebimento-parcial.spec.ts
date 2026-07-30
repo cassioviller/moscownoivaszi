@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, leadsTable, contratosTable, parcelasTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -14,6 +16,7 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  */
 test.describe("Recebimento parcial (E49)", () => {
   const stamp = Date.now();
+  let leadId: string;
   let contratoId: string;
   let parcelaId: string;
 
@@ -28,6 +31,7 @@ test.describe("Recebimento parcial (E49)", () => {
       data: { noivaNome: `E2E Parcial ${stamp}`, origem: "LOJA" },
     });
     expect(lead.status(), await lead.text()).toBe(201);
+    leadId = ((await lead.json()) as { id: string }).id;
 
     // A vendedora do contrato é quem está logada — o seed não publica o id.
     const me = await request.get(`${API_URL}/api/auth/me`);
@@ -36,7 +40,7 @@ test.describe("Recebimento parcial (E49)", () => {
 
     const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
       data: {
-        leadId: (await lead.json()).id,
+        leadId,
         vendedoraId,
         valorTotal: 1000,
         parcelas: [
@@ -54,6 +58,18 @@ test.describe("Recebimento parcial (E49)", () => {
     parcelaId = (await contrato.json()).parcelas?.[0]?.id ?? "";
   });
 
+  test.afterAll(async () => {
+    // O banco do e2e persiste: sem limpar, cada run deixa uma noiva com R$ 600
+    // em atraso eterno na fila de cobrança. Parcelas antes do contrato, e o
+    // contrato antes do lead — o FK lead→contrato é RESTRICT de propósito. A
+    // trilha de auditoria é append-only e fica.
+    if (contratoId) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
+      await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
+    }
+    if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+  });
+
   test("receber metade deixa a parcela PARCIAL, dizendo quanto falta", async ({ page }) => {
     await page.goto(`/contratos/${contratoId}`);
 
@@ -68,7 +84,12 @@ test.describe("Recebimento parcial (E49)", () => {
 
     // A parcela vira PARCIAL e diz o que falta — não some, nem finge inteira.
     await expect(linha.getByText("Parcial", { exact: false })).toBeVisible();
-    await expect(linha.getByText(/faltam R\$ 600,00/)).toBeVisible();
+    // `\s` e não " ": desde o E92 o dinheiro sai de `brl()`, e o `Intl` do
+    // pt-BR separa "R$" do número com espaço RÍGIDO (U+00A0). Playwright
+    // normaliza espaço quando o seletor é string, mas NÃO quando é regex — foi
+    // exatamente aqui que a troca deixou três testes vermelhos sem que uma
+    // linha de comportamento mudasse.
+    await expect(linha.getByText(/faltam R\$\s600,00/)).toBeVisible();
   });
 
   test("o botão passa a oferecer exatamente o restante", async ({ page }) => {

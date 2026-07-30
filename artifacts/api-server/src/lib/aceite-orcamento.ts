@@ -57,5 +57,15 @@ export async function aceitarOrcamentoEnviado(
     return atualizado;
   });
 
-  return aceito?.aceitoEm ?? agora;
+  // Quem PERDEU a corrida devolvia `agora` — o instante desta requisição —, e a
+  // resposta afirmava uma hora de aceite que não existe no banco. O aceite é o
+  // carimbo que a noiva vê ("aceito em ..."), e nas duas abas ele saía
+  // diferente para o MESMO fato. Perdida a corrida, o que vale é o que ficou
+  // gravado: relê-se a linha.
+  if (aceito?.aceitoEm) return aceito.aceitoEm;
+  const [jaAceito] = await db
+    .select({ aceitoEm: orcamentosTable.aceitoEm })
+    .from(orcamentosTable)
+    .where(eq(orcamentosTable.id, orcamento.id));
+  return jaAceito?.aceitoEm ?? agora;
 }

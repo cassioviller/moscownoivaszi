@@ -45,12 +45,14 @@ describe("Filtro ?leadId= em orçamentos e contratos (E62)", () => {
     await fecharPool();
   });
 
+  // E124: a resposta virou página `{ total, itens }` (molde do listLeads);
+  // sem pagina/porPagina os `itens` seguem completos.
   it("orçamentos com ?leadId= devolve só os da noiva", async () => {
     const res = await agent
       .get(`/api/lojas/${f.lojaId}/orcamentos?leadId=${leadA.id}`)
       .expect(200);
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].leadId).toBe(leadA.id);
+    expect(res.body.itens).toHaveLength(1);
+    expect(res.body.itens[0].leadId).toBe(leadA.id);
   });
 
   it("orçamentos com ?status= recorta no banco e compõe com leadId (E83)", async () => {
@@ -58,17 +60,17 @@ describe("Filtro ?leadId= em orçamentos e contratos (E62)", () => {
     const aprovados = await agent
       .get(`/api/lojas/${f.lojaId}/orcamentos?status=APROVADO`)
       .expect(200);
-    expect(aprovados.body).toHaveLength(2);
+    expect(aprovados.body.itens).toHaveLength(2);
 
     const enviados = await agent
       .get(`/api/lojas/${f.lojaId}/orcamentos?status=ENVIADO`)
       .expect(200);
-    expect(enviados.body).toHaveLength(0);
+    expect(enviados.body.itens).toHaveLength(0);
 
     const composto = await agent
       .get(`/api/lojas/${f.lojaId}/orcamentos?status=APROVADO&leadId=${leadA.id}`)
       .expect(200);
-    expect(composto.body).toHaveLength(1);
+    expect(composto.body.itens).toHaveLength(1);
 
     await agent.get(`/api/lojas/${f.lojaId}/orcamentos?status=INVENTADO`).expect(400);
   });
@@ -77,12 +79,13 @@ describe("Filtro ?leadId= em orçamentos e contratos (E62)", () => {
     const res = await agent
       .get(`/api/lojas/${f.lojaId}/contratos?leadId=${leadB.id}`)
       .expect(200);
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].leadId).toBe(leadB.id);
+    expect(res.body.itens).toHaveLength(1);
+    expect(res.body.itens[0].leadId).toBe(leadB.id);
   });
 
   it("sem o filtro, a lista da loja segue inteira", async () => {
     const res = await agent.get(`/api/lojas/${f.lojaId}/orcamentos`).expect(200);
-    expect(res.body.length).toBe(2);
+    expect(res.body.itens.length).toBe(2);
+    expect(res.body.total).toBe(2);
   });
 });

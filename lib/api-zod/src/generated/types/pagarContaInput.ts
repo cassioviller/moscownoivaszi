@@ -8,6 +8,7 @@
 
 export interface PagarContaInput {
   data: Date;
+  /** @minimum 0.01 */
   valorPago: number;
   forma?: string;
   observacoes?: string;

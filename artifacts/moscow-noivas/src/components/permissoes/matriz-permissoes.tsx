@@ -13,6 +13,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /**
  * A grade de permissões: um módulo por linha, uma AÇÃO por coluna.
@@ -103,6 +113,7 @@ export function MatrizPermissoes({
   const [acessos, setAcessos] = useState<AcessosModulos>(() =>
     Object.fromEntries(modulos.map((m) => [m, acoesDe(valores[m])])),
   );
+  const [restaurandoAberto, setRestaurandoAberto] = useState(false);
   const readonly = modo === "readonly";
 
   const alternar = (modulo: string, acao: Acao, marcado: boolean) =>
@@ -167,16 +178,44 @@ export function MatrizPermissoes({
                 {salvando ? "Salvando…" : "Salvar"}
               </Button>
             )}
+            {/* E10/E99 — restaurar joga fora a personalização desta loja, e não
+                há como recuperá-la: o override é apagado, não versionado. O
+                diálogo nomeia o PERFIL e diz o que se perde. */}
             {estado === "personalizado" && onRestaurarPadrao && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onRestaurarPadrao}
-                disabled={salvando}
-                data-testid={`restaurar-padrao-${perfilNome}`}
-              >
-                Restaurar padrão
-              </Button>
+              <AlertDialog open={restaurandoAberto} onOpenChange={setRestaurandoAberto}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setRestaurandoAberto(true)}
+                  disabled={salvando}
+                  data-testid={`restaurar-padrao-${perfilNome}`}
+                >
+                  Restaurar padrão
+                </Button>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Restaurar o padrão de {perfilNome}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      A personalização que esta loja fez em{" "}
+                      <span className="font-medium">{perfilNome}</span> é apagada,
+                      e o perfil volta ao que vale para todas as lojas. Quem está
+                      logado com ele pode ganhar ou perder acesso na hora — e não
+                      há como desfazer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Voltar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={onRestaurarPadrao}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Restaurar padrão
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         )}

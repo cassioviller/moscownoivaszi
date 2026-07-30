@@ -7,9 +7,16 @@
  * conta sozinha é o mesmo caminho com `contaIds` de tamanho 1 — não existe rota
  * "single" nesta tela, para que todo pagamento tenha um `pagamentoId` estornável.
  *
- * `listContasPagar` não devolve o pagamento que quitou a conta, então o
- * `pagamentoId` vem de `listPagamentos` (sem intervalo: a saída pode ter data
- * fora da janela de vencimentos exibida) via seus `itens[].contaPagarId`.
+ * E93/D2: a tela pede a JANELA que ela mostra (`{de, ate}` por vencimento) e
+ * nada mais. Ela baixava a carteira inteira de contas E a de pagamentos — esta
+ * segunda só para achar o `pagamentoId` que torna a saída estornável, porque o
+ * `listContasPagar` não o devolvia. Agora devolve (`conta.pagamento`), com a
+ * fatia RATEADA e quantas contas a mesma saída quitou, e o segundo request
+ * simplesmente deixou de existir. Recortar `listPagamentos` pela janela de
+ * VENCIMENTOS não era opção: a saída que quita uma conta de julho pode ter
+ * data de agosto (atraso) ou de junho (adiantamento), e perdê-la fazia o botão
+ * "Estornar pagamento" sumir e o card "Pago" cair para o previsto — em
+ * silêncio, numa tela de dinheiro.
  *
  * As contas SALARIO aparecem aqui como qualquer outra, mas nascem na tela
  * irmã (financeiro/folha): é lá que o salário-base vira folha da competência
@@ -20,8 +27,6 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useListContasPagar,
   getListContasPagarQueryKey,
-  useListPagamentos,
-  getListPagamentosQueryKey,
   useCreatePagamento,
   useEstornarPagamento,
   useCreateContaPagar,
@@ -70,15 +75,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl, diaMesAno, diaParaISO } from "@/lib/formatos";
+import { fraseEstornoPagamento, fraseRemocaoConta } from "@/lib/financeiro/confirmacoes";
 import { ROTULO_FORMA, FORMAS, rotuloForma, estaAtrasada, vencidas } from "@/lib/financeiro/forma";
-import { hojeLocal, resolverIntervalo, negocioNoIntervalo } from "@/lib/financeiro/datas";
+import { hojeLocal, resolverIntervalo, negocioNoIntervalo, addMeses } from "@/lib/financeiro/datas";
+import { Vazio } from "@/components/estado";
 import { parseValor, reais, centavos, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { ResumoCard, invalidarCaixa } from "./helpers";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
+import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   CONTA_JA_PAGA: "Conta já paga — estorne o pagamento antes.",
   CONTA_NAO_ENCONTRADA: "Alguma conta não existe mais nesta loja.",
+  // B8/E94: a conta de comissão se desfaz reabrindo o fechamento que a criou —
+  // apagá-la por aqui zerava o vínculo em silêncio e a vendedora não recebia.
+  CONTA_DE_COMISSAO: "Esta conta veio de um fechamento de comissão — reabra o fechamento em Comissões para desfazê-la.",
   PAGAMENTO_NAO_ENCONTRADO: "Pagamento não encontrado.",
   INTERVALO_INVALIDO: "Intervalo inválido.",
 };
@@ -132,16 +145,26 @@ export default function Pagar() {
 
   // Confirmações
   const [contaRemover, setContaRemover] = useState<ContaPagar | null>(null);
-  const [pagamentoEstornar, setPagamentoEstornar] = useState<{ pagamentoId: string; contas: number } | null>(null);
+  // E128/C7: o diálogo do estorno só sabia {id, contas} — confirmava uma saída
+  // de caixa sem dizer valor nem de quê. A linha clicada sempre teve os dois.
+  const [pagamentoEstornar, setPagamentoEstornar] = useState<{
+    pagamentoId: string;
+    contas: number;
+    descricao: string;
+    valorDaLinha: number;
+  } | null>(null);
 
-  const contas = useListContasPagar(activeLojaId!, {
-    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
-  });
-  const pagamentos = useListPagamentos(activeLojaId!, undefined, {
-    query: { queryKey: getListPagamentosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // D2: o recorte acontece no SERVIDOR; o filtro client-side abaixo permanece
+  // como cinto de segurança da mesma regra.
+  const janelaVencimento = { de: intervalo.iniYMD, ate: intervalo.fimYMD };
+  const contas = useListContasPagar(activeLojaId!, janelaVencimento, {
+    query: {
+      queryKey: getListContasPagarQueryKey(activeLojaId!, janelaVencimento),
+      enabled: !!activeLojaId,
+    },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const criarPagamento = useCreatePagamento();
   const estornarPagamento = useEstornarPagamento();
@@ -165,30 +188,6 @@ export default function Pagar() {
     return mapa;
   }, [equipe.data]);
 
-  /**
-   * contaPagarId → a saída que quitou a conta. `valor` é a fatia rateada desta
-   * conta (PagamentoItem.valor), não o previsto: quando a saída diverge da soma
-   * das contas, é este o dinheiro que de fato saiu do caixa.
-   */
-  const pagamentoPorConta = useMemo(() => {
-    const mapa = new Map<
-      string,
-      { pagamentoId: string; contas: number; forma: string | null; valor: number }
-    >();
-    for (const pagamento of pagamentos.data ?? []) {
-      const itens = pagamento.itens ?? [];
-      for (const item of itens) {
-        mapa.set(item.contaPagarId, {
-          pagamentoId: pagamento.id,
-          contas: itens.length,
-          forma: pagamento.forma ?? null,
-          valor: item.valor,
-        });
-      }
-    }
-    return mapa;
-  }, [pagamentos.data]);
-
   const naJanela = useMemo(
     () => (contas.data ?? []).filter((c) => negocioNoIntervalo(c.vencimento, intervalo)),
     [contas.data, intervalo.iniYMD, intervalo.fimYMD],
@@ -201,13 +200,12 @@ export default function Pagar() {
       aPagar: reais(somaCentavos(previstas, (c) => c.valorPrevisto)),
       // O que saiu do caixa é a fatia rateada, não o previsto: com valorPago
       // divergente as duas coisas diferem, e o fluxo/DRE contam a rateada.
-      // Sem o item (pagamento fora da lista), o previsto é a melhor estimativa.
-      pago: reais(
-        somaCentavos(pagas, (c) => pagamentoPorConta.get(c.id)?.valor ?? c.valorPrevisto),
-      ),
+      // O servidor manda a fatia junto com a conta (D2), então o fallback para
+      // o previsto virou só a rede de segurança de uma conta PAGA sem item.
+      pago: reais(somaCentavos(pagas, (c) => c.pagamento?.valor ?? c.valorPrevisto)),
       emAtraso: vencidas(naJanela, hoje).total,
     };
-  }, [naJanela, hoje, pagamentoPorConta]);
+  }, [naJanela, hoje]);
 
   const lista = useMemo(() => {
     const filtrada = naJanela.filter((c) => {
@@ -234,11 +232,10 @@ export default function Pagar() {
     [contasSelecionadas],
   );
 
-  const invalidarTudo = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: getListContasPagarQueryKey(activeLojaId!) }),
-      queryClient.invalidateQueries({ queryKey: getListPagamentosQueryKey(activeLojaId!) }),
-    ]);
+  // D9: a saída de caixa muda o fluxo, o DRE e o alerta tanto quanto muda esta
+  // lista — invalidar só os dois lados da própria operação deixava o número do
+  // dashboard e do sino velho. Ver `lib/financeiro/cache.ts`.
+  const invalidarTudo = () => invalidarCaixa(queryClient, activeLojaId!);
 
   const alternarSelecao = (contaId: string) =>
     setSelecionadas((atual) =>
@@ -297,14 +294,14 @@ export default function Pagar() {
         title: contasSelecionadas.length > 1 ? "Pagamento registrado" : "Conta paga",
         description:
           contasSelecionadas.length > 1
-            ? `Uma saída de R$ ${brl(valor)} quitou ${contasSelecionadas.length} contas.`
+            ? `Uma saída de ${brl(valor)} quitou ${contasSelecionadas.length} contas.`
             : undefined,
       });
       setPagarOpen(false);
       setSelecionadas([]);
     } catch (err) {
       toast({
-        title: "Erro ao pagar",
+        title: "Não deu para pagar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -347,7 +344,7 @@ export default function Pagar() {
       setVencimento(hojeLocal());
     } catch (err) {
       toast({
-        title: "Erro ao lançar a conta",
+        title: "Não deu para lançar a conta",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -364,7 +361,7 @@ export default function Pagar() {
       setContaRemover(null);
     } catch (err) {
       toast({
-        title: "Erro ao remover",
+        title: "Não deu para remover",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -389,7 +386,7 @@ export default function Pagar() {
       setPagamentoEstornar(null);
     } catch (err) {
       toast({
-        title: "Erro ao estornar",
+        title: "Não deu para estornar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -407,10 +404,12 @@ export default function Pagar() {
         <div>
           <h1 className="text-3xl font-serif">Contas a pagar</h1>
           <p className="text-sm text-muted-foreground">
-            O que sai do caixa: despesas, fornecedores e a folha do atelier.
+            O que sai do caixa: despesas, fornecedores e a folha do ateliê.
           </p>
         </div>
-        <div className="flex gap-2">
+        {/* E126/E1: o grupo de 3 botões sozinho passa dos 358px úteis —
+            "Exportar CSV" terminava em 414px. */}
+        <div className="flex flex-wrap gap-2">
           {/* Salário-base e geração da folha vivem na tela irmã: aqui é a
               carteira inteira; lá, o recorte mensal do atelier. */}
           <Button variant="outline" asChild>
@@ -484,7 +483,7 @@ export default function Pagar() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-3">
           <span className="text-sm">
             {contasSelecionadas.length}{" "}
-            {contasSelecionadas.length === 1 ? "conta selecionada" : "contas selecionadas"} · R${" "}
+            {contasSelecionadas.length === 1 ? "conta selecionada" : "contas selecionadas"} ·{" "}
             {brl(reais(totalSelecionadoCentavos))}
           </span>
           <div className="flex gap-2">
@@ -501,7 +500,7 @@ export default function Pagar() {
       {contas.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar</AlertTitle>
+          <AlertTitle>Não deu para carregar</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar as contas.</span>
             <Button variant="outline" size="sm" onClick={() => contas.refetch()}>
@@ -512,7 +511,28 @@ export default function Pagar() {
       ) : contas.isLoading ? (
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       ) : lista.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nada por aqui neste filtro.</p>
+        /* C6/E124 — o vazio nomeia a janela ativa e oferece a saída: era só
+           "Nada por aqui neste filtro.", com a janela decidindo em silêncio. */
+        <Vazio
+          titulo={`Nada com vencimento entre ${diaMesAno(intervalo.iniYMD)} e ${diaMesAno(intervalo.fimYMD)}`}
+          descricao="Pode haver contas em meses vizinhos — a janela acima decide o que aparece nesta lista."
+          acao={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => atualizarParams({ fim: addMeses(intervalo.fimYMD, 3) })}
+              >
+                Ver os próximos 3 meses
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => atualizarParams({ ini: "", fim: "", filtro: "" })}
+              >
+                Voltar ao mês atual
+              </Button>
+            </div>
+          }
+        />
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -534,7 +554,7 @@ export default function Pagar() {
               {lista.map((c) => {
                 const atrasada = estaAtrasada(c, hoje);
                 const detalhe = detalheConta(c);
-                const pagamento = pagamentoPorConta.get(c.id);
+                const pagamento = c.pagamento;
                 return (
                   <div key={c.id} className="flex flex-col gap-2 px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
@@ -552,7 +572,7 @@ export default function Pagar() {
                           <span className="text-xs text-muted-foreground">
                             {TIPO_ROTULO[c.tipo]}
                             {detalhe ? ` · ${detalhe}` : ""} · vence{" "}
-                            {dataFmt.format(new Date(c.vencimento))}
+                            {diaMesAno(c.vencimento)}
                           </span>
                         </div>
                       </div>
@@ -568,7 +588,7 @@ export default function Pagar() {
                           <Badge variant="secondary">Prevista</Badge>
                         )}
                         <span className={`font-serif tabular-nums ${atrasada ? "text-destructive" : ""}`}>
-                          R$ {brl(c.valorPrevisto)}
+                          {brl(c.valorPrevisto)}
                         </span>
                       </div>
                     </div>
@@ -601,8 +621,12 @@ export default function Pagar() {
                           disabled={estornarPagamento.isPending}
                           onClick={() =>
                             setPagamentoEstornar({
-                              pagamentoId: pagamento.pagamentoId,
+                              pagamentoId: pagamento.id,
                               contas: pagamento.contas,
+                              descricao: c.descricao,
+                              // A fatia rateada DESTA conta — numa saída
+                              // conjunta o total não desce por linha.
+                              valorDaLinha: pagamento.valor ?? c.valorPrevisto,
                             })
                           }
                         >
@@ -632,19 +656,21 @@ export default function Pagar() {
                 : "A saída de caixa fica estornável a qualquer momento."}
             </DialogDescription>
           </DialogHeader>
+          {/* E136/E6: Enter conclui — o financeiro inteiro não tinha um <form>. */}
+          <form onSubmit={(e) => { e.preventDefault(); void onPagar(); }}>
           <div className="space-y-4">
             <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-3 text-sm">
               {contasSelecionadas.map((c) => (
                 <li key={c.id} className="flex justify-between gap-3">
                   <span className="truncate">{c.descricao}</span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
-                    R$ {brl(c.valorPrevisto)}
+                    {brl(c.valorPrevisto)}
                   </span>
                 </li>
               ))}
               <li className="flex justify-between gap-3 border-t pt-1 font-medium">
                 <span>Previsto</span>
-                <span className="tabular-nums">R$ {brl(reais(totalSelecionadoCentavos))}</span>
+                <span className="tabular-nums">{brl(reais(totalSelecionadoCentavos))}</span>
               </li>
             </ul>
             <div className="space-y-1">
@@ -662,7 +688,7 @@ export default function Pagar() {
                 if (diff === 0) return null;
                 return (
                   <p className="text-xs text-muted-foreground">
-                    {diff > 0 ? "Desconto" : "Acréscimo"} de R$ {brl(reais(Math.abs(diff)))} sobre o
+                    {diff > 0 ? "Desconto" : "Acréscimo"} de {brl(reais(Math.abs(diff)))} sobre o
                     previsto.
                   </p>
                 );
@@ -703,14 +729,15 @@ export default function Pagar() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPagarOpen(false)}>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setPagarOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={onPagar} disabled={criarPagamento.isPending}>
+            <Button type="submit" disabled={criarPagamento.isPending}>
               {criarPagamento.isPending ? "Registrando…" : "Registrar pagamento"}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -722,6 +749,7 @@ export default function Pagar() {
               Salários e comissões nascem na folha do mês — aqui vão despesas e fornecedores.
             </DialogDescription>
           </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); void onCriarConta(); }}>
           <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="tipo">Tipo</Label>
@@ -780,14 +808,15 @@ export default function Pagar() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNovaOpen(false)}>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setNovaOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={onCriarConta} disabled={criarConta.isPending}>
+            <Button type="submit" disabled={criarConta.isPending}>
               {criarConta.isPending ? "Lançando…" : "Lançar"}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -796,8 +825,9 @@ export default function Pagar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover esta conta?</AlertDialogTitle>
             <AlertDialogDescription>
-              {contaRemover?.descricao} sai da carteira de contas a pagar. Só contas em aberto podem
-              ser removidas.
+              {/* E128/C7: "Remover esta conta?" calava o valor — a régua E10
+                  manda a confirmação citar o dinheiro quando houver. */}
+              {contaRemover && fraseRemocaoConta(contaRemover)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -817,9 +847,7 @@ export default function Pagar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Estornar este pagamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pagamentoEstornar && pagamentoEstornar.contas > 1
-                ? `A saída de caixa some e as ${pagamentoEstornar.contas} contas que ela quitou voltam para em aberto.`
-                : "A saída de caixa some e a conta volta para em aberto."}
+              {pagamentoEstornar && fraseEstornoPagamento(pagamentoEstornar)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

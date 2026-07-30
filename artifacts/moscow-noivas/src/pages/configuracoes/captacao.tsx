@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Captação externa (E19): o card que liga o formulário do site/Instagram à
@@ -69,8 +70,8 @@ export function CaptacaoExterna() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao gerar o token",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para gerar o token",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     } finally {

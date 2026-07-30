@@ -11,4 +11,6 @@ export type PortalNoivaProvasItem = {
   inicio: Date;
   /** @nullable */
   confirmadoEm?: Date | null;
+  /** @nullable */
+  remarcacaoPedidaEm?: Date | null;
 };

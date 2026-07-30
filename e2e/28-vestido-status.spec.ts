@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, vestidosTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -26,6 +28,12 @@ test.describe("Vestido — tirar de linha (E42)", () => {
     });
     expect(criado.status(), await criado.text()).toBe(201);
     vestidoId = (await criado.json()).id;
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste: sem isto, cada run deixava mais um vestido fora
+    // de linha no acervo. Sai só o que este spec criou.
+    if (vestidoId) await db.delete(vestidosTable).where(eq(vestidosTable.id, vestidoId));
   });
 
   test("tirar de linha e reativar alterna a situação", async ({ page }) => {

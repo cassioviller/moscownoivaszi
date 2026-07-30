@@ -78,7 +78,7 @@ export default function LookbookPublico() {
                   )}
                   <figcaption className="space-y-1 p-3 text-center">
                     <p className="font-serif text-lg">{v.nome}</p>
-                    <p className="text-sm font-medium text-primary">R$ {brl(v.precoBase)}</p>
+                    <p className="money-sm">{brl(v.precoBase)}</p>
                     {v.atributos.length > 0 && (
                       <p className="text-xs text-muted-foreground">
                         {v.atributos.map((a) => `${a.atributo}: ${a.valor}`).join(" · ")}

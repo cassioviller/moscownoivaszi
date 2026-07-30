@@ -14,6 +14,9 @@ export {
   DIAS_CRITICO,
   transicaoLeadValida,
   etapasAlcancaveis,
+  // F2: quem já converteu não tem mais a origem editável — e a régua é a mesma
+  // que o relatório de conversão usa para contar, não uma cópia da tela.
+  converteu,
   emNegociacao,
   leadParado,
   temperaturaDeParado,

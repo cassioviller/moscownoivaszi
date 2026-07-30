@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListLeads,
   getListLeadsQueryKey,
   useGetLead,
   getGetLeadQueryKey,
+  useCreateLead,
   type ListLeadsParams,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
+import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Command,
   CommandEmpty,
@@ -30,6 +37,22 @@ import { cn } from "@/lib/utils";
 
 const POR_PAGINA = 20;
 
+/**
+ * F4 — a origem é escolhida no MESMO clique que cadastra.
+ *
+ * Um `<Select>` dentro do popover do combobox seria um menu dentro de um menu, e
+ * pediria três interações para o que aqui é uma. Mais importante: depois do F2 a
+ * origem não tem default silencioso, e um botão "Cadastrar" sozinho cairia no
+ * default da coluna (`LOJA`) — reintroduzindo, por outra porta, o exato defeito
+ * que o F2 fecha. Quatro botões tornam a pergunta impossível de pular.
+ */
+const ORIGENS = [
+  { valor: "LOJA", rotulo: "Loja" },
+  { valor: "WHATSAPP", rotulo: "WhatsApp" },
+  { valor: "SITE", rotulo: "Site" },
+  { valor: "INSTAGRAM", rotulo: "Instagram" },
+] as const;
+
 export function ComboboxNoiva({
   lojaId,
   value,
@@ -50,7 +73,17 @@ export function ComboboxNoiva({
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
+  // E140/B9: a jornada é literalmente "a noiva está NO TELEFONE" — o número
+  // está na mão da recepcionista neste segundo, e sem ele a confirmação das
+  // 48h nem é oferecida e a fila degrada para "Sem WhatsApp". Opcional DE
+  // VERDADE: vazio, nada trava.
+  const [whatsappNovo, setWhatsappNovo] = useState("");
   const [buscaAplicada, setBuscaAplicada] = useState("");
+  const { acessosModulos } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const createLead = useCreateLead();
+  const podeCadastrar = podeNoModulo(acessosModulos, "leads", "criar");
 
   useEffect(() => {
     const t = setTimeout(() => setBuscaAplicada(busca.trim()), 300);
@@ -90,6 +123,44 @@ export function ComboboxNoiva({
   const total = leads.data?.total ?? 0;
   const excedente = Math.max(0, total - candidatas.length);
 
+  // O nome a cadastrar é o que está DIGITADO, não o que já foi buscado: quem
+  // termina de escrever e vê "nenhuma noiva encontrada" quer cadastrar aquilo
+  // ali, sem esperar o debounce virar consulta.
+  const nomeNovo = busca.trim();
+  const podeOferecerCadastro = podeCadastrar && nomeNovo.length > 0 && !leads.isLoading;
+
+  const cadastrar = async (origem: (typeof ORIGENS)[number]["valor"]) => {
+    try {
+      const criada = await createLead.mutateAsync({
+        lojaId,
+        data: {
+          noivaNome: nomeNovo,
+          origem,
+          ...(whatsappNovo.trim() ? { whatsapp: whatsappNovo.trim() } : {}),
+        },
+      });
+      // A ficha recém-criada entra no cache pela mesma chave que o `useGetLead`
+      // do gatilho consulta — sem isto o botão mostraria "…" até uma ida ao
+      // servidor que já temos a resposta.
+      queryClient.setQueryData(getGetLeadQueryKey(lojaId, criada.id), criada);
+      await queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(lojaId) });
+      onChange(criada.id);
+      setBusca("");
+      setWhatsappNovo("");
+      setAberto(false);
+      toast({
+        title: "Noiva cadastrada",
+        description: `${criada.noivaNome} entrou no funil. Complete a ficha depois.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Não deu para cadastrar",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Popover open={aberto} onOpenChange={setAberto}>
       <PopoverTrigger asChild>
@@ -108,7 +179,7 @@ export function ComboboxNoiva({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Buscar por nome ou WhatsApp…"
@@ -117,7 +188,45 @@ export function ComboboxNoiva({
           />
           <CommandList>
             <CommandEmpty>
-              {leads.isLoading ? "Buscando…" : "Nenhuma noiva encontrada."}
+              {leads.isLoading ? (
+                "Buscando…"
+              ) : !podeOferecerCadastro ? (
+                "Nenhuma noiva encontrada."
+              ) : (
+                // O `px-3` é daqui: o `CommandEmpty` só tem padding vertical,
+                // porque o texto centrado de "nada encontrado" não precisava de
+                // margem lateral.
+                <div className="space-y-2 px-3 text-left" data-testid="cadastrar-inline">
+                  <p className="text-sm">
+                    Nenhuma noiva chamada{" "}
+                    <span className="font-medium text-foreground">«{nomeNovo}»</span>.
+                    Cadastrar agora — de onde ela veio?
+                  </p>
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="WhatsApp (opcional)"
+                    value={whatsappNovo}
+                    onChange={(e) => setWhatsappNovo(e.target.value)}
+                    data-testid="cadastrar-whatsapp"
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    {ORIGENS.map((o) => (
+                      <Button
+                        key={o.valor}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={createLead.isPending}
+                        onClick={() => cadastrar(o.valor)}
+                        data-testid={`cadastrar-origem-${o.valor}`}
+                      >
+                        {o.rotulo}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CommandEmpty>
             <CommandGroup>
               {candidatas.map((lead) => (

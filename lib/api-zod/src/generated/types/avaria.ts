@@ -16,6 +16,8 @@ export interface Avaria {
   /** A foto vem por /avarias/{id}/foto */
   temFoto: boolean;
   /** @nullable */
+  parcelaId?: string | null;
+  /** @nullable */
   registradoPorNome?: string | null;
   criadaEm: Date;
 }

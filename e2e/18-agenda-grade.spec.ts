@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
 import { lerEstado, API_URL, arrastar } from "./helpers";
 
 const estado = lerEstado();
@@ -20,6 +22,7 @@ const emSP = (hora: string) => `${DIA}T${hora}:00-03:00`;
 test.describe("Agenda — grade do dia", () => {
   let atendimentoId: string;
   let cabineDoisId: string;
+  let cabineCriadaNesteRun = false;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
@@ -52,6 +55,7 @@ test.describe("Agenda — grade do dia", () => {
       });
       expect(cabine.status(), await cabine.text()).toBe(201);
       cabineDoisId = (await cabine.json()).id;
+      cabineCriadaNesteRun = true;
     }
 
     // Re-executável: o dia é fixo, então limpo o que uma corrida anterior
@@ -77,6 +81,18 @@ test.describe("Agenda — grade do dia", () => {
     });
     expect(criado.status(), await criado.text()).toBe(201);
     atendimentoId = (await criado.json()).id;
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste: sem isto, o atendimento deste run ficava no dia
+    // fixo até o cleanup do PRÓXIMO run — cada spec recolhe o seu.
+    if (atendimentoId) {
+      await db.delete(atendimentosTable).where(eq(atendimentosTable.id, atendimentoId));
+    }
+    // A "Cabine E2E Grade" é reusável entre runs: só sai se ESTE run a criou.
+    if (cabineCriadaNesteRun) {
+      await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineDoisId));
+    }
   });
 
   test("a grade desenha as cabines e os horários do expediente", async ({ page }) => {

@@ -1,4 +1,10 @@
 import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link } from "react-router";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +28,8 @@ import {
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Erro } from "@/components/estado";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GripVertical } from "lucide-react";
+import { GripVertical, ArrowRightLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { etapaLabel, PERDIDA_MOTIVO_LABELS } from "@/lib/formatos";
 import {
@@ -51,7 +59,8 @@ import {
   rotuloParado,
   type EtapaLead,
 } from "@/lib/funil";
-import { dataCurtaFmt } from "./helpers";
+import { diaMesAbrevAno } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * O funil kanban (E27). Cada etapa é uma coluna e o card se arrasta de uma para
@@ -126,11 +135,22 @@ export function FunilNoivas({
       });
     } catch (err) {
       toast({
-        title: "Não foi possível mover",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para mover",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
+  }
+
+  /** E136/E10: a mesma decisão do aoSoltar, para a porta sem arrasto. */
+  function moverPorMenu(lead: Lead, destino: EtapaLead) {
+    if (destino === lead.etapa) return;
+    if (destino === "PERDIDO") {
+      setMotivoPerda("");
+      setPerdendo(lead);
+      return;
+    }
+    void moverPara(lead, destino);
   }
 
   function aoSoltar(evento: DragEndEvent) {
@@ -175,6 +195,7 @@ export function FunilNoivas({
               busca={busca}
               podeEditar={podeEditar}
               arrastando={arrastando}
+              onMover={moverPorMenu}
             />
           ))}
         </div>
@@ -252,6 +273,7 @@ function ColunaFunil({
   busca,
   podeEditar,
   arrastando,
+  onMover,
 }: {
   etapa: EtapaLead;
   activeLojaId: string;
@@ -259,9 +281,12 @@ function ColunaFunil({
   busca: string;
   podeEditar: boolean;
   arrastando: Lead | null;
+  onMover: (lead: Lead, destino: EtapaLead) => void;
 }) {
   const params = paramsDaColuna(etapa, busca);
-  const { data, isLoading } = useListLeads(activeLojaId, params, {
+  // E121/C3 — isError e refetch entram: a coluna dizia "Vazia" com total 0
+  // quando a query falhava, indistinguível de um funil realmente vazio.
+  const { data, isLoading, isError, error, refetch } = useListLeads(activeLojaId, params, {
     query: {
       queryKey: getListLeadsQueryKey(activeLojaId, params),
       enabled: !!activeLojaId,
@@ -292,12 +317,20 @@ function ColunaFunil({
       ].join(" ")}
     >
       <div className="flex items-baseline justify-between gap-2 border-b px-3 py-2">
-        <span className="truncate text-sm font-medium">{etapaLabel(etapa)}</span>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{total}</span>
+        {/* E92/E23: <h2>, não <span>. A <h1> "Noivas" continua no topo em
+            qualquer das duas vistas; o que faltava era o degrau abaixo dela —
+            no funil, a etapa É a seção. */}
+        <h2 className="truncate text-sm font-medium">{etapaLabel(etapa)}</h2>
+        {/* Sem resposta não há contagem: "0" no topo da coluna é afirmação. */}
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          {data ? total : "—"}
+        </span>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        {isLoading ? (
+        {isError ? (
+          <Erro titulo="A coluna não carregou" erro={error} onTentarNovamente={() => void refetch()} />
+        ) : isLoading ? (
           <Card className="h-24 animate-pulse" />
         ) : itens.length === 0 ? (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">
@@ -311,6 +344,7 @@ function ColunaFunil({
               lojaId={lojaId}
               arrastavel={podeEditar}
               escondido={arrastando?.id === lead.id}
+              onMover={(destino) => onMover(lead, destino)}
             />
           ))
         )}
@@ -331,11 +365,14 @@ function CardNoiva({
   lojaId,
   arrastavel,
   escondido,
+  onMover,
 }: {
   lead: Lead;
   lojaId: string;
   arrastavel: boolean;
   escondido?: boolean;
+  /** E136/E10: a porta SEM arrasto — soma ao drag, não o substitui. */
+  onMover?: (destino: EtapaLead) => void;
 }) {
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: lead.id,
@@ -378,10 +415,36 @@ function CardNoiva({
             </Link>
             {lead.casamentoData && (
               <span className="block text-xs text-muted-foreground">
-                {dataCurtaFmt.format(new Date(lead.casamentoData))}
+                {diaMesAbrevAno(lead.casamentoData)}
               </span>
             )}
           </div>
+          {/* E136/E10: mover etapa só existia por arrasto — quem navega por
+              teclado não movia NUNCA, e no toque arrastar meia tela é
+              pontaria. O menu SOMA ao arrasto (que está bem — delay 200ms). */}
+          {arrastavel && onMover && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  aria-label={`Mover ${lead.noivaNome} para outra etapa`}
+                  data-testid={`mover-${lead.id}`}
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {ETAPAS_LEAD.filter((e) => e !== lead.etapa).map((etapa) => (
+                  <DropdownMenuItem key={etapa} onSelect={() => onMover(etapa)}>
+                    {etapaLabel(etapa)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {alerta && (

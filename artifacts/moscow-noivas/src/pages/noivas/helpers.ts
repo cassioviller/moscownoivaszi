@@ -3,6 +3,7 @@
  * Datas de negócio nascem ancoradas ao meio-dia de São Paulo (diaParaISO em
  * src/lib/formatos.ts) — exibir/contar em UTC evita off-by-one.
  */
+import { diaDeNegocio, diasEntre, hojeLocal } from "@/lib/financeiro/datas";
 
 /** Formata a data do casamento por extenso ("sábado, 12 de setembro de 2026"). */
 export const dataLongaFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -13,27 +14,27 @@ export const dataLongaFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
-/** Data curta ("12 de set. de 2026") para os cards da lista. */
-export const dataCurtaFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+// `dataCurtaFmt` morava aqui: cópia campo a campo de `diaMesAbrevAno`
+// (formatos.ts) — mesmas opções, mesmo UTC. As seis telas que a usavam passaram
+// a chamar a régua direto.
 
-/** Moeda BRL completa ("R$ 1.234,56"). */
-export const moedaFmt = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+// `moedaFmt` morava aqui — o SEGUNDO formatador de BRL do frontend, contra o
+// invariante do `replit.md` ("todo dinheiro na tela sai de `brl()`", E92, que
+// apagou 98 cópias). Como o irmão em `whatsapp.ts`, ele não divergia hoje: a
+// string sai idêntica. O que ele fazia era manter viva a possibilidade de
+// divergir amanhã, no único lugar em que o repo já pagou para não ter.
 
-/** Dias (inteiros) até o casamento, comparando dias-calendário em UTC. */
+/**
+ * Dias (inteiros) até o casamento, no calendário DA LOJA (E115).
+ *
+ * O "hoje" saía do dia-calendário UTC de `new Date()`: das 21h à meia-noite de
+ * São Paulo o dia UTC já virou, e a lista mostrava "É hoje" na VÉSPERA do
+ * casamento — o ateliê preparava e contatava a noiva no dia errado, toda
+ * noite. O casamento é data de NEGÓCIO (ancorada ao meio-dia SP, o dia UTC é o
+ * dia certo); quem estava no fuso errado era o hoje.
+ */
 export function diasAteCasamento(iso: string): number {
-  const alvo = new Date(iso);
-  const hoje = new Date();
-  const alvoDia = Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth(), alvo.getUTCDate());
-  const hojeDia = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate());
-  return Math.round((alvoDia - hojeDia) / 86_400_000);
+  return diasEntre(hojeLocal(), diaDeNegocio(iso));
 }
 
 /** Rótulo humano da contagem regressiva (só para dias >= 0). */

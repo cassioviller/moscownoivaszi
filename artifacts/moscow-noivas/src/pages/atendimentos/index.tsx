@@ -1,5 +1,8 @@
+import { varianteSituacao } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { comFiltros } from "@/lib/filtro-url";
+import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -40,7 +43,10 @@ import { AlertCircle, CalendarDays, MessageCircle, Plus, Search } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
-import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
+import { instanteHora, instanteDiaMes } from "@/lib/formatos";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 const TODAS = "TODAS";
 
@@ -62,19 +68,28 @@ const DESFECHO_LABELS: Record<string, string> = {
 
 const DESFECHOS = ["RESERVOU", "VAI_PENSAR", "NAO_SERVIU"] as const;
 
-const horaFmt = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
-const dataFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long" });
 
 /**
  * O início REAL do atendimento (E36): a que horas de fato começou e o quanto
  * isso ficou depois do horário marcado. `atendidoEm` era coluna morta; agora
  * mede a espera da noiva sem depender de ninguém anotar nada.
  */
+/**
+ * "540 min adiantado" (E92/E16): ninguém pensa em 540 minutos — são 9 horas. A
+ * partir de 90 min a diferença sai em h/min.
+ */
+function duracaoHumana(min: number): string {
+  if (min < 90) return `${min} min`;
+  const horas = Math.floor(min / 60);
+  const resto = min % 60;
+  return resto === 0 ? `${horas}h` : `${horas}h${String(resto).padStart(2, "0")}`;
+}
+
 function inicioReal(inicio: string, atendidoEm: string): string {
-  const hora = horaFmt.format(new Date(atendidoEm));
+  const hora = instanteHora(atendidoEm);
   const min = Math.round((new Date(atendidoEm).getTime() - new Date(inicio).getTime()) / 60_000);
-  if (min > 2) return `começou ${hora} · ${min} min após o horário`;
-  if (min < -2) return `começou ${hora} · ${Math.abs(min)} min adiantado`;
+  if (min > 2) return `começou ${hora} · ${duracaoHumana(min)} após o horário`;
+  if (min < -2) return `começou ${hora} · ${duracaoHumana(Math.abs(min))} adiantado`;
   return `começou ${hora} · no horário`;
 }
 
@@ -95,22 +110,49 @@ export default function Atendimentos() {
   const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const historico = searchParams.get("quando") === "historico";
 
-  const [busca, setBusca] = useState("");
-  const [vendedoraFiltro, setVendedoraFiltro] = useState(TODAS);
-  const [situacaoFiltro, setSituacaoFiltro] = useState(TODAS);
+  // E129/D5: a fila era a tela mais cara do defeito — filtrar por si mesma,
+  // abrir uma noiva e voltar zerava TUDO (busca, vendedora, situação, janela e
+  // aba), 3+ gestos de novo a cada ida-e-volta do dia. Agora os filtros moram
+  // na URL (`?quando=historico`, que já morava lá, atravessa intacto); a
+  // filtragem continua client-side e instantânea — a busca filtra pelo que se
+  // digita e a URL assenta 300ms atrás (`useBuscaNaUrl`).
+  const [busca, setBusca] = useBuscaNaUrl();
+  const vendedoraFiltro = searchParams.get("vendedora") ?? TODAS;
+  const situacaoFiltro = searchParams.get("situacao") ?? TODAS;
+  const janelaDias = (() => {
+    const n = Number(searchParams.get("janela"));
+    return Number.isInteger(n) && n >= JANELA_PADRAO_DIAS ? n : JANELA_PADRAO_DIAS;
+  })();
+  const aba: "ATENDIMENTO" | "PROVA" =
+    searchParams.get("tipo") === "PROVA" ? "PROVA" : "ATENDIMENTO";
+  const definirFiltroUrl = (nome: string, valor: string | number, padrao: string) =>
+    setSearchParams((p) => comFiltros(p, { [nome]: valor }, { [nome]: padrao }), {
+      replace: true,
+    });
   const [desfechos, setDesfechos] = useState<Record<string, AtendimentoUpdateDesfecho>>({});
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
-  const [janelaDias, setJanelaDias] = useState(JANELA_PADRAO_DIAS);
 
-  // E87: a tela pede o RECORTE, não o acervo — só ATENDIMENTO, dos últimos 90
-  // dias em diante. `de` sem `ate` de propósito: a janela padrão nunca pode
-  // esconder um atendimento futuro. "Carregar mais antigo" dobra a janela;
-  // keepPreviousData segura a lista atual enquanto a maior chega.
+  /**
+   * F11/E97 — a aba. Uma PROVA não podia ser concluída em tela NENHUMA: esta
+   * filtrava `tipo: "ATENDIMENTO"` e a tela de provas só lê. Toda prova ficava
+   * em AGENDADO para sempre — prova esquecida não aparecia em lugar algum, o
+   * contador do sino degradava com o tempo, e o `atendidoEm` do E36 nunca era
+   * preenchido justamente para o atendimento mais demorado do ateliê.
+   *
+   * A aba reaproveita o agrupamento Atrasados/Hoje/Próximos e as ações de
+   * linha inteiras — é menos código do que replicá-las em `/provas`, e a API
+   * já aceitava (é o mesmo `PATCH /atendimentos/:id`).
+   *
+   * E87: a tela pede o RECORTE, não o acervo — dos últimos 90 dias em diante.
+   * `de` sem `ate` de propósito: a janela padrão nunca pode esconder um
+   * atendimento futuro. "Carregar mais antigo" dobra a janela; keepPreviousData
+   * segura a lista atual enquanto a maior chega.
+   */
   const paramsJanela = {
-    tipo: "ATENDIMENTO" as const,
+    tipo: aba,
     de: addDias(hojeLocal(), -janelaDias),
   };
   const atendimentos = useListAtendimentos(activeLojaId!, paramsJanela, {
@@ -121,7 +163,7 @@ export default function Atendimentos() {
     },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const updateAtendimento = useUpdateAtendimento();
   const createOrcamento = useCreateOrcamento();
@@ -174,12 +216,14 @@ export default function Atendimentos() {
 
   // Fila (abertos): atrasados (data vencida, ainda em aberto), hoje e próximos.
   const { atrasados, deHoje, proximos } = useMemo(() => {
-    const inicioHoje = new Date();
-    inicioHoje.setHours(0, 0, 0, 0);
-    const inicioAmanha = new Date(inicioHoje);
-    inicioAmanha.setDate(inicioAmanha.getDate() + 1);
-    const t0 = inicioHoje.getTime();
-    const t1 = inicioAmanha.getTime();
+    // "Hoje" é o dia da LOJA, não o do aparelho: `new Date()` +
+    // `setHours(0,0,0,0)` dá a meia-noite do fuso do NAVEGADOR, e é a mesma
+    // classe que o E111 achou quatro vezes no servidor. A vendedora com o
+    // relógio fora de São Paulo lê a fila em três baldes trocados — atrasado
+    // que não está, e o de hoje caindo em "próximos".
+    const hoje = hojeLocal();
+    const t0 = inicioDoDia(hoje).getTime();
+    const t1 = inicioDoDia(addDias(hoje, 1)).getTime();
     if (historico) return { atrasados: [], deHoje: [], proximos: [] };
     return {
       atrasados: lista.filter((a) => new Date(a.inicio).getTime() < t0),
@@ -203,8 +247,8 @@ export default function Atendimentos() {
       navigate(`/loja/${lojaId}/orcamentos/${criado.id}`);
     } catch (err) {
       toast({
-        title: "Erro ao criar orçamento",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar orçamento",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -234,7 +278,7 @@ export default function Atendimentos() {
     } catch (err) {
       toast({
         title: "Essa mudança não é possível agora",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -264,11 +308,11 @@ export default function Atendimentos() {
       <li key={a.id} className="flex items-start gap-4 px-4 py-3" data-testid={`linha-atendimento-${a.id}`}>
         <div className="flex w-16 shrink-0 flex-col items-center">
           <span className="text-lg font-serif leading-none tabular-nums">
-            {horaFmt.format(new Date(a.inicio))}
+            {instanteHora(a.inicio)}
           </span>
           {comData && (
             <span className="mt-1 text-center text-xs text-muted-foreground">
-              {dataFmt.format(new Date(a.inicio))}
+              {instanteDiaMes(a.inicio)}
             </span>
           )}
         </div>
@@ -286,7 +330,10 @@ export default function Atendimentos() {
           </span>
 
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <Badge variant="secondary">
+            {/* E130/A1: era `secondary` fixo — "Faltou" saía no MESMO cinza de
+                "Agendado", e o estado que pede reação não se distinguia sem
+                ler. A variante vem da tabela semântica. */}
+            <Badge variant={varianteSituacao(a.situacao)}>
               {SITUACAO_LABELS[a.situacao] ?? a.situacao}
               {a.situacao === "CONCLUIDO" && a.desfecho
                 ? ` · ${DESFECHO_LABELS[a.desfecho] ?? a.desfecho}`
@@ -335,6 +382,22 @@ export default function Atendimentos() {
               </>
             )}
 
+            {/* F14: o DURANTE do atendimento. Enquanto a noiva está na cabine,
+                o que a vendedora preenche é interesse e lookbook — e daqui não
+                havia caminho: era abrir a ficha e procurar as abas. Os dois
+                links não dependem de `podeEditar` da agenda, porque quem
+                registra interesse é o módulo de noivas. */}
+            {a.situacao === "EM_ATENDIMENTO" && (
+              <>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to={`/loja/${lojaId}/noivas/${a.leadId}/interesses`}>Interesses</Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to={`/loja/${lojaId}/noivas/${a.leadId}/lookbook`}>Lookbook</Link>
+                </Button>
+              </>
+            )}
+
             {podeEditar && a.situacao === "EM_ATENDIMENTO" && (
               <>
                 <Select
@@ -354,20 +417,20 @@ export default function Atendimentos() {
                     ))}
                   </SelectContent>
                 </Select>
+                {/* F15/E97: as confirmações estavam invertidas. "Concluir" —
+                    reversível, e o desfecho já foi escolhido no seletor ao lado
+                    — pedia um AlertDialog; "Voltar para agendado", que APAGA o
+                    início real medido e o desfecho, não pedia nada. Agora
+                    concluir é direto e desfazer é que avisa. */}
                 <Button
                   size="sm"
                   disabled={updateAtendimento.isPending || !desfechoEscolhido}
                   onClick={() =>
-                    setConfirmacao({
-                      titulo: "Concluir atendimento?",
-                      descricao: `Concluir o atendimento de ${noivaNome}?`,
-                      acao: () =>
-                        aplicar(
-                          a,
-                          { situacao: "CONCLUIDO", desfecho: desfechoEscolhido },
-                          "Atendimento concluído",
-                        ),
-                    })
+                    aplicar(
+                      a,
+                      { situacao: "CONCLUIDO", desfecho: desfechoEscolhido },
+                      "Atendimento concluído",
+                    )
                   }
                 >
                   Concluir
@@ -376,7 +439,15 @@ export default function Atendimentos() {
                   variant="ghost"
                   size="sm"
                   disabled={updateAtendimento.isPending}
-                  onClick={() => aplicar(a, { situacao: "AGENDADO" }, "Voltou para agendado")}
+                  onClick={() =>
+                    setConfirmacao({
+                      titulo: "Voltar para agendado?",
+                      descricao: a.atendidoEm
+                        ? `O atendimento de ${noivaNome} volta a constar como não realizado: o horário de início já medido (${instanteHora(a.atendidoEm)}) e o desfecho são apagados, e não há como recuperá-los.`
+                        : `O atendimento de ${noivaNome} volta a constar como não realizado, e o desfecho é apagado.`,
+                      acao: () => aplicar(a, { situacao: "AGENDADO" }, "Voltou para agendado"),
+                    })
+                  }
                 >
                   Voltar para agendado
                 </Button>
@@ -388,7 +459,15 @@ export default function Atendimentos() {
                 variant="outline"
                 size="sm"
                 disabled={updateAtendimento.isPending}
-                onClick={() => aplicar(a, { situacao: "AGENDADO" }, "Atendimento reaberto")}
+                onClick={() =>
+                  setConfirmacao({
+                    titulo: "Reabrir este atendimento?",
+                    descricao: a.atendidoEm
+                      ? `Ele volta a constar como não realizado: o início já medido (${instanteHora(a.atendidoEm)}) e o desfecho são apagados.`
+                      : "Ele volta a constar como não realizado, e o desfecho é apagado.",
+                    acao: () => aplicar(a, { situacao: "AGENDADO" }, "Atendimento reaberto"),
+                  })
+                }
               >
                 Reabrir
               </Button>
@@ -406,12 +485,14 @@ export default function Atendimentos() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-serif">
-            {historico ? "Atendimentos anteriores" : "Atendimentos"}
+            {historico ? "Atendimentos anteriores" : "Atendimentos e provas"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {historico
               ? "Os atendimentos já finalizados."
-              : "Receba a noiva, registre o atendimento e o desfecho."}
+              : aba === "PROVA"
+                ? "Receba a noiva para a prova, registre como ela terminou."
+                : "Receba a noiva, registre o atendimento e o desfecho."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -433,6 +514,27 @@ export default function Atendimentos() {
         </div>
       </div>
 
+      {/* F11: a aba que faltava. A PROVA usa a MESMA linha, as mesmas ações e o
+          mesmo agrupamento — o que não existia era o caminho até ela. */}
+      <div className="flex gap-1 border-b" role="tablist" aria-label="Tipo de atendimento">
+        {(["ATENDIMENTO", "PROVA"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={aba === t}
+            onClick={() => definirFiltroUrl("tipo", t, "ATENDIMENTO")}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              aba === t
+                ? "border-primary text-foreground"
+                : "text-muted-foreground hover:text-foreground border-transparent"
+            }`}
+          >
+            {t === "ATENDIMENTO" ? "Atendimentos" : "Provas"}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -445,7 +547,7 @@ export default function Atendimentos() {
             className="w-56 pl-9"
           />
         </div>
-        <Select value={vendedoraFiltro} onValueChange={setVendedoraFiltro}>
+        <Select value={vendedoraFiltro} onValueChange={(v) => definirFiltroUrl("vendedora", v, TODAS)}>
           <SelectTrigger className="w-52" aria-label="Filtrar por vendedora">
             <SelectValue />
           </SelectTrigger>
@@ -458,7 +560,7 @@ export default function Atendimentos() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={situacaoValida} onValueChange={setSituacaoFiltro}>
+        <Select value={situacaoValida} onValueChange={(v) => definirFiltroUrl("situacao", v, TODAS)}>
           <SelectTrigger className="w-48" aria-label="Filtrar por situação">
             <SelectValue />
           </SelectTrigger>
@@ -476,7 +578,7 @@ export default function Atendimentos() {
       {atendimentos.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar os atendimentos</AlertTitle>
+          <AlertTitle>Não deu para carregar os atendimentos</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar a fila.</span>
             <Button variant="outline" size="sm" onClick={() => atendimentos.refetch()}>
@@ -498,8 +600,8 @@ export default function Atendimentos() {
             size="sm"
             onClick={() => {
               setBusca("");
-              setVendedoraFiltro(TODAS);
-              setSituacaoFiltro(TODAS);
+              definirFiltroUrl("vendedora", TODAS, TODAS);
+              definirFiltroUrl("situacao", TODAS, TODAS);
             }}
           >
             Limpar filtros
@@ -570,7 +672,7 @@ export default function Atendimentos() {
           variant="ghost"
           size="sm"
           disabled={atendimentos.isFetching}
-          onClick={() => setJanelaDias((d) => d * 2)}
+          onClick={() => definirFiltroUrl("janela", janelaDias * 2, String(JANELA_PADRAO_DIAS))}
         >
           Carregar mais antigo
         </Button>

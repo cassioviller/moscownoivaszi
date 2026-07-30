@@ -28,7 +28,12 @@ describe("Dashboard — janela de 30 dias pelo motor único (E25)", () => {
 
   beforeAll(async () => {
     f = await criarFixture();
-    ag = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    // E101/B7: o dashboard só devolve os números de dinheiro para quem tem
+    // `financeiro: ver`, e o perfil da vendedora da fixture NÃO tem (ele
+    // concede leads, vestidos e agenda — ver o cabeçalho do lote7). Este teste
+    // é sobre a JANELA de 30 dias e a soma em centavos, não sobre permissão:
+    // ele passa a entrar pelo superadmin para continuar medindo o que mede.
+    ag = await loginComLoja(f.superAdminEmail, f.lojaId);
   });
 
   afterAll(async () => {

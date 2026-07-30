@@ -22,12 +22,13 @@ import {
   useDeleteAvaria,
   useListContratos,
   getListContratosQueryKey,
-  useCreateParcelaAvulsa,
+  useCobrarAvaria,
   type Ajuste,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -40,13 +41,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { diaParaISO } from "@/lib/formatos";
-import { dataCurtaFmt, isoParaDia } from "../noivas/helpers";
+import { brl, diaMesAbrevAno, diaParaISO } from "@/lib/formatos";
+import { parseValor } from "@/lib/financeiro/dinheiro";
+import { invalidarCaixa } from "@/pages/financeiro/helpers";
+import { isoParaDia } from "../noivas/helpers";
 import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
+import { Erro } from "@/components/estado";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -105,15 +111,17 @@ export default function ReservaDetalhe() {
       },
     },
   );
-  const contratoAtivo = (contratosDaNoiva.data ?? []).find((c) => c.status === "ATIVO") ?? null;
+  const contratoAtivo = (contratosDaNoiva.data?.itens ?? []).find((c) => c.status === "ATIVO") ?? null;
   const createAvaria = useCreateAvaria();
   const deleteAvaria = useDeleteAvaria();
-  const createParcelaAvulsa = useCreateParcelaAvulsa();
+  const cobrarAvaria = useCobrarAvaria();
 
   const [avariaDescricao, setAvariaDescricao] = useState("");
   const [avariaCusto, setAvariaCusto] = useState("");
   const [avariaFotoBase64, setAvariaFotoBase64] = useState<string | null>(null);
   const [avariaFotoNome, setAvariaFotoNome] = useState<string | null>(null);
+  // F25: o passo "o vestido voltou como saiu?", disparado pela devolução.
+  const [conferirDevolucao, setConferirDevolucao] = useState(false);
 
   const aoEscolherFotoAvaria = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -131,16 +139,32 @@ export default function ReservaDetalhe() {
     setAvariaFotoNome(arquivo.name);
   };
 
-  const registrarAvaria = () =>
-    comToast(
+  const registrarAvaria = () => {
+    // O MESMO defeito C3 que o orçamento já corrigiu, de novo aqui:
+    // `Number("1.500")` é 1,5, e a avaria de R$ 1.500,00 era gravada valendo
+    // R$ 1,50 — a parcela de cobrança da noiva saía com R$ 1,50 e o prejuízo
+    // de R$ 1.498,50 não aparecia em lugar nenhum. Escrito "1.500,00", o
+    // `replace(",", ".")` produzia "1.500.00" → NaN, e o spread descartava o
+    // campo em silêncio: avaria salva SEM custo, sem toast de erro. `parseValor`
+    // lê pt-BR e separa "não digitou" (null) de "digitou bobagem" (NaN) — e a
+    // bobagem passa a ser dita, não engolida.
+    const custo = parseValor(avariaCusto);
+    if (custo !== null && !Number.isFinite(custo)) {
+      toast({
+        title: "Custo do reparo inválido",
+        description: "Informe um valor em reais (ex.: 1.500,00).",
+        variant: "destructive",
+      });
+      return;
+    }
+    return comToast(
       async () => {
-        const custo = avariaCusto.trim() ? Number(avariaCusto.replace(",", ".")) : undefined;
         await createAvaria.mutateAsync({
           lojaId: activeLojaId!,
           bloqueioId: bloqueioId!,
           data: {
             descricao: avariaDescricao.trim(),
-            ...(custo !== undefined && Number.isFinite(custo) ? { custoReparo: custo } : {}),
+            ...(custo !== null ? { custoReparo: custo } : {}),
             ...(avariaFotoBase64 ? { fotoBase64: avariaFotoBase64 } : {}),
           },
         });
@@ -153,27 +177,41 @@ export default function ReservaDetalhe() {
         setAvariaFotoNome(null);
       },
       "Avaria registrada",
-      "Erro ao registrar a avaria",
+      "Não deu para registrar a avaria",
     );
+  };
 
-  const cobrarReparo = (avaria: { descricao: string; custoReparo?: number | null }) =>
+  /**
+   * F22/E97 — a cobrança do reparo saiu da tela e virou uma rota.
+   *
+   * Aqui se criava a parcela avulsa direto, sem guardar vínculo nenhum: o botão
+   * não mudava de estado depois do clique, então clicar duas vezes — o que
+   * acontece quando a rede demora e a pessoa insiste — criava DUAS parcelas no
+   * carnê da noiva. Agora `POST /avarias/:id/cobrar` grava parcela e vínculo na
+   * mesma transação, e a segunda chamada responde 409.
+   */
+  const cobrarReparo = (avaria: { id: string }) =>
     comToast(
       async () => {
-        if (!contratoAtivo || !avaria.custoReparo) return;
-        const vencimento = new Date();
-        vencimento.setDate(vencimento.getDate() + 7);
-        await createParcelaAvulsa.mutateAsync({
+        if (!contratoAtivo) return;
+        await cobrarAvaria.mutateAsync({
           lojaId: activeLojaId!,
-          contratoId: contratoAtivo.id,
-          data: {
-            descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
-            valorPrevisto: avaria.custoReparo,
-            vencimento: vencimento.toISOString(),
-          },
+          avariaId: avaria.id,
+          data: { contratoId: contratoAtivo.id },
         });
+        // Cobrar o reparo CRIA parcela no carnê da noiva: é movimento de
+        // caixa, e por isso passa pela régua do D9/E93 e não só pela lista de
+        // avarias desta tela. Sem isto, o fluxo, o DRE e o alerta do sino
+        // seguiam sem a cobrança que a loja acabou de lançar.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+          }),
+          invalidarCaixa(queryClient, activeLojaId!),
+        ]);
       },
       "Cobrança criada — entrou como parcela do contrato",
-      "Erro ao criar a cobrança",
+      "Não deu para criar a cobrança",
     );
   const provas = useMemo(
     () =>
@@ -203,6 +241,12 @@ export default function ReservaDetalhe() {
       queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
     ]);
 
+  // E110: era `err.message`, que é o texto do CLIENTE gerado, não o do servidor
+  // — o `detalhe` que a API manda morria aqui. É a tese do E96 ("o erro do
+  // servidor chega a quem está na tela") que esta tela nunca recebeu, e ficou
+  // visível ao escrever o `AVARIA_DE_OUTRA_NOIVA`: a guarda nova recusaria a
+  // cobrança e a vendedora leria uma frase genérica, sem saber que o contrato
+  // escolhido é de outra noiva. Vale para as seis ações deste arquivo.
   const comToast = async (fn: () => Promise<unknown>, titulo: string, tituloErro: string) => {
     try {
       await fn();
@@ -210,7 +254,7 @@ export default function ReservaDetalhe() {
     } catch (err) {
       toast({
         title: tituloErro,
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -230,9 +274,15 @@ export default function ReservaDetalhe() {
           queryClient.invalidateQueries({ queryKey: getListBloqueiosQueryKey(activeLojaId!) }),
         ]);
         setDataMovimentacao(null);
+        // F25/E97: o gatilho da conferência. O E71 inteiro — avaria, foto,
+        // custo, cobrança — dependia de alguém LEMBRAR de rolar a página e
+        // preencher um formulário depois de registrar a devolução. O momento em
+        // que a peça está na mão é o único em que dá para olhar; passado ele, o
+        // vestido já voltou para a arara e a conferência não acontece mais.
+        if (campo === "devolucaoDataReal") setConferirDevolucao(true);
       },
       "Movimentação registrada",
-      "Erro ao registrar a movimentação",
+      "Não deu para registrar a movimentação",
     );
 
   // E61: a data registrada errada tem conserto — null explícito desfaz, e a
@@ -252,7 +302,7 @@ export default function ReservaDetalhe() {
         ]);
       },
       "Movimentação desfeita",
-      "Erro ao desfazer a movimentação",
+      "Não deu para desfazer a movimentação",
     );
 
   const alternarAjuste = (ajuste: Ajuste) =>
@@ -266,7 +316,7 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Ajuste atualizado",
-      "Erro ao atualizar o ajuste",
+      "Não deu para atualizar o ajuste",
     );
 
   const removerAjusteConfirmado = () => {
@@ -279,7 +329,7 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Ajuste removido",
-      "Erro ao remover o ajuste",
+      "Não deu para remover o ajuste",
     );
   };
 
@@ -299,7 +349,7 @@ export default function ReservaDetalhe() {
         setNovoAjuste((s) => ({ ...s, [atendimentoId]: "" }));
       },
       "Ajuste adicionado",
-      "Erro ao adicionar o ajuste",
+      "Não deu para adicionar o ajuste",
     );
   };
 
@@ -321,7 +371,7 @@ export default function ReservaDetalhe() {
         setNovoItem((s) => ({ ...s, [ajuste.id]: "" }));
       },
       "Checklist atualizado",
-      "Erro ao adicionar o item",
+      "Não deu para adicionar o item",
     );
   };
 
@@ -332,7 +382,7 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Checklist atualizado",
-      "Erro ao atualizar o item",
+      "Não deu para atualizar o item",
     );
 
   const removerItem = (itemId: string) =>
@@ -342,23 +392,12 @@ export default function ReservaDetalhe() {
         await invalidarAjustes();
       },
       "Checklist atualizado",
-      "Erro ao remover o item",
+      "Não deu para remover o item",
     );
 
   if (bloqueios.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar a reserva</AlertTitle>
-        <AlertDescription className="flex items-center gap-3">
-          <span>
-            {bloqueios.error instanceof Error ? bloqueios.error.message : "Falha inesperada."}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => bloqueios.refetch()}>
-            Tentar novamente
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <Erro titulo="Não deu para carregar a reserva" erro={bloqueios.error} onTentarNovamente={() => bloqueios.refetch()} />
     );
   }
 
@@ -388,38 +427,26 @@ export default function ReservaDetalhe() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="space-y-1">
-        <Link
-          to={`/loja/${lojaId}/reservas`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Reservas
-        </Link>
-        <h1 className="text-3xl font-serif">
-          {reserva.leadId ? (
-            <Link to={`/loja/${lojaId}/noivas/${reserva.leadId}`} className="hover:underline">
-              {reserva.lead?.noivaNome ?? "Noiva"}
-            </Link>
-          ) : (
-            (reserva.lead?.noivaNome ?? "Noiva")
-          )}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {vestido ? (
+      <CabecalhoDetalhe
+        trilha={[
+          { rotulo: "Reservas", para: "/reservas" },
+          ...(reserva.leadId
+            ? [{ rotulo: reserva.lead?.noivaNome ?? "Noiva", para: `/noivas/${reserva.leadId}` }]
+            : []),
+          { rotulo: "Reserva" },
+        ]}
+        titulo={reserva.lead?.noivaNome ?? "Noiva"}
+        subtitulo={
+          <>
             <Link to={`/loja/${lojaId}/vestidos/${reserva.vestidoId}`} className="hover:underline">
-              {vestido.codigo} · {vestido.nome}
+              {vestido ? `${vestido.codigo} · ${vestido.nome}` : "Ver vestido"}
             </Link>
-          ) : (
-            <Link to={`/loja/${lojaId}/vestidos/${reserva.vestidoId}`} className="hover:underline">
-              Ver vestido
-            </Link>
-          )}
-          {reserva.casamentoData && (
-            <> · casamento {dataCurtaFmt.format(new Date(reserva.casamentoData))}</>
-          )}
-        </p>
-      </div>
+            {reserva.casamentoData && (
+              <> · casamento {diaMesAbrevAno(reserva.casamentoData)}</>
+            )}
+          </>
+        }
+      />
 
       {/* Ocupação física do vestido — honesto e calmo (não é "alerta").
           GAP Onda 4: as FASES do bloco (prova/uso/lavagem) vêm de um motor de
@@ -509,7 +536,7 @@ export default function ReservaDetalhe() {
         ) : (
           <Card>
             <CardContent className="pt-6 space-y-3">
-              <p className="text-sm">Vestido ainda no atelier.</p>
+              <p className="text-sm">Vestido ainda no ateliê.</p>
               {podeMovimentar && (
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="flex flex-col gap-1">
@@ -554,9 +581,9 @@ export default function ReservaDetalhe() {
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-sm">{a.descricao}</p>
                       <p className="text-xs text-muted-foreground">
-                        {a.custoReparo != null && <>reparo estimado R$ {a.custoReparo.toFixed(2).replace(".", ",")} · </>}
+                        {a.custoReparo != null && <>reparo estimado {brl(a.custoReparo)} · </>}
                         {a.registradoPorNome && <>{a.registradoPorNome} · </>}
-                        {dataCurtaFmt.format(new Date(a.criadaEm))}
+                        {diaMesAbrevAno(a.criadaEm)}
                         {a.temFoto && (
                           <>
                             {" · "}
@@ -564,7 +591,7 @@ export default function ReservaDetalhe() {
                               href={`/api/lojas/${activeLojaId}/avarias/${a.id}/foto`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary underline underline-offset-4"
+                              className="text-primary-texto underline underline-offset-4"
                             >
                               ver foto
                             </a>
@@ -574,37 +601,92 @@ export default function ReservaDetalhe() {
                     </div>
                     {podeMovimentar && (
                       <span className="flex items-center gap-1">
-                        {contratoAtivo && a.custoReparo != null && a.custoReparo > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={createParcelaAvulsa.isPending}
-                            onClick={() => cobrarReparo(a)}
-                            data-testid={`cobrar-reparo-${a.id}`}
-                          >
-                            Cobrar reparo
-                          </Button>
+                        {/* F22: depois de cobrada, o botão não oferece cobrar de
+                            novo — ele leva à parcela. Antes ele continuava ali,
+                            idêntico, e o segundo clique criava a segunda
+                            cobrança do mesmo conserto. */}
+                        {a.parcelaId ? (
+                          contratoAtivo && (
+                            <Button asChild variant="ghost" size="sm">
+                              <Link to={`/loja/${activeLojaId}/contratos/${contratoAtivo.id}`}>
+                                Cobrado — ver parcela
+                              </Link>
+                            </Button>
+                          )
+                        ) : (
+                          contratoAtivo &&
+                          a.custoReparo != null &&
+                          a.custoReparo > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={cobrarAvaria.isPending}
+                              onClick={() => cobrarReparo(a)}
+                              data-testid={`cobrar-reparo-${a.id}`}
+                            >
+                              Cobrar reparo
+                            </Button>
+                          )
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          aria-label="Remover avaria"
-                          onClick={() =>
-                            comToast(
-                              async () => {
-                                await deleteAvaria.mutateAsync({ lojaId: activeLojaId!, avariaId: a.id });
-                                await queryClient.invalidateQueries({
-                                  queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
-                                });
-                              },
-                              "Avaria removida",
-                              "Erro ao remover a avaria",
-                            )
-                          }
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
+                        {/* F23: a foto é a PROVA que sustenta a cobrança. Ela
+                            saía por um toque num ícone de 28px, sem uma palavra
+                            — e a parcela continuava no carnê. */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              aria-label="Remover avaria"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover esta avaria?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {a.parcelaId ? (
+                                  <>
+                                    Esta avaria já virou parcela do contrato. Remova a parcela
+                                    primeiro — apagar a avaria agora deixaria a noiva devendo por um
+                                    dano sem prova nenhuma.
+                                  </>
+                                ) : (
+                                  <>
+                                    “{a.descricao}”{a.temFoto ? " e a foto que a comprova" : ""} saem
+                                    para sempre. {a.temFoto ? "A foto é a prova do dano — " : ""}
+                                    não há como recuperar depois.
+                                  </>
+                                )}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              {!a.parcelaId && (
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    comToast(
+                                      async () => {
+                                        await deleteAvaria.mutateAsync({
+                                          lojaId: activeLojaId!,
+                                          avariaId: a.id,
+                                        });
+                                        await queryClient.invalidateQueries({
+                                          queryKey: getListAvariasQueryKey(activeLojaId!, bloqueioId!),
+                                        });
+                                      },
+                                      "Avaria removida",
+                                      "Não deu para remover a avaria",
+                                    )
+                                  }
+                                >
+                                  Remover
+                                </AlertDialogAction>
+                              )}
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </span>
                     )}
                   </li>
@@ -613,7 +695,7 @@ export default function ReservaDetalhe() {
             )}
 
             {podeMovimentar && (
-              <div className="space-y-2 border-t pt-4">
+              <div className="space-y-2 border-t pt-4" id="registrar-avaria">
                 <Input
                   placeholder="O que aconteceu com o vestido? (ex.: barra rasgada)"
                   value={avariaDescricao}
@@ -628,7 +710,7 @@ export default function ReservaDetalhe() {
                     className="w-52"
                     aria-label="Custo do reparo"
                   />
-                  <label className="text-sm text-primary underline underline-offset-4 cursor-pointer">
+                  <label className="text-sm text-primary-texto underline underline-offset-4 cursor-pointer">
                     {avariaFotoNome ?? "Anexar foto"}
                     <input
                       type="file"
@@ -765,7 +847,7 @@ export default function ReservaDetalhe() {
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6"
+                                            className="md:h-6 md:w-6"
                                             disabled={removeItem.isPending}
                                             onClick={() => removerItem(c.id)}
                                             aria-label={`Remover item ${c.descricao}`}
@@ -854,15 +936,48 @@ export default function ReservaDetalhe() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover ajuste</AlertDialogTitle>
+            <AlertDialogTitle>Remover este ajuste?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remover o ajuste "{ajusteParaRemover?.descricao}"? O checklist dele também será
-              removido.
+              "{ajusteParaRemover?.descricao}" sai da prova, e o checklist dele vai junto.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={removerAjusteConfirmado}>Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* F25/E97 — a conferência da devolução.
+
+          O E71 inteiro (avaria, foto, custo, cobrança) dependia de alguém
+          LEMBRAR de rolar a página e preencher um formulário depois de
+          registrar a devolução. O momento em que a peça está na mão é o único
+          em que dá para olhar; passado ele, o vestido já voltou para a arara.
+
+          As duas saídas são explícitas de propósito: "sim, tudo certo" é uma
+          resposta, não um silêncio. */}
+      <AlertDialog open={conferirDevolucao} onOpenChange={setConferirDevolucao}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>O vestido voltou como saiu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confira agora, com a peça na mão. Depois que ela voltar para a arara, um dano
+              encontrado não tem mais como ser cobrado com prova.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Sim, tudo certo</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConferirDevolucao(false);
+                document
+                  .getElementById("registrar-avaria")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+            >
+              Registrar avaria
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -9,6 +9,7 @@ import {
   type Atributo,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,16 +29,19 @@ import {
 } from "@/components/ui/form";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { Erro } from "@/components/estado";
 
 const editarAtributoSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   ativo: z.boolean(),
   // Opções nunca são apagadas (podem estar em uso em vestidos/interesses) —
   // apenas renomeadas ou desativadas.
   opcoes: z.array(
     z.object({
       id: z.string(),
-      valor: z.string().min(1, "Valor é obrigatório"),
+      valor: z.string().min(1, "Informe o valor"),
       ativo: z.boolean(),
     }),
   ),
@@ -52,7 +56,7 @@ export default function EditarAtributo() {
 
   // O client gerado não expõe GET de atributo individual — busca na listagem.
   const { data: atributos, isLoading, isError, error, refetch } = useListAtributos(activeLojaId!, {
-    query: {
+    query: { ...CACHE_ESTAVEL,
       queryKey: getListAtributosQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     },
@@ -74,16 +78,7 @@ export default function EditarAtributo() {
       </div>
 
       {isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar o atributo</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada."}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar o atributo" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading || !atributos ? (
         <Card className="animate-pulse h-64" />
       ) : !atributo ? (
@@ -125,6 +120,10 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
       novasOpcoes: "",
     },
   });
+
+  // E133/B7: fechar/recarregar com trabalho digitado avisa; cala após o
+  // submit bem-sucedido (a tela navega sem reset).
+  useConfirmarSaida(form.formState.isDirty && !form.formState.isSubmitSuccessful);
   const { fields } = useFieldArray({ control: form.control, name: "opcoes" });
 
   const salvando = updateAtributo.isPending || createOpcao.isPending || updateOpcao.isPending;
@@ -167,8 +166,8 @@ function EditarAtributoForm({ atributo }: { atributo: Atributo }) {
     } catch (err) {
       await queryClient.invalidateQueries({ queryKey: getListAtributosQueryKey(activeLojaId!) });
       toast({
-        title: "Erro ao salvar atributo",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar atributo",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }

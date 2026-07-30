@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useForm, Controller } from "react-hook-form";
 import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,6 +20,8 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
@@ -35,7 +39,7 @@ export default function ConfigAtendimentos() {
   const queryClient = useQueryClient();
 
   const cabines = useListCabines(activeLojaId!, {
-    query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const disponibilidade = useGetDisponibilidade(activeLojaId!, {
     query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId },
@@ -49,21 +53,44 @@ export default function ConfigAtendimentos() {
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
   const [nomeCabine, setNomeCabine] = useState("");
-  const [abertura, setAbertura] = useState("");
-  const [fechamento, setFechamento] = useState("");
-  // Dias em que a loja abre (E38): 0=domingo … 6=sábado.
-  const [dias, setDias] = useState<number[]>([]);
 
   const regra = disponibilidade.data;
-  useEffect(() => {
-    if (regra) {
-      setAbertura(String(regra.atendimentoAberturaHora));
-      setFechamento(String(regra.atendimentoFechamentoHora));
-      setDias(regra.diasFuncionamento ?? [1, 2, 3, 4, 5, 6]);
-    }
-  }, [regra]);
+
+  /**
+   * D13 (E93): isto era um `useEffect` que copiava a regra do servidor para
+   * três `useState`, com `[regra]` na dependência — e `regra` é
+   * `disponibilidade.data`, cuja REFERÊNCIA muda a cada refetch bem-sucedido.
+   * A sequência real: a pessoa digita a nova hora de fechamento ("20"),
+   * alt-tab para conferir a escala no WhatsApp, volta, o refetch por foco de
+   * janela dispara, o effect roda e devolve o "19" do servidor ao campo. A
+   * digitação sumia sem uma palavra, e ela salvava o horário antigo achando
+   * que salvou o novo.
+   *
+   * `values` + `keepDirtyValues` é o mesmo "copiar do servidor" feito por quem
+   * sabe a diferença entre um campo intocado e um campo sujo: o intocado
+   * acompanha o servidor, o sujo é da pessoa até ela salvar ou sair.
+   * Era a última tela do app com o padrão do effect — as outras 11 já usavam
+   * `react-hook-form`.
+   */
+  const form = useForm<{ abertura: string; fechamento: string; dias: number[] }>({
+    defaultValues: { abertura: "", fechamento: "", dias: [] },
+    values: regra
+      ? {
+          abertura: String(regra.atendimentoAberturaHora),
+          fechamento: String(regra.atendimentoFechamentoHora),
+          // Dias em que a loja abre (E38): 0=domingo … 6=sábado.
+          dias: regra.diasFuncionamento ?? [1, 2, 3, 4, 5, 6],
+        }
+      : undefined,
+    resetOptions: { keepDirtyValues: true },
+  });
+
+  // E133/B7: o sujo desta tela tem DUAS fontes — o form do horário (que dá
+  // reset ao salvar) e o nome de cabine digitado no input solto.
+  useConfirmarSaida(form.formState.isDirty || nomeCabine.trim() !== "");
 
   const salvarHorario = async () => {
+    const { abertura, fechamento, dias } = form.getValues();
     const a = Number(abertura);
     const f = Number(fechamento);
     if (!Number.isInteger(a) || !Number.isInteger(f) || a < 0 || f > 24 || a >= f) {
@@ -97,14 +124,17 @@ export default function ConfigAtendimentos() {
           diasFuncionamento: [...dias].sort((x, y) => x - y),
         },
       });
+      // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o
+      // `keepDirtyValues` continuaria protegendo campos que já não divergem.
+      form.reset({ abertura, fechamento, dias });
       await queryClient.invalidateQueries({
         queryKey: getGetDisponibilidadeQueryKey(activeLojaId!),
       });
       toast({ title: "Horário salvo" });
     } catch (err) {
       toast({
-        title: "Erro ao salvar horário",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar horário",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -117,8 +147,8 @@ export default function ConfigAtendimentos() {
       toast({ title: "Cabines atualizadas" });
     } catch (err) {
       toast({
-        title: "Erro ao atualizar cabine",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para atualizar cabine",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -134,8 +164,8 @@ export default function ConfigAtendimentos() {
       setNomeCabine("");
     } catch (err) {
       toast({
-        title: "Erro ao adicionar cabine",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para adicionar cabine",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -169,8 +199,7 @@ export default function ConfigAtendimentos() {
                     min={0}
                     max={23}
                     className="w-24"
-                    value={abertura}
-                    onChange={(e) => setAbertura(e.target.value)}
+                    {...form.register("abertura")}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -181,33 +210,42 @@ export default function ConfigAtendimentos() {
                     min={1}
                     max={24}
                     className="w-24"
-                    value={fechamento}
-                    onChange={(e) => setFechamento(e.target.value)}
+                    {...form.register("fechamento")}
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Dias de funcionamento</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {DIAS_ROTULO.map((rot, n) => {
-                    const aberto = dias.includes(n);
-                    return (
-                      <Button
-                        key={n}
-                        type="button"
-                        size="sm"
-                        variant={aberto ? "default" : "outline"}
-                        aria-pressed={aberto}
-                        data-testid={`dia-func-${n}`}
-                        onClick={() =>
-                          setDias((ds) => (aberto ? ds.filter((d) => d !== n) : [...ds, n]))
-                        }
-                      >
-                        {rot}
-                      </Button>
-                    );
-                  })}
-                </div>
+                <Controller
+                  control={form.control}
+                  name="dias"
+                  render={({ field }) => (
+                    <div className="flex flex-wrap gap-1.5">
+                      {DIAS_ROTULO.map((rot, n) => {
+                        const aberto = field.value.includes(n);
+                        return (
+                          <Button
+                            key={n}
+                            type="button"
+                            size="sm"
+                            variant={aberto ? "default" : "outline"}
+                            aria-pressed={aberto}
+                            data-testid={`dia-func-${n}`}
+                            onClick={() =>
+                              field.onChange(
+                                aberto
+                                  ? field.value.filter((d) => d !== n)
+                                  : [...field.value, n],
+                              )
+                            }
+                          >
+                            {rot}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+                />
               </div>
               <Button
                 variant="outline"

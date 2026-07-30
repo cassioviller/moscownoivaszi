@@ -6,15 +6,25 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrcamentoPublico } from './orcamentoPublico';
+import type { PortalNoivaContrato } from './portalNoivaContrato';
 import type { PortalNoivaLookbook } from './portalNoivaLookbook';
 import type { PortalNoivaProvasItem } from './portalNoivaProvasItem';
+import type { PortalNoivaResumoPagamento } from './portalNoivaResumoPagamento';
+import type { PortalNoivaVestido } from './portalNoivaVestido';
 import type { PortalParcela } from './portalParcela';
 
 export interface PortalNoiva {
   noivaNome: string;
   lojaNome: string;
+  /** @nullable */
+  lojaEndereco: string | null;
+  /** @nullable */
+  lojaTelefone: string | null;
+  resumoPagamento?: PortalNoivaResumoPagamento;
   orcamento: OrcamentoPublico | null;
   lookbook: PortalNoivaLookbook;
   provas: PortalNoivaProvasItem[];
   parcelas: PortalParcela[];
+  contrato: PortalNoivaContrato;
+  vestido: PortalNoivaVestido;
 }

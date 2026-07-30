@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { deveDeslogar } from "@/lib/auth-erro";
+import { PISO_DE_FRESCOR } from "@/lib/cache";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -11,58 +12,73 @@ import { useAuth } from "@/hooks/use-auth";
 
 import { AppLayout } from "@/components/layout/app-layout";
 import Login from "@/pages/login";
-import Convite from "@/pages/convite";
-import OrcamentoPublico from "@/pages/orcamento-publico";
-import LookbookPublico from "@/pages/lookbook-publico";
-import NoivaPortal from "@/pages/noiva-portal";
-import SelecionarLoja from "@/pages/selecionar-loja";
 import Dashboard from "@/pages/dashboard";
-import TrocarSenha from "@/pages/trocar-senha";
 
-import Agenda from "@/pages/agenda";
-import AgendaSemana from "@/pages/agenda/semana";
-import Atendimentos from "@/pages/atendimentos";
-import MensagensDoDia from "@/pages/mensagens";
-import NovoAtendimento from "@/pages/atendimentos/novo";
-import ConfigAtendimentos from "@/pages/atendimentos/config";
-import Ajustes from "@/pages/ajustes";
-import Provas from "@/pages/provas";
-import Reservas from "@/pages/reservas";
-import ReservaDetalhe from "@/pages/reservas/[bloqueioId]";
-import Vestidos from "@/pages/vestidos";
-import VestidoDetail from "@/pages/vestidos/[id]";
-import NovoVestido from "@/pages/vestidos/novo";
-import UtilizacaoVestidos from "@/pages/vestidos/utilizacao";
-import EditarVestido from "@/pages/vestidos/[id]/editar";
-import Orcamentos from "@/pages/orcamentos";
-import OrcamentoDetail from "@/pages/orcamentos/[id]";
-import Contratos from "@/pages/contratos";
-import ContratoDetail from "@/pages/contratos/[id]";
-import FluxoCaixa from "@/pages/financeiro/fluxo";
-import DRE from "@/pages/financeiro/dre";
-import Projecao from "@/pages/financeiro/projecao";
-import Cobranca from "@/pages/financeiro/cobranca";
-import Receber from "@/pages/financeiro/receber";
-import Pagar from "@/pages/financeiro/pagar";
-import Folha from "@/pages/financeiro/folha";
-import Auditoria from "@/pages/financeiro/auditoria";
-import Conciliacao from "@/pages/financeiro/conciliacao";
-import Catalogo from "@/pages/catalogo";
-import Noivas from "@/pages/noivas";
-import NovaNoiva from "@/pages/noivas/nova";
-import ConversaoLeads from "@/pages/noivas/conversao";
-import NoivaDetalhe from "@/pages/noivas/[leadId]";
-import EditarNoiva from "@/pages/noivas/[leadId]/editar";
-import InteressesNoiva from "@/pages/noivas/[leadId]/interesses";
-import NovoAtributo from "@/pages/catalogo/novo";
-import EditarAtributo from "@/pages/catalogo/[atributoId]/editar";
-import Permissoes from "@/pages/permissoes";
-import AdminConsole from "@/pages/admin";
-import AdminPerfis from "@/pages/admin/perfis";
-import Comissoes from "@/pages/comissoes";
-import MinhaComissao from "@/pages/minha-comissao";
-import Equipe from "@/pages/equipe";
-import Configuracoes from "@/pages/configuracoes";
+/**
+ * D8/E104 — cada rota é um pedaço, e a recepcionista só baixa o que abre.
+ *
+ * O app era UM chunk de 1.270 kB (355 kB gzip): quem abria a agenda de manhã
+ * baixava a conciliação bancária, o console de superadmin e o gerador de PDF de
+ * contrato junto. E o E99 já mediu que a poda dos 24 primitivos NÃO moveu esse
+ * número — eles já eram tree-shaken. Só o corte por rota move.
+ *
+ * Ficam ansiosas quatro: `AppLayout` (é o chrome de toda rota logada), `Login`
+ * e `Dashboard` (a primeira e a segunda tela de toda sessão — carregá-las sob
+ * demanda trocaria bytes por um piscar no caminho mais percorrido) e
+ * `NotFound` (é o fallback; baixá-lo sob demanda é pedir rede para dizer que
+ * não achou).
+ */
+const Convite = lazy(() => import("@/pages/convite"));
+const OrcamentoPublico = lazy(() => import("@/pages/orcamento-publico"));
+const LookbookPublico = lazy(() => import("@/pages/lookbook-publico"));
+const NoivaPortal = lazy(() => import("@/pages/noiva-portal"));
+const SelecionarLoja = lazy(() => import("@/pages/selecionar-loja"));
+const TrocarSenha = lazy(() => import("@/pages/trocar-senha"));
+const Agenda = lazy(() => import("@/pages/agenda"));
+const AgendaSemana = lazy(() => import("@/pages/agenda/semana"));
+const Atendimentos = lazy(() => import("@/pages/atendimentos"));
+const MensagensDoDia = lazy(() => import("@/pages/mensagens"));
+const NovoAtendimento = lazy(() => import("@/pages/atendimentos/novo"));
+const ConfigAtendimentos = lazy(() => import("@/pages/atendimentos/config"));
+const Ajustes = lazy(() => import("@/pages/ajustes"));
+const Provas = lazy(() => import("@/pages/provas"));
+const Reservas = lazy(() => import("@/pages/reservas"));
+const ReservaDetalhe = lazy(() => import("@/pages/reservas/[bloqueioId]"));
+const Vestidos = lazy(() => import("@/pages/vestidos"));
+const VestidoDetail = lazy(() => import("@/pages/vestidos/[id]"));
+const NovoVestido = lazy(() => import("@/pages/vestidos/novo"));
+const UtilizacaoVestidos = lazy(() => import("@/pages/vestidos/utilizacao"));
+const EditarVestido = lazy(() => import("@/pages/vestidos/[id]/editar"));
+const Orcamentos = lazy(() => import("@/pages/orcamentos"));
+const OrcamentoDetail = lazy(() => import("@/pages/orcamentos/[id]"));
+const Contratos = lazy(() => import("@/pages/contratos"));
+const ContratoDetail = lazy(() => import("@/pages/contratos/[id]"));
+const FluxoCaixa = lazy(() => import("@/pages/financeiro/fluxo"));
+const DRE = lazy(() => import("@/pages/financeiro/dre"));
+const Projecao = lazy(() => import("@/pages/financeiro/projecao"));
+const Cobranca = lazy(() => import("@/pages/financeiro/cobranca"));
+const Receber = lazy(() => import("@/pages/financeiro/receber"));
+const Pagar = lazy(() => import("@/pages/financeiro/pagar"));
+const Folha = lazy(() => import("@/pages/financeiro/folha"));
+const Auditoria = lazy(() => import("@/pages/financeiro/auditoria"));
+const Conciliacao = lazy(() => import("@/pages/financeiro/conciliacao"));
+const Catalogo = lazy(() => import("@/pages/catalogo"));
+const Noivas = lazy(() => import("@/pages/noivas"));
+const NovaNoiva = lazy(() => import("@/pages/noivas/nova"));
+const ConversaoLeads = lazy(() => import("@/pages/noivas/conversao"));
+const NoivaDetalhe = lazy(() => import("@/pages/noivas/[leadId]"));
+const EditarNoiva = lazy(() => import("@/pages/noivas/[leadId]/editar"));
+const InteressesNoiva = lazy(() => import("@/pages/noivas/[leadId]/interesses"));
+const NovoAtributo = lazy(() => import("@/pages/catalogo/novo"));
+const EditarAtributo = lazy(() => import("@/pages/catalogo/[atributoId]/editar"));
+const Permissoes = lazy(() => import("@/pages/permissoes"));
+const AdminConsole = lazy(() => import("@/pages/admin"));
+const AdminPerfis = lazy(() => import("@/pages/admin/perfis"));
+const Comissoes = lazy(() => import("@/pages/comissoes"));
+const MinhaComissao = lazy(() => import("@/pages/minha-comissao"));
+const Equipe = lazy(() => import("@/pages/equipe"));
+const Configuracoes = lazy(() => import("@/pages/configuracoes"));
+
 
 /**
  * Sessão que expira no meio do uso: qualquer query/mutation passa a 401. Em vez
@@ -84,6 +100,17 @@ const derrubarSessao = (error: unknown, chave?: readonly unknown[]) => {
 queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: (error, query) => derrubarSessao(error, query.queryKey) }),
   mutationCache: new MutationCache({ onError: (error) => derrubarSessao(error) }),
+  // D3 (E93): o cache era 100% default — `staleTime: 0` para tudo. Com o
+  // `refetchOnWindowFocus` e o `refetchOnMount` que vêm ligados, isso significa
+  // "refaz sempre": cada alt-tab de volta do WhatsApp Web disparava 8 requests
+  // no dashboard e 7 em /comissoes, de dados que não mudaram. Um piso de 30 s
+  // não é política de frescor — é o reconhecimento de que voltar para a aba não
+  // é um evento de negócio. Quem PRECISA de frescor pede explicitamente: o sino
+  // tem `refetchInterval: 5min` e todo movimento de caixa invalida o que muda
+  // (D9, `lib/financeiro/cache.ts`). A ordem importa: este piso só é seguro
+  // porque a invalidação foi consertada ANTES dele — sem ela, ele converteria
+  // um incômodo de rede em dado financeiro velho e persistente na tela.
+  defaultOptions: { queries: { staleTime: PISO_DE_FRESCOR } },
 });
 
 function TelaCarregando() {
@@ -146,6 +173,17 @@ function App() {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          {/* O limite EXTERNO cobre as rotas públicas (portal da noiva, orçamento,
+              lookbook) e o /selecionar-loja, que vivem fora do AppLayout. As rotas
+              logadas suspendem no limite de dentro dele, que é mais próximo e
+              preserva a sidebar. */}
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center p-8">
+                <div className="bg-muted h-10 w-48 animate-pulse rounded" aria-busy="true" aria-label="Carregando" />
+              </div>
+            }
+          >
           <Routes>
             <Route path="/login" element={<Login />} />
             {/* Pública como o login: a convidada ainda não tem sessão. */}
@@ -233,6 +271,7 @@ function App() {
             <Route path="/admin/perfis" element={<AdminPerfis />} />
             <Route path="*" element={<LegacyRedirect />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>

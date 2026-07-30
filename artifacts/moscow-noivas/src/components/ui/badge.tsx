@@ -22,6 +22,10 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow-xs",
           // @replit shadow-xs" - use badge outline variable
         outline: "text-foreground border [border-color:var(--badge-outline)]",
+        // E130 (P6): a semântica "precisa de reação" — o estado que pede gesto
+        // (Faltou) não pode dividir cor com o que está em dia. Sobre o token
+        // --aviso do E127 (testado em aparencia.test.ts), nunca cor crua.
+        aviso: "border-aviso/50 text-aviso",
       },
     },
     defaultVariants: {
@@ -31,12 +35,21 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
+/**
+ * E92/E22: <span>, não <div>. Badge é conteúdo EM LINHA por natureza, e como
+ * <div> ele era HTML inválido dentro de um <p> — o navegador FECHAVA o
+ * parágrafo antes dele, e o texto que vinha depois ("desde 01/01/2020") saía
+ * fora do <p> e perdia as classes `text-xs text-muted-foreground`. Em
+ * /comissoes dava para ver: a data ao lado de "vigente" ficava maior e mais
+ * escura que a mesma informação nos cards vizinhos. O `inline-flex` das
+ * variantes já era o certo; só o elemento estava errado.
+ */
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <span className={cn(badgeVariants({ variant }), className)} {...props} />
   )
 }
 

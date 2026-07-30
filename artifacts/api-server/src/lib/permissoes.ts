@@ -87,12 +87,54 @@ export function acaoDoMetodo(metodo: string): Acao {
 }
 
 /**
- * Ação exigida a partir do método E do caminho. Cancelar/estornar são POST mas
- * MUTAM um recurso existente — são `editar`, não `criar`. Sem isto, um perfil
- * com `criar` e sem `editar` (estado válido) cancelava contrato e estornava
- * recebimento: o guard derivava `criar` do método e a rota mentia sobre o que faz.
+ * Os POST que MUTAM um recurso existente em vez de criar um. O caminho termina
+ * num verbo, e o verbo é quem diz a verdade sobre a ação — o método não.
+ *
+ * A lista tem de cobrir TODA rota que declara `requireModulo(mod, "editar")`
+ * explicitamente, porque o guard de prefixo do router roda ANTES dela e deriva
+ * a ação daqui. Faltando um verbo, a rota passa a exigir as DUAS ações: a
+ * derivada (`criar`) e a declarada (`editar`) — e o perfil que tem só `editar`
+ * leva 403 numa ação que ele pode fazer. Foi o que aconteceu com `receber`:
+ * a gerente com `{ ver, criar: false, editar }` — estado válido e comum, quem
+ * revisa noiva cadastrada por outra sem abrir lead novo — não conseguia
+ * registrar o Pix de R$ 700 pago no balcão, e a mensagem culpava "criar".
+ */
+export const POST_QUE_MUTA =
+  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar|marcar|enviar)$/;
+
+/**
+ * POSTs que mutam mas cujo caminho termina em SUBSTANTIVO, não em verbo — a
+ * exceção, um caminho por linha, com o porquê:
+ *
+ * - `/financeiro/pagamentos` é a MESMA operação da porta irmã
+ *   `/contas-pagar/:id/pagar` (quitarContas, e a irmã declara `editar` desde o
+ *   E101): a saída multi-conta muta as contas que quita. Sem esta entrada, o
+ *   perfil só-`criar` pagava as contas do mês e a gerente só-`editar` levava
+ *   403 — na única porta que a tela de Pagar usa (E115).
+ */
+export const POST_QUE_MUTA_POR_CAMINHO = /\/financeiro\/pagamentos$/;
+
+/**
+ * Ação exigida a partir do método E do caminho. Cancelar/estornar/receber e os
+ * outros verbos de `POST_QUE_MUTA` são POST mas alteram um recurso que já
+ * existe — são `editar`, não `criar`. Sem isto, um perfil com `criar` e sem
+ * `editar` (estado válido) cancelava contrato e estornava recebimento: o guard
+ * derivava `criar` do método e a rota mentia sobre o que faz.
+ *
+ * E115: `marcar` e `enviar` entraram na lista — `conciliacao/marcar` e
+ * `contabilidade/enviar` carimbam linhas EXISTENTES (a segunda é "a escrita
+ * mais irreversível do financeiro" nas palavras do próprio código), e derivavam
+ * `criar`: a estagiária com `{ver, criar}` fechava o mês à contadora, e a
+ * gerente com `{ver, editar}` levava 403 numa ação dela. A varredura do E101
+ * não via nenhuma das duas, porque só inspecionava POSTs na forma
+ * `/:id/<verbo>` — estas duas são `<literal>/<verbo>`.
  */
 export function acaoDoRequest(metodo: string, caminho: string): Acao {
-  if (metodo.toUpperCase() === "POST" && /\/(cancelar|estornar)$/.test(caminho)) return "editar";
+  if (
+    metodo.toUpperCase() === "POST" &&
+    (POST_QUE_MUTA.test(caminho) || POST_QUE_MUTA_POR_CAMINHO.test(caminho))
+  ) {
+    return "editar";
+  }
   return acaoDoMetodo(metodo);
 }

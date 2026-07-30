@@ -21,6 +21,8 @@ export interface Pagamento {
   observacoes?: string | null;
   /** @nullable */
   enviadoContabilidadeEm?: Date | null;
+  /** @nullable */
+  conciliadoEm?: Date | null;
   colaborador?: Usuario | null;
   itens?: PagamentoItem[];
 }

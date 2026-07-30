@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { db, leadsTable, usuariosTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, leadsTable, usuariosTable, auditLogTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { criarFixture, fecharPool, limparFixture, loginComLoja, type Fixture } from "./helpers";
 
@@ -137,5 +137,87 @@ describe("Registros de cobrança (API)", () => {
     } finally {
       await limparFixture(outra);
     }
+  });
+
+  /**
+   * E123/B3 — o desfazer. O registro nasce do clique num link que abre OUTRA
+   * ABA (a fila de /mensagens): errar o botão é barato, e sem o DELETE o
+   * histórico afirmava um contato que não houve e o relógio do "parado há N
+   * dias" zerava em falso. A régua do E91/E106/E111/E115 vale: 404 antes de
+   * qualquer escrita, e trilha DENTRO da transação — depois do DELETE ela é o
+   * único rastro.
+   */
+  describe("desfazer (DELETE)", () => {
+    async function registrar(observacao: string): Promise<string> {
+      const res = await agent
+        .post(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas`)
+        .send({ data: new Date().toISOString(), canal: "WHATSAPP", observacao })
+        .expect(201);
+      return res.body.id as string;
+    }
+
+    it("remove o registro, e o histórico volta ao que era", async () => {
+      const antes = await agent.get(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas`).expect(200);
+      const id = await registrar("clique errado na fila");
+
+      await agent.delete(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas/${id}`).expect(204);
+
+      const depois = await agent.get(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas`).expect(200);
+      expect(depois.body).toEqual(antes.body);
+    });
+
+    it("deixa rastro na trilha: quem desfez, o que dizia o registro", async () => {
+      const id = await registrar("vai pagar dia 15");
+      await agent.delete(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas/${id}`).expect(204);
+
+      const trilha = await db
+        .select()
+        .from(auditLogTable)
+        .where(and(
+          eq(auditLogTable.lojaId, f.lojaId),
+          eq(auditLogTable.acao, "REGISTRO_COBRANCA_DESFEITO"),
+          eq(auditLogTable.entidadeId, id),
+        ));
+      expect(trilha).toHaveLength(1);
+      expect(trilha[0]!.usuarioNome).toContain("Super Admin Teste");
+      expect(trilha[0]!.detalhe).toMatchObject({
+        canal: "WHATSAPP",
+        observacao: "vai pagar dia 15",
+      });
+    });
+
+    it("o segundo desfazer do mesmo registro é 404 — não há o que desfazer", async () => {
+      const id = await registrar("desfeito duas vezes");
+      await agent.delete(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas/${id}`).expect(204);
+      const res = await agent
+        .delete(`/api/lojas/${f.lojaId}/leads/${leadId}/cobrancas/${id}`)
+        .expect(404);
+      expect(res.body.error).toBe("REGISTRO_DE_COBRANCA_NAO_ENCONTRADO");
+    });
+
+    it("registro de outra loja é 404 e NADA some — o desfazer não vaza entre lojas", async () => {
+      const outra = await criarFixture();
+      try {
+        const leadDaOutra = randomUUID();
+        await db.insert(leadsTable).values({ id: leadDaOutra, lojaId: outra.lojaId, noivaNome: "Noiva Alheia" });
+        const agenteDaOutra = await loginComLoja(outra.superAdminEmail, outra.lojaId);
+        const res = await agenteDaOutra
+          .post(`/api/lojas/${outra.lojaId}/leads/${leadDaOutra}/cobrancas`)
+          .send({ data: new Date().toISOString(), canal: "TELEFONE" })
+          .expect(201);
+        const idDaOutra = res.body.id as string;
+
+        // A loja A tenta desfazer o registro da loja B pelo próprio caminho.
+        await agent
+          .delete(`/api/lojas/${f.lojaId}/leads/${leadDaOutra}/cobrancas/${idDaOutra}`)
+          .expect(404);
+        await agenteDaOutra
+          .get(`/api/lojas/${outra.lojaId}/leads/${leadDaOutra}/cobrancas`)
+          .expect(200)
+          .expect((r) => expect(r.body).toHaveLength(1));
+      } finally {
+        await limparFixture(outra);
+      }
+    });
   });
 });

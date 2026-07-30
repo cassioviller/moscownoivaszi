@@ -5,6 +5,9 @@ import path from "node:path";
 export interface E2EState {
   lojaId: string;
   lojaNome: string;
+  /** E93/D1: a segunda loja da admin — o "B" do bookmark com a sessão em A. */
+  lojaBId: string;
+  lojaBNome: string;
   adminEmail: string;
   mariaEmail: string;
   senha: string;
@@ -20,6 +23,58 @@ export function lerEstado(): E2EState {
 }
 
 export const API_URL = "http://localhost:5099";
+
+/**
+ * E115 — cria um atendimento num horário LIVRE do expediente, tentando outras
+ * horas quando a agenda recusa por ocupação.
+ *
+ * O POST de atendimento passou a rodar as quatro recusas do agenda-core
+ * (expediente e sobreposição de INTERVALO), e o banco do E2E persiste entre
+ * execuções: as sobras acumuladas ocupam a vendedora e a cabine
+ * compartilhadas, e um horário fixo colide de forma DETERMINÍSTICA — era a
+ * família S7/S22, que o guard novo tirou do acaso. A saída é a do balcão
+ * real: agenda ocupada, procura-se outro horário. Recusa que NÃO seja de
+ * ocupação estoura na hora — ela é um defeito, não um horário ruim.
+ */
+export async function criarAtendimentoLivre(
+  req: APIRequestContext,
+  lojaId: string,
+  dados: {
+    leadId: string;
+    cabineId: string;
+    vendedoraId: string;
+    tipo?: "ATENDIMENTO" | "PROVA";
+    /** Dia (YYYY-MM-DD) no fuso da loja. */
+    ymd: string;
+  },
+): Promise<{ id: string; inicio: string }> {
+  const stamp = Date.now();
+  for (let tentativa = 0; tentativa < 12; tentativa++) {
+    const hh = String(9 + ((stamp + tentativa) % 8)).padStart(2, "0");
+    const mm = String((Math.floor(stamp / 1000) + tentativa * 7) % 60).padStart(2, "0");
+    const ss = String(stamp % 60).padStart(2, "0");
+    const inicio = `${dados.ymd}T${hh}:${mm}:${ss}-03:00`;
+    const res = await req.post(`${API_URL}/api/lojas/${lojaId}/atendimentos`, {
+      data: {
+        leadId: dados.leadId,
+        cabineId: dados.cabineId,
+        vendedoraId: dados.vendedoraId,
+        tipo: dados.tipo ?? "ATENDIMENTO",
+        inicio,
+      },
+    });
+    if (res.status() === 201) {
+      return { id: ((await res.json()) as { id: string }).id, inicio };
+    }
+    const corpo = (await res.json()) as { error?: string };
+    if (corpo.error !== "CABINE_OCUPADA" && corpo.error !== "VENDEDORA_OCUPADA") {
+      throw new Error(`criarAtendimentoLivre: ${res.status()} ${JSON.stringify(corpo)}`);
+    }
+  }
+  throw new Error(
+    "criarAtendimentoLivre: 12 horários tentados e todos ocupados — o banco do E2E precisa de limpeza (família S18/S25)",
+  );
+}
 
 /** Login pela UI (o mesmo caminho da usuária real). */
 export async function loginViaUI(page: Page, email: string, senha: string): Promise<void> {

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { coletarErrosApi, resumoErros, lerEstado, API_URL } from "./helpers";
+import { getGetContratoUrl } from "@workspace/api-client-react";
 
 const estado = lerEstado();
 
@@ -34,12 +35,24 @@ test.describe("Contratos", () => {
     const erros = coletarErrosApi(page);
     await page.goto(`/contratos/${estado.contratoId}`);
     await expect(
-      page.getByText("Detalhes Financeiros"),
+      page.getByText("Detalhes financeiros"),
       `Detalhe do contrato deveria abrir (bug C2 — URL divergente):\n${resumoErros(erros)}`,
     ).toBeVisible();
   });
 
-  test("PROBE API: a URL que o frontend chama e a que o servidor expõe divergem (C2)", async ({ request }) => {
+  /**
+   * A sonda do C2 tinha virado TAUTOLOGIA: as duas URLs comparadas eram a mesma
+   * string literal, então o assert media o status de uma requisição contra o
+   * dele mesmo e passava sempre — inclusive se as duas dessem 404. Ela provava
+   * que o repo sabe escrever a mesma linha duas vezes.
+   *
+   * A pergunta que ela deveria fazer é: **a URL que o CLIENTE GERADO monta é a
+   * que o servidor atende?** Por isso o caminho sai de `getGetContratoUrl` — a
+   * mesma função que a tela chama, importada do pacote gerado — em vez de ser
+   * recopiado aqui. Mudou o `openapi.yaml` e o codegen, esta linha muda junto; a
+   * literal não mudava, e era esse o buraco.
+   */
+  test("PROBE API: a URL que o cliente gerado monta é a que o servidor atende (C2)", async ({ request }) => {
     const login = await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
     });
@@ -47,15 +60,12 @@ test.describe("Contratos", () => {
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
     test.skip(!estado.contratoId, "sem contrato seedado");
-    // O que o cliente gerado chama agora (getGetContratoUrl → escopado por loja;
-    // C2 reconciliado: /api/lojas/{lojaId}/contratos/{id}).
-    const urlFrontend = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos/${estado.contratoId}`);
-    // O que o servidor realmente expõe:
-    const urlServidor = await request.get(`${API_URL}/api/lojas/${estado.lojaId}/contratos/${estado.contratoId}`);
+    const caminhoDoCliente = getGetContratoUrl(estado.lojaId!, estado.contratoId!);
+    const resposta = await request.get(`${API_URL}${caminhoDoCliente}`);
 
     expect(
-      urlFrontend.status(),
-      `Frontend chama /api/lojas/{lojaId}/contratos/{id} → ${urlFrontend.status()}; servidor expõe /api/lojas/{lojaId}/contratos/{id} → ${urlServidor.status()}. As duas deveriam coincidir.`,
-    ).toBe(urlServidor.status());
+      resposta.status(),
+      `O cliente gerado chama ${caminhoDoCliente} e o servidor respondeu ${resposta.status()}. Se for 404, a URL do cliente e a rota do servidor divergiram (C2).`,
+    ).toBe(200);
   });
 });

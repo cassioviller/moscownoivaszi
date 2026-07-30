@@ -64,6 +64,7 @@ import type {
   CaptacaoToken,
   CaptarLeadParams,
   CheckDisponibilidadeVestidosParams,
+  CobrarAvariaInput,
   ComissaoFechamento,
   ComissaoPreviewLinha,
   ComissaoRegra,
@@ -76,6 +77,7 @@ import type {
   Contrato,
   ContratoInput,
   ContratoUpdate,
+  ContratosPage,
   ConversaoLeads,
   Convite,
   ConviteInput,
@@ -98,6 +100,7 @@ import type {
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
   GetConsolidado200Item,
+  GetConversaoLeadsParams,
   GetConviteInfoParams,
   GetDesempenhoVendedoras200Item,
   GetDre200,
@@ -109,6 +112,7 @@ import type {
   GetLookbookPublicoParams,
   GetMinhaComissaoParams,
   GetOrcamentoPublicoParams,
+  GetPortalContratoPdfParams,
   GetPortalFotoParams,
   GetPortalParams,
   GetSazonalidadeCasamentos200Item,
@@ -126,6 +130,7 @@ import type {
   ListAuditoriaParams,
   ListBloqueiosParams,
   ListComissaoFechamentosParams,
+  ListContasPagarParams,
   ListContratosParams,
   ListLeadsParams,
   ListLookbooksParams,
@@ -140,6 +145,8 @@ import type {
   Lookbook,
   LookbookInput,
   LookbookPublico,
+  MarcarConciliadoInput,
+  MarcarConciliadoResultado,
   MembroEquipe,
   MembroEquipeInput,
   MembroEquipeUpdate,
@@ -151,10 +158,13 @@ import type {
   OrcamentoItemUpdate,
   OrcamentoPublico,
   OrcamentoUpdate,
+  OrcamentosPage,
   Pagamento,
   PagamentoInput,
   PagarContaInput,
   Parcela,
+  PedirRemarcacaoPortal200,
+  PedirRemarcacaoPortalParams,
   PendenciaComissao,
   Perfil,
   PerfilInput,
@@ -163,6 +173,8 @@ import type {
   PerfilUpdate,
   PortalNoiva,
   PortalStatus,
+  PreviaExpurgoLeadsPerdidos200,
+  PreviaExpurgoLeadsPerdidosParams,
   PreviewComissaoParams,
   ProximaJanelaVestido,
   ReaberturaComissao,
@@ -843,6 +855,9 @@ export const getDeleteLojaUrl = (lojaId: string,) => {
   return `/api/admin/lojas/${lojaId}`
 }
 
+/**
+ * Apaga uma loja VAZIA. E106/S1: `lojas` é referenciada por 31 FKs em CASCADE — um DELETE aqui levava junto leads, contratos, parcelas recebidas, pagamentos, o acervo de vestidos, os vínculos da equipe e a própria trilha de auditoria da loja. Com histórico, responde 409 `LOJA_COM_HISTORICO` e ensina o caminho certo: desativar (`PATCH { ativo: false }`) tira a loja de todos os seletores e recusa a sessão nela, preservando tudo.
+ */
 export const deleteLoja = async (lojaId: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteLojaUrl(lojaId),
@@ -857,7 +872,7 @@ export const deleteLoja = async (lojaId: string, options?: RequestInit): Promise
 
 
 
-export const getDeleteLojaMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteLojaMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLoja>>, TError,{lojaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteLoja>>, TError,{lojaId: string}, TContext> => {
 
@@ -886,9 +901,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteLojaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLoja>>>
 
-    export type DeleteLojaMutationError = ErrorType<unknown>
+    export type DeleteLojaMutationError = ErrorType<void>
 
-    export const useDeleteLoja = <TError = ErrorType<unknown>,
+    export const useDeleteLoja = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLoja>>, TError,{lojaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteLoja>>,
@@ -1306,6 +1321,9 @@ export const getUpdateUsuarioUrl = (usuarioId: string,) => {
   return `/api/admin/usuarios/${usuarioId}`
 }
 
+/**
+ * Resetar a senha ou marcar `ativo: false` DERRUBA as sessões vivas da pessoa, na mesma transação (E91/B12) — antes a aba já aberta seguia valendo por até 8h depois de o acesso ter sido cortado.
+ */
 export const updateUsuario = async (usuarioId: string,
     usuarioUpdate: UsuarioUpdate, options?: RequestInit): Promise<Usuario> => {
 
@@ -1371,6 +1389,9 @@ export const getDeleteUsuarioUrl = (usuarioId: string,) => {
   return `/api/admin/usuarios/${usuarioId}`
 }
 
+/**
+ * Recusado com 409 quando a pessoa tem histórico (contrato, orçamento, atendimento ou fechamento de comissão) — excluir apagaria contratos e parcelas PAGAS (E91/B2). O caminho para quem sai do ateliê é INATIVAR.
+ */
 export const deleteUsuario = async (usuarioId: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteUsuarioUrl(usuarioId),
@@ -1385,7 +1406,7 @@ export const deleteUsuario = async (usuarioId: string, options?: RequestInit): P
 
 
 
-export const getDeleteUsuarioMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteUsuarioMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUsuario>>, TError,{usuarioId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteUsuario>>, TError,{usuarioId: string}, TContext> => {
 
@@ -1414,9 +1435,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteUsuarioMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUsuario>>>
 
-    export type DeleteUsuarioMutationError = ErrorType<unknown>
+    export type DeleteUsuarioMutationError = ErrorType<void>
 
-    export const useDeleteUsuario = <TError = ErrorType<unknown>,
+    export const useDeleteUsuario = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUsuario>>, TError,{usuarioId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteUsuario>>,
@@ -2086,6 +2107,9 @@ export const getUpdateMembroEquipeUrl = (lojaId: string,
   return `/api/lojas/${lojaId}/equipe/${usuarioId}`
 }
 
+/**
+ * `usuarios` é tabela GLOBAL: o vínculo `usuarios_lojas` é conferido ANTES de qualquer escrita (E91/B1) e a resposta é 404 quando a pessoa não é desta loja. Sem isso, um admin da loja A inativava a dona da loja B. Trocar o perfil ou inativar derruba as sessões vivas, na mesma transação.
+ */
 export const updateMembroEquipe = async (lojaId: string,
     usuarioId: string,
     membroEquipeUpdate: MembroEquipeUpdate, options?: RequestInit): Promise<MembroEquipe> => {
@@ -2102,7 +2126,7 @@ export const updateMembroEquipe = async (lojaId: string,
 
 
 
-export const getUpdateMembroEquipeMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateMembroEquipeMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMembroEquipe>>, TError,{lojaId: string;usuarioId: string;data: BodyType<MembroEquipeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateMembroEquipe>>, TError,{lojaId: string;usuarioId: string;data: BodyType<MembroEquipeUpdate>}, TContext> => {
 
@@ -2131,9 +2155,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateMembroEquipeMutationResult = NonNullable<Awaited<ReturnType<typeof updateMembroEquipe>>>
     export type UpdateMembroEquipeMutationBody = BodyType<MembroEquipeUpdate>
-    export type UpdateMembroEquipeMutationError = ErrorType<unknown>
+    export type UpdateMembroEquipeMutationError = ErrorType<void>
 
-    export const useUpdateMembroEquipe = <TError = ErrorType<unknown>,
+    export const useUpdateMembroEquipe = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMembroEquipe>>, TError,{lojaId: string;usuarioId: string;data: BodyType<MembroEquipeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateMembroEquipe>>,
@@ -2153,6 +2177,9 @@ export const getRemoveMembroEquipeUrl = (lojaId: string,
   return `/api/lojas/${lojaId}/equipe/${usuarioId}`
 }
 
+/**
+ * Mesma prova de pertencimento do PATCH (E91/B1) — antes o 204 saía mesmo sem remover nada, e as sessões da pessoa caíam de qualquer jeito.
+ */
 export const removeMembroEquipe = async (lojaId: string,
     usuarioId: string, options?: RequestInit): Promise<void> => {
 
@@ -2168,7 +2195,7 @@ export const removeMembroEquipe = async (lojaId: string,
 
 
 
-export const getRemoveMembroEquipeMutationOptions = <TError = ErrorType<unknown>,
+export const getRemoveMembroEquipeMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeMembroEquipe>>, TError,{lojaId: string;usuarioId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof removeMembroEquipe>>, TError,{lojaId: string;usuarioId: string}, TContext> => {
 
@@ -2197,9 +2224,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RemoveMembroEquipeMutationResult = NonNullable<Awaited<ReturnType<typeof removeMembroEquipe>>>
 
-    export type RemoveMembroEquipeMutationError = ErrorType<unknown>
+    export type RemoveMembroEquipeMutationError = ErrorType<void>
 
-    export const useRemoveMembroEquipe = <TError = ErrorType<unknown>,
+    export const useRemoveMembroEquipe = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeMembroEquipe>>, TError,{lojaId: string;usuarioId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof removeMembroEquipe>>,
@@ -4771,21 +4798,30 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateLeadMutationOptions(options));
     }
 
-export const getGetConversaoLeadsUrl = (lojaId: string,) => {
+export const getGetConversaoLeadsUrl = (lojaId: string,
+    params?: GetConversaoLeadsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/leads/conversao`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/leads/conversao?${stringifiedParams}` : `/api/lojas/${lojaId}/leads/conversao`
 }
 
 /**
- * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam.
+ * Dois agregados sobre os leads da loja: quantos cada origem trouxe e quantos fecharam (chegaram a CONTRATO_FECHADO+), e a contagem de perdas por motivo. O consumidor que faltava para o dado que E4/E19 já gravam. E142: `de`/`ate` recortam pelo dia de ENTRADA do lead (createdAt, dia local) — a campanha do trimestre deixa de sumir na média de 3 anos; sem params, a história inteira, como sempre foi.
  * @summary Relatório de conversão — por origem (E19) e por motivo de perda (E4)
  */
-export const getConversaoLeads = async (lojaId: string, options?: RequestInit): Promise<ConversaoLeads> => {
+export const getConversaoLeads = async (lojaId: string,
+    params?: GetConversaoLeadsParams, options?: RequestInit): Promise<ConversaoLeads> => {
 
-  return customFetch<ConversaoLeads>(getGetConversaoLeadsUrl(lojaId),
+  return customFetch<ConversaoLeads>(getGetConversaoLeadsUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -4798,23 +4834,25 @@ export const getConversaoLeads = async (lojaId: string, options?: RequestInit): 
 
 
 
-export const getGetConversaoLeadsQueryKey = (lojaId: string,) => {
+export const getGetConversaoLeadsQueryKey = (lojaId: string,
+    params?: GetConversaoLeadsParams,) => {
     return [
-    `/api/lojas/${lojaId}/leads/conversao`
+    `/api/lojas/${lojaId}/leads/conversao`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetConversaoLeadsQueryOptions = <TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetConversaoLeadsQueryOptions = <TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: GetConversaoLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetConversaoLeadsQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getGetConversaoLeadsQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConversaoLeads>>> = ({ signal }) => getConversaoLeads(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConversaoLeads>>> = ({ signal }) => getConversaoLeads(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -4832,11 +4870,12 @@ export type GetConversaoLeadsQueryError = ErrorType<unknown>
  */
 
 export function useGetConversaoLeads<TData = Awaited<ReturnType<typeof getConversaoLeads>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: GetConversaoLeadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConversaoLeads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetConversaoLeadsQueryOptions(lojaId,options)
+  const queryOptions = getGetConversaoLeadsQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -5076,6 +5115,96 @@ export const useExpurgarLeadsPerdidos = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getExpurgarLeadsPerdidosMutationOptions(options));
     }
+
+export const getPreviaExpurgoLeadsPerdidosUrl = (lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/leads/expurgo/previa?${stringifiedParams}` : `/api/lojas/${lojaId}/leads/expurgo/previa`
+}
+
+/**
+ * E128: a confirmação da LGPD dizia O QUE se perde mas não QUANTAS — a contagem só chegava no toast, DEPOIS do clique irreversível; a dona confirmava às cegas se eram 3 ou 300. Esta prévia responde a contagem para o diálogo exibir ANTES, com o MESMO recorte do expurgo (PERDIDO, perda mais antiga que a janela, ainda não anonimizada). Não escreve nada.
+ * @summary Quantas noivas o expurgo anonimizaria HOJE (prévia read-only)
+ */
+export const previaExpurgoLeadsPerdidos = async (lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams, options?: RequestInit): Promise<PreviaExpurgoLeadsPerdidos200> => {
+
+  return customFetch<PreviaExpurgoLeadsPerdidos200>(getPreviaExpurgoLeadsPerdidosUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviaExpurgoLeadsPerdidosQueryKey = (lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams,) => {
+    return [
+    `/api/lojas/${lojaId}/leads/expurgo/previa`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getPreviaExpurgoLeadsPerdidosQueryOptions = <TData = Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviaExpurgoLeadsPerdidosQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>> = ({ signal }) => previaExpurgoLeadsPerdidos(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviaExpurgoLeadsPerdidosQueryResult = NonNullable<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>>
+export type PreviaExpurgoLeadsPerdidosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Quantas noivas o expurgo anonimizaria HOJE (prévia read-only)
+ */
+
+export function usePreviaExpurgoLeadsPerdidos<TData = Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: PreviaExpurgoLeadsPerdidosParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previaExpurgoLeadsPerdidos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviaExpurgoLeadsPerdidosQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDesempenhoVendedorasUrl = (lojaId: string,) => {
 
@@ -5657,6 +5786,81 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateRegistroCobrancaMutationOptions(options));
     }
 
+export const getDesfazerRegistroCobrancaUrl = (lojaId: string,
+    leadId: string,
+    registroId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/leads/${leadId}/cobrancas/${registroId}`
+}
+
+/**
+ * Remove o registro, devolvendo a noiva à fila de cobrança. Existe porque o registro nasce no clique de um link que abre outra aba (a fila de /mensagens): errar o botão é barato e, sem desfazer, o histórico afirmava um contato que não houve — e o relógio do "parado há N dias" zerava em falso. A remoção deixa rastro na trilha de auditoria: depois do DELETE, ela é o único registro do que existiu.
+ * @summary Desfaz um registro de cobrança (E123)
+ */
+export const desfazerRegistroCobranca = async (lojaId: string,
+    leadId: string,
+    registroId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDesfazerRegistroCobrancaUrl(lojaId,leadId,registroId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDesfazerRegistroCobrancaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, TError,{lojaId: string;leadId: string;registroId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, TError,{lojaId: string;leadId: string;registroId: string}, TContext> => {
+
+const mutationKey = ['desfazerRegistroCobranca'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, {lojaId: string;leadId: string;registroId: string}> = (props) => {
+          const {lojaId,leadId,registroId} = props ?? {};
+
+          return  desfazerRegistroCobranca(lojaId,leadId,registroId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DesfazerRegistroCobrancaMutationResult = NonNullable<Awaited<ReturnType<typeof desfazerRegistroCobranca>>>
+
+    export type DesfazerRegistroCobrancaMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Desfaz um registro de cobrança (E123)
+ */
+export const useDesfazerRegistroCobranca = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerRegistroCobranca>>, TError,{lojaId: string;leadId: string;registroId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof desfazerRegistroCobranca>>,
+        TError,
+        {lojaId: string;leadId: string;registroId: string},
+        TContext
+      > => {
+      return useMutation(getDesfazerRegistroCobrancaMutationOptions(options));
+    }
+
 export const getListCabinesUrl = (lojaId: string,) => {
 
 
@@ -6207,23 +6411,25 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteAtendimentoMutationOptions(options));
     }
 
-export const getConfirmarAtendimentoUrl = (lojaId: string,
+export const getRegistrarContatoAtendimentoUrl = (lojaId: string,
     atendimentoId: string,) => {
 
 
 
 
-  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/confirmar`
+  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/contato`
 }
 
 /**
- * Carimba `confirmadoEm` (relógio do servidor) para a fila de confirmação parar de repetir quem já foi contatado. Idempotente: reconfirmar não reescreve o primeiro carimbo.
- * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ * Carimba `contatadoEm` (relógio do servidor) para a fila do dia parar de repetir quem já foi procurado. Idempotente: o segundo clique não reescreve o primeiro carimbo.
+ *
+ * Este endpoint se chamava `/confirmar` e carimbava `confirmadoEm` — o MESMO campo que o portal usa quando a noiva confirma de verdade (E85). Os dois sentidos ficavam indistinguíveis, e a linha sumia da fila e do sino como se a noiva tivesse respondido. Abrir o WhatsApp é ato da loja e não prova nada sobre ela; quem confirma presença é `/portal/provas`.
+ * @summary Marca que a LOJA mandou mensagem para a noiva (E97)
  */
-export const confirmarAtendimento = async (lojaId: string,
+export const registrarContatoAtendimento = async (lojaId: string,
     atendimentoId: string, options?: RequestInit): Promise<Atendimento> => {
 
-  return customFetch<Atendimento>(getConfirmarAtendimentoUrl(lojaId,atendimentoId),
+  return customFetch<Atendimento>(getRegistrarContatoAtendimentoUrl(lojaId,atendimentoId),
   {
     ...options,
     method: 'POST'
@@ -6235,11 +6441,11 @@ export const confirmarAtendimento = async (lojaId: string,
 
 
 
-export const getConfirmarAtendimentoMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
+export const getRegistrarContatoAtendimentoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registrarContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registrarContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
 
-const mutationKey = ['confirmarAtendimento'];
+const mutationKey = ['registrarContatoAtendimento'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -6249,10 +6455,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmarAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registrarContatoAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
           const {lojaId,atendimentoId} = props ?? {};
 
-          return  confirmarAtendimento(lojaId,atendimentoId,requestOptions)
+          return  registrarContatoAtendimento(lojaId,atendimentoId,requestOptions)
         }
 
 
@@ -6262,22 +6468,95 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ConfirmarAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof confirmarAtendimento>>>
+    export type RegistrarContatoAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof registrarContatoAtendimento>>>
 
-    export type ConfirmarAtendimentoMutationError = ErrorType<unknown>
+    export type RegistrarContatoAtendimentoMutationError = ErrorType<unknown>
 
     /**
- * @summary Marca que a recepção confirmou a presença por WhatsApp (E39)
+ * @summary Marca que a LOJA mandou mensagem para a noiva (E97)
  */
-export const useConfirmarAtendimento = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmarAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useRegistrarContatoAtendimento = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registrarContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof confirmarAtendimento>>,
+        Awaited<ReturnType<typeof registrarContatoAtendimento>>,
         TError,
         {lojaId: string;atendimentoId: string},
         TContext
       > => {
-      return useMutation(getConfirmarAtendimentoMutationOptions(options));
+      return useMutation(getRegistrarContatoAtendimentoMutationOptions(options));
+    }
+
+export const getDesfazerContatoAtendimentoUrl = (lojaId: string,
+    atendimentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/atendimentos/${atendimentoId}/contato`
+}
+
+/**
+ * Limpa `contatadoEm`, devolvendo a linha à fila do dia. Existe porque o carimbo acontece no clique de um link que abre outra aba: errar o botão é barato e, sem desfazer, a noiva saía da fila sem ninguém ter falado com ela.
+ * @summary Desfaz o carimbo de contato (E97)
+ */
+export const desfazerContatoAtendimento = async (lojaId: string,
+    atendimentoId: string, options?: RequestInit): Promise<Atendimento> => {
+
+  return customFetch<Atendimento>(getDesfazerContatoAtendimentoUrl(lojaId,atendimentoId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDesfazerContatoAtendimentoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext> => {
+
+const mutationKey = ['desfazerContatoAtendimento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, {lojaId: string;atendimentoId: string}> = (props) => {
+          const {lojaId,atendimentoId} = props ?? {};
+
+          return  desfazerContatoAtendimento(lojaId,atendimentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DesfazerContatoAtendimentoMutationResult = NonNullable<Awaited<ReturnType<typeof desfazerContatoAtendimento>>>
+
+    export type DesfazerContatoAtendimentoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Desfaz o carimbo de contato (E97)
+ */
+export const useDesfazerContatoAtendimento = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerContatoAtendimento>>, TError,{lojaId: string;atendimentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof desfazerContatoAtendimento>>,
+        TError,
+        {lojaId: string;atendimentoId: string},
+        TContext
+      > => {
+      return useMutation(getDesfazerContatoAtendimentoMutationOptions(options));
     }
 
 export const getListAjustesUrl = (lojaId: string,) => {
@@ -7682,6 +7961,9 @@ export const getDeleteAvariaUrl = (lojaId: string,
   return `/api/lojas/${lojaId}/avarias/${avariaId}`
 }
 
+/**
+ * Recusa com 409 `AVARIA_COM_COBRANCA` quando a avaria já virou parcela (E97/F23): a FOTO é a prova que sustenta a cobrança, e apagá-la deixando a parcela viva faz a noiva dever por um dano que o sistema não consegue mais mostrar.
+ */
 export const deleteAvaria = async (lojaId: string,
     avariaId: string, options?: RequestInit): Promise<void> => {
 
@@ -7697,7 +7979,7 @@ export const deleteAvaria = async (lojaId: string,
 
 
 
-export const getDeleteAvariaMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteAvariaMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext> => {
 
@@ -7726,9 +8008,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAvaria>>>
 
-    export type DeleteAvariaMutationError = ErrorType<unknown>
+    export type DeleteAvariaMutationError = ErrorType<ErrorResponse>
 
-    export const useDeleteAvaria = <TError = ErrorType<unknown>,
+    export const useDeleteAvaria = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAvaria>>, TError,{lojaId: string;avariaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteAvaria>>,
@@ -7737,6 +8019,80 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteAvariaMutationOptions(options));
+    }
+
+export const getCobrarAvariaUrl = (lojaId: string,
+    avariaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/avarias/${avariaId}/cobrar`
+}
+
+/**
+ * Cria a parcela avulsa E grava o vínculo na MESMA transação. A segunda chamada responde 409 `AVARIA_JA_COBRADA` em vez de criar uma segunda parcela — antes, dois cliques cobravam o mesmo conserto duas vezes no carnê da noiva, e nada no sistema sabia que eram a mesma coisa.
+ * @summary Transforma o reparo numa parcela do contrato (E97)
+ */
+export const cobrarAvaria = async (lojaId: string,
+    avariaId: string,
+    cobrarAvariaInput: CobrarAvariaInput, options?: RequestInit): Promise<Avaria> => {
+
+  return customFetch<Avaria>(getCobrarAvariaUrl(lojaId,avariaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cobrarAvariaInput)
+  }
+);}
+
+
+
+
+export const getCobrarAvariaMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cobrarAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cobrarAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}, TContext> => {
+
+const mutationKey = ['cobrarAvaria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cobrarAvaria>>, {lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}> = (props) => {
+          const {lojaId,avariaId,data} = props ?? {};
+
+          return  cobrarAvaria(lojaId,avariaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CobrarAvariaMutationResult = NonNullable<Awaited<ReturnType<typeof cobrarAvaria>>>
+    export type CobrarAvariaMutationBody = BodyType<CobrarAvariaInput>
+    export type CobrarAvariaMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Transforma o reparo numa parcela do contrato (E97)
+ */
+export const useCobrarAvaria = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cobrarAvaria>>, TError,{lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cobrarAvaria>>,
+        TError,
+        {lojaId: string;avariaId: string;data: BodyType<CobrarAvariaInput>},
+        TContext
+      > => {
+      return useMutation(getCobrarAvariaMutationOptions(options));
     }
 
 export const getGetAvariaFotoUrl = (lojaId: string,
@@ -7838,9 +8194,9 @@ export const getListOrcamentosUrl = (lojaId: string,
 }
 
 export const listOrcamentos = async (lojaId: string,
-    params?: ListOrcamentosParams, options?: RequestInit): Promise<Orcamento[]> => {
+    params?: ListOrcamentosParams, options?: RequestInit): Promise<OrcamentosPage> => {
 
-  return customFetch<Orcamento[]>(getListOrcamentosUrl(lojaId,params),
+  return customFetch<OrcamentosPage>(getListOrcamentosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -7912,6 +8268,9 @@ export const getCreateOrcamentoUrl = (lojaId: string,) => {
   return `/api/lojas/${lojaId}/orcamentos`
 }
 
+/**
+ * `vendedoraId` vem da SESSÃO, nunca do corpo. O `leadId` do corpo é provado contra a loja da URL (E91/B4): a FK só garante que o id existe, não a que loja pertence — e o GET enriquecido devolveria a ficha da noiva de outra loja.
+ */
 export const createOrcamento = async (lojaId: string,
     orcamentoInput: OrcamentoInput, options?: RequestInit): Promise<Orcamento> => {
 
@@ -7927,7 +8286,7 @@ export const createOrcamento = async (lojaId: string,
 
 
 
-export const getCreateOrcamentoMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateOrcamentoMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrcamento>>, TError,{lojaId: string;data: BodyType<OrcamentoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createOrcamento>>, TError,{lojaId: string;data: BodyType<OrcamentoInput>}, TContext> => {
 
@@ -7956,9 +8315,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateOrcamentoMutationResult = NonNullable<Awaited<ReturnType<typeof createOrcamento>>>
     export type CreateOrcamentoMutationBody = BodyType<OrcamentoInput>
-    export type CreateOrcamentoMutationError = ErrorType<unknown>
+    export type CreateOrcamentoMutationError = ErrorType<void>
 
-    export const useCreateOrcamento = <TError = ErrorType<unknown>,
+    export const useCreateOrcamento = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrcamento>>, TError,{lojaId: string;data: BodyType<OrcamentoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createOrcamento>>,
@@ -8981,6 +9340,88 @@ export const useConfirmarProvaPortal = <TError = ErrorType<void>,
       return useMutation(getConfirmarProvaPortalMutationOptions(options));
     }
 
+export const getPedirRemarcacaoPortalUrl = (atendimentoId: string,
+    params: PedirRemarcacaoPortalParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/provas/${atendimentoId}/remarcar?${stringifiedParams}` : `/api/portal/provas/${atendimentoId}/remarcar`
+}
+
+/**
+ * F37/E100. A única ação da noiva no portal era "confirmo que vou", e ninguém abre um link para dizer que vai: abre para dizer que NÃO. Este aviso devolve à loja os três recursos mais caros do ateliê — cabine, hora da vendedora e vestido separado — com antecedência em vez de com a ausência.
+ * Carimba `remarcacaoPedidaEm`, o TERCEIRO fato da família que o E97 separou (`contatadoEm` = a loja procurou, `confirmadoEm` = ela disse que vem). O atendimento continua AGENDADO de propósito: é PEDIDO, não remarcação — cancelar sozinho devolveria o recurso e deixaria a noiva sem horário nenhum por causa de um clique num link. Quem remarca é a loja, pela fila do dia.
+ * Idempotente, e recusa (422) o que já foi confirmado: quem disse que vem e mudou de ideia fala com a vendedora — o portal não desfaz uma confirmação sobre a qual a loja já tomou decisão física.
+ * @summary A noiva avisa que NÃO pode ir — um pedido, não uma remarcação
+ */
+export const pedirRemarcacaoPortal = async (atendimentoId: string,
+    params: PedirRemarcacaoPortalParams, options?: RequestInit): Promise<PedirRemarcacaoPortal200> => {
+
+  return customFetch<PedirRemarcacaoPortal200>(getPedirRemarcacaoPortalUrl(atendimentoId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPedirRemarcacaoPortalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, TError,{atendimentoId: string;params: PedirRemarcacaoPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, TError,{atendimentoId: string;params: PedirRemarcacaoPortalParams}, TContext> => {
+
+const mutationKey = ['pedirRemarcacaoPortal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, {atendimentoId: string;params: PedirRemarcacaoPortalParams}> = (props) => {
+          const {atendimentoId,params} = props ?? {};
+
+          return  pedirRemarcacaoPortal(atendimentoId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PedirRemarcacaoPortalMutationResult = NonNullable<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>>
+
+    export type PedirRemarcacaoPortalMutationError = ErrorType<void>
+
+    /**
+ * @summary A noiva avisa que NÃO pode ir — um pedido, não uma remarcação
+ */
+export const usePedirRemarcacaoPortal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pedirRemarcacaoPortal>>, TError,{atendimentoId: string;params: PedirRemarcacaoPortalParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pedirRemarcacaoPortal>>,
+        TError,
+        {atendimentoId: string;params: PedirRemarcacaoPortalParams},
+        TContext
+      > => {
+      return useMutation(getPedirRemarcacaoPortalMutationOptions(options));
+    }
+
 export const getGetPortalFotoUrl = (params: GetPortalFotoParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -9050,6 +9491,87 @@ export function useGetPortalFoto<TData = Awaited<ReturnType<typeof getPortalFoto
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPortalFotoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPortalContratoPdfUrl = (params: GetPortalContratoPdfParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/contrato-pdf?${stringifiedParams}` : `/api/portal/contrato-pdf`
+}
+
+/**
+ * O PDF do contrato ATIVO da noiva, servido pelo token do PORTAL — o mesmo documento que a loja baixa, montado pela mesma régua (`lib/contrato-do-papel.ts`). É a quinta rota pública com documento financeiro dentro: checa TTL **e** revogação como as outras quatro, e o contrato sai do leadId do token, nunca de um id na URL — não há id de contrato a adivinhar. Sem contrato ativo é 404.
+ */
+export const getPortalContratoPdf = async (params: GetPortalContratoPdfParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPortalContratoPdfUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalContratoPdfQueryKey = (params?: GetPortalContratoPdfParams,) => {
+    return [
+    `/api/portal/contrato-pdf`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPortalContratoPdfQueryOptions = <TData = Awaited<ReturnType<typeof getPortalContratoPdf>>, TError = ErrorType<void>>(params: GetPortalContratoPdfParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalContratoPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalContratoPdfQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalContratoPdf>>> = ({ signal }) => getPortalContratoPdf(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalContratoPdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalContratoPdfQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalContratoPdf>>>
+export type GetPortalContratoPdfQueryError = ErrorType<void>
+
+
+
+export function useGetPortalContratoPdf<TData = Awaited<ReturnType<typeof getPortalContratoPdf>>, TError = ErrorType<void>>(
+ params: GetPortalContratoPdfParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalContratoPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalContratoPdfQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -9384,9 +9906,9 @@ export const getListContratosUrl = (lojaId: string,
 }
 
 export const listContratos = async (lojaId: string,
-    params?: ListContratosParams, options?: RequestInit): Promise<Contrato[]> => {
+    params?: ListContratosParams, options?: RequestInit): Promise<ContratosPage> => {
 
-  return customFetch<Contrato[]>(getListContratosUrl(lojaId,params),
+  return customFetch<ContratosPage>(getListContratosUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -9458,6 +9980,9 @@ export const getCreateContratoUrl = (lojaId: string,) => {
   return `/api/lojas/${lojaId}/contratos`
 }
 
+/**
+ * Todo id do corpo é provado contra a loja da URL antes de escrever (E91/B4) — inclusive `vendedoraId`, que antes entrava cru e gerava comissão nominal a quem não é da loja.
+ */
 export const createContrato = async (lojaId: string,
     contratoInput: ContratoInput, options?: RequestInit): Promise<Contrato> => {
 
@@ -9473,7 +9998,7 @@ export const createContrato = async (lojaId: string,
 
 
 
-export const getCreateContratoMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateContratoMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createContrato>>, TError,{lojaId: string;data: BodyType<ContratoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createContrato>>, TError,{lojaId: string;data: BodyType<ContratoInput>}, TContext> => {
 
@@ -9502,9 +10027,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateContratoMutationResult = NonNullable<Awaited<ReturnType<typeof createContrato>>>
     export type CreateContratoMutationBody = BodyType<ContratoInput>
-    export type CreateContratoMutationError = ErrorType<unknown>
+    export type CreateContratoMutationError = ErrorType<void>
 
-    export const useCreateContrato = <TError = ErrorType<unknown>,
+    export const useCreateContrato = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createContrato>>, TError,{lojaId: string;data: BodyType<ContratoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createContrato>>,
@@ -9902,6 +10427,8 @@ export const getReceberParcelaUrl = (lojaId: string,
 
 /**
  * Aceita pagamento em partes (E49): o valor informado ACUMULA no `valorRecebido`, e o acumulado decide o status — quitou vira PAGA, sobrou vira PARCIAL (dinheiro no caixa, resto ainda cobrável).
+ *
+ * E94/B6: o acúmulo é condicionado ao estado LIDO. Se outra pessoa receber nesta mesma parcela entre a leitura e a gravação, a chamada é recusada com 409 `PARCELA_MUDOU` em vez de sobrescrever o valor dela — dois lançamentos simultâneos deixavam de somar e o menor ia para a gaveta. Quem recebe o 409 relê o saldo e lança de novo.
  * @summary Recebe (total ou parcialmente) uma parcela
  */
 export const receberParcela = async (lojaId: string,
@@ -10418,17 +10945,30 @@ export function useGetDre<TData = Awaited<ReturnType<typeof getDre>>, TError = E
 
 
 
-export const getListContasPagarUrl = (lojaId: string,) => {
+export const getListContasPagarUrl = (lojaId: string,
+    params?: ListContasPagarParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/financeiro/contas-pagar`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/contas-pagar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/contas-pagar`
 }
 
-export const listContasPagar = async (lojaId: string, options?: RequestInit): Promise<ContaPagar[]> => {
+/**
+ * E93/D2: os recortes que faltavam para terminar o E79 do lado das saídas. Sem parâmetro a resposta é a carteira INTEIRA da loja, que cresce monotonicamente com a idade dela (aluguel + salários + fornecedores + comissões ≈ 30–50 linhas/mês) — quatro telas baixavam tudo para desenhar uma janela. Mesma forma de `listParcelas`: `de`/`ate` recortam por VENCIMENTO (dia local, inclusivo nas duas pontas) e `status=abertas` devolve só as PREVISTA, que é o que a projeção de caixa precisa em qualquer vencimento. Cada conta PAGA vem com `pagamento`, a saída que a quitou — sem ele a tela precisava baixar `listPagamentos` inteiro só para achar o `pagamentoId` que torna a saída estornável.
+ * @summary Contas a pagar da loja — opcionalmente recortadas por vencimento ou status
+ */
+export const listContasPagar = async (lojaId: string,
+    params?: ListContasPagarParams, options?: RequestInit): Promise<ContaPagar[]> => {
 
-  return customFetch<ContaPagar[]>(getListContasPagarUrl(lojaId),
+  return customFetch<ContaPagar[]>(getListContasPagarUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -10441,23 +10981,25 @@ export const listContasPagar = async (lojaId: string, options?: RequestInit): Pr
 
 
 
-export const getListContasPagarQueryKey = (lojaId: string,) => {
+export const getListContasPagarQueryKey = (lojaId: string,
+    params?: ListContasPagarParams,) => {
     return [
-    `/api/lojas/${lojaId}/financeiro/contas-pagar`
+    `/api/lojas/${lojaId}/financeiro/contas-pagar`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListContasPagarQueryOptions = <TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListContasPagarQueryOptions = <TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ListContasPagarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListContasPagarQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListContasPagarQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContasPagar>>> = ({ signal }) => listContasPagar(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listContasPagar>>> = ({ signal }) => listContasPagar(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -10467,16 +11009,20 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListContasPagarQueryResult = NonNullable<Awaited<ReturnType<typeof listContasPagar>>>
-export type ListContasPagarQueryError = ErrorType<unknown>
+export type ListContasPagarQueryError = ErrorType<void>
 
 
+/**
+ * @summary Contas a pagar da loja — opcionalmente recortadas por vencimento ou status
+ */
 
-export function useListContasPagar<TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListContasPagar<TData = Awaited<ReturnType<typeof listContasPagar>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ListContasPagarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listContasPagar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListContasPagarQueryOptions(lojaId,options)
+  const queryOptions = getListContasPagarQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -10497,6 +11043,9 @@ export const getCreateContaPagarUrl = (lojaId: string,) => {
   return `/api/lojas/${lojaId}/financeiro/contas-pagar`
 }
 
+/**
+ * `colaboradorId`, quando vem, é provado contra a loja da URL (E91/B4).
+ */
 export const createContaPagar = async (lojaId: string,
     contaPagarInput: ContaPagarInput, options?: RequestInit): Promise<ContaPagar> => {
 
@@ -10512,7 +11061,7 @@ export const createContaPagar = async (lojaId: string,
 
 
 
-export const getCreateContaPagarMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateContaPagarMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createContaPagar>>, TError,{lojaId: string;data: BodyType<ContaPagarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createContaPagar>>, TError,{lojaId: string;data: BodyType<ContaPagarInput>}, TContext> => {
 
@@ -10541,9 +11090,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateContaPagarMutationResult = NonNullable<Awaited<ReturnType<typeof createContaPagar>>>
     export type CreateContaPagarMutationBody = BodyType<ContaPagarInput>
-    export type CreateContaPagarMutationError = ErrorType<unknown>
+    export type CreateContaPagarMutationError = ErrorType<void>
 
-    export const useCreateContaPagar = <TError = ErrorType<unknown>,
+    export const useCreateContaPagar = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createContaPagar>>, TError,{lojaId: string;data: BodyType<ContaPagarInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createContaPagar>>,
@@ -10743,7 +11292,9 @@ export const getRemoveContaPagarUrl = (lojaId: string,
 
 /**
  * Só contas PREVISTAS podem ser removidas — uma conta PAGA é rastro de caixa e precisa ser estornada antes (POST …/pagamentos/{id}/estornar).
- * @summary Remove uma conta a pagar ainda PREVISTA
+ *
+ * E94/B8: a conta nascida de um fechamento de comissão (`origemComissaoFechamentoId`) também é recusada, com `CONTA_DE_COMISSAO`. A FK do fechamento é ON DELETE SET NULL, então apagá-la zerava o vínculo em silêncio: a vendedora não recebia, `pendencias` não acusava (o fechamento continua existindo) e reabrir não reparava, porque as guardas do reabrir dependem do vínculo. O caminho para desfazer é reabrir o fechamento.
+ * @summary Remove uma conta a pagar ainda PREVISTA e sem dono
  */
 export const removeContaPagar = async (lojaId: string,
     contaId: string, options?: RequestInit): Promise<void> => {
@@ -10792,7 +11343,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RemoveContaPagarMutationError = ErrorType<void>
 
     /**
- * @summary Remove uma conta a pagar ainda PREVISTA
+ * @summary Remove uma conta a pagar ainda PREVISTA e sem dono
  */
 export const useRemoveContaPagar = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeContaPagar>>, TError,{lojaId: string;contaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -12019,6 +12570,79 @@ export const useEnviarContabilidade = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getEnviarContabilidadeMutationOptions(options));
+    }
+
+export const getMarcarConciliadoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/financeiro/conciliacao/marcar`
+}
+
+/**
+ * F32/E103 — a conciliação passa a ter memória. O corpo traz DUAS listas de ids, e não uma: o que a tela chama de "movimento do sistema" é montado de `parcelas` e de `pagamentos`, com ids sintéticos (`parcela:<id>` e `pagamento:<id>`). Não existe entidade "movimento" para receber um PATCH, e inventá-la seria criar um recurso para caber num verbo.
+ * Idempotente por construção: o WHERE exige `conciliado_em IS NULL`, então remarcar o mesmo lote devolve zero sem tocar no carimbo antigo — a mesma forma de `enviarContabilidade`. Id de outra loja não é erro: o WHERE filtra por `loja_id` e ele simplesmente não é marcado.
+ * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
+ */
+export const marcarConciliado = async (lojaId: string,
+    marcarConciliadoInput: MarcarConciliadoInput, options?: RequestInit): Promise<MarcarConciliadoResultado> => {
+
+  return customFetch<MarcarConciliadoResultado>(getMarcarConciliadoUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(marcarConciliadoInput)
+  }
+);}
+
+
+
+
+export const getMarcarConciliadoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof marcarConciliado>>, TError,{lojaId: string;data: BodyType<MarcarConciliadoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof marcarConciliado>>, TError,{lojaId: string;data: BodyType<MarcarConciliadoInput>}, TContext> => {
+
+const mutationKey = ['marcarConciliado'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof marcarConciliado>>, {lojaId: string;data: BodyType<MarcarConciliadoInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  marcarConciliado(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarcarConciliadoMutationResult = NonNullable<Awaited<ReturnType<typeof marcarConciliado>>>
+    export type MarcarConciliadoMutationBody = BodyType<MarcarConciliadoInput>
+    export type MarcarConciliadoMutationError = ErrorType<void>
+
+    /**
+ * @summary Carimba conciliadoEm nos movimentos que casaram com o extrato
+ */
+export const useMarcarConciliado = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof marcarConciliado>>, TError,{lojaId: string;data: BodyType<MarcarConciliadoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof marcarConciliado>>,
+        TError,
+        {lojaId: string;data: BodyType<MarcarConciliadoInput>},
+        TContext
+      > => {
+      return useMutation(getMarcarConciliadoMutationOptions(options));
     }
 
 export const getListComissaoRegrasUrl = (lojaId: string,) => {

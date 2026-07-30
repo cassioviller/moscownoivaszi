@@ -61,6 +61,18 @@ test.describe("Avaria vira parcela (E71)", () => {
       valorTotal: 5000,
       fechadoEm: new Date(),
     });
+
+    // E110: o contrato passa a ter CARNÊ — entrada (numero 0) + 4 parcelas.
+    //
+    // Sem isto o spec media o ramo errado: contrato sem plano deixa o slot 0
+    // livre, e a cobrança do reparo gravava `numero: 0` sem colidir com nada.
+    // Era verde sobre o defeito. Com entrada, a rota antiga devolvia
+    // `409 REGISTRO_DUPLICADO` — e é este o caso que a loja tem de verdade.
+    const plano = await request.post(
+      `${API_URL}/api/lojas/${estado.lojaId}/contratos/${contratoId}/parcelas/gerar-plano`,
+      { data: { entrada: 1000, numParcelas: 4, primeiroVencimento: "2027-01-10" } },
+    );
+    expect(plano.status(), await plano.text()).toBe(201);
   });
 
   test.afterAll(async () => {
@@ -101,5 +113,8 @@ test.describe("Avaria vira parcela (E71)", () => {
     expect(parcelas).toHaveLength(1);
     expect(parcelas[0].valorPrevisto).toBe(350);
     expect(parcelas[0].status).toBe("PREVISTA");
+    // E110: entra DEPOIS do carnê (entrada 0 + parcelas 1..4), nunca por cima
+    // da entrada. É a asserção que distingue o conserto do defeito.
+    expect(parcelas[0].numero).toBe(5);
   });
 });

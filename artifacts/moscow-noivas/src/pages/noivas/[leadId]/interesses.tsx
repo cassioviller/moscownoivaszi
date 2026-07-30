@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -21,6 +22,9 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { parseValor } from "@/lib/financeiro/dinheiro";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Interesses da noiva (porte da /noivas/[leadId]/interesses): atributos do
@@ -38,7 +42,7 @@ export default function InteressesNoiva() {
     },
   });
   const catalogo = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   const podeSalvar = podeNoModulo(acessosModulos, "leads", "editar");
@@ -62,7 +66,7 @@ export default function InteressesNoiva() {
       {falhou ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar os interesses</AlertTitle>
+          <AlertTitle>Não deu para carregar os interesses</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar a noiva ou o catálogo.</span>
             <Button
@@ -122,6 +126,24 @@ function InteresseForm({
     i?.tetoOrcamento != null ? String(i.tetoOrcamento) : "",
   );
 
+  // E133/B7: ESTE é o formulário preenchido durante o atendimento, com a
+  // noiva falando — zerado por um recarregar de conferência. O estado é
+  // useState solto, então o "sujo" é derivação explícita contra o que veio do
+  // servidor (entries ordenadas: a ordem de seleção não é sujeira), e cala
+  // depois de salvar (a tela navega ao concluir).
+  const [salvou, setSalvou] = useState(false);
+  const inicial = {
+    selecoes: Object.fromEntries((i?.atributos ?? []).map((a) => [a.atributoId, a.opcaoId])),
+    algoAMais: i?.algoAMais ?? "",
+    naoQuerUsar: i?.naoQuerUsar ?? "",
+    tetoOrcamento: i?.tetoOrcamento != null ? String(i.tetoOrcamento) : "",
+  };
+  const retrato = (v: typeof inicial) =>
+    JSON.stringify([Object.entries(v.selecoes).sort(), v.algoAMais, v.naoQuerUsar, v.tetoOrcamento]);
+  useConfirmarSaida(
+    !salvou && retrato({ selecoes, algoAMais, naoQuerUsar, tetoOrcamento }) !== retrato(inicial),
+  );
+
   const onSelecao = (atributoId: string, opcaoId: string | null) => {
     setSelecoes((atual) => {
       const proximo = { ...atual };
@@ -133,7 +155,10 @@ function InteresseForm({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const teto = tetoOrcamento.trim() ? Number(tetoOrcamento.replace(",", ".")) : undefined;
+    // `Number("8.000")` é 8 — o teto de oito mil virava oito reais, e o filtro
+    // de vestidos passava a esconder o catálogo inteiro. `parseValor` lê o
+    // ponto de milhar como pt-BR (a mesma régua do item de orçamento).
+    const teto = parseValor(tetoOrcamento) ?? undefined;
     if (teto !== undefined && (!Number.isFinite(teto) || teto < 0)) {
       toast({
         title: "Teto de orçamento inválido",
@@ -161,11 +186,12 @@ function InteresseForm({
         queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(activeLojaId!) }),
       ]);
       toast({ title: "Interesses salvos" });
+      setSalvou(true);
       navigate(`/loja/${lojaId}/noivas/${leadId}`);
     } catch (err) {
       toast({
-        title: "Erro ao salvar interesses",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar interesses",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -206,9 +232,7 @@ function InteresseForm({
         <Label htmlFor="i-teto">Teto de orçamento (R$)</Label>
         <Input
           id="i-teto"
-          type="number"
-          min={0}
-          step="0.01"
+          inputMode="decimal"
           value={tetoOrcamento}
           onChange={(e) => setTetoOrcamento(e.target.value)}
           disabled={readonly}

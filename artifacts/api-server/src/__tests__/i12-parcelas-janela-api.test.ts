@@ -46,7 +46,6 @@ describe("I12 — GET /parcelas: janela de vencimento e noiva embutida", () => {
         entrada: 100,
         numParcelas: 2,
         primeiroVencimento: dataFutura(10).toISOString(),
-        periodicidadeDias: 30,
       })
       .expect(201);
     dias = plano.body.map((p: { vencimento: string }) => diaLocal(new Date(p.vencimento)));

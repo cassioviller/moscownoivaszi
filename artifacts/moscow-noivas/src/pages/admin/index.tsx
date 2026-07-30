@@ -45,15 +45,24 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Building2, Users, BarChart3 } from "lucide-react";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { mensagemApi } from "@/lib/erro-api";
 
 const novaLojaSchema = z.object({
-  nome: z.string().min(1, "Nome da loja é obrigatório"),
+  nome: z.string().min(1, "Informe o nome da loja"),
 });
 type NovaLojaValues = z.infer<typeof novaLojaSchema>;
 
 const novoUsuarioSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
   isSuperAdmin: z.boolean(),
@@ -61,7 +70,7 @@ const novoUsuarioSchema = z.object({
 type NovoUsuarioValues = z.infer<typeof novoUsuarioSchema>;
 
 const editarLojaSchema = z.object({
-  nome: z.string().min(1, "Nome da loja é obrigatório"),
+  nome: z.string().min(1, "Informe o nome da loja"),
   cnpj: z.string(),
   endereco: z.string(),
   telefone: z.string(),
@@ -70,7 +79,7 @@ const editarLojaSchema = z.object({
 type EditarLojaValues = z.infer<typeof editarLojaSchema>;
 
 const editarUsuarioSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
   senha: z
     .string()
@@ -102,33 +111,33 @@ function ConsolidadoRede() {
         </p>
       </div>
       <Card>
-        <CardContent className="pt-6 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-xs text-muted-foreground">
-                <th className="py-2 pr-3 font-normal">Loja</th>
-                <th className="py-2 px-3 font-normal text-right">Noivas no funil</th>
-                <th className="py-2 px-3 font-normal text-right">Contratos ativos</th>
-                <th className="py-2 px-3 font-normal text-right">Recebido no mês</th>
-                <th className="py-2 pl-3 font-normal text-right">A receber (aberto)</th>
-              </tr>
-            </thead>
-            <tbody>
+        <CardContent className="pt-6">
+          <Table className="text-sm">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-b text-left text-xs text-muted-foreground">
+                <TableHead className="py-2 pr-3 font-normal">Loja</TableHead>
+                <TableHead className="py-2 px-3 font-normal text-right">Noivas no funil</TableHead>
+                <TableHead className="py-2 px-3 font-normal text-right">Contratos ativos</TableHead>
+                <TableHead className="py-2 px-3 font-normal text-right">Recebido no mês</TableHead>
+                <TableHead className="py-2 pl-3 font-normal text-right">A receber (aberto)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {linhas.map((l) => (
-                <tr key={l.lojaId} className="border-b last:border-0">
-                  <td className="py-2.5 pr-3 font-medium">{l.nome}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums">{l.leadsAtivos}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums">{l.contratosAtivos}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-positivo">
-                    R$ {brl(l.recebidoNoMes)}
-                  </td>
-                  <td className="py-2.5 pl-3 text-right tabular-nums">
-                    R$ {brl(l.aReceberAberto)}
-                  </td>
-                </tr>
+                <TableRow key={l.lojaId} className="border-b last:border-0">
+                  <TableCell className="py-2.5 pr-3 font-medium">{l.nome}</TableCell>
+                  <TableCell className="py-2.5 px-3 text-right tabular-nums">{l.leadsAtivos}</TableCell>
+                  <TableCell className="py-2.5 px-3 text-right tabular-nums">{l.contratosAtivos}</TableCell>
+                  <TableCell className="py-2.5 px-3 text-right tabular-nums text-positivo">
+                    {brl(l.recebidoNoMes)}
+                  </TableCell>
+                  <TableCell className="py-2.5 pl-3 text-right tabular-nums">
+                    {brl(l.aReceberAberto)}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </section>
@@ -219,8 +228,8 @@ export default function AdminConsole() {
       setLojaEmEdicao(null);
     } catch (err) {
       toast({
-        title: "Erro ao salvar a loja",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar a loja",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -245,8 +254,8 @@ export default function AdminConsole() {
       setUsuarioEmEdicao(null);
     } catch (err) {
       toast({
-        title: "Erro ao salvar o usuário",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar o usuário",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -260,8 +269,8 @@ export default function AdminConsole() {
       formLoja.reset();
     } catch (err) {
       toast({
-        title: "Erro ao criar loja",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para criar loja",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -275,8 +284,8 @@ export default function AdminConsole() {
       formUsuario.reset();
     } catch (err) {
       toast({
-        title: "Erro ao cadastrar usuário",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cadastrar usuário",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -301,8 +310,8 @@ export default function AdminConsole() {
         <Card>
           <CardContent className="pt-6 space-y-6">
             {erroLojas ? (
-              <EstadoErro
-                titulo="Erro ao carregar as lojas"
+              <Erro
+                titulo="Não deu para carregar as lojas"
                 erro={errLojas}
                 onTentarNovamente={() => refetchLojas()}
               />
@@ -383,8 +392,8 @@ export default function AdminConsole() {
         <Card>
           <CardContent className="pt-6 space-y-6">
             {erroUsuarios ? (
-              <EstadoErro
-                titulo="Erro ao carregar os usuários"
+              <Erro
+                titulo="Não deu para carregar os usuários"
                 erro={errUsuarios}
                 onTentarNovamente={() => refetchUsuarios()}
               />
@@ -509,7 +518,7 @@ export default function AdminConsole() {
 
       <Link
         to="/admin/perfis"
-        className="text-sm text-primary underline underline-offset-4 w-fit"
+        className="text-sm text-primary-texto underline underline-offset-4 w-fit"
       >
         Gerenciar perfis (modelos globais) →
       </Link>

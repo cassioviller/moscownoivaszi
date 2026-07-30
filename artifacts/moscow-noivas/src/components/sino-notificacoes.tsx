@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Bell, X } from "lucide-react";
 import { podeNoModulo } from "@/lib/permissoes";
 import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { instanteDiaMes } from "@/lib/formatos";
 
 
 /**
@@ -42,11 +43,6 @@ type Notificacao = {
   urgente: boolean;
 };
 
-const diaCurto = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-});
 
 function chaveDispensadas(usuarioId: string, lojaId: string): string {
   return `sino:dispensadas:${usuarioId}:${lojaId}`;
@@ -119,7 +115,7 @@ export function SinoNotificacoes() {
     if (diaNegativo) {
       lista.push({
         id: `CAIXA:${diaNegativo}`,
-        titulo: `O caixa fica negativo em ${diaCurto.format(new Date(`${diaNegativo}T12:00:00-03:00`))}`,
+        titulo: `O caixa fica negativo em ${instanteDiaMes(`${diaNegativo}T12:00:00-03:00`)}`,
         detalhe: "Pela projeção com o que há para receber e pagar.",
         href: `${base}/financeiro/projecao`,
         urgente: true,
@@ -161,8 +157,10 @@ export function SinoNotificacoes() {
       lista.push({
         id: `CONFIRMAR:${semConfirmar.map((a) => a.id).sort().join(",")}`,
         titulo: `${semConfirmar.length} presença${semConfirmar.length === 1 ? "" : "s"} por confirmar nas próximas 24h`,
-        detalhe: "A fila da agenda tem o WhatsApp pronto.",
-        href: `${base}/agenda`,
+        // E92/F8: o aviso apontava para a AGENDA, que mostra os horários; quem
+        // vai confirmar presença quer a FILA pronta de wa.me, que é /mensagens.
+        detalhe: "A fila de mensagens de hoje tem o WhatsApp pronto.",
+        href: `${base}/mensagens`,
         urgente: false,
       });
     }
@@ -208,8 +206,11 @@ export function SinoNotificacoes() {
           <Bell className="h-5 w-5" />
           {visiveis.length > 0 && (
             <span
-              className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium text-white ${
-                urgentes ? "bg-destructive" : "bg-primary"
+              className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
+                /* E127/E4: text-white cru sobre bg-primary dava 2,79:1 num
+                   numeral de 10px — o par TESTADO de aparencia.test.ts é
+                   foreground sobre a própria cor, em cada ramo. */
+                urgentes ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
               }`}
               data-testid="sino-contador"
             >
@@ -243,7 +244,7 @@ export function SinoNotificacoes() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 shrink-0"
+                  className="md:h-6 md:w-6 shrink-0"
                   aria-label={`Dispensar: ${n.titulo}`}
                   onClick={() => dispensar(n.id)}
                 >

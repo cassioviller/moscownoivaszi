@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ContaPagarPagamento } from './contaPagarPagamento';
 import type { ContaPagarStatus } from './contaPagarStatus';
 import type { ContaPagarTipo } from './contaPagarTipo';
 
@@ -26,4 +27,6 @@ export interface ContaPagar {
   status: ContaPagarStatus;
   /** @nullable */
   recorrenciaId?: string | null;
+  /** @nullable */
+  pagamento?: ContaPagarPagamento;
 }

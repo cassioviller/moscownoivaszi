@@ -26,6 +26,7 @@ import { gerarTokenConvite } from "../lib/auth";
 import { leadNaLoja } from "../lib/escopo-loja";
 import { montarVestidosLookbook } from "../lib/visao-noiva";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
 
 /**
  * Lookbook (E21): a seleção do atendimento vira link para a noiva rever em
@@ -54,7 +55,7 @@ async function buscarPorToken(token: string) {
 router.get("/lookbooks/publico", async (req, res): Promise<void> => {
   const parsed = GetLookbookPublicoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -81,7 +82,7 @@ router.get("/lookbooks/publico", async (req, res): Promise<void> => {
 router.get("/lookbooks/publico/foto", async (req, res): Promise<void> => {
   const parsed = GetLookbookPublicoFotoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { token, vestidoId, ordem, variante = "cheia", v } = parsed.data;
@@ -103,7 +104,7 @@ router.get("/lookbooks/publico/foto", async (req, res): Promise<void> => {
       eq(lookbookItensTable.vestidoId, vestidoId),
     ));
   if (!pertence) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Esta foto não existe nesta loja." });
     return;
   }
 
@@ -111,7 +112,7 @@ router.get("/lookbooks/publico/foto", async (req, res): Promise<void> => {
     where: and(eq(vestidoFotosTable.vestidoId, vestidoId), eq(vestidoFotosTable.ordem, ordem)),
   });
   if (!foto) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Esta foto não existe nesta loja." });
     return;
   }
 
@@ -171,7 +172,7 @@ router.get("/lojas/:lojaId/lookbooks", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = ListLookbooksQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   res.json(ListLookbooksResponse.parse(await listarDaNoiva(lojaId, parsed.data.leadId)));
@@ -181,7 +182,7 @@ router.post("/lojas/:lojaId/lookbooks", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateLookbookBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { leadId, vestidoIds } = parsed.data;

@@ -38,7 +38,7 @@ test.describe("Despesa recorrente (E48)", () => {
 
   test("criar na tela, gerar a competência e achar a conta a pagar", async ({ page, request }) => {
     await page.goto("/financeiro/folha");
-    await expect(page.getByRole("heading", { name: "Recorrências do mês" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Folha do mês" })).toBeVisible();
 
     await page.locator("#despesa-descricao").fill(descricao);
     await page.locator("#despesa-fornecedor").fill("Imobiliária E2E");

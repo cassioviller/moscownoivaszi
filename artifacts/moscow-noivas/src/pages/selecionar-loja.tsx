@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Search, SearchX, Store } from "lucide-react";
+import { mensagemApi } from "@/lib/erro-api";
 
 /** Normaliza texto para comparação case/acento-insensível. */
 function normalizar(texto: string): string {
@@ -51,10 +52,12 @@ export default function SelecionarLoja() {
       setActiveLojaId(lojaId);
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       navigate(`/loja/${lojaId}/dashboard`);
-    } catch (error: any) {
+    // E96/E104: `mensagemApi` recebe `unknown` — o `any` era resquício do
+    // padrão antigo, e era o ÚLTIMO do frontend inteiro.
+    } catch (error) {
       toast({
-        title: "Erro ao selecionar loja",
-        description: error?.message || "Não foi possível entrar na loja. Tente novamente.",
+        title: "Não deu para selecionar loja",
+        description: mensagemApi(error, "Não foi possível entrar na loja. Tente novamente."),
         variant: "destructive",
       });
     }

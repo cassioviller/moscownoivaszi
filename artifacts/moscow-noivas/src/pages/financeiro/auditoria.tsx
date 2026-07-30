@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
+import { instanteCurto } from "@/lib/formatos";
 import {
   ROTULO_ACAO,
   ACOES_FILTRAVEIS,
@@ -40,14 +41,6 @@ const LIMITE_TRILHA = 200;
 /** "Todos" precisa de um valor: o Select do Radix não aceita item com value="". */
 const TODOS = "__todos__";
 
-const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /**
  * Trilha de auditoria (E10): quem recebeu, estornou, pagou e baixou — a
@@ -126,7 +119,7 @@ export default function Auditoria() {
           >
             ← Financeiro
           </Link>
-          <h1 className="text-3xl font-serif mt-1">Trilha de auditoria</h1>
+          <h1 className="text-3xl font-serif mt-1">Auditoria</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Toda ação que mexe em dinheiro deixa linha aqui: quem fez, o quê e quando.
           </p>
@@ -217,7 +210,7 @@ export default function Auditoria() {
       ) : trilha.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar a trilha</AlertTitle>
+          <AlertTitle>Não deu para carregar a trilha</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar os registros.</span>
             <Button variant="outline" size="sm" onClick={() => trilha.refetch()}>
@@ -254,7 +247,7 @@ export default function Auditoria() {
               return (
                 <li key={item.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3">
                   <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
-                    {quandoFmt.format(new Date(item.criadoEm)).replace(", ", " às ")}
+                    {instanteCurto(item.criadoEm).replace(", ", " às ")}
                   </span>
                   <Badge variant={acaoEmDestaque(item.acao) ? "destructive" : "secondary"}>
                     {ROTULO_ACAO[item.acao] ?? item.acao}

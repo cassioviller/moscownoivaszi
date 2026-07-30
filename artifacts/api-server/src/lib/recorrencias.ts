@@ -10,6 +10,8 @@
  * Puro de propósito (sem banco, sem Express): gerar duas vezes não pode dobrar
  * a conta de ninguém, e isso é exatamente o que um teste unitário rápido prova.
  */
+import { ancoraDeNegocio, ultimoDiaDoMes } from "@workspace/financeiro-core";
+
 
 /** Os tipos de conta que uma recorrência sabe gerar. */
 export const TIPOS_RECORRENCIA = ["SALARIO", "DESPESA", "FORNECEDOR"] as const;
@@ -64,12 +66,12 @@ export type ContaRecorrente = {
  * a conta de fevereiro venceria em março, calada.
  */
 export function vencimentoDaCompetencia(competencia: string, diaVencimento: number): Date {
-  const ano = Number(competencia.slice(0, 4));
-  const mes = Number(competencia.slice(5, 7)); // 1..12
-  const ultimoDia = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  // As duas contas vêm do core: `ultimoDiaDoMes` faz o grampo (era o
+  // `Date.UTC(ano, mes, 0)` à mão logo aqui) e `ancoraDeNegocio` põe o
+  // meio-dia de São Paulo (era o `T12:00:00-03:00` cravado na string).
+  const ultimoDia = Number(ultimoDiaDoMes(`${competencia}-01`).slice(8, 10));
   const dia = Math.min(Math.max(diaVencimento, 1), ultimoDia);
-  const pad = (v: number) => String(v).padStart(2, "0");
-  return new Date(`${competencia}-${pad(dia)}T12:00:00-03:00`);
+  return ancoraDeNegocio(`${competencia}-${String(dia).padStart(2, "0")}`);
 }
 
 /**

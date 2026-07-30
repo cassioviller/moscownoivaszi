@@ -12,9 +12,20 @@ import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { instanteHora } from "@/lib/formatos";
+import { diaLocal } from "@/lib/financeiro/datas";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -47,23 +58,34 @@ export default function AgendaSemana() {
     },
   });
   const cabines = useListCabines(activeLojaId!, {
-    query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
   const daSemana = useMemo(() => {
-    const fim = addDays(segunda, 7);
+    // E115: o recorte era por comparação de INSTANTE contra a meia-noite do
+    // NAVEGADOR — na borda da semana, o atendimento de segunda de manhã (ou de
+    // domingo à noite) sumia da grade para quem abre fora do fuso da loja. O
+    // dia do atendimento é o dia da LOJA (`diaLocal`); as colunas da grade são
+    // dias-calendário sintéticos, e a comparação certa é entre strings de dia.
+    const de = diaISO(dias[0]);
+    const ate = diaISO(dias[6]);
     return (atendimentos.data ?? [])
       .filter((a) => {
-        const inicio = new Date(a.inicio);
-        return inicio >= segunda && inicio < fim;
+        const dia = diaLocal(a.inicio);
+        return dia >= de && dia <= ate;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentos.data, segunda]);
+  }, [atendimentos.data, dias]);
 
   const porCabineEDia = useMemo(() => {
     const mapa = new Map<string, Atendimento[]>();
     for (const a of daSemana) {
-      const chave = `${a.cabineId}:${diaISO(new Date(a.inicio))}`;
+      // E115: a coluna saía de `format(new Date(a.inicio))` — o dia do
+      // NAVEGADOR. Uma prova às 14h de sexta em SP, vista de um fuso
+      // adiantado, caía na coluna de SÁBADO com a hora ainda dizendo "14:00"
+      // (a hora da célula sempre usou America/Sao_Paulo) — e a visão do DIA a
+      // mostrava na sexta. Duas telas de agenda discordando do dia da semana.
+      const chave = `${a.cabineId}:${diaLocal(a.inicio)}`;
       const lista = mapa.get(chave) ?? [];
       lista.push(a);
       mapa.set(chave, lista);
@@ -114,7 +136,7 @@ export default function AgendaSemana() {
       {atendimentos.isError || cabines.isError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar a semana</AlertTitle>
+          <AlertTitle>Não deu para carregar a semana</AlertTitle>
           <AlertDescription className="flex items-center gap-3">
             <span>Falha ao buscar a agenda.</span>
             <Button
@@ -136,33 +158,37 @@ export default function AgendaSemana() {
           Nenhuma cabine ativa — configure as cabines para ver a grade.
         </p>
       ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full min-w-[56rem] text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="w-28 py-2 pl-4 pr-2 text-xs font-normal text-muted-foreground">
+        // E19/E99 — o `<Table>` traz o próprio `div.overflow-auto`, então o
+        // `overflow-x-auto` do Card sai: scroll dentro de scroll não rola. E o
+        // `min-w` fica no `<Table>` (que cai no `<table>`), NÃO no wrapper —
+        // no wrapper a rolagem nunca dispararia.
+        <Card>
+          <Table className="min-w-[56rem] text-sm">
+            <TableHeader>
+              <TableRow className="text-left hover:bg-transparent">
+                <TableHead className="w-28 py-2 pl-4 pr-2 text-xs font-normal text-muted-foreground">
                   Cabine
-                </th>
+                </TableHead>
                 {dias.map((dia) => {
                   const ehHoje = isSameDay(dia, hoje);
                   return (
-                    <th key={diaISO(dia)} className="px-2 py-2 text-xs font-normal">
+                    <TableHead key={diaISO(dia)} className="px-2 py-2 text-xs font-normal">
                       <span className={ehHoje ? "font-semibold text-primary" : "text-muted-foreground"}>
                         {format(dia, "EEE dd/MM", { locale: ptBR })}
                       </span>
-                    </th>
+                    </TableHead>
                   );
                 })}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {cabinesAtivas.map((cabine) => (
-                <tr key={cabine.id} className="border-b align-top last:border-0">
-                  <td className="py-2 pl-4 pr-2 font-medium">{cabine.nome}</td>
+                <TableRow key={cabine.id} className="border-b align-top last:border-0">
+                  <TableCell className="py-2 pl-4 pr-2 font-medium">{cabine.nome}</TableCell>
                   {dias.map((dia) => {
                     const celula = porCabineEDia.get(`${cabine.id}:${diaISO(dia)}`) ?? [];
                     return (
-                      <td key={diaISO(dia)} className={`px-2 py-2 ${isSameDay(dia, hoje) ? "bg-primary/5" : ""}`}>
+                      <TableCell key={diaISO(dia)} className={`px-2 py-2 ${isSameDay(dia, hoje) ? "bg-primary/5" : ""}`}>
                         {celula.length === 0 ? (
                           <span className="text-xs text-muted-foreground/50">—</span>
                         ) : (
@@ -175,7 +201,7 @@ export default function AgendaSemana() {
                                   className={`rounded-md border px-2 py-1 ${encerrado ? "opacity-50" : ""} ${a.tipo === "PROVA" ? "border-primary/40" : ""}`}
                                 >
                                   <span className="tabular-nums text-xs text-muted-foreground">
-                                    {format(new Date(a.inicio), "HH:mm")}
+                                    {instanteHora(a.inicio)}
                                   </span>{" "}
                                   <Link
                                     to={`/loja/${lojaId}/noivas/${a.leadId}`}
@@ -192,13 +218,13 @@ export default function AgendaSemana() {
                             })}
                           </ul>
                         )}
-                      </td>
+                      </TableCell>
                     );
                   })}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Card>
       )}
     </div>

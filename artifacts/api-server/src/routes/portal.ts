@@ -10,6 +10,9 @@ import {
   contratosTable,
   parcelasTable,
   atendimentosTable,
+  contratoItensTable,
+  bloqueioVestidosTable,
+  contratoBloqueiosTable,
   vestidoFotosTable,
   auditLogTable,
 } from "@workspace/db";
@@ -22,6 +25,9 @@ import {
   GetPortalFotoQueryParams,
   ConfirmarProvaPortalQueryParams,
   ConfirmarProvaPortalResponse,
+  PedirRemarcacaoPortalQueryParams,
+  PedirRemarcacaoPortalResponse,
+  GetPortalContratoPdfQueryParams,
   GetPortalLeadResponse,
   CriarPortalLeadResponse,
   ListPortaisResponse,
@@ -30,8 +36,15 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
 import { leadNaLoja } from "../lib/escopo-loja";
 import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
-import { montarOrcamentoPublico, montarVestidosLookbook } from "../lib/visao-noiva";
+import {
+  montarOrcamentoPublico,
+  montarVestidosLookbook,
+  montarVestidoDaNoiva,
+} from "../lib/visao-noiva";
+import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
 import { randomUUID } from "node:crypto";
+import { erroDeValidacao } from "../lib/erros";
+import { abertoEmCentavos, brutoEmCentavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
 
 /**
  * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
@@ -50,7 +63,15 @@ const router: IRouter = Router();
 /** Portal válido com noiva e loja, ou o motivo da recusa. */
 async function buscarPorToken(token: string) {
   const [linha] = await db
-    .select({ portal: portalTokensTable, lojaNome: lojasTable.nome, lead: leadsTable })
+    .select({
+      portal: portalTokensTable,
+      lojaNome: lojasTable.nome,
+      // F35: os dados PÚBLICOS da loja — os mesmos da vitrine. O telefone da
+      // vendedora não entra aqui (cuidado (a) do épico).
+      lojaEndereco: lojasTable.endereco,
+      lojaTelefone: lojasTable.telefone,
+      lead: leadsTable,
+    })
     .from(portalTokensTable)
     .innerJoin(lojasTable, eq(lojasTable.id, portalTokensTable.lojaId))
     .innerJoin(leadsTable, eq(leadsTable.id, portalTokensTable.leadId))
@@ -82,7 +103,7 @@ async function orcamentoDoPortal(lojaId: string, leadId: string) {
 router.get("/portal", async (req, res): Promise<void> => {
   const parsed = GetPortalQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -94,11 +115,23 @@ router.get("/portal", async (req, res): Promise<void> => {
     res.status(410).json({ error: "LINK_EXPIRADO" });
     return;
   }
-  const { portal, lojaNome, lead } = linha;
+  const { portal, lojaNome, lojaEndereco, lojaTelefone, lead } = linha;
 
-  // "Ela abriu" do card da vendedora — cada abertura move o carimbo.
+  /**
+   * "Ela abriu" do card da vendedora — cada abertura move o carimbo.
+   *
+   * F38/E100 — e cada abertura RENOVA o prazo. O noivado dura um ano e o link
+   * durava 30 dias contados da geração: a noiva voltava ao favorito em setembro
+   * e lia "este link expirou", que é mais uma mensagem de WhatsApp; do lado de
+   * dentro, a mensagem de cobrança do E84 passava a sair sem o link, calada.
+   *
+   * O espírito da política de 30 dias fica de pé, porque a janela é de
+   * INATIVIDADE: o link de quem usa não morre, o de quem parou morre igual. E
+   * renovar não RESSUSCITA nada — o 410 acima roda antes, então portal vencido
+   * continua vencido e revogado continua 404. Só o acesso vivo estica o prazo.
+   */
   await db.update(portalTokensTable)
-    .set({ ultimoAcessoEm: new Date() })
+    .set({ ultimoAcessoEm: new Date(), expiraEm: new Date(Date.now() + PORTAL_TTL_MS) })
     .where(eq(portalTokensTable.id, portal.id));
 
   const agora = new Date();
@@ -115,6 +148,7 @@ router.get("/portal", async (req, res): Promise<void> => {
       id: atendimentosTable.id,
       inicio: atendimentosTable.inicio,
       confirmadoEm: atendimentosTable.confirmadoEm,
+      remarcacaoPedidaEm: atendimentosTable.remarcacaoPedidaEm,
     })
       .from(atendimentosTable)
       .where(and(
@@ -137,22 +171,64 @@ router.get("/portal", async (req, res): Promise<void> => {
   // O extrato DELA: as parcelas do contrato ativo, por número. O escopo por
   // contratoId (do contrato DESTA noiva) é o que garante que valores de outra
   // noiva jamais aparecem.
-  const parcelas = contrato[0]
-    ? await db.select().from(parcelasTable)
-        .where(eq(parcelasTable.contratoId, contrato[0].id))
-        .orderBy(asc(parcelasTable.numero))
-    : [];
+  const [parcelas, itensDoContrato, vestido] = contrato[0]
+    ? await Promise.all([
+        db.select().from(parcelasTable)
+          .where(eq(parcelasTable.contratoId, contrato[0].id))
+          .orderBy(asc(parcelasTable.numero)),
+        // F21: o snapshot congelado no fechamento — não o orçamento vivo, que
+        // pode ter sido editado depois (E75).
+        db.select().from(contratoItensTable)
+          .where(eq(contratoItensTable.contratoId, contrato[0].id))
+          .orderBy(asc(contratoItensTable.createdAt)),
+        montarVestidoDaNoiva(contrato[0]),
+      ])
+    : [[], [], null];
+
+  /**
+   * F36/E100 — as duas respostas que ela abre o link para procurar.
+   *
+   * O extrato lista oito linhas num celular e não dizia "falta pagar R$ X" nem
+   * "a próxima vence em DD/MM" — a uma soma de distância. Cada pergunta que o
+   * portal não responde volta como mensagem de WhatsApp para a vendedora, que é
+   * exatamente o custo que o E78 existia para reduzir.
+   *
+   * Em centavos, pelo mesmo motor do resto do sistema: `abertoEmCentavos`
+   * desconta o que já entrou numa parcela PARCIAL — mostrar o previsto cheio
+   * cobraria de novo o que ela já pagou, na tela dela. Desde o E125 a soma é a
+   * MESMA função que a tela do contrato e a ficha usam para "falta receber".
+   */
+  const abertas = parcelas.filter((p) => estaAberta(p));
+  const faltaPagarC = abertoEmCentavos(parcelas);
+  const proxima = [...abertas].sort(
+    (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime(),
+  )[0];
+
+  // As duas montagens são independentes e eram `await`adas em sequência DENTRO
+  // do literal — uma esperava a outra sem precisar. O portal é a tela que a
+  // noiva abre no celular, e cada uma delas é um punhado de consultas.
+  const [visaoOrcamento, visaoLookbook] = await Promise.all([
+    orcamento ? montarOrcamentoPublico(orcamento, lojaNome, lead.noivaNome) : null,
+    lookbook[0] ? montarVestidosLookbook(lookbook[0].id) : null,
+  ]);
 
   res.json(
     GetPortalResponse.parse({
       noivaNome: lead.noivaNome,
       lojaNome,
-      orcamento: orcamento
-        ? await montarOrcamentoPublico(orcamento, lojaNome, lead.noivaNome)
+      lojaEndereco,
+      lojaTelefone,
+      // Só quando há contrato: sem ele, um "falta pagar R$ 0,00" afirmaria algo
+      // sobre um acordo que não existe.
+      resumoPagamento: contrato[0]
+        ? {
+            faltaPagar: reais(faltaPagarC),
+            proximaEm: proxima?.vencimento ?? null,
+            proximaValor: proxima ? saldoAberto(proxima) : null,
+          }
         : null,
-      lookbook: lookbook[0]
-        ? { vestidos: await montarVestidosLookbook(lookbook[0].id) }
-        : null,
+      orcamento: visaoOrcamento,
+      lookbook: visaoLookbook ? { vestidos: visaoLookbook } : null,
       provas,
       parcelas: parcelas
         .filter((p) => p.status !== "CANCELADA")
@@ -164,8 +240,83 @@ router.get("/portal", async (req, res): Promise<void> => {
           vencimento: p.vencimento,
           status: p.status,
         })),
+      /**
+       * F21 — o contrato assinado, o único artefato do sistema que não tinha
+       * caminho até ela. O `totalBruto` sai da SOMA DOS ITENS e não de um campo
+       * gravado: com desconto, `valorTotal` é o líquido, e sem o bruto ao lado
+       * a tela dela mostraria itens que não somam o total do próprio contrato.
+       */
+      contrato: contrato[0]
+        ? {
+            valorTotal: contrato[0].valorTotal,
+            // `brutoEmCentavos` é a régua do core (E95/C1) e estava
+            // reimplementada aqui, linha por linha igual — inclusive a ordem
+            // "converte antes de multiplicar", que é o ponto dela.
+            totalBruto: reais(brutoEmCentavos(itensDoContrato)),
+            descontoTipo: contrato[0].descontoTipo,
+            descontoValor: contrato[0].descontoValor,
+            fechadoEm: contrato[0].fechadoEm,
+            dataCasamento: contrato[0].dataCasamento,
+            itens: itensDoContrato.map((it) => ({
+              tipo: it.tipo,
+              descricao: it.descricao,
+              quantidade: it.quantidade,
+              valorUnitario: it.valorUnitario,
+            })),
+          }
+        : null,
+      // F39 — "O seu vestido". Null quando o contrato não prende reserva.
+      vestido,
     }),
   );
+});
+
+/**
+ * F21/E100 — o PDF do contrato pelo token da noiva.
+ *
+ * O papel é o MESMO da loja (`lib/contrato-do-papel.ts`); o que muda é a prova
+ * de quem pode vê-lo. Cuidado (d) do épico, cumprido: TTL **e** revogação, na
+ * mesma ordem das outras quatro rotas públicas.
+ *
+ * E não há id de contrato na URL — ele sai do `leadId` do token. Uma rota
+ * pública que aceitasse `:contratoId` teria de provar o pertencimento a cada
+ * chamada; esta não tem o que provar, porque não há o que adivinhar.
+ */
+router.get("/portal/contrato-pdf", async (req, res): Promise<void> => {
+  const parsed = GetPortalContratoPdfQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  const contrato = await db.query.contratosTable.findFirst({
+    where: and(
+      eq(contratosTable.lojaId, linha.portal.lojaId),
+      eq(contratosTable.leadId, linha.portal.leadId),
+      eq(contratosTable.status, "ATIVO"),
+    ),
+    with: { loja: true, lead: true, parcelas: true, itens: true },
+    orderBy: desc(contratosTable.fechadoEm),
+  });
+  // Cancelado não desce: o papel que ela guardar tem de ser o que vale.
+  if (!contrato) {
+    res.status(404).json({ error: "CONTRATO_INEXISTENTE" });
+    return;
+  }
+
+  res.status(200)
+    .type("application/pdf")
+    .setHeader("Content-Disposition", `inline; filename="${nomeDoArquivo(contrato)}"`);
+  res.send(Buffer.from(pdfDoContrato(contrato)));
 });
 
 // O aceite pelo portal delega à MESMA rotina do E74 (uma transação, um
@@ -173,7 +324,7 @@ router.get("/portal", async (req, res): Promise<void> => {
 router.post("/portal/aceite", async (req, res): Promise<void> => {
   const parsed = AceitarPortalQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -211,7 +362,7 @@ router.post("/portal/aceite", async (req, res): Promise<void> => {
 router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise<void> => {
   const parsed = ConfirmarProvaPortalQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const linha = await buscarPorToken(parsed.data.token);
@@ -250,14 +401,19 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
   }
 
   const agora = new Date();
-  await db.transaction(async (tx) => {
+  // O `.returning()` do UPDATE já traz o carimbo de quem VENCEU a corrida — o
+  // SELECT extra depois da transação relia o que a transação acabou de
+  // devolver. Ele continua existindo, mas só para o PERDEDOR, que precisa ler o
+  // carimbo que ficou gravado (devolver `agora` ali afirmaria uma hora que não
+  // existe no banco — o mesmo defeito do aceite do orçamento).
+  const confirmadoNaHora = await db.transaction(async (tx) => {
     // UPDATE condicional: dois cliques simultâneos gravam UM carimbo.
     const [atualizado] = await tx
       .update(atendimentosTable)
       .set({ confirmadoEm: agora, updatedAt: agora })
       .where(and(eq(atendimentosTable.id, prova.id), isNull(atendimentosTable.confirmadoEm)))
       .returning();
-    if (!atualizado) return;
+    if (!atualizado) return null;
 
     // Autoria da NOIVA, sem sessão — o mesmo rastro do aceite (E74).
     await tx.insert(auditLogTable).values({
@@ -270,12 +426,117 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
       entidadeId: prova.id,
       detalhe: { inicio: prova.inicio.toISOString() },
     });
+    return atualizado.confirmadoEm;
   });
 
-  const [depois] = await db.select({ confirmadoEm: atendimentosTable.confirmadoEm })
-    .from(atendimentosTable)
-    .where(eq(atendimentosTable.id, prova.id));
-  res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: depois.confirmadoEm ?? agora }));
+  const confirmadoEm =
+    confirmadoNaHora ??
+    (
+      await db.select({ confirmadoEm: atendimentosTable.confirmadoEm })
+        .from(atendimentosTable)
+        .where(eq(atendimentosTable.id, prova.id))
+    )[0]?.confirmadoEm;
+  res.json(ConfirmarProvaPortalResponse.parse({ confirmadoEm: confirmadoEm ?? agora }));
+});
+
+/**
+ * F37/E100 — a noiva avisa que NÃO pode ir.
+ *
+ * A única ação dela aqui era "confirmo que vou", e ninguém abre um link para
+ * dizer que vai: abre para dizer que não. Este aviso devolve à loja os três
+ * recursos mais caros do ateliê — cabine, hora da vendedora e vestido separado —
+ * com antecedência, em vez de com a ausência.
+ */
+router.post("/portal/provas/:atendimentoId/remarcar", async (req, res): Promise<void> => {
+  const parsed = PedirRemarcacaoPortalQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const linha = await buscarPorToken(parsed.data.token);
+  if (!linha) {
+    res.status(404).json({ error: "LINK_INVALIDO" });
+    return;
+  }
+  if (linha.portal.expiraEm <= new Date()) {
+    res.status(410).json({ error: "LINK_EXPIRADO" });
+    return;
+  }
+
+  const atendimentoId = req.params.atendimentoId as string;
+  const prova = await db.query.atendimentosTable.findFirst({
+    where: and(
+      eq(atendimentosTable.id, atendimentoId),
+      eq(atendimentosTable.lojaId, linha.portal.lojaId),
+      eq(atendimentosTable.leadId, linha.portal.leadId),
+    ),
+  });
+  if (!prova) {
+    res.status(404).json({ error: "PROVA_INEXISTENTE" });
+    return;
+  }
+  // Idempotente ANTES das réguas, como no confirmar: o segundo clique devolve o
+  // mesmo carimbo em vez de um 422 que a noiva leria como "não deu certo".
+  if (prova.remarcacaoPedidaEm) {
+    res.json(PedirRemarcacaoPortalResponse.parse({ remarcacaoPedidaEm: prova.remarcacaoPedidaEm }));
+    return;
+  }
+  // Quem JÁ CONFIRMOU não desmarca por aqui. A loja tomou decisão física em
+  // cima daquele sim — separou a peça, reservou a cabine, escalou a costureira —
+  // e desfazer isso por um clique num link, sem ninguém saber, é pior que a
+  // conversa de trinta segundos com a vendedora.
+  if (prova.confirmadoEm) {
+    res.status(422).json({
+      error: "JA_CONFIRMADA",
+      detalhe: "Você já confirmou esta prova — fale com a sua vendedora para remarcar.",
+    });
+    return;
+  }
+  if (prova.tipo !== "PROVA" || prova.situacao !== "AGENDADO" || prova.inicio <= new Date()) {
+    res.status(422).json({ error: "NADA_A_REMARCAR", detalhe: "não é uma prova futura agendada" });
+    return;
+  }
+
+  const agora = new Date();
+  // Mesma forma da confirmação: o `.returning()` serve o vencedor, e o SELECT
+  // extra só roda para quem perdeu a corrida.
+  const pedidoNaHora = await db.transaction(async (tx) => {
+    // UPDATE condicional: dois cliques simultâneos gravam UM carimbo.
+    const [atualizado] = await tx
+      .update(atendimentosTable)
+      .set({ remarcacaoPedidaEm: agora, updatedAt: agora })
+      .where(and(
+        eq(atendimentosTable.id, prova.id),
+        isNull(atendimentosTable.remarcacaoPedidaEm),
+      ))
+      .returning();
+    if (!atualizado) return null;
+
+    // Autoria da NOIVA, sem sessão — o mesmo rastro do aceite (E74) e da
+    // confirmação (E85).
+    await tx.insert(auditLogTable).values({
+      id: randomUUID(),
+      lojaId: linha.portal.lojaId,
+      usuarioId: null,
+      usuarioNome: `${linha.lead.noivaNome} (link público)`,
+      acao: "REMARCACAO_PEDIDA",
+      entidade: "atendimento",
+      entidadeId: prova.id,
+      detalhe: { inicio: prova.inicio.toISOString() },
+    });
+    return atualizado.remarcacaoPedidaEm;
+  });
+
+  const remarcacaoPedidaEm =
+    pedidoNaHora ??
+    (
+      await db.select({ remarcacaoPedidaEm: atendimentosTable.remarcacaoPedidaEm })
+        .from(atendimentosTable)
+        .where(eq(atendimentosTable.id, prova.id))
+    )[0]?.remarcacaoPedidaEm;
+  res.json(PedirRemarcacaoPortalResponse.parse({
+    remarcacaoPedidaEm: remarcacaoPedidaEm ?? agora,
+  }));
 });
 
 // A foto escopada ao token do PORTAL — espelho de /lookbooks/publico/foto,
@@ -283,7 +544,7 @@ router.post("/portal/provas/:atendimentoId/confirmar", async (req, res): Promise
 router.get("/portal/foto", async (req, res): Promise<void> => {
   const parsed = GetPortalFotoQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const { token, vestidoId, ordem, variante = "original", v } = parsed.data;
@@ -298,7 +559,18 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     return;
   }
 
-  // O escopo: o vestido tem de estar no lookbook mais recente DA noiva.
+  /**
+   * O escopo: o vestido tem de estar no lookbook mais recente DA noiva **ou**
+   * ser o vestido reservado pelo contrato ATIVO dela.
+   *
+   * F39/E100 acrescentou o segundo caminho, e ele não é um afrouxamento: a
+   * seção "O seu vestido" mostra a peça que ela contratou, e essa peça pode
+   * nunca ter entrado num lookbook — quem fecha na primeira visita não ganha
+   * uma seleção de provados. Sem isto a foto da própria noiva respondia 404.
+   *
+   * O que continua valendo: vestido de OUTRA noiva é 404 mesmo existindo, e
+   * ambos os caminhos passam pelo `leadId` do token.
+   */
   const [lookbook] = await db.select({ id: lookbooksTable.id }).from(lookbooksTable)
     .where(and(
       eq(lookbooksTable.lojaId, linha.portal.lojaId),
@@ -306,15 +578,56 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     ))
     .orderBy(desc(lookbooksTable.createdAt))
     .limit(1);
-  const [pertence] = lookbook
+  const [noLookbook] = lookbook
     ? await db.select({ id: lookbookItensTable.id }).from(lookbookItensTable)
         .where(and(
           eq(lookbookItensTable.lookbookId, lookbook.id),
           eq(lookbookItensTable.vestidoId, vestidoId),
         ))
     : [];
-  if (!pertence) {
-    res.status(404).json({ error: "Foto not found" });
+  // E115 — o caminho do contrato resolvia SÓ pela coluna singular legada
+  // (`contratos.bloqueio_vestido_id`), que o app nunca preenche (a tela manda
+  // `bloqueioVestidoIds`, o servidor grava o N:N): a seção "O seu vestido"
+  // aparecia e a foto respondia 404, permanentemente, no celular da noiva.
+  // A régua é a MESMA de `montarVestidoDaNoiva`: a UNIÃO do N:N com o legado
+  // ("lido, nunca mais escrito") — meu primeiro conserto trocou uma metade
+  // pela outra, e foi o teste do E100 (que monta pelo legado) que o pegou.
+  let noContrato = false;
+  if (!noLookbook) {
+    const contratos = await db
+      .select({ id: contratosTable.id, bloqueioVestidoId: contratosTable.bloqueioVestidoId })
+      .from(contratosTable)
+      .where(and(
+        eq(contratosTable.lojaId, linha.portal.lojaId),
+        eq(contratosTable.leadId, linha.portal.leadId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    if (contratos.length > 0) {
+      const vinculos = await db
+        .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+        .from(contratoBloqueiosTable)
+        .where(inArray(contratoBloqueiosTable.contratoId, contratos.map((c) => c.id)));
+      const bloqueioIds = [
+        ...new Set([
+          ...contratos.flatMap((c) => (c.bloqueioVestidoId ? [c.bloqueioVestidoId] : [])),
+          ...vinculos.map((v) => v.bloqueioId),
+        ]),
+      ];
+      if (bloqueioIds.length > 0) {
+        const [b] = await db
+          .select({ id: bloqueioVestidosTable.id })
+          .from(bloqueioVestidosTable)
+          .where(and(
+            inArray(bloqueioVestidosTable.id, bloqueioIds),
+            eq(bloqueioVestidosTable.vestidoId, vestidoId),
+            isNull(bloqueioVestidosTable.canceladoEm),
+          ));
+        noContrato = !!b;
+      }
+    }
+  }
+  if (!noLookbook && !noContrato) {
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Este registro não existe mais." });
     return;
   }
 
@@ -322,7 +635,7 @@ router.get("/portal/foto", async (req, res): Promise<void> => {
     where: and(eq(vestidoFotosTable.vestidoId, vestidoId), eq(vestidoFotosTable.ordem, ordem)),
   });
   if (!foto) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Este registro não existe mais." });
     return;
   }
 
@@ -382,7 +695,7 @@ router.post(
   async (req, res): Promise<void> => {
     const { lojaId, leadId } = req.params as { lojaId: string; leadId: string };
     if (!(await leadNaLoja(leadId, lojaId))) {
-      res.status(404).json({ error: "Lead not found" });
+      res.status(404).json({ error: "LEAD_NAO_ENCONTRADO", detalhe: "Este registro não existe mais." });
       return;
     }
 

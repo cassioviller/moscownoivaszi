@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
+import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,8 +58,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { MessageCircle } from "lucide-react";
-import { dataCurtaFmt } from "../noivas/helpers";
+import { diaMesAbrevAno } from "@/lib/formatos";
 import { hojeLocal } from "@/lib/financeiro/datas";
+import { instanteCurto } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import {
@@ -70,6 +72,8 @@ import {
   type Marcacao,
 } from "@workspace/agenda-core";
 import { cn } from "@/lib/utils";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { mensagemApi } from "@/lib/erro-api";
 
 const agendarSchema = z
   .object({
@@ -94,12 +98,6 @@ const agendarSchema = z
 
 type AgendarValues = z.infer<typeof agendarSchema>;
 
-const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /**
  * Agendar atendimento/prova (porte da /atendimentos/novo do feat/orcamentos).
@@ -115,18 +113,25 @@ export default function NovoAtendimento() {
 
   // Deep-link do detalhe da reserva ("Agendar prova"): ?noiva=&tipo=PROVA&reserva=
   // pré-preenche o formulário. `tipo` só aceita os valores do schema.
+  //
+  // F12: a agenda manda `?dia=` ao trocar o diálogo próprio por esta tela — sem
+  // ele, quem estava olhando a grade de 14/02 cairia aqui com a data em branco e
+  // teria de redigitar o dia que já estava na tela anterior. O formato é o mesmo
+  // YMD do `<input type=date>`, então serve de valor inicial sem conversão.
   const tipoParam = searchParams.get("tipo");
+  const diaParam = searchParams.get("dia") ?? "";
   const prefill = {
     tipo: tipoParam === "PROVA" || tipoParam === "ATENDIMENTO" ? tipoParam : "ATENDIMENTO",
     leadId: searchParams.get("noiva") ?? "",
     bloqueioId: searchParams.get("reserva") ?? "",
+    data: /^\d{4}-\d{2}-\d{2}$/.test(diaParam) ? diaParam : "",
   } as const;
 
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const cabines = useListCabines(activeLojaId!, {
-    query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const bloqueios = useListBloqueios(activeLojaId!, undefined, {
     query: { queryKey: getListBloqueiosQueryKey(activeLojaId!), enabled: !!activeLojaId },
@@ -151,11 +156,14 @@ export default function NovoAtendimento() {
       bloqueioId: prefill.bloqueioId,
       cabineId: "",
       vendedoraId: "",
-      data: "",
+      data: prefill.data,
       hora: "",
       observacao: "",
     },
   });
+  // D14: aqui o `form.reset()` roda no sucesso, então `isDirty` volta a false
+  // sozinho — não precisa do `salvou` que o `noiva-form` precisa.
+  useConfirmarSaida(form.formState.isDirty);
   const tipo = form.watch("tipo");
   const leadId = form.watch("leadId");
   const cabineId = form.watch("cabineId");
@@ -241,12 +249,10 @@ export default function NovoAtendimento() {
     } catch (err) {
       toast({
         title: "Não deu para reservar",
-        description:
-          err instanceof Error && err.message.includes("INDISPONIVEL")
-            ? "O vestido não está livre na data do casamento — escolha outro ou confira a ficha dele."
-            : err instanceof Error
-              ? err.message
-              : "Tente novamente.",
+        description: mensagemApi(err, "Tente novamente.", {
+          VESTIDO_INDISPONIVEL:
+            "O vestido não está livre na data do casamento — escolha outro ou confira a ficha dele.",
+        }),
         variant: "destructive",
       });
     }
@@ -350,9 +356,9 @@ export default function NovoAtendimento() {
       form.reset();
     } catch (err) {
       toast({
-        title: "Erro ao agendar",
+        title: "Não deu para agendar",
         description:
-          err instanceof Error ? err.message : "Verifique conflito de horário e tente novamente.",
+          mensagemApi(err, "Verifique conflito de horário e tente novamente."),
         variant: "destructive",
       });
     }
@@ -366,8 +372,8 @@ export default function NovoAtendimento() {
       toast({ title: "Atendimento cancelado" });
     } catch (err) {
       toast({
-        title: "Erro ao cancelar",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para cancelar",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     } finally {
@@ -379,12 +385,24 @@ export default function NovoAtendimento() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link
-            to={`/loja/${lojaId}/atendimentos`}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Atendimentos
-          </Link>
+          {/* Quem veio da agenda volta para a agenda, no MESMO dia que estava
+              olhando — a comodidade que o diálogo do F12 dava de graça e que um
+              link para "Atendimentos" não devolve. */}
+          {prefill.data ? (
+            <Link
+              to={`/loja/${lojaId}/agenda?dia=${prefill.data}`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Agenda
+            </Link>
+          ) : (
+            <Link
+              to={`/loja/${lojaId}/atendimentos`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Atendimentos
+            </Link>
+          )}
           <h1 className="text-3xl font-serif mt-1">Agendar</h1>
         </div>
         {podeVerConfig && (
@@ -535,7 +553,7 @@ export default function NovoAtendimento() {
                                 <SelectItem key={r.id} value={r.id}>
                                   Vestido {r.vestido?.codigo ?? "?"} · {r.vestido?.nome ?? "sem nome"}
                                   {r.casamentoData
-                                    ? ` — casamento ${dataCurtaFmt.format(new Date(r.casamentoData))}`
+                                    ? ` — casamento ${diaMesAbrevAno(r.casamentoData)}`
                                     : ""}
                                 </SelectItem>
                               ))}
@@ -712,7 +730,7 @@ export default function NovoAtendimento() {
                         {a.tipo === "PROVA" ? " — Prova" : ""}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {dataHoraFmt.format(new Date(a.inicio))} · {a.cabine?.nome ?? "Cabine"} ·{" "}
+                        {instanteCurto(a.inicio)} · {a.cabine?.nome ?? "Cabine"} ·{" "}
                         {a.vendedora?.nome ?? "Vendedora"}
                       </span>
                     </div>

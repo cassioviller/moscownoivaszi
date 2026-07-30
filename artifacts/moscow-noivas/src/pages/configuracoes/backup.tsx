@@ -9,9 +9,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EstadoErro } from "@/components/estado-erro";
+import { Erro } from "@/components/estado";
 import { useToast } from "@/hooks/use-toast";
 import { DatabaseBackup, Loader2 } from "lucide-react";
+import { instanteCurto } from "@/lib/formatos";
 
 /**
  * Status de backup do sistema (E30) — a resposta do SRE à pergunta que não
@@ -20,14 +21,6 @@ import { DatabaseBackup, Loader2 } from "lucide-react";
  * aperta. Mora na aba Administração porque o dump é do banco inteiro.
  */
 
-const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /** "há 5 min", "há 3 h", "há 12 dias" — ou null para cair na data absoluta. */
 function haQuanto(instante: string): string | null {
@@ -44,7 +37,7 @@ function haQuanto(instante: string): string | null {
 }
 
 function dataLonga(iso: string): string {
-  return quandoFmt.format(new Date(iso)).replace(", ", " às ");
+  return instanteCurto(iso).replace(", ", " às ");
 }
 
 function tamanho(bytes: number | null | undefined): string {
@@ -61,13 +54,15 @@ function tamanho(bytes: number | null | undefined): string {
  */
 type Saude = { cor: string; texto: string };
 function saude(ultimo: BackupLog | null): Saude {
-  if (!ultimo) return { cor: "bg-red-500", texto: "Nenhum backup ainda" };
-  if (ultimo.status === "em_andamento") return { cor: "bg-amber-500", texto: "Backup em andamento" };
-  if (ultimo.status === "erro") return { cor: "bg-red-500", texto: "Último backup falhou" };
+  /* E127/E7: a tela reinventava bg-red-500/bg-emerald-500 onde --destructive
+     e --positivo existem testados — e o âmbar à mão virou o token --aviso. */
+  if (!ultimo) return { cor: "bg-destructive", texto: "Nenhum backup ainda" };
+  if (ultimo.status === "em_andamento") return { cor: "bg-aviso", texto: "Backup em andamento" };
+  if (ultimo.status === "erro") return { cor: "bg-destructive", texto: "Último backup falhou" };
   const horas = (Date.now() - new Date(ultimo.iniciadoEm).getTime()) / 3_600_000;
-  if (horas <= 24) return { cor: "bg-emerald-500", texto: "Backup em dia" };
-  if (horas <= 48) return { cor: "bg-amber-500", texto: "Backup ficando velho" };
-  return { cor: "bg-red-500", texto: "Backup atrasado" };
+  if (horas <= 24) return { cor: "bg-positivo", texto: "Backup em dia" };
+  if (horas <= 48) return { cor: "bg-aviso", texto: "Backup ficando velho" };
+  return { cor: "bg-destructive", texto: "Backup atrasado" };
 }
 
 /**
@@ -151,8 +146,8 @@ export function BackupSistema() {
       </CardHeader>
       <CardContent className="space-y-6">
         {statusQ.isError ? (
-          <EstadoErro
-            titulo="Erro ao carregar o status do backup"
+          <Erro
+            titulo="Não deu para carregar o status do backup"
             erro={statusQ.error}
             onTentarNovamente={() => statusQ.refetch()}
           />
@@ -195,7 +190,7 @@ export function BackupSistema() {
             {/* E89: a cópia só vale quando alguém provou que ela VOLTA — a
                 linha do drill mostra a última restauração conferida. */}
             <p
-              className={`text-xs ${drill.alerta ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+              className={`text-xs ${drill.alerta ? "text-aviso" : "text-muted-foreground"}`}
               data-testid="drill-restore"
             >
               {drill.texto}
@@ -222,7 +217,7 @@ export function BackupSistema() {
                         <a
                           href={`/api/admin/backup/${b.id}/download`}
                           download
-                          className="ml-auto text-xs text-primary underline underline-offset-4 whitespace-nowrap"
+                          className="ml-auto text-xs text-primary-texto underline underline-offset-4 whitespace-nowrap"
                           data-testid={`baixar-backup-${b.id}`}
                         >
                           Baixar

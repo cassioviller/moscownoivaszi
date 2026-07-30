@@ -15,8 +15,8 @@ test.describe("Dashboard", () => {
     await page.goto("/dashboard");
 
     await expect(page.getByRole("heading", { name: /Seu dia/ })).toBeVisible();
-    await expect(page.getByText("Noivas Ativas")).toBeVisible();
-    await expect(page.getByText("Contratos Fechados")).toBeVisible();
+    await expect(page.getByText("Noivas ativas")).toBeVisible();
+    await expect(page.getByText("Contratos fechados")).toBeVisible();
     // Há leads seedados: o KPI não pode ser vazio.
     const kpi = page.locator("div.text-2xl").first();
     await expect(kpi).not.toBeEmpty();

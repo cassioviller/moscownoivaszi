@@ -19,7 +19,21 @@ test.describe("Conciliação por extrato (E70)", () => {
   const stamp = Date.now();
   // Dia fixo e futuro (como a grade E28): o seed global não polui a janela.
   const DIA_BR = "15/05/2027";
-  const VALOR = 1234.56;
+  /**
+   * VALOR único por execução, e não a constante 1234,56 que estava aqui.
+   *
+   * O casamento do E70 é por VALOR + data (`extrato.ts:181`), então duas
+   * execuções deixavam duas parcelas indistinguíveis — e o matcher casava a
+   * primeira que achasse, que podia ser de um run antigo. Enquanto a
+   * conciliação era uma fotografia isso não aparecia: qualquer par servia.
+   * **Com a memória do F32 a identidade passa a importar**, e o defeito latente
+   * virou vermelho — o botão "marcar" some porque a parcela casada já estava
+   * marcada de outro run.
+   *
+   * Mesma lição da S7 e do que o F13 fez no spec 22: recurso próprio por
+   * execução. Os centavos vêm do stamp, então o valor nunca se repete.
+   */
+  const VALOR = Number((1000 + (stamp % 100000) / 100).toFixed(2));
   let leadId: string;
 
   test.beforeAll(async ({ request }) => {
@@ -89,10 +103,20 @@ test.describe("Conciliação por extrato (E70)", () => {
       buffer: Buffer.from(csv, "utf-8"),
     });
 
-    // Os três placares aparecem — e o par exato bateu.
+    /**
+     * Os TRÊS placares aparecem — e agora são mesmo os placares.
+     *
+     * Este bloco dizia "os três placares" e afirmava dois TÍTULOS DE LISTA, que
+     * só existem quando há linha para mostrar. O de "No sistema, mas não no
+     * banco" passava porque o banco de dev tinha quatro parcelas vazadas de runs
+     * antigos com o mesmo valor: **o assert dependia de lixo**, e ficou vermelho
+     * no instante em que o lixo foi limpo. Os placares existem sempre; as listas
+     * dependem do que o spec semeia, e ele semeia UMA divergência — a tarifa.
+     */
     await expect(page.getByText("Bateu", { exact: true })).toBeVisible();
+    await expect(page.getByText("Só no banco", { exact: true })).toBeVisible();
+    await expect(page.getByText("Só no sistema", { exact: true })).toBeVisible();
     await expect(page.getByText("No banco, mas não no sistema")).toBeVisible();
-    await expect(page.getByText("No sistema, mas não no banco")).toBeVisible();
 
     // A tarifa é pendência do lado do banco; o PIX casado não aparece nela.
     const soBanco = page.locator("div.space-y-6 > *", {
@@ -100,6 +124,47 @@ test.describe("Conciliação por extrato (E70)", () => {
     });
     await expect(soBanco.getByText("Tarifa bancária E2E")).toBeVisible();
     await expect(soBanco.getByText("PIX recebido noiva")).not.toBeVisible();
+  });
+
+  /**
+   * F32/E103 — a conciliação passa a ter MEMÓRIA, e é isso que o teste prova:
+   * não que o botão existe, mas que o carimbo **sobrevive ao recarregar**.
+   *
+   * Antes, o resultado morria com a aba: todo mês se refazia o mesmo trabalho, e
+   * as divergências já olhadas e perdoadas voltavam indistinguíveis das novas.
+   * O spec sobe o MESMO extrato duas vezes — que é o gesto real de quem concilia
+   * o mês seguinte — e afirma que na segunda o sistema já sabe.
+   */
+  test("marcar como conferido sobrevive ao recarregar a página", async ({ page }) => {
+    await page.goto(`/loja/${estado.lojaId}/financeiro/conciliacao`);
+
+    const csv = [
+      `Data,Descrição,Valor`,
+      `${DIA_BR},PIX recebido noiva,${VALOR}`,
+    ].join("\n");
+    const subir = async () => {
+      await page.getByTestId("input-extrato").setInputFiles({
+        name: "extrato-e2e.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(csv, "utf-8"),
+      });
+    };
+
+    await subir();
+    const marcar = page.getByTestId("marcar-conciliadas");
+    await expect(marcar).toBeVisible();
+    await marcar.click();
+    await expect(page.getByText(/movimento\(s\) conferido\(s\)/).first()).toBeVisible();
+
+    // O gesto real: recarregar e subir o MESMO extrato de novo.
+    await page.reload();
+    await subir();
+
+    // O par continua batendo — e o botão sumiu, porque não há nada NOVO a
+    // marcar. É a diferença entre "casou" e "casou e já foi conferido".
+    await expect(page.getByText("Bateu", { exact: true })).toBeVisible();
+    await expect(page.getByText("Todas já conferidas em conciliações anteriores.")).toBeVisible();
+    await expect(page.getByTestId("marcar-conciliadas")).toHaveCount(0);
   });
 
   test("arquivo ilegível explica o erro em vez de tela vazia", async ({ page }) => {

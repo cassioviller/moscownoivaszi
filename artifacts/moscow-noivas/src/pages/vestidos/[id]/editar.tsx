@@ -23,6 +23,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, AlertCircle, Image as ImageIcon, Trash2, Upload } from "lucide-react";
 import { VestidoForm, type VestidoFormValues } from "../vestido-form";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { Erro } from "@/components/estado";
 
 /** Redesenha a imagem num canvas com lado maior ≤ max e devolve o JPEG em base64. */
 function reduzir(img: HTMLImageElement, max: number, qualidade: number): string {
@@ -101,8 +104,8 @@ function SlotFoto({
       toast({ title: "Foto atualizada" });
     } catch (err) {
       toast({
-        title: "Erro ao enviar a foto",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para enviar a foto",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     } finally {
@@ -117,8 +120,8 @@ function SlotFoto({
       toast({ title: "Foto removida" });
     } catch (err) {
       toast({
-        title: "Erro ao remover a foto",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para remover a foto",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -160,7 +163,7 @@ function SlotFoto({
           onClick={() => inputRef.current?.click()}
         >
           <Upload className="mr-2 h-4 w-4" />
-          {setFoto.isPending ? "Enviando..." : foto ? "Trocar foto" : "Adicionar foto"}
+          {setFoto.isPending ? "Enviando…" : foto ? "Trocar foto" : "Adicionar foto"}
         </Button>
         {foto && (
           <Button
@@ -172,7 +175,7 @@ function SlotFoto({
             aria-label={`Remover foto ${ordem + 1}`}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            {deleteFoto.isPending ? "Removendo..." : "Remover"}
+            {deleteFoto.isPending ? "Removendo…" : "Remover"}
           </Button>
         )}
       </div>
@@ -200,7 +203,7 @@ export default function EditarVestido() {
     query: { queryKey: getGetVestidoQueryKey(activeLojaId!, id!), enabled: !!activeLojaId && !!id },
   });
   const catalogoQuery = useListAtributos(activeLojaId!, {
-    query: { queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const updateVestido = useUpdateVestido();
 
@@ -224,12 +227,12 @@ export default function EditarVestido() {
         queryClient.invalidateQueries({ queryKey: getGetVestidoQueryKey(activeLojaId!, id!) }),
         queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) }),
       ]);
-      toast({ title: "Vestido atualizado com sucesso" });
+      toast({ title: "Vestido atualizado" });
       navigate(`/loja/${lojaId}/vestidos/${id}`);
     } catch (err) {
       toast({
-        title: "Erro ao salvar o vestido",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para salvar o vestido",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -250,8 +253,8 @@ export default function EditarVestido() {
       toast({ title: novo === "ativo" ? "Vestido reativado" : "Vestido fora de linha" });
     } catch (err) {
       toast({
-        title: "Erro ao mudar a situação",
-        description: err instanceof Error ? err.message : "Tente novamente.",
+        title: "Não deu para mudar a situação",
+        description: mensagemApi(err, "Tente novamente."),
         variant: "destructive",
       });
     }
@@ -279,16 +282,7 @@ export default function EditarVestido() {
           <AlertDescription>Você não tem permissão para editar vestidos.</AlertDescription>
         </Alert>
       ) : isError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro ao carregar o vestido</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            <span>{error instanceof Error ? error.message : "Falha inesperada ao buscar o vestido."}</span>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Erro titulo="Não deu para carregar o vestido" erro={error} onTentarNovamente={() => refetch()} />
       ) : isLoading || catalogoQuery.isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (

@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, vestidosTable, bloqueioVestidosTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -33,6 +35,15 @@ test.describe("Bloqueios por vestido (E45)", () => {
       data: { vestidoId, leadId: estado.leadId, tipo: "RESERVA_CASAMENTO", casamentoData: casamento },
     });
     expect(blq.status(), await blq.text()).toBe(201);
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste: a reserva sai antes do vestido (ordem do FK), e
+    // só a do vestido DESTE run — o lead da reserva é o do seed e fica.
+    if (vestidoId) {
+      await db.delete(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.vestidoId, vestidoId));
+      await db.delete(vestidosTable).where(eq(vestidosTable.id, vestidoId));
+    }
   });
 
   test("o filtro devolve só o vestido, com a noiva embutida; a ficha mostra", async ({ page, request }) => {

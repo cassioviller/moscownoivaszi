@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable } from "@workspace/db";
+import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable, recorrenciasTable } from "@workspace/db";
 import { eq, and, gt, gte, isNull, desc, count } from "drizzle-orm";
 import {
   ListEquipeParams,
@@ -18,9 +18,10 @@ import {
   GetAtividadeEquipeResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { usuarioNaLoja } from "../lib/escopo-loja";
 import { registrarAuditoria } from "../lib/auditoria";
 import { hashSenha, gerarTokenConvite, encerrarSessoesDoUsuario, CONVITE_TTL_MS } from "../lib/auth";
-import { ehViolacaoUnica } from "../lib/erros";
+import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
 import { randomUUID } from "node:crypto";
 
 const router: IRouter = Router();
@@ -34,7 +35,7 @@ router.use("/lojas/:lojaId/equipe", requireModulo("admin"));
 router.get("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
   const params = ListEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   
@@ -103,12 +104,12 @@ router.get("/lojas/:lojaId/equipe/atividade", async (req, res): Promise<void> =>
 router.post("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
   const params = AddMembroEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = AddMembroEquipeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
 
@@ -198,7 +199,7 @@ router.post("/lojas/:lojaId/equipe/convites", async (req, res): Promise<void> =>
   const lojaId = req.params.lojaId as string;
   const parsed = CreateConviteEquipeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
     return;
   }
   const email = parsed.data.email.toLowerCase().trim();
@@ -259,7 +260,7 @@ router.post("/lojas/:lojaId/equipe/convites", async (req, res): Promise<void> =>
   }));
 });
 
-router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", requireModulo("admin", "editar"), async (req, res): Promise<void> => {
   const { lojaId, conviteId } = req.params;
   // Regenera token e validade — o link antigo morre (desejável se vazou no
   // WhatsApp errado). Só convite ainda não usado.
@@ -273,7 +274,7 @@ router.post("/lojas/:lojaId/equipe/convites/:conviteId/reenviar", async (req, re
     ))
     .returning();
   if (!renovado) {
-    res.status(404).json({ error: "Convite não encontrado" });
+    res.status(404).json({ error: "CONVITE_NAO_ENCONTRADO", detalhe: "Este convite não existe nesta loja." });
     return;
   }
   const [perfil] = await db
@@ -303,7 +304,7 @@ router.delete("/lojas/:lojaId/equipe/convites/:conviteId", async (req, res): Pro
     return linha;
   });
   if (!removido) {
-    res.status(404).json({ error: "Convite não encontrado" });
+    res.status(404).json({ error: "CONVITE_NAO_ENCONTRADO", detalhe: "Este convite não existe nesta loja." });
     return;
   }
   req.log.info({ conviteId, lojaId }, "convite_cancelado");
@@ -313,12 +314,26 @@ router.delete("/lojas/:lojaId/equipe/convites/:conviteId", async (req, res): Pro
 router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void> => {
   const params = UpdateMembroEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
   const parsed = UpdateMembroEquipeBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+
+  // B1 🔴 — a PROVA DE PERTENCIMENTO vem ANTES de qualquer escrita.
+  //
+  // `usuarios` é tabela GLOBAL: o `requireModulo("admin")` acima só diz que
+  // quem chama administra a loja da URL, não que o `usuarioId` do path é dessa
+  // loja. O UPDATE de `nome`/`ativo` ia direto pelo id e a conferência só
+  // acontecia no SELECT final, DEPOIS do commit — o 404 era cosmético. Com
+  // isso, um admin da loja A mandava `{"ativo": false}` no id da dona da loja B
+  // e a derrubava (login recusado, sessões vivas encerradas), com a trilha
+  // ficando na loja A, onde a vítima nunca olha.
+  if (!(await usuarioNaLoja(params.data.usuarioId, params.data.lojaId))) {
+    res.status(404).json({ error: "MEMBRO_NAO_ENCONTRADO", detalhe: "Este membro da equipe não existe nesta loja." });
     return;
   }
 
@@ -382,7 +397,7 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
     .where(and(eq(usuariosLojasTable.lojaId, params.data.lojaId), eq(usuariosLojasTable.usuarioId, params.data.usuarioId)));
 
   if (!membro) {
-    res.status(404).json({ error: "Membro da equipe não encontrado" });
+    res.status(404).json({ error: "MEMBRO_NAO_ENCONTRADO", detalhe: "Este membro da equipe não existe nesta loja." });
     return;
   }
 
@@ -392,10 +407,19 @@ router.patch("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void>
 router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void> => {
   const params = RemoveMembroEquipeParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json(erroDeValidacao(params.error));
     return;
   }
-  
+
+  // B1 🔴 — mesma prova de pertencimento do PATCH. O `delete` do vínculo já era
+  // escopado, mas `encerrarSessoesDoUsuario` rodava incondicionalmente sobre o
+  // id do path: um DoS de sessão repetível contra qualquer conta do sistema,
+  // com a rota respondendo 204 mesmo sem ter removido nada.
+  if (!(await usuarioNaLoja(params.data.usuarioId, params.data.lojaId))) {
+    res.status(404).json({ error: "MEMBRO_NAO_ENCONTRADO", detalhe: "Este membro da equipe não existe nesta loja." });
+    return;
+  }
+
   await db.transaction(async (tx) => {
     // Defensivo: remover o membro também derruba convites pendentes do e-mail
     // dele nesta loja — senão o link ainda no WhatsApp recriaria o vínculo.
@@ -416,6 +440,28 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
         eq(usuariosLojasTable.usuarioId, params.data.usuarioId)
       ));
 
+    /**
+     * E a FOLHA para junto. Sair da equipe apagava o vínculo e os convites e
+     * não tocava em `recorrencias`: no mês seguinte, "Gerar folha" lia todas as
+     * recorrências ATIVAS da loja — sem nenhuma junção com `usuarios_lojas` —
+     * e a conta a pagar de quem já não trabalha ali nascia de novo, entrava na
+     * tela de Pagar, no "a pagar dos próximos 30 dias" do dashboard e no DRE
+     * previsto. Todo mês, para sempre.
+     *
+     * DESATIVA, não apaga: a recorrência é a régua que EXPLICA os salários já
+     * pagos, e o índice parcial `recorrencias_salario_ativo_unico` só olha as
+     * ativas — então recontratar a mesma pessoa volta a ser possível sem
+     * apagar o histórico. É a mesma escolha de `usuarios.ativo`.
+     */
+    const desativadas = await tx.update(recorrenciasTable)
+      .set({ ativo: false, updatedAt: new Date() })
+      .where(and(
+        eq(recorrenciasTable.lojaId, params.data.lojaId),
+        eq(recorrenciasTable.usuarioId, params.data.usuarioId),
+        eq(recorrenciasTable.ativo, true),
+      ))
+      .returning({ id: recorrenciasTable.id });
+
     // Removida da equipe com a aba aberta continuaria navegando até a sessão
     // expirar — o vínculo já não existe, e o acesso não pode sobreviver a ele.
     await encerrarSessoesDoUsuario(tx, params.data.usuarioId);
@@ -426,7 +472,9 @@ router.delete("/lojas/:lojaId/equipe/:usuarioId", async (req, res): Promise<void
       acao: "MEMBRO_REMOVIDO",
       entidade: "usuario",
       entidadeId: params.data.usuarioId,
-      detalhe: { email: usuario?.email ?? null },
+      // A folha que parou junto entra na trilha: sem isto, a conta de R$ 2.800
+      // que some do mês seguinte não tem nenhuma linha que a explique.
+      detalhe: { email: usuario?.email ?? null, recorrenciasDesativadas: desativadas.length },
     });
   });
 

@@ -15,6 +15,8 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListContasPagar,
+  useListPendenciasComissao,
+  getListPendenciasComissaoQueryKey,
   getListContasPagarQueryKey,
   useListPagamentos,
   getListPagamentosQueryKey,
@@ -30,7 +32,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,16 +54,23 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl } from "@/lib/formatos";
+import { brl, diaMesAno } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import {
   competenciaAtual,
+  rotuloCompetencia,
   resolverIntervalo,
+  intervaloDaCompetencia,
   diaLocal,
   instanteNoIntervalo,
 } from "@/lib/financeiro/datas";
 import { parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { ErroListagem, ResumoCard, dataFmt, mensagemApi, useCaminhoDaLoja } from "./helpers";
+import { ErroListagem, ResumoCard, invalidarCaixa } from "./helpers";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
+import { estadoDoPasso, type PassoEstado } from "@/lib/financeiro/fechar-mes";
+import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
+import { mensagemApi } from "@/lib/erro-api";
+import { CACHE_ESTAVEL } from "@/lib/cache";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   COMPETENCIA_INVALIDA: "Competência inválida (use AAAA-MM).",
@@ -90,8 +99,20 @@ export default function Folha() {
     [intervalo.iniYMD, intervalo.fimYMD],
   );
 
-  const contas = useListContasPagar(activeLojaId!, {
-    query: { queryKey: getListContasPagarQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  // E93/D2: a tela só olha as contas GERADAS por esta competência, e o
+  // vencimento de uma conta gerada cai sempre dentro dela
+  // (`vencimentoDaCompetencia`, api-server/src/lib/recorrencias.ts) — então a
+  // janela do mês é um recorte EXATO, não uma aproximação. Antes vinha a
+  // carteira inteira da loja para desenhar um mês.
+  const janelaCompetencia = useMemo(() => {
+    const { iniYMD, fimYMD } = intervaloDaCompetencia(competencia);
+    return { de: iniYMD, ate: fimYMD };
+  }, [competencia]);
+  const contas = useListContasPagar(activeLojaId!, janelaCompetencia, {
+    query: {
+      queryKey: getListContasPagarQueryKey(activeLojaId!, janelaCompetencia),
+      enabled: !!activeLojaId,
+    },
   });
   const pagamentos = useListPagamentos(activeLojaId!, params, {
     query: { queryKey: getListPagamentosQueryKey(activeLojaId!, params), enabled: !!activeLojaId },
@@ -100,7 +121,21 @@ export default function Folha() {
     query: { queryKey: getListRecorrenciasQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
   const equipe = useListEquipe(activeLojaId!, {
-    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  /**
+   * E139/B10 — o roteiro de fechar o mês deriva dos MESMOS motores que as
+   * telas de destino consomem (cuidado b: nenhum agregado novo): as
+   * pendências de comissão são a régua do sino (vendedoras com venda sem
+   * fechamento), as contas em aberto vêm da janela da competência que esta
+   * tela já pede, e o envio é o pendentesEnvio logo abaixo.
+   */
+  const pendenciasComissao = useListPendenciasComissao(activeLojaId!, {
+    query: {
+      queryKey: getListPendenciasComissaoQueryKey(activeLojaId!),
+      enabled: !!activeLojaId,
+      retry: false,
+    },
   });
 
   const gerarRecorrencias = useGerarRecorrencias();
@@ -164,7 +199,7 @@ export default function Folha() {
       toast({ title: "Salário definido" });
     } catch (err) {
       toast({
-        title: "Erro ao definir o salário",
+        title: "Não deu para definir o salário",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -197,7 +232,7 @@ export default function Folha() {
       toast({ title: "Despesa recorrente criada" });
     } catch (err) {
       toast({
-        title: "Erro ao criar a despesa",
+        title: "Não deu para criar a despesa",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -225,7 +260,7 @@ export default function Folha() {
       toast({ title: "Recorrência atualizada" });
     } catch (err) {
       toast({
-        title: "Erro ao atualizar",
+        title: "Não deu para atualizar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -243,12 +278,34 @@ export default function Folha() {
       toast({ title: r.ativo ? "Recorrência desativada" : "Recorrência reativada" });
     } catch (err) {
       toast({
-        title: "Erro ao alterar",
+        title: "Não deu para alterar",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
     }
   }
+
+  /**
+   * F34/E103 — a competência manda nas duas datas, e antes não mandava.
+   *
+   * A tela tinha DOIS estados de tempo independentes: `competencia` (o seletor
+   * de mês, que alimenta "Gerar competência") e `intervalo` (De/Até na URL, que
+   * alimenta o card da contabilidade). Eles não conversavam, e o resultado era
+   * medido: abrir a tela em julho, trocar a competência para junho para
+   * conferir, e clicar em "Marcar como enviados" carimbava **os pagamentos de
+   * julho** — com toda a tela acima falando de junho. E o carimbo é de MÃO
+   * ÚNICA: não existe rota que o limpe.
+   *
+   * Trocar de mês agora leva as duas datas junto. O De/Até continua editável
+   * para quem precisa de uma janela fora do mês — o que some é a divergência
+   * silenciosa entre o que a tela diz e o que o botão faz.
+   */
+  const trocarCompetencia = (nova: string) => {
+    setCompetencia(nova);
+    if (!nova) return;
+    const { iniYMD, fimYMD } = intervaloDaCompetencia(nova);
+    atualizarParams({ ini: iniYMD, fim: fimYMD });
+  };
 
   const atualizarParams = (patch: Record<string, string>) => {
     const proximo = new URLSearchParams(searchParams);
@@ -317,9 +374,9 @@ export default function Folha() {
   const onGerar = async () => {
     try {
       const res = await gerarRecorrencias.mutateAsync({ lojaId: activeLojaId!, data: { competencia } });
-      await queryClient.invalidateQueries({
-        queryKey: getListContasPagarQueryKey(activeLojaId!),
-      });
+      // D9: lançar a folha põe contas PREVISTAS na curva — o alerta de caixa
+      // (dashboard e sino) muda junto, não só esta lista.
+      await invalidarCaixa(queryClient, activeLojaId!);
       // Zero não é falha: é a competência já estar gerada.
       toast({
         title: res.geradas === 0 ? "Competência já estava gerada" : "Contas lançadas",
@@ -330,7 +387,7 @@ export default function Folha() {
       });
     } catch (err) {
       toast({
-        title: "Erro ao gerar a competência",
+        title: "Não deu para gerar a competência",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -346,16 +403,18 @@ export default function Folha() {
       await queryClient.invalidateQueries({
         queryKey: getListPagamentosQueryKey(activeLojaId!, params),
       });
+      // F34: o mês fecha nos DOIS lados, e o recado diz os dois. Falar só em
+      // "pagamentos" agora seria esconder metade do que o clique fez.
       toast({
-        title: res.marcados === 0 ? "Nada novo para enviar" : "Marcado como enviado",
+        title: res.marcados === 0 ? "Nada novo para enviar" : "Mês declarado à contabilidade",
         description:
           res.marcados === 0
-            ? "Todos os pagamentos do período já constavam como enviados."
-            : `${res.marcados} ${res.marcados === 1 ? "pagamento" : "pagamentos"} do período.`,
+            ? "Tudo do período já constava como enviado."
+            : `${res.pagamentos} saída${res.pagamentos === 1 ? "" : "s"} e ${res.parcelas} recebimento${res.parcelas === 1 ? "" : "s"} do período.`,
       });
     } catch (err) {
       toast({
-        title: "Erro ao marcar o envio",
+        title: "Não deu para marcar o envio",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
       });
@@ -372,7 +431,10 @@ export default function Folha() {
           >
             ← Contas a pagar
           </Link>
-          <h1 className="text-3xl font-serif">Recorrências do mês</h1>
+          {/* F31/E103: o link dizia "Folha do mês" e este H1 dizia
+              "Recorrências do mês" — quem procurava "folha" não achava, e quem
+              achava lia outro nome. A loja chama de folha. */}
+          <h1 className="text-3xl font-serif">Folha do mês</h1>
           <p className="text-sm text-muted-foreground">
             O que se repete todo mês — salário, aluguel, assinatura, fornecedor fixo — vira conta a
             pagar, e o período fecha com a contabilidade.
@@ -391,7 +453,7 @@ export default function Folha() {
                 type="month"
                 className="w-44"
                 value={competencia}
-                onChange={(e) => setCompetencia(e.target.value)}
+                onChange={(e) => trocarCompetencia(e.target.value)}
               />
             </div>
             <Button onClick={onGerar} disabled={gerarRecorrencias.isPending || !competencia}>
@@ -411,13 +473,58 @@ export default function Folha() {
         <ResumoCard rotulo="Pago" valor={resumo.pago} />
       </div>
 
+      {/* E139/B10 — fechar o mês era 5 visitas a 4 telas com a ordem escrita
+          em lugar nenhum. O roteiro numera os três passos com o ESTADO real
+          (a decisão de exibição é estadoDoPasso — carregando nunca vira
+          pendente) e o link da tela de cada um. */}
+      <Card data-testid="roteiro-fechar-mes">
+        <CardHeader>
+          <CardTitle>Fechar {rotuloCompetencia(competencia)}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-3">
+            <PassoDoRoteiro
+              numero={1}
+              titulo="Comissões da competência fechadas"
+              estado={estadoDoPasso(
+                estadoDasConsultas(pendenciasComissao),
+                !(pendenciasComissao.data ?? []).some((pend) => pend.competencia === competencia),
+              )}
+              pendencia="Há vendedoras com venda no mês sem fechamento."
+              href={`/loja/${activeLojaId}/comissoes?competencia=${competencia}`}
+              rotuloLink="Fechar em Comissões →"
+            />
+            <PassoDoRoteiro
+              numero={2}
+              titulo="Contas da competência pagas"
+              estado={estadoDoPasso(
+                estadoDasConsultas(contas),
+                !(contas.data ?? []).some((c) => c.status === "PREVISTA"),
+              )}
+              pendencia={`${(contas.data ?? []).filter((c) => c.status === "PREVISTA").length} conta${(contas.data ?? []).filter((c) => c.status === "PREVISTA").length === 1 ? "" : "s"} em aberto no mês.`}
+              href={`/loja/${activeLojaId}/financeiro/pagar?ini=${janelaCompetencia.de}&fim=${janelaCompetencia.ate}`}
+              rotuloLink="Pagar →"
+            />
+            <PassoDoRoteiro
+              numero={3}
+              titulo="Período enviado à contabilidade"
+              estado={estadoDoPasso(
+                estadoDasConsultas(pagamentos),
+                pendentesEnvio.length === 0,
+              )}
+              pendencia={`${pendentesEnvio.length} movimento${pendentesEnvio.length === 1 ? "" : "s"} do período ainda não enviado${pendentesEnvio.length === 1 ? "" : "s"} — o envio é aqui embaixo, em "Fechar com a contabilidade".`}
+            />
+          </ol>
+        </CardContent>
+      </Card>
+
       {contas.isError ? (
         <ErroListagem mensagem="Falha ao buscar as contas da competência." onRetry={() => contas.refetch()} />
       ) : contas.isLoading ? (
         <div className="h-40 animate-pulse rounded-lg bg-muted" />
       ) : contasGeradas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          A competência {competencia} ainda não foi gerada.
+          A competência {rotuloCompetencia(competencia)} ainda não foi gerada.
         </p>
       ) : (
         <Card>
@@ -434,14 +541,14 @@ export default function Folha() {
                     <span className="truncate">{nome ?? c.descricao}</span>
                     <span className="text-xs text-muted-foreground">
                       {nome ? `${c.descricao} · ` : ""}vence{" "}
-                      {dataFmt.format(new Date(c.vencimento))}
+                      {diaMesAno(c.vencimento)}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge variant={c.status === "PAGA" ? "default" : "secondary"}>
                       {c.status === "PAGA" ? "Paga" : "Prevista"}
                     </Badge>
-                    <span className="font-serif tabular-nums">R$ {brl(c.valorPrevisto)}</span>
+                    <span className="font-serif tabular-nums">{brl(c.valorPrevisto)}</span>
                   </div>
                 </div>
                 );
@@ -491,7 +598,7 @@ export default function Folha() {
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="tabular-nums">R$ {brl(s.valor)}</span>
+                    <span className="tabular-nums">{brl(s.valor)}</span>
                     {podeEditar && (
                       <>
                         <Button variant="ghost" size="sm" onClick={() => abrirEdicao(s)}>
@@ -589,7 +696,7 @@ export default function Folha() {
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="tabular-nums">R$ {brl(r.valor)}</span>
+                    <span className="tabular-nums">{brl(r.valor)}</span>
                     {podeEditar && (
                       <>
                         <Button variant="ghost" size="sm" onClick={() => abrirEdicao(r)}>
@@ -683,6 +790,8 @@ export default function Folha() {
               lançada é o que foi combinado naquele mês.
             </DialogDescription>
           </DialogHeader>
+          {/* E136/E6: Enter salva — o diálogo de dinheiro não tinha <form>. */}
+          <form onSubmit={(e) => { e.preventDefault(); void onSalvarEdicao(); }}>
           <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="editValor">Valor (R$)</Label>
@@ -703,14 +812,15 @@ export default function Folha() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditando(null)}>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setEditando(null)}>
               Cancelar
             </Button>
-            <Button onClick={onSalvarEdicao} disabled={atualizarRecorrencia.isPending}>
+            <Button type="submit" disabled={atualizarRecorrencia.isPending}>
               {atualizarRecorrencia.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -759,11 +869,14 @@ export default function Folha() {
             </Button>
             <Button
               onClick={onEnviarContabilidade}
-              disabled={enviarContabilidade.isPending || pendentesEnvio.length === 0}
+              /* F34: NÃO desabilita por `pendentesEnvio`, que conta só as
+                 saídas. Desde que o mês fecha nos dois lados, um período sem
+                 pagamento pendente pode ter recebimentos por declarar — e o
+                 botão desabilitado esconderia justamente o lado que acabou de
+                 nascer. Quem responde "não havia nada" é a rota, com zero. */
+              disabled={enviarContabilidade.isPending}
             >
-              {enviarContabilidade.isPending
-                ? "Marcando…"
-                : `Marcar ${pendentesEnvio.length} como enviados`}
+              {enviarContabilidade.isPending ? "Marcando…" : "Declarar o mês"}
             </Button>
           </div>
 
@@ -795,7 +908,7 @@ export default function Folha() {
                     ) : (
                       <Badge variant="secondary">Pendente</Badge>
                     )}
-                    <span className="tabular-nums">R$ {brl(p.valorPago)}</span>
+                    <span className="tabular-nums">{brl(p.valorPago)}</span>
                   </div>
                 </li>
               ))}
@@ -804,5 +917,57 @@ export default function Folha() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+
+/** E139: um passo do roteiro — número, estado honesto e a porta da tela. */
+function PassoDoRoteiro({
+  numero,
+  titulo,
+  estado,
+  pendencia,
+  href,
+  rotuloLink,
+}: {
+  numero: number;
+  titulo: string;
+  estado: PassoEstado;
+  pendencia: string;
+  href?: string;
+  rotuloLink?: string;
+}) {
+  return (
+    <li className="flex items-start gap-3" data-testid={`passo-fechar-${numero}`}>
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium ${
+          estado === "feito" ? "border-transparent bg-positivo text-white" : "text-muted-foreground"
+        }`}
+        aria-hidden="true"
+      >
+        {estado === "feito" ? "✓" : numero}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{titulo}</p>
+        <p className="text-xs text-muted-foreground">
+          {estado === "conferindo" && "Conferindo…"}
+          {estado === "semResposta" && "Sem resposta agora — recarregue para conferir este passo."}
+          {estado === "feito" && "Feito."}
+          {estado === "pendente" && (
+            <>
+              {pendencia}
+              {href && rotuloLink && (
+                <>
+                  {" "}
+                  <Link to={href} className="text-primary-texto underline underline-offset-4">
+                    {rotuloLink}
+                  </Link>
+                </>
+              )}
+            </>
+          )}
+        </p>
+      </div>
+    </li>
   );
 }

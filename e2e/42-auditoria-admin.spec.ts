@@ -76,7 +76,7 @@ test.describe("Auditoria de administração (E56)", () => {
 
   test("a trilha na tela oferece o filtro das ações de administração", async ({ page }) => {
     await page.goto("/financeiro/auditoria?acao=MEMBRO_REMOVIDO");
-    await expect(page.getByRole("heading", { name: "Trilha de auditoria" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Auditoria", exact: true })).toBeVisible();
     // O rótulo humano vem do espelho servidor/tela — se um lado esquecer a
     // ação nova, aqui apareceria o código cru.
     await expect(page.getByText("Membro removido").first()).toBeVisible();

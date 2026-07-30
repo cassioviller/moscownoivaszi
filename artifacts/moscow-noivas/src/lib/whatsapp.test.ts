@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { msgConfirmacaoAtendimento, msgCobranca, msgOrcamentoVencendo } from "./whatsapp";
+import {
+  msgConfirmacaoAtendimento,
+  msgCobranca,
+  msgOrcamentoVencendo,
+  msgDaNoivaParaAtelier,
+  linkWhatsApp,
+} from "./whatsapp";
 
 // linkWhatsApp segue testado em financeiro/cobranca.test.ts (via re-export).
 
@@ -67,5 +73,33 @@ describe("linha do portal (E84)", () => {
       expect(msg).not.toContain("Tudo sobre o seu vestido");
       expect(msg).not.toContain("null");
     }
+  });
+});
+
+/**
+ * F35/E100 — a única mensagem que anda no sentido contrário: da noiva para o
+ * atelier, disparada pelo rodapé do portal.
+ */
+describe("msgDaNoivaParaAtelier", () => {
+  it("põe o nome dela na primeira linha — quem atende o número da LOJA não sabe quem chegou", () => {
+    expect(msgDaNoivaParaAtelier("Marina")).toContain("Aqui é a Marina");
+  });
+
+  it("sem nome, a mensagem continua enviável e não diz 'null'", () => {
+    for (const msg of [
+      msgDaNoivaParaAtelier(null),
+      msgDaNoivaParaAtelier(undefined),
+      msgDaNoivaParaAtelier("   "),
+    ]) {
+      expect(msg).not.toContain("null");
+      expect(msg).not.toContain("undefined");
+      expect(msg).toContain("Vim pelo meu link");
+    }
+  });
+
+  it("sobrevive ao encode do wa.me — o link sai inteiro com acento e espaço", () => {
+    const url = linkWhatsApp("11987654321", msgDaNoivaParaAtelier("Ana Letícia"));
+    expect(url).toContain("wa.me/5511987654321");
+    expect(decodeURIComponent(url!.split("?text=")[1])).toContain("Aqui é a Ana Letícia");
   });
 });

@@ -75,8 +75,18 @@ describe("Lote 20 — trilha de auditoria", () => {
       .post(`/api/lojas/${f.lojaId}/contas-pagar/${conta.body.id}/pagar`)
       .send({ data: dataFutura(1).toISOString(), valorPago: 500, forma: "PIX" })
       .expect(200);
-    const [paga] = await linhasDe("CONTA_PAGA");
-    expect(paga.entidadeId).toBe(conta.body.id);
+    // A2/E94: a porta single-conta deixou de ter trilha PRÓPRIA. As duas rotas
+    // são a mesma operação — uma saída de caixa que quita contas — e agora
+    // gravam a mesma linha, indexada pelo PAGAMENTO, que é o fato de caixa.
+    // Antes, quem consultasse a trilha por conta a pagar só encontrava os
+    // pagamentos feitos por esta porta, e a UI usa a outra.
+    const registrados = await linhasDe("PAGAMENTO_REGISTRADO");
+    const pagaSingle = registrados.find((l) =>
+      (l.detalhe as { contas: { id: string }[] }).contas.some((c) => c.id === conta.body.id),
+    );
+    expect(pagaSingle).toBeTruthy();
+    expect(pagaSingle!.entidade).toBe("pagamento");
+    expect((pagaSingle!.detalhe as { contas: unknown[] }).contas).toHaveLength(1);
 
     const c1 = await admin
       .post(`/api/lojas/${f.lojaId}/financeiro/contas-pagar`)
@@ -90,9 +100,13 @@ describe("Lote 20 — trilha de auditoria", () => {
       .post(`/api/lojas/${f.lojaId}/financeiro/pagamentos`)
       .send({ contaIds: [c1.body.id, c2.body.id], data: dataFutura(2).toISOString() })
       .expect(201);
-    const [registrado] = await linhasDe("PAGAMENTO_REGISTRADO");
-    expect(registrado.entidadeId).toBe(pagamento.body.id);
-    expect((registrado.detalhe as { contas: unknown[] }).contas).toHaveLength(2);
+    // Selecionado pelo id: desde o A2 há mais de uma linha desta ação neste
+    // teste, e a query não tem ORDER BY — pegar a primeira seria uma corrida.
+    const registrado = (await linhasDe("PAGAMENTO_REGISTRADO")).find(
+      (l) => l.entidadeId === pagamento.body.id,
+    );
+    expect(registrado).toBeTruthy();
+    expect((registrado!.detalhe as { contas: unknown[] }).contas).toHaveLength(2);
 
     await admin
       .post(`/api/lojas/${f.lojaId}/financeiro/pagamentos/${pagamento.body.id}/estornar`)

@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
+import { varianteAtivo } from "@/lib/status-badge";
+import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListAtendimentos,
   getListAtendimentosQueryKey,
-  useCreateAtendimento,
-  useConfirmarAtendimento,
+  useRegistrarContatoAtendimento,
+  useDesfazerContatoAtendimento,
   useListCabines,
   getListCabinesQueryKey,
   useListAjustes,
@@ -18,45 +19,15 @@ import { GradeDoDia } from "./grade";
 import { EXPEDIENTE_PADRAO } from "@/lib/agenda";
 import { diaLocal } from "@/lib/financeiro/datas";
 import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ComboboxNoiva } from "@/components/combobox-noiva";
-import { Clock, Plus, AlertCircle, MessageCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
+import { Plus, AlertCircle, MessageCircle } from "lucide-react";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
-
-const novoAtendimentoSchema = z.object({
-  leadId: z.string().min(1, "Escolha a noiva"),
-  cabineId: z.string().min(1, "Escolha a cabine"),
-  tipo: z.enum(["ATENDIMENTO", "PROVA"]),
-  inicio: z.string().min(1, "Informe data e hora"),
-  observacao: z.string().optional(),
-});
-
-type NovoAtendimentoValues = z.infer<typeof novoAtendimentoSchema>;
+import { CACHE_ESTAVEL } from "@/lib/cache";
+import { instanteHora } from "@/lib/formatos";
 
 const SITUACAO_LABELS: Record<string, string> = {
   AGENDADO: "Agendado",
@@ -66,11 +37,9 @@ const SITUACAO_LABELS: Record<string, string> = {
 };
 
 export default function Agenda() {
-  const { activeLojaId, user, acessosModulos, session } = useAuth();
+  const { activeLojaId, acessosModulos, session } = useAuth();
   const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
 
@@ -83,12 +52,11 @@ export default function Agenda() {
   const atendimentos = useListAtendimentos(activeLojaId!, janelaDia, {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaDia), enabled: !!activeLojaId },
   });
-  const cabines = useListCabines(activeLojaId!, { query: { queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  const cabines = useListCabines(activeLojaId!, { query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
-  const createAtendimento = useCreateAtendimento();
   // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já
   // foi contatado. Invalida a agenda para o card mudar de "falta" para "feito".
-  const confirmarAtendimento = useConfirmarAtendimento({
+  const registrarContato = useRegistrarContatoAtendimento({
     mutation: {
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
@@ -148,196 +116,60 @@ export default function Agenda() {
     [atendimentos.data, diaYMD],
   );
 
-  const form = useForm<NovoAtendimentoValues>({
-    resolver: zodResolver(novoAtendimentoSchema),
-    defaultValues: { leadId: "", cabineId: "", tipo: "ATENDIMENTO", inicio: "", observacao: "" },
-  });
-
-  const onSubmit = async (values: NovoAtendimentoValues) => {
-    try {
-      const criado = await createAtendimento.mutateAsync({
-        lojaId: activeLojaId!,
-        data: {
-          leadId: values.leadId,
-          cabineId: values.cabineId,
-          vendedoraId: user!.id,
-          tipo: values.tipo,
-          inicio: new Date(values.inicio).toISOString(),
-          observacao: values.observacao || undefined,
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) });
-      const wa = waConfirmacao(criado);
-      toast({
-        title: "Atendimento agendado",
-        ...(wa
-          ? {
-              description: "Quer já mandar a confirmação para a noiva?",
-              action: (
-                <ToastAction altText="Enviar confirmação por WhatsApp" asChild>
-                  <a href={wa} target="_blank" rel="noopener noreferrer">
-                    WhatsApp
-                  </a>
-                </ToastAction>
-              ),
-            }
-          : {}),
-      });
-      form.reset();
-      setOpen(false);
-    } catch (err) {
-      toast({
-        title: "Erro ao agendar",
-        description: err instanceof Error ? err.message : "Verifique conflito de horário e tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-serif">Agenda</h1>
+        <div>
+          <h1 className="text-3xl font-serif">Agenda</h1>
+          <p className="text-sm text-muted-foreground mt-1">O dia da loja, cabine a cabine.</p>
+        </div>
         <div className="flex items-center gap-2">
           {activeLojaId && (
             <>
-              {/* Visão semanal (E20): a grade semana × cabine. */}
-              <Button asChild variant="ghost">
-                <Link to={`/loja/${activeLojaId}/agenda/semana`}>Semana</Link>
-              </Button>
-              <Button asChild variant="ghost">
-                <Link to={`/loja/${activeLojaId}/atendimentos`}>Fila de atendimentos</Link>
-              </Button>
+              {/* E130/A3: ir a OUTRA tela do domínio é o link-seta (a língua
+                  do Financeiro) — os botões ghost eram uma terceira cara para
+                  o mesmo gesto. Visão semanal (E20): a grade semana × cabine. */}
+              <Link
+                to={`/loja/${activeLojaId}/agenda/semana`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Semana →
+              </Link>
+              <Link
+                to={`/loja/${activeLojaId}/atendimentos`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Fila de atendimentos →
+              </Link>
             </>
           )}
-          {podeCriar && (
-            <Button onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Agendamento
+          {/* F12: agendar tem uma porta só, e é a de /atendimentos/novo. O
+              diálogo que morava aqui criava o atendimento com o instante do
+              NAVEGADOR (`new Date(inicio)`) em vez do fuso da loja, punha a
+              vendedora logada como responsável sem perguntar, e aceitava
+              tipo=PROVA sem reserva — a prova órfã que o E97 teve de consertar
+              depois. O `?dia=` leva o dia que está na grade. */}
+          {podeCriar && activeLojaId && (
+            <Button asChild>
+              <Link to={`/loja/${activeLojaId}/atendimentos/novo?dia=${diaYMD}`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo agendamento
+              </Link>
             </Button>
           )}
         </div>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Novo Agendamento</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="leadId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Noiva *</FormLabel>
-                    <FormControl>
-                      <ComboboxNoiva
-                        lojaId={activeLojaId!}
-                        value={field.value || null}
-                        onChange={field.onChange}
-                        ariaLabel="Noiva do agendamento"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="cabineId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cabine *</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Cabine" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(cabines.data ?? []).filter((c) => c.ativo).map((cabine) => (
-                            <SelectItem key={cabine.id} value={cabine.id}>{cabine.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="tipo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="ATENDIMENTO">Atendimento</SelectItem>
-                          <SelectItem value="PROVA">Prova</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="inicio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data e hora *</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="observacao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observação</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={createAtendimento.isPending}>
-                  {createAtendimento.isPending ? "Agendando…" : "Agendar"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="col-span-2">
           <CardHeader>
-            <CardTitle>Atendimentos do Dia</CardTitle>
+            <CardTitle>Atendimentos do dia</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {atendimentos.isError ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro ao carregar os atendimentos</AlertTitle>
+                <AlertTitle>Não deu para carregar os atendimentos</AlertTitle>
                 <AlertDescription className="flex items-center gap-3">
                   <span>Falha ao buscar a agenda.</span>
                   <Button variant="outline" size="sm" onClick={() => atendimentos.refetch()}>
@@ -366,23 +198,30 @@ export default function Agenda() {
                     está AGENDADO — que é justamente quem precisa confirmar. */}
                 {doDia.some((a) => a.situacao === "AGENDADO") && (() => {
                   const agendados = doDia.filter((a) => a.situacao === "AGENDADO");
-                  const faltaConfirmar = agendados.filter((a) => !a.confirmadoEm);
-                  const jaConfirmados = agendados.length - faltaConfirmar.length;
+                  // E97/F6: a fila é de quem a loja ainda NÃO procurou. Antes
+                  // ela filtrava por `confirmadoEm`, que também era escrito pelo
+                  // clique daqui — então a linha sumia sem ninguém ter falado
+                  // com a noiva, e ficava indistinguível de quem confirmou pelo
+                  // portal. Quem já respondeu de verdade sai da fila também,
+                  // porque não há o que perguntar a ela.
+                  const faltaContatar = agendados.filter((a) => !a.contatadoEm && !a.confirmadoEm);
+                  const jaConfirmados = agendados.filter((a) => a.confirmadoEm).length;
+                  const soContatados = agendados.filter((a) => a.contatadoEm && !a.confirmadoEm).length;
                   return (
                     <div className="space-y-2 border-t pt-4">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Confirmar presença
+                        Falta procurar
                       </p>
-                      {faltaConfirmar.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Todas as presenças já foram confirmadas.</p>
+                      {faltaContatar.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Todas as noivas do dia já foram procuradas.</p>
                       ) : (
-                        faltaConfirmar.map((atendimento) => {
+                        faltaContatar.map((atendimento) => {
                           const wa = waConfirmacao(atendimento);
                           return (
                             <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm" data-testid={`confirmar-linha-${atendimento.id}`}>
                               <span className="min-w-0 truncate">
                                 <span className="tabular-nums text-muted-foreground">
-                                  {format(new Date(atendimento.inicio), "HH:mm")}
+                                  {instanteHora(atendimento.inicio)}
                                 </span>{" "}
                                 {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
                               </span>
@@ -393,18 +232,19 @@ export default function Agenda() {
                                   size="sm"
                                   data-testid={`confirmar-btn-${atendimento.id}`}
                                 >
-                                  {/* Abrir o wa.me (o <a> navega) E carimbar a
-                                      confirmação, para a linha sair da fila. */}
+                                  {/* Abrir o wa.me (o <a> navega) E carimbar que
+                                      a LOJA procurou — não que a noiva
+                                      respondeu. O rótulo passou a dizer isso. */}
                                   <a
                                     href={wa}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() =>
-                                      confirmarAtendimento.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
+                                      registrarContato.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
                                     }
                                   >
                                     <MessageCircle className="h-4 w-4 mr-1" />
-                                    Confirmar
+                                    Chamar no WhatsApp
                                   </a>
                                 </Button>
                               )}
@@ -412,9 +252,17 @@ export default function Agenda() {
                           );
                         })
                       )}
+                      {/* Os dois números são fatos diferentes e passam a ser
+                          ditos como tais: uma fila que some não conta quem
+                          respondeu. */}
                       {jaConfirmados > 0 && (
-                        <p className="text-xs text-muted-foreground pt-1">
-                          {jaConfirmados} já confirmada{jaConfirmados === 1 ? "" : "s"}.
+                        <p className="text-positivo pt-1 text-xs font-medium">
+                          {jaConfirmados} confirmou pelo portal.
+                        </p>
+                      )}
+                      {soContatados > 0 && (
+                        <p className="text-muted-foreground pt-1 text-xs">
+                          {soContatados} procurada{soContatados === 1 ? "" : "s"}, ainda sem resposta.
                         </p>
                       )}
                     </div>
@@ -435,7 +283,9 @@ export default function Agenda() {
                 {cabines.data?.map(cabine => (
                   <li key={cabine.id} className="flex items-center justify-between text-sm">
                     <span>{cabine.nome}</span>
-                    <Badge variant={cabine.ativo ? "default" : "secondary"}>{cabine.ativo ? 'Ativa' : 'Inativa'}</Badge>
+                    {/* E130/A1: cabine e vestido falam a mesma língua (a
+                        tabela semântica) — inativa é `outline`, apagada. */}
+                    <Badge variant={varianteAtivo(cabine.ativo ?? true)}>{cabine.ativo ? 'Ativa' : 'Inativa'}</Badge>
                   </li>
                 ))}
               </ul>
@@ -444,7 +294,7 @@ export default function Agenda() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Ajustes Pendentes</CardTitle>
+              <CardTitle>Ajustes pendentes</CardTitle>
             </CardHeader>
             <CardContent>
               {(ajustes.data ?? []).filter(a => a.status === 'PENDENTE').length === 0 ? (

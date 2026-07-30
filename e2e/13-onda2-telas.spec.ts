@@ -22,7 +22,9 @@ function observarApi(page: Page): string[] {
 }
 
 const TELAS: { rota: string; titulo: string }[] = [
-  { rota: "/atendimentos", titulo: "Atendimentos" },
+  // E97/F11: a tela passou a abrigar as duas filas — até então uma PROVA não
+  // podia ser concluída em tela nenhuma, e ficava em AGENDADO para sempre.
+  { rota: "/atendimentos", titulo: "Atendimentos e provas" },
   { rota: "/atendimentos/novo", titulo: "Agendar" },
   { rota: "/atendimentos/config", titulo: "Cabines & horário" },
   { rota: "/provas", titulo: "Provas" },

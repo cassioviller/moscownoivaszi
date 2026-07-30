@@ -37,6 +37,25 @@ const paga = (dia: string, valor: number) => ({
   valorPrevisto: valor,
 });
 
+/**
+ * A parcela meio recebida (E49): o que entrou tem data de RECEBIMENTO, o que
+ * falta tem data de VENCIMENTO — a mesma linha alimenta as duas pernas, cada
+ * uma pelo seu campo. É o caso do C4, e a palavra PARCIAL não aparecia em
+ * nenhum dos dois testes do alerta.
+ */
+const parcial = (
+  recebidoDia: string,
+  recebido: number,
+  venceDia: string,
+  previsto: number,
+) => ({
+  status: "PARCIAL",
+  recebidoEm: `${recebidoDia}T15:00:00-03:00`,
+  valorRecebido: recebido,
+  vencimento: vence(venceDia),
+  valorPrevisto: previsto,
+});
+
 describe("E46 — alerta de caixa", () => {
   it("sem âncora não dá alerta, mesmo com o caixa fadado a furar", () => {
     const a = alertaDeCaixa([], [], [prevista("2026-07-25", 9_000)], [], opts);
@@ -110,6 +129,43 @@ describe("E46 — alerta de caixa", () => {
     expect(a.saldoHoje).toBe(5_000);
     expect(a.diaNegativo).toBe("2026-07-26");
     expect(a.menorSaldo).toEqual({ dia: "2026-07-26", valor: -1_000 });
+  });
+
+  it("a parcela PARCIAL entra nas DUAS pernas: o recebido no saldo, o resto na curva", () => {
+    // C4/E94. 10.000 previstos, 4.000 já recebidos em 21/07, vence 26/07.
+    // Se ela ficasse de fora das duas pernas — que é o que o SQL da rota fazia —
+    // o saldo perderia os 4.000 QUE ENTRARAM e a curva perderia os 6.000 QUE
+    // VÃO ENTRAR, e o alerta anunciaria um furo que a projeção não vê.
+    const a = alertaDeCaixa(
+      [ancora(1_000)],
+      [parcial("2026-07-21", 4_000, "2026-07-26", 10_000)],
+      [prevista("2026-07-28", 9_000)],
+      [],
+      opts,
+    );
+
+    expect(a.saldoHoje).toBe(5_000); // 1.000 + 4.000 recebidos
+    // 5.000 +6.000 (o saldo aberto da parcial, em 26) = 11.000 → −9.000 = 2.000.
+    expect(a.diaNegativo).toBeNull();
+    expect(a.menorSaldo).toEqual({ dia: "2026-07-28", valor: 2_000 });
+  });
+
+  it("a PARCIAL leva para a curva o SALDO, não o previsto cheio", () => {
+    // O erro simétrico do anterior: contar os 10.000 na curva depois de já ter
+    // contado 4.000 no saldo receberia o mesmo dinheiro duas vezes.
+    const a = alertaDeCaixa(
+      [ancora(0)],
+      [parcial("2026-07-21", 4_000, "2026-07-26", 10_000)],
+      [prevista("2026-07-27", 10_500)],
+      [],
+      opts,
+    );
+
+    expect(a.saldoHoje).toBe(4_000);
+    // 4.000 +6.000 = 10.000 (26) → −10.500 = −500 (27). Com o previsto cheio
+    // daria +3.500 e o alarme não tocaria.
+    expect(a.diaNegativo).toBe("2026-07-27");
+    expect(a.menorSaldo).toEqual({ dia: "2026-07-27", valor: -500 });
   });
 
   it("o que vence além do horizonte não acende alarme", () => {

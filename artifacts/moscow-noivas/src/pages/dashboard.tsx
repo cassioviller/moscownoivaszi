@@ -1,5 +1,8 @@
+import { varianteSituacao } from "@/lib/status-badge";
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   useGetDashboard,
   getGetDashboardQueryKey,
@@ -9,11 +12,19 @@ import {
   getListAtendimentosQueryKey,
   useGetMinhaComissao,
   getGetMinhaComissaoQueryKey,
+  useListParcelas,
+  getListParcelasQueryKey,
+  useListOrcamentos,
+  getListOrcamentosQueryKey,
+  useListAjustes,
+  getListAjustesQueryKey,
+  useUpdateAtendimento,
 } from "@workspace/api-client-react";
+import { ajustesDaSemana } from "@/lib/ajustes-da-semana";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router";
-import { format } from "date-fns";
 import {
   Calendar,
   Users,
@@ -24,13 +35,23 @@ import {
   ArrowUpFromLine,
   Wallet,
   PhoneCall,
+  MessageCircle,
+  Scissors,
 } from "lucide-react";
-import { dataDia, etapaLabel } from "@/lib/formatos";
+import { diaMesAno, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
+import { Erro } from "@/components/estado";
 import { podeNoModulo } from "@/lib/permissoes";
+import { mensagemApi } from "@/lib/erro-api";
 
-import { competenciaAtual, hojeLocal } from "@/lib/financeiro/datas";
+import { competenciaAtual, hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
+import { agingDeParcelas } from "@/lib/financeiro/cobranca";
+import {
+  aContatarNaJanela,
+  orcamentosVencendoNaJanela,
+  resumoDaFila,
+} from "@/lib/mensagens-do-dia";
 
 /**
  * E66 — "meu dia", não "números da loja".
@@ -48,27 +69,97 @@ export default function Dashboard() {
   const veAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
   const veFinanceiro = podeNoModulo(acessosModulos, "financeiro", "ver");
 
-  const { data: dashboard, isLoading } = useGetDashboard(activeLojaId!, {
+  /**
+   * E121/C3 — a query inteira, não só `data`: falhou o GET do painel, os 4
+   * contadores e os 2 cards de dinheiro viravam medição ("Noivas ativas 0",
+   * "A receber R$ 0,00") — a dona lia o zero de falha com os mesmos pixels do
+   * zero de verdade e ligava para a vendedora achando que o mês parou.
+   */
+  const painelQuery = useGetDashboard(activeLojaId!, {
     query: {
       queryKey: getGetDashboardQueryKey(activeLojaId!),
       enabled: !!activeLojaId,
     }
   });
+  const { data: dashboard, isLoading } = painelQuery;
 
   // E79: a régua do funil roda no banco — o painel pede só as contagens e as
   // 10 piores, não a lista completa de leads.
   const paradosQuery = useGetLeadsParados(activeLojaId!, {
     query: { queryKey: getGetLeadsParadosQueryKey(activeLojaId!), enabled: !!activeLojaId && veLeads },
   });
-  // E83: "Hoje na loja" pede o DIA, não a agenda inteira — o corte por hora
-  // continua no cliente, sobre o superconjunto do dia local.
-  const janelaHoje = { de: hojeLocal(), ate: hojeLocal() };
-  const atendimentosQuery = useListAtendimentos(activeLojaId!, janelaHoje, {
+  /**
+   * A agenda das próximas 48h — UMA consulta que serve "Hoje na loja" e a
+   * contagem da fila do F7.
+   *
+   * O painel pedia a janela de HOJE (E83) e o F7 precisa das 48h. Duas consultas
+   * seria o caminho óbvio e errado: a de 48h **contém** a de hoje, e o corte por
+   * hora já roda no cliente. Então a janela abriu e a outra saiu — o cartão novo
+   * não custa request nenhum de agenda, e a chave passou a ser a MESMA de
+   * `/mensagens`, que o react-query deduplica ao navegar para lá.
+   *
+   * De quebra o recorte de hoje ficou mais correto, não menos: com a janela de
+   * um dia só, um navegador em fuso adiantado podia perder o fim do dia da loja.
+   */
+  const janela48h = { de: hojeLocal(), ate: addDias(hojeLocal(), 2) };
+  const atendimentosQuery = useListAtendimentos(activeLojaId!, janela48h, {
     query: {
-      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaHoje),
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janela48h),
       enabled: !!activeLojaId && veAgenda,
     },
   });
+
+  /**
+   * F7 — a fila de mensagens contada com a MESMA régua e as MESMAS chaves de
+   * query que `/mensagens` usa (`lib/mensagens-do-dia`).
+   *
+   * A alternativa era contar sobre o que o painel já tinha em mãos — a agenda de
+   * hoje — e o número sairia menor que o da fila, que olha 48h. Um painel que
+   * promete três mensagens e entrega cinco é pior que um painel calado.
+   *
+   * Cada bloco é gateado pelo próprio módulo: quem só tem agenda não paga as
+   * consultas de dinheiro, e conta só o que pode ver.
+   */
+  const paramsAbertas = { status: "abertas" as const };
+  const parcelasAbertas = useListParcelas(activeLojaId!, paramsAbertas, {
+    query: {
+      queryKey: getListParcelasQueryKey(activeLojaId!, paramsAbertas),
+      enabled: !!activeLojaId && veFinanceiro,
+    },
+  });
+  const paramsEnviados = { status: "ENVIADO" as const };
+  const orcamentosEnviados = useListOrcamentos(activeLojaId!, paramsEnviados, {
+    query: {
+      queryKey: getListOrcamentosQueryKey(activeLojaId!, paramsEnviados),
+      enabled: !!activeLojaId && veLeads,
+    },
+  });
+
+  /**
+   * E132/D10 — a 4ª persona do E66 não tinha cartão: a costureira logava e
+   * nada dizia dos ajustes vencendo. A MESMA query e a MESMA régua da fila
+   * (`lib/ajustes-da-semana`) — o número do cartão é o da fila por construção
+   * (a disciplina do F7); o gate é o do servidor (módulo agenda), via
+   * `lib/permissoes`, e o cartão some quando não há nada.
+   */
+  const ajustesQuery = useListAjustes(activeLojaId!, {
+    query: {
+      queryKey: getListAjustesQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && veAgenda,
+    },
+  });
+  const ajustesSemana = useMemo(
+    () => ajustesDaSemana(ajustesQuery.data ?? []),
+    [ajustesQuery.data],
+  );
+
+  const filaDeMensagens = useMemo(() => {
+    const agora = Date.now();
+    const aContatar = aContatarNaJanela(atendimentosQuery.data ?? [], agora).length;
+    const emAtraso = agingDeParcelas(parcelasAbertas.data ?? []).noivas.length;
+    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], agora).length;
+    return resumoDaFila(aContatar + emAtraso + vencendo);
+  }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data]);
 
   // "Minha comissão" mora fora do gate de módulo (E11); quem não tem escada
   // vigente volta temRegra=false e o cartão simplesmente não aparece.
@@ -81,16 +172,49 @@ export default function Dashboard() {
     },
   });
 
+  /**
+   * F10 — "Iniciar" no lugar onde a recepcionista já está.
+   *
+   * O gesto existia só na fila de `/atendimentos`. É o mesmo PATCH e o mesmo
+   * gate; o que NÃO veio junto foi a régua de concluir (o desfecho `RESERVOU`
+   * que oferece abrir o orçamento), porque ela é sobre o fim do atendimento e
+   * copiá-la para cá seria duas cópias de uma decisão de produto.
+   */
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const podeEditarAgenda = podeNoModulo(acessosModulos, "agenda", "editar");
+  const iniciarAtendimento = useUpdateAtendimento();
+  const iniciar = async (atendimentoId: string) => {
+    try {
+      await iniciarAtendimento.mutateAsync({
+        lojaId: activeLojaId!,
+        atendimentoId,
+        data: { situacao: "EM_ATENDIMENTO" },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListAtendimentosQueryKey(activeLojaId!),
+      });
+      toast({ title: "Atendimento iniciado" });
+    } catch (err) {
+      toast({
+        title: "Essa mudança não é possível agora",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
+
   // A agenda de HOJE, em ordem de horário — o que a recepcionista folheia.
   const deHoje = useMemo(() => {
-    const inicioHoje = new Date();
-    inicioHoje.setHours(0, 0, 0, 0);
-    const fimHoje = new Date(inicioHoje);
-    fimHoje.setDate(fimHoje.getDate() + 1);
+    // O dia da LOJA (E111): a meia-noite do fuso do navegador desloca a agenda
+    // inteira para quem abre o painel com o relógio fora de São Paulo.
+    const hoje = hojeLocal();
+    const inicioHoje = inicioDoDia(hoje).getTime();
+    const fimHoje = inicioDoDia(addDias(hoje, 1)).getTime();
     return [...(atendimentosQuery.data ?? [])]
       .filter((a) => {
         const t = new Date(a.inicio).getTime();
-        return t >= inicioHoje.getTime() && t < fimHoje.getTime();
+        return t >= inicioHoje && t < fimHoje;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
   }, [atendimentosQuery.data]);
@@ -132,57 +256,123 @@ export default function Dashboard() {
       {/* Acima dos números: se o caixa vai furar, é a primeira coisa a saber. */}
       <AlertaCaixa />
 
+      {/* F7: o painel promete "o que precisa da sua atenção agora" e não
+          mencionava a única tela que responde isso. O número é o MESMO da fila,
+          por construção (`lib/mensagens-do-dia`), e o cartão some quando ela
+          está vazia — a disciplina do AlertaCaixa. */}
+      {filaDeMensagens && (
+        <Link to={`/loja/${activeLojaId}/mensagens`} className="block">
+          <Card className="hover-elevate border-primary/40">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <div className="min-w-0">
+                <CardTitle className="text-base">{filaDeMensagens.frase}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Presenças a confirmar, cobranças e orçamentos vencendo — com o
+                  WhatsApp pronto. Desça a fila clicando.
+                </p>
+              </div>
+              <MessageCircle className="h-5 w-5 shrink-0 text-primary" />
+            </CardHeader>
+          </Card>
+        </Link>
+      )}
+
+      {/* E132/D10: o cartão da costureira — some quando vazio (a disciplina
+          do AlertaCaixa e do cartão de mensagens acima). */}
+      {ajustesSemana.length > 0 && (
+        <Link to={`/loja/${activeLojaId}/ajustes`} className="block">
+          <Card className="hover-elevate border-primary/40">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <div className="min-w-0">
+                <CardTitle className="text-base">
+                  {ajustesSemana.length === 1
+                    ? "1 ajuste para costurar esta semana"
+                    : `${ajustesSemana.length} ajustes para costurar esta semana`}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Prova mais próxima primeiro — a fila diz peça, noiva e prazo.
+                </p>
+              </div>
+              <Scissors className="h-5 w-5 shrink-0 text-primary" />
+            </CardHeader>
+          </Card>
+        </Link>
+      )}
+
+      {/* E121/C3 — os contadores e o dinheiro saem da MESMA query: falhou,
+          é UMA notícia com saída, não seis zeros que parecem medição. O ramo
+          é o mesmo que os vizinhos do arquivo ("Hoje na loja", "Precisam de
+          contato") já tinham. */}
+      {painelQuery.isError ? (
+        <Erro
+          titulo="Os números do painel não carregaram"
+          erro={painelQuery.error}
+          onTentarNovamente={() => void painelQuery.refetch()}
+        />
+      ) : (
+        <>
+      {/* E132/B8: metade dos cartões navegava e metade era morta com a MESMA
+          cara — `hover-elevate` promete clique. Cada contador leva ao seu
+          destino óbvio, como os cards de dinheiro logo abaixo já faziam. */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {veLeads && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Noivas Ativas</CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.totalLeadsAtivos || 0}</div>
-              <p className="text-xs text-muted-foreground">No funil</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/noivas`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Noivas ativas</CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.totalLeadsAtivos || 0}</div>
+                <p className="text-xs text-muted-foreground">No funil</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
         {veAgenda && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos Hoje</CardTitle>
-              <Calendar className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.atendimentosHoje || 0}</div>
-              <p className="text-xs text-muted-foreground">Agendados</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/atendimentos`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos hoje</CardTitle>
+                <Calendar className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.atendimentosHoje || 0}</div>
+                <p className="text-xs text-muted-foreground">Agendados</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
         {veLeads && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos Abertos</CardTitle>
-              <FileText className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.totalOrcamentosAbertos || 0}</div>
-              <p className="text-xs text-muted-foreground">Aguardando resposta</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/orcamentos`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos abertos</CardTitle>
+                <FileText className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.totalOrcamentosAbertos || 0}</div>
+                <p className="text-xs text-muted-foreground">Aguardando resposta</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
         {veLeads && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Contratos Fechados</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.totalContratosAtivos || 0}</div>
-              <p className="text-xs text-muted-foreground">Ativos</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/contratos`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Contratos fechados</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.totalContratosAtivos || 0}</div>
+                <p className="text-xs text-muted-foreground">Ativos</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
       </div>
 
@@ -198,7 +388,7 @@ export default function Dashboard() {
                 <ArrowDownToLine className="h-4 w-4 text-positivo" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-positivo">
+                <div className="money-lg text-positivo">
                   {brl(dashboard?.receberProximos30Dias ?? 0)}
                 </div>
               </CardContent>
@@ -213,7 +403,7 @@ export default function Dashboard() {
                 <ArrowUpFromLine className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="money-lg">
                   {brl(dashboard?.pagarProximos30Dias ?? 0)}
                 </div>
               </CardContent>
@@ -221,9 +411,19 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+        </>
+      )}
 
-      {/* A vendedora vê o próprio mês sem sair do painel (E11/E51). */}
-      {comissaoDoMes?.temRegra && (
+      {/* A vendedora vê o próprio mês sem sair do painel (E11/E51). O card
+          some quando NÃO HÁ REGRA (decisão do E11); a falha da query deixou
+          de usar o mesmo silêncio — falha tem frase e saída (E121/C3). */}
+      {minhaComissao.isError ? (
+        <Erro
+          titulo="Sua comissão do mês não carregou"
+          erro={minhaComissao.error}
+          onTentarNovamente={() => void minhaComissao.refetch()}
+        />
+      ) : comissaoDoMes?.temRegra && (
         <Link to={`/loja/${activeLojaId}/minha-comissao`}>
           <Card className="hover-elevate cursor-pointer">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -233,7 +433,7 @@ export default function Dashboard() {
               <Wallet className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-              <div className="text-2xl font-bold">{brl(comissaoDoMes.valorTotal)}</div>
+              <div className="money-lg">{brl(comissaoDoMes.valorTotal)}</div>
               <p className="text-xs text-muted-foreground">
                 {brl(comissaoDoMes.totalVendas)} em vendas
                 {comissaoDoMes.faltaProximoDegrau !== null &&
@@ -248,11 +448,20 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {veAgenda && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
                 Hoje na loja
               </CardTitle>
+              {/* E132/D9: o card listava os atendimentos sem caminho para a
+                  fila — para concluir com desfecho a recepcionista pagava
+                  sidebar + busca, todo dia. A língua é a do A3: link-seta. */}
+              <Link
+                to={`/loja/${activeLojaId}/atendimentos`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Fila de atendimentos →
+              </Link>
             </CardHeader>
             <CardContent>
               {atendimentosQuery.isError ? (
@@ -266,7 +475,7 @@ export default function Dashboard() {
               ) : deHoje.length === 0 ? (
                 <div className="text-sm text-muted-foreground text-center py-8">
                   Nenhum atendimento hoje.{" "}
-                  <Link to={`/loja/${activeLojaId}/agenda`} className="text-primary underline underline-offset-4">
+                  <Link to={`/loja/${activeLojaId}/agenda`} className="text-primary-texto underline underline-offset-4">
                     Abrir a agenda
                   </Link>
                 </div>
@@ -275,22 +484,43 @@ export default function Dashboard() {
                   {deHoje.map((atendimento) => (
                     <li key={atendimento.id} className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
+                        {/* F10: o nome era texto morto na tela que a
+                            recepcionista folheia de manhã — para abrir a ficha
+                            de quem chegou, ela ia à sidebar e buscava por nome,
+                            com a noiva na porta. */}
                         <p className="text-sm font-medium truncate">
                           <span className="tabular-nums text-muted-foreground">
-                            {format(new Date(atendimento.inicio), "HH:mm")}
+                            {instanteHora(atendimento.inicio)}
                           </span>{" "}
-                          {atendimento.lead?.noivaNome ?? "Noiva"} —{" "}
-                          {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
+                          <Link
+                            to={`/loja/${activeLojaId}/noivas/${atendimento.leadId}`}
+                            className="hover:underline"
+                          >
+                            {atendimento.lead?.noivaNome ?? "Noiva"}
+                          </Link>{" "}
+                          — {atendimento.tipo === "PROVA" ? "Prova" : "Atendimento"}
                         </p>
                       </div>
+                      {/* Iniciar é o gesto do momento em que ela chega, e ele
+                          morava só na fila de atendimentos. Mesma rota, mesmo
+                          gate (`agenda.editar`). */}
+                      {podeEditarAgenda && atendimento.situacao === "AGENDADO" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={iniciarAtendimento.isPending}
+                          onClick={() => iniciar(atendimento.id)}
+                          data-testid={`iniciar-${atendimento.id}`}
+                        >
+                          Iniciar
+                        </Button>
+                      )}
+                      {/* E130/A1: a variante vem da tabela semântica — era um
+                          mapeamento próprio desta tela (Agendado rosa aqui,
+                          cinza na fila). */}
                       <Badge
-                        variant={
-                          atendimento.situacao === "FALTOU"
-                            ? "outline"
-                            : atendimento.situacao === "CONCLUIDO"
-                              ? "secondary"
-                              : "default"
-                        }
+                        variant={varianteSituacao(atendimento.situacao)}
                         className="shrink-0 font-normal"
                       >
                         {atendimento.situacao === "AGENDADO" && "Agendado"}
@@ -337,7 +567,7 @@ export default function Dashboard() {
                             <p className="text-sm font-medium">{p.noivaNome}</p>
                             <p className="text-xs text-muted-foreground">
                               {etapaLabel(p.etapa)}
-                              {p.casamentoData && ` · ${dataDia(p.casamentoData)}`}
+                              {p.casamentoData && ` · ${diaMesAno(p.casamentoData)}`}
                             </p>
                           </div>
                           <Badge

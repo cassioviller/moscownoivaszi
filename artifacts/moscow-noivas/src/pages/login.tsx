@@ -7,10 +7,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "E-mail inválido" }),
-  senha: z.string().min(1, { message: "Senha é obrigatória" }),
+  senha: z.string().min(1, { message: "Informe a senha" }),
 });
 
 export default function Login() {
@@ -34,10 +35,16 @@ export default function Login() {
       } else {
         navigate("/selecionar-loja");
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
-        title: "Erro ao fazer login",
-        description: error?.message || "Verifique suas credenciais.",
+        title: "Não consegui entrar",
+        // Aqui um 401 não é "sua sessão expirou" — a pessoa nem tinha sessão.
+        description: mensagemApi(
+          error,
+          "Não consegui entrar agora. Tente de novo em um instante.",
+          {},
+          { 401: "E-mail ou senha não conferem." },
+        ),
         variant: "destructive",
       });
     }
@@ -48,7 +55,7 @@ export default function Login() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-serif text-primary">Moscow Noivas</h1>
-          <p className="text-muted-foreground">Acesso ao sistema</p>
+          <p className="text-muted-foreground">O ateliê abre por aqui.</p>
         </div>
 
         <div className="bg-card border rounded-lg p-6 shadow-sm">
@@ -61,7 +68,15 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="seu@email.com" {...field} />
+                      {/* E92/E20: sem type/autoComplete o gerenciador de senhas
+                          não oferecia preenchimento — e o teclado vinha sem o @. */}
+                      <Input
+                        type="email"
+                        autoComplete="email"
+                        inputMode="email"
+                        placeholder="seu@email.com"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -74,7 +89,12 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
