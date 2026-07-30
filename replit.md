@@ -217,6 +217,25 @@ rode o codegen.
   `contrato_bloqueios`; `contratos.bloqueio_vestido_id` é legado lido, nunca
   escrito — decidir por ele deixava a seção morta em produção.
 
+- **As réguas de UI da rodada 7 (E120–E142) valem e têm varredura.** O rosa da
+  marca nunca é TEXTO pequeno (`--primary-texto`, 6,24:1+) nem cor de dinheiro
+  (`escala-dinheiro.test.ts` varre por VIZINHANÇA de 3 linhas — o prettier
+  separa atributo de expressão, e foi assim que o preço do portal viveu meses a
+  2,68:1); o aviso tem token (`--aviso`), os dois testados nos dois modos em
+  `aparencia.test.ts`. O badge de status vem da tabela semântica de
+  `lib/status-badge.ts` (decisão P6) — mapeamento inline nas 7 telas reprova
+  varredura. Dinheiro nunca é `type="number"` (varredura) e o degrau maior é
+  `money-lg`; a confirmação de estorno cita o RECEBIDO
+  (`lib/financeiro/confirmacoes.ts`, com o caso 1.000/300 em teste). Filtro de
+  tela mora na URL pela gramática de `lib/filtro-url.ts` (default FORA da
+  URL; `useBuscaNaUrl` debounce+replace). Alvo tocável no mobile tem 44px
+  (`default` é `min-h-11 md:min-h-9`; override de tamanho só de `md` para
+  cima). **⌘K/Ctrl+K** abre a busca de noivas de qualquer tela
+  (`components/busca-global.tsx`, chunk lazy de 1,6 kB, gate `leads.ver`) —
+  e cmdk sobre busca de SERVIDOR é sempre `shouldFilter={false}`. A grade da
+  agenda solta o card onde o PONTEIRO está (`pointerWithin` — a colisão por
+  retângulo soltava na cabine vizinha no fio do meio).
+
 ## Product
 
 - **Jornada da noiva** — leads/noivas, agenda, atendimentos, provas, ajustes,

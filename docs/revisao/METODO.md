@@ -239,6 +239,24 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     **Sobras** do rastreador da rodada, no MESMO commit que o viu. Achado
     preservado só na nota do épico não vira trabalho: ninguém lê a nota de um
     épico fechado. *(R6, descoberta na execução — crítica 9)*
+13. Varredura de par atributo×expressão lê VIZINHANÇA (janela de linhas),
+    nunca linha a linha — o prettier separa o par e o ofensor vive com CI
+    verde. *(R7-design: a fresta escondeu o preço do portal a 2,68:1 por
+    meses — E127; e a varredura nova do E130 quase nasceu com a mesma fresta.)*
+14. O resultado da suíte se lê INTEIRO antes de qualquer commit — e saída de
+    suíte nunca se trunca (`tail -n` em cima de resultado é auto-sabotagem).
+    *(R7-design: o E138 foi commitado com 144/147 porque o `tail -4` cortou
+    a lista de vermelhos; o conserto foi emendar antes de registrar o hash.)*
+15. Edição mecânica que INSERE texto arbitrário usa replacer em FUNÇÃO
+    (`s.replace(de, () => para)`), nunca string — `$'`, `$&` e vizinhos
+    são padrões especiais do replacement. *(R7-design: um `$'` num YAML de
+    replacement duplicou 40.893 linhas do openapi em silêncio, e o codegen
+    apagou `generated/` ao falhar — E142.)*
+16. Dado COMPARTILHADO (banco de dev/E2E) só muda com o valor original
+    anotado antes — e semeadura de prova visual sai no mesmo gesto que entrou.
+    *(R7-design: um `casamento_data` movido sem anotar pôs o bloqueio no
+    topo da lista de reservas e derrubou o spec posicional 13 — E132; a
+    mesma classe do 05-leads/E124.)*
 
 ---
 
@@ -255,3 +273,10 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   ficou para trás; tabela de **Sobras** criada no rastreador da R6 com os itens
   que estavam presos nas notas; `CLAUDE.md` criado na raiz para que este arquivo
   seja lido no começo de toda sessão, e não por acaso.
+- **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
+  (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
+  futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +
+  consolidação; execução dos 23 épicos E120–E142 completa no mesmo dia, com
+  E2E completo por épico. Quatro falhas de execução viradas em regra (13–16),
+  cada uma com o custo medido no relatório do épico que a pagou. As réguas de
+  UI que nasceram com varredura subiram ao `replit.md` (regra 8).

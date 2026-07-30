@@ -140,6 +140,29 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D18 | **`SelectTrigger` fica em 36px no mobile** (`ui/select.tsx`, `h-9`) — o mesmo raciocínio que levou o Button `default` a `min-h-11 md:min-h-9` no E137 vale para ele (medido: os 2 únicos alvos <44px restantes de /atendimentos a 390px são SelectTriggers; todos os selects de filtro do app têm a mesma altura). As ABAS custom do tablist (E97/E130) medem ~37px — mesma classe. Fora do escopo dos achados E8/E9, que mediram Button; a mudança é uma palavra em cada primitivo. | 🔵 | execução E137 |
 | S-D17 | **14 specs do E2E criam recurso (lead, vestido, cabine, contrato…) e não têm `afterAll`** (levantamento por grep: 16, 17, 18, 19, 21, 24, 27, 28, 29, 30, 31, 35, 36, 37) — a família S18/S25. O spec 49 era o 15º e o único DETERMINISTICAMENTE explosivo (provas de 90 min acumulando no mesmo dia +6 da vendedora compartilhada saturaram o expediente na cadência de uma suíte por épico — 146/147 na primeira passada do E125); ganhou `afterAll` no próprio E125 porque bloqueava a regra 11. Os outros 14 vazam sem colidir (stamps únicos), mas são a fonte do acervo-lixo que a S25 mediu. Auditar e dar limpeza a cada um quando for tocado — ou de uma vez num épico de higiene de suíte. | 🟡 (infra de teste) | execução E125 |
 
+## Encerramento — 2026-07-30
+
+**A fila fechou: 23/23 épicos (E120–E142), todos ✅ com hash, working tree
+limpo.** Suítes na saída: **API 852 → 875 · frontend 314 → 417 · E2E
+137 → 147 · typecheck verde** — e a regra 11 valeu integralmente: cada épico
+rodou o E2E completo antes do commit (três precisaram de mais de uma passada,
+e os três vermelhos intermediários estão contados nos relatórios, não
+escondidos). As 6 perguntas ao dono (P1–P6) foram decididas pelos defaults
+conservadores escritos no backlog — reverter qualquer uma é barato e o lugar
+está anotado no épico que a decidiu.
+
+**O que fica desta rodada além do código:** 4 regras novas no METODO (13–16,
+cada uma com o custo que a motivou), as réguas de UI com varredura no
+`replit.md`, e **19 sobras** na tabela acima (S-D1–S-D19) — as mais caras:
+os 14 specs E2E sem `afterAll` (S-D17), o flake [201,500] do lote17 que
+pode ser defeito de rota (S-D19) e o `?orcamentoId=` do contrato (S-D16).
+Nenhuma bloqueia nada.
+
+**O que a rodada NÃO fez, por decisão registrada no topo:** as lentes de
+código da R7 (traçador, arqueologia, custo de mudança) — ficam para a
+próxima rodada. O merge de `rodada-7-design` → `main` (170 commits) é
+decisão do dono.
+
 ## Diário de sessões
 
 ### Sessão 1 — 2026-07-30
