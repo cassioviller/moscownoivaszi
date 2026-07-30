@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -7,7 +7,9 @@ import {
   type ContratoStatus,
   type ListContratosParams,
 } from "@workspace/api-client-react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
+import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,21 +37,20 @@ export default function Contratos() {
   const { lojaId: lojaIdParam } = useParams();
   const lojaId = lojaIdParam ?? activeLojaId;
   const navigate = useNavigate();
-  const [filtro, setFiltro] = useState<string>("todos");
-  const [busca, setBusca] = useState("");
-  const [buscaAplicada, setBuscaAplicada] = useState("");
-  const [pagina, setPagina] = useState(1);
-
-  // Debounce: a query só muda quando a digitação assenta (300ms).
-  useEffect(() => {
-    const t = setTimeout(() => setBuscaAplicada(busca.trim()), 300);
-    return () => clearTimeout(t);
-  }, [busca]);
-
+  // E129/D5: filtro, busca e página moram na URL — ida-e-volta preserva e o
+  // link filtrado abre filtrado. Default fora da URL (`comFiltros`).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filtro = searchParams.get("filtro") ?? "todos";
+  const pagina = paginaDaUrl(searchParams);
+  const [busca, setBusca] = useBuscaNaUrl();
+  const buscaAplicada = searchParams.get("q") ?? "";
   // Filtro novo recomeça da página 1 — página 3 de outro filtro não existe.
-  useEffect(() => {
-    setPagina(1);
-  }, [buscaAplicada, filtro]);
+  const definirFiltro = (chave: string) =>
+    setSearchParams((p) => comFiltros(p, { filtro: chave, pagina: null }, { filtro: "todos" }), {
+      replace: true,
+    });
+  const definirPagina = (n: number) =>
+    setSearchParams((p) => comFiltros(p, { pagina: n }, { pagina: "1" }), { replace: true });
 
   const filtroAtivo = FILTROS.find((f) => f.chave === filtro) ?? FILTROS[0];
   const params = useMemo<ListContratosParams>(
@@ -108,7 +109,7 @@ export default function Contratos() {
               size="sm"
               variant={f.chave === filtroAtivo.chave ? "default" : "outline"}
               className="rounded-full"
-              onClick={() => setFiltro(f.chave)}
+              onClick={() => definirFiltro(f.chave)}
             >
               {f.rotulo}
             </Button>
@@ -147,7 +148,7 @@ export default function Contratos() {
                   variant="outline"
                   onClick={() => {
                     setBusca("");
-                    setFiltro("todos");
+                    definirFiltro("todos");
                   }}
                 >
                   Limpar filtros
@@ -201,7 +202,7 @@ export default function Contratos() {
               variant="outline"
               size="sm"
               disabled={pagina <= 1}
-              onClick={() => setPagina((p) => p - 1)}
+              onClick={() => definirPagina(pagina - 1)}
             >
               Anterior
             </Button>
@@ -209,7 +210,7 @@ export default function Contratos() {
               variant="outline"
               size="sm"
               disabled={pagina >= totalPaginas}
-              onClick={() => setPagina((p) => p + 1)}
+              onClick={() => definirPagina(pagina + 1)}
             >
               Próxima
             </Button>

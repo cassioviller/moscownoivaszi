@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
+import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListParcelas,
@@ -183,7 +184,13 @@ export default function Conciliacao() {
     [conciliacao, carimboPorMovimento],
   );
 
-  const [soNaoConciliado, setSoNaoConciliado] = useState(true);
+  // E129/D5: só o FILTRO vai à URL (`recorte=todas` quando se escolhe ver as
+  // já conferidas; default fora) — o extrato carregado é memória de sessão e
+  // não viaja num link.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const soNaoConciliado = searchParams.get("recorte") !== "todas";
+  const definirSoNaoConciliado = (v: boolean) =>
+    setSearchParams((p) => comFiltros(p, { recorte: v ? null : "todas" }), { replace: true });
 
   /** Divergências do sistema que alguém já olhou e marcou em outra passada. */
   const jaConferidasNoSistema = useMemo(
@@ -405,7 +412,7 @@ export default function Conciliacao() {
                   <label className="mt-2 flex items-center gap-2 text-sm font-normal">
                     <Checkbox
                       checked={soNaoConciliado}
-                      onCheckedChange={(v) => setSoNaoConciliado(v === true)}
+                      onCheckedChange={(v) => definirSoNaoConciliado(v === true)}
                       data-testid="filtro-nao-conciliado"
                     />
                     <span className="text-muted-foreground">

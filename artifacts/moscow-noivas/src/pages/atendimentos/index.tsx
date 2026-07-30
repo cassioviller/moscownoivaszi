@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { comFiltros } from "@/lib/filtro-url";
+import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -107,16 +109,30 @@ export default function Atendimentos() {
   const { activeLojaId, acessosModulos, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const historico = searchParams.get("quando") === "historico";
 
-  const [busca, setBusca] = useState("");
-  const [vendedoraFiltro, setVendedoraFiltro] = useState(TODAS);
-  const [situacaoFiltro, setSituacaoFiltro] = useState(TODAS);
+  // E129/D5: a fila era a tela mais cara do defeito — filtrar por si mesma,
+  // abrir uma noiva e voltar zerava TUDO (busca, vendedora, situação, janela e
+  // aba), 3+ gestos de novo a cada ida-e-volta do dia. Agora os filtros moram
+  // na URL (`?quando=historico`, que já morava lá, atravessa intacto); a
+  // filtragem continua client-side e instantânea — a busca filtra pelo que se
+  // digita e a URL assenta 300ms atrás (`useBuscaNaUrl`).
+  const [busca, setBusca] = useBuscaNaUrl();
+  const vendedoraFiltro = searchParams.get("vendedora") ?? TODAS;
+  const situacaoFiltro = searchParams.get("situacao") ?? TODAS;
+  const janelaDias = (() => {
+    const n = Number(searchParams.get("janela"));
+    return Number.isInteger(n) && n >= JANELA_PADRAO_DIAS ? n : JANELA_PADRAO_DIAS;
+  })();
+  const aba: "ATENDIMENTO" | "PROVA" =
+    searchParams.get("tipo") === "PROVA" ? "PROVA" : "ATENDIMENTO";
+  const definirFiltroUrl = (nome: string, valor: string | number, padrao: string) =>
+    setSearchParams((p) => comFiltros(p, { [nome]: valor }, { [nome]: padrao }), {
+      replace: true,
+    });
   const [desfechos, setDesfechos] = useState<Record<string, AtendimentoUpdateDesfecho>>({});
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
-  const [janelaDias, setJanelaDias] = useState(JANELA_PADRAO_DIAS);
-  const [aba, setAba] = useState<"ATENDIMENTO" | "PROVA">("ATENDIMENTO");
 
   /**
    * F11/E97 — a aba. Uma PROVA não podia ser concluída em tela NENHUMA: esta
@@ -503,7 +519,7 @@ export default function Atendimentos() {
             type="button"
             role="tab"
             aria-selected={aba === t}
-            onClick={() => setAba(t)}
+            onClick={() => definirFiltroUrl("tipo", t, "ATENDIMENTO")}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               aba === t
                 ? "border-primary text-foreground"
@@ -527,7 +543,7 @@ export default function Atendimentos() {
             className="w-56 pl-9"
           />
         </div>
-        <Select value={vendedoraFiltro} onValueChange={setVendedoraFiltro}>
+        <Select value={vendedoraFiltro} onValueChange={(v) => definirFiltroUrl("vendedora", v, TODAS)}>
           <SelectTrigger className="w-52" aria-label="Filtrar por vendedora">
             <SelectValue />
           </SelectTrigger>
@@ -540,7 +556,7 @@ export default function Atendimentos() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={situacaoValida} onValueChange={setSituacaoFiltro}>
+        <Select value={situacaoValida} onValueChange={(v) => definirFiltroUrl("situacao", v, TODAS)}>
           <SelectTrigger className="w-48" aria-label="Filtrar por situação">
             <SelectValue />
           </SelectTrigger>
@@ -580,8 +596,8 @@ export default function Atendimentos() {
             size="sm"
             onClick={() => {
               setBusca("");
-              setVendedoraFiltro(TODAS);
-              setSituacaoFiltro(TODAS);
+              definirFiltroUrl("vendedora", TODAS, TODAS);
+              definirFiltroUrl("situacao", TODAS, TODAS);
             }}
           >
             Limpar filtros
@@ -652,7 +668,7 @@ export default function Atendimentos() {
           variant="ghost"
           size="sm"
           disabled={atendimentos.isFetching}
-          onClick={() => setJanelaDias((d) => d * 2)}
+          onClick={() => definirFiltroUrl("janela", janelaDias * 2, String(JANELA_PADRAO_DIAS))}
         >
           Carregar mais antigo
         </Button>

@@ -99,7 +99,7 @@ para cada uma.
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ✅ | `413c99b` |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ✅ | `8ac81c6` |
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | `ef33c43` |
-| E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ⬜ | |
+| E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ✅ | |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ⬜ | |
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ⬜ | |
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ⬜ | |
@@ -491,3 +491,17 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   não escreve. De carona, o único asterisco-de-obrigatório do app saiu. Suítes:
   API 871 → 873 · front 369 → 375 · E2E completo 147/147 · typecheck verde.
   Nenhuma sobra nova.
+- **E129 entregue** (`execucao/E129.md`). O filtro sobrevive à navegação: as 6
+  telas de `useState` (contratos, orçamentos, noivas, atendimentos — a mais
+  cara, 5 filtros zerando juntos —, vestidos e o recorte da conciliação)
+  passaram para a URL na gramática nova de `lib/filtro-url.ts` (default FORA
+  da URL, vazio é ausência, `?quando=historico` atravessa intacto; 14 testes)
+  com `hooks/use-busca-na-url.ts` (debounce 300ms com `replace`, a URL manda
+  no input, mudar a busca zera a página no MESMO gesto). O inventário da
+  primeira ação deu a convenção pelos nomes das 18 telas certas; `q` veio do
+  nome que a busca já tem no servidor. Medido no app vivo: digitar → `?q=`;
+  pill → `?filtro=CANCELADO`; `/noivas?etapa=PERDIDO` abre com o select em
+  "Perdido"; `/atendimentos?situacao=AGENDADO` → dashboard → voltar → filtro
+  de pé. Os testes de MemoryRouter do backlog convertidos em decisão pura
+  (o repo não tem infra de render — E99/E121). Suítes: API 873 · front
+  375 → 389 · E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.

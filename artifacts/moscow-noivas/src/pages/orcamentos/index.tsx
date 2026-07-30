@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListOrcamentos,
@@ -10,7 +10,9 @@ import { useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { comFiltros, paginaDaUrl } from "@/lib/filtro-url";
+import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,21 +71,20 @@ export default function Orcamentos() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [filtro, setFiltro] = useState("todos");
-  const [busca, setBusca] = useState("");
-  const [buscaAplicada, setBuscaAplicada] = useState("");
-  const [pagina, setPagina] = useState(1);
-
-  // Debounce: a query só muda quando a digitação assenta (300ms).
-  useEffect(() => {
-    const t = setTimeout(() => setBuscaAplicada(busca.trim()), 300);
-    return () => clearTimeout(t);
-  }, [busca]);
-
+  // E129/D5: filtro, busca e página moram na URL — ida-e-volta preserva e o
+  // link filtrado abre filtrado. Default fora da URL (`comFiltros`).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filtro = searchParams.get("filtro") ?? "todos";
+  const pagina = paginaDaUrl(searchParams);
+  const [busca, setBusca] = useBuscaNaUrl();
+  const buscaAplicada = searchParams.get("q") ?? "";
   // Filtro novo recomeça da página 1 — página 3 de outro filtro não existe.
-  useEffect(() => {
-    setPagina(1);
-  }, [buscaAplicada, filtro]);
+  const definirFiltro = (chave: string) =>
+    setSearchParams((p) => comFiltros(p, { filtro: chave, pagina: null }, { filtro: "todos" }), {
+      replace: true,
+    });
+  const definirPagina = (n: number) =>
+    setSearchParams((p) => comFiltros(p, { pagina: n }, { pagina: "1" }), { replace: true });
 
   const params = useMemo<ListOrcamentosParams>(
     () => ({
@@ -184,7 +185,7 @@ export default function Orcamentos() {
               variant={filtro === f.chave ? "default" : "outline"}
               size="sm"
               className="rounded-full"
-              onClick={() => setFiltro(f.chave)}
+              onClick={() => definirFiltro(f.chave)}
             >
               {f.rotulo}
             </Button>
@@ -291,7 +292,7 @@ export default function Orcamentos() {
                   variant="outline"
                   onClick={() => {
                     setBusca("");
-                    setFiltro("todos");
+                    definirFiltro("todos");
                   }}
                 >
                   Limpar filtros
@@ -340,7 +341,7 @@ export default function Orcamentos() {
               variant="outline"
               size="sm"
               disabled={pagina <= 1}
-              onClick={() => setPagina((p) => p - 1)}
+              onClick={() => definirPagina(pagina - 1)}
             >
               Anterior
             </Button>
@@ -348,7 +349,7 @@ export default function Orcamentos() {
               variant="outline"
               size="sm"
               disabled={pagina >= totalPaginas}
-              onClick={() => setPagina((p) => p + 1)}
+              onClick={() => definirPagina(pagina + 1)}
             >
               Próxima
             </Button>

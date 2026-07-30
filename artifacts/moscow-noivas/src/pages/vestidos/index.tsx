@@ -18,6 +18,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useSearchParams } from "react-router";
+import { atributosDoParam, atributosParaParam, comFiltros } from "@/lib/filtro-url";
+import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { format } from "date-fns";
 import { ptBR } from "react-day-picker/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -141,15 +143,31 @@ export default function Vestidos() {
     query: { ...CACHE_ESTAVEL, queryKey: getListAtributosQueryKey(activeLojaId!), enabled: !!activeLojaId },
   });
 
-  // Filtros client-side simples (busca + selects) — só a data vai para a URL.
-  const [busca, setBusca] = useState("");
-  const [tamanho, setTamanho] = useState(TODOS);
-  const [cor, setCor] = useState(TODOS);
-  const [categoria, setCategoria] = useState(TODOS);
-  // atributoId → opcaoId escolhida (E41).
-  const [filtrosAtributo, setFiltrosAtributo] = useState<Record<string, string>>({});
+  // E129/D5: os filtros moram na URL como a data já morava — ida-e-volta ao
+  // detalhe do vestido preserva, e o link filtrado viaja. A filtragem segue
+  // client-side; a busca filtra pelo que se digita (URL assenta 300ms atrás).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [busca, setBusca] = useBuscaNaUrl();
+  const tamanho = searchParams.get("tamanho") ?? TODOS;
+  const cor = searchParams.get("cor") ?? TODOS;
+  const categoria = searchParams.get("categoria") ?? TODOS;
+  // atributoId → opcaoId escolhida (E41), num param só (`atributos=id:op,…`).
+  const filtrosAtributo = useMemo(
+    () => atributosDoParam(searchParams.get("atributos")),
+    [searchParams],
+  );
   // Só os livres na data escolhida (E41) — depende de `dataSelecionada`.
-  const [soDisponiveis, setSoDisponiveis] = useState(false);
+  const soDisponiveis = searchParams.get("disponiveis") === "1";
+  const definirFiltroUrl = (nome: string, valor: string | null) =>
+    setSearchParams((p) => comFiltros(p, { [nome]: valor }, { [nome]: TODOS }), { replace: true });
+  const definirAtributo = (attrId: string, opcaoId: string) => {
+    const proximos = { ...filtrosAtributo };
+    if (opcaoId === TODOS) delete proximos[attrId];
+    else proximos[attrId] = opcaoId;
+    setSearchParams((p) => comFiltros(p, { atributos: atributosParaParam(proximos) }), {
+      replace: true,
+    });
+  };
 
   const atributosAtivos = useMemo(
     () => (atributos ?? []).filter((a) => a.ativo && (a.opcoes ?? []).some((o) => o.ativo)),
@@ -157,20 +175,11 @@ export default function Vestidos() {
   );
 
   // Data do casamento na URL (?data=YYYY-MM-DD) para link compartilhável.
-  const [searchParams, setSearchParams] = useSearchParams();
   const dataParam = searchParams.get("data");
   const dataSelecionada = dataParam && /^\d{4}-\d{2}-\d{2}$/.test(dataParam) ? dataParam : null;
 
   function definirData(proxima: string | null) {
-    setSearchParams(
-      (prev) => {
-        const params = new URLSearchParams(prev);
-        if (proxima) params.set("data", proxima);
-        else params.delete("data");
-        return params;
-      },
-      { replace: true },
-    );
+    setSearchParams((prev) => comFiltros(prev, { data: proxima }), { replace: true });
   }
 
   const disponibilidade = useCheckDisponibilidadeVestidos(
@@ -225,13 +234,21 @@ export default function Vestidos() {
     busca.trim() !== "" || tamanho !== TODOS || cor !== TODOS || categoria !== TODOS || !!dataSelecionada || temAtributoFiltrado || soDisponiveis;
 
   function limparFiltros() {
-    setBusca("");
-    setTamanho(TODOS);
-    setCor(TODOS);
-    setCategoria(TODOS);
-    setFiltrosAtributo({});
-    setSoDisponiveis(false);
-    definirData(null);
+    // Uma escrita só limpa tudo; o input de busca adota o `q` vazio da URL
+    // pelo próprio hook (a URL manda, nunca o contrário).
+    setSearchParams(
+      (p) =>
+        comFiltros(p, {
+          q: null,
+          tamanho: null,
+          cor: null,
+          categoria: null,
+          atributos: null,
+          disponiveis: null,
+          data: null,
+        }),
+      { replace: true },
+    );
   }
 
   function renderBadgeDoCard(vestido: Vestido) {
@@ -436,7 +453,7 @@ export default function Vestidos() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
-        <Select value={tamanho} onValueChange={setTamanho}>
+        <Select value={tamanho} onValueChange={(v) => definirFiltroUrl("tamanho", v)}>
           <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Tamanho" />
           </SelectTrigger>
@@ -447,7 +464,7 @@ export default function Vestidos() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={cor} onValueChange={setCor}>
+        <Select value={cor} onValueChange={(v) => definirFiltroUrl("cor", v)}>
           <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Cor" />
           </SelectTrigger>
@@ -458,7 +475,7 @@ export default function Vestidos() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={categoria} onValueChange={setCategoria}>
+        <Select value={categoria} onValueChange={(v) => definirFiltroUrl("categoria", v)}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
@@ -474,7 +491,7 @@ export default function Vestidos() {
           <Select
             key={attr.id}
             value={filtrosAtributo[attr.id] ?? TODOS}
-            onValueChange={(v) => setFiltrosAtributo((f) => ({ ...f, [attr.id]: v }))}
+            onValueChange={(v) => definirAtributo(attr.id, v)}
           >
             <SelectTrigger className="w-[150px]" data-testid={`filtro-atributo-${attr.id}`}>
               <SelectValue placeholder={attr.nome} />
@@ -520,7 +537,7 @@ export default function Vestidos() {
             size="sm"
             aria-pressed={soDisponiveis}
             data-testid="toggle-so-disponiveis"
-            onClick={() => setSoDisponiveis((s) => !s)}
+            onClick={() => definirFiltroUrl("disponiveis", soDisponiveis ? null : "1")}
           >
             Só disponíveis
           </Button>
