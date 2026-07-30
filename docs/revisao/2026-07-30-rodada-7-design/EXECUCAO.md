@@ -70,7 +70,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ✅ | `3f0b3a6` |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ✅ | `87cfbb1` |
 | Adversarial — refutar os 🔴/🟠 | `adversarial.md` | ✅ | `71d3053` |
-| Consolidação G | `g-consolidado.md` | ⬜ | |
+| Consolidação G | `g-consolidado.md` | ✅ | |
 | Backlog em épicos | `../../propostas/2026-07-30-rodada-7-design-backlog.md` | ⬜ | |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
@@ -96,6 +96,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D4 | **`ContratoInput` aceita `vendedoraId` do CORPO** (`lib/api-spec/openapi.yaml:5652-5664`; validado só como "é da loja" em `api-server/src/routes/contratos.ts:149`), enquanto a régua do replit.md para autoria é "vem da SESSÃO, não do corpo". Aqui não é autoria pura — a vendedora da venda pode legitimamente ser outra pessoa (é o achado B1) —, mas a superfície permite atribuir a venda (e a comissão) a qualquer colega por curl, sem tela. Decidir na execução do B1 se o servidor passa a exigir coerência com `orcamento.vendedoraId` quando houver orçamento. | 🟡 | trilha B |
 | S-D5 | **`GET /lojas/:id/orcamentos` embute `itens: true` de todos os orçamentos da loja** (`api-server/src/routes/orcamentos.ts:126-131`) para uma lista que não desenha valor nenhum (achado D1) — o payload cresce com a história inteira e ninguém o lê. Quando o épico do D1 der busca/página à listagem, a rota deve mandar os itens só onde alguém os consome (`?leadId=` do perfil já os usa; a listagem geral não). | 🟡 | trilha D |
 | S-D6 | **`useIsMobile` tem 0 consumidores** (`moscow-noivas/src/hooks/use-mobile.tsx`; grep no `src/` inteiro — o app decide mobile por breakpoint CSS, que é o certo). Mesma classe da S-D3: podar como higiene, ou adotar se algum épico da rodada precisar de decisão em JS. | 🔵 | trilha E |
+| S-D7 | **As varreduras de grep por linha têm uma fresta de formatação.** O prettier separou `text-primary` de `brl(` em `noiva-portal.tsx:404-405` e o ofensor vive com CI verde porque `escala-dinheiro.test.ts:62-64` exige os dois NA MESMA linha (é o miolo do E4; o E127 fecha essa instância). Auditar as outras varreduras da mesma técnica (`destrutivas-varredura`, `datas-varredura`) contra a mesma quebra — pista da trilha E, assumida pela consolidação como trabalho de teste, fora do escopo de UX. | 🟡 | consolidação G |
 
 ## Diário de sessões
 
@@ -215,3 +216,17 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   `openapi.yaml:1243-1247` junto, e nenhuma das 22 âncoras se apoiava em dado
   de fixture nem contrariava decisão registrada com medida de pé. Nenhuma
   sobra nova.
+- **Consolidação G entregue.** A frase da rodada: *as réguas da rodada 6
+  venceram o caminho feliz do dia; a rodada 7 achou aonde elas não chegaram —
+  a falha que fica muda, o acervo de 3 anos que não se acha e a moldura do
+  celular que esconde o botão do dia*. Os **58 achados** das seis trilhas
+  (0 🔴 · 21 🟠 · 30 🟡 · 7 🔵, graus finais do adversarial) viraram **23
+  épicos, E120–E142** (4 P · 17 M · 2 G), com rastreabilidade 100% — nada fora
+  por decisão ou artefato; os três pares duplicados entre trilhas (A4=F5,
+  A7=F10, D8=E13) foram fundidos, e o maior agrupamento (E138, a passada de
+  voz) fecha 11 achados de 2 trilhas num commit de strings. Ordem por valor:
+  E120 (a comissão que troca de bolso) e E121 (o C2, o 🟠 mais perto de 🔴)
+  abrem a fila; dependências explícitas: E132 depois de E121, E138 depois de
+  E122, E134/E135 em sequência. As três notas da adversarial foram carregadas
+  (C4=47/27, o comentário do openapi no E124, a conta 2,68:1 no E127). Uma
+  sobra nova (S-D7, a fresta das varreduras por linha).
