@@ -101,7 +101,7 @@ para cada uma.
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | `ef33c43` |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ✅ | `c2fa5bd` |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ✅ | `8d14198` |
-| E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ✅ | |
+| E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ✅ | `6182e57` |
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ⬜ | |
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ⬜ | |
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ⬜ | |
