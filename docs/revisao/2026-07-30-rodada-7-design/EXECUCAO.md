@@ -112,7 +112,7 @@ para cada uma.
 | E139 | Fechar o mês vira roteiro: três passos com estado na Folha (B10) | M | ✅ | `f3af0dc` |
 | E140 | O WhatsApp no cadastro inline (B9) | P | ✅ | `45aecc2` |
 | E141 | ⌘K: a busca de noivas de qualquer tela (D6) | M | ✅ | `c6911a6` |
-| E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ✅ | |
+| E142 | O relatório de conversão aprende "e neste período?" (D7) | P | ✅ | `494fc1d` |
 
 ## Sobras — visto de passagem sem épico
 
