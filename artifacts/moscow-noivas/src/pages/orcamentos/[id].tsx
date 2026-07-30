@@ -20,6 +20,8 @@ import {
   getListVestidosQueryKey,
   useListBloqueios,
   getListBloqueiosQueryKey,
+  useListEquipe,
+  getListEquipeQueryKey,
   type OrcamentoItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -114,6 +116,10 @@ const editarItemSchema = z.object({
 type EditarItemValues = z.infer<typeof editarItemSchema>;
 
 const gerarContratoSchema = z.object({
+  // B1/E120: de quem é a VENDA — nasce da vendedora do orçamento, e trocar é
+  // gesto explícito no select. Era `user!.id` fixo no envio: quem clicasse
+  // virava a dona da comissão, sem campo nem aviso.
+  vendedoraId: z.string().min(1, "Escolha a vendedora da venda"),
   cpf: z.string().optional(),
   formaPagamento: z.string().optional(),
   dataCasamento: z.string().optional(),
@@ -188,7 +194,7 @@ function PreviaDoCarne({ erro, linhas }: { erro: string | null; linhas: ParcelaP
 }
 
 export default function OrcamentoDetail() {
-  const { activeLojaId, user, acessosModulos } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -232,6 +238,15 @@ export default function OrcamentoDetail() {
       enabled: !!activeLojaId && orcamento?.status === "APROVADO",
     },
   });
+  // B1/E120: a equipe ativa para o select de vendedora da venda — a mesma
+  // query que `atendimentos/novo.tsx` usa. Só carrega com o diálogo aberto.
+  const equipe = useListEquipe(activeLojaId!, {
+    query: { queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId && contratoOpen },
+  });
+  const nomeNaEquipe = useMemo(
+    () => new Map((equipe.data ?? []).map((m) => [m.usuarioId, m.nome])),
+    [equipe.data],
+  );
 
   const addItem = useAddOrcamentoItem();
   const updateItem = useUpdateOrcamentoItem();
@@ -297,7 +312,7 @@ export default function OrcamentoDetail() {
 
   const contratoForm = useForm<GerarContratoValues>({
     resolver: zodResolver(gerarContratoSchema),
-    defaultValues: { cpf: "", formaPagamento: "", dataCasamento: "", entrada: "0", numParcelas: "1", primeiroVencimento: "" },
+    defaultValues: { vendedoraId: "", cpf: "", formaPagamento: "", dataCasamento: "", entrada: "0", numParcelas: "1", primeiroVencimento: "" },
   });
 
   // F16/C2: o carnê que a tela vai criar, calculado ao vivo enquanto a
@@ -567,6 +582,23 @@ export default function OrcamentoDetail() {
     }
   };
 
+  // E120: o diálogo nasce sabendo o que o orçamento e a ficha já sabem — a
+  // vendedora da VENDA vem de `orcamento.vendedoraId` (B1; era quem clicou) e
+  // a data do casamento vem do lead (B6; era campo em branco pedindo
+  // redigitação — o molde é a reserva inline de `atendimentos/novo.tsx`).
+  const abrirGerarContrato = () => {
+    contratoForm.reset({
+      vendedoraId: orcamento.vendedoraId,
+      cpf: "",
+      formaPagamento: "",
+      dataCasamento: lead?.casamentoData?.slice(0, 10) ?? "",
+      entrada: "0",
+      numParcelas: "1",
+      primeiroVencimento: "",
+    });
+    setContratoOpen(true);
+  };
+
   const onGerarContrato = async (values: GerarContratoValues) => {
     if (plano.erro) {
       toast({ title: plano.erro, variant: "destructive" });
@@ -592,7 +624,9 @@ export default function OrcamentoDetail() {
         data: {
           leadId: orcamento.leadId,
           orcamentoId: orcamento.id,
-          vendedoraId: user!.id,
+          // B1/E120: a dona da venda é a do select — não quem clicou. Divergir
+          // do orçamento é aceito e fica na trilha de auditoria (S-D4/P1).
+          vendedoraId: values.vendedoraId,
           valorTotal: totais.liquido,
           // E72: prende as reservas marcadas — cancelar o contrato as liberta.
           bloqueioVestidoIds: reservasDaNoiva
@@ -680,19 +714,38 @@ export default function OrcamentoDetail() {
                 </Link>
               </Button>
             ) : podeEditar && !contratos.isLoading ? (
-              <Button size="sm" onClick={() => setContratoOpen(true)}>
+              <Button size="sm" onClick={abrirGerarContrato}>
                 <ScrollText className="h-4 w-4 mr-2" />
                 Gerar contrato
               </Button>
             ) : undefined
           ) : editavel ? (
-            <Button size="sm" disabled={aprovar.isPending} onClick={() => setAprovarOpen(true)}>
-              Aprovar
-            </Button>
+            /* B5/E120: a primária segue o ESTADO. Sem aceite, o passo que o
+               fluxo pede (E74/E75) é chegar à noiva — e o único botão colorido
+               era "Aprovar", justamente o que o próprio diálogo desaconselha em
+               vermelho enquanto não há aceite. Com o aceite registrado,
+               "Aprovar" volta a ser a primária, como já era para APROVADO →
+               "Gerar contrato". */
+            orcamento.aceitoEm ? (
+              <Button size="sm" disabled={aprovar.isPending} onClick={() => setAprovarOpen(true)}>
+                Aprovar
+              </Button>
+            ) : (
+              <Button size="sm" disabled={criarLink.isPending} onClick={onLinkNoiva}>
+                <Link2 className="h-4 w-4 mr-2" />
+                {criarLink.isPending
+                  ? "Gerando…"
+                  : linkVigente
+                    ? "Copiar link da noiva"
+                    : "Link para a noiva"}
+              </Button>
+            )
           ) : undefined
         }
         acoes={[
-          ...(podeEditar && orcamento.status !== "RECUSADO"
+          // O link só mora no menu quando NÃO é a primária (B5): sem aceite em
+          // RASCUNHO/ENVIADO ele está no botão colorido, e duplicá-lo confunde.
+          ...(podeEditar && orcamento.status !== "RECUSADO" && !(editavel && !orcamento.aceitoEm)
             ? [{
                 rotulo: criarLink.isPending
                   ? "Gerando…"
@@ -702,6 +755,11 @@ export default function OrcamentoDetail() {
                 onClick: onLinkNoiva,
                 desabilitada: criarLink.isPending,
               }]
+            : []),
+          // E "Aprovar" desce para cá enquanto não há aceite — continua a um
+          // clique de distância, mas deixa de ser o único botão com cor.
+          ...(editavel && !orcamento.aceitoEm
+            ? [{ rotulo: "Aprovar", onClick: () => setAprovarOpen(true), desabilitada: aprovar.isPending }]
             : []),
           ...(editavel && orcamento.status === "RASCUNHO"
             ? [{ rotulo: "Marcar como enviado", onClick: () => onMudarStatus("ENVIADO"), desabilitada: atualizar.isPending }]
@@ -1088,6 +1146,41 @@ export default function OrcamentoDetail() {
                   ))}
                 </div>
               )}
+              {/* B1/E120: de quem é a venda — nasce da vendedora do orçamento;
+                  trocar é gesto explícito, e a divergência é dita aqui e
+                  gravada na trilha pelo servidor. */}
+              <FormField
+                control={contratoForm.control}
+                name="vendedoraId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vendedora da venda</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger aria-label="Vendedora da venda" data-testid="select-vendedora-venda">
+                          <SelectValue placeholder="Selecione…" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(equipe.data ?? [])
+                          .filter((m) => m.ativo !== false)
+                          .map((m) => (
+                            <SelectItem key={m.usuarioId} value={m.usuarioId}>
+                              {m.nome}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value && field.value !== orcamento.vendedoraId && (
+                      <p className="text-muted-foreground text-xs" data-testid="aviso-vendedora-divergente">
+                        O orçamento é de {nomeNaEquipe.get(orcamento.vendedoraId) ?? "outra vendedora"} — a
+                        comissão desta venda vai para quem está selecionada, e a troca fica na auditoria.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={contratoForm.control}

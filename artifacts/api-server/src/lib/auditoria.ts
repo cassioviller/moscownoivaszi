@@ -72,6 +72,11 @@ export const ACOES_AUDITORIA = [
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
   "AVARIA_REMOVIDA",
+  // E120/S-D4: contrato nascido de orçamento com OUTRA vendedora no corpo. A
+  // divergência é aceita (P1 — a venda pode legitimamente ser de outra pessoa)
+  // mas é ela que decide de quem é a comissão, então deixa rastro: quem montou
+  // o orçamento, em nome de quem o contrato nasceu, e quem clicou (a sessão).
+  "CONTRATO_VENDEDORA_DIVERGENTE",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -118,6 +123,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
+  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {

@@ -9,6 +9,7 @@ import {
   orcamentoItensTable,
   leadsTable,
   contratoBloqueiosTable,
+  usuariosTable,
   type InsertContratoItem,
 } from "@workspace/db";
 import { eq, and, isNull, inArray, sql } from "drizzle-orm";
@@ -168,6 +169,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   let itensSnapshot: ItemSnapshot[] = [];
   let descontoTipo: "PERCENTUAL" | "VALOR" | null = null;
   let descontoValor: number | null = null;
+  // E120/S-D4: a vendedora que MONTOU o orçamento — se a do contrato divergir,
+  // a divergência é aceita (a venda pode legitimamente ser de outra pessoa —
+  // decisão P1 do dono: rastrear, não travar) mas deixa rastro na trilha.
+  let vendedoraDoOrcamentoId: string | null = null;
   if (contratoData.orcamentoId) {
     const orcamento = await db.query.orcamentosTable.findFirst({
       where: and(eq(orcamentosTable.id, contratoData.orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
@@ -184,6 +189,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       res.status(422).json({ error: "ORCAMENTO_NAO_APROVADO", detalhe: `Orçamento está ${orcamento.status}` });
       return;
     }
+    vendedoraDoOrcamentoId = orcamento.vendedoraId;
     const [jaVinculado] = await db.select({ id: contratosTable.id }).from(contratosTable)
       .where(eq(contratosTable.orcamentoId, contratoData.orcamentoId));
     if (jaVinculado) {
@@ -353,6 +359,20 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     }
   }
 
+  // E120/S-D4 — a venda trocou de dona em relação ao orçamento. Os nomes são
+  // lidos antes da transação (leitura pura) para a linha da trilha dizer
+  // quem→quem sem garimpo de id; a ESCRITA do rastro fica dentro dela.
+  const vendedoraDivergente =
+    vendedoraDoOrcamentoId !== null && vendedoraDoOrcamentoId !== contratoData.vendedoraId;
+  let nomesDivergencia: Record<string, string> = {};
+  if (vendedoraDivergente) {
+    const pessoas = await db
+      .select({ id: usuariosTable.id, nome: usuariosTable.nome })
+      .from(usuariosTable)
+      .where(inArray(usuariosTable.id, [vendedoraDoOrcamentoId!, contratoData.vendedoraId]));
+    nomesDivergencia = Object.fromEntries(pessoas.map((p) => [p.id, p.nome]));
+  }
+
   // Persistência atômica: contrato + parcelas + snapshot de itens.
   const result = await db.transaction(async (tx) => {
     const [contrato] = await tx.insert(contratosTable).values({
@@ -420,6 +440,33 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
           eq(bloqueioVestidosTable.lojaId, lojaId),
           isNull(bloqueioVestidosTable.leadId),
         ));
+    }
+
+    /**
+     * E120/S-D4 — o contrato nasceu de um orçamento e a vendedora TROCOU.
+     *
+     * O servidor aceita de propósito (P1: a dona fecha de manhã a venda que a
+     * Ana montou ontem — travar quebraria o caso real), mas a comissão é
+     * somada por `contratos.vendedora_id`: num contrato de R$ 4.200,00 a 5%
+     * são R$ 210,00 trocando de bolso, e sem esta linha a troca era muda —
+     * inclusive por curl, sem tela nenhuma. Quem clicou segue vindo da
+     * sessão; o que se grava aqui é a divergência entre as DONAS da venda.
+     */
+    if (vendedoraDivergente) {
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "CONTRATO_VENDEDORA_DIVERGENTE",
+        entidade: "contrato",
+        entidadeId: contrato.id,
+        detalhe: {
+          orcamentoId: contratoData.orcamentoId,
+          vendedoraDoOrcamentoId,
+          vendedoraDoContratoId: contratoData.vendedoraId,
+          valorTotal: contratoData.valorTotal,
+          descricao: `Orçamento de ${nomesDivergencia[vendedoraDoOrcamentoId!] ?? vendedoraDoOrcamentoId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`,
+        },
+      });
     }
 
     // Fechar contrato avança o funil do lead (nunca regride).

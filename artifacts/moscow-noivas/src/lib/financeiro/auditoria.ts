@@ -47,6 +47,9 @@ export const ROTULO_ACAO: Record<string, string> = {
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
+  // E120: a venda que trocou de dona entre o orçamento e o contrato — é ela
+  // que decide de quem é a comissão, por isso a linha existe e é filtrável.
+  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
 };
 
 /** As ações filtráveis, na ordem em que o select as oferece. */
@@ -80,6 +83,7 @@ export const ACOES_FILTRAVEIS = [
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
   "AVARIA_REMOVIDA",
+  "CONTRATO_VENDEDORA_DIVERGENTE",
 ] as const;
 
 export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];

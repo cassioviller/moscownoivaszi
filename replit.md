@@ -102,7 +102,13 @@ rode o codegen.
   de cobrança sai de `req.usuario`, e `RegistroCobrancaInput` não aceita
   `vendedorId` de propósito — um cliente que declara o próprio autor pode
   atribuir a ação a outra pessoa. Mesma lógica de sempre: a autoridade é o
-  servidor. Corolário: campos de autoria são ON DELETE SET NULL, porque perder
+  servidor. **A vendedora da VENDA não é autoria** (E120, decisão P1 do dono):
+  `ContratoInput.vendedoraId` vem do corpo de propósito — a dona fecha de manhã
+  a venda que a Ana montou ontem, e é esse campo que decide a comissão. O que
+  protege é o rastro, não a trava: quando o contrato nasce de um orçamento e a
+  vendedora diverge de `orcamento.vendedoraId`, a transação grava
+  `CONTRATO_VENDEDORA_DIVERGENTE` na trilha com os dois lados nomeados; quem
+  clicou continua saindo da sessão. Corolário: campos de autoria são ON DELETE SET NULL, porque perder
   quem fez é recuperável e perder o registro do que aconteceu não é. Onde a
   coluna é `notNull` e `set null` não existe — `contratos`, `orcamentos`,
   `atendimentos`, `comissao_regras` e `comissao_fechamentos`, todas por

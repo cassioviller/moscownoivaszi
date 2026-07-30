@@ -90,7 +90,7 @@ para cada uma.
 
 | Épico | O que resolve | Esforço | Estado | Commit |
 |---|---|---|---|---|
-| E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ⬜ | |
+| E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ✅ | |
 | E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ⬜ | |
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ⬜ | |
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ⬜ | |
@@ -127,6 +127,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D5 | **`GET /lojas/:id/orcamentos` embute `itens: true` de todos os orçamentos da loja** (`api-server/src/routes/orcamentos.ts:126-131`) para uma lista que não desenha valor nenhum (achado D1) — o payload cresce com a história inteira e ninguém o lê. Quando o épico do D1 der busca/página à listagem, a rota deve mandar os itens só onde alguém os consome (`?leadId=` do perfil já os usa; a listagem geral não). | 🟡 | trilha D |
 | S-D6 | **`useIsMobile` tem 0 consumidores** (`moscow-noivas/src/hooks/use-mobile.tsx`; grep no `src/` inteiro — o app decide mobile por breakpoint CSS, que é o certo). Mesma classe da S-D3: podar como higiene, ou adotar se algum épico da rodada precisar de decisão em JS. | 🔵 | trilha E |
 | S-D7 | **As varreduras de grep por linha têm uma fresta de formatação.** O prettier separou `text-primary` de `brl(` em `noiva-portal.tsx:404-405` e o ofensor vive com CI verde porque `escala-dinheiro.test.ts:62-64` exige os dois NA MESMA linha (é o miolo do E4; o E127 fecha essa instância). Auditar as outras varreduras da mesma técnica (`destrutivas-varredura`, `datas-varredura`) contra a mesma quebra — pista da trilha E, assumida pela consolidação como trabalho de teste, fora do escopo de UX. | 🟡 | consolidação G |
+| S-D8 | **Dois erros do `POST /contratos` fora da régua de erro da casa:** `api-server/src/routes/contratos.ts:282` responde `{ error: "Bloqueio not found" }` (inglês, sem código) e `:346` responde `{ error: "dataCasamento do contrato diverge da data do bloqueio" }` — a FRASE no campo do CÓDIGO, sem `detalhe`. O `mensagemApi` da tela mapeia por código (`MENSAGENS_ERRO` de `orcamentos/[id].tsx`), então os dois caem no cru para a vendedora, no clique que fecha a venda. Candidato natural ao E122 (o épico do erro que mostra a frase do servidor). | 🟡 | execução E120 |
 
 ## Diário de sessões
 
@@ -276,3 +277,22 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   marcada explicitamente nos épicos que mudam o que a trilha grava ou o que a
   tela lê (E120, E123, E124, E128, E138, E142 condicional). Tabela de épicos
   deste rastreador preenchida com os 23 ⬜. Nenhuma sobra nova.
+
+### Sessão 2 — 2026-07-30
+
+- **E120 entregue** (`execucao/E120.md`). A execução abre a fila pelo épico que
+  mexe em dinheiro trocando de bolso: o diálogo "Gerar contrato" ganhou o
+  select "Vendedora da venda" nascendo de `orcamento.vendedoraId` (B1 — era
+  `vendedoraId: user!.id`, e R$ 210,00 de comissão num contrato de R$ 4.200,00
+  a 5% iam para quem clicou), a primária do rascunho sem aceite virou "Link
+  para a noiva" com "Aprovar" a um clique no menu (B5), e a data do casamento
+  vem da ficha (B6). **S-D4 decidida pela P1**: o servidor aceita a divergência
+  e grava `CONTRATO_VENDEDORA_DIVERGENTE` dentro da transação, com os dois
+  lados nomeados — o mapeamento executado imprimiu o rastro de hoje e ele era
+  **zero linhas** (`expected [] to have a length of 1`). Régua mecânica nova
+  (`vendedora-da-venda-varredura.test.ts`: `vendedoraId` de sessão em payload,
+  proibido — 2ª ocorrência da classe E98) e jornada E2E nova
+  (`52-orcamento-vira-contrato.spec.ts`, a prova no banco:
+  `contrato.vendedoraId === maria.id` com a admin logada). Suítes: API
+  852 → 855 · front 314 → 315 · E2E 137 → 139 · typecheck verde. Uma sobra
+  nova (S-D8, os dois erros do `POST /contratos` fora da régua de erro).
