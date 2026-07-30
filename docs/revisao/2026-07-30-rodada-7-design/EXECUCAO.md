@@ -95,7 +95,7 @@ para cada uma.
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ✅ | `5b73445` |
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | `2c780b1` |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ✅ | `a0b18c1` |
-| E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | |
+| E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | `21695c4` |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ⬜ | |
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ⬜ | |
