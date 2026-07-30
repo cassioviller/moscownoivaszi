@@ -230,14 +230,19 @@ export default function OrcamentoDetail() {
     () => new Map((vestidos.data ?? []).map((v) => [v.id, v])),
     [vestidos.data],
   );
-  // O GetOrcamento não expõe o contrato gerado; buscamos na lista de contratos
-  // (client-side, só quando APROVADO) para alternar Gerar/Ver contrato.
-  const contratos = useListContratos(activeLojaId!, undefined, {
-    query: {
-      queryKey: getListContratosQueryKey(activeLojaId!),
-      enabled: !!activeLojaId && orcamento?.status === "APROVADO",
+  // O GetOrcamento não expõe o contrato gerado; perguntamos à lista de
+  // contratos COM o recorte ?orcamentoId= (E144/S-D16 — sem ele, esta tela
+  // baixava os 518 contratos da loja, 615 KB, para um único find).
+  const contratos = useListContratos(
+    activeLojaId!,
+    { orcamentoId: id! },
+    {
+      query: {
+        queryKey: getListContratosQueryKey(activeLojaId!, { orcamentoId: id! }),
+        enabled: !!activeLojaId && !!id && orcamento?.status === "APROVADO",
+      },
     },
-  });
+  );
   // B1/E120: a equipe ativa para o select de vendedora da venda — a mesma
   // query que `atendimentos/novo.tsx` usa. Só carrega com o diálogo aberto.
   const equipe = useListEquipe(activeLojaId!, {
@@ -282,6 +287,8 @@ export default function OrcamentoDetail() {
   // acima já traz completo, com o teto de orçamento junto.
   const lead = leadCompleto.data;
 
+  // A lista já vem recortada pelo orçamento; o find é só o cinto de segurança
+  // de o cache devolver uma página de outro queryKey.
   const contratoExistente = useMemo(
     () => contratos.data?.itens.find((c) => c.orcamentoId === orcamento?.id),
     [contratos.data, orcamento?.id],

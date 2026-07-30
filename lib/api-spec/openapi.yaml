@@ -2866,8 +2866,15 @@ paths:
       # E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
       # E124: busca por noiva, página, status no banco e recentes-primeiro (P2)
       # — com ~290 contratos em 3 anos, o da semana passada era o ÚLTIMO card.
+      # E144/S-D16: o detalhe do orçamento pergunta "este orçamento já virou
+      # contrato?" — sem este filtro ele baixava a loja inteira (615 KB
+      # medidos) para um único find.
       parameters:
         - name: leadId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: orcamentoId
           in: query
           required: false
           schema: { type: string }

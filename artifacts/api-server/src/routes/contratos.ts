@@ -110,9 +110,12 @@ router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
   // E124/D1: busca por noiva, status no banco, página e recentes-primeiro
   // (P2) — o contrato da semana passada era o último de ~29.000px de rolagem.
-  const { leadId, q, status, pagina, porPagina, ordem } = query.data;
+  const { leadId, orcamentoId, q, status, pagina, porPagina, ordem } = query.data;
   const condicoes = [eq(contratosTable.lojaId, lojaId)];
   if (leadId) condicoes.push(eq(contratosTable.leadId, leadId));
+  // E144/S-D16: o detalhe do orçamento pergunta "já virou contrato?" — antes
+  // baixava os 518 contratos da loja (615 KB) para um único find.
+  if (orcamentoId) condicoes.push(eq(contratosTable.orcamentoId, orcamentoId));
   if (status) condicoes.push(eq(contratosTable.status, status));
   const busca = q?.trim();
   if (busca) condicoes.push(inArray(contratosTable.leadId, leadsQueCasam(lojaId, busca)));

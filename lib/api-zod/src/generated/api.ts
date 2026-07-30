@@ -5292,6 +5292,7 @@ export const listContratosQueryOrdemDefault = `recentes`;
 
 export const ListContratosQueryParams = zod.object({
   "leadId": zod.coerce.string().optional(),
+  "orcamentoId": zod.coerce.string().optional(),
   "q": zod.coerce.string().max(listContratosQueryQMax).optional().describe('Busca pela noiva: nome da noiva\/noivo e WhatsApp (dígitos), a mesma régua do listLeads'),
   "status": zod.enum(['ATIVO', 'CANCELADO']).optional(),
   "pagina": zod.coerce.number().min(1).optional(),

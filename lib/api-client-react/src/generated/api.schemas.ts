@@ -2802,6 +2802,7 @@ export type ListPortais200Item = {
 
 export type ListContratosParams = {
 leadId?: string;
+orcamentoId?: string;
 /**
  * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
  * @maxLength 200

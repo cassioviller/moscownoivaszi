@@ -274,6 +274,7 @@ export async function criarContrato(
   params: {
     leadId: string;
     vendedoraId?: string;
+    orcamentoId?: string;
     valorTotal: number;
     fechadoEm: Date;
     canceladoEm?: Date | null;
@@ -287,6 +288,7 @@ export async function criarContrato(
       id: randomUUID(),
       lojaId: f.lojaId,
       leadId: params.leadId,
+      orcamentoId: params.orcamentoId ?? null,
       vendedoraId: params.vendedoraId ?? f.vendedoraId,
       valorTotal: params.valorTotal,
       fechadoEm: params.fechadoEm,
