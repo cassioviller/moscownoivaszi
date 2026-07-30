@@ -93,7 +93,7 @@ para cada uma.
 | E120 | O contrato nasce de quem vendeu (B1, B5, B6 + decide S-D4/P1) | M | ✅ | `8af14b4` |
 | E121 | A tela para de afirmar zero enquanto não sabe (C1, C2, C3) | M | ✅ | `f919679` |
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ✅ | `5b73445` |
-| E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | |
+| E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | `2c780b1` |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ⬜ | |
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ⬜ | |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
