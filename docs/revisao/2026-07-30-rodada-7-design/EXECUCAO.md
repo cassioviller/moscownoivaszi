@@ -98,7 +98,7 @@ para cada uma.
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | `21695c4` |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ✅ | `413c99b` |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ✅ | `8ac81c6` |
-| E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | |
+| E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ✅ | `ef33c43` |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ⬜ | |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ⬜ | |
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ⬜ | |
