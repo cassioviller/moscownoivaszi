@@ -57,6 +57,7 @@ import {
   estaAtrasada,
   estaAberta,
   saldoAberto,
+  abertoEmCentavos,
   teveRecebimento,
 } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
@@ -159,7 +160,9 @@ export default function ContratoDetail() {
       comRecebimento,
       recebido: reais(somaCentavos(comRecebimento, (p) => p.valorRecebido ?? 0)),
       abertas: abertas.length,
-      aberto: reais(somaCentavos(abertas, (p) => saldoAberto(p))),
+      // E125/D4: a soma do aberto é a régua única do core — a MESMA do
+      // "falta pagar" do portal da noiva e do "Falta receber" ali de cima.
+      aberto: reais(abertoEmCentavos(parcelas)),
     };
   }, [parcelas]);
 
@@ -432,6 +435,18 @@ export default function ContratoDetail() {
                   que ele precisa é de TAMANHO. */}
               <p className="money-lg">{brl(contrato.valorTotal)}</p>
             </div>
+            {/* E125/D4: "quanto falta pagar?" é a pergunta do telefone, e a
+                soma só existia DENTRO do diálogo de cancelar — a vendedora
+                abria o diálogo só para LER o número, ou somava 7 parcelas de
+                cabeça. É a mesma derivação do diálogo (uma conta só). */}
+            {contratoAtivo && parcelas.length > 0 && (
+              <div>
+                <span className="text-muted-foreground text-sm">Falta receber</span>
+                <p className="money-md" data-testid="text-falta-receber">
+                  {brl(oQueSeraDesfeito.aberto)}
+                </p>
+              </div>
+            )}
             <div>
               <span className="text-muted-foreground text-sm">Forma de Pagamento Base</span>
               <p className="font-medium">

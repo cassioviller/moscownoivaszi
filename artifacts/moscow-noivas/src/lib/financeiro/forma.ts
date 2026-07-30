@@ -10,6 +10,8 @@ export {
   vencidas,
   estaAberta,
   saldoAberto,
+  // E125: o saldo devedor de um contrato — a MESMA soma do portal da noiva.
+  abertoEmCentavos,
   teveRecebimento,
 } from "@workspace/financeiro-core";
 

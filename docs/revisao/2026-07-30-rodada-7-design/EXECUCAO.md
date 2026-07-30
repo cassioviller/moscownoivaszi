@@ -95,7 +95,7 @@ para cada uma.
 | E122 | O erro mostra a frase do servidor: `detalhe` + `mensagemApi` nos 27 (C4, F1) | M | ✅ | `5b73445` |
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | `2c780b1` |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ✅ | `a0b18c1` |
-| E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ⬜ | |
+| E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | |
 | E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ⬜ | |
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ⬜ | |
@@ -136,6 +136,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D14 | **O seed do `16-cobranca-historico.spec.ts:31-37` lê `id` de `GET /equipe`, que expõe `usuarioId`** — o ramo de criar contrato só roda quando o banco não tem NENHUMA parcela vencida, então nunca roda no banco de dev cheio e o `vendedoraId: undefined` dormindo lá falharia com `CORPO_INVALIDO`. Descoberto porque o spec do E123 copiou o molde e o vermelho-antes veio do seed, não do assert. Consertar o 16 quando ele for tocado. | 🔵 | execução E123 |
 | S-D15 | **`{ error: "Lead not found" }` vive em 8 pontos de `routes/leads.ts`** (:81, :434, :459, :512, :550, :600, :680, :712) — a classe da S-D8/S-D11 (inglês no campo do código, sem `detalhe`), no arquivo que o E123 tocou. O 404 da rota nova do E123 já nasceu na régua (`REGISTRO_DE_COBRANCA_NAO_ENCONTRADO` + detalhe); os 8 vizinhos ficam para o épico que fechar a S-D11. | 🟡 | execução E123 |
 | S-D16 | **`orcamentos/[id].tsx:235` baixa a lista COMPLETA de contratos da loja para um único `find(c => c.orcamentoId === id)`** — 615.041 bytes medidos no banco de dev (518 contratos) só para alternar "Gerar/Ver contrato" quando o orçamento está APROVADO. Com o E124 a rota pagina, mas esta chamada segue sem página de propósito (o find precisa do acervo). Um `?orcamentoId=` no `GET /contratos` — a mesma classe do `?leadId=` do E62 — faz isso custar uma linha. | 🟡 | execução E124 |
+| S-D17 | **14 specs do E2E criam recurso (lead, vestido, cabine, contrato…) e não têm `afterAll`** (levantamento por grep: 16, 17, 18, 19, 21, 24, 27, 28, 29, 30, 31, 35, 36, 37) — a família S18/S25. O spec 49 era o 15º e o único DETERMINISTICAMENTE explosivo (provas de 90 min acumulando no mesmo dia +6 da vendedora compartilhada saturaram o expediente na cadência de uma suíte por épico — 146/147 na primeira passada do E125); ganhou `afterAll` no próprio E125 porque bloqueava a regra 11. Os outros 14 vazam sem colidir (stamps únicos), mas são a fonte do acervo-lixo que a S25 mediu. Auditar e dar limpeza a cada um quando for tocado — ou de uma vez num épico de higiene de suíte. | 🟡 (infra de teste) | execução E125 |
 
 ## Diário de sessões
 
@@ -410,3 +411,30 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   a segunda passada fechou 144/144 (spec novo `54-acervo-que-se-acha`).
   Suítes: API 860 → 867 · front 337 → 346 · E2E completo 144/144 · typecheck
   verde. Uma sobra nova (S-D16).
+
+### Sessão 7 — 2026-07-30
+
+- **E125 entregue** (`execucao/E125.md`) — e entregue DUAS vezes, no sentido do
+  E120: a sessão que escreveu o código morreu antes do relatório e do commit
+  (segunda ocorrência do elo fraco da rodada autônoma). Esta sessão conferiu o
+  working tree contra o backlog, reconstruiu o vermelho-antes com `git show
+  HEAD` + stash temporário e commitou. O épico em si: a ligação mais comum tem
+  duas perguntas e a ficha não respondia nenhuma. **D3**: a ficha dispara
+  `GET /atendimentos?leadId=&de=hoje` — o param `leadId` NÃO existia (o backlog
+  supunha que sim; correção de plano) e nasceu no spec — e `proximaVisita`
+  decide a próxima (AGENDADO futuro mais cedo); o banner de próximo passo
+  recebe `temVisitaFutura`: NOVO com visita vira "Registrar os interesses
+  dela", INTERESSES_PREENCHIDOS com visita cala, e enquanto a agenda conta o
+  banner espera (régua do E121). **D4**: "Falta receber R$ 5.880,00" (o caso
+  literal: 8.400 em 10×, entrada + 3 recebidas) no bloco de valores do contrato
+  e no card Contratos da ficha — pela régua ÚNICA `abertoEmCentavos`, que era
+  PRIVADA no core e tinha três escritas irmãs (diálogo de cancelar, portal);
+  exportada, os três leitores convergiram e o `?leadId=` de contratos passou a
+  embutir parcelas (a listagem geral segue sem — a lição S-D5/S-D16). A regra
+  11 pegou dívida de infra: a primeira passada completa deu 146/147 e o
+  vermelho era o spec 49 saturando a própria agenda (6 provas residuais de 90
+  min no dia +6 — ele não tinha `afterAll`); ganhou limpeza, o spec 55 saiu da
+  disputa do dia +6, e 140 atendimentos + 144 leads + 11 cabines residuais
+  saíram do banco. Segunda passada: 147/147. Suítes: API 867 → 871 · front
+  346 → 357 · E2E completo 147/147 · typecheck verde. Uma sobra nova (S-D17,
+  os 14 specs sem `afterAll`).

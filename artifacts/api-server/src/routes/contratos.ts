@@ -129,6 +129,11 @@ router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       with: {
         lead: true,
         vendedora: true,
+        // E125/D4: o saldo devedor da ficha precisa do carnê — as parcelas
+        // descem SÓ no recorte por noiva (1–2 contratos). A listagem geral
+        // segue sem: 518 contratos × parcelas é a classe de payload morto
+        // que a S-D5/S-D16 mediu.
+        ...(leadId ? { parcelas: true } : {}),
       },
       // id desempata fechadoEm igual — sem ordem estável, página 2 repete item.
       orderBy:

@@ -249,8 +249,15 @@ export function horizonteAberto(
   };
 }
 
-/** Soma do SALDO do que segue aberto — quitado ou cancelado saiu do horizonte. */
-function abertoEmCentavos(itens: readonly ObrigacaoPrevista[]): number {
+/**
+ * Soma do SALDO do que segue aberto — quitado ou cancelado saiu do horizonte.
+ *
+ * Exportada desde o E125: é O saldo devedor de um contrato ("falta receber",
+ * na tela da loja; "falta pagar", no portal da noiva). A conta existia aqui
+ * (privada), no diálogo de cancelar do contrato e no portal — três escritas do
+ * mesmo número, que é a classe de defeito mais cara do repo. Agora é uma.
+ */
+export function abertoEmCentavos(itens: readonly ObrigacaoPrevista[]): number {
   return itens.reduce((s, i) => (estaAberta(i) ? s + saldoAbertoC(i) : s), 0);
 }
 

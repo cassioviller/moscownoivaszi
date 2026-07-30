@@ -44,7 +44,7 @@ import {
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
-import { brutoEmCentavos, centavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
+import { abertoEmCentavos, brutoEmCentavos, estaAberta, reais, saldoAberto } from "@workspace/financeiro-core";
 
 /**
  * E78 — o portal da noiva: UM link para tudo dela. A noiva recebia até três
@@ -193,12 +193,13 @@ router.get("/portal", async (req, res): Promise<void> => {
    * portal não responde volta como mensagem de WhatsApp para a vendedora, que é
    * exatamente o custo que o E78 existia para reduzir.
    *
-   * Em centavos, pelo mesmo motor do resto do sistema: `saldoAberto` desconta o
-   * que já entrou numa parcela PARCIAL — mostrar o previsto cheio cobraria de
-   * novo o que ela já pagou, na tela dela.
+   * Em centavos, pelo mesmo motor do resto do sistema: `abertoEmCentavos`
+   * desconta o que já entrou numa parcela PARCIAL — mostrar o previsto cheio
+   * cobraria de novo o que ela já pagou, na tela dela. Desde o E125 a soma é a
+   * MESMA função que a tela do contrato e a ficha usam para "falta receber".
    */
   const abertas = parcelas.filter((p) => estaAberta(p));
-  const faltaPagarC = abertas.reduce((s, p) => s + centavos(saldoAberto(p)), 0);
+  const faltaPagarC = abertoEmCentavos(parcelas);
   const proxima = [...abertas].sort(
     (a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime(),
   )[0];

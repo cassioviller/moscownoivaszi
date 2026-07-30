@@ -52,4 +52,25 @@ describe("proximoPasso — a ficha diz o que falta, em vez de oito cards vazios"
   it("perdida continua sem passo mesmo com contrato ativo — a régua de PERDIDO vem antes", () => {
     expect(proximoPasso({ ...base, etapa: "PERDIDO", temContratoAtivo: true })).toBeNull();
   });
+
+  // E125 (D3): a etapa não sabe da agenda — criar atendimento não a avança.
+  // O banner sugeria "Agendar" com o horário já marcado na agenda.
+  it("noiva nova COM visita marcada não ouve 'Agendar' — o preparo vira o passo", () => {
+    const p = proximoPasso({ ...base, etapa: "NOVO", temVisitaFutura: true })!;
+    expect(p.titulo).toBe("Registrar os interesses dela");
+    expect(p.href).toBe("/noivas/L1/interesses");
+  });
+
+  it("interesses prontos + visita marcada = jornada em dia, banner cala", () => {
+    expect(
+      proximoPasso({ ...base, etapa: "INTERESSES_PREENCHIDOS", temVisitaFutura: true }),
+    ).toBeNull();
+  });
+
+  it("sem saber da agenda (permissão), o comportamento antigo fica de pé", () => {
+    expect(proximoPasso({ ...base, etapa: "NOVO" })!.titulo).toBe(
+      "Agendar o primeiro atendimento",
+    );
+    expect(proximoPasso({ ...base, etapa: "INTERESSES_PREENCHIDOS" })!.rotuloAcao).toBe("Agendar");
+  });
 });

@@ -12,6 +12,8 @@ import {
   useCreateOrcamento,
   useListContratos,
   getListContratosQueryKey,
+  useListAtendimentos,
+  getListAtendimentosQueryKey,
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -44,10 +46,15 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia } from "@/lib/formatos";
+import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
+import { proximaVisita } from "@/lib/proxima-visita";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
+import { abertoEmCentavos } from "@/lib/financeiro/forma";
+import { reais } from "@/lib/financeiro/dinheiro";
+import { hojeLocal, diaLocal } from "@/lib/financeiro/datas";
 import {
   dataLongaFmt,
   diasAteCasamento,
@@ -104,6 +111,18 @@ export default function NoivaDetalhe() {
     query: {
       queryKey: getListContratosQueryKey(activeLojaId!, { leadId: leadId! }),
       enabled: !!activeLojaId && !!leadId,
+    },
+  });
+  const podeVerAgenda = podeNoModulo(acessosModulos, "agenda", "ver");
+  // E125/D3: a pergunta mais frequente do telefone é "que dia é a minha
+  // prova?" — a agenda DELA, recortada no banco e com janela de hoje em
+  // diante (nunca o histórico). Gate de permissão: quem não vê o módulo
+  // agenda não dispara a consulta, e a ficha fica como era.
+  const paramsAgenda = { leadId: leadId!, de: hojeLocal() };
+  const agenda = useListAtendimentos(activeLojaId!, paramsAgenda, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, paramsAgenda),
+      enabled: !!activeLojaId && !!leadId && podeVerAgenda,
     },
   });
   const createOrcamento = useCreateOrcamento();
@@ -235,13 +254,22 @@ export default function NoivaDetalhe() {
 
   // F5/E98: o que falta, em uma frase — em vez de ler oito cards para descobrir.
   const contratoAtivo = contratosDaNoiva.find((c) => c.status === "ATIVO") ?? null;
-  const passo = proximoPasso({
-    etapa: lead.etapa,
-    leadId: leadId!,
-    temContratoAtivo: !!contratoAtivo,
-    contratoAtivoId: contratoAtivo?.id,
-    temOrcamento: orcamentosDaNoiva.length > 0,
-  });
+  // E125/D3: a visita marcada cala a sugestão de agendar. Enquanto a agenda
+  // conta, o banner espera (E121: sugerir "Agendar" e trocar de ideia um
+  // segundo depois é afirmar o que não se sabe); se ela falhou, o banner cai
+  // no comportamento antigo — a agenda aqui só enriquece a decisão.
+  const visita = proximaVisita(agenda.data ?? []);
+  const agendaContando = podeVerAgenda && estadoDasConsultas(agenda) === "carregando";
+  const passo = agendaContando
+    ? null
+    : proximoPasso({
+        etapa: lead.etapa,
+        leadId: leadId!,
+        temContratoAtivo: !!contratoAtivo,
+        contratoAtivoId: contratoAtivo?.id,
+        temOrcamento: orcamentosDaNoiva.length > 0,
+        ...(podeVerAgenda && !agenda.isError ? { temVisitaFutura: visita !== null } : {}),
+      });
 
   return (
     <div className="space-y-6">
@@ -399,6 +427,23 @@ export default function NoivaDetalhe() {
             <div className="flex flex-wrap gap-x-10 gap-y-3">
               <Dado rotulo="Horário" valor={lead.casamentoHorario} />
               <Dado rotulo="Local" valor={lead.casamentoLocal} />
+              {/* E125/D3: a resposta de "que dia mesmo é a minha prova?" —
+                  antes custava 2 telas e uma digitação (/atendimentos → aba
+                  Provas → buscar o nome). O link cai na agenda do dia. */}
+              {visita && (
+                <div>
+                  <span className="block text-xs uppercase tracking-wider text-muted-foreground">
+                    {visita.tipo === "PROVA" ? "Próxima prova" : "Próximo atendimento"}
+                  </span>
+                  <Link
+                    to={`/loja/${lojaId}/agenda?dia=${diaLocal(visita.inicio)}`}
+                    className="text-sm underline underline-offset-4 hover:text-primary"
+                    data-testid="link-proxima-visita"
+                  >
+                    {instanteDiaHora(visita.inicio)}
+                  </Link>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -521,7 +566,20 @@ export default function NoivaDetalhe() {
                       <span className={c.status === "CANCELADO" ? "text-muted-foreground line-through" : undefined}>
                         {STATUS_CONTRATO[c.status] ?? c.status}
                       </span>
-                      <span className="tabular-nums">{brl(c.valorTotal)}</span>
+                      <span className="text-right">
+                        <span className="block tabular-nums">{brl(c.valorTotal)}</span>
+                        {/* E125/D4: "quanto falta pagar?" respondida na ficha —
+                            o recorte ?leadId= embute o carnê, e a soma é a
+                            régua única do core (a mesma do portal da noiva). */}
+                        {c.status === "ATIVO" && (c.parcelas?.length ?? 0) > 0 && (
+                          <span
+                            className="block text-xs text-muted-foreground tabular-nums"
+                            data-testid="text-falta-receber-ficha"
+                          >
+                            falta receber {brl(reais(abertoEmCentavos(c.parcelas!)))}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   </li>
                 ))}

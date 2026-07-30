@@ -200,7 +200,9 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     res.status(400).json({ error: "FILTRO_INVALIDO" });
     return;
   }
-  const { bloqueioId, tipo, de, ate } = query.data;
+  // E125: recorte por noiva — a ficha pergunta pela próxima prova DELA e não
+  // tem por que baixar a agenda da loja inteira (a classe do E62).
+  const { leadId, bloqueioId, tipo, de, ate } = query.data;
   if (de && ate && de > ate) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -208,6 +210,7 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   const atendimentos = await db.query.atendimentosTable.findMany({
     where: and(
       eq(atendimentosTable.lojaId, lojaId),
+      ...(leadId ? [eq(atendimentosTable.leadId, leadId)] : []),
       ...(bloqueioId ? [eq(atendimentosTable.bloqueioId, bloqueioId)] : []),
       ...(tipo ? [eq(atendimentosTable.tipo, tipo)] : []),
       ...(de ? [gte(atendimentosTable.inicio, inicioDoDia(de))] : []),

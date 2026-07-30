@@ -2608,6 +2608,10 @@ export type ExportarDadosLead200 = { [key: string]: unknown };
 
 export type ListAtendimentosParams = {
 /**
+ * Só a agenda desta noiva (E125) — a ficha pergunta pela próxima prova DELA, não pela agenda da loja
+ */
+leadId?: string;
+/**
  * Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva
  */
 bloqueioId?: string;

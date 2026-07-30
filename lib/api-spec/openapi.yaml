@@ -1637,6 +1637,11 @@ paths:
       operationId: listAtendimentos
       tags: [agenda]
       parameters:
+        - name: leadId
+          in: query
+          required: false
+          description: "Só a agenda desta noiva (E125) — a ficha pergunta pela próxima prova DELA, não pela agenda da loja"
+          schema: { type: string }
         - name: bloqueioId
           in: query
           required: false

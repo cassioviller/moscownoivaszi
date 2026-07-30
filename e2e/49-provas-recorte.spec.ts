@@ -1,5 +1,7 @@
 import { test, expect, request as pwRequest, type Page } from "@playwright/test";
 import path from "node:path";
+import { eq, inArray } from "drizzle-orm";
+import { db, leadsTable, atendimentosTable, cabinesTable } from "../lib/db/src/index";
 import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
 
 const estado = lerEstado();
@@ -17,6 +19,8 @@ test.describe("Provas pedem o recorte (E87)", () => {
   const sufixo = Date.now();
   const nomeFutura = `E2E Prova Futura ${sufixo}`;
   const nomePassada = `E2E Prova Passada ${sufixo}`;
+  const leadIds: string[] = [];
+  let cabineId: string;
 
   /** Coleta as URLs das chamadas GET /atendimentos que a tela dispara. */
   function observarAtendimentos(page: Page): URL[] {
@@ -48,19 +52,21 @@ test.describe("Provas pedem o recorte (E87)", () => {
       data: { nome: `e49-${stamp}` },
     });
     expect(cab.status(), await cab.text()).toBe(201);
-    const cabineId = ((await cab.json()) as { id: string }).id;
+    cabineId = ((await cab.json()) as { id: string }).id;
     const prova = async (noivaNome: string, offsetDias: number) => {
       const lead = await api.post(`/api/lojas/${estado.lojaId}/leads`, {
         data: { noivaNome, origem: "LOJA" },
       });
       expect(lead.status(), await lead.text()).toBe(201);
+      const leadId = ((await lead.json()) as { id: string }).id;
+      leadIds.push(leadId);
       const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
         new Date(Date.now() + offsetDias * 24 * 3_600_000),
       );
       // Horário LIVRE: a vendedora é compartilhada e o banco persiste — as
       // sobras das execuções passadas ocupam intervalos (E115).
       await criarAtendimentoLivre(api, estado.lojaId, {
-        leadId: ((await lead.json()) as { id: string }).id,
+        leadId,
         cabineId,
         vendedoraId,
         tipo: "PROVA",
@@ -71,6 +77,19 @@ test.describe("Provas pedem o recorte (E87)", () => {
     await prova(nomeFutura, 6);
     await prova(nomePassada, -6);
     await api.dispose();
+  });
+
+  test.afterAll(async () => {
+    // O banco do E2E persiste entre execuções, e este spec era o último de
+    // agenda SEM limpeza (família S18/S25): cada passada completa deixava uma
+    // prova de 90min no dia +6 da vendedora[0] — na rodada 7, com uma suíte
+    // completa por épico no MESMO dia, seis sobras saturaram o expediente e o
+    // beforeAll passou a falhar com 12 horários ocupados.
+    if (leadIds.length > 0) {
+      await db.delete(atendimentosTable).where(inArray(atendimentosTable.leadId, leadIds));
+      await db.delete(leadsTable).where(inArray(leadsTable.id, leadIds));
+    }
+    if (cabineId) await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
   });
 
   test("o toggle futuras/passadas conta a verdade e só pede a janela", async ({ page }) => {

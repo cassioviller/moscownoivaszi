@@ -29,6 +29,14 @@ export type EntradaProximoPasso = {
   contratoAtivoId?: string | null;
   /** Já existe orçamento em qualquer status? */
   temOrcamento: boolean;
+  /**
+   * E125 (D3): há atendimento/prova FUTURA marcada? A etapa não sabe da
+   * agenda (criar atendimento não a avança), e o banner sugeria "Agendar"
+   * com o horário já marcado. Ausente = não se sabe (a ficha só chama com a
+   * agenda respondida; quem não vê o módulo agenda cai no comportamento
+   * antigo).
+   */
+  temVisitaFutura?: boolean;
 };
 
 /**
@@ -51,6 +59,16 @@ export function proximoPasso(e: EntradaProximoPasso): ProximoPasso | null {
 
   switch (e.etapa) {
     case "NOVO":
+      // E125: com visita já marcada, sugerir "Agendar" é mandar marcar de
+      // novo o que existe — o preparo que falta é o mesmo do agendado.
+      if (e.temVisitaFutura) {
+        return {
+          titulo: "Registrar os interesses dela",
+          detalhe: "O horário já está marcado — chegar sabendo o estilo encurta o atendimento.",
+          href: `/noivas/${e.leadId}/interesses`,
+          rotuloAcao: "Preencher",
+        };
+      }
       return {
         titulo: "Agendar o primeiro atendimento",
         detalhe: "Ela entrou no funil e ainda não tem horário marcado.",
@@ -58,6 +76,9 @@ export function proximoPasso(e: EntradaProximoPasso): ProximoPasso | null {
         rotuloAcao: "Agendar",
       };
     case "INTERESSES_PREENCHIDOS":
+      // E125: interesses prontos e visita marcada — a jornada está em dia, e
+      // uma faixa que aparece sempre vira moldura.
+      if (e.temVisitaFutura) return null;
       return {
         titulo: "Agendar o atendimento",
         detalhe: "Você já sabe o que ela procura — falta marcar a visita.",
