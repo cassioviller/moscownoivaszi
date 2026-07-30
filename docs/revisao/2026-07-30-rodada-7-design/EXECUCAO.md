@@ -64,7 +64,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 | Fase | Arquivo | Estado | Commit |
 |---|---|---|---|
 | Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | `1123cc2` |
-| Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ⬜ | |
+| Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ✅ | |
 | Trilha C — feedback e estados | `c-feedback-estados.md` | ⬜ | |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ⬜ | |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ⬜ | |
@@ -93,6 +93,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-D1 | **O script de captura de telas não existe no repo.** As 81 capturas de hoje foram geradas por um script de scratchpad que se perdeu (o diretório nasceu `undefined/` — a env var do destino não existia). Recriar como `scripts/` versionado, declarando ambiente (browser, locale, viewport) no manifest — é a ferramenta de verificação visual desta rodada e das próximas. | 🟡 | montagem da rodada |
 | S-D2 | **O manifest da captura não declara ambiente.** Viewport foi recuperado dos PNGs (1280×800 / 390×844); navegador e locale seguem desconhecidos. Enquanto isso, nenhum achado dependente de plataforma sobe de 🟡 sem contraprova (regra 6). | 🔵 | montagem da rodada |
 | S-D3 | **Quatro primitivos com 0 usos seguem em `src/components/ui/`** (`empty.tsx`, `avatar.tsx`, `pagination.tsx`, `progress.tsx` — contagem do inventário). O E99 mediu que a poda não muda um byte do bundle (tree-shaken), então o custo não é rede: é busca e manutenção — quatro arquivos que o `find` devolve e ninguém chama. Podar como higiene, ou adotar (`empty`/`pagination` têm candidatos nas trilhas C e D). | 🔵 | trilha A |
+| S-D4 | **`ContratoInput` aceita `vendedoraId` do CORPO** (`lib/api-spec/openapi.yaml:5652-5664`; validado só como "é da loja" em `api-server/src/routes/contratos.ts:149`), enquanto a régua do replit.md para autoria é "vem da SESSÃO, não do corpo". Aqui não é autoria pura — a vendedora da venda pode legitimamente ser outra pessoa (é o achado B1) —, mas a superfície permite atribuir a venda (e a comissão) a qualquer colega por curl, sem tela. Decidir na execução do B1 se o servidor passa a exigir coerência com `orcamento.vendedoraId` quando houver orçamento. | 🟡 | trilha B |
 
 ## Diário de sessões
 
@@ -115,3 +116,17 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   Contagem: **0 🔴 · 3 🟠 · 3 🟡 · 1 🔵** (A1–A7), 9 itens de "está BEM"
   ancorados, 6 pistas laterais (a mais cara: `text-primary` como texto normal a
   2,71:1 em `mensagens/index.tsx:379` — trilha E). Uma sobra nova (S-D3).
+- **Trilha B (usabilidade e fluxos) entregue.** Tese: as sete jornadas medidas
+  estão curtas (noiva nova + agendamento em 11 cliques sem beco; costureira a 1
+  clique por peça) — o que sobrou de caro é o sistema perguntando o que já sabe
+  e calando o que acabou de fazer: o contrato nasce da vendedora QUE CLICOU
+  (`orcamentos/[id].tsx:595`, a mesma classe que o E98 fechou na agenda —
+  R$ 210,00 de comissão trocam de bolso num contrato de R$ 4.200,00 a 5%),
+  cobrar por `/cobranca` custa +3 gestos de rastro por noiva enquanto
+  `/mensagens` carimba sozinha, a fila de cobrança não marca o que já saiu, a
+  parcela do balcão não se acha pelo nome, e o único botão colorido do orçamento
+  em rascunho é "Aprovar" — o passo que a própria tela desaconselha. S13 medido:
+  8 telas de formulário perdem tudo no clique da sidebar, 6 sem nem o
+  `beforeunload` pronto. Contagem: **0 🔴 · 5 🟠 · 6 🟡 · 0 🔵** (B1–B11), 10
+  itens de "está BEM" ancorados, 5 pistas laterais (a mais cara: 53 toasts em 31
+  arquivos ainda mostram `err.message` cru — trilha F). Uma sobra nova (S-D4).
