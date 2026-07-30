@@ -152,7 +152,9 @@ export default function Orcamentos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* E126/E1: cabe por pouco a 390px — a quebra entra pelo padrão da
+          classe, não por já ter estourado. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-serif">Orçamentos</h1>
         {podeCriar && (
           <Button onClick={() => setOpen(true)}>

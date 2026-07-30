@@ -171,7 +171,12 @@ export function AppLayout() {
             quando não há nenhum. */}
         <BarraAtendimento />
 
-        <main className="flex-1 overflow-y-auto bg-muted/20">
+        {/* E126: `overflow-x-hidden` é o ÚLTIMO passo do épico, depois de as
+            fileiras quebrarem — cortar antes esconderia o defeito. Ele mata a
+            classe inteira de rolagem lateral SILENCIOSA de página: o que
+            estourar daqui em diante fica visível no elemento, não empurrando
+            a moldura. */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-muted/20">
           <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
             {/* D8/E104 — cuidado (c) do épico: o fallback fica AQUI DENTRO, e
                 não em volta do `<AppLayout>`.

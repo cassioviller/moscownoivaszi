@@ -77,7 +77,9 @@ export default function Contratos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* E126/E1: sem quebra o botão desenhava por cima do título e terminava
+          em 419px — fora dos 390. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-serif">Contratos</h1>
         {/* Contrato nasce de um orçamento APROVADO — o botão leva ao funil certo. */}
         <Button onClick={() => navigate(`/loja/${lojaId}/orcamentos`)}>
@@ -161,8 +163,10 @@ export default function Contratos() {
           lista.map(contrato => (
             <Link key={contrato.id} to={`/loja/${lojaId}/contratos/${contrato.id}`}>
               <Card className="hover-elevate cursor-pointer">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                {/* E126/E1: sem quebra o badge de status terminava em 414px —
+                    fora dos 390; valor e badge caem para a linha de baixo. */}
+                <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-4">
                     <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
                       <ScrollText className="h-5 w-5" />
                     </div>

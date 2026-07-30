@@ -284,10 +284,13 @@ export default function Vestidos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* E126/E1: a fileira somava ~656px e "Novo Vestido" ficava 100% fora
+          dos 390px — o botão do dia invisível na tela em que ele mais é usado.
+          A fileira quebra; o grupo de ações também. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {/* E82: o menu diz "Vestidos" (o acervo); "Catálogo" é a OUTRA tela. */}
         <h1 className="text-3xl font-serif">Vestidos</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Cadastro completo (com características do catálogo) na página dedicada;
               o dialog continua como atalho rápido. Link (role=link) não colide com o
               botão "Novo Vestido" (role=button) exercitado pelo E2E. */}

@@ -96,7 +96,7 @@ para cada uma.
 | E123 | Cobrar deixa rastro pelas duas portas; a fila marca o que saiu (B2, B3) | M | ✅ | `2c780b1` |
 | E124 | Busca, página e recentes-primeiro no acervo de 3 anos (D1, D2, B4, C6 + S-D5) | G | ✅ | `a0b18c1` |
 | E125 | A ficha responde o telefone: próxima prova e saldo devedor (D3, D4) | M | ✅ | `21695c4` |
-| E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ⬜ | |
+| E126 | A moldura cabe nos 390px: a fileira quebra (E1, E2, E3, E5) | M | ✅ | |
 | E127 | `--primary-texto`, `--aviso` e a fresta da varredura por linha (E4, E7, A5) | M | ⬜ | |
 | E128 | A confirmação de dinheiro diz o número certo (C5, C7) | M | ⬜ | |
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ⬜ | |
@@ -438,3 +438,22 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   saíram do banco. Segunda passada: 147/147. Suítes: API 867 → 871 · front
   346 → 357 · E2E completo 147/147 · typecheck verde. Uma sobra nova (S-D17,
   os 14 specs sem `afterAll`).
+- **E126 entregue** (`execucao/E126.md`). A moldura cabe nos 390px, medido
+  antes/depois com script ad hoc (a S-D1 segue sobra): `main.scrollWidth`
+  vestidos 656 → 390 ("Novo Vestido" estava em [502,656], 100% fora), cobrança
+  594 → 390 (o WhatsApp em [457,571] voltou), contratos 419, pagar 414,
+  receber 416 e reservas 437 → todos 390. O conserto é do PADRÃO: `flex-wrap`
+  nas fileiras (headers de listagem, grupo de botões de pagar, linha do card
+  de contrato, linha de parcela, ações de cobrança, `<li>` de equipe, chip de
+  reservas com `truncate`), `max-sm:basis-full` no `ResumoCard` (a conta da
+  primeira ação: `money-lg` real mede até 190px contra 144px de `min-w-[9rem]`
+  — R$ 90.100,00 e R$ 90.100,09 viravam a mesma imagem) e, POR ÚLTIMO,
+  `overflow-x-hidden` no `<main>` (ordem obrigatória do cuidado a). Desktop
+  conferido intacto a 1280 (scrollW = clientW = 1024 nas 7 rotas). Duas
+  correções de diagnóstico: o caso vivo do corte era R$ 100.500,00 (não o
+  R$ 90.100,00 da captura — o caixa andou) e equipe NÃO estoura (o E5 lá é
+  legibilidade, não overflow). O executor errou duas vezes a MESMA sintaxe
+  (comentário JSX dentro do parêntese da arrow) e a de equipe derrubou a rota
+  no dev — o typecheck pegou; lição no relatório: typecheck antes de medir.
+  Suítes: API 871 · front 357 · E2E completo 147/147 · typecheck verde.
+  Nenhuma sobra nova.

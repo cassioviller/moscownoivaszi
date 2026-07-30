@@ -39,7 +39,12 @@ export function ResumoCard({
   destaque?: boolean;
 }) {
   return (
-    <Card className="min-w-[9rem] flex-1">
+    /* E126/E2: `min-w-[9rem]` (144px) não comporta o `money-lg` real — medido
+       a 390px, "R$ 100.500,00" ocupa 190px e o flex não encolhe abaixo do
+       conteúdo: R$ 90.100,00 e R$ 90.100,09 viravam a mesma imagem. Abaixo de
+       `sm` o card ocupa a linha inteira (os três pais já têm flex-wrap); um
+       min-w maior só empurraria o corte para o próximo dígito. */
+    <Card className="min-w-[9rem] flex-1 max-sm:basis-full">
       <CardContent className="pt-6">
         <p className="text-xs text-muted-foreground">{rotulo}</p>
         {/* Destaque só fica vermelho quando HÁ o quê alarmar (valor > 0). "Em

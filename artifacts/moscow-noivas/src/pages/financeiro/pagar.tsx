@@ -399,7 +399,9 @@ export default function Pagar() {
             O que sai do caixa: despesas, fornecedores e a folha do atelier.
           </p>
         </div>
-        <div className="flex gap-2">
+        {/* E126/E1: o grupo de 3 botões sozinho passa dos 358px úteis —
+            "Exportar CSV" terminava em 414px. */}
+        <div className="flex flex-wrap gap-2">
           {/* Salário-base e geração da folha vivem na tela irmã: aqui é a
               carteira inteira; lá, o recorte mensal do atelier. */}
           <Button variant="outline" asChild>

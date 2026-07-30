@@ -138,10 +138,18 @@ export default function Reservas() {
                                 {etapaLabel(r.lead.etapa)}
                               </span>
                             )}
+                            {/* E126/E5: código + nome chegavam a 436px num
+                                card de 390 — o chip trunca em vez de dar
+                                rolagem lateral à página. */}
                             {r.vestido && (
-                              <Link to={`/loja/${lojaId}/vestidos/${r.vestidoId}`}>
-                                <Badge variant="secondary" className="hover:bg-secondary/80">
-                                  {r.vestido.codigo} · {r.vestido.nome}
+                              <Link
+                                to={`/loja/${lojaId}/vestidos/${r.vestidoId}`}
+                                className="min-w-0 max-w-full"
+                              >
+                                <Badge variant="secondary" className="hover:bg-secondary/80 max-w-full">
+                                  <span className="truncate">
+                                    {r.vestido.codigo} · {r.vestido.nome}
+                                  </span>
                                 </Badge>
                               </Link>
                             )}

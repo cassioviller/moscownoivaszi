@@ -124,7 +124,11 @@ function LinhaNoiva({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          {/* E126/E3: a linha de ações somava ~594px num card de ~326px e o
+              WhatsApp — a ação que só faz sentido no celular — ficava
+              invisível. As ações caem para a linha de baixo, como o card
+              irmão de receber já faz. */}
+          <div className="flex flex-wrap items-center gap-3">
             <span
               className={`font-semibold tabular-nums whitespace-nowrap ${critico ? "text-destructive" : ""}`}
             >

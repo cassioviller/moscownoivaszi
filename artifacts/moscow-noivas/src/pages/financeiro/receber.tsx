@@ -390,7 +390,9 @@ export default function Receber() {
               const atrasada = estaAtrasada(p, hoje);
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
+                  {/* E126/E1: a linha PARCIAL ("R$ 400,00 recebido · faltam…")
+                      passava 3px dos 390 — a quebra devolve o dígito à tela. */}
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
                     {/* E3/E98 — a tela mais trabalhosa do sistema mostrava
                         quatro linhas visualmente IDÊNTICAS ("Entrada · vence
                         16/07 · R$ 1.000,00"), e o nome da noiva só existia no

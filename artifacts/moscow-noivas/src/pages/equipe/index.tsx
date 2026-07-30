@@ -417,10 +417,13 @@ export default function Equipe() {
               </p>
             ) : (
               <ul className="space-y-4">
+                {/* E126/E5: sem quebra sobravam ~136px para nome + e-mail +
+                    acessos e duas "Vendedora…" ficavam idênticas até nos 6
+                    caracteres visíveis. O molde é o <li> dos convites, acima. */}
                 {equipe?.map((membro) => (
                   <li
                     key={membro.usuarioId}
-                    className="flex justify-between items-center gap-3 p-3 border rounded-md"
+                    className="flex flex-wrap justify-between items-center gap-3 p-3 border rounded-md"
                   >
                     <div className="min-w-0">
                       <div className="font-medium flex items-center gap-2">

@@ -60,4 +60,4 @@ backups/
 .migration-backup/
 
 # Capturas de tela das rodadas de revisão ficam fora do git (7,5 MB por rodada)
-docs/revisao/*/capturas/*.png
+docs/revisao/*/capturas/**/*.png
