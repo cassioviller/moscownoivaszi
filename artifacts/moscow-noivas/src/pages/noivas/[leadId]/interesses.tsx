@@ -232,9 +232,7 @@ function InteresseForm({
         <Label htmlFor="i-teto">Teto de orçamento (R$)</Label>
         <Input
           id="i-teto"
-          type="number"
-          min={0}
-          step="0.01"
+          inputMode="decimal"
           value={tetoOrcamento}
           onChange={(e) => setTetoOrcamento(e.target.value)}
           disabled={readonly}

@@ -53,6 +53,30 @@ describe("E6 — os três degraus existem, e nenhum esquece o tabular-nums", () 
   });
 });
 
+describe("E134/E11 — dinheiro não é type=number", () => {
+  it("nenhum input de dinheiro usa type=number com step de centavos", () => {
+    /**
+     * A regra escrita no repo desde o E92 ("vira roleta e muda o valor quando
+     * o dedo rola a página") valia por comentário, não por teste — e três
+     * campos viviam contra ela. O par que identifica dinheiro é
+     * `type="number"` + `step="0.01"` na vizinhança (janela de 3 linhas, a
+     * lição S-D7); contadores e horas não têm step de centavos e passam.
+     */
+    const ofensores: string[] = [];
+    for (const arquivo of arquivosTsx(RAIZ)) {
+      const linhas = readFileSync(arquivo, "utf8").split("\n");
+      for (let i = 0; i < linhas.length; i++) {
+        const janela = linhas.slice(i, i + 3).join("\n");
+        if (janela.includes('type="number"') && janela.includes('step="0.01"')) {
+          ofensores.push(`${arquivo.replace(`${RAIZ}/`, "")}:${i + 1}`);
+          break;
+        }
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+});
+
 describe("E8 — o rosa da marca não é cor de dinheiro", () => {
   it("nenhum valor em `brl()` sai com text-primary — nem com o par quebrado em linhas", () => {
     /**

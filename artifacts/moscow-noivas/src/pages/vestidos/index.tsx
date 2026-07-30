@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl } from "@/lib/formatos";
+import { parseValor } from "@/lib/financeiro/dinheiro";
 import {
   useListVestidos,
   getListVestidosQueryKey,
@@ -18,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { atributosDoParam, atributosParaParam, comFiltros } from "@/lib/filtro-url";
 import { useBuscaNaUrl } from "@/hooks/use-busca-na-url";
 import { format } from "date-fns";
@@ -43,6 +44,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -50,6 +52,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { mensagemApi } from "@/lib/erro-api";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { Erro, Vazio } from "@/components/estado";
@@ -57,7 +60,14 @@ import { Erro, Vazio } from "@/components/estado";
 const novoVestidoSchema = z.object({
   codigo: z.string().min(1, { message: "Código é obrigatório" }),
   nome: z.string().min(1, { message: "Nome é obrigatório" }),
-  precoBase: z.coerce.number({ invalid_type_error: "Informe um preço válido" }).nonnegative({ message: "Preço deve ser positivo" }),
+  // E134/E11: dinheiro é texto + parseValor — nunca type=number (a regra do
+  // repo em dialogo-receber-parcela; null = vazio, NaN = sujo, molde E95).
+  precoBase: z.string().superRefine((texto, ctx) => {
+    const v = parseValor(texto);
+    if (v === null) ctx.addIssue({ code: "custom", message: "Informe o preço (ex.: 4.200,50)" });
+    else if (Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 4.200,50)" });
+    else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
+  }),
   tamanho: z.string().optional(),
   cor: z.string().optional(),
   categoria: z.string().optional(),
@@ -130,6 +140,7 @@ export default function Vestidos() {
   const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const {
     data: vestidos,
@@ -267,7 +278,7 @@ export default function Vestidos() {
     defaultValues: {
       codigo: "",
       nome: "",
-      precoBase: 0,
+      precoBase: "",
       tamanho: "",
       cor: "",
       categoria: "",
@@ -277,12 +288,12 @@ export default function Vestidos() {
 
   async function onSubmit(values: NovoVestidoValues) {
     try {
-      await createVestido.mutateAsync({
+      const criado = await createVestido.mutateAsync({
         lojaId: activeLojaId!,
         data: {
           codigo: values.codigo,
           nome: values.nome,
-          precoBase: values.precoBase,
+          precoBase: parseValor(values.precoBase) as number,
           tamanho: values.tamanho || undefined,
           cor: values.cor || undefined,
           categoria: values.categoria || undefined,
@@ -290,7 +301,20 @@ export default function Vestidos() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) });
-      toast({ title: "Vestido cadastrado com sucesso" });
+      /* E134/B11 (P5): a porta rápida não cria foto nem características — o
+         toast de sucesso oferece o caminho de completar a peça agora. */
+      toast({
+        title: "Vestido cadastrado",
+        description: "Sem foto e sem características por enquanto.",
+        action: (
+          <ToastAction
+            altText="Completar agora"
+            onClick={() => navigate(`/loja/${activeLojaId}/vestidos/${criado.id}/editar`)}
+          >
+            Completar agora
+          </ToastAction>
+        ),
+      });
       form.reset();
       setOpen(false);
     } catch (err) {
@@ -339,6 +363,15 @@ export default function Vestidos() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Novo Vestido</DialogTitle>
+              {/* E134/B11 (P5): a porta rápida DECLARA o que não cria — sem
+                  isto, quem usava sempre a primária povoava o acervo com peças
+                  invisíveis para a curadoria (sem características, o vestido
+                  não casa com noiva nenhuma). */}
+              <DialogDescription>
+                O cadastro rápido não cria foto nem características — as que
+                indicam o vestido às noivas. Dá para completar depois, em
+                "Novo vestido (completo)" ou na edição da peça.
+              </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -363,7 +396,7 @@ export default function Vestidos() {
                       <FormItem>
                         <FormLabel>Preço Base</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0,00" {...field} />
+                          <Input inputMode="decimal" placeholder="0,00" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -439,7 +472,7 @@ export default function Vestidos() {
                 />
                 <DialogFooter>
                   <Button type="submit" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? "Salvando..." : "Salvar"}
+                    {form.formState.isSubmitting ? "Salvando…" : "Salvar"}
                   </Button>
                 </DialogFooter>
               </form>

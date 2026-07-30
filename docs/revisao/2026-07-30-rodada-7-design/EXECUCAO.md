@@ -104,7 +104,7 @@ para cada uma.
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ✅ | `6182e57` |
 | E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ✅ | `cfa827f` |
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ✅ | `fce6368` |
-| E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ⬜ | |
+| E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ✅ | |
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ⬜ | |
 | E136 | Teclado e leitor de tela: `<form>` no dinheiro, reagendar sem arrasto, headings (E6, E10, E12) | G | ⬜ | |
 | E137 | A régua dos 44px fecha: overrides caem, `default` mobile decidido (E8, E9) | P | ⬜ | |
@@ -561,3 +561,15 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   (`confirmar-saida-adocao.test.ts`, 7 telas — as 5 migradas + as 2 do E97).
   Roteador intocado (S13 segue sobra). Suítes: API 873 · front 406 → 413 ·
   E2E completo 147/147 · typecheck verde. Nenhuma sobra nova.
+- **E134 entregue** (`execucao/E134.md`). O módulo vestidos entrou nas réguas:
+  os 3 `type="number"` de dinheiro (confirmados pelo grep — os outros 3 são
+  contagens/horas, corretos) viraram `inputMode="decimal"` + `parseValor` com
+  schema que distingue vazio de sujo (molde E95) e mensagens que dizem o
+  conserto; a regra "nunca type=number para dinheiro", escrita desde o E92,
+  ganhou VARREDURA (`type="number"` + `step="0.01"` em janela de 3 linhas —
+  regra que vale por comentário não vale). Voz: os 3 únicos "com sucesso" do
+  app e os 4 "..." datilografados do módulo saíram. P5 decidida pelo default:
+  a porta rápida DECLARA o que não cria (DialogDescription) e o toast de
+  sucesso oferece "Completar agora" para a edição da peça recém-criada.
+  Suítes: API 873 · front 413 → 414 · E2E completo 147/147 · typecheck verde.
+  Nenhuma sobra nova.

@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Atributo, VestidoAtributo } from "@workspace/api-client-react";
 import { CatalogoCampos, type SelecoesCatalogo } from "@/components/catalogo/catalogo-campos";
+import { parseValor } from "@/lib/financeiro/dinheiro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,19 +18,31 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+/**
+ * E134/E11: o preço é TEXTO com `inputMode="decimal"` — a regra escrita no
+ * próprio repo ("Nunca type=number para dinheiro: vira roleta e muda o valor
+ * quando o dedo rola a página", `dialogo-receber-parcela`). `parseValor`
+ * distingue vazio (null) de sujo (NaN), o molde do E95.
+ */
 export const vestidoFormSchema = z.object({
   codigo: z.string().min(1, { message: "Código é obrigatório" }),
   nome: z.string().min(1, { message: "Nome é obrigatório" }),
-  precoBase: z.coerce
-    .number({ invalid_type_error: "Informe um preço válido" })
-    .nonnegative({ message: "Preço deve ser positivo" }),
+  precoBase: z.string().superRefine((texto, ctx) => {
+    const v = parseValor(texto);
+    if (v === null) ctx.addIssue({ code: "custom", message: "Informe o preço (ex.: 4.200,50)" });
+    else if (Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 4.200,50)" });
+    else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
+  }),
   tamanho: z.string().optional(),
   cor: z.string().optional(),
   categoria: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
-export type VestidoFormValues = z.infer<typeof vestidoFormSchema>;
+type VestidoFormCampos = z.infer<typeof vestidoFormSchema>;
+
+/** O que as páginas recebem no submit — o preço JÁ convertido para número. */
+export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase"> & { precoBase: number };
 
 /**
  * Form completo de vestido (páginas Novo/Editar) — portado da tela do
@@ -52,12 +65,13 @@ export function VestidoForm({
   const [selecoes, setSelecoes] = useState<SelecoesCatalogo>(selecoesIniciais ?? {});
   const catalogoAtivo = catalogo.filter((a) => a.ativo);
 
-  const form = useForm<VestidoFormValues>({
+  const form = useForm<VestidoFormCampos>({
     resolver: zodResolver(vestidoFormSchema),
     defaultValues: {
       codigo: defaults?.codigo ?? "",
       nome: defaults?.nome ?? "",
-      precoBase: defaults?.precoBase ?? 0,
+      // Exibição pt-BR: o valor salvo volta com vírgula, como se digita.
+      precoBase: defaults?.precoBase != null ? String(defaults.precoBase).replace(".", ",") : "",
       tamanho: defaults?.tamanho ?? "",
       cor: defaults?.cor ?? "",
       categoria: defaults?.categoria ?? "",
@@ -75,11 +89,12 @@ export function VestidoForm({
     (form.formState.isDirty || selecoesMudaram) && !form.formState.isSubmitSuccessful,
   );
 
-  async function handleSubmit(values: VestidoFormValues) {
+  async function handleSubmit(values: VestidoFormCampos) {
     const atributos: VestidoAtributo[] = Object.entries(selecoes)
       .filter(([, opcaoId]) => !!opcaoId)
       .map(([atributoId, opcaoId]) => ({ atributoId, opcaoId }));
-    await onSubmit(values, atributos);
+    // O schema já garantiu que o parse não é null nem NaN.
+    await onSubmit({ ...values, precoBase: parseValor(values.precoBase) as number }, atributos);
   }
 
   return (
@@ -106,7 +121,7 @@ export function VestidoForm({
               <FormItem>
                 <FormLabel>Preço (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0,00" {...field} />
+                  <Input inputMode="decimal" placeholder="0,00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -209,7 +224,7 @@ export function VestidoForm({
 
         <div className="pt-2">
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Salvando..." : submitLabel}
+            {form.formState.isSubmitting ? "Salvando…" : submitLabel}
           </Button>
         </div>
       </form>

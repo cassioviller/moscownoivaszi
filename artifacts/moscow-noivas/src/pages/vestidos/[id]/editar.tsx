@@ -163,7 +163,7 @@ function SlotFoto({
           onClick={() => inputRef.current?.click()}
         >
           <Upload className="mr-2 h-4 w-4" />
-          {setFoto.isPending ? "Enviando..." : foto ? "Trocar foto" : "Adicionar foto"}
+          {setFoto.isPending ? "Enviando…" : foto ? "Trocar foto" : "Adicionar foto"}
         </Button>
         {foto && (
           <Button
@@ -175,7 +175,7 @@ function SlotFoto({
             aria-label={`Remover foto ${ordem + 1}`}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            {deleteFoto.isPending ? "Removendo..." : "Remover"}
+            {deleteFoto.isPending ? "Removendo…" : "Remover"}
           </Button>
         )}
       </div>
@@ -227,7 +227,7 @@ export default function EditarVestido() {
         queryClient.invalidateQueries({ queryKey: getGetVestidoQueryKey(activeLojaId!, id!) }),
         queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) }),
       ]);
-      toast({ title: "Vestido atualizado com sucesso" });
+      toast({ title: "Vestido atualizado" });
       navigate(`/loja/${lojaId}/vestidos/${id}`);
     } catch (err) {
       toast({

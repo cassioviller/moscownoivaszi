@@ -49,7 +49,7 @@ export default function NovoVestido() {
         },
       });
       await queryClient.invalidateQueries({ queryKey: getListVestidosQueryKey(activeLojaId!) });
-      toast({ title: "Vestido cadastrado com sucesso" });
+      toast({ title: "Vestido cadastrado" });
       navigate(`/loja/${lojaId}/vestidos/${criado.id}`);
     } catch (err) {
       toast({
