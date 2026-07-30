@@ -65,7 +65,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 |---|---|---|---|
 | Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | `1123cc2` |
 | Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ✅ | `00b1814` |
-| Trilha C — feedback e estados | `c-feedback-estados.md` | ⬜ | |
+| Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ⬜ | |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ⬜ | |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ⬜ | |
@@ -130,3 +130,21 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   `beforeunload` pronto. Contagem: **0 🔴 · 5 🟠 · 6 🟡 · 0 🔵** (B1–B11), 10
   itens de "está BEM" ancorados, 5 pistas laterais (a mais cara: 53 toasts em 31
   arquivos ainda mostram `err.message` cru — trilha F). Uma sobra nova (S-D4).
+- **Trilha C (feedback e estados) entregue.** Tese: o caminho feliz está maduro
+  (toda mutação amostrada desabilita no `isPending`, o toast de sucesso nomeia o
+  que aconteceu, os vazios de primeiro uso ensinam) — o que ninguém desenhou é a
+  FALHA: a fila do dia dispara 4 queries e lê zero vezes `isLoading`/`isError`,
+  afirmando "Fila vazia — ninguém esperando mensagem" enquanto não sabe
+  (`mensagens/index.tsx:200-202`); a conciliação desenha o veredito com o lado
+  do sistema vazio (extrato de 45 transações → "Bateu 0 · Só no banco 45") e
+  ensina a relançar dinheiro que existe; o dashboard vira a falha em
+  "A receber R$ 0,00" (`dashboard.tsx:316`); 49 toasts de erro em 29 arquivos
+  mostram "HTTP 409 Conflict: CÓDIGO" e descartam o `detalhe` que o servidor
+  escreveu (o builder do cliente procura `detail`, não `detalhe` —
+  `custom-fetch.ts:150-171`); e 3 confirmações de dinheiro estão fora da
+  cláusula do texto do E10 — o estorno do contrato cita o PREVISTO onde o caixa
+  perde o RECEBIDO (R$ 1.000,00 no diálogo, R$ 300,00 no caixa). Contagem:
+  **0 🔴 · 5 🟠 · 2 🟡 · 0 🔵** (C1–C7), 9 itens de "está BEM" ancorados, 4
+  pistas laterais. Nenhuma sobra nova fora do escopo de UX; a pista da A
+  (vazio de minha-comissao) recebeu veredito — não sobe a achado — e a da B
+  (comentário F26) fica com o épico do B2, que já mexe naquelas linhas.
