@@ -163,7 +163,7 @@ A numeração segue de onde a rodada parou; os relatórios vivem em
 | E144 | S-D16: `?orcamentoId=` no GET /contratos; a tela do orçamento para de baixar o acervo | ✅ | `7a03e44` |
 | E145 | S-D11+S-D12+S-D15: os 84 sites fora da régua (76 "not found" + 8 frases pt) viram código+detalhe, com varredura | ✅ | `c16b758` |
 | E146 | S-D17 (+S-D14): os 14 specs E2E que criam recurso ganham `afterAll`; E2E rodado em dobro como prova | ✅ | `115f0dd` |
-| E147 | Pedido do dono: o seed deixa de ser fixture e vira a CONFIGURAÇÃO inicial de um ateliê — perfis, cabines, horário, catálogo, escada e recorrências, parametrizado e idempotente; sobra um passo, "cadastrar os primeiros vestidos" | ✅ | `<hash>` |
+| E147 | Pedido do dono: o seed deixa de ser fixture e vira a CONFIGURAÇÃO inicial de um ateliê — perfis, cabines, horário, catálogo, escada e recorrências, parametrizado e idempotente; sobra um passo, "cadastrar os primeiros vestidos" | ✅ | `f5653ae` |
 
 ## Encerramento — 2026-07-30
 
