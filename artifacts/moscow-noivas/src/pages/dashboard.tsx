@@ -16,8 +16,11 @@ import {
   getListParcelasQueryKey,
   useListOrcamentos,
   getListOrcamentosQueryKey,
+  useListAjustes,
+  getListAjustesQueryKey,
   useUpdateAtendimento,
 } from "@workspace/api-client-react";
+import { ajustesDaSemana } from "@/lib/ajustes-da-semana";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +36,7 @@ import {
   Wallet,
   PhoneCall,
   MessageCircle,
+  Scissors,
 } from "lucide-react";
 import { diaMesAno, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
@@ -130,6 +134,24 @@ export default function Dashboard() {
       enabled: !!activeLojaId && veLeads,
     },
   });
+
+  /**
+   * E132/D10 — a 4ª persona do E66 não tinha cartão: a costureira logava e
+   * nada dizia dos ajustes vencendo. A MESMA query e a MESMA régua da fila
+   * (`lib/ajustes-da-semana`) — o número do cartão é o da fila por construção
+   * (a disciplina do F7); o gate é o do servidor (módulo agenda), via
+   * `lib/permissoes`, e o cartão some quando não há nada.
+   */
+  const ajustesQuery = useListAjustes(activeLojaId!, {
+    query: {
+      queryKey: getListAjustesQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && veAgenda,
+    },
+  });
+  const ajustesSemana = useMemo(
+    () => ajustesDaSemana(ajustesQuery.data ?? []),
+    [ajustesQuery.data],
+  );
 
   const filaDeMensagens = useMemo(() => {
     const agora = Date.now();
@@ -255,6 +277,28 @@ export default function Dashboard() {
         </Link>
       )}
 
+      {/* E132/D10: o cartão da costureira — some quando vazio (a disciplina
+          do AlertaCaixa e do cartão de mensagens acima). */}
+      {ajustesSemana.length > 0 && (
+        <Link to={`/loja/${activeLojaId}/ajustes`} className="block">
+          <Card className="hover-elevate border-primary/40">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <div className="min-w-0">
+                <CardTitle className="text-base">
+                  {ajustesSemana.length === 1
+                    ? "1 ajuste para costurar esta semana"
+                    : `${ajustesSemana.length} ajustes para costurar esta semana`}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Prova mais próxima primeiro — a fila diz peça, noiva e prazo.
+                </p>
+              </div>
+              <Scissors className="h-5 w-5 shrink-0 text-primary" />
+            </CardHeader>
+          </Card>
+        </Link>
+      )}
+
       {/* E121/C3 — os contadores e o dinheiro saem da MESMA query: falhou,
           é UMA notícia com saída, não seis zeros que parecem medição. O ramo
           é o mesmo que os vizinhos do arquivo ("Hoje na loja", "Precisam de
@@ -267,57 +311,68 @@ export default function Dashboard() {
         />
       ) : (
         <>
+      {/* E132/B8: metade dos cartões navegava e metade era morta com a MESMA
+          cara — `hover-elevate` promete clique. Cada contador leva ao seu
+          destino óbvio, como os cards de dinheiro logo abaixo já faziam. */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {veLeads && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Noivas ativas</CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.totalLeadsAtivos || 0}</div>
-              <p className="text-xs text-muted-foreground">No funil</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/noivas`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Noivas ativas</CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.totalLeadsAtivos || 0}</div>
+                <p className="text-xs text-muted-foreground">No funil</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
         {veAgenda && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos hoje</CardTitle>
-              <Calendar className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.atendimentosHoje || 0}</div>
-              <p className="text-xs text-muted-foreground">Agendados</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/atendimentos`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos hoje</CardTitle>
+                <Calendar className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.atendimentosHoje || 0}</div>
+                <p className="text-xs text-muted-foreground">Agendados</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
         {veLeads && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos abertos</CardTitle>
-              <FileText className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.totalOrcamentosAbertos || 0}</div>
-              <p className="text-xs text-muted-foreground">Aguardando resposta</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/orcamentos`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Orçamentos abertos</CardTitle>
+                <FileText className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.totalOrcamentosAbertos || 0}</div>
+                <p className="text-xs text-muted-foreground">Aguardando resposta</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
 
         {veLeads && (
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Contratos fechados</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboard?.totalContratosAtivos || 0}</div>
-              <p className="text-xs text-muted-foreground">Ativos</p>
-            </CardContent>
-          </Card>
+          <Link to={`/loja/${activeLojaId}/contratos`}>
+            <Card className="hover-elevate cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Contratos fechados</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboard?.totalContratosAtivos || 0}</div>
+                <p className="text-xs text-muted-foreground">Ativos</p>
+              </CardContent>
+            </Card>
+          </Link>
         )}
       </div>
 
@@ -393,11 +448,20 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {veAgenda && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
                 Hoje na loja
               </CardTitle>
+              {/* E132/D9: o card listava os atendimentos sem caminho para a
+                  fila — para concluir com desfecho a recepcionista pagava
+                  sidebar + busca, todo dia. A língua é a do A3: link-seta. */}
+              <Link
+                to={`/loja/${activeLojaId}/atendimentos`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Fila de atendimentos →
+              </Link>
             </CardHeader>
             <CardContent>
               {atendimentosQuery.isError ? (

@@ -102,7 +102,7 @@ para cada uma.
 | E129 | O filtro sobrevive à navegação: 6 telas para a URL (D5) | M | ✅ | `c2fa5bd` |
 | E130 | A gramática do badge de status + um primitivo por gesto (A1, A3) | M | ✅ | `8d14198` |
 | E131 | O degrau maior do dinheiro entra na escala nos 11 pontos (A2) | M | ✅ | `6182e57` |
-| E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ⬜ | |
+| E132 | O painel responde: cartões navegam, costureira ganha o dela (B8, D9, D10) | M | ✅ | |
 | E133 | O formulário avisa antes de perder: hook nas 6 telas nuas (B7) | P | ⬜ | |
 | E134 | O módulo vestidos entra nas réguas: voz, dinheiro, porta honesta (B11, E11, F9) | M | ⬜ | |
 | E135 | A parede de filtros ganha teto, colapsada no celular (D8, E13) | M | ⬜ | |
@@ -534,3 +534,20 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
   o painel com R$ 46.864,00 no MESMO serif de Minha comissão
   (`capturas/e131/`). Suítes: API 873 · front 401 · E2E completo 147/147 ·
   typecheck verde. Nenhuma sobra nova.
+- **E132 entregue** (`execucao/E132.md`). O painel responde: os 4 contadores
+  viraram Link para o destino óbvio (hrefs conferidos no app vivo, com escopo
+  de loja), "Hoje na loja" ganhou "Fila de atendimentos →" (a língua do
+  E130/A3) e a costureira ganhou o cartão "N ajustes para costurar esta
+  semana" — some-quando-vazio, gate do módulo agenda, contando pelo MESMO
+  conjunto da fila por construção: a régua da semana saiu do inline de
+  `/ajustes` para `lib/ajustes-da-semana.ts` (5 testes; prova quando existe,
+  senão casamento; atrasado é da semana). Correção de plano: `GET /ajustes`
+  NÃO tem params — o "recorte semana" sempre foi decisão de cliente, e a
+  extração é o que garante o número único. Prova visual com semeadura
+  temporária (1 ajuste a 5 dias → cartão aparece e navega; removido em
+  seguida) — que custou uma passada de E2E: o `casamento_data` movido sem
+  anotar o original pôs o bloqueio no topo da lista de reservas e o
+  `13-onda2` (que clica no `.first()` — a classe posicional do 05-leads/E124)
+  caiu 146/147; dado consertado (+300 dias), segunda passada 147/147, lição no
+  relatório. Suítes: API 873 · front 401 → 406 · E2E completo 146/147 →
+  147/147 · typecheck verde. Nenhuma sobra nova.

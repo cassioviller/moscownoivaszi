@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { diasAteCasamento } from "../noivas/helpers";
+import { naSemana, prazoDias } from "@/lib/ajustes-da-semana";
 import { diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
@@ -29,10 +30,8 @@ import { Erro } from "@/components/estado";
  */
 
 /** Prazo efetivo em dias: próxima prova, senão casamento; null = sem prazo. */
-function prazoDias(a: Ajuste): number | null {
-  const referencia = a.proximaProva ?? a.atendimento?.bloqueio?.casamentoData;
-  return referencia ? diasAteCasamento(referencia) : null;
-}
+// E132: a régua do prazo saiu para `lib/ajustes-da-semana` — o cartão do
+// painel conta o MESMO conjunto que esta fila mostra, por construção.
 
 function rotuloProva(dias: number): string {
   if (dias < 0) return "prova atrasada";
@@ -90,10 +89,7 @@ export default function Ajustes() {
       return da - db;
     });
     if (recorte === "todos" || recorte === "feitos") return { pendentes: lista, foraDaSemana: 0 };
-    const semana = lista.filter((a) => {
-      const dias = prazoDias(a);
-      return dias !== null && dias <= 7;
-    });
+    const semana = lista.filter(naSemana);
     return { pendentes: semana, foraDaSemana: lista.length - semana.length };
   }, [ajustes, recorte]);
 
