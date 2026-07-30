@@ -65,7 +65,7 @@ caro — regra 7), **consolidação G** (achado→épico, rastreabilidade 100%) 
 |---|---|---|---|
 | Trilha A — consistência visual | `a-consistencia-visual.md` | ✅ | `1123cc2` |
 | Trilha B — usabilidade e fluxos | `b-usabilidade-fluxos.md` | ✅ | `00b1814` |
-| Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | |
+| Trilha C — feedback e estados | `c-feedback-estados.md` | ✅ | `e65c8b7` |
 | Trilha D — informação e busca | `d-informacao-busca.md` | ⬜ | |
 | Trilha E — responsividade e ambiente adverso | `e-responsividade.md` | ⬜ | |
 | Trilha F — a voz do sistema | `f-voz-do-sistema.md` | ⬜ | |
