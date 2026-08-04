@@ -1,15 +1,21 @@
 # O acervo ganha a identidade que o papel já tem
 
-**Spec de execução · 2026-08-04** (2ª versão — os três tipos de acessório)
+**Spec de execução · 2026-08-04** (3ª versão — as perguntas respondidas)
 branch `rodada-7-sobras`
 Diagnóstico: `docs/revisao/2026-08-04-arqueologia-legado/` (trilhas A e B,
 adversarial, 29 fotos do sistema em papel)
 
-> **O que mudou da 1ª versão.** O E150 tratava "acessório" como uma coisa só.
-> São **três**, com naturezas diferentes, e enfiá-las na mesma tabela produziria
-> ou um acervo cheio de saiote que ninguém procura, ou um bolero único sem
-> reserva. Esta versão separa as três e acrescenta os épicos **E154** e
-> **E155**. A numeração de E148–E153 não mudou.
+> **1ª versão:** o acervo ainda não entrou no sistema, então a forma do
+> cadastro custa mais caro que a régua de ocupação.
+> **2ª versão:** "acessório" são **três** coisas com mecanismos diferentes —
+> E154 e E155 entram.
+> **3ª versão (esta):** a dona respondeu as três perguntas.
+> **P1** ("uma semana, lavagem externa") confirma a régua e **inverte o A1**:
+> o E152 troca de escopo — de consertar o número para dar à lavagem uma data
+> real, que é a única etapa do ciclo sem ela.
+> **P2** ("dois vestidos") **cancela o E153**, o único épico irreversível e o
+> mais caro. **P3** deixou de importar.
+> **Sobraram 7 épicos e nenhum bloqueio.**
 
 ## Por que agora, e não depois
 
@@ -27,8 +33,12 @@ uso — são o que ainda vai ser digitado. Isso define a ordem desta spec:
 | **Forma do cadastro** (identidade da peça, cor, acessório) | recadastrar o acervo à mão, item por item |
 | **Régua de ocupação** (a lavagem do A1) | um `UPDATE` de uma linha |
 
-O 🔴 do diagnóstico é o segundo, e desceu para 🟠 depois que a apuração mostrou
-que ele tem **um** exemplo, não três (ver E152).
+O 🔴 do diagnóstico era o segundo. Ele desceu para 🟠 quando a apuração mostrou
+que tinha **um** exemplo e não três, e **P1 acabou de mostrar que a régua está
+certa** — o que sobrou dele é outra coisa, e está no E152.
+
+**Com P2 respondida ("dois vestidos"), o cadastro do acervo não espera mais
+nada** e pode correr em paralelo a esta execução.
 
 ---
 
@@ -53,45 +63,51 @@ caderno. `NSA` (31/08–06/09, item 13 — *"Lilya + NSA"*) e `uma Pérola`
 
 ---
 
-## As três perguntas que bloqueiam o Bloco 2
+## As três perguntas — RESPONDIDAS pela dona em 2026-08-04
 
-O **Bloco 1 inteiro** (E148–E151, E154, E155) não depende de resposta nenhuma.
+### P1 — "Uma semana, lavagem externa." ✅
 
-### P1 — Quantos dias a peça fica parada depois do casamento, e a lavagem é interna ou terceirizada?
+**`lavagemDiasDepois: 7` está certo, e a régua do sistema não tem defeito.**
+Isso **inverte o A1**: a colisão que o diagnóstico apontou é o sistema
+funcionando — a peça está mesmo na lavanderia, fora da loja, indisponível.
 
-Hoje o sistema grava `lavagemDiasDepois: 7`
-(`artifacts/api-server/src/lib/configuracao-inicial.ts:132`), e essa é a
-**única** fonte da colisão do A1. Com as janelas separadas, para dois
-casamentos em sábados consecutivos:
+E torna o caso *Adelita* (07–13/09 "1º Aluguel" → 14–20/09 "Realuguel") uma
+**exceção real do negócio**, não um defeito de software. Com lavagem externa de
+7 dias, nenhuma conta fecha:
 
 ```
 uso 1  (D=12/09):  09/09 ─ 14/09
-uso 2  (D=19/09):            16/09 ─ 21/09     ← 1 dia de FOLGA entre os usos
-lavagem 1:              15/09 ──────── 21/09   ← é só isto que colide
+lavagem externa:        15/09 ──────── 21/09   (volta dia 22)
+uso 2  (D=19/09):            16/09 ─ 21/09     ← a peça está na lavanderia
 ```
 
-**Os dois usos não se tocam.** E em 29 fotos não há **um único** registro de
-lavagem — a agenda anota prova, retirada, troca e férias, nunca a lavanderia.
+Só há três explicações, e todas apontam para a mesma falta: **a peça não foi
+lavada entre as duas**, ou **a lavanderia adiantou**, ou **a dona decidiu que
+podia sair assim**. Em nenhuma delas o sistema deixa ela seguir — e é isso que
+o E152 passa a resolver, com escopo completamente diferente do que esta spec
+propunha na 1ª versão.
 
-### P2 — Uma "Arnalda P" e uma "Arnalda G" são o mesmo vestido em dois tamanhos, ou dois vestidos?
+### P2 — "Dois vestidos." ✅
 
-O caderno mostra as duas saindo **na mesma semana, para noivas diferentes**
-(17–23/08, itens 1 e 12; de novo em 14–20/09, itens 8 e 10), e numeração de
-unidade: `Arnica **2** G (Busto grande) Original`, `Shelly **2**`.
+`Arnalda P` e `Arnalda G` são **peças diferentes**, não um modelo em dois
+tamanhos. **O Caminho A morre e o E153 é cancelado** — `vestidos` continua
+plano, cada linha é uma peça única, e o cadastro do acervo pode começar sem
+esperar nada.
 
-### P3 — Quantas peças do acervo têm mais de uma unidade?
+Esta é a resposta que mais economiza: o E153 era o único épico irreversível,
+o único com prazo, e o mais caro dos oito.
 
-Se for "quase nenhuma", o E155 não se paga. Se for "as mais pedidas têm 2 ou
-3", ele é obrigatório: hoje elas viram linhas separadas com nomes quase iguais,
-e **o lookbook da noiva mostra a mesma foto duas vezes**
-(`lib/db/src/schema/lookbooks.ts:36`).
+### P3 — "Não sei." ⚪
 
-### E um dimensionamento, que não bloqueia nada
+**Deixou de importar.** P2 já respondeu o que P3 existia para descobrir: se
+cada peça é única, não há "várias unidades do mesmo modelo" a modelar. A
+pergunta some junto com o E153.
 
-Dos acessórios do ateliê, **quantos são de cada tipo?** Contei nas 14 semanas
-do caderno entre **10 e 13 nomes distintos** de acessório — é uma tarde de
-digitação, não uma semana. Mas a proporção entre tipo 1 e tipo 2 muda quanto
-vale investir no E154.
+### O dimensionamento que segue aberto (não bloqueia nada)
+
+Dos acessórios do ateliê, **quantos são tipo 1 e quantos tipo 2?** Contei entre
+**10 e 13 nomes distintos** nas 14 semanas — uma tarde de digitação. A
+proporção só muda quanto vale investir no E154, não se ele existe.
 
 ---
 
@@ -314,115 +330,121 @@ só impede o novo. Remarcação em lote é decisão de produto e não foi pedida
 
 ---
 
-# Bloco 2 — depende das respostas
+# Bloco 2 — destravado pelas respostas
 
-## E152 — a régua de ocupação (só se P1 disser que precisa)
+## E152 — a lavagem tem fim REAL, não só previsto
 
-**Fecha:** A1 🟠 (era 🔴) · **bloqueado por P1**
+**Fecha:** A1 (o que sobrou dele) · **destravado por P1** · **escopo trocado**
 
-**Se P1 disser "2 dias para todo mundo":** um `UPDATE` e uma linha na tela de
-Configurações. Fim.
-**Se disser "depende da peça":** `lavagem_dias_depois` ganha override por
-categoria (a do E149), lido em `buscarRegra`
-(`artifacts/api-server/src/lib/disponibilidade.ts:341-356`).
+A 1ª versão desta spec propunha *consertar a régua*. **P1 disse que a régua
+está certa**: uma semana, lavanderia externa. Então o defeito não é o número —
+é que **a lavagem é a única etapa do ciclo sem data real**.
 
-**A força da evidência, declarada.** O diagnóstico citou três pares de semanas
-consecutivas; **só um sobrevive**:
+A assimetria está no schema, e é gritante quando se olha de perto. O uso tem
+duas datas reais que encurtam a janela quando a realidade diverge do previsto:
 
-| Par | Semana N | Semana N+1 | Vale? |
+| Etapa | Data prevista | Data real | Quem a usa |
 |---|---|---|---|
-| **Adelita** | Larissa · *"Novo que chegou / 1º Aluguel"* | Mª Fernanda · *"Realuguel"* | **sim** |
-| Konte | **Larissa** | **Larissa** | não — mesma noiva, registro movido |
-| Shellyane | Isabela | Letícia · *"Shellyane **P**"* | não — o `P` pode ser outra peça |
+| retirada | `casamentoData − usoDiasAntes` | **`retiradaDataReal`** ✅ | `disponibilidade.ts:158` |
+| devolução | `casamentoData + usoDiasDepois` | **`devolucaoDataReal`** ✅ | `:235` |
+| lavagem | `[fimUso+1, fimUso+7]` | **nenhuma** ❌ | `:244-251` |
 
-E há uma anotação que ameaça o achado e que a foto não resolve: `CHLOE → se
-sabe que tá 15 dias` (21–27/09, item 10). Se a locação dura 15 dias, peça
-nenhuma sai em semanas consecutivas — mas o mesmo caderno usa "15 dias" para
-ausência de funcionária (*"Volta da Marilza 15 dias"*), e há um "ISA" — nome de
-vendedora — rabiscado ao lado. **P1 resolve.**
+`janelasDoBloqueio` calcula a lavagem sempre por soma
+(`artifacts/api-server/src/lib/disponibilidade.ts:244-251`):
 
-## E153 — modelo e peça (só no Caminho A)
-
-**Fecha:** o ponto 5 do diagnóstico · **bloqueado por P2 e P3**
-
-### Caminho A — se "Arnalda P" e "Arnalda G" são o mesmo vestido
-
-A noiva escolhe o **modelo** (pela foto); a loja entrega uma **peça** (a que
-serve nela). Hoje as duas coisas são a mesma linha.
-
-```sql
-CREATE TABLE modelos (
-  id           text PRIMARY KEY,
-  loja_id      text NOT NULL REFERENCES lojas(id) ON DELETE CASCADE,
-  nome         text NOT NULL,                      -- "Arnalda"
-  preco_base   numeric(10,2) NOT NULL,
-  observacoes  text,
-  ativo        boolean NOT NULL DEFAULT true,
-  UNIQUE (loja_id, nome)
-);
-
-ALTER TABLE vestidos ADD COLUMN modelo_id    text REFERENCES modelos(id);
-ALTER TABLE vestidos ADD COLUMN unidade      integer NOT NULL DEFAULT 1;
-ALTER TABLE vestidos ADD COLUMN qualificador text;   -- "Busto grande", "Original"
-ALTER TABLE vestidos ADD CONSTRAINT vestidos_modelo_tamanho_unidade_unq
-  UNIQUE (modelo_id, tamanho, unidade);
+```ts
+if (regra.lavagemDiasDepois > 0) {
+  janelas.push({
+    inicio: addDias(fimUso, 1),
+    fim: addDias(fimUso, regra.lavagemDiasDepois),
 ```
 
-| Passa a ser do MODELO | Continua na PEÇA |
-|---|---|
-| foto (`vestido_fotos`) | `codigo` — a etiqueta física (4113) |
-| atributos (`vestido_atributos`) | `tamanho`, `unidade`, `qualificador` |
-| cor, categoria (E149) | `status` |
-| `preco_base` | reservas, itens, avarias |
+**A peça volta da lavanderia e continua ocupada até o sétimo dia**, mesmo
+pendurada na arara. Ninguém tem como dizer ao sistema que ela chegou.
 
-**Seis tabelas referenciam `vestidos.id`** e todas continuam apontando para a
-**peça**, que é o que sai da arara — nenhuma migração de FK: `bloqueio_vestidos`
-(`atendimentos.ts:34`), `contrato_itens` (`contratos.ts:75`), `orcamento_itens`
-(`orcamentos.ts:54`), `lookbook_itens` (`lookbooks.ts:36`), `vestido_fotos` e
-`vestido_atributos` (`vestidos.ts:62,83`). As duas últimas **mudam de dono** e
-são a parte cara.
+**Conserto — simétrico ao que já existe:**
 
-**O ganho que se mede:** um ateliê com 3 unidades de um modelo manda hoje um
-lookbook com **a mesma foto três vezes** e guarda três cópias do mesmo JPEG.
+```sql
+ALTER TABLE bloqueio_vestidos ADD COLUMN lavagem_concluida_em timestamptz;
+```
 
-**Migração** (`docs/migracoes/2026-08-04-e153-modelo-peca.sql`): cada vestido
-vira um modelo de mesmo nome com uma peça de `unidade 1`; onde dois nomes só
-diferirem por sufixo de tamanho (`^(.*) (P|M|G|GG)$`), o script **propõe** a
-fusão num relatório e **não a executa** — *Arnalda* × *Arnica* já mostrou que
-semelhança de grafia não basta.
+Em `janelasDoBloqueio`, a janela de LAVAGEM termina em `lavagemConcluidaEm`
+quando ela existe, exatamente como `devolucaoDataReal` já encurta o USO. E
+como colapsar janela **só reduz ocupação, nunca cria conflito** — a razão que
+o próprio código dá para o caso da prova (`routes/agenda.ts:371-377`) —, não
+há revalidação a fazer.
 
-### Caminho B — se forem peças independentes
+Na tela da reserva (`pages/reservas/[bloqueioId].tsx`), um campo ao lado de
+retirada e devolução: **"voltou da lavanderia em"**.
 
-`vestidos` continua plano; o E153 some. Resta dar à peça o **contador de
-locações** e o **preço de realuguel** (A4), que o papel registra 7 vezes em 14
-semanas: `1º Aluguel` (YOKO, Adelita, Andreia), `2º Aluguel` (Nixia), `2º`
-(BLARY), `Realuguel` (Fencyella, Adelita). A contagem já é calculável
-(`routes/vestidos.ts:268-315`); falta a régua de preço que a lê — e ela depende
-de saber se o `7.600` é valor ou código.
+**O que isto resolve, em português:** a dona sabe que a peça voltou na
+quarta-feira; hoje ela fica presa até domingo. E o caso *Adelita* do papel —
+uma peça alugada de novo em 7 dias — passa a ser **registrável**: a dona marca
+que a lavagem terminou (ou que não houve), e a segunda locação entra. Hoje o
+sistema recusa e não oferece caminho nenhum.
 
----
+**O que isto NÃO é:** um jeito de furar a régua. A janela só encurta com
+alguém afirmando um fato — a peça voltou —, e fica gravado quem afirmou e
+quando, como toda data real do bloqueio.
+
+**Sobra registrada:** a evidência que ameaçava o A1 continua sem resposta —
+`CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Com P1 respondida
+("uma semana"), a leitura mais provável é que os 15 dias sejam **férias de
+funcionária** (o mesmo caderno usa a expressão em *"Volta da Marilza 15
+dias"*, e há um "ISA" — nome de vendedora — rabiscado ao lado), não prazo de
+locação. Fica como leitura provável, não como fato.
+
+## ~~E153 — modelo e peça~~ · **CANCELADO por P2**
+
+**P2 respondeu "dois vestidos".** `Arnalda P` e `Arnalda G` são peças
+diferentes, não um modelo em dois tamanhos. Não há hierarquia modelo → peça a
+construir: `vestidos` continua plano e cada linha é uma peça única.
+
+**Era o único épico irreversível, o único com prazo e o mais caro dos oito.**
+Uma pergunta o eliminou.
+
+O que sobrevive dele é o **Caminho B**, que não depende de estrutura nenhuma:
+dar à peça o **contador de locações** e o **preço de realuguel** (A4). O papel
+registra a contagem 7 vezes em 14 semanas — `1º Aluguel` (YOKO, Adelita,
+Andreia), `2º Aluguel` (Nixia), `2º` (BLARY), `Realuguel` (Fencyella, Adelita)
+—, e a contagem **já é calculável** hoje (`routes/vestidos.ts:268-315` conta
+provas, reservas, contratos e receita por peça). Falta a régua de preço que a
+lê, e ela ainda depende de uma resposta: **o `7.600` ao lado de "Realuguel" é
+valor ou código de peça?** Enquanto isso não se souber, A4 não vira épico.
+
+*(O texto integral do Caminho A, com o DDL de `modelos` e a estratégia de
+migração, está no commit `a59fdf7` — preservado no histórico para o caso de o
+acervo revelar peças duplicadas de verdade.)*
 
 ## Ordem de execução
 
+Com P1, P2 e P3 respondidas, **não sobrou bloqueio nenhum**. São 7 épicos, em
+sequência, sem nada esperando decisão:
+
 ```
-E148 (1 linha)          ─── independente, faça primeiro
-      │
-E149 (catálogo)         ─── base: dá "Acessório" ao E150 e a cor a todos
-      ├── E150 (tipo 1: peça única)     ── E2E completo (regra 11)
-      ├── E154 (tipo 2: estoque)
-      └── E155 (tipo 3: confecção)      ── reusa a fila da costureira
-E151 (ausência)         ─── independente dos acessórios
-
-           ↓ respostas P1, P2, P3
-
-E152 (régua)            ─── UPDATE, ou override por categoria
-E153 (modelo × peça)    ─── só no Caminho A, e ANTES do acervo entrar
+1. E148  ── 1 linha, risco zero. Aquece a esteira.
+2. E149  ── catálogo de cor e categoria. BASE dos dois seguintes.
+      ├─ 3. E150  tipo 1: peça única entra no acervo   ·· E2E completo
+      └─ 4. E154  tipo 2: estoque, avisa sem bloquear  ·· E2E completo
+5. E155  ── tipo 3: confecção na fila da costureira    ·· E2E completo
+6. E151  ── ausência da vendedora
+7. E152  ── a lavagem ganha data real                  ·· E2E completo
 ```
 
-**E153 é o único irreversível na prática.** Depois de 500 vestidos digitados,
-mudar a forma custa recadastrar. Ele cabe **antes** do "cadastrar os primeiros
-vestidos" que o `replit.md` chama de primeiro passo pendente — ou é abandonado
-de vez.
+**Por que sequencial e não paralelo:** os épicos compartilham **um banco de
+dev** (`DATABASE_URL`) e **uma suíte E2E** cuja loja é eleita no
+`global-setup` (S-D27, e a regra 16 do método existe justamente porque dado
+compartilhado mordeu antes). Dois agentes rodando `test:e2e` ao mesmo tempo
+disputam as mesmas 147 specs, as mesmas cabines e o mesmo expediente. Worktree
+isolado resolveria o git; não resolveria o banco.
+
+Além disso, **E149 é dependência dura de E150 e E154** (a categoria
+"Acessório" e as cores vêm do catálogo que ele cria), e o método exige um
+commit por épico com a suíte lida inteira entre eles (regras 10, 11 e 14).
+
+**E153 foi cancelado por P2** — era o único irreversível, o único com prazo, e
+o mais caro. Com "dois vestidos" como resposta, o cadastro do acervo pode
+começar a qualquer momento, em paralelo à execução destes sete.
 
 ## O que esta spec deliberadamente não faz
 
@@ -447,9 +469,9 @@ de vez.
 | E154 | Comprometer 3 saiotes num dia em que a loja tem 2 **avisa e deixa fechar**; a lista de vestidos não mostra saiote |
 | E155 | Uma confecção aparece na fila da costureira ordenada pelo prazo, ao lado dos ajustes, e distinguível deles |
 | E151 | Agendar prova com vendedora ausente responde `VENDEDORA_AUSENTE` nomeando pessoa e período |
-| E152 | Duas reservas da mesma peça em sábados consecutivos deixam de colidir — ou colidem de propósito, se P1 mandar |
-| E153 | Um modelo com 3 unidades aparece **uma vez** no lookbook e guarda **um** par de fotos |
+| E152 | Marcar "voltou da lavanderia" numa reserva libera a peça a partir daquele dia; sem a marca, a janela segue os 7 dias da régua |
+| ~~E153~~ | **cancelado por P2** |
 
 Cada épico fecha com **um commit de código** e o `docs(...)` que registra o hash
 no rastreador. Os que mudam o que a trilha grava ou o formato que uma tela lê —
-**E150, E154, E155 e E153** — rodam o **E2E completo** antes do commit (regra 11).
+**E150, E154, E155 e E152** — rodam o **E2E completo** antes do commit (regra 11).
