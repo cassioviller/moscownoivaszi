@@ -51,7 +51,7 @@ compromisso** — quem só olha a agenda não vê o negócio acontecer.
 | Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | `25f1a17` |
 | Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | `25f1a17` |
 | Trilha B — releitura dos 7 pontos | `B-releitura-dos-sete-pontos.md` | ✅ | `b909f18` |
-| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | `e396574` · 2ª versão `a59fdf7`|
+| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | `e396574` · 2ª `a59fdf7` · 3ª `f47d533`|
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 
@@ -101,10 +101,13 @@ O 🔴 é o segundo. A ordem passou a ser esta:
 | **E154** — acessório **tipo 2** (estoque): é contado, não reservado — avisa, não bloqueia | A2 | — (depende do E149) |
 | **E155** — acessório **tipo 3** (sob medida): entra na fila da costureira, que já existe | S-A4 · S-A6 | — |
 | **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | — |
-| **E152** — a régua de ocupação deixa de ser uma só | A1 | **P1** |
-| **E153** — modelo × peça | ponto 5 | **P2 e P3** |
+| **E152** — a lavagem ganha **data real** (`lavagem_concluida_em`) | A1 | ~~P1~~ ✅ |
+| ~~**E153**~~ — ~~modelo × peça~~ | — | **CANCELADO por P2** |
 
-**Os seis primeiros não dependem de resposta nenhuma** e podem começar hoje.
+**Os sete restantes não dependem de resposta nenhuma.** A ordem é sequencial —
+banco de dev e suíte E2E são compartilhados, E149 é dependência dura de E150 e
+E154, e o método pede um commit por épico com a suíte lida inteira entre eles
+(regras 10, 11, 14, 16).
 
 **Os três acessórios** (2ª versão da spec): o que os distingue não é o que são,
 é **como se decide se estão disponíveis** — o tipo 1 **por peça** (existe uma),
@@ -112,15 +115,14 @@ o tipo 2 **por contagem** (existem dez), o tipo 3 **por prazo** (não existe
 ainda). Três naturezas, três mecanismos; forçar as três no acervo encheria de
 anágua a lista que a vendedora abre com a noiva na cabine.
 
-**As três perguntas que bloqueiam o bloco 2** (texto completo na spec):
+**As três perguntas foram RESPONDIDAS pela dona em 2026-08-04** — não há mais
+bloqueio nenhum:
 
-1. **P1** — quantos dias a peça fica parada depois do casamento, e a lavagem é
-   interna ou terceirizada? *(Decide se o A1 existe: a colisão vem **só** da
-   lavagem — os dois usos não se tocam, sobra 1 dia entre eles.)*
-2. **P2** — "Arnalda P" e "Arnalda G" são o mesmo vestido em dois tamanhos ou
-   dois vestidos? *(Escolhe entre Caminho A e Caminho B.)*
-3. **P3** — quantas peças do acervo têm mais de uma unidade? *(Decide se o
-   Caminho A se paga.)*
+| | Resposta | Consequência |
+|---|---|---|
+| **P1** | *"uma semana, lavagem externa"* | A régua está **certa**. O A1 se inverte: a colisão é o sistema funcionando. O **E152 troca de escopo** — a lavagem é a única etapa do ciclo **sem data real**, e ganha uma |
+| **P2** | *"dois vestidos"* | **E153 CANCELADO.** Era o único irreversível, o único com prazo e o mais caro. O cadastro do acervo deixa de esperar |
+| **P3** | *"não sei"* | Deixou de importar — P2 respondeu o que ela existia para descobrir |
 
 A4 (preço de realuguel) segue sem épico: o único número monetário em 29 fotos
 é ambíguo entre valor e código — embora a releitura tenha achado **ponto de
