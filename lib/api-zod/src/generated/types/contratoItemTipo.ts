@@ -11,6 +11,7 @@ export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItem
 
 export const ContratoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;

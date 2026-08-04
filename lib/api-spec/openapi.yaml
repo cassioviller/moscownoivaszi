@@ -5525,7 +5525,7 @@ components:
       properties:
         id: { type: string }
         orcamentoId: { type: string }
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }
@@ -5534,7 +5534,7 @@ components:
       type: object
       required: [tipo, descricao, valorUnitario]
       properties:
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
         vestidoId: { type: string }
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
@@ -5555,7 +5555,7 @@ components:
       type: object
       required: [tipo, descricao, valorUnitario, quantidade]
       properties:
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5799,7 +5799,7 @@ components:
         id: { type: string }
         lojaId: { type: string }
         contratoId: { type: string }
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }

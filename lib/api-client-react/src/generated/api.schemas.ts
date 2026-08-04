@@ -1376,6 +1376,7 @@ export type OrcamentoItemTipo = typeof OrcamentoItemTipo[keyof typeof OrcamentoI
 
 export const OrcamentoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1476,6 +1477,7 @@ export type OrcamentoItemInputTipo = typeof OrcamentoItemInputTipo[keyof typeof 
 
 export const OrcamentoItemInputTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1507,6 +1509,7 @@ export type OrcamentoPublicoItemTipo = typeof OrcamentoPublicoItemTipo[keyof typ
 
 export const OrcamentoPublicoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1764,6 +1767,7 @@ export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItem
 
 export const ContratoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;

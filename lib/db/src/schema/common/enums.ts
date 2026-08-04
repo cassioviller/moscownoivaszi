@@ -70,8 +70,28 @@ export const orcamentoStatusEnum = pgEnum("orcamento_status", [
   "RECUSADO",
 ]);
 
+/**
+ * E150: **ACESSORIO** entra ao lado de VESTIDO, e a razão é física.
+ *
+ * O caderno do ateliê numera a peça componente como item do acervo, com ordem
+ * própria — na semana de 13–19/07 a mesma noiva ocupa duas linhas, e quem
+ * escreveu anotou "(Mesma noiva Dayfini)" ao lado da segunda para explicar a
+ * repetição. São 11 conjuntos em 14 semanas (`Bernarda + Bolero Ricca Sposa`,
+ * `Kalina + Saiote 2 aros + crinol`, `Tamara + Bolero 2026`…), e o mesmo
+ * `Bolero Ricca Sposa` sai em duas semanas distintas para noivas diferentes:
+ * é peça que circula, não adjetivo.
+ *
+ * Sem um tipo próprio, o bolero virava `SERVICO` ou `VESTIDO` com `vestidoId`
+ * nulo — e a descrição em texto passava a ser o registro autoritativo, o que
+ * significa **nenhuma reserva e nenhum conflito possível**: dois contratos do
+ * mesmo sábado podiam vender o mesmo bolero.
+ *
+ * ACESSORIO se comporta como VESTIDO onde importa: aponta `vestidoId` e o
+ * fechamento exige que a peça esteja reservada (`routes/contratos.ts`).
+ */
 export const orcamentoItemTipoEnum = pgEnum("orcamento_item_tipo", [
   "VESTIDO",
+  "ACESSORIO",
   "SERVICO",
   "AJUSTE",
 ]);

@@ -301,6 +301,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       ...(contratoData.bloqueioVestidoIds ?? []),
     ]),
   ];
+  // E150: os vestidos efetivamente reservados por este contrato, colhidos na
+  // mesma passada que já os valida — a guarda de "peça vendida sem reserva"
+  // logo abaixo compara contra esta lista.
+  const vestidosReservados = new Set<string>();
   for (const bloqueioId of bloqueioIds) {
     const [bloqueio] = await db.select().from(bloqueioVestidosTable)
       .where(and(
@@ -410,6 +414,49 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     });
     if (!resultado.disponivel) {
       res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
+      return;
+    }
+    vestidosReservados.add(bloqueio.vestidoId);
+  }
+
+  /**
+   * E150 — o contrato não vende peça que não reservou.
+   *
+   * Até aqui, `itensSnapshot` (o que foi VENDIDO) e `bloqueioIds` (o que foi
+   * fisicamente RESERVADO) chegavam de fontes independentes: os itens vêm do
+   * orçamento, a lista de bloqueios vem do corpo da requisição. Nada obrigava
+   * as duas a falarem da mesma peça — e o schema declara a descrição em texto
+   * como registro autoritativo (`contratos.ts:66-69`), então um item apontando
+   * `vestidoId` sem reserva correspondente fechava com 201 e deixava a peça
+   * livre para a próxima noiva do mesmo sábado.
+   *
+   * O caderno do ateliê mostra o caso real: `Bolero Ricca Sposa` sai em duas
+   * semanas distintas, para noivas diferentes. É peça, e peça se reserva.
+   *
+   * Só VESTIDO e ACESSORIO entram na regra: SERVICO e AJUSTE não são peça
+   * física e não têm `vestidoId`. E a guarda só morde quando o item JÁ aponta
+   * uma peça — item de descrição livre segue passando, porque exigir reserva
+   * de algo que não está no acervo seria travar a venda por uma frase.
+   *
+   * A tela não é afetada: `orcamentos/[id].tsx:638-641` já manda todas as
+   * reservas da noiva não desmarcadas. Quem passa a ser recusado é o contrato
+   * montado fora dela — que é onde o defeito vivia.
+   */
+  const pecasVendidas = itensSnapshot.filter(
+    (it) => (it.tipo === "VESTIDO" || it.tipo === "ACESSORIO") && it.vestidoId,
+  );
+  if (pecasVendidas.length > 0) {
+    const semReserva = pecasVendidas.filter((it) => !vestidosReservados.has(it.vestidoId!));
+    if (semReserva.length > 0) {
+      res.status(422).json({
+        error: "ITEM_SEM_RESERVA",
+        detalhe:
+          "O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana.",
+        campos: semReserva.map((it) => ({
+          campo: "itens",
+          motivo: `«${it.descricao}» não tem reserva neste contrato`,
+        })),
+      });
       return;
     }
   }
