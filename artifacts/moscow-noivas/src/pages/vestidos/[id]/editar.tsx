@@ -217,7 +217,6 @@ export default function EditarVestido() {
           nome: values.nome,
           precoBase: values.precoBase,
           tamanho: values.tamanho || undefined,
-          cor: values.cor || undefined,
           categoria: values.categoria || undefined,
           observacoes: values.observacoes || undefined,
           atributos,
@@ -308,7 +307,6 @@ export default function EditarVestido() {
                   nome: vestido.nome,
                   precoBase: vestido.precoBase,
                   tamanho: vestido.tamanho ?? "",
-                  cor: vestido.cor ?? "",
                   categoria: vestido.categoria ?? "",
                   observacoes: vestido.observacoes ?? "",
                 }}

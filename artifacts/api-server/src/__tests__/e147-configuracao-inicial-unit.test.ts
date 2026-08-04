@@ -128,11 +128,42 @@ describe("E147 — os perfis padrão", () => {
 });
 
 describe("E147 — o catálogo do acervo", () => {
-  it("sete atributos, e nenhum repete tamanho ou cor (que são colunas de vestidos)", () => {
-    expect(CATALOGO_PADRAO).toHaveLength(7);
+  /**
+   * E149 reabriu esta decisão — e ela era testada, que é como deve ser.
+   *
+   * O E147 manteve `cor` fora do catálogo com um argumento correto ("dois
+   * campos para o mesmo fato um dia discordariam"), mas decidiu sem a evidência
+   * que a arqueologia do legado trouxe: nas 15 páginas de agenda do ateliê há
+   * 38 compromissos de festa e dama indexados por COR, em 15 cores. Como texto
+   * livre a coluna não sustentava a busca ("Verde"/"verde"/"VERDE" viravam três
+   * filtros), e só atributo aparece na ficha de interesses da noiva.
+   *
+   * O argumento do E147 segue valendo e é o que este teste passa a pregar:
+   * `vestidos.cor` virou legado LIDO, nunca escrito — um campo, não dois.
+   *
+   * `tamanho` continua fora, pelo motivo original: é da peça física.
+   */
+  it("nove atributos — cor entrou no E149, tamanho continua sendo coluna da peça", () => {
+    expect(CATALOGO_PADRAO).toHaveLength(9);
     const nomes = CATALOGO_PADRAO.map((a) => a.nome.toLowerCase());
     expect(nomes).not.toContain("tamanho");
-    expect(nomes).not.toContain("cor");
+    expect(nomes).toContain("cor");
+    expect(nomes).toContain("tipo de peça");
+  });
+
+  it("a cor cobre as 15 do papel do ateliê, e o tipo de peça abre lugar para o acessório", () => {
+    const cor = CATALOGO_PADRAO.find((a) => a.chave === "cor");
+    // As lidas na agenda: verde, terracota, marsala, vermelho, azul, azul
+    // serenity, pink, rosa, rosê, champagne, fúcsia, laranja, amarelo, dourado,
+    // roxo — mais os brancos do acervo de noiva, que o papel não nomeia.
+    for (const doPapel of ["Verde", "Terracota", "Marsala", "Rosê", "Fúcsia", "Azul serenity"]) {
+      expect(cor?.opcoes, `cor do papel ausente: ${doPapel}`).toContain(doPapel);
+    }
+    const tipo = CATALOGO_PADRAO.find((a) => a.chave === "tipo-de-peca");
+    // "Acessório" é o que dá lugar ao bolero e à mantilha (E150).
+    expect(tipo?.opcoes).toEqual(
+      expect.arrayContaining(["Noiva", "Festa", "Dama", "Acessório"]),
+    );
   });
 
   it("todo atributo tem chave única, rótulo único e ao menos duas opções", () => {
@@ -154,9 +185,10 @@ describe("E147 — o catálogo do acervo", () => {
     }
   });
 
-  it("41 opções no total — o vocabulário com que a noiva descreve o vestido", () => {
+  it("66 opções no total — o vocabulário com que a noiva descreve o vestido", () => {
+    // 41 no E147; +19 de Cor e +6 de Tipo de peça no E149.
     const total = CATALOGO_PADRAO.reduce((s, a) => s + a.opcoes.length, 0);
-    expect(total).toBe(41);
+    expect(total).toBe(66);
   });
 });
 

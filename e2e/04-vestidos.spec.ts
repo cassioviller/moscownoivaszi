@@ -48,4 +48,38 @@ test.describe("Vestidos", () => {
       "Badge mostra o enum cru 'ativo' — deveria ser rótulo tratado ('Ativo')",
     ).not.toBeVisible();
   });
+
+  /**
+   * E149 — a cor deixou de ser texto livre e virou atributo do catálogo.
+   *
+   * O que este teste prega, e por quê: o filtro dedicado de cor derivava as
+   * opções dos valores DIGITADOS (`new Set` sobre `v.cor`, sem normalizar) e
+   * comparava com `!==`, então "Verde", "verde" e "VERDE" viravam três entradas
+   * no dropdown, cada uma com um pedaço do acervo. Como atributo, a cor é
+   * filtrada por id de opção — grafia não entra na conta. O vestido do seed
+   * (`E2E-V900`, cor "Marfim") foi migrado pelo script do épico.
+   */
+  test("a cor filtra pelo catálogo, e não por texto digitado", async ({ page }) => {
+    await page.goto("/vestidos");
+    await expect(page.getByText("E2E Vestido Playwright")).toBeVisible();
+
+    // A cor não tem mais seletor próprio: é um dos atributos, atrás de "Mais
+    // filtros" (E135/D8). O testid termina na chave derivada do seed, então o
+    // id da loja não entra no teste.
+    await page.getByTestId("botao-mais-filtros").click();
+    const filtroCor = page.locator('[data-testid$="-atributo-cor"]');
+    await expect(filtroCor).toBeVisible();
+    await filtroCor.click();
+    await page.getByRole("option", { name: "Marfim", exact: true }).click();
+
+    // Filtrou por id de opção — o vestido do seed (cor "Marfim") continua na
+    // lista, e nenhuma grafia foi comparada para isso acontecer.
+    await expect(page.getByText("E2E Vestido Playwright")).toBeVisible();
+  });
+
+  test("a ficha do vestido mostra a cor entre as características", async ({ page }) => {
+    await page.goto(`/vestidos/${estado.vestidoId}`);
+    await expect(page.getByText("Características")).toBeVisible();
+    await expect(page.getByText(/Cor:\s*Marfim/)).toBeVisible();
+  });
 });

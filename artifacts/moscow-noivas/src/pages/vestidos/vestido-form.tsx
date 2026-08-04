@@ -34,7 +34,6 @@ export const vestidoFormSchema = z.object({
     else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
   }),
   tamanho: z.string().optional(),
-  cor: z.string().optional(),
   categoria: z.string().optional(),
   observacoes: z.string().optional(),
 });
@@ -73,7 +72,6 @@ export function VestidoForm({
       // Exibição pt-BR: o valor salvo volta com vírgula, como se digita.
       precoBase: defaults?.precoBase != null ? String(defaults.precoBase).replace(".", ",") : "",
       tamanho: defaults?.tamanho ?? "",
-      cor: defaults?.cor ?? "",
       categoria: defaults?.categoria ?? "",
       observacoes: defaults?.observacoes ?? "",
     },
@@ -167,7 +165,7 @@ export function VestidoForm({
         )}
 
         <p className="pt-2 text-sm font-medium text-muted-foreground">Opcional</p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="tamanho"
@@ -181,27 +179,23 @@ export function VestidoForm({
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="cor"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cor</FormLabel>
-                <FormControl>
-                  <Input placeholder="Branco" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* E149: o campo de COR saiu daqui e virou atributo do catálogo, logo
+              acima em "Características". Como texto livre ele não sustentava a
+              busca — "Verde", "verde" e "VERDE" viravam três entradas no filtro
+              do acervo, cada uma com um pedaço dos vestidos —, e é por cor que
+              a segunda linha de negócio do ateliê é procurada: 38 compromissos
+              de festa e dama nas 15 páginas de agenda, em 15 cores. Como
+              atributo, ela também passa a aparecer na ficha de interesses da
+              noiva (`lead_interesse_atributos`), que é o gesto que o papel
+              registra. `vestidos.cor` fica como legado LIDO, nunca escrito. */}
           <FormField
             control={form.control}
             name="categoria"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Categoria</FormLabel>
+                <FormLabel>Coleção</FormLabel>
                 <FormControl>
-                  <Input placeholder="Princesa" {...field} />
+                  <Input placeholder="Coleção 2026" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

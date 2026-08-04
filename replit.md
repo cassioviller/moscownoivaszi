@@ -20,8 +20,9 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm --filter @workspace/db run push` — aplica o schema no banco (dev)
 - **Configurar um ateliê do zero** (E147): `cd artifacts/api-server &&
   ./node_modules/.bin/tsx src/scripts/seed.ts`. Cria só o que NÃO é trabalho da
-  loja — 4 perfis, a dona, 3 cabines, horário, 7 atributos de catálogo (41
-  opções), a escada de comissão e 4 recorrências —, é **idempotente e nunca
+  loja — 4 perfis, a dona, 3 cabines, horário, 9 atributos de catálogo (66
+  opções, com **Tipo de peça** e **Cor** desde o E149), a escada de comissão e
+  4 recorrências —, é **idempotente e nunca
   sobrescreve** (ids derivados da loja + `onConflictDoNothing`), e imprime o que
   criou e o que já existia. Depois dele, o único primeiro passo pendente é
   "cadastrar os primeiros vestidos". A mesma configuração roda sozinha na

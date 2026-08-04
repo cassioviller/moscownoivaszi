@@ -42,7 +42,6 @@ export default function NovoVestido() {
           nome: values.nome,
           precoBase: values.precoBase,
           tamanho: values.tamanho || undefined,
-          cor: values.cor || undefined,
           categoria: values.categoria || undefined,
           observacoes: values.observacoes || undefined,
           atributos: atributos.length > 0 ? atributos : undefined,

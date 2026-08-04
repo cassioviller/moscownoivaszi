@@ -145,7 +145,7 @@ export type AtributoPadrao = {
 };
 
 /**
- * Sete atributos, 41 opções — o vocabulário com que uma noiva descreve o
+ * Nove atributos, 66 opções — o vocabulário com que uma noiva descreve o
  * vestido que ela quer, e a vendedora descreve o que tem na arara.
  *
  * Ele serve aos DOIS lados da mesma pergunta, e é por isso que vale a pena
@@ -153,14 +153,49 @@ export type AtributoPadrao = {
  * (`vestido_atributos`) e os interesses da noiva (`lead_interesse_atributos`),
  * e é o que vira filtro na lista do acervo e no lookbook.
  *
- * O que NÃO está aqui, de propósito: **tamanho e cor são colunas de
- * `vestidos`** e já filtram sozinhos — repeti-los como atributo daria dois
- * campos para o mesmo fato, e um dia eles discordariam. `categoria` fica livre
- * para a loja usar como coleção ("Coleção 2026", "Outlet"); a silhueta, que é a
- * pergunta que a noiva realmente faz, é atributo — porque só atributo aparece
- * na ficha de interesses.
+ * **Tamanho** não está aqui, e continua não estando: é da PEÇA física, muda de
+ * unidade para unidade, e nada no papel do ateliê o usa para buscar.
+ *
+ * **Cor estava fora e voltou (E149).** O E147 a deixou de fora com um
+ * argumento correto — "dois campos para o mesmo fato um dia discordariam" —,
+ * mas decidiu sem a evidência que a arqueologia do legado trouxe depois: nas
+ * 15 páginas de agenda do ateliê há **38 compromissos de festa e dama
+ * indexados por COR**, em 15 cores distintas, e a noiva de festa não pede
+ * "Arnalda", pede verde. Como coluna de texto livre, `cor` não sustentava
+ * isso: o cadastro era `<Input placeholder="Branco">` e o filtro comparava com
+ * `!==`, então "Verde", "verde" e "VERDE" viravam três entradas no dropdown,
+ * cada uma filtrando um pedaço do acervo. O argumento do E147 continua de pé e
+ * é a razão de `vestidos.cor` virar **legado lido, nunca escrito** — um campo
+ * só, não dois. E o ganho que o E147 não tinha como pesar: atributo aparece em
+ * `lead_interesse_atributos`, então a noiva passa a poder **pedir a cor** na
+ * ficha de interesses, que é exatamente o gesto que o papel registra 38 vezes.
+ *
+ * **`categoria` continua livre**, como o E147 quis — mas a linha de negócio
+ * (noiva, festa, dama) virou o atributo **Tipo de peça**, e não ela. Medido no
+ * banco de dev: dos 863 vestidos, 4 têm `categoria` preenchida, e as quatro
+ * dizem "Princesa" ou "Sereia" — que são opções de **Silhueta**. A coluna
+ * livre não virou coleção: virou depósito do atributo que já existia ao lado.
  */
 export const CATALOGO_PADRAO: AtributoPadrao[] = [
+  {
+    // E149: a linha de negócio do ateliê. O papel trata noiva e festa como dois
+    // acervos — nome de modelo de um lado, cor e etiqueta de 4 dígitos do outro
+    // —, e "Acessório" é o que dá lugar ao bolero e à mantilha (E150).
+    chave: "tipo-de-peca",
+    nome: "Tipo de peça",
+    opcoes: ["Noiva", "Festa", "Dama", "Madrinha", "Debutante", "Acessório"],
+  },
+  {
+    // E149: as 15 cores lidas nas 15 páginas de agenda do ateliê, mais os
+    // brancos que o acervo de noiva usa e que o papel não precisa nomear.
+    chave: "cor",
+    nome: "Cor",
+    opcoes: [
+      "Branco", "Off-white", "Marfim", "Nude", "Champagne", "Dourado",
+      "Rosê", "Rosa", "Pink", "Fúcsia", "Vermelho", "Marsala", "Terracota",
+      "Laranja", "Amarelo", "Verde", "Azul", "Azul serenity", "Roxo",
+    ],
+  },
   {
     chave: "silhueta",
     nome: "Silhueta",
