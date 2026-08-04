@@ -231,6 +231,7 @@ export async function criarOrcamentoItem(
     valorUnitario?: number;
     quantidade?: number;
     vestidoId?: string | null;
+    itemEstoqueId?: string | null;
   },
 ): Promise<OrcamentoItem> {
   const sufixo = randomUUID().slice(0, 8);
@@ -245,6 +246,7 @@ export async function criarOrcamentoItem(
       valorUnitario: params.valorUnitario ?? 5000,
       quantidade: params.quantidade ?? 1,
       vestidoId: params.vestidoId ?? null,
+      itemEstoqueId: params.itemEstoqueId ?? null,
     })
     .returning();
   return item;

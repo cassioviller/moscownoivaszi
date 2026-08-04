@@ -90,3 +90,43 @@ export const vestidoAtributosTable = pgTable("vestido_atributos", {
 export const insertVestidoAtributoSchema = createInsertSchema(vestidoAtributosTable);
 export type InsertVestidoAtributo = z.infer<typeof insertVestidoAtributoSchema>;
 export type VestidoAtributo = typeof vestidoAtributosTable.$inferSelect;
+
+/**
+ * E154 — o acessório de ESTOQUE, que se conta em vez de se reservar.
+ *
+ * O caderno do ateliê chama de "segunda peça" coisas que não têm nada em
+ * comum. O que as distingue não é o que são: é **como se decide se estão
+ * disponíveis**.
+ *
+ *  · `Bolero Ricca Sposa`, `Mantilha Chan` — existe UMA. Decide-se POR PEÇA, e
+ *    por isso moram em `vestidos`, com código e reserva próprios (E150).
+ *  · `Saiote 2 aros`, `crinol` — existem DEZ, iguais. Decide-se POR CONTAGEM.
+ *
+ * Reservar "o saiote nº 7" não significa nada, porque ninguém vai atrás
+ * daquele; e cadastrá-los um a um encheria de anágua a mesma lista que a
+ * vendedora abre com a noiva na cabine. Daí a tabela separada: o que muda é o
+ * mecanismo de disponibilidade, não o carinho com a peça.
+ *
+ * `quantidade` é quantas a loja tem. O comprometimento por data é derivado dos
+ * contratos ativos — nunca gravado aqui —, para não existirem duas verdades
+ * sobre o mesmo número.
+ */
+export const itensEstoqueTable = pgTable("itens_estoque", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  nome: text("nome").notNull(),
+  /** Só quando faz diferença para quem separa a peça (P/M/G de saiote). */
+  tamanho: text("tamanho"),
+  quantidade: integer("quantidade").notNull().default(0),
+  /** Nulo = vai junto com o vestido, sem cobrar à parte. */
+  preco: decimal("preco", { precision: 10, scale: 2, mode: "number" }),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => ({
+  unq: unique().on(t.lojaId, t.nome, t.tamanho),
+}));
+
+export const insertItemEstoqueSchema = createInsertSchema(itensEstoqueTable).omit({ createdAt: true, updatedAt: true });
+export type InsertItemEstoque = z.infer<typeof insertItemEstoqueSchema>;
+export type ItemEstoque = typeof itensEstoqueTable.$inferSelect;

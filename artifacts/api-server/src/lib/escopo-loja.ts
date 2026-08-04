@@ -9,6 +9,7 @@ import {
   atributoOpcoesTable,
   atendimentosTable,
   bloqueioVestidosTable,
+  itensEstoqueTable,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -100,6 +101,19 @@ export async function atendimentoNaLoja(atendimentoId: string, lojaId: string): 
   const [a] = await db.select({ id: atendimentosTable.id }).from(atendimentosTable)
     .where(and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId))).limit(1);
   return !!a;
+}
+
+/**
+ * E154 — o `itemEstoqueId` que o item de orçamento aponta é desta loja?
+ *
+ * Mesma família das de cima: a FK prova que o saiote EXISTE, e `itens_estoque`
+ * é por loja. Sem esta prova, o orçamento da loja A comprometeria o estoque da
+ * loja B — e o aviso da B contaria uma peça que ela nunca vendeu.
+ */
+export async function itemEstoqueNaLoja(itemEstoqueId: string, lojaId: string): Promise<boolean> {
+  const [i] = await db.select({ id: itensEstoqueTable.id }).from(itensEstoqueTable)
+    .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId))).limit(1);
+  return !!i;
 }
 
 /** E115 — irmã da de cima: o `bloqueioId` opcional do POST /atendimentos. */

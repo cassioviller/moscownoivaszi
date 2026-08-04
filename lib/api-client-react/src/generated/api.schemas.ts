@@ -873,6 +873,55 @@ export interface RegistroCobrancaInput {
   observacao?: string;
 }
 
+export interface ItemEstoque {
+  id: string;
+  lojaId: string;
+  nome: string;
+  /** @nullable */
+  tamanho?: string | null;
+  quantidade: number;
+  /** @nullable */
+  preco?: number | null;
+  ativo: boolean;
+}
+
+export interface ItemEstoqueInput {
+  /** @minLength 1 */
+  nome: string;
+  tamanho?: string;
+  /** @minimum 0 */
+  quantidade: number;
+  /** @minimum 0 */
+  preco?: number;
+}
+
+export interface ItemEstoqueUpdate {
+  /** @minLength 1 */
+  nome?: string;
+  /** @nullable */
+  tamanho?: string | null;
+  /** @minimum 0 */
+  quantidade?: number;
+  /** @nullable */
+  preco?: number | null;
+  ativo?: boolean;
+}
+
+export type ComprometimentoEstoqueItensItem = {
+  itemEstoqueId: string;
+  nome: string;
+  /** @nullable */
+  tamanho?: string | null;
+  quantidade: number;
+  comprometida: number;
+  disponivel: number;
+};
+
+export interface ComprometimentoEstoque {
+  data: string;
+  itens: ComprometimentoEstoqueItensItem[];
+}
+
 export interface Cabine {
   id: string;
   lojaId: string;
@@ -1377,6 +1426,7 @@ export type OrcamentoItemTipo = typeof OrcamentoItemTipo[keyof typeof OrcamentoI
 export const OrcamentoItemTipo = {
   VESTIDO: 'VESTIDO',
   ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1387,6 +1437,8 @@ export interface OrcamentoItem {
   tipo: OrcamentoItemTipo;
   /** @nullable */
   vestidoId?: string | null;
+  /** @nullable */
+  itemEstoqueId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;
@@ -1478,6 +1530,7 @@ export type OrcamentoItemInputTipo = typeof OrcamentoItemInputTipo[keyof typeof 
 export const OrcamentoItemInputTipo = {
   VESTIDO: 'VESTIDO',
   ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1485,6 +1538,7 @@ export const OrcamentoItemInputTipo = {
 export interface OrcamentoItemInput {
   tipo: OrcamentoItemInputTipo;
   vestidoId?: string;
+  itemEstoqueId?: string;
   /** @minLength 1 */
   descricao: string;
   valorUnitario: number;
@@ -1510,6 +1564,7 @@ export type OrcamentoPublicoItemTipo = typeof OrcamentoPublicoItemTipo[keyof typ
 export const OrcamentoPublicoItemTipo = {
   VESTIDO: 'VESTIDO',
   ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1768,6 +1823,7 @@ export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItem
 export const ContratoItemTipo = {
   VESTIDO: 'VESTIDO',
   ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1779,6 +1835,8 @@ export interface ContratoItem {
   tipo: ContratoItemTipo;
   /** @nullable */
   vestidoId?: string | null;
+  /** @nullable */
+  itemEstoqueId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;
@@ -2633,6 +2691,13 @@ export type GetDesempenhoVendedoras200Item = {
 };
 
 export type ExportarDadosLead200 = { [key: string]: unknown };
+
+export type GetComprometimentoEstoqueParams = {
+/**
+ * Dia local "YYYY-MM-DD" para o qual se conta o comprometimento.
+ */
+data: string;
+};
 
 export type ListAtendimentosParams = {
 /**

@@ -50,7 +50,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
+import { Plus, ClipboardPlus, BarChart3, Layers, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { mensagemApi } from "@/lib/erro-api";
@@ -366,6 +366,14 @@ export default function Vestidos() {
             <Link to={`/loja/${activeLojaId}/vestidos/utilizacao`}>
               <BarChart3 className="h-4 w-4 mr-2" />
               Utilização
+            </Link>
+          </Button>
+          {/* E154: a outra natureza de peça. Fica ao lado do acervo, e não
+              dentro dele — o saiote não é escolhido pela noiva na cabine. */}
+          <Button variant="ghost" asChild>
+            <Link to={`/loja/${activeLojaId}/vestidos/estoque`}>
+              <Layers className="h-4 w-4 mr-2" />
+              Estoque
             </Link>
           </Button>
           {podeCriar && (

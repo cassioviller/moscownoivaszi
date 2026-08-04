@@ -260,6 +260,17 @@ rode o codegen.
   reservas de vestido (com motor de disponibilidade), catálogo e acervo.
   Avarias da devolução viram parcela cobrável (E71); LGPD interna com
   consentimento carimbado e expurgo que preserva números (E77).
+- **As duas naturezas de peça (E150, E154)** — o que decide se uma peça está
+  disponível não é o que ela é, é como se pergunta. A peça ÚNICA (vestido,
+  bolero, mantilha) mora no acervo, tem código e **se reserva**: o contrato que
+  a vende sem reserva no mesmo contrato leva 422 (E150). A peça de ESTOQUE
+  (saiote, crinol, anágua) mora em `itens_estoque`, tem `quantidade` e **se
+  conta**: `GET /lojas/:id/itens-estoque/comprometimento?data=` soma o que os
+  contratos ATIVOS comprometeram no dia (janela de uso, a mesma régua do
+  vestido) e a tela de orçamento **avisa sem bloquear** — *"3 × Saiote 2 aros
+  para 19/09/2026 — a loja tem 2"* e deixa fechar. Saiote é substituível;
+  recusar uma venda de R$ 4.000 por causa de uma anágua seria um defeito, não
+  uma proteção. A dona conta a arara em **Vestidos → Estoque**.
 - **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
   `portal_tokens`, 30 dias **de inatividade**): proposta com aceite (E74),
   lookbook, próximas provas e extrato de parcelas só-leitura, com "falta pagar"
@@ -328,12 +339,13 @@ rode o codegen.
   confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
   `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
   existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
-- **`drizzle-kit generate` tem o MESMO defeito sem-TTY, e mais um** (E115): com
-  snapshot anterior ele pergunta "criada ou renomeada?" e morre sem terminal; e
-  o `drizzle.config.ts` com caminho ABSOLUTO o quebra de um segundo jeito
-  (`ENOENT .//home/...`). O que funciona: a CLI com caminhos relativos, de
-  dentro de `lib/db` — `npx drizzle-kit generate --dialect postgresql --schema
-  ./src/schema/index.ts --out ./migrations`. **A baseline é regenerável
+- **`drizzle-kit generate` tem o MESMO defeito sem-TTY** (E115): com snapshot
+  anterior ele pergunta "criada ou renomeada?" e morre sem terminal. O segundo
+  defeito — `out` ABSOLUTO no `drizzle.config.ts`, que o kit relia como
+  `.//home/...` e matava com ENOENT — **foi consertado no E154**: `out` é
+  relativo (`"./migrations"`) e `pnpm --filter @workspace/db run generate`
+  funciona direto. A saída é incremental: o E154 gerou
+  `0001_tired_power_man.sql`. **A baseline é regenerável
   enquanto nenhum banco consumir o `migrate`** (o dev usa `push` e não tem
   `__drizzle_migrations` — conferido no E115), e
   `e115-migracao-snapshot-unit.test.ts` reprova schema com coluna fora do

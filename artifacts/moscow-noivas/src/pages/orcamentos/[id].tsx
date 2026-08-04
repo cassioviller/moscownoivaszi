@@ -18,6 +18,10 @@ import {
   getGetLeadQueryKey,
   useListVestidos,
   getListVestidosQueryKey,
+  useListItensEstoque,
+  getListItensEstoqueQueryKey,
+  useGetComprometimentoEstoque,
+  getGetComprometimentoEstoqueQueryKey,
   useListBloqueios,
   getListBloqueiosQueryKey,
   useListEquipe,
@@ -67,6 +71,7 @@ import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto, diaMesAno } from "@/lib/formatos";
 import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
+import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
 import { montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
@@ -100,14 +105,22 @@ const MENSAGENS_ERRO: Record<string, string> = {
 const novoItemSchema = z.object({
   // E150: ACESSORIO é peça do acervo como o vestido — aponta `vestidoId` e o
   // fechamento exige reserva. Serviço e ajuste não são peça e seguem sem.
-  tipo: z.enum(["VESTIDO", "ACESSORIO", "SERVICO", "AJUSTE"]),
+  // E154: ESTOQUE é a peça que se CONTA (saiote, crinol, anágua) — aponta
+  // `itemEstoqueId`, e o que a protege é um aviso, não uma trava.
+  tipo: z.enum(["VESTIDO", "ACESSORIO", "ESTOQUE", "SERVICO", "AJUSTE"]),
   // vestidoId liga o item ao catálogo (E35): ao escolher um vestido, descrição
   // e valor vêm dele. Vazio = item avulso (serviço/ajuste ou vestido sem ficha).
   vestidoId: z.string().optional(),
+  // itemEstoqueId é o outro jeito de apontar peça, e nunca convive com o de
+  // cima — o servidor recusa os dois juntos com ITEM_APONTA_DUAS_PECAS.
+  itemEstoqueId: z.string().optional(),
   descricao: z.string().min(1, "Descrição obrigatória"),
   valorUnitario: z.string().min(1, "Valor obrigatório"),
   quantidade: z.string(),
 });
+
+/** Os dois tipos que apontam peça do ACERVO — os que o E150 cobra reserva. */
+const ehPecaDoAcervo = (tipo: string) => tipo === "VESTIDO" || tipo === "ACESSORIO";
 type NovoItemValues = z.infer<typeof novoItemSchema>;
 
 const editarItemSchema = z.object({
@@ -232,6 +245,16 @@ export default function OrcamentoDetail() {
     () => new Map((vestidos.data ?? []).map((v) => [v.id, v])),
     [vestidos.data],
   );
+  // E154: o estoque para o seletor de item — saiote, crinol, anágua. Lista
+  // curta e separada do acervo de propósito: são as peças que a vendedora NÃO
+  // abre com a noiva na cabine, e misturá-las encheria a outra de anágua.
+  const itensEstoque = useListItensEstoque(activeLojaId!, {
+    query: { queryKey: getListItensEstoqueQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const itemEstoquePorId = useMemo(
+    () => new Map((itensEstoque.data ?? []).map((i) => [i.id, i])),
+    [itensEstoque.data],
+  );
   // O GetOrcamento não expõe o contrato gerado; perguntamos à lista de
   // contratos COM o recorte ?orcamentoId= (E144/S-D16 — sem ele, esta tela
   // baixava os 518 contratos da loja, 615 KB, para um único find).
@@ -309,9 +332,42 @@ export default function OrcamentoDetail() {
   const acimaDoTeto = teto != null && teto > 0 && totais.liquido > teto;
   const excedenteTeto = acimaDoTeto ? reais(totais.liquidoC - centavos(teto)) : 0;
 
+  /**
+   * E154 — quantas peças de estoque saem no dia do casamento desta noiva.
+   *
+   * A pergunta só existe se houver item de estoque no orçamento E dia para
+   * contar: sem data de casamento não há conta, e um aviso sobre "algum dia"
+   * não ajudaria ninguém.
+   *
+   * Depois que o contrato existe, ele já entra na soma do servidor — somar de
+   * novo o que este orçamento pede contaria a mesma peça duas vezes, e o aviso
+   * apareceria sozinho, sem que nada tivesse mudado.
+   */
+  const diaDoCasamento = lead?.casamentoData?.slice(0, 10) ?? null;
+  const temItemDeEstoque = (orcamento?.itens ?? []).some(
+    (i) => i.tipo === "ESTOQUE" && i.itemEstoqueId,
+  );
+  const paramsComprometimento = { data: diaDoCasamento ?? "" };
+  const comprometimentoQ = useGetComprometimentoEstoque(activeLojaId!, paramsComprometimento, {
+    query: {
+      queryKey: getGetComprometimentoEstoqueQueryKey(activeLojaId!, paramsComprometimento),
+      enabled:
+        !!activeLojaId && !!diaDoCasamento && temItemDeEstoque && !contratoExistente,
+    },
+  });
+  const avisosEstoque = useMemo(
+    () =>
+      avisosDeEstoque({
+        itens: orcamento?.itens ?? [],
+        comprometimento: comprometimentoQ.data?.itens ?? [],
+        dia: contratoExistente ? null : diaDoCasamento,
+      }),
+    [orcamento?.itens, comprometimentoQ.data, diaDoCasamento, contratoExistente],
+  );
+
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
-    defaultValues: { tipo: "VESTIDO", vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" },
+    defaultValues: { tipo: "VESTIDO", vestidoId: "", itemEstoqueId: "", descricao: "", valorUnitario: "", quantidade: "1" },
   });
 
   const editarItemForm = useForm<EditarItemValues>({
@@ -452,7 +508,14 @@ export default function OrcamentoDetail() {
     // bobagem" (NaN).
     const valorUnitario = parseValor(values.valorUnitario);
     const quantidade = Number(values.quantidade) || 1;
-    if (valorUnitario === null || !Number.isFinite(valorUnitario) || valorUnitario <= 0) {
+    // E154: zero é valor LEGÍTIMO para peça de estoque — o saiote costuma ir
+    // junto com o vestido, sem cobrar à parte, e ainda assim precisa entrar no
+    // contrato para ser contado no dia. Para os outros tipos, zero segue erro.
+    const valorInvalido =
+      valorUnitario === null ||
+      !Number.isFinite(valorUnitario) ||
+      (values.tipo === "ESTOQUE" ? valorUnitario < 0 : valorUnitario <= 0);
+    if (valorInvalido) {
       toast({ title: "Valor unitário inválido", variant: "destructive" });
       return;
     }
@@ -463,17 +526,21 @@ export default function OrcamentoDetail() {
         data: {
           tipo: values.tipo,
           descricao: values.descricao,
-          valorUnitario,
+          valorUnitario: valorUnitario!,
           quantidade,
           // E150: vestidoId vale para PEÇA — vestido e acessório. Serviço e
           // ajuste vão sem, e é por isso que a guarda do servidor não os cobra.
-          ...((values.tipo === "VESTIDO" || values.tipo === "ACESSORIO") && values.vestidoId
+          ...(ehPecaDoAcervo(values.tipo) && values.vestidoId
             ? { vestidoId: values.vestidoId }
+            : {}),
+          // E154: o outro jeito de apontar peça, e nunca os dois.
+          ...(values.tipo === "ESTOQUE" && values.itemEstoqueId
+            ? { itemEstoqueId: values.itemEstoqueId }
             : {}),
         },
       });
       await invalidar();
-      itemForm.reset({ tipo: values.tipo, vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" });
+      itemForm.reset({ tipo: values.tipo, vestidoId: "", itemEstoqueId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
       toast({ title: "Não deu para adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
@@ -901,6 +968,22 @@ export default function OrcamentoDetail() {
             </p>
           )}
 
+          {/* E154 — avisa, não bloqueia. O saiote é substituível: se faltar um,
+              usa-se outro parecido, e recusar a venda por causa de uma anágua
+              seria um defeito, não uma proteção. O bolero que a noiva escolheu
+              pela foto não é substituível — e por isso ele é peça do acervo, e
+              a reserva dele o contrato exige (E150). */}
+          {avisosEstoque.length > 0 && (
+            <div className="space-y-1" data-testid="aviso-estoque">
+              {avisosEstoque.map((aviso) => (
+                <p key={aviso} className="flex items-center justify-end gap-1.5 text-sm text-aviso">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {aviso}
+                </p>
+              ))}
+            </div>
+          )}
+
           {editavel && (
             <>
               <Form {...itemForm}>
@@ -915,8 +998,12 @@ export default function OrcamentoDetail() {
                           value={field.value}
                           onValueChange={(v) => {
                             field.onChange(v);
-                            // Trocar de tipo desfaz o vínculo com o catálogo.
-                            if (v !== "VESTIDO" && v !== "ACESSORIO") itemForm.setValue("vestidoId", "");
+                            // Trocar de tipo desfaz o vínculo com o catálogo —
+                            // e com o estoque, que é o outro jeito de apontar
+                            // peça. Deixar um dos dois para trás mandaria um
+                            // item apontando as duas coisas (422 do servidor).
+                            if (!ehPecaDoAcervo(v)) itemForm.setValue("vestidoId", "");
+                            if (v !== "ESTOQUE") itemForm.setValue("itemEstoqueId", "");
                           }}
                         >
                           <FormControl>
@@ -927,6 +1014,7 @@ export default function OrcamentoDetail() {
                           <SelectContent>
                             <SelectItem value="VESTIDO">Vestido</SelectItem>
                             <SelectItem value="ACESSORIO">Acessório</SelectItem>
+                            <SelectItem value="ESTOQUE">Estoque</SelectItem>
                             <SelectItem value="SERVICO">Serviço</SelectItem>
                             <SelectItem value="AJUSTE">Ajuste</SelectItem>
                           </SelectContent>
@@ -935,9 +1023,46 @@ export default function OrcamentoDetail() {
                       </FormItem>
                     )}
                   />
+                  {/* E154: o seletor do estoque, irmão do de catálogo. A lista
+                      é curta (o que a loja conta, não o que ela veste) e o
+                      preço nulo vira zero — "vai junto, sem cobrar à parte". */}
+                  {itemForm.watch("tipo") === "ESTOQUE" && (
+                    <div className="w-56 space-y-2">
+                      <label className="text-sm font-medium">Do estoque</label>
+                      <Select
+                        value={itemForm.watch("itemEstoqueId") || "AVULSO"}
+                        onValueChange={(v) => {
+                          if (v === "AVULSO") {
+                            itemForm.setValue("itemEstoqueId", "");
+                            return;
+                          }
+                          itemForm.setValue("itemEstoqueId", v);
+                          const item = itemEstoquePorId.get(v);
+                          if (item) {
+                            itemForm.setValue("descricao", nomeDoItemEstoque(item));
+                            itemForm.setValue("valorUnitario", String(item.preco ?? 0));
+                          }
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-item-estoque">
+                          <SelectValue placeholder="Escolher peça de estoque" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AVULSO">— avulso (digitar) —</SelectItem>
+                          {(itensEstoque.data ?? [])
+                            .filter((i) => i.ativo)
+                            .map((i) => (
+                              <SelectItem key={i.id} value={i.id}>
+                                {nomeDoItemEstoque(i)} · {i.quantidade} na loja
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {/* Seletor do catálogo (E35): escolher um vestido preenche
                       descrição e valor e vincula o item ao estoque. */}
-                  {(itemForm.watch("tipo") === "VESTIDO" || itemForm.watch("tipo") === "ACESSORIO") && (
+                  {ehPecaDoAcervo(itemForm.watch("tipo")) && (
                     <div className="w-56 space-y-2">
                       <label className="text-sm font-medium">Do catálogo</label>
                       <Select

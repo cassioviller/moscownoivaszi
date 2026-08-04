@@ -1617,6 +1617,86 @@ paths:
           description: Registro desfeito
 
   # ───────────────────────── Agenda (Cabines / Atendimentos) ─────────────────────────
+  /lojas/{lojaId}/itens-estoque:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listItensEstoque
+      tags: [vestidos]
+      responses:
+        "200":
+          description: Itens de estoque da loja
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemEstoque"
+    post:
+      operationId: createItemEstoque
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemEstoqueInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemEstoque"
+  /lojas/{lojaId}/itens-estoque/comprometimento:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getComprometimentoEstoque
+      tags: [vestidos]
+      parameters:
+        - name: data
+          in: query
+          required: true
+          description: Dia local "YYYY-MM-DD" para o qual se conta o comprometimento.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Quantas unidades de cada item estão comprometidas no dia
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComprometimentoEstoque"
+  /lojas/{lojaId}/itens-estoque/{itemEstoqueId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: itemEstoqueId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateItemEstoque
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemEstoqueUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemEstoque"
+    delete:
+      operationId: deleteItemEstoque
+      tags: [vestidos]
+      responses:
+        "204":
+          description: Deleted
   /lojas/{lojaId}/cabines:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -5078,6 +5158,54 @@ components:
         observacao: { type: string }
 
     # ── Agenda ──
+    ItemEstoque:
+      type: object
+      required: [id, lojaId, nome, quantidade, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        nome: { type: string }
+        tamanho: { type: ["string", "null"] }
+        quantidade: { type: integer }
+        preco: { type: ["number", "null"] }
+        ativo: { type: boolean }
+    ItemEstoqueInput:
+      type: object
+      required: [nome, quantidade]
+      properties:
+        nome: { type: string, minLength: 1 }
+        tamanho: { type: string }
+        quantidade: { type: integer, minimum: 0 }
+        preco: { type: number, minimum: 0 }
+    ItemEstoqueUpdate:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        tamanho: { type: ["string", "null"] }
+        quantidade: { type: integer, minimum: 0 }
+        preco: { type: ["number", "null"] }
+        ativo: { type: boolean }
+    ComprometimentoEstoque:
+      type: object
+      required: [data, itens]
+      properties:
+        data: { type: string }
+        itens:
+          type: array
+          items:
+            type: object
+            required: [itemEstoqueId, nome, quantidade, comprometida, disponivel]
+            properties:
+              itemEstoqueId: { type: string }
+              nome: { type: string }
+              tamanho: { type: ["string", "null"] }
+              # Quantas a loja TEM.
+              quantidade: { type: integer }
+              # Quantas saem no dia, somadas dos contratos ATIVOS.
+              comprometida: { type: integer }
+              # `quantidade - comprometida`. NEGATIVO é resposta legítima: o
+              # sistema avisa, não bloqueia, e esconder o buraco seria mentir.
+              disponivel: { type: integer }
     Cabine:
       type: object
       required: [id, lojaId, nome, ativo]
@@ -5525,8 +5653,9 @@ components:
       properties:
         id: { type: string }
         orcamentoId: { type: string }
-        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
+        itemEstoqueId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5534,8 +5663,9 @@ components:
       type: object
       required: [tipo, descricao, valorUnitario]
       properties:
-        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: string }
+        itemEstoqueId: { type: string }
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5555,7 +5685,7 @@ components:
       type: object
       required: [tipo, descricao, valorUnitario, quantidade]
       properties:
-        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5799,8 +5929,9 @@ components:
         id: { type: string }
         lojaId: { type: string }
         contratoId: { type: string }
-        tipo: { type: string, enum: [VESTIDO, ACESSORIO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
+        itemEstoqueId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }

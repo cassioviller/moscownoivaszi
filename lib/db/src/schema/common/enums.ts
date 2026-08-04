@@ -92,6 +92,10 @@ export const orcamentoStatusEnum = pgEnum("orcamento_status", [
 export const orcamentoItemTipoEnum = pgEnum("orcamento_item_tipo", [
   "VESTIDO",
   "ACESSORIO",
+  // E154: peça de ESTOQUE — conta-se, não se reserva. Aponta
+  // `itemEstoqueId`, nunca `vestidoId`, e por isso a guarda do E150 não a
+  // cobra: não há peça única a prender.
+  "ESTOQUE",
   "SERVICO",
   "AJUSTE",
 ]);

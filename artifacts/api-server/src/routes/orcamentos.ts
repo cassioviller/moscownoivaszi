@@ -19,7 +19,7 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { leadNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, itemEstoqueNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
@@ -381,6 +381,44 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
     res.status(422).json({
       error: "ORCAMENTO_APROVADO",
       detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
+
+  /**
+   * E154 — o item aponta a peça de UM dos dois jeitos, nunca dos dois.
+   *
+   * `vestidoId` é peça do acervo, que se RESERVA (E150); `itemEstoqueId` é peça
+   * de estoque, que se CONTA. O par não é redundância: um item ESTOQUE levando
+   * `vestidoId` passaria pela guarda do E150 sem ser cobrado — ela só olha
+   * VESTIDO e ACESSORIO — e venderia um bolero sem reserva com o rótulo de
+   * saiote. O caminho contrário some com a peça da conta do dia.
+   */
+  const { tipo, vestidoId, itemEstoqueId } = parsed.data;
+  const apontaEstoque = tipo === "ESTOQUE";
+  if (apontaEstoque && vestidoId) {
+    res.status(422).json({
+      error: "ITEM_APONTA_DUAS_PECAS",
+      detalhe: "Item de estoque é contado, não reservado — ele não aponta uma peça do acervo.",
+      campos: [{ campo: "vestidoId", motivo: "Item de estoque não tem peça do acervo" }],
+    });
+    return;
+  }
+  if (!apontaEstoque && itemEstoqueId) {
+    res.status(422).json({
+      error: "ITEM_APONTA_DUAS_PECAS",
+      detalhe: "Só item do tipo Estoque aponta uma peça de estoque.",
+      campos: [{ campo: "itemEstoqueId", motivo: `Tipo ${tipo} não usa peça de estoque` }],
+    });
+    return;
+  }
+  // A FK prova que o saiote existe; `itens_estoque.loja_id` é quem diz de quem
+  // ele é (família E91).
+  if (itemEstoqueId && !(await itemEstoqueNaLoja(itemEstoqueId, lojaId))) {
+    res.status(404).json({
+      error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
+      detalhe: "Este item de estoque não existe nesta loja.",
+      campos: [{ campo: "itemEstoqueId", motivo: "Item de estoque não encontrado nesta loja" }],
     });
     return;
   }

@@ -90,7 +90,7 @@ const reais = (centavos: number) => centavos / 100;
 
 type ItemSnapshot = Pick<
   InsertContratoItem,
-  "tipo" | "vestidoId" | "descricao" | "valorUnitario" | "quantidade"
+  "tipo" | "vestidoId" | "itemEstoqueId" | "descricao" | "valorUnitario" | "quantidade"
 >;
 
 /** True se o contrato existe, é da loja e está ATIVO. */
@@ -250,6 +250,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     itensSnapshot = itens.map((it) => ({
       tipo: it.tipo,
       vestidoId: it.vestidoId,
+      // E154: sem este campo no snapshot, o contrato fecha e a peça de estoque
+      // some da conta — o comprometimento do dia é derivado DAQUI, e um saiote
+      // vendido que não aparece na soma é pior que aviso nenhum.
+      itemEstoqueId: it.itemEstoqueId,
       descricao: it.descricao,
       valorUnitario: it.valorUnitario,
       quantidade: it.quantidade,
