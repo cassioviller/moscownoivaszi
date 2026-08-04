@@ -62,7 +62,7 @@ Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 | A1 | A **lavagem de 7 dias** é a única fonte da colisão: os dois usos não se tocam. O ateliê realugou uma peça em 7 dias | 🔴 → **🟠** | CONFIRMADO com **1 exemplo, não 3** (ver abaixo), e uma ameaça em aberto (`"15 dias"`) |
 | A2 | O conjunto só é protegido se cada peça for cadastrada e reservada; nada exige isso | 🟠 | CONFIRMADO com escopo corrigido |
 | A3 | O filtro de cor compara string exata e o cadastro é campo de texto livre | 🟠 | CONFIRMADO |
-| A4 | Não há preço de realuguel, embora a contagem de locações já exista | 🟡 | — (pergunta de produto) |
+| A4 | Não há preço de realuguel, embora a contagem de locações já exista | 🟡 | **FECHADO no E157** — P5 respondeu que o `7.600` é valor |
 | A5 | Ausência de vendedora não existe no modelo, e é o 1º dado que a agenda registra | 🟡 | — |
 | A6 | Os dois cadernos guardam o mesmo dado e já divergem — decide a importação | 🟡 | reinterpretado em B3 |
 | B1 | Configurações mostra "2 min" para uma prova de 60 min — o valor está em slots de 30 | 🟠 | — |
@@ -104,7 +104,7 @@ O 🔴 é o segundo. A ordem passou a ser esta:
 | **E152** — a lavagem ganha **data real** (`lavagem_concluida_em`) | A1 | ✅ | `a8d094a` · `execucao/E152.md` |
 | ~~**E153**~~ — ~~modelo × peça~~ | — | **CANCELADO por P2** | — |
 | **E156** — a confecção vira peça do acervo | P4 | ⬜ | — |
-| **E157** — a peça conta as locações, e o preço acompanha | A4 · P5 | ⬜ | — |
+| **E157** — a peça conta as locações, e o preço acompanha | A4 · P5 | ✅ | `f697136` · `execucao/E157.md` |
 
 **Os oito épicos do bloco estão fechados.** P4 e P5, respondidas em 2026-08-04
 depois do fecho, abriram dois novos (E156 e E157) — a 4ª versão da spec os
