@@ -12,6 +12,8 @@ export interface BloqueioVestidoUpdate {
   retiradaDataReal?: Date | null;
   /** @nullable */
   devolucaoDataReal?: Date | null;
+  /** @nullable */
+  lavagemConcluidaEm?: Date | null;
   inicio?: Date;
   fim?: Date;
   observacao?: string;

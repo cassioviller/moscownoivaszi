@@ -197,6 +197,7 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: null,
     fim: null,
   };

@@ -5505,6 +5505,9 @@ components:
         provaDataReal: { type: ["string", "null"], format: date-time }
         retiradaDataReal: { type: ["string", "null"], format: date-time }
         devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        # E152: a última data real do ciclo. A lavagem era a única etapa sem
+        # uma — a peça voltava da lavanderia e ficava presa até o sétimo dia.
+        lavagemConcluidaEm: { type: ["string", "null"], format: date-time }
         inicio: { type: ["string", "null"], format: date-time }
         fim: { type: ["string", "null"], format: date-time }
         canceladoEm: { type: ["string", "null"], format: date-time }
@@ -5571,6 +5574,7 @@ components:
         # volta a "não aconteceu"); campo ausente segue significando "não mexa".
         retiradaDataReal: { type: ["string", "null"], format: date-time }
         devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        lavagemConcluidaEm: { type: ["string", "null"], format: date-time }
         inicio: { type: string, format: date-time }
         fim: { type: string, format: date-time }
         observacao: { type: string }

@@ -271,6 +271,14 @@ rode o codegen.
   para 19/09/2026 — a loja tem 2"* e deixa fechar. Saiote é substituível;
   recusar uma venda de R$ 4.000 por causa de uma anágua seria um defeito, não
   uma proteção. A dona conta a arara em **Vestidos → Estoque**.
+- **O ciclo da peça tem três datas reais (E152)** — retirada, devolução e agora
+  **`lavagemConcluidaEm`**: a lavagem era a única etapa calculada só por soma, e
+  a peça voltava da lavanderia na quarta presa até domingo. A régua de 7 dias
+  continua valendo (é lavanderia externa); o que existe é o caminho de dizer que
+  ela chegou — em **Reserva → Movimentação**, depois da devolução. Encurtar a
+  janela só REDUZ ocupação, nunca cria conflito, e a peça não volta da
+  lavanderia sem ter voltado da noiva (400 `LAVAGEM_SEM_DEVOLUCAO` nos dois
+  sentidos).
 - **A ausência da equipe (E151)** — `ausencias` (loja, pessoa, `inicio`/`fim`
   em DIAS locais **inclusivos**, motivo) é o primeiro fato de indisponibilidade
   de GENTE que o sistema guarda. A recusa mora na mesma régua que já recusa dia

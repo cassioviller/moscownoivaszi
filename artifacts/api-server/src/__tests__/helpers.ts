@@ -311,6 +311,7 @@ export interface CriarBloqueioParams {
   provaDataReal?: Date | null;
   retiradaDataReal?: Date | null;
   devolucaoDataReal?: Date | null;
+  lavagemConcluidaEm?: Date | null;
   inicio?: Date | null;
   fim?: Date | null;
   canceladoEm?: Date | null;
@@ -330,6 +331,7 @@ export async function criarBloqueio(
     provaDataReal: params.provaDataReal ?? null,
     retiradaDataReal: params.retiradaDataReal ?? null,
     devolucaoDataReal: params.devolucaoDataReal ?? null,
+    lavagemConcluidaEm: params.lavagemConcluidaEm ?? null,
     inicio: params.inicio ?? null,
     fim: params.fim ?? null,
   };

@@ -1,0 +1,1 @@
+ALTER TABLE "bloqueio_vestidos" ADD COLUMN "lavagem_concluida_em" timestamp with time zone;

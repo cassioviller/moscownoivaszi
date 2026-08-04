@@ -39,6 +39,21 @@ export const bloqueioVestidosTable = pgTable("bloqueio_vestidos", {
   provaDataReal: timestamp("prova_data_real", { withTimezone: true }),
   retiradaDataReal: timestamp("retirada_data_real", { withTimezone: true }),
   devolucaoDataReal: timestamp("devolucao_data_real", { withTimezone: true }),
+  /**
+   * E152 — a lavagem era a única etapa do ciclo SEM data real.
+   *
+   * A assimetria estava escrita no schema: retirada e devolução têm datas reais
+   * que encurtam a janela quando a realidade diverge do previsto, e a lavagem
+   * era sempre `[fimUso+1, fimUso+lavagemDiasDepois]`, por soma. **A peça
+   * voltava da lavanderia e continuava ocupada até o sétimo dia**, pendurada na
+   * arara, e ninguém tinha como dizer ao sistema que ela chegou.
+   *
+   * A régua de 7 dias está CERTA (P1: *"uma semana, lavagem externa"*) — o
+   * defeito nunca foi o número. Isto não é um jeito de furá-la: a janela só
+   * encurta com alguém afirmando um fato, e o fato fica gravado como toda data
+   * real do bloqueio.
+   */
+  lavagemConcluidaEm: timestamp("lavagem_concluida_em", { withTimezone: true }),
   // Manutenção: janela [inicio, fim]; fim null = sem prazo definido.
   inicio: timestamp("inicio", { withTimezone: true }),
   fim: timestamp("fim", { withTimezone: true }),

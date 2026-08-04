@@ -1012,6 +1012,8 @@ export interface BloqueioVestido {
   /** @nullable */
   devolucaoDataReal?: string | null;
   /** @nullable */
+  lavagemConcluidaEm?: string | null;
+  /** @nullable */
   inicio?: string | null;
   /** @nullable */
   fim?: string | null;
@@ -1358,6 +1360,8 @@ export interface BloqueioVestidoUpdate {
   retiradaDataReal?: string | null;
   /** @nullable */
   devolucaoDataReal?: string | null;
+  /** @nullable */
+  lavagemConcluidaEm?: string | null;
   inicio?: string;
   fim?: string;
   observacao?: string;

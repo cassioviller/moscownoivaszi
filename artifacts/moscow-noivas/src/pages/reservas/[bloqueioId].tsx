@@ -270,7 +270,7 @@ export default function ReservaDetalhe() {
     }
   };
 
-  const registrarMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal") =>
+  const registrarMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal" | "lavagemConcluidaEm") =>
     comToast(
       async () => {
         await updateBloqueio.mutateAsync({
@@ -297,7 +297,7 @@ export default function ReservaDetalhe() {
 
   // E61: a data registrada errada tem conserto — null explícito desfaz, e a
   // disponibilidade do vestido volta a valer a régua anterior.
-  const desfazerMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal") =>
+  const desfazerMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal" | "lavagemConcluidaEm") =>
     comToast(
       async () => {
         await updateBloqueio.mutateAsync({
@@ -500,23 +500,81 @@ export default function ReservaDetalhe() {
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Movimentação</h2>
         {reserva.devolucaoDataReal ? (
           <Card>
-            <CardContent className="pt-6 space-y-1">
-              <p className="text-sm">
-                Devolvido em {dataLongaUTCFmt.format(new Date(reserva.devolucaoDataReal))}.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                A jornada desta noiva está encerrada.
-              </p>
-              {podeMovimentar && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={updateBloqueio.isPending}
-                  onClick={() => desfazerMovimentacao("devolucaoDataReal")}
-                  data-testid="desfazer-devolucao"
-                >
-                  Desfazer devolução
-                </Button>
+            <CardContent className="pt-6 space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm">
+                  Devolvido em {dataLongaUTCFmt.format(new Date(reserva.devolucaoDataReal))}.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  A jornada desta noiva está encerrada.
+                </p>
+                {podeMovimentar && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={updateBloqueio.isPending}
+                    onClick={() => desfazerMovimentacao("devolucaoDataReal")}
+                    data-testid="desfazer-devolucao"
+                  >
+                    Desfazer devolução
+                  </Button>
+                )}
+              </div>
+
+              {/* E152 — a lavagem era a única etapa do ciclo sem data real: a
+                  peça voltava da lavanderia na quarta e continuava presa até
+                  domingo, pendurada na arara. A régua de uma semana está certa
+                  (é lavanderia externa); o que faltava era poder dizer que ela
+                  chegou. Só reduz ocupação — nunca cria conflito. */}
+              {reserva.lavagemConcluidaEm ? (
+                <div className="space-y-1 border-t pt-3">
+                  <p className="text-sm" data-testid="lavagem-concluida">
+                    Voltou da lavanderia em{" "}
+                    {dataLongaUTCFmt.format(new Date(reserva.lavagemConcluidaEm))} — o vestido
+                    está livre a partir do dia seguinte.
+                  </p>
+                  {podeMovimentar && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={updateBloqueio.isPending}
+                      onClick={() => desfazerMovimentacao("lavagemConcluidaEm")}
+                      data-testid="desfazer-lavagem"
+                    >
+                      Desfazer volta da lavanderia
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Sem esta data, o vestido fica reservado à lavagem pelo prazo da loja,
+                    mesmo que já esteja de volta.
+                  </p>
+                  {podeMovimentar && (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Voltou da lavanderia em
+                        </span>
+                        <Input
+                          type="date"
+                          value={dataMovimentacaoAtual}
+                          onChange={(e) => setDataMovimentacao(e.target.value)}
+                          className="w-44"
+                          aria-label="Voltou da lavanderia em"
+                        />
+                      </label>
+                      <Button
+                        disabled={!dataMovimentacaoAtual || updateBloqueio.isPending}
+                        onClick={() => registrarMovimentacao("lavagemConcluidaEm")}
+                        data-testid="registrar-lavagem"
+                      >
+                        Registrar volta
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
