@@ -37,9 +37,9 @@ compromisso** — quem só olha a agenda não vê o negócio acontecer.
 
 | Fase | Arquivo | Estado | Commit |
 |---|---|---|---|
-| Inventário das fotos | `INVENTARIO.md` | ✅ | *(este commit)* |
-| Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | *(este commit)* |
-| Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | *(este commit)* |
+| Inventário das fotos | `INVENTARIO.md` | ✅ | `25f1a17` |
+| Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | `25f1a17` |
+| Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | `25f1a17` |
 | Backlog em épicos | — | ⬜ | — |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
