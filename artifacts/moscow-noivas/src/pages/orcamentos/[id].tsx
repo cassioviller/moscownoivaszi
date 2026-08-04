@@ -98,7 +98,9 @@ const MENSAGENS_ERRO: Record<string, string> = {
 };
 
 const novoItemSchema = z.object({
-  tipo: z.enum(["VESTIDO", "SERVICO", "AJUSTE"]),
+  // E150: ACESSORIO é peça do acervo como o vestido — aponta `vestidoId` e o
+  // fechamento exige reserva. Serviço e ajuste não são peça e seguem sem.
+  tipo: z.enum(["VESTIDO", "ACESSORIO", "SERVICO", "AJUSTE"]),
   // vestidoId liga o item ao catálogo (E35): ao escolher um vestido, descrição
   // e valor vêm dele. Vazio = item avulso (serviço/ajuste ou vestido sem ficha).
   vestidoId: z.string().optional(),
@@ -463,8 +465,11 @@ export default function OrcamentoDetail() {
           descricao: values.descricao,
           valorUnitario,
           quantidade,
-          // vestidoId só faz sentido em item de vestido; serviço/ajuste vão sem.
-          ...(values.tipo === "VESTIDO" && values.vestidoId ? { vestidoId: values.vestidoId } : {}),
+          // E150: vestidoId vale para PEÇA — vestido e acessório. Serviço e
+          // ajuste vão sem, e é por isso que a guarda do servidor não os cobra.
+          ...((values.tipo === "VESTIDO" || values.tipo === "ACESSORIO") && values.vestidoId
+            ? { vestidoId: values.vestidoId }
+            : {}),
         },
       });
       await invalidar();
@@ -911,7 +916,7 @@ export default function OrcamentoDetail() {
                           onValueChange={(v) => {
                             field.onChange(v);
                             // Trocar de tipo desfaz o vínculo com o catálogo.
-                            if (v !== "VESTIDO") itemForm.setValue("vestidoId", "");
+                            if (v !== "VESTIDO" && v !== "ACESSORIO") itemForm.setValue("vestidoId", "");
                           }}
                         >
                           <FormControl>
@@ -921,6 +926,7 @@ export default function OrcamentoDetail() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="VESTIDO">Vestido</SelectItem>
+                            <SelectItem value="ACESSORIO">Acessório</SelectItem>
                             <SelectItem value="SERVICO">Serviço</SelectItem>
                             <SelectItem value="AJUSTE">Ajuste</SelectItem>
                           </SelectContent>
@@ -931,7 +937,7 @@ export default function OrcamentoDetail() {
                   />
                   {/* Seletor do catálogo (E35): escolher um vestido preenche
                       descrição e valor e vincula o item ao estoque. */}
-                  {itemForm.watch("tipo") === "VESTIDO" && (
+                  {(itemForm.watch("tipo") === "VESTIDO" || itemForm.watch("tipo") === "ACESSORIO") && (
                     <div className="w-56 space-y-2">
                       <label className="text-sm font-medium">Do catálogo</label>
                       <Select

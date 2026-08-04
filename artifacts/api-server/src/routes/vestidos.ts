@@ -9,7 +9,7 @@ import {
   contratosTable,
   contratoItensTable,
 } from "@workspace/db";
-import { eq, and, gte, lt, isNull, isNotNull, count, sql } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, isNotNull, inArray, count, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   ListVestidosResponse,
@@ -299,14 +299,18 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         ...recorte(bloqueioVestidosTable.casamentoData),
       ))
       .groupBy(bloqueioVestidosTable.vestidoId),
-    // Itens VESTIDO de contratos ATIVOS fechados no período — e a receita.
+    // Itens de PEÇA de contratos ATIVOS fechados no período — e a receita.
+    // E150: ACESSORIO entra aqui junto com VESTIDO. As duas são peça do acervo,
+    // com código e reserva próprios, e a utilização é por PEÇA — deixar o
+    // acessório de fora faria o bolero circular sem nunca aparecer no giro nem
+    // na receita da peça que o gerou.
     db
       .select({ vestidoId: contratoItensTable.vestidoId, qtd: count(), receita: receitaSql })
       .from(contratoItensTable)
       .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
       .where(and(
         eq(contratoItensTable.lojaId, lojaId),
-        eq(contratoItensTable.tipo, "VESTIDO"),
+        inArray(contratoItensTable.tipo, ["VESTIDO", "ACESSORIO"]),
         isNotNull(contratoItensTable.vestidoId),
         eq(contratosTable.status, "ATIVO"),
         ...recorte(contratosTable.fechadoEm),
