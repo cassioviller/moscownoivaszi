@@ -4853,6 +4853,9 @@ components:
         codigo: { type: string }
         nome: { type: string }
         precoBase: { type: number }
+        # E157: nulo = a peça não tem preço de segunda saída, e o orçamento
+        # segue com o precoBase (o comportamento de sempre).
+        precoRealuguel: { type: ["number", "null"] }
         tamanho: { type: ["string", "null"] }
         cor: { type: ["string", "null"] }
         categoria: { type: ["string", "null"] }
@@ -4904,6 +4907,7 @@ components:
         nome: { type: string }
         status: { type: string }
         precoBase: { type: number }
+        precoRealuguel: { type: ["number", "null"] }
         # Provas agendadas no período (inclui FALTOU — a demanda existiu).
         provas: { type: integer }
         # Reservas de casamento ATIVAS com data no período.
@@ -4918,6 +4922,7 @@ components:
         codigo: { type: string, minLength: 1 }
         nome: { type: string, minLength: 1 }
         precoBase: { type: number }
+        precoRealuguel: { type: number, minimum: 0 }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
@@ -4932,6 +4937,9 @@ components:
         codigo: { type: string }
         nome: { type: string }
         precoBase: { type: number }
+        # null EXPLÍCITO desfaz o preço de realuguel — a peça volta a ser
+        # cobrada pelo precoBase em toda saída.
+        precoRealuguel: { type: ["number", "null"] }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }

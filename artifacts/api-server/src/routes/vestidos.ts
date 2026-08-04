@@ -287,6 +287,9 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         nome: vestidosTable.nome,
         status: vestidosTable.status,
         precoBase: vestidosTable.precoBase,
+        // E157: desce junto com a contagem — quem lê a utilização é quem
+        // decide se a peça já se pagou e quanto cobrar da próxima saída.
+        precoRealuguel: vestidosTable.precoRealuguel,
       })
       .from(vestidosTable)
       .where(eq(vestidosTable.lojaId, lojaId))

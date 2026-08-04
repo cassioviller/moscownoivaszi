@@ -13,6 +13,8 @@ export interface VestidoInput {
   /** @minLength 1 */
   nome: string;
   precoBase: number;
+  /** @minimum 0 */
+  precoRealuguel?: number;
   tamanho?: string;
   cor?: string;
   categoria?: string;

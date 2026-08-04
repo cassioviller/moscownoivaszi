@@ -271,6 +271,14 @@ rode o codegen.
   para 19/09/2026 — a loja tem 2"* e deixa fechar. Saiote é substituível;
   recusar uma venda de R$ 4.000 por causa de uma anágua seria um defeito, não
   uma proteção. A dona conta a arara em **Vestidos → Estoque**.
+- **A peça é precificada pela VEZ em que sai (E157)** — `vestidos` ganha
+  `precoRealuguel` (**nulo = não tem preço de segunda saída**, e o orçamento
+  segue com o `precoBase` — o comportamento de sempre). A contagem que decide
+  qual preço vale **já existia**: `GET /vestidos/utilizacao` sem recorte
+  `de`/`ate` conta a vida inteira da peça. Ao escolher uma peça já alugada, o
+  item de orçamento **sugere** o preço de realuguel e diz por quê ("3ª saída
+  desta peça"); o campo segue editável, porque preço é conversa. O papel
+  registra a contagem 7 vezes em 14 semanas.
 - **O ciclo da peça tem três datas reais (E152)** — retirada, devolução e agora
   **`lavagemConcluidaEm`**: a lavagem era a única etapa calculada só por soma, e
   a peça voltava da lavanderia na quarta presa até domingo. A régua de 7 dias

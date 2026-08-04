@@ -42,6 +42,22 @@ export const vestidosTable = pgTable("vestidos", {
   codigo: text("codigo").notNull(),
   nome: text("nome").notNull(),
   precoBase: decimal("preco_base", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  /**
+   * E157 — o preço da peça que já saiu antes.
+   *
+   * O ateliê precifica pela VEZ em que a peça sai: o caderno registra a
+   * contagem 7 vezes em 14 semanas — `1º Aluguel` (YOKO, Adelita, Andreia),
+   * `2º Aluguel` (Nixia), `2º` (BLARY), `Realuguel` (Fencyella, Adelita) — e o
+   * sistema tinha um preço só.
+   *
+   * **Nulo é o caso comum e significa "não tem preço de segunda saída"**: o
+   * orçamento segue com o `precoBase`, que é o comportamento de sempre. Por
+   * isso a coluna nasce sem migração de dados nenhuma.
+   *
+   * A contagem que decide qual preço vale NÃO mora aqui: ela é derivada dos
+   * contratos (`GET /vestidos/utilizacao`), como toda contagem deste repo.
+   */
+  precoRealuguel: decimal("preco_realuguel", { precision: 10, scale: 2, mode: "number" }),
   tamanho: text("tamanho"),
   cor: text("cor"),
   categoria: text("categoria"),

@@ -41,6 +41,8 @@ export default function NovoVestido() {
           codigo: values.codigo,
           nome: values.nome,
           precoBase: values.precoBase,
+          // E157: só vai quando existe — o POST não tem o que apagar.
+          ...(values.precoRealuguel != null ? { precoRealuguel: values.precoRealuguel } : {}),
           tamanho: values.tamanho || undefined,
           categoria: values.categoria || undefined,
           observacoes: values.observacoes || undefined,

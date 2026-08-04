@@ -33,6 +33,17 @@ export const vestidoFormSchema = z.object({
     else if (Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 4.200,50)" });
     else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
   }),
+  /**
+   * E157 — o preço da peça que já saiu antes. VAZIO é o caso comum e
+   * significa "não tem preço de segunda saída": o orçamento segue com o preço
+   * de tabela. Só a bobagem digitada é recusada.
+   */
+  precoRealuguel: z.string().optional().superRefine((texto, ctx) => {
+    if (!texto?.trim()) return;
+    const v = parseValor(texto);
+    if (v === null || Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 3.500,00)" });
+    else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
+  }),
   tamanho: z.string().optional(),
   categoria: z.string().optional(),
   observacoes: z.string().optional(),
@@ -41,7 +52,11 @@ export const vestidoFormSchema = z.object({
 type VestidoFormCampos = z.infer<typeof vestidoFormSchema>;
 
 /** O que as páginas recebem no submit — o preço JÁ convertido para número. */
-export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase"> & { precoBase: number };
+export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase" | "precoRealuguel"> & {
+  precoBase: number;
+  /** null = a peça não tem preço de segunda saída (E157). */
+  precoRealuguel: number | null;
+};
 
 /**
  * Form completo de vestido (páginas Novo/Editar) — portado da tela do
@@ -71,6 +86,8 @@ export function VestidoForm({
       nome: defaults?.nome ?? "",
       // Exibição pt-BR: o valor salvo volta com vírgula, como se digita.
       precoBase: defaults?.precoBase != null ? String(defaults.precoBase).replace(".", ",") : "",
+      precoRealuguel:
+        defaults?.precoRealuguel != null ? String(defaults.precoRealuguel).replace(".", ",") : "",
       tamanho: defaults?.tamanho ?? "",
       categoria: defaults?.categoria ?? "",
       observacoes: defaults?.observacoes ?? "",
@@ -92,7 +109,17 @@ export function VestidoForm({
       .filter(([, opcaoId]) => !!opcaoId)
       .map(([atributoId, opcaoId]) => ({ atributoId, opcaoId }));
     // O schema já garantiu que o parse não é null nem NaN.
-    await onSubmit({ ...values, precoBase: parseValor(values.precoBase) as number }, atributos);
+    // E157: vazio vira null — "esta peça não tem preço de segunda saída" —, e
+    // o servidor entende null como "apague o que havia".
+    const realuguel = values.precoRealuguel?.trim() ? parseValor(values.precoRealuguel) : null;
+    await onSubmit(
+      {
+        ...values,
+        precoBase: parseValor(values.precoBase) as number,
+        precoRealuguel: realuguel as number | null,
+      },
+      atributos,
+    );
   }
 
   return (
@@ -126,6 +153,27 @@ export function VestidoForm({
             )}
           />
         </div>
+        {/* E157 — o ateliê precifica pela VEZ em que a peça sai: o caderno
+            anota "1º Aluguel", "2º Aluguel", "Realuguel". Vazio é o caso
+            comum, e mantém o preço de tabela em toda saída. */}
+        <FormField
+          control={form.control}
+          name="precoRealuguel"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Preço de realuguel (R$)</FormLabel>
+              <FormControl>
+                <Input
+                  inputMode="decimal"
+                  placeholder="vazio = mesmo preço em toda saída"
+                  data-testid="input-preco-realuguel"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="nome"

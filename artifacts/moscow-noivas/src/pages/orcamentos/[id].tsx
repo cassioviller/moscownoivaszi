@@ -18,6 +18,8 @@ import {
   getGetLeadQueryKey,
   useListVestidos,
   getListVestidosQueryKey,
+  useGetUtilizacaoVestidos,
+  getGetUtilizacaoVestidosQueryKey,
   useListItensEstoque,
   getListItensEstoqueQueryKey,
   useGetComprometimentoEstoque,
@@ -75,6 +77,7 @@ import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
 import { confeccoesDaNoiva as confeccoesDoOrcamento } from "@/lib/confeccoes-da-noiva";
+import { precoDaSaida } from "@/lib/preco-da-saida";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
 import { montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
@@ -252,6 +255,22 @@ export default function OrcamentoDetail() {
     () => new Map((vestidos.data ?? []).map((v) => [v.id, v])),
     [vestidos.data],
   );
+  /**
+   * E157 — quantas vezes cada peça JÁ saiu.
+   *
+   * A contagem vem de `GET /vestidos/utilizacao` sem recorte de data, e por
+   * isso é da vida inteira (`routes/vestidos.ts:274-277`) — que é o que "2º
+   * Aluguel" significa no caderno. `contratos` conta itens de peça em
+   * contratos ATIVOS: é o passado, não a venda que está sendo montada.
+   */
+  const utilizacao = useGetUtilizacaoVestidos(activeLojaId!, {}, {
+    query: { queryKey: getGetUtilizacaoVestidosQueryKey(activeLojaId!, {}), enabled: !!activeLojaId },
+  });
+  const locacoesPorVestido = useMemo(
+    () => new Map((utilizacao.data ?? []).map((u) => [u.vestidoId, u.contratos])),
+    [utilizacao.data],
+  );
+
   // E154: o estoque para o seletor de item — saiote, crinol, anágua. Lista
   // curta e separada do acervo de propósito: são as peças que a vendedora NÃO
   // abre com a noiva na cabine, e misturá-las encheria a outra de anágua.
@@ -390,6 +409,14 @@ export default function OrcamentoDetail() {
     resolver: zodResolver(novoItemSchema),
     defaultValues: { tipo: "VESTIDO", vestidoId: "", itemEstoqueId: "", ajusteId: "", descricao: "", valorUnitario: "", quantidade: "1" },
   });
+
+  /** E157 — a explicação do preço que a régua sugeriu para a peça escolhida. */
+  const vestidoEscolhidoId = itemForm.watch("vestidoId");
+  const precoSugerido = useMemo(() => {
+    const ves = vestidoEscolhidoId ? vestidoPorId.get(vestidoEscolhidoId) : null;
+    if (!ves) return null;
+    return precoDaSaida(ves, locacoesPorVestido.get(ves.id) ?? 0);
+  }, [vestidoEscolhidoId, vestidoPorId, locacoesPorVestido]);
 
   const editarItemForm = useForm<EditarItemValues>({
     resolver: zodResolver(editarItemSchema),
@@ -1152,7 +1179,13 @@ export default function OrcamentoDetail() {
                           const ves = vestidoPorId.get(v);
                           if (ves) {
                             itemForm.setValue("descricao", ves.nome);
-                            itemForm.setValue("valorUnitario", String(ves.precoBase));
+                            // E157: a peça que já saiu antes sugere o preço de
+                            // realuguel. Sugere — o campo continua editável, e
+                            // a frase ao lado diz de que saída se trata.
+                            itemForm.setValue(
+                              "valorUnitario",
+                              String(precoDaSaida(ves, locacoesPorVestido.get(v) ?? 0).valor),
+                            );
                           }
                         }}
                       >
@@ -1189,11 +1222,18 @@ export default function OrcamentoDetail() {
                     control={itemForm.control}
                     name="valorUnitario"
                     render={({ field }) => (
-                      <FormItem className="w-32">
+                      <FormItem className="w-40">
                         <FormLabel>Valor (R$)</FormLabel>
                         <FormControl>
                           <Input inputMode="decimal" placeholder="5.000,00" {...field} />
                         </FormControl>
+                        {/* E157: a régua SUGERE e explica; o campo segue
+                            editável, porque preço é conversa. */}
+                        {precoSugerido?.ehRealuguel && (
+                          <p className="text-xs text-muted-foreground" data-testid="motivo-preco">
+                            {precoSugerido.motivo}
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
