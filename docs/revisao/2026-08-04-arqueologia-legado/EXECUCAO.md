@@ -58,7 +58,7 @@ Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 
 | # | Tese | Peso | Veredito adversarial |
 |---|---|---|---|
-| A1 | A régua de ocupação é uma só para o acervo e prende a peça 13 dias; o ateliê realuga em 7 | 🔴 | CONFIRMADO, com ressalva de identidade da peça |
+| A1 | A **lavagem de 7 dias** é a única fonte da colisão: os dois usos não se tocam. O ateliê realugou uma peça em 7 dias | 🔴 → **🟠** | CONFIRMADO com **1 exemplo, não 3** (ver abaixo), e uma ameaça em aberto (`"15 dias"`) |
 | A2 | O conjunto só é protegido se cada peça for cadastrada e reservada; nada exige isso | 🟠 | CONFIRMADO com escopo corrigido |
 | A3 | O filtro de cor compara string exata e o cadastro é campo de texto livre | 🟠 | CONFIRMADO |
 | A4 | Não há preço de realuguel, embora a contagem de locações já exista | 🟡 | — (pergunta de produto) |
