@@ -24,9 +24,59 @@ A lente é uma só: **o que o ateliê faz todo dia e o sistema não deixa fazer.
    — ela é o que manda sobre ordem, numeração e escopo dos épicos, e reordenou
    o que este rastreador propunha (o acervo ainda não entrou no sistema; a
    forma do cadastro custa mais caro que a régua de ocupação).
-6. As **perguntas de produto** bloqueiam o bloco 2 da spec (E152 e E153). O
-   bloco 1 — **E148, E149, E150, E154, E155 e E151** — não depende de resposta
-   nenhuma (regra 5).
+6. **As cinco perguntas de produto estão respondidas** (P1–P5, tabela abaixo).
+   Não há bloqueio nenhum, e a spec está na 4ª versão.
+7. Leia **"Onde paramos"**, logo abaixo — é o estado da mesa no fim da última
+   sessão, com o que sobrou para fazer.
+
+## Onde paramos — fim da sessão 4 (2026-08-04)
+
+**Nove épicos fechados, um aberto.** O bloco inteiro da spec (E148 → E152) mais
+os dois que as respostas P4/P5 abriram; sobra o **E156**.
+
+| | |
+|---|---|
+| Último commit de código | `f697136` (E157) |
+| Último commit de docs | este |
+| Branch | `rodada-7-sobras`, **não fundida no main** |
+| Suítes no fim | API **980** passed / 3 skipped · frontend **438** · E2E **151** passed / **2 failed** / 2 skipped · typecheck verde |
+
+**Os 2 vermelhos do E2E são conhecidos e NÃO são regressão** — `09-financeiro`
+:27 e :40, a **S-A11**, com pré-existência provada no E148. Enquanto ela viver,
+`pnpm run test:e2e` sai com `EXIT=1` para todo mundo: **confira o log pela
+linha de resumo, nunca pelo código de saída** (regra 14, e o E150 pagou para
+aprender).
+
+### O que fazer primeiro na próxima sessão
+
+1. **E156 — a confecção vira peça do acervo** (P4: *"vira"*). O escopo está
+   escrito na 4ª versão da spec: `vestidos.origem_ajuste_id`, o gesto *"virou
+   peça do acervo"* na fila da costureira (só em `CONFECCAO` já `FEITO`), e o
+   preço DIGITADO — o custo da costureira e o aluguel da noiva são números
+   diferentes. É gesto, não gatilho.
+2. **S-A11**, se a paciência com os dois vermelhos acabar. É 🟠 e é a única
+   sobra que corrói a régua 11 todo dia.
+
+### O estado do banco de dev
+
+As **cinco** migrações desta sessão (E154, E155, E151, E152, E157) **já foram
+aplicadas** no banco de dev, e a baseline do drizzle foi regenerada a cada uma
+(`0001` … `0005`). Um banco novo nasce certo pelos dois caminhos (`push` e
+`migrate`); um banco que já existe precisa dos **sete** scripts do dia em
+`docs/migracoes/2026-08-04-*.sql` (os do E149 e do E150 são das sessões
+anteriores de hoje).
+
+E o `pnpm --filter @workspace/db run generate` **voltou a funcionar** — o `out`
+absoluto do `drizzle.config.ts` o matava com ENOENT, e o `replit.md` documentava
+a volta pela CLI. Consertei no E154: um teste que manda rodar um comando que não
+roda é uma armadilha para quem vem depois.
+
+### Fora do git, de propósito
+
+Há um `imagens … .zip` na raiz do repositório, não rastreado — é o pacote
+original das fotos, e as 29 já estão versionadas em `fotos/` (S-A1). **Não
+commitei**: decidir se o zip entra, vira repo de evidências ou some é da dona do
+repositório, não de quem passou por aqui.
 
 ## As duas mídias — o achado que organiza o resto
 
@@ -158,6 +208,13 @@ foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação 
 
 Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 
+**19 sobras, 1 fechada.** As que pesam, em ordem: **S-A11 🟠** (os dois vermelhos
+do E2E, que corroem a régua 11 todo dia), **S-A15 🟠** (a sonda do snapshot não
+vê valor de enum — o `ACESSORIO` do E150 ficou fora da baseline por um dia com
+a suíte verde) e **S-A19 🟠** (o realuguel curto é barrado pela janela de PROVA,
+não pela lavagem — e a spec do E152 afirma o contrário). As 🔵 são de higiene e
+podem esperar.
+
 | # | O quê | Peso | Origem |
 |---|---|---|---|
 | S-A1 | **As 29 fotos entraram no git (3,8 MB).** Decisão contrária à da rodada 7, que deixou as 81 capturas fora (`.gitignore`) — e deliberada: aquelas eram **regeneráveis por script** (S-D1), estas são evidência primária de um sistema em papel que não se recaptura. Se o peso incomodar, o caminho é um repo de evidências, não apagar. | 🔵 | montagem da trilha |
@@ -178,4 +235,4 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-A17 | **A fila da costureira não tem tela própria por trabalho.** O E155 põe confecção e ajuste na mesma lista e o item do orçamento aponta o trabalho, mas o link do item leva à FILA (`/ajustes?recorte=todos`), não ao trabalho — não existe rota `/ajustes/:id`. Numa loja com fila longa, "na fila da costureira" obriga a procurar a olho. Enquanto a confecção era inexistente isso não pesava; agora que ela tem custo e é cobrada, pesa. | 🔵 | execução E155 |
 | S-A18 | **A ausência não olha o que já está marcado.** Registrar férias por cima de uma agenda cheia é aceito em silêncio: o E151 decidiu (com a spec) que ela só impede o NOVO, mas quem cadastra não fica sabendo que há atendimentos naquele intervalo. Um aviso na hora de marcar — *"há 4 atendimentos nesse período; eles não serão alterados"* — fecharia o buraco entre a decisão certa e a pessoa que precisa agir sobre ela. Remarcação em lote segue sendo decisão de produto; **contar e avisar não é**. | 🟡 | execução E151 |
 | S-A19 | **O realuguel curto é barrado pela janela de PROVA da segunda noiva, não pela lavagem.** Medido no E152: com casamento em D e regra padrão, a segunda reserva em D+7 traz `PROVA [D−6, D+4]`, que sobrepõe o `USO [D−3, D+2]` da primeira — e PROVA × FÍSICA é conflito. O `POST /bloqueios` **não aceita `provaDataReal`**, então não há como criar a segunda reserva já com a prova num dia só, que é justamente o caso do realuguel (a noiva escolheu peça que já conhece). Duas saídas possíveis, e a escolha é de produto. **A spec do E152 afirma que aquele épico torna o caso Adelita registrável; ele NÃO torna** — há teste pregando isso. | 🟠 | execução E152 |
-| S-A5 | **O `CLAUDE.md` segue apontando para o rastreador da rodada 6** — é a S-D28 da rodada 7, ainda aberta, e agora há um terceiro rastreador (este) disputando o ponteiro. Quando fechar, o ponteiro deve dizer qual é a rodada em curso **e** que a arqueologia é uma trilha paralela. | 🟡 | montagem da trilha |
+| ~~S-A5~~ | ~~**O `CLAUDE.md` segue apontando para o rastreador da rodada 6**~~ — **FECHADA no fim da sessão 4**: o ponteiro passou a apontar para esta trilha, e ganhou a tabela das três (arqueologia em curso; rodadas 6 e 7 fechadas, com as sobras delas ainda valendo). Era também a S-D28 da rodada 7. | ✅ | montagem da trilha |
