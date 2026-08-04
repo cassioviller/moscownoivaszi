@@ -50,7 +50,7 @@ compromisso** — quem só olha a agenda não vê o negócio acontecer.
 | Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | `25f1a17` |
 | Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | `25f1a17` |
 | Trilha B — releitura dos 7 pontos | `B-releitura-dos-sete-pontos.md` | ✅ | `b909f18` |
-| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | *(este commit)* |
+| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | `e396574` |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 
