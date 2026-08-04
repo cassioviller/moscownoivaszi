@@ -1,6 +1,6 @@
 # O acervo ganha a identidade que o papel já tem
 
-**Spec de execução · 2026-08-04** (3ª versão — as perguntas respondidas)
+**Spec de execução · 2026-08-04** (4ª versão — o bloco fechou, e duas respostas abrem o próximo)
 branch `rodada-7-sobras`
 Diagnóstico: `docs/revisao/2026-08-04-arqueologia-legado/` (trilhas A e B,
 adversarial, 29 fotos do sistema em papel)
@@ -16,6 +16,12 @@ adversarial, 29 fotos do sistema em papel)
 > **P2** ("dois vestidos") **cancela o E153**, o único épico irreversível e o
 > mais caro. **P3** deixou de importar.
 > **Sobraram 7 épicos e nenhum bloqueio.**
+> **4ª versão (esta):** os sete foram executados e commitados. A dona respondeu
+> mais duas perguntas, e cada uma abre um épico: **P4** ("vira") diz que a peça
+> confeccionada VIRA item do acervo depois do casamento — a transição
+> produção → acervo que o E155 registrou sem modelar; **P5** ("é valor") tira a
+> ambiguidade do `7.600` e **destrava o A4**, o preço de realuguel.
+> **Entram E156 e E157.**
 
 ## Por que agora, e não depois
 
@@ -475,3 +481,115 @@ começar a qualquer momento, em paralelo à execução destes sete.
 Cada épico fecha com **um commit de código** e o `docs(...)` que registra o hash
 no rastreador. Os que mudam o que a trilha grava ou o formato que uma tela lê —
 **E150, E154, E155 e E152** — rodam o **E2E completo** antes do commit (regra 11).
+
+---
+
+# 4ª versão — o bloco fechou, e duas respostas abrem o próximo
+
+Os sete épicos da 3ª versão estão executados e commitados (`8633011` … `a8d094a`;
+os relatórios em `docs/revisao/2026-08-04-arqueologia-legado/execucao/`). Esta
+seção registra **duas respostas novas da dona**, no mesmo formato das três
+primeiras: o que ela disse, o que isso resolve, e o que passa a ser possível.
+
+## P4 — "Vira." ✅
+
+*A pergunta era: depois do casamento, a peça confeccionada vira item do acervo?*
+
+**Vira.** Então existe uma transição **produção → acervo** que nem a spec nem o
+E155 modelaram — o E155 registrou a pergunta e não inventou a resposta, e este é
+o épico que ela paga.
+
+O que a resposta significa em números: a manga da Dayfini foi feita para uma
+noiva, cobrada uma vez, e **volta a render** — ela entra na lista que a próxima
+noiva folheia, com código, reserva e conflito próprios, como qualquer peça. Sem
+a transição, cada peça sob medida some do sistema no dia seguinte ao casamento e
+volta a existir só como frase no contrato — que é exatamente o estado de que o
+E150 tirou o bolero.
+
+### E156 — a confecção vira peça do acervo
+
+**Fecha:** P4 · a transição que o E155 deixou escrita e não modelada
+
+`vestidos` ganha a proveniência, e não o contrário:
+
+```sql
+ALTER TABLE vestidos ADD COLUMN origem_ajuste_id text REFERENCES ajustes(id) ON DELETE SET NULL;
+```
+
+A direção importa. A peça do acervo é o que sobrevive; o trabalho da costureira
+é de onde ela veio. Apontar ao contrário (`ajustes.vestidoId`) faria a fila
+carregar um campo que só interessa depois que ela terminou.
+
+**Três decisões, e as três seguem doutrina que já existe aqui:**
+
+1. **É um gesto, não um gatilho.** Nada vira peça sozinho quando o casamento
+   passa. É a mesma razão do E100/F37 e do E151: o sistema não toma decisão
+   irreversível pela loja — quem decide se aquela manga entra no acervo é quem
+   vai alugá-la de novo.
+2. **O preço é digitado.** `ajustes.custo` é o que a **costureira** cobrou;
+   `vestidos.precoBase` é o que a **noiva** paga para alugar. São números
+   diferentes, e derivar um do outro seria inventar margem.
+3. **A peça nasce ATIVA e sem reserva nenhuma** — o histórico dela começa no dia
+   em que virou acervo. O contrato antigo continua apontando a confecção pelo
+   `ajusteId` do item (E155); nada é reescrito para trás.
+
+**Onde:** na fila da costureira, no trabalho `CONFECCAO` já `FEITO` — *"virou
+peça do acervo"*, abrindo o cadastro com nome e descrição preenchidos.
+
+**Fora do escopo:** foto (o cadastro de vestido já a tem), e transformar peça de
+acervo de volta em produção — não existe caminho de volta e ninguém pediu.
+
+## P5 — "É valor." ✅
+
+*A pergunta era: o `7.600` ao lado de "Realuguel" é valor ou código de peça?*
+
+**É valor.** A ambiguidade que segurava o A4 desde a trilha A cai: o único
+número monetário das 29 fotos é dinheiro, e a releitura da trilha B já apontava
+para lá — **ponto de milhar**, e nenhum dos 8 códigos observados usa ponto.
+
+**O A4 deixa de ser impressão e vira épico.** O papel registra a contagem de
+locações **7 vezes em 14 semanas** — `1º Aluguel` (YOKO, Adelita, Andreia),
+`2º Aluguel` (Nixia), `2º` (BLARY), `Realuguel` (Fencyella, Adelita) —, o que
+significa que o ateliê **precifica pela vez que a peça sai**, e o sistema tem um
+preço só.
+
+### E157 — a peça sabe quantas vezes saiu, e o preço acompanha
+
+**Fecha:** A4 🟡 · **destravado por P5**
+
+**A contagem já existe, e é da vida inteira.** `GET /vestidos/utilizacao`
+(`routes/vestidos.ts:259-330`) conta provas, reservas e contratos por peça, e o
+recorte `de`/`ate` é **opcional** — sem ele, `recorte()` devolve lista vazia de
+filtros e a conta cobre tudo (`:274-277`). Não há motor a construir: há um
+número que ninguém está lendo na hora certa.
+
+O que falta é a régua de preço:
+
+```sql
+ALTER TABLE vestidos ADD COLUMN preco_realuguel numeric(10,2);
+```
+
+**Nulo = a peça não tem preço de segunda saída**, e o orçamento segue com o
+`precoBase` — que é o comportamento de hoje, e por isso a coluna nasce sem
+migração de dados. Quando existe, o item de orçamento que aponta uma peça **já
+alugada antes** sugere o preço de realuguel, e a tela diz por quê: *"2ª saída
+desta peça — preço de realuguel"*.
+
+**A decisão de projeto: sugere, não impõe.** É a mesma família do E154 — a
+vendedora vê o número e o motivo, e pode digitar outro. Preço é conversa; travar
+o campo transformaria uma régua útil num atrito na frente da noiva.
+
+**O que continua em aberto, e não bloqueia:** *quanto* é o preço de realuguel de
+cada peça. É um número por peça que a dona digita, como o `precoBase` — o épico
+entrega o campo e a régua, não a tabela de preços do ateliê.
+
+## Ordem
+
+| Épico | Fecha | Depende de |
+|---|---|---|
+| **E156** — a confecção vira peça do acervo | P4 | E155 (existe confecção) |
+| **E157** — contagem de locações e preço de realuguel | A4 · P5 | E150 (o acessório também é peça que circula) |
+
+Os dois são independentes entre si. O **E157 é o de maior retorno** — mexe no
+preço de toda peça que sai pela segunda vez; o **E156 é o mais barato** — uma
+coluna, um gesto e uma tela que já existe.

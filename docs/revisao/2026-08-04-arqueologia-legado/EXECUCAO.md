@@ -103,8 +103,12 @@ O 🔴 é o segundo. A ordem passou a ser esta:
 | **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | ✅ | `90536a0` · `execucao/E151.md` |
 | **E152** — a lavagem ganha **data real** (`lavagem_concluida_em`) | A1 | ✅ | `a8d094a` · `execucao/E152.md` |
 | ~~**E153**~~ — ~~modelo × peça~~ | — | **CANCELADO por P2** | — |
+| **E156** — a confecção vira peça do acervo | P4 | ⬜ | — |
+| **E157** — a peça conta as locações, e o preço acompanha | A4 · P5 | ⬜ | — |
 
-**Os oito épicos do bloco estão fechados.** A ordem é sequencial —
+**Os oito épicos do bloco estão fechados.** P4 e P5, respondidas em 2026-08-04
+depois do fecho, abriram dois novos (E156 e E157) — a 4ª versão da spec os
+descreve. A ordem é sequencial —
 banco de dev e suíte E2E são compartilhados, E149 é dependência dura de E150 e
 E154, e o método pede um commit por épico com a suíte lida inteira entre eles
 (regras 10, 11, 14, 16).
@@ -115,18 +119,20 @@ o tipo 2 **por contagem** (existem dez), o tipo 3 **por prazo** (não existe
 ainda). Três naturezas, três mecanismos; forçar as três no acervo encheria de
 anágua a lista que a vendedora abre com a noiva na cabine.
 
-**As três perguntas foram RESPONDIDAS pela dona em 2026-08-04** — não há mais
-bloqueio nenhum:
+**As perguntas RESPONDIDAS pela dona em 2026-08-04** — as três primeiras antes
+do bloco, P4 e P5 depois de ele fechar:
 
 | | Resposta | Consequência |
 |---|---|---|
 | **P1** | *"uma semana, lavagem externa"* | A régua está **certa**. O A1 se inverte: a colisão é o sistema funcionando. O **E152 troca de escopo** — a lavagem é a única etapa do ciclo **sem data real**, e ganha uma |
 | **P2** | *"dois vestidos"* | **E153 CANCELADO.** Era o único irreversível, o único com prazo e o mais caro. O cadastro do acervo deixa de esperar |
 | **P3** | *"não sei"* | Deixou de importar — P2 respondeu o que ela existia para descobrir |
+| **P4** | *"vira"* | A peça confeccionada **vira item do acervo** depois do casamento: existe a transição produção → acervo que o E155 registrou sem modelar. **Entra o E156** |
+| **P5** | *"é valor"* | O `7.600` é dinheiro, não código. **Destrava o A4** e entra o **E157** — a contagem de locações já existe e é da vida inteira (`routes/vestidos.ts:274-277`); falta a régua de preço |
 
-A4 (preço de realuguel) segue sem épico: o único número monetário em 29 fotos
-é ambíguo entre valor e código — embora a releitura tenha achado **ponto de
-milhar** no `7.600`, e nenhum dos 8 códigos observados use ponto.
+A4 (preço de realuguel) **deixou de ser impressão**: P5 respondeu que o `7.600`
+é valor, e a releitura da trilha B já apontava para lá (ponto de milhar; nenhum
+dos 8 códigos observados usa ponto). Virou o **E157**.
 
 **B2 e B4 (expediente: domingo e 18:30) saíram dos épicos** e viraram S-A8: são
 defaults configuráveis, e ninguém perguntou qual é o expediente real do ateliê.
