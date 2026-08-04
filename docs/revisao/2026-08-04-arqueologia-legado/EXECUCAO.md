@@ -93,18 +93,18 @@ primeiros vestidos"* — **o acervo ainda não entrou**. Logo:
 
 O 🔴 é o segundo. A ordem passou a ser esta:
 
-| Épico | Fecha | Bloqueado por |
-|---|---|---|
-| **E148** — a régua que a tela mostra é a que o sistema usa | B1 | — |
-| **E149** — cor e categoria saem do texto livre e viram catálogo | A3 | — |
-| **E150** — acessório **tipo 1** (peça única): entra no acervo, e o contrato exige reserva | A2 | — (depende do E149) |
-| **E154** — acessório **tipo 2** (estoque): é contado, não reservado — avisa, não bloqueia | A2 | — (depende do E149) |
-| **E155** — acessório **tipo 3** (sob medida): entra na fila da costureira, que já existe | S-A4 · S-A6 | — |
-| **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | — |
-| **E152** — a lavagem ganha **data real** (`lavagem_concluida_em`) | A1 | ~~P1~~ ✅ |
-| ~~**E153**~~ — ~~modelo × peça~~ | — | **CANCELADO por P2** |
+| Épico | Fecha | Estado | Commit · relatório |
+|---|---|---|---|
+| **E148** — a régua que a tela mostra é a que o sistema usa | B1 | ✅ | `8633011` · `execucao/E148.md` |
+| **E149** — cor e categoria saem do texto livre e viram catálogo | A3 | ✅ | `bf1162e` · `execucao/E149.md` |
+| **E150** — acessório **tipo 1** (peça única): entra no acervo, e o contrato exige reserva | A2 | ✅ | `a8174ba` + emenda `f8bdbb5` · `execucao/E150.md` |
+| **E154** — acessório **tipo 2** (estoque): é contado, não reservado — avisa, não bloqueia | A2 | ✅ | `1fb39de` · `execucao/E154.md` |
+| **E155** — acessório **tipo 3** (sob medida): entra na fila da costureira, que já existe | S-A4 · S-A6 | ⬜ | — |
+| **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | ⬜ | — |
+| **E152** — a lavagem ganha **data real** (`lavagem_concluida_em`) | A1 | ⬜ (~~P1~~ ✅) | — |
+| ~~**E153**~~ — ~~modelo × peça~~ | — | **CANCELADO por P2** | — |
 
-**Os sete restantes não dependem de resposta nenhuma.** A ordem é sequencial —
+**Os três restantes não dependem de resposta nenhuma.** A ordem é sequencial —
 banco de dev e suíte E2E são compartilhados, E149 é dependência dura de E150 e
 E154, e o método pede um commit por épico com a suíte lida inteira entre eles
 (regras 10, 11, 14, 16).
@@ -167,4 +167,6 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-A9 | **`e2e/11-configuracoes.spec.ts:13-16` carrega um comentário "FALHA ESPERADA no main (achado C2-disponibilidade)"** descrevendo um 404 por URL divergente entre cliente e servidor — e o teste **passa** hoje. Ou o C2 foi consertado e o comentário ficou, ou ele passa por outro motivo. Comentário que mente sobre o estado do teste é pior que comentário nenhum. | 🔵 | execução E148 |
 | S-A10 | **"Duração da prova" é a única linha do bloco de disponibilidade sem contrapartida editável.** Para mudar, só `PATCH` na API. E o cabeçalho do próprio arquivo (`configuracoes/index.tsx:22-25`, do E98) afirma que "isso mora em 'Cabines & horário', dentro de Atendimentos" — **não mora**: `atendimentos/config.tsx` não expõe o campo, e o `EditarEm` do card (`:173`) leva a uma tela sem ele. | 🟡 | execução E148 |
 | S-A11 | **`e2e/09-financeiro.spec.ts:27` e `:40` falham no `main`** — provado rodando os dois contra a base, com o diff do E148 no stash. Esperam a conta "Aluguel" e uma parcela com botão "Receber", dados que o **E147** tornou opcionais (`SEED_EXEMPLOS_FINANCEIROS`) e que o seed idempotente não recria em banco já existente. Enquanto ficarem assim, **`pnpm run test:e2e` sai com `EXIT=1` para todo mundo** e a regra 11 perde o valor: quem roda a suíte aprende a ignorar dois vermelhos — que é como o terceiro passa. Consertar com `beforeAll` próprio (família da S-D17) ou semeando os exemplos no setup do E2E. | 🟠 | execução E148 |
+| S-A15 | **A sonda do snapshot de migração não vê valor de enum.** `e115-migracao-snapshot-unit.test.ts` compara tabelas e COLUNAS; o `ACESSORIO` que o E150 acrescentou a `orcamento_item_tipo` ficou fora da baseline do drizzle por um dia inteiro com a suíte verde, e só apareceu porque o E154 mexeu em coluna e forçou o `generate` (o `0001` gerado traz o `ALTER TYPE … 'ACESSORIO'` junto). Um banco provisionado por `migrate` entre os dois épicos aceitaria o tipo só até o primeiro INSERT. Estender a sonda aos `enums` do snapshot é pequeno e fecha a classe. | 🟠 | execução E154 |
+| S-A16 | **A lavagem não entra na régua do estoque.** A janela do E154 é a de USO, como a spec pediu; mas o saiote também vai à lavagem, e a régua da loja reserva 7 dias para ela no vestido (P1: *"uma semana, lavagem externa"*). A conta é **otimista**: saiote devolvido no dia 21 aparece livre no 22, quando está molhado. Como o épico avisa e não bloqueia, o custo é um aviso que deixa de aparecer — não uma venda recusada à toa. Se a peça de estoque tem ciclo de lavagem é pergunta de produto. | 🟡 | execução E154 |
 | S-A5 | **O `CLAUDE.md` segue apontando para o rastreador da rodada 6** — é a S-D28 da rodada 7, ainda aberta, e agora há um terceiro rastreador (este) disputando o ponteiro. Quando fechar, o ponteiro deve dizer qual é a rodada em curso **e** que a arqueologia é uma trilha paralela. | 🟡 | montagem da trilha |
