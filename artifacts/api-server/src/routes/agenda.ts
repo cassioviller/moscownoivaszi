@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
+import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
@@ -32,11 +32,17 @@ import {
   SetDisponibilidadeBody,
   SetDisponibilidadeResponse,
   RegistrarContatoAtendimentoResponse,
-  DesfazerContatoAtendimentoResponse
+  DesfazerContatoAtendimentoResponse,
+  ListAusenciasResponse,
+  ListAusenciasQueryParams,
+  CreateAusenciaBody,
+  CreateAusenciaResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import {
   recusaDeMover,
+  ausenciaQueCobre,
+  diaLocalYMD,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
   type MotivoRecusa,
@@ -61,7 +67,7 @@ async function recusaDeMoverAtendimento(
   lojaId: string,
   existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date; tipo: "ATENDIMENTO" | "PROVA" },
   mudanca: { cabineId?: string; vendedoraId?: string; inicio?: Date },
-): Promise<MotivoRecusa | null> {
+): Promise<{ motivo: MotivoRecusa; detalhe: string } | null> {
   const regra = await db.query.regraDisponibilidadeTable.findFirst({
     where: eq(regraDisponibilidadeTable.lojaId, lojaId),
   });
@@ -107,7 +113,48 @@ async function recusaDeMoverAtendimento(
       lte(atendimentosTable.inicio, new Date(destinoMs + janelaMs)),
     ));
 
-  return recusaDeMover(movida, destino, concorrentes, expediente);
+  /**
+   * E151 — as ausências que tocam o DIA do destino.
+   *
+   * Recorte pelo dia e não pela loja inteira: férias antigas não interessam a
+   * um agendamento de amanhã, e a tabela cresce com o tempo. O `usuarioNome`
+   * vem junto porque a frase da recusa precisa dele — sem ele a vendedora
+   * leria "a vendedora está ausente" sem saber qual nem até quando.
+   */
+  const diaDestino = diaLocalYMD(destino.inicio);
+  const ausencias = await db
+    .select({
+      usuarioId: ausenciasTable.usuarioId,
+      inicio: ausenciasTable.inicio,
+      fim: ausenciasTable.fim,
+      motivo: ausenciasTable.motivo,
+      nome: usuariosTable.nome,
+    })
+    .from(ausenciasTable)
+    .innerJoin(usuariosTable, eq(usuariosTable.id, ausenciasTable.usuarioId))
+    .where(and(
+      eq(ausenciasTable.lojaId, lojaId),
+      lte(ausenciasTable.inicio, diaDestino),
+      gte(ausenciasTable.fim, diaDestino),
+    ));
+
+  const motivo = recusaDeMover(movida, destino, concorrentes, expediente, ausencias);
+  if (!motivo) return null;
+  if (motivo !== "VENDEDORA_AUSENTE") return { motivo, detalhe: DETALHE_RECUSA[motivo] };
+
+  // A frase nomeia a pessoa e o período — é o que a vendedora precisa para
+  // decidir o que fazer (remarcar? outra vendedora?) sem sair da tela.
+  const ausente = ausenciaQueCobre(ausencias, movida.vendedoraId, destino.inicio) as
+    | { inicio: string; fim: string; motivo: string | null; nome: string }
+    | null;
+  const ddmm = (ymd: string) => ymd.slice(8, 10) + "/" + ymd.slice(5, 7);
+  return {
+    motivo,
+    detalhe: ausente
+      ? `${ausente.nome} está ausente de ${ddmm(ausente.inicio)} a ${ddmm(ausente.fim)}` +
+        (ausente.motivo ? ` (${ausente.motivo})` : "") + "."
+      : DETALHE_RECUSA[motivo],
+  };
 }
 
 // Joins padrão dos atendimentos: as telas de fila/agenda/provas precisam de
@@ -133,6 +180,8 @@ router.use("/lojas/:lojaId/cabines", requireModulo("agenda"));
 router.use("/lojas/:lojaId/atendimentos", requireModulo("agenda"));
 router.use("/lojas/:lojaId/ajustes", requireModulo("agenda"));
 router.use("/lojas/:lojaId/disponibilidade", requireModulo("agenda"));
+// E151: a ausência é da agenda — quem marca o dia é quem sabe quem falta.
+router.use("/lojas/:lojaId/ausencias", requireModulo("agenda"));
 
 // Cabines
 router.get("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
@@ -263,7 +312,7 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     {},
   );
   if (recusa) {
-    res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
+    res.status(422).json({ error: recusa.motivo, detalhe: recusa.detalhe });
     return;
   }
 
@@ -318,7 +367,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
   if (parsed.data.inicio !== undefined || parsed.data.cabineId !== undefined) {
     const recusa = await recusaDeMoverAtendimento(lojaId as string, existente, parsed.data);
     if (recusa) {
-      res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
+      res.status(422).json({ error: recusa.motivo, detalhe: recusa.detalhe });
       return;
     }
   }
@@ -507,6 +556,110 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, 
     with: ATENDIMENTO_WITH,
   });
   res.json(DesfazerContatoAtendimentoResponse.parse(full));
+});
+
+/**
+ * Ausências (E151) — os dias em que alguém da equipe não atende.
+ *
+ * No papel é a primeira coisa que a página do caderno declara: 7 das 14
+ * páginas anunciam quem está fora (*"Volta da Marilza 15 dias"*), e nas
+ * semanas de férias a agenda esvazia. No sistema não existia nada — a agenda
+ * sabia de cabine e de vendedora, e oferecia alegremente o dia inteiro de
+ * quem estava viajando.
+ */
+router.get("/lojas/:lojaId/ausencias", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = ListAusenciasQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json(erroDeValidacao(query.error));
+    return;
+  }
+  // `?desde=` é o recorte que a agenda usa: férias de 2024 não interessam a
+  // quem marca amanhã, e a tabela só cresce.
+  const filtros = [eq(ausenciasTable.lojaId, lojaId)];
+  if (query.data.desde) filtros.push(gte(ausenciasTable.fim, query.data.desde));
+
+  const linhas = await db
+    .select({
+      id: ausenciasTable.id,
+      lojaId: ausenciasTable.lojaId,
+      usuarioId: ausenciasTable.usuarioId,
+      inicio: ausenciasTable.inicio,
+      fim: ausenciasTable.fim,
+      motivo: ausenciasTable.motivo,
+      usuarioNome: usuariosTable.nome,
+    })
+    .from(ausenciasTable)
+    .innerJoin(usuariosTable, eq(usuariosTable.id, ausenciasTable.usuarioId))
+    .where(and(...filtros))
+    .orderBy(ausenciasTable.inicio);
+
+  res.json(ListAusenciasResponse.parse(linhas));
+});
+
+router.post("/lojas/:lojaId/ausencias", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = CreateAusenciaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const { usuarioId, inicio, fim, motivo } = parsed.data;
+
+  const dia = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dia.test(inicio) || !dia.test(fim)) {
+    res.status(400).json({
+      error: "DATA_INVALIDA",
+      detalhe: "Informe os dias no formato AAAA-MM-DD.",
+      campos: [{ campo: "inicio", motivo: "Formato esperado: AAAA-MM-DD" }],
+    });
+    return;
+  }
+  // Período invertido é erro de digitação, e passaria em silêncio: a ausência
+  // existiria no banco sem cobrir dia nenhum, e ninguém entenderia por que a
+  // agenda continua oferecendo a vendedora que está de férias.
+  if (fim < inicio) {
+    res.status(422).json({
+      error: "PERIODO_INVERTIDO",
+      detalhe: "O último dia da ausência é anterior ao primeiro.",
+      campos: [{ campo: "fim", motivo: "O fim precisa ser igual ou depois do início" }],
+    });
+    return;
+  }
+  // A FK prova que a pessoa existe; `usuarios_lojas` é quem diz que ela é
+  // DESTA loja (família E91 — `usuarios` é tabela global).
+  if (!(await vendedoraNaLoja(usuarioId, lojaId))) {
+    res.status(404).json({
+      error: "REFERENCIA_INVALIDA",
+      detalhe: "Esta pessoa não é da equipe desta loja.",
+      campos: [{ campo: "usuarioId", motivo: "Pessoa não encontrada nesta loja" }],
+    });
+    return;
+  }
+
+  const [ausencia] = await db.insert(ausenciasTable).values({
+    id: randomUUID(),
+    lojaId,
+    usuarioId,
+    inicio,
+    fim,
+    motivo: motivo ?? null,
+  }).returning();
+
+  const [usuario] = await db.select({ nome: usuariosTable.nome })
+    .from(usuariosTable).where(eq(usuariosTable.id, usuarioId));
+
+  res.status(201).json(CreateAusenciaResponse.parse({ ...ausencia, usuarioNome: usuario?.nome ?? null }));
+});
+
+router.delete("/lojas/:lojaId/ausencias/:ausenciaId", async (req, res): Promise<void> => {
+  const { lojaId, ausenciaId } = req.params as { lojaId: string; ausenciaId: string };
+  // Ausência apagada volta a liberar o dia — e é o caminho de quem digitou
+  // errado ou de quem voltou antes. Não há histórico a preservar aqui: o que
+  // ficou agendado no período nunca foi tocado (a ausência só impede o novo).
+  await db.delete(ausenciasTable)
+    .where(and(eq(ausenciasTable.id, ausenciaId), eq(ausenciasTable.lojaId, lojaId)));
+  res.status(204).send();
 });
 
 // Ajustes

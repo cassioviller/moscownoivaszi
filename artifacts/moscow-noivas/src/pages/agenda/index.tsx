@@ -11,6 +11,8 @@ import {
   useListCabines,
   getListCabinesQueryKey,
   useListAjustes,
+  useListAusencias,
+  getListAusenciasQueryKey,
   getListAjustesQueryKey,
   useGetDisponibilidade,
   getGetDisponibilidadeQueryKey,
@@ -53,6 +55,12 @@ export default function Agenda() {
     query: { queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaDia), enabled: !!activeLojaId },
   });
   const cabines = useListCabines(activeLojaId!, { query: { ...CACHE_ESTAVEL, queryKey: getListCabinesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
+  // E151: quem falta HOJE (ou no dia visível). O recorte `?desde=` corta as
+  // férias que já passaram — a grade só precisa do que ainda impede.
+  const paramsAusencias = { desde: diaYMD };
+  const ausencias = useListAusencias(activeLojaId!, paramsAusencias, {
+    query: { queryKey: getListAusenciasQueryKey(activeLojaId!, paramsAusencias), enabled: !!activeLojaId },
+  });
   const ajustes = useListAjustes(activeLojaId!, { query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId } });
   // E39: confirmar presença carimba confirmadoEm; a fila para de repetir quem já
   // foi contatado. Invalida a agenda para o card mudar de "falta" para "feito".
@@ -189,6 +197,7 @@ export default function Agenda() {
                   atendimentos={doDia}
                   cabines={cabines.data ?? []}
                   expediente={expediente}
+                  ausencias={ausencias.data ?? []}
                   podeEditar={podeEditar}
                   nomePorLead={nomePorLead}
                 />

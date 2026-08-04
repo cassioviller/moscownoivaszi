@@ -922,6 +922,25 @@ export interface ComprometimentoEstoque {
   itens: ComprometimentoEstoqueItensItem[];
 }
 
+export interface Ausencia {
+  id: string;
+  lojaId: string;
+  usuarioId: string;
+  inicio: string;
+  fim: string;
+  /** @nullable */
+  motivo?: string | null;
+  /** @nullable */
+  usuarioNome?: string | null;
+}
+
+export interface AusenciaInput {
+  usuarioId: string;
+  inicio: string;
+  fim: string;
+  motivo?: string;
+}
+
 export interface Cabine {
   id: string;
   lojaId: string;
@@ -2733,6 +2752,13 @@ export type GetComprometimentoEstoqueParams = {
  * Dia local "YYYY-MM-DD" para o qual se conta o comprometimento.
  */
 data: string;
+};
+
+export type ListAusenciasParams = {
+/**
+ * Só as ausências que terminam em ou depois deste dia (AAAA-MM-DD).
+ */
+desde?: string;
 };
 
 export type ListAtendimentosParams = {

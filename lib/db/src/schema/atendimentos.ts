@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, unique, date, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, unique, index, date, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable, cabinesTable } from "./loja";
@@ -160,3 +160,41 @@ export const ajusteChecklistItensTable = pgTable("ajuste_checklist_itens", {
 export const insertAjusteChecklistItemSchema = createInsertSchema(ajusteChecklistItensTable);
 export type InsertAjusteChecklistItem = z.infer<typeof insertAjusteChecklistItemSchema>;
 export type AjusteChecklistItem = typeof ajusteChecklistItensTable.$inferSelect;
+
+/**
+ * E151 — a ausência da vendedora existe, e a agenda a respeita.
+ *
+ * `grep -rniE "ferias|ausencia|indisponibilidade|folga"` em `artifacts/` e
+ * `lib/` não devolvia **nenhuma ocorrência de domínio**: a agenda sabia de
+ * cabine e de vendedora, e nada tornava uma pessoa indisponível num intervalo.
+ *
+ * No papel a ausência é a **primeira coisa que a página declara**, e mora no
+ * caderno que conta as peças que saem: **7 das 14 páginas** a anunciam, todas
+ * entre 22/06 e 16/08 (*"Volta da Marilza 15 dias"*). Nas semanas de férias a
+ * agenda esvazia — 09 e 10/07 riscados com um X que atravessa as duas colunas;
+ * 18, 19, 22, 23 e 24 de agosto sem um único compromisso.
+ *
+ * `date` e não `timestamptz` de propósito: férias são DIAS inteiros no fuso da
+ * loja, e o intervalo é inclusivo nas duas pontas — quem digita 10/07 a 20/07
+ * está dizendo que no dia 20 ainda não voltou.
+ *
+ * `usuarioId` e não `vendedoraId`: quem falta é uma pessoa da equipe, e a
+ * agenda a chama de vendedora só porque é o papel dela ali.
+ */
+export const ausenciasTable = pgTable("ausencias", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  usuarioId: text("usuario_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  /** Dia local "YYYY-MM-DD", inclusivo. */
+  inicio: date("inicio").notNull(),
+  /** Dia local "YYYY-MM-DD", inclusivo — no último dia a pessoa ainda falta. */
+  fim: date("fim").notNull(),
+  motivo: text("motivo"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  lojaPeriodoIdx: index("ausencias_loja_periodo_idx").on(t.lojaId, t.inicio, t.fim),
+}));
+
+export const insertAusenciaSchema = createInsertSchema(ausenciasTable).omit({ criadoEm: true });
+export type InsertAusencia = z.infer<typeof insertAusenciaSchema>;
+export type Ausencia = typeof ausenciasTable.$inferSelect;

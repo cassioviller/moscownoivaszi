@@ -1811,6 +1811,56 @@ export const DeleteItemEstoqueParams = zod.object({
 export const DeleteItemEstoqueResponse = zod.void()
 
 
+export const ListAusenciasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListAusenciasQueryParams = zod.object({
+  "desde": zod.coerce.string().optional().describe('Só as ausências que terminam em ou depois deste dia (AAAA-MM-DD).')
+})
+
+export const ListAusenciasResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "usuarioId": zod.string(),
+  "inicio": zod.string(),
+  "fim": zod.string(),
+  "motivo": zod.string().nullish(),
+  "usuarioNome": zod.string().nullish()
+})
+export const ListAusenciasResponse = zod.array(ListAusenciasResponseItem)
+
+
+export const CreateAusenciaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const CreateAusenciaBody = zod.object({
+  "usuarioId": zod.string(),
+  "inicio": zod.string(),
+  "fim": zod.string(),
+  "motivo": zod.string().optional()
+})
+
+export const CreateAusenciaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "usuarioId": zod.string(),
+  "inicio": zod.string(),
+  "fim": zod.string(),
+  "motivo": zod.string().nullish(),
+  "usuarioNome": zod.string().nullish()
+})
+
+
+export const DeleteAusenciaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "ausenciaId": zod.coerce.string()
+})
+
+export const DeleteAusenciaResponse = zod.void()
+
+
 export const ListCabinesParams = zod.object({
   "lojaId": zod.coerce.string()
 })

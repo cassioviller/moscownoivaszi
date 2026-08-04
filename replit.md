@@ -271,6 +271,14 @@ rode o codegen.
   para 19/09/2026 — a loja tem 2"* e deixa fechar. Saiote é substituível;
   recusar uma venda de R$ 4.000 por causa de uma anágua seria um defeito, não
   uma proteção. A dona conta a arara em **Vestidos → Estoque**.
+- **A ausência da equipe (E151)** — `ausencias` (loja, pessoa, `inicio`/`fim`
+  em DIAS locais **inclusivos**, motivo) é o primeiro fato de indisponibilidade
+  de GENTE que o sistema guarda. A recusa mora na mesma régua que já recusa dia
+  fechado (`agenda-core/mover.ts`, motivo `VENDEDORA_AUSENTE`), então a grade e
+  o formulário de agendamento **apagam o dia antes do clique** e o servidor
+  recusa com uma frase que diz quem e até quando. **Ela só impede o novo**: o
+  que já estava agendado não é cancelado nem remarcado. Cadastro em
+  **Cabines & horário**, gate `agenda`.
 - **A peça sob medida (E155)** — a terceira natureza, e a única que ainda não
   existe quando é vendida: `ajustes` guarda `tipo` (`AJUSTE` | `CONFECCAO`) e
   `custo`, então a **fila da costureira é uma só** — prazo (a próxima prova),

@@ -1697,6 +1697,56 @@ paths:
       responses:
         "204":
           description: Deleted
+  /lojas/{lojaId}/ausencias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAusencias
+      tags: [agenda]
+      parameters:
+        - name: desde
+          in: query
+          required: false
+          description: Só as ausências que terminam em ou depois deste dia (AAAA-MM-DD).
+          schema: { type: string }
+      responses:
+        "200":
+          description: Ausências da equipe
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ausencia"
+    post:
+      operationId: createAusencia
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AusenciaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ausencia"
+  /lojas/{lojaId}/ausencias/{ausenciaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: ausenciaId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteAusencia
+      tags: [agenda]
+      responses:
+        "204":
+          description: Deleted
   /lojas/{lojaId}/cabines:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -5206,6 +5256,28 @@ components:
               # `quantidade - comprometida`. NEGATIVO é resposta legítima: o
               # sistema avisa, não bloqueia, e esconder o buraco seria mentir.
               disponivel: { type: integer }
+    Ausencia:
+      type: object
+      required: [id, lojaId, usuarioId, inicio, fim]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        usuarioId: { type: string }
+        # Dias locais inclusivos nas DUAS pontas: 10/07 a 20/07 significa que no
+        # dia 20 a pessoa ainda não voltou.
+        inicio: { type: string }
+        fim: { type: string }
+        motivo: { type: ["string", "null"] }
+        # Nome de quem falta, para a agenda dizer o porquê sem segunda consulta.
+        usuarioNome: { type: ["string", "null"] }
+    AusenciaInput:
+      type: object
+      required: [usuarioId, inicio, fim]
+      properties:
+        usuarioId: { type: string }
+        inicio: { type: string }
+        fim: { type: string }
+        motivo: { type: string }
     Cabine:
       type: object
       required: [id, lojaId, nome, ativo]

@@ -33,4 +33,5 @@ export {
   ConfirmarProvaPortalParams,
   PedirRemarcacaoPortalParams,
   GetComprometimentoEstoqueParams,
+  ListAusenciasParams,
 } from "./generated/api";

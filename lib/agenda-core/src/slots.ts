@@ -110,3 +110,21 @@ export function lerChaveCelula(chave: string): { cabineId: string; slot: string 
   if (corte <= 0 || corte === chave.length - 1) return null;
   return { cabineId: chave.slice(0, corte), slot: chave.slice(corte + 1) };
 }
+
+const formatadorDiaYMD = new Intl.DateTimeFormat("en-CA", {
+  timeZone: FUSO_LOJA,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * Dia local "YYYY-MM-DD" de um instante (E151).
+ *
+ * en-CA formata exatamente nesse formato — a mesma escolha de
+ * `disponibilidade.ts`, e pelo mesmo motivo: é a única forma de comparar dias
+ * sem que o fuso mude a resposta. 21h de 09/07 em UTC é dia 10 em São Paulo.
+ */
+export function diaLocalYMD(instante: Date | string): string {
+  return formatadorDiaYMD.format(new Date(instante));
+}
