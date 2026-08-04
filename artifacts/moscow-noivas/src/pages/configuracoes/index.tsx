@@ -181,7 +181,12 @@ export default function Configuracoes() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Duração da prova</span>
-                      <span className="font-medium">{disponibilidade.provaDuracao} min</span>
+                      {/* E148: `provaDuracao` é contado em SLOTS de 30 min, não em
+                          minutos — `agenda.ts:93` faz `provaDuracao * 30 * 60_000`, e o
+                          E2E 26 registra "o seed usa 2 = 1h". A tela mostrava o número
+                          cru: "2 min" para uma prova de uma hora, na única tela que
+                          existe para explicar a régua. */}
+                      <span className="font-medium">{disponibilidade.provaDuracao * 30} min</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Uso (dias antes)</span>
