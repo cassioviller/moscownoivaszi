@@ -44,7 +44,7 @@ esquerda em letra menor, o **nome da noiva**.
 | `09.20.54 (5).jpeg` | 06 – 12/07 | 5 |
 | `09.20.55.jpeg` | 13 – 19/07 | 8 (1 cancelada, 1 rasurada) |
 | `09.20.55 (1).jpeg` | 20 – 26/07 | 6 (1 rasurada) |
-| `09.20.55 (2).jpeg` | 27/07 – 02/08 | 4 (1 rasurada) |
+| `09.20.55 (2).jpeg` | 27/07 – 02/08 | 5 (3 válidas · `01) Arnica G` riscada inteira · 1 rabiscada; numeração reiniciada após o cancelamento) |
 | `09.20.55 (3).jpeg` | 03 – 09/08 | 1 |
 | `09.20.55 (4).jpeg` | 10 – 16/08 | 10 (item 10 rasurado) |
 | `09.20.55 (5).jpeg` | 17 – 23/08 | 16 |
@@ -52,11 +52,13 @@ esquerda em letra menor, o **nome da noiva**.
 | `09.20.56 (1).jpeg` | 31/08 – 06/09 | 19 |
 | `09.20.56 (2).jpeg` | 07 – 13/09 | 21 |
 | `09.20.56 (3).jpeg` | 14 – 20/09 | 15 |
-| `09.20.56 (4).jpeg` | 21 – 27/09 | 12 + "ATRÁS" (continua no verso, não fotografado) |
+| `09.20.56 (4).jpeg` | 21 – 27/09 | 12 numeradas (o item 2 foi apagado; 11 legíveis) + "ATRÁS" (continua no verso, não fotografado) |
 
 **A sazonalidade medida:** de **1** peça na semana de 03–09/08 a **21** na de
 07–13/09 — a semana do feriado de 7 de setembro. Nas 14 semanas fotografadas,
-136 saídas.
+**136 linhas numeradas**, canceladas e rasuradas incluídas (são 9 delas — ver
+o ponto 7 da trilha B). O número de locações efetivas é menor; 136 é a
+contagem de registros, não de peças que saíram.
 
 ## O código de cores do ateliê
 
@@ -75,7 +77,11 @@ não acaso.
 1. **É caligrafia.** Todo nome citado nos achados é leitura minha do
    manuscrito. Onde a grafia varia entre páginas (*Thelma / Thelmah /
    Telmah*), a variação está no papel — mas a leitura de cada ocorrência
-   pode estar errada.
+   pode estar errada. **E nome parecido não é o mesmo modelo:** a releitura da
+   trilha B mostrou que *Arnalda* e *Arnica* são peças **diferentes**, as duas
+   no acervo, e que o sufixo (`G`, `P`) é tamanho e o número (`Arnica 2`,
+   `Shelly 2`) é unidade. Fundir por semelhança de grafia junta peças
+   distintas.
 2. **O caderno registra a SEMANA de saída, não a data do casamento.** Nenhum
    achado aqui pode afirmar o dia exato de um evento; onde a conta precisa de
    um dia, ele entra declarado como cenário.

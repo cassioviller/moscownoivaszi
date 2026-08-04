@@ -189,9 +189,11 @@ escolhe de uma lista, então a grafia não varia". Não escolhe:
 tamanho (`:178`) e categoria (`:204`). A divergência de grafia não é
 hipótese: é o único comportamento possível do formulário.
 
-**Evidência de papel:** a agenda tem **~20 compromissos em laranja indexados
+**Evidência de papel:** a agenda tem **38 compromissos em laranja indexados
 por cor, não por modelo** — a noiva de festa/madrinha/dama não pede "Arnalda",
-pede verde. *MILENA PROVA VERDE* (20/08), *GIOVANNA PROVA TERRACOTA* (28/08),
+pede verde. *(Contagem corrigida na trilha B: a passada corrida desta sessão
+disse "~20", metade do real. Em setembro os 15 compromissos de cor superam as
+12 provas de noiva.)* *MILENA PROVA VERDE* (20/08), *GIOVANNA PROVA TERRACOTA* (28/08),
 *SANDRA + PROVA MARSALA* (28/08), *YASMIN PROVA VERMELHO* (15/09), *ROSELI
 PROVA VERDE* (03/09), *NATHALIA PROVA AZUL* (04/09), *MARIA PROVA DAMA*
 (08/09), *ERICA–PINK* (26/08), *LUCÉLIA – ROSÊ* (11/09), *LUCINARA – VERDE*
@@ -205,11 +207,11 @@ cor mostra **três** opções idênticas aos olhos; quem escolhe a primeira vê 
 terço do acervo verde e conclui que não tem. A busca por texto não salva: ela
 lê `nome` e `codigo`, nunca `cor`.
 
-**Número:** 12 cores distintas nomeadas nas 15 páginas de agenda (verde,
-terracota, marsala, vermelho, azul, azul serenity, pink, rosê, champagne,
-fúcsia, laranja, amarela) — nenhuma delas é hoje opção de um catálogo
-controlado, e "azul" e "azul serenity" são duas entradas sem relação para o
-filtro.
+**Número:** **15** cores distintas nomeadas nas 15 páginas de agenda (verde,
+terracota, marsala, vermelho, azul, azul serenity, pink, rosa, rosê,
+champagne, fúcsia, laranja, amarela, dourado, dama) — nenhuma delas é hoje
+opção de um catálogo controlado, e "azul" e "azul serenity" são duas entradas
+sem relação para o filtro. *(Corrigido na trilha B: eu tinha escrito 12.)*
 
 ---
 
@@ -248,8 +250,15 @@ nada que torne uma pessoa indisponível num intervalo.
 qualquer compromisso** — é a primeira coisa que a semana declara. *Férias
 Gabi / Marilza* (30/06–03/07), *Retorno Gabi* (04/07), *Volta da Marilza 15
 dias* (08/07), *Férias Cris* (10–11/07), *Férias Jeni → 16 a 25* (13–19/07),
-*Férias Isa* (27/07 e 03–09/08), *Férias Marina* (10–16/08 e 24–30/08).
-**8 das 15 páginas de agenda** trazem aviso de ausência no cabeçalho.
+*Férias Isa* (27/07 e 03–09/08), *Férias Marina* (10–16/08).
+
+> **ERRO CORRIGIDO (trilha B).** Esta linha dizia "**8 das 15 páginas de
+> agenda** trazem aviso de ausência no cabeçalho". É falso — eu somei as duas
+> mídias e atribuí o total à agenda. A contagem página a página:
+> **2 de 15 na agenda** e **7 de 14 no caderno**, todas entre 22/06 e 16/08.
+> O achado sobrevive e fica mais interessante: a ausência é anotada na página
+> que **conta as peças que saem**, não na que marca compromissos — porque é a
+> capacidade de atender que limita quantas saem.
 
 **Cenário:** 09 e 10/07 estão riscados com um X que atravessa as duas
 colunas inteiras, e as semanas de férias esvaziam — 18, 19, 22, 23 e 24 de
@@ -274,10 +283,17 @@ para o alto da agenda. A cópia perde linhas:
 | 20–26/07 | 6 | 3 | 3 |
 | 17–23/08 | 16 | 9 | 7 |
 
-E não é só volume: em 17–23/08 o item 9 da agenda é *Bruna / Larissa*; o do
-caderno é *Arina / Letícia*. Em 29/06 a agenda traz *Thelma*; o caderno traz
-*Thelma rasurada, Taiane no lugar* — a agenda copiou antes da troca e não
-voltou.
+Em 29/06 a agenda traz *Thelma*; o caderno traz *Thelma rasurada, Taiane no
+lugar* — a agenda copiou antes da troca e não voltou. *(Esta linha também
+afirmava uma divergência no item 9 de 17–23/08. **Retirada**: a releitura
+ampliada mostrou que os itens 1 a 8 batem linha a linha e o item 9 não é
+legível o bastante para sustentar o contraste — só a contagem se sustenta.)*
+
+**E a leitura desta tabela mudou na trilha B.** A perda não é descuido de
+cópia: a lista de segunda-feira existe nas 8 primeiras segundas e **desaparece
+por completo a partir de 24/08**. As cinco semanas seguintes somam **79 saídas
+no caderno e zero linhas na agenda** — a rotina foi abandonada, não falhada.
+Ver B3.
 
 Na direção oposta, a agenda não sabe o que saiu: a semana de **21–27/09 tem
 12+ peças no caderno e UM único compromisso na agenda inteira** (16:00

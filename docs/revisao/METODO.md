@@ -257,6 +257,17 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     *(R7-design: um `casamento_data` movido sem anotar pôs o bloqueio no
     topo da lista de reservas e derrubou o spec posicional 13 — E132; a
     mesma classe do 05-leads/E124.)*
+17. Evidência NÃO-TEXTUAL (foto, captura, gravação) se lê uma vez por
+    PERGUNTA, nunca uma vez por ARQUIVO. A leitura corrida produz a narrativa;
+    a leitura por pergunta produz a CONTAGEM — e é a contagem que corrige a
+    narrativa. *(Arqueologia do legado: a sessão 1 leu 29 fotos em ordem e
+    escreveu 6 achados; a sessão 2 leu as mesmas 29 sete vezes, uma por
+    pergunta, e achou um número errado por fator 4 (páginas com férias: 8 → 2),
+    dois subestimados pela metade (compromissos de cor 20 → 38), um par de
+    nomes fundido por engano que teria juntado duas peças de acervo na
+    importação (Arnalda ≠ Arnica), uma afirmação ilegível que teve de ser
+    retirada, e 4 achados novos — dois deles com defeito de código
+    demonstrável.)*
 
 ---
 
