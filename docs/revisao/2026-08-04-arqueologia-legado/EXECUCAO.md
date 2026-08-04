@@ -24,8 +24,9 @@ A lente é uma só: **o que o ateliê faz todo dia e o sistema não deixa fazer.
    — ela é o que manda sobre ordem, numeração e escopo dos épicos, e reordenou
    o que este rastreador propunha (o acervo ainda não entrou no sistema; a
    forma do cadastro custa mais caro que a régua de ocupação).
-6. As **perguntas de produto** bloqueiam o bloco 2 da spec. O bloco 1 (E148 a
-   E151) não depende de resposta nenhuma (regra 5).
+6. As **perguntas de produto** bloqueiam o bloco 2 da spec (E152 e E153). O
+   bloco 1 — **E148, E149, E150, E154, E155 e E151** — não depende de resposta
+   nenhuma (regra 5).
 
 ## As duas mídias — o achado que organiza o resto
 
@@ -50,7 +51,7 @@ compromisso** — quem só olha a agenda não vê o negócio acontecer.
 | Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | `25f1a17` |
 | Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | `25f1a17` |
 | Trilha B — releitura dos 7 pontos | `B-releitura-dos-sete-pontos.md` | ✅ | `b909f18` |
-| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | `e396574` |
+| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | `e396574` · 2ª versão `a59fdf7`|
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 
@@ -96,12 +97,20 @@ O 🔴 é o segundo. A ordem passou a ser esta:
 |---|---|---|
 | **E148** — a régua que a tela mostra é a que o sistema usa | B1 | — |
 | **E149** — cor e categoria saem do texto livre e viram catálogo | A3 | — |
-| **E150** — o acessório vira peça, e o item que aponta peça exige reserva | A2 | — (depende do E149) |
+| **E150** — acessório **tipo 1** (peça única): entra no acervo, e o contrato exige reserva | A2 | — (depende do E149) |
+| **E154** — acessório **tipo 2** (estoque): é contado, não reservado — avisa, não bloqueia | A2 | — (depende do E149) |
+| **E155** — acessório **tipo 3** (sob medida): entra na fila da costureira, que já existe | S-A4 · S-A6 | — |
 | **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | — |
 | **E152** — a régua de ocupação deixa de ser uma só | A1 | **P1** |
 | **E153** — modelo × peça | ponto 5 | **P2 e P3** |
 
-Os quatro primeiros **não dependem de resposta nenhuma** e podem começar hoje.
+**Os seis primeiros não dependem de resposta nenhuma** e podem começar hoje.
+
+**Os três acessórios** (2ª versão da spec): o que os distingue não é o que são,
+é **como se decide se estão disponíveis** — o tipo 1 **por peça** (existe uma),
+o tipo 2 **por contagem** (existem dez), o tipo 3 **por prazo** (não existe
+ainda). Três naturezas, três mecanismos; forçar as três no acervo encheria de
+anágua a lista que a vendedora abre com a noiva na cabine.
 
 **As três perguntas que bloqueiam o bloco 2** (texto completo na spec):
 
