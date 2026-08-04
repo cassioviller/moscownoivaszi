@@ -100,11 +100,11 @@ O 🔴 é o segundo. A ordem passou a ser esta:
 | **E150** — acessório **tipo 1** (peça única): entra no acervo, e o contrato exige reserva | A2 | ✅ | `a8174ba` + emenda `f8bdbb5` · `execucao/E150.md` |
 | **E154** — acessório **tipo 2** (estoque): é contado, não reservado — avisa, não bloqueia | A2 | ✅ | `1fb39de` · `execucao/E154.md` |
 | **E155** — acessório **tipo 3** (sob medida): entra na fila da costureira, que já existe | S-A4 · S-A6 | ✅ | `b7078ad` · `execucao/E155.md` |
-| **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | ⬜ | — |
+| **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | ✅ | `90536a0` · `execucao/E151.md` |
 | **E152** — a lavagem ganha **data real** (`lavagem_concluida_em`) | A1 | ⬜ (~~P1~~ ✅) | — |
 | ~~**E153**~~ — ~~modelo × peça~~ | — | **CANCELADO por P2** | — |
 
-**Os três restantes não dependem de resposta nenhuma.** A ordem é sequencial —
+**O único restante não depende de resposta nenhuma.** A ordem é sequencial —
 banco de dev e suíte E2E são compartilhados, E149 é dependência dura de E150 e
 E154, e o método pede um commit por épico com a suíte lida inteira entre eles
 (regras 10, 11, 14, 16).
@@ -170,4 +170,5 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 | S-A15 | **A sonda do snapshot de migração não vê valor de enum.** `e115-migracao-snapshot-unit.test.ts` compara tabelas e COLUNAS; o `ACESSORIO` que o E150 acrescentou a `orcamento_item_tipo` ficou fora da baseline do drizzle por um dia inteiro com a suíte verde, e só apareceu porque o E154 mexeu em coluna e forçou o `generate` (o `0001` gerado traz o `ALTER TYPE … 'ACESSORIO'` junto). Um banco provisionado por `migrate` entre os dois épicos aceitaria o tipo só até o primeiro INSERT. Estender a sonda aos `enums` do snapshot é pequeno e fecha a classe. | 🟠 | execução E154 |
 | S-A16 | **A lavagem não entra na régua do estoque.** A janela do E154 é a de USO, como a spec pediu; mas o saiote também vai à lavagem, e a régua da loja reserva 7 dias para ela no vestido (P1: *"uma semana, lavagem externa"*). A conta é **otimista**: saiote devolvido no dia 21 aparece livre no 22, quando está molhado. Como o épico avisa e não bloqueia, o custo é um aviso que deixa de aparecer — não uma venda recusada à toa. Se a peça de estoque tem ciclo de lavagem é pergunta de produto. | 🟡 | execução E154 |
 | S-A17 | **A fila da costureira não tem tela própria por trabalho.** O E155 põe confecção e ajuste na mesma lista e o item do orçamento aponta o trabalho, mas o link do item leva à FILA (`/ajustes?recorte=todos`), não ao trabalho — não existe rota `/ajustes/:id`. Numa loja com fila longa, "na fila da costureira" obriga a procurar a olho. Enquanto a confecção era inexistente isso não pesava; agora que ela tem custo e é cobrada, pesa. | 🔵 | execução E155 |
+| S-A18 | **A ausência não olha o que já está marcado.** Registrar férias por cima de uma agenda cheia é aceito em silêncio: o E151 decidiu (com a spec) que ela só impede o NOVO, mas quem cadastra não fica sabendo que há atendimentos naquele intervalo. Um aviso na hora de marcar — *"há 4 atendimentos nesse período; eles não serão alterados"* — fecharia o buraco entre a decisão certa e a pessoa que precisa agir sobre ela. Remarcação em lote segue sendo decisão de produto; **contar e avisar não é**. | 🟡 | execução E151 |
 | S-A5 | **O `CLAUDE.md` segue apontando para o rastreador da rodada 6** — é a S-D28 da rodada 7, ainda aberta, e agora há um terceiro rastreador (este) disputando o ponteiro. Quando fechar, o ponteiro deve dizer qual é a rodada em curso **e** que a arqueologia é uma trilha paralela. | 🟡 | montagem da trilha |
