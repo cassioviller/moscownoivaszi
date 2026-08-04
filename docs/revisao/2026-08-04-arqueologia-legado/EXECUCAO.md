@@ -20,8 +20,12 @@ A lente é uma só: **o que o ateliê faz todo dia e o sistema não deixa fazer.
 4. Leia `B-releitura-dos-sete-pontos.md` — a segunda passada pelas fotos, uma
    leitura por PERGUNTA em vez de uma por arquivo. **Ela corrige quatro
    números da trilha A**; onde os dois divergirem, vale a B.
-5. As **perguntas de produto** no fim da trilha A são bloqueantes para 3 dos 4
-   épicos: nenhum vira código antes de o dono responder (regra 5).
+5. Leia a **spec**, `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md`
+   — ela é o que manda sobre ordem, numeração e escopo dos épicos, e reordenou
+   o que este rastreador propunha (o acervo ainda não entrou no sistema; a
+   forma do cadastro custa mais caro que a régua de ocupação).
+6. As **perguntas de produto** bloqueiam o bloco 2 da spec. O bloco 1 (E148 a
+   E151) não depende de resposta nenhuma (regra 5).
 
 ## As duas mídias — o achado que organiza o resto
 
@@ -46,7 +50,7 @@ compromisso** — quem só olha a agenda não vê o negócio acontecer.
 | Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | `25f1a17` |
 | Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | `25f1a17` |
 | Trilha B — releitura dos 7 pontos | `B-releitura-dos-sete-pontos.md` | ✅ | `b909f18` |
-| Backlog em épicos | — | ⬜ | — |
+| Spec de execução | `../../propostas/2026-08-04-acervo-a-identidade-da-peca.md` | ✅ | *(este commit)* |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 
@@ -72,25 +76,66 @@ divergência alegada no item 9 de 17–23/08 foi **retirada** por ilegibilidade;
 e *Arnalda* × *Arnica*, que eu tratara como grafia do mesmo modelo, são peças
 diferentes — fundi-las juntaria dois itens de acervo na importação.
 
-## Épicos propostos — nenhum começa antes das respostas
+## Épicos — a spec manda
+
+A numeração e a ordem vivem em
+**`docs/propostas/2026-08-04-acervo-a-identidade-da-peca.md`**, e ela
+**reordenou** o que este rastreador propunha primeiro. A razão está na abertura
+da spec: o `replit.md` diz que o seed do E147 *"não cadastra noiva, vestido,
+contrato nem parcela"* e que o único primeiro passo pendente é *"cadastrar os
+primeiros vestidos"* — **o acervo ainda não entrou**. Logo:
+
+| | Custo se estiver errado |
+|---|---|
+| forma do CADASTRO (A2, A3, identidade da peça) | recadastrar o acervo à mão |
+| régua de OCUPAÇÃO (A1) | um `UPDATE` de uma linha |
+
+O 🔴 é o segundo. A ordem passou a ser esta:
 
 | Épico | Fecha | Bloqueado por |
 |---|---|---|
-| E148 — a régua de ocupação deixa de ser uma só para o acervo | A1 | pergunta 1 |
-| E149 — o acessório vira peça, e o item que aponta peça exige reserva | A2 | pergunta 3 |
-| E150 — cor e categoria saem do texto livre e viram catálogo | A3 | pergunta 5 |
-| E151 — a ausência da vendedora existe e a agenda a respeita | A5 | — |
-| E152 — a régua que a tela mostra é a régua que o sistema usa (duração em minutos) | B1 | — |
-| E153 — o expediente do ateliê sai do ateliê, não da premissa (domingo, 18:30) | B2, B4 | pergunta 6 |
+| **E148** — a régua que a tela mostra é a que o sistema usa | B1 | — |
+| **E149** — cor e categoria saem do texto livre e viram catálogo | A3 | — |
+| **E150** — o acessório vira peça, e o item que aponta peça exige reserva | A2 | — (depende do E149) |
+| **E151** — a ausência da vendedora existe e a agenda a respeita | A5 | — |
+| **E152** — a régua de ocupação deixa de ser uma só | A1 | **P1** |
+| **E153** — modelo × peça | ponto 5 | **P2 e P3** |
 
-A4 (preço de realuguel) não vira épico antes da pergunta 2: o único número
-monetário em 29 fotos é ambíguo entre valor e código de peça — embora a
-releitura tenha achado o **ponto de milhar** no `7.600`, e nenhum dos 8
-códigos de peça observados use ponto.
+Os quatro primeiros **não dependem de resposta nenhuma** e podem começar hoje.
 
-**Pergunta 6, nova (trilha B):** qual é o expediente real do ateliê? O papel
-mostra 7 compromissos em 5 domingos e 6 provas às 18:30 — as duas coisas que
-o default recusa.
+**As três perguntas que bloqueiam o bloco 2** (texto completo na spec):
+
+1. **P1** — quantos dias a peça fica parada depois do casamento, e a lavagem é
+   interna ou terceirizada? *(Decide se o A1 existe: a colisão vem **só** da
+   lavagem — os dois usos não se tocam, sobra 1 dia entre eles.)*
+2. **P2** — "Arnalda P" e "Arnalda G" são o mesmo vestido em dois tamanhos ou
+   dois vestidos? *(Escolhe entre Caminho A e Caminho B.)*
+3. **P3** — quantas peças do acervo têm mais de uma unidade? *(Decide se o
+   Caminho A se paga.)*
+
+A4 (preço de realuguel) segue sem épico: o único número monetário em 29 fotos
+é ambíguo entre valor e código — embora a releitura tenha achado **ponto de
+milhar** no `7.600`, e nenhum dos 8 códigos observados use ponto.
+
+**B2 e B4 (expediente: domingo e 18:30) saíram dos épicos** e viraram S-A8: são
+defaults configuráveis, e ninguém perguntou qual é o expediente real do ateliê.
+
+### Correção à força do A1, feita ao escrever a spec
+
+O diagnóstico citou **três** pares de semanas consecutivas. Indo atrás de quem
+é a noiva em cada um, **só um sobrevive**:
+
+| Par | Semana N | Semana N+1 | Vale? |
+|---|---|---|---|
+| **Adelita** | Larissa · *"Novo que chegou / 1º Aluguel"* | Mª Fernanda · *"Realuguel"* | **sim** |
+| Konte | **Larissa** | **Larissa** | não — mesma noiva, registro movido |
+| Shellyane | Isabela | Letícia · *"Shellyane **P**"* | não — o `P` pode ser outra peça |
+
+E há uma anotação que ameaça o achado inteiro, sem resolução possível pela
+foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação dura
+15 dias, peça nenhuma sai em semanas consecutivas — mas o mesmo caderno usa
+"15 dias" para ausência de funcionária (*"Volta da Marilza 15 dias"*), e há um
+"ISA" (nome de vendedora) rabiscado ao lado. **P1 resolve.**
 
 ## Sobras — visto de passagem sem épico
 
