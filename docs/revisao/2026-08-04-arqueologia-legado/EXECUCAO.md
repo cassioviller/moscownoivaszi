@@ -32,8 +32,10 @@ A lente é uma só: **o que o ateliê faz todo dia e o sistema não deixa fazer.
 | Registra | prova, retirada, recado, férias | a locação |
 | Cobertura | 29/06 – 25/10 | 22/06 – 27/09 |
 
-Toda segunda-feira alguém copia a lista do caderno para a agenda, em rosa. A
-cópia perde de 0 a **63%** das linhas (A6). **A saída da peça não gera
+Até **17/08**, toda segunda-feira alguém copiava a lista do caderno para a
+agenda, em rosa, e a cópia perdia linhas. A partir de **24/08** a rotina foi
+abandonada: as cinco semanas seguintes somam **79 saídas no caderno e zero
+linhas na agenda** (A6, reinterpretado em B3). **A saída da peça não gera
 compromisso** — quem só olha a agenda não vê o negócio acontecer.
 
 ## Estado das fases
@@ -43,7 +45,7 @@ compromisso** — quem só olha a agenda não vê o negócio acontecer.
 | Inventário das fotos | `INVENTARIO.md` | ✅ | `25f1a17` |
 | Trilha A — o sistema em papel | `A-o-sistema-em-papel.md` | ✅ | `25f1a17` |
 | Adversarial — refutar o 🔴 e os 🟠 | `adversarial.md` | ✅ | `25f1a17` |
-| Trilha B — releitura dos 7 pontos | `B-releitura-dos-sete-pontos.md` | ✅ | *(sessão 2)* |
+| Trilha B — releitura dos 7 pontos | `B-releitura-dos-sete-pontos.md` | ✅ | `b909f18` |
 | Backlog em épicos | — | ⬜ | — |
 
 Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
@@ -98,7 +100,7 @@ Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 |---|---|---|---|
 | S-A1 | **As 29 fotos entraram no git (3,8 MB).** Decisão contrária à da rodada 7, que deixou as 81 capturas fora (`.gitignore`) — e deliberada: aquelas eram **regeneráveis por script** (S-D1), estas são evidência primária de um sistema em papel que não se recaptura. Se o peso incomodar, o caminho é um repo de evidências, não apagar. | 🔵 | montagem da trilha |
 | S-A2 | **Falta o verso da última página do caderno.** A semana de 21–27/09 termina com "ATRÁS →" e o verso não foi fotografado; as semanas de 28/09 a 11/10 também faltam. As 136 saídas contadas são piso, não total. Pedir as fotos que faltam antes de qualquer contagem virar número de negócio. | 🟡 | trilha A |
-| S-A3 | **O ateliê tem uma segunda linha de negócio que o diagnóstico só tangenciou:** festa/madrinha/dama, indexada por COR e com código de 4 dígitos, contra noiva indexada por nome de modelo. São ~20 compromissos em laranja nas 15 páginas de agenda. O A3 trata do filtro; ninguém olhou ainda se o fluxo comercial dessa linha (prazo, preço, prova) é o mesmo. | 🟡 | trilha A |
+| S-A3 | **O ateliê tem uma segunda linha de negócio que o diagnóstico só tangenciou:** festa/madrinha/dama, indexada por COR e com código de 4 dígitos, contra noiva indexada por nome de modelo. São **38** compromissos em laranja nas 15 páginas de agenda (contagem da trilha B; a trilha A dizia ~20), e em setembro eles superam as provas de noiva. O A3 trata do filtro; ninguém olhou ainda se o fluxo comercial dessa linha (prazo, preço, prova) é o mesmo. | 🟡 | trilha A · recontada em B |
 | S-A4 | **A confecção sob medida aparece 3 vezes e não tem lugar no modelo:** *"Siam + Manga **será confeccionada**"* (10–16/08), *"conversar sobre confecção de manga"* (21/07 e 24/07, dois compromissos de 10:30 dedicados ao assunto). Não é ajuste de peça existente (`ajustesTable`) — é peça nova feita para a noiva. Sem âncora de código porque não há código: é ausência. | 🟡 | trilha A |
 | S-A6 | **A confecção sob medida ganhou uma segunda evidência na trilha B:** o caderno de 13–19/07 numera *"Manga renda c/ saia lisa"* como item **5** da semana, com a nota *"(Mesma noiva Dayfini)"* — a peça componente tem número de ordem próprio no acervo, igual a um vestido. Reforça a S-A4 e o A2. | 🟡 | trilha B |
 | S-A7 | **O `provaDuracao` tem unidade implícita e não documentada** (slots de 30 min). O B1 conserta a tela; a raiz é o nome do campo não dizer a unidade — `provaDuracaoSlots` ou guardar minutos resolveria a classe. `e115-portal-agenda-api.test.ts:92` usa `provaDuracao: 3` (= 90 min) e `revisao-reguas-unit.test.ts:64` idem, então os testes já convivem com a ambiguidade. | 🔵 | trilha B |
