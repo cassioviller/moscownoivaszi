@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
 import { leadsTable } from "./leads";
-import { atendimentosTable } from "./atendimentos";
+import { atendimentosTable, ajustesTable } from "./atendimentos";
 import { usuariosTable } from "./usuarios";
 import { vestidosTable, itensEstoqueTable } from "./vestidos";
 import { orcamentoStatusEnum, orcamentoItemTipoEnum, descontoTipoEnum } from "./common/enums";
@@ -55,6 +55,13 @@ export const orcamentoItensTable = pgTable("orcamento_itens", {
   // E154: item de ESTOQUE aponta aqui em vez de `vestidoId` — são os dois
   // jeitos de um item apontar uma peça, e nunca os dois ao mesmo tempo.
   itemEstoqueId: text("item_estoque_id").references(() => itensEstoqueTable.id, { onDelete: "set null" }),
+  /**
+   * E155 — o item `AJUSTE` que COBRA uma confecção aponta o trabalho na fila da
+   * costureira. Sem isto, o que foi cobrado e o que alguém costura são duas
+   * frases parecidas em telas diferentes, e ninguém sabe se a manga da noiva
+   * está paga. `set null` como os irmãos: apagar o trabalho não apaga a venda.
+   */
+  ajusteId: text("ajuste_id").references(() => ajustesTable.id, { onDelete: "set null" }),
   descricao: text("descricao").notNull(),
   valorUnitario: decimal("valor_unitario", { precision: 10, scale: 2, mode: "number" }).notNull(),
   quantidade: integer("quantidade").notNull().default(1),

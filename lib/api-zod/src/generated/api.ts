@@ -2022,6 +2022,8 @@ export const ListAtendimentosResponseItem = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -2297,6 +2299,8 @@ export const CreateAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -2571,6 +2575,8 @@ export const UpdateAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -2850,6 +2856,8 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3119,6 +3127,8 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3251,6 +3261,8 @@ export const ListAjustesResponseItem = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3379,11 +3391,15 @@ export const CreateAjusteParams = zod.object({
 })
 
 
+export const createAjusteBodyCustoMin = 0;
+
 
 
 export const CreateAjusteBody = zod.object({
   "atendimentoId": zod.string(),
-  "descricao": zod.string().min(1)
+  "descricao": zod.string().min(1),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().min(createAjusteBodyCustoMin).optional()
 })
 
 export const CreateAjusteResponse = zod.object({
@@ -3391,6 +3407,8 @@ export const CreateAjusteResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3520,6 +3538,8 @@ export const UpdateAjusteParams = zod.object({
 
 export const UpdateAjusteBody = zod.object({
   "descricao": zod.string().optional(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']).optional()
 })
 
@@ -3528,6 +3548,8 @@ export const UpdateAjusteResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -4672,6 +4694,7 @@ export const ListOrcamentosResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4750,6 +4773,7 @@ export const CreateOrcamentoResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4816,6 +4840,7 @@ export const GetOrcamentoResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4890,6 +4915,7 @@ export const UpdateOrcamentoResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4918,6 +4944,7 @@ export const AddOrcamentoItemBody = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().optional(),
   "itemEstoqueId": zod.string().optional(),
+  "ajusteId": zod.string().optional(),
   "descricao": zod.string().min(1),
   "valorUnitario": zod.number(),
   "quantidade": zod.number().optional()
@@ -4929,6 +4956,7 @@ export const AddOrcamentoItemResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4956,6 +4984,7 @@ export const UpdateOrcamentoItemResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5028,6 +5057,7 @@ export const AprovarOrcamentoResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5094,6 +5124,7 @@ export const RecusarOrcamentoResponse = zod.object({
   "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
   "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()

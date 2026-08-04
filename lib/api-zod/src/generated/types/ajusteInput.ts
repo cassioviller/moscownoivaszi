@@ -5,9 +5,13 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AjusteInputTipo } from './ajusteInputTipo';
 
 export interface AjusteInput {
   atendimentoId: string;
   /** @minLength 1 */
   descricao: string;
+  tipo?: AjusteInputTipo;
+  /** @minimum 0 */
+  custo?: number;
 }

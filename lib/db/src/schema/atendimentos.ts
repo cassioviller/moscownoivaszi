@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, unique, date } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, unique, date, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable, cabinesTable } from "./loja";
@@ -8,7 +8,8 @@ import { vestidosTable } from "./vestidos";
 import { 
   reservaStatusEnum, 
   bloqueioTipoEnum, 
-  ajusteStatusEnum, 
+  ajusteStatusEnum,
+  ajusteTipoEnum, 
   atendimentoTipoEnum, 
   atendimentoSituacaoEnum, 
   atendimentoDesfechoEnum 
@@ -119,11 +120,26 @@ export const insertAtendimentoSchema = createInsertSchema(atendimentosTable).omi
 export type InsertAtendimento = z.infer<typeof insertAtendimentoSchema>;
 export type Atendimento = typeof atendimentosTable.$inferSelect;
 
+/**
+ * A fila da costureira (E14) — e, desde o E155, ela guarda as duas naturezas
+ * de trabalho de agulha: o AJUSTE de peça existente e a CONFECÇÃO de peça
+ * nova. Ver `ajusteTipoEnum` para o porquê de não ser tabela separada.
+ *
+ * `atendimentoId` é obrigatório e continua sendo: a confecção nasce de uma
+ * conversa marcada, exatamente como os dois compromissos de 10:30 do caderno.
+ */
 export const ajustesTable = pgTable("ajustes", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
   atendimentoId: text("atendimento_id").notNull().references(() => atendimentosTable.id, { onDelete: "cascade" }),
   descricao: text("descricao").notNull(),
+  tipo: ajusteTipoEnum("tipo").notNull().default("AJUSTE"),
+  /**
+   * Material + mão de obra da CONFECÇÃO. Nulo é o caso de todo ajuste comum, e
+   * também o da confecção cujo custo ainda não se sabe — é o que a costureira
+   * cobra, não o que a noiva paga (isso é o item do orçamento).
+   */
+  custo: decimal("custo", { precision: 10, scale: 2, mode: "number" }),
   status: ajusteStatusEnum("status").notNull().default("PENDENTE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

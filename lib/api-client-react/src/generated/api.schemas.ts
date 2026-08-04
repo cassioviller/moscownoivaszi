@@ -1010,6 +1010,14 @@ export interface BloqueioVestido {
   lead?: Lead | null;
 }
 
+export type AjusteTipo = typeof AjusteTipo[keyof typeof AjusteTipo];
+
+
+export const AjusteTipo = {
+  AJUSTE: 'AJUSTE',
+  CONFECCAO: 'CONFECCAO',
+} as const;
+
 export type AjusteStatus = typeof AjusteStatus[keyof typeof AjusteStatus];
 
 
@@ -1061,6 +1069,9 @@ export interface Ajuste {
   lojaId: string;
   atendimentoId: string;
   descricao: string;
+  tipo?: AjusteTipo;
+  /** @nullable */
+  custo?: number | null;
   status: AjusteStatus;
   checklist?: AjusteChecklistItem[];
   atendimento?: AjusteAtendimento;
@@ -1157,11 +1168,30 @@ export interface AjusteChecklistItemUpdate {
   ordem?: number;
 }
 
+export type AjusteInputTipo = typeof AjusteInputTipo[keyof typeof AjusteInputTipo];
+
+
+export const AjusteInputTipo = {
+  AJUSTE: 'AJUSTE',
+  CONFECCAO: 'CONFECCAO',
+} as const;
+
 export interface AjusteInput {
   atendimentoId: string;
   /** @minLength 1 */
   descricao: string;
+  tipo?: AjusteInputTipo;
+  /** @minimum 0 */
+  custo?: number;
 }
+
+export type AjusteUpdateTipo = typeof AjusteUpdateTipo[keyof typeof AjusteUpdateTipo];
+
+
+export const AjusteUpdateTipo = {
+  AJUSTE: 'AJUSTE',
+  CONFECCAO: 'CONFECCAO',
+} as const;
 
 export type AjusteUpdateStatus = typeof AjusteUpdateStatus[keyof typeof AjusteUpdateStatus];
 
@@ -1173,6 +1203,9 @@ export const AjusteUpdateStatus = {
 
 export interface AjusteUpdate {
   descricao?: string;
+  tipo?: AjusteUpdateTipo;
+  /** @nullable */
+  custo?: number | null;
   status?: AjusteUpdateStatus;
 }
 
@@ -1439,6 +1472,8 @@ export interface OrcamentoItem {
   vestidoId?: string | null;
   /** @nullable */
   itemEstoqueId?: string | null;
+  /** @nullable */
+  ajusteId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;
@@ -1539,6 +1574,7 @@ export interface OrcamentoItemInput {
   tipo: OrcamentoItemInputTipo;
   vestidoId?: string;
   itemEstoqueId?: string;
+  ajusteId?: string;
   /** @minLength 1 */
   descricao: string;
   valorUnitario: number;

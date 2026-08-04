@@ -10,6 +10,7 @@ import {
   atendimentosTable,
   bloqueioVestidosTable,
   itensEstoqueTable,
+  ajustesTable,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -114,6 +115,33 @@ export async function itemEstoqueNaLoja(itemEstoqueId: string, lojaId: string): 
   const [i] = await db.select({ id: itensEstoqueTable.id }).from(itensEstoqueTable)
     .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId))).limit(1);
   return !!i;
+}
+
+/**
+ * E155 — o `ajusteId` que o item do orçamento aponta é da loja **e da noiva**?
+ *
+ * A pergunta é mais forte que a das irmãs de propósito, e a lição é do S2/E107:
+ * provar só a loja deixava o contrato da noiva A prender a reserva da B. Aqui
+ * seria o orçamento de A cobrando a manga que a costureira faz para B — e as
+ * duas leriam, cada uma na sua tela, que a peça está paga.
+ *
+ * O dono do ajuste é o lead do ATENDIMENTO que o gerou (`ajustes.atendimentoId`
+ * é obrigatório): a fila não tem coluna de noiva, tem a conversa que a marcou.
+ */
+export async function ajusteDaNoiva(
+  ajusteId: string,
+  lojaId: string,
+  leadId: string,
+): Promise<boolean> {
+  const [a] = await db.select({ id: ajustesTable.id })
+    .from(ajustesTable)
+    .innerJoin(atendimentosTable, eq(atendimentosTable.id, ajustesTable.atendimentoId))
+    .where(and(
+      eq(ajustesTable.id, ajusteId),
+      eq(ajustesTable.lojaId, lojaId),
+      eq(atendimentosTable.leadId, leadId),
+    )).limit(1);
+  return !!a;
 }
 
 /** E115 — irmã da de cima: o `bloqueioId` opcional do POST /atendimentos. */

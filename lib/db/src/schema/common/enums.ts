@@ -38,6 +38,22 @@ export const bloqueioTipoEnum = pgEnum("bloqueio_tipo", [
 
 export const ajusteStatusEnum = pgEnum("ajuste_status", ["PENDENTE", "FEITO"]);
 
+/**
+ * E155 — o que a costureira tem na mão é de duas naturezas.
+ *
+ * **AJUSTE** é peça existente que se altera: bainha, cintura, alça. **CONFECÇÃO**
+ * é peça NOVA, feita para aquela noiva — no caderno de 10–16/08,
+ * `Siam + Manga será confeccionada + Mantilha`, e na agenda dois compromissos
+ * de 10:30 marcados só para conversar sobre ela (21/07 e 24/07).
+ *
+ * Elas dividem a mesma fila de propósito: prazo (a próxima prova), status,
+ * checklist e a tela que ordena pelo aperto já existem e são os mesmos. Uma
+ * tabela `producoes` duplicaria a fila e criaria uma segunda tela para a mesma
+ * pessoa. O que muda é o rótulo, e que confecção tem CUSTO — material e mão de
+ * obra, que ajuste comum não tem.
+ */
+export const ajusteTipoEnum = pgEnum("ajuste_tipo", ["AJUSTE", "CONFECCAO"]);
+
 export const reservaStatusEnum = pgEnum("reserva_status", [
   "EM_MONTAGEM",
   "CONFIRMADA",

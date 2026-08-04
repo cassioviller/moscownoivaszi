@@ -5290,6 +5290,11 @@ components:
         lojaId: { type: string }
         atendimentoId: { type: string }
         descricao: { type: string }
+        # E155: a fila guarda AJUSTE (peça existente que se altera) e CONFECCAO
+        # (peça nova, feita para a noiva). Mesmo prazo, mesmo checklist, mesma
+        # tela — o que muda é o rótulo, e que confecção tem custo.
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: ["number", "null"] }
         status: { type: string, enum: [PENDENTE, FEITO] }
         checklist:
           type: array
@@ -5347,10 +5352,14 @@ components:
       properties:
         atendimentoId: { type: string }
         descricao: { type: string, minLength: 1 }
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: number, minimum: 0 }
     AjusteUpdate:
       type: object
       properties:
         descricao: { type: string }
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: ["number", "null"] }
         status: { type: string, enum: [PENDENTE, FEITO] }
     RegraDisponibilidade:
       type: object
@@ -5656,6 +5665,7 @@ components:
         tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
         itemEstoqueId: { type: ["string", "null"] }
+        ajusteId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5666,6 +5676,10 @@ components:
         tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: string }
         itemEstoqueId: { type: string }
+        # E155: o item AJUSTE que cobra uma confecção aponta o trabalho na fila
+        # da costureira — o que foi cobrado e o que alguém costura viram a
+        # mesma coisa.
+        ajusteId: { type: string }
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
         quantidade: { type: integer }

@@ -22,6 +22,8 @@ import {
   getListItensEstoqueQueryKey,
   useGetComprometimentoEstoque,
   getGetComprometimentoEstoqueQueryKey,
+  useListAjustes,
+  getListAjustesQueryKey,
   useListBloqueios,
   getListBloqueiosQueryKey,
   useListEquipe,
@@ -72,6 +74,7 @@ import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto, diaM
 import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
+import { confeccoesDaNoiva as confeccoesDoOrcamento } from "@/lib/confeccoes-da-noiva";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
 import { montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
@@ -114,6 +117,10 @@ const novoItemSchema = z.object({
   // itemEstoqueId é o outro jeito de apontar peça, e nunca convive com o de
   // cima — o servidor recusa os dois juntos com ITEM_APONTA_DUAS_PECAS.
   itemEstoqueId: z.string().optional(),
+  // E155: o item AJUSTE que cobra uma confecção aponta o trabalho na fila da
+  // costureira, para o que foi cobrado e o que alguém costura serem a mesma
+  // coisa. Só para AJUSTE, e só de trabalhos DESTA noiva.
+  ajusteId: z.string().optional(),
   descricao: z.string().min(1, "Descrição obrigatória"),
   valorUnitario: z.string().min(1, "Valor obrigatório"),
   quantidade: z.string(),
@@ -255,6 +262,20 @@ export default function OrcamentoDetail() {
     () => new Map((itensEstoque.data ?? []).map((i) => [i.id, i])),
     [itensEstoque.data],
   );
+  /**
+   * E155 — as confecções DESTA noiva, para o item que as cobra.
+   *
+   * A fila desce inteira (é a mesma query da tela de ajustes, e o cache é
+   * compartilhado); o recorte roda em memória porque a rota não tem filtro por
+   * lead, e mora em `lib/confeccoes-da-noiva` com as duas razões escritas.
+   */
+  const ajustes = useListAjustes(activeLojaId!, {
+    query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const confeccoesDaNoiva = useMemo(
+    () => confeccoesDoOrcamento(ajustes.data ?? [], orcamento?.leadId),
+    [ajustes.data, orcamento?.leadId],
+  );
   // O GetOrcamento não expõe o contrato gerado; perguntamos à lista de
   // contratos COM o recorte ?orcamentoId= (E144/S-D16 — sem ele, esta tela
   // baixava os 518 contratos da loja, 615 KB, para um único find).
@@ -367,7 +388,7 @@ export default function OrcamentoDetail() {
 
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
-    defaultValues: { tipo: "VESTIDO", vestidoId: "", itemEstoqueId: "", descricao: "", valorUnitario: "", quantidade: "1" },
+    defaultValues: { tipo: "VESTIDO", vestidoId: "", itemEstoqueId: "", ajusteId: "", descricao: "", valorUnitario: "", quantidade: "1" },
   });
 
   const editarItemForm = useForm<EditarItemValues>({
@@ -537,10 +558,14 @@ export default function OrcamentoDetail() {
           ...(values.tipo === "ESTOQUE" && values.itemEstoqueId
             ? { itemEstoqueId: values.itemEstoqueId }
             : {}),
+          // E155: e o terceiro — o trabalho da costureira que este item cobra.
+          ...(values.tipo === "AJUSTE" && values.ajusteId
+            ? { ajusteId: values.ajusteId }
+            : {}),
         },
       });
       await invalidar();
-      itemForm.reset({ tipo: values.tipo, vestidoId: "", itemEstoqueId: "", descricao: "", valorUnitario: "", quantidade: "1" });
+      itemForm.reset({ tipo: values.tipo, vestidoId: "", itemEstoqueId: "", ajusteId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
       toast({ title: "Não deu para adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
@@ -914,6 +939,17 @@ export default function OrcamentoDetail() {
                           {vestidoPorId.get(item.vestidoId)?.codigo ?? "no catálogo"}
                         </Link>
                       )}
+                      {/* E155: este item cobra um trabalho que está na fila —
+                          sem a marca, o vínculo existiria só no banco. */}
+                      {item.ajusteId && (
+                        <Link
+                          to={`/loja/${activeLojaId}/ajustes?recorte=todos`}
+                          className="ml-2 text-xs font-normal text-muted-foreground underline underline-offset-2 hover:text-primary"
+                          data-testid="link-item-confeccao"
+                        >
+                          na fila da costureira
+                        </Link>
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">Qtd: {item.quantidade} x {brl(item.valorUnitario)}</p>
                   </div>
@@ -1004,6 +1040,7 @@ export default function OrcamentoDetail() {
                             // item apontando as duas coisas (422 do servidor).
                             if (!ehPecaDoAcervo(v)) itemForm.setValue("vestidoId", "");
                             if (v !== "ESTOQUE") itemForm.setValue("itemEstoqueId", "");
+                            if (v !== "AJUSTE") itemForm.setValue("ajusteId", "");
                           }}
                         >
                           <FormControl>
@@ -1023,6 +1060,45 @@ export default function OrcamentoDetail() {
                       </FormItem>
                     )}
                   />
+                  {/* E155: o item que COBRA uma confecção aponta o trabalho na
+                      fila. Só as confecções DESTA noiva entram na lista — o
+                      ajuste comum não se cobra à parte, e trabalho de outra
+                      noiva o servidor recusa (404). Vazio quando não há
+                      nenhuma: o seletor não aparece. */}
+                  {itemForm.watch("tipo") === "AJUSTE" && confeccoesDaNoiva.length > 0 && (
+                    <div className="w-56 space-y-2">
+                      <label className="text-sm font-medium">Da fila da costureira</label>
+                      <Select
+                        value={itemForm.watch("ajusteId") || "AVULSO"}
+                        onValueChange={(v) => {
+                          if (v === "AVULSO") {
+                            itemForm.setValue("ajusteId", "");
+                            return;
+                          }
+                          itemForm.setValue("ajusteId", v);
+                          const conf = confeccoesDaNoiva.find((c) => c.id === v);
+                          if (conf) {
+                            itemForm.setValue("descricao", conf.descricao);
+                            // O custo é o que a COSTUREIRA cobra; entra como
+                            // sugestão do que cobrar da noiva, não como regra.
+                            if (conf.custo != null) itemForm.setValue("valorUnitario", String(conf.custo));
+                          }
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-confeccao">
+                          <SelectValue placeholder="Escolher confecção" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AVULSO">— avulso (digitar) —</SelectItem>
+                          {confeccoesDaNoiva.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.descricao}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {/* E154: o seletor do estoque, irmão do de catálogo. A lista
                       é curta (o que a loja conta, não o que ela veste) e o
                       preço nulo vira zero — "vai junto, sem cobrar à parte". */}

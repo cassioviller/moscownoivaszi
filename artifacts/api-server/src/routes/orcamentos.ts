@@ -19,7 +19,7 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { leadNaLoja, itemEstoqueNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
@@ -394,7 +394,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
    * VESTIDO e ACESSORIO — e venderia um bolero sem reserva com o rótulo de
    * saiote. O caminho contrário some com a peça da conta do dia.
    */
-  const { tipo, vestidoId, itemEstoqueId } = parsed.data;
+  const { tipo, vestidoId, itemEstoqueId, ajusteId } = parsed.data;
   const apontaEstoque = tipo === "ESTOQUE";
   if (apontaEstoque && vestidoId) {
     res.status(422).json({
@@ -421,6 +421,36 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
       campos: [{ campo: "itemEstoqueId", motivo: "Item de estoque não encontrado nesta loja" }],
     });
     return;
+  }
+
+  /**
+   * E155 — o item que COBRA uma confecção aponta o trabalho na fila.
+   *
+   * Só `AJUSTE`: é o tipo que já existia para trabalho de agulha, e cobrar uma
+   * manga como VESTIDO faria a peça nova entrar na conta do acervo.
+   *
+   * E a prova é dupla, pela lição do S2/E107 (a reserva tinha de ser DESTA
+   * noiva): o ajuste é da loja E do mesmo lead do orçamento. Sem a segunda, o
+   * orçamento da noiva A cobraria a manga que a costureira faz para a B — e as
+   * duas leriam, cada uma na sua tela, que a peça está paga.
+   */
+  if (ajusteId) {
+    if (tipo !== "AJUSTE") {
+      res.status(422).json({
+        error: "ITEM_APONTA_DUAS_PECAS",
+        detalhe: "Só item do tipo Ajuste aponta um trabalho da costureira.",
+        campos: [{ campo: "ajusteId", motivo: `Tipo ${tipo} não usa trabalho da fila` }],
+      });
+      return;
+    }
+    if (!(await ajusteDaNoiva(ajusteId, lojaId, orcamento.leadId))) {
+      res.status(404).json({
+        error: "AJUSTE_NAO_ENCONTRADO",
+        detalhe: "Este trabalho da costureira não é desta noiva.",
+        campos: [{ campo: "ajusteId", motivo: "Trabalho não encontrado para esta noiva" }],
+      });
+      return;
+    }
   }
 
   const [item] = await db.insert(orcamentoItensTable).values({

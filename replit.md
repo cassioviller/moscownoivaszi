@@ -271,6 +271,14 @@ rode o codegen.
   para 19/09/2026 — a loja tem 2"* e deixa fechar. Saiote é substituível;
   recusar uma venda de R$ 4.000 por causa de uma anágua seria um defeito, não
   uma proteção. A dona conta a arara em **Vestidos → Estoque**.
+- **A peça sob medida (E155)** — a terceira natureza, e a única que ainda não
+  existe quando é vendida: `ajustes` guarda `tipo` (`AJUSTE` | `CONFECCAO`) e
+  `custo`, então a **fila da costureira é uma só** — prazo (a próxima prova),
+  status e checklist já eram os mesmos. O item de orçamento `AJUSTE` aponta a
+  confecção (`ajuste_id`), e a prova é da NOIVA, não só da loja: cobrar o
+  trabalho que a costureira faz para outra dá 404. Registrar em **Reserva →
+  prova**; a fila mostra o selo *Confecção* e o custo. **Em aberto:** depois do
+  casamento a peça confeccionada vira item do acervo? Ninguém decidiu.
 - **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
   `portal_tokens`, 30 dias **de inatividade**): proposta com aceite (E74),
   lookbook, próximas provas e extrato de parcelas só-leitura, com "falta pagar"

@@ -43,6 +43,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAbrevAno, diaParaISO } from "@/lib/formatos";
@@ -229,6 +236,9 @@ export default function ReservaDetalhe() {
   const casamentoYmd = reserva?.casamentoData ? isoParaDia(reserva.casamentoData) : "";
   const [dataMovimentacao, setDataMovimentacao] = useState<string | null>(null);
   const [novoAjuste, setNovoAjuste] = useState<Record<string, string>>({});
+  // E155: por atendimento, porque cada prova tem seu formulário na tela.
+  const [novoAjusteTipo, setNovoAjusteTipo] = useState<Record<string, "AJUSTE" | "CONFECCAO">>({});
+  const [novoAjusteCusto, setNovoAjusteCusto] = useState<Record<string, string>>({});
   const [novoItem, setNovoItem] = useState<Record<string, string>>({});
   const [ajusteParaRemover, setAjusteParaRemover] = useState<Ajuste | null>(null);
 
@@ -333,23 +343,44 @@ export default function ReservaDetalhe() {
     );
   };
 
+  /**
+   * E155 — a fila da costureira guarda as duas naturezas de trabalho de agulha,
+   * e quem registra escolhe qual: AJUSTE altera peça existente, CONFECÇÃO é
+   * peça nova feita para a noiva (a manga do caderno de 10–16/08). O prazo, o
+   * status e o checklist são os mesmos — por isso é a mesma fila.
+   */
   const adicionarAjuste = (atendimentoId: string) => {
     const descricao = (novoAjuste[atendimentoId] ?? "").trim();
     if (!descricao) {
-      toast({ title: "Descreva o ajuste.", variant: "destructive" });
+      toast({ title: "Descreva o trabalho.", variant: "destructive" });
+      return;
+    }
+    const tipo = novoAjusteTipo[atendimentoId] ?? "AJUSTE";
+    // Custo é da CONFECÇÃO (material e mão de obra) e opcional mesmo nela — no
+    // dia da conversa quase nunca se sabe quanto vai custar.
+    const custoDigitado = (novoAjusteCusto[atendimentoId] ?? "").trim();
+    const custo = custoDigitado ? parseValor(custoDigitado) : null;
+    if (custoDigitado && (custo === null || !Number.isFinite(custo) || custo < 0)) {
+      toast({ title: "Custo inválido", variant: "destructive" });
       return;
     }
     return comToast(
       async () => {
         await createAjuste.mutateAsync({
           lojaId: activeLojaId!,
-          data: { atendimentoId, descricao },
+          data: {
+            atendimentoId,
+            descricao,
+            tipo,
+            ...(tipo === "CONFECCAO" && custo !== null ? { custo } : {}),
+          },
         });
         await invalidarAjustes();
         setNovoAjuste((s) => ({ ...s, [atendimentoId]: "" }));
+        setNovoAjusteCusto((s) => ({ ...s, [atendimentoId]: "" }));
       },
-      "Ajuste adicionado",
-      "Não deu para adicionar o ajuste",
+      tipo === "CONFECCAO" ? "Confecção adicionada" : "Ajuste adicionado",
+      "Não deu para adicionar o trabalho",
     );
   };
 
@@ -903,14 +934,46 @@ export default function ReservaDetalhe() {
                             adicionarAjuste(p.id);
                           }}
                         >
+                          <Select
+                            value={novoAjusteTipo[p.id] ?? "AJUSTE"}
+                            onValueChange={(v) =>
+                              setNovoAjusteTipo((s) => ({ ...s, [p.id]: v as "AJUSTE" | "CONFECCAO" }))
+                            }
+                          >
+                            <SelectTrigger className="w-32" aria-label="Tipo do trabalho">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AJUSTE">Ajuste</SelectItem>
+                              <SelectItem value="CONFECCAO">Confecção</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Input
                             value={novoAjuste[p.id] ?? ""}
                             onChange={(e) =>
                               setNovoAjuste((s) => ({ ...s, [p.id]: e.target.value }))
                             }
-                            placeholder="Novo ajuste (ex.: bainha 3cm)…"
-                            aria-label="Novo ajuste"
+                            placeholder={
+                              (novoAjusteTipo[p.id] ?? "AJUSTE") === "CONFECCAO"
+                                ? "Peça a confeccionar (ex.: manga renda c/ saia lisa)…"
+                                : "Novo ajuste (ex.: bainha 3cm)…"
+                            }
+                            aria-label="Novo trabalho da costureira"
                           />
+                          {/* Custo é da confecção — material e mão de obra, que
+                              ajuste comum não tem. Fica opcional mesmo nela. */}
+                          {(novoAjusteTipo[p.id] ?? "AJUSTE") === "CONFECCAO" && (
+                            <Input
+                              value={novoAjusteCusto[p.id] ?? ""}
+                              onChange={(e) =>
+                                setNovoAjusteCusto((s) => ({ ...s, [p.id]: e.target.value }))
+                              }
+                              placeholder="Custo (R$)"
+                              inputMode="decimal"
+                              className="w-32"
+                              aria-label="Custo da confecção"
+                            />
+                          )}
                           <Button
                             type="submit"
                             variant="outline"

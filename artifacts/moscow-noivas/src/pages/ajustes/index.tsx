@@ -16,7 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { diasAteCasamento } from "../noivas/helpers";
 import { naSemana, prazoDias } from "@/lib/ajustes-da-semana";
-import { diaMesAbrevAno } from "@/lib/formatos";
+import { brl, diaMesAbrevAno } from "@/lib/formatos";
+import { Badge } from "@/components/ui/badge";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
@@ -218,7 +219,19 @@ export default function Ajustes() {
               return (
                 <li key={a.id} className="flex items-start gap-4 px-4 py-3">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm">{a.descricao}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-sm">
+                      {/* E155: as duas naturezas dividem a fila, e é por isso
+                          que o rótulo precisa existir — a costureira precisa
+                          saber se corta ou se conserta antes de pegar a peça.
+                          O AJUSTE é o caso comum e segue sem selo. */}
+                      {a.tipo === "CONFECCAO" && (
+                        <Badge variant="secondary" className="text-xs">Confecção</Badge>
+                      )}
+                      <span>{a.descricao}</span>
+                      {a.custo != null && (
+                        <span className="text-xs text-muted-foreground">custo {brl(a.custo)}</span>
+                      )}
+                    </span>
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       {a.atendimento?.leadId ? (
                         <Link

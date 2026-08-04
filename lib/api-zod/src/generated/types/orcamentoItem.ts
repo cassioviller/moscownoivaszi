@@ -15,6 +15,8 @@ export interface OrcamentoItem {
   vestidoId?: string | null;
   /** @nullable */
   itemEstoqueId?: string | null;
+  /** @nullable */
+  ajusteId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;
