@@ -24,20 +24,20 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 18 abertas (10 🟡 · 8 🔵) |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 18 sobras abertas (1 🟠 · 6 🟡 · 11 🔵) |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 17 sobras abertas (6 🟡 · 11 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (1 🟠 · 7 🟡 · 5 🔵) |
 
-   **São 49 sobras abertas, e as 🟠 vivas nasceram da conferência de 2026-08-05**
+   **São 48 sobras abertas, e as 🟠 vivas nasceram da conferência de 2026-08-05**
    (`docs/revisao/2026-08-05-conferencia-de-sobras.md`), que passou sete agentes
    de leitura pura sobre 48 linhas e achou três defeitos que quatro rodadas de
    revisão não tinham achado — os três na fronteira entre dois arquivos, que é o
-   que a regra 22 diz não se pegar lendo nenhum dos dois. **A S37 já fechou**
-   (`85d5108`); restam **S-D29** (contrato sem orçamento atribui comissão sem
-   auditoria) e **S-A25** (`DELETE /vestidos` sem guarda nenhuma). O backlog não
-   ficou pior com a conferência — ficou verdadeiro.
+   que a regra 22 diz não se pegar lendo nenhum dos dois. **Duas já fecharam** —
+   a S37 em `85d5108` e a S-D29 em `042d1b5`; resta a **S-A25** (`DELETE
+   /vestidos` sem guarda nenhuma). O backlog não ficou pior com a conferência —
+   ficou verdadeiro.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1026 · frontend 469 ·
+   fundiu com as três suítes verdes. Hoje a régua é **API 1027 · frontend 473 ·
    E2E 156 · typecheck verde**. O `main` está **250 commits à frente do
    `origin/main`** e não foi publicado — quem for publicar decide isso com a dona
    do repositório.
