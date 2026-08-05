@@ -10,6 +10,7 @@ import { tipoAtributoLabel } from "@/lib/formatos";
 import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
+import { DadosDaLoja } from "./dados-da-loja";
 import { PrivacidadeLgpd } from "./privacidade";
 import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
@@ -44,6 +45,8 @@ export default function Configuracoes() {
   const [aba, setAba] = useState<"loja" | "admin">("loja");
   // O endpoint do token é gateado por admin no backend — mesma régua aqui.
   const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
+  // S17: o card de dados da loja SALVA, então o gate é o da escrita.
+  const podeEditarLoja = podeNoModulo(acessosModulos, "admin", "editar");
   // Tour do acesso (E24): reabrível a qualquer momento.
   const [tourAberto, setTourAberto] = useState(false);
   
@@ -246,6 +249,12 @@ export default function Configuracoes() {
                 )}
               </CardContent>
             </Card>
+
+            {/* S17 — os dados da loja, que só existiam no console de
+                superadmin. O gate é `admin.editar` e não `admin.ver`: o card é
+                um formulário inteiro, e mostrá-lo a quem não pode salvar é
+                oferecer um botão que a API vai recusar. */}
+            {podeEditarLoja && <DadosDaLoja />}
 
             {/* Captação externa (E19) — só para quem gere a loja. */}
             {podeCaptacao && <CaptacaoExterna />}

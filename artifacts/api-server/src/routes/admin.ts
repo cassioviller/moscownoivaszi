@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, pagamentosTable, vestidosTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable, comissaoRegrasTable, recorrenciasTable, convitesTable } from "@workspace/db";
-import { eq, and, sql, count, inArray, isNull } from "drizzle-orm";
+import { db, lojasTable, perfisTable, usuariosTable, usuariosLojasTable, perfilOverridesLojasTable, leadsTable, contratosTable, parcelasTable, pagamentosTable, vestidosTable, orcamentosTable, atendimentosTable, comissaoFechamentosTable, comissaoRegrasTable, recorrenciasTable, convitesTable, auditLogTable } from "@workspace/db";
+import { eq, and, sql, count, inArray, isNull, desc } from "drizzle-orm";
 import { STATUS_ABERTO, hojeLocal, inicioDoDia, primeiroDiaDoMes } from "@workspace/financeiro-core";
 import { 
   ListLojasResponse, 
@@ -33,7 +33,8 @@ import {
   GetBackupStatusResponse,
   RunBackupResponse,
   DownloadBackupParams,
-  GetConsolidadoResponse
+  GetConsolidadoResponse,
+  ListAuditoriaGlobalResponse
 } from "@workspace/api-zod";
 import { requireSessao, requireSuperAdmin } from "../middlewares/auth";
 import { hashSenha, encerrarSessoesDoUsuario } from "../lib/auth";
@@ -56,6 +57,30 @@ router.use("/admin", requireSessao, requireSuperAdmin);
 router.get("/admin/lojas", async (_req, res): Promise<void> => {
   const lojas = await db.select().from(lojasTable).orderBy(lojasTable.nome);
   res.json(ListLojasResponse.parse(lojas));
+});
+
+/**
+ * S3 — a trilha do que não é de loja nenhuma.
+ *
+ * As linhas com `loja_id` nulo não aparecem em `/lojas/:id/financeiro/auditoria`
+ * (aquela tela filtra por loja, e deve mesmo), então sem esta porta o rastro
+ * seria gravado e nunca lido — meio conserto, que é o que se cobrou da S15
+ * algumas horas atrás. Aqui é o único lugar do sistema onde a pergunta "quem
+ * apagou aquela loja?" tem resposta.
+ *
+ * Sem paginação de propósito: são os dois atos mais raros do sistema, e ambos
+ * já são recusados quando há histórico. Uma lista que cresce um punhado de
+ * linhas por ano não precisa de janela — e o dia em que precisar, a existência
+ * dela é que vai contar a história.
+ */
+router.get("/admin/auditoria-global", async (_req, res): Promise<void> => {
+  const linhas = await db
+    .select()
+    .from(auditLogTable)
+    .where(isNull(auditLogTable.lojaId))
+    .orderBy(desc(auditLogTable.criadoEm))
+    .limit(500);
+  res.json(ListAuditoriaGlobalResponse.parse(linhas));
 });
 
 router.post("/admin/lojas", async (req, res): Promise<void> => {
@@ -113,13 +138,12 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
  * e some igual. Por isso o acervo e a equipe entram na régua ao lado das
  * parcelas.
  *
- * **A trilha não é gravada aqui, e o motivo é o próprio defeito:**
- * `audit_log.loja_id` é `notNull` + CASCADE, então registrar "loja X apagada"
- * dentro da loja X apaga o registro junto com ela. Fica o `req.log.warn`
- * estruturado — o mesmo veredito do `DELETE /admin/usuarios/:id` do E91, pela
- * mesma razão. A sobra **S3** é onde isso vira épico; com a guarda de cima, o
- * que ainda pode ser apagado é uma loja VAZIA, e o rastro pesado deixa de ser
- * urgente.
+ * **A trilha É gravada aqui desde a S3.** Este bloco dizia o contrário, e a
+ * razão era boa: `audit_log.loja_id` era `notNull` + CASCADE, então registrar
+ * "loja X apagada" dentro da loja X apagava o registro junto com ela. Sobrava um
+ * `req.log.warn`. O conserto foi tornar a coluna anulável — **nulo é o ato
+ * global** —, e é o nulo que faz o registro sobreviver ao que ele registra. Lê-se
+ * em `GET /admin/auditoria-global`.
  */
 router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   const params = DeleteLojaParams.safeParse(req.params);
@@ -166,11 +190,25 @@ router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.delete(lojasTable).where(eq(lojasTable.id, lojaId));
-  req.log.warn(
-    { lojaId, lojaNome: loja.nome, porUsuarioId: req.usuario!.id },
-    "loja_excluida",
-  );
+  /**
+   * S3 — e aqui o `loja_id` nulo é o que faz o registro EXISTIR.
+   *
+   * Gravar "loja X apagada" com `loja_id = X` num FK em CASCADE apagaria o
+   * próprio registro no mesmo `DELETE`. O rastro morreria no instante exato em
+   * que passasse a importar — que é o motivo de a coluna ter deixado de ser
+   * obrigatória, e não uma frouxidão de modelagem.
+   */
+  await db.transaction(async (tx) => {
+    await tx.delete(lojasTable).where(eq(lojasTable.id, lojaId));
+    await registrarAuditoria(tx, {
+      lojaId: null,
+      usuario: { id: req.usuario!.id, nome: req.usuario!.nome },
+      acao: "LOJA_EXCLUIDA",
+      entidade: "loja",
+      entidadeId: lojaId,
+      detalhe: { nome: loja.nome, cnpj: loja.cnpj ?? null },
+    });
+  });
   res.status(204).send();
 });
 
@@ -416,6 +454,14 @@ router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
   //   o `409 VINCULO_EXISTENTE` genérico em vez da mensagem que ensina a
   //   inativar, que era exatamente o ponto desta guarda.
   const usuarioId = params.data.usuarioId;
+  // S3: a linha é lida ANTES de sumir, porque o rastro carrega o nome — depois
+  // do DELETE não há `usuarios` para consultar. E ler dá o 404 de graça, que a
+  // rota não tinha: apagar quem não existe respondia 204, como se tivesse.
+  const [alvo] = await db.select().from(usuariosTable).where(eq(usuariosTable.id, usuarioId));
+  if (!alvo) {
+    res.status(404).json({ error: "USUARIO_NAO_ENCONTRADO", detalhe: "Esta pessoa não existe." });
+    return;
+  }
   const [[c1], [c2], [c3], [c4], [c5], [c6]] = await Promise.all([
     db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.vendedoraId, usuarioId)),
     db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.vendedoraId, usuarioId)),
@@ -444,13 +490,26 @@ router.delete("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.delete(usuariosTable).where(eq(usuariosTable.id, params.data.usuarioId));
-  // Sem loja, não há `registrarAuditoria` (a trilha é por loja). O log fica
-  // greppável para quem for reconstituir "quem sumiu do cadastro".
-  req.log.warn(
-    { usuarioId: params.data.usuarioId, porUsuarioId: req.usuario!.id },
-    "usuario_excluido",
-  );
+  /**
+   * S3 — o rastro do ato GLOBAL, que antes era só um `req.log.warn`.
+   *
+   * O DELETE e a trilha vão na MESMA transação: gravar depois deixaria a janela
+   * em que a pessoa some e o registro não nasce, que é exatamente o estado que
+   * esta sobra existe para impedir. E o nome vai desnormalizado no detalhe
+   * porque, depois daqui, não há linha de `usuarios` para consultar — o que não
+   * estiver no detalhe está perdido.
+   */
+  await db.transaction(async (tx) => {
+    await tx.delete(usuariosTable).where(eq(usuariosTable.id, params.data.usuarioId));
+    await registrarAuditoria(tx, {
+      lojaId: null,
+      usuario: { id: req.usuario!.id, nome: req.usuario!.nome },
+      acao: "USUARIO_EXCLUIDO",
+      entidade: "usuario",
+      entidadeId: params.data.usuarioId,
+      detalhe: { nome: alvo.nome, email: alvo.email, superAdmin: alvo.isSuperAdmin },
+    });
+  });
   res.status(204).send();
 });
 

@@ -1201,8 +1201,18 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
     return;
   }
-  if (contrato.parcelas.length > 0) {
-    res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui parcelas" });
+  /**
+   * S26 — a pergunta é "já tem CARNÊ?", e era "já tem parcela?".
+   *
+   * `parcelas.length > 0` trancava o contrato em 409 para sempre quando a loja
+   * fazia a coisa na ordem do balcão: a peça volta avariada, cobra-se o
+   * conserto, e só então se monta o parcelamento. Uma venda inteira parcelada
+   * fora do sistema por causa de um reparo de R$ 350 — e sem caminho de volta,
+   * porque a parcela do reparo não se apaga (ela é a cobrança).
+   */
+  const jaTemCarne = contrato.parcelas.some((p) => p.origem === "PLANO");
+  if (jaTemCarne) {
+    res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui carnê" });
     return;
   }
 
@@ -1233,13 +1243,47 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     lojaId,
     contratoId: contrato.id,
     numero: p.numero,
+    origem: "PLANO" as const,
     descricao: p.descricao,
     valorPrevisto: reais(p.valorCentavos),
     vencimento: ancoraDeNegocio(p.vencimento),
   }));
 
-  // createMany atômico: sem plano parcial.
-  const criadas = await db.insert(parcelasTable).values(linhas).returning();
+  /**
+   * S26 — o carnê nasce em 0..N, e quem já estava lá se desloca para depois.
+   *
+   * A direção não é escolha de estilo: **`numero === 0` significa ENTRADA** em
+   * seis pontos do sistema (as três telas de parcela, o portal da noiva, a
+   * conciliação e o PDF do contrato). Deslocar o carnê para caber depois do
+   * reparo tiraria a entrada do slot 0 e quebraria a régua nos seis de uma vez;
+   * deslocar o reparo não quebra nada — o que a noiva lê é a `descricao`
+   * ("Reparo de avaria — …"), e o `numero` é ordenação.
+   *
+   * O deslocamento é em DOIS passos, com um estágio negativo no meio, porque a
+   * UNIQUE (contrato, numero) não deixa passar por cima: mover 1 → 5 direto
+   * funcionaria hoje, mas com três avulsas e um carnê curto os intervalos se
+   * cruzam. Negativo não colide com nada, e a transação inteira desfaz se algo
+   * falhar no meio.
+   */
+  const maiorDoPlano = plano.reduce((m, p) => Math.max(m, p.numero), 0);
+  const paraDeslocar = [...contrato.parcelas].sort((a, b) => a.numero - b.numero);
+
+  const criadas = await db.transaction(async (tx) => {
+    for (const p of paraDeslocar) {
+      await tx.update(parcelasTable)
+        .set({ numero: -(p.numero + 1) })
+        .where(eq(parcelasTable.id, p.id));
+    }
+    // createMany atômico: sem plano parcial.
+    const doPlano = await tx.insert(parcelasTable).values(linhas).returning();
+    for (const [i, p] of paraDeslocar.entries()) {
+      await tx.update(parcelasTable)
+        .set({ numero: maiorDoPlano + 1 + i })
+        .where(eq(parcelasTable.id, p.id));
+    }
+    return doPlano;
+  });
+
   criadas.sort((a, b) => a.numero - b.numero);
   res.status(201).json(GerarPlanoParcelasResponse.parse(criadas));
 });

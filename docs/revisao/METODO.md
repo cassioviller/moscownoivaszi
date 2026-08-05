@@ -312,7 +312,25 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     *(Arqueologia do legado, sessão 5: a S-A4 e a S-A6 foram fechadas pelo E155,
     a linha do épico dizia "Fecha: S-A4 · S-A6", e as duas continuaram abertas na
     tabela por cinco commits — até alguém varrer a tabela inteira por outro
-    motivo.)*
+    motivo. **E o tamanho real apareceu no mesmo dia, na rodada 6:** das oito 🟠
+    que a tabela apresentava como perigo, **três já não existiam** — a S7 e a S22
+    consertadas pelo E115/E146, a S20 pelo E143, que até achou a causa raiz (o
+    deadlock 40P01 fora do mapa de erros). **37% do backlog mais pesado do
+    repositório era defeito morto**, e a próxima sessão teria ido investigá-lo.)*
+22. **Defeito que mora ENTRE dois arquivos não se pega lendo nenhum dos dois** —
+    pega-se cruzando o que cada um DECLARA. Quando as duas pontas já estão
+    escritas em algum lugar (um roteador, um schema, um cliente gerado), a
+    varredura que as casa custa uma tarde e vale para sempre; procurar a
+    divergência a olho custa a mesma tarde e vale uma vez. *(Rodada 6, sobras:
+    a S36 nasceu de eu constatar, ao fechar a S15, que teste de componente não
+    pega "a tela pede um módulo e o servidor pede outro" — ele prega o que a
+    tela faz, não se ela pede o certo. A varredura cruzou três declarações que
+    já existiam e ninguém tinha juntado (o `requireModulo` de cada prefixo, a
+    URL de cada operação no cliente gerado, o `podeNoModulo` de cada tela) e
+    **achou dois defeitos na primeira execução** — um deles vivo num perfil
+    PADRÃO: a Recepção via "Criar reserva" e levava 403. A mesma forma fechou a
+    S20 (nomes de constraint × snapshot), a S28 (assert × assert) e a S11 (enum
+    da tela × enum do contrato).)*
 
 ---
 

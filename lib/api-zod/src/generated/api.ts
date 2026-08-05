@@ -127,6 +127,24 @@ export const SelecionarLojaResponse = zod.object({
 })
 
 
+/**
+ * As linhas com `lojaId` nulo — apagar uma pessoa (tabela global) ou apagar uma loja. Elas não aparecem em `/lojas/{lojaId}/financeiro/auditoria`, que filtra por loja, e sem esta porta o rastro seria gravado e nunca lido. É o único lugar onde "quem apagou aquela loja?" tem resposta.
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+export const ListAuditoriaGlobalResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.null().describe('Sempre nulo — é o que define o ato global'),
+  "acao": zod.string(),
+  "entidade": zod.string(),
+  "entidadeId": zod.string(),
+  "usuarioId": zod.string().nullish(),
+  "usuarioNome": zod.string().describe('Quem fez, desnormalizado'),
+  "detalhe": zod.record(zod.string(), zod.unknown()).nullish().describe('O NOME do que sumiu — depois do DELETE não há linha para consultar'),
+  "criadoEm": zod.coerce.date()
+})
+export const ListAuditoriaGlobalResponse = zod.array(ListAuditoriaGlobalResponseItem)
+
+
 export const ListLojasResponseItem = zod.object({
   "id": zod.string(),
   "nome": zod.string(),
@@ -478,6 +496,35 @@ export const DownloadBackupParams = zod.object({
 })
 
 export const DownloadBackupResponse = zod.unknown()
+
+
+/**
+ * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da noiva, a linha "Endereço:" da confirmação de atendimento e o botão de WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const UpdateDadosDaLojaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+
+
+export const UpdateDadosDaLojaBody = zod.object({
+  "nome": zod.string().min(1).optional(),
+  "cnpj": zod.string().optional(),
+  "endereco": zod.string().optional(),
+  "telefone": zod.string().optional().describe('Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso.\n')
+})
+
+export const UpdateDadosDaLojaResponse = zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "cnpj": zod.string().nullish(),
+  "endereco": zod.string().nullish(),
+  "telefone": zod.string().nullish(),
+  "ativo": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
 
 
 export const ListEquipeParams = zod.object({

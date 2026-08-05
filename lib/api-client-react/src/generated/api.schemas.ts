@@ -88,6 +88,15 @@ export interface LojaUpdate {
   ativo?: boolean;
 }
 
+export interface DadosDaLojaInput {
+  /** @minLength 1 */
+  nome?: string;
+  cnpj?: string;
+  endereco?: string;
+  /** Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso. */
+  telefone?: string;
+}
+
 export interface AcoesModulo {
   ver: boolean;
   criar: boolean;
@@ -1452,6 +1461,34 @@ export interface DisponibilidadeVestidos {
   /** Dia local YYYY-MM-DD consultado */
   data: string;
   itens: DisponibilidadeVestidosItensItem[];
+}
+
+/**
+ * O NOME do que sumiu — depois do DELETE não há linha para consultar
+ * @nullable
+ */
+export type AuditoriaGlobalDetalhe = { [key: string]: unknown } | null;
+
+export interface AuditoriaGlobal {
+  id: string;
+  /**
+     * Sempre nulo — é o que define o ato global
+     * @nullable
+     */
+  lojaId: null;
+  acao: string;
+  entidade: string;
+  entidadeId: string;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** Quem fez, desnormalizado */
+  usuarioNome: string;
+  /**
+     * O NOME do que sumiu — depois do DELETE não há linha para consultar
+     * @nullable
+     */
+  detalhe?: AuditoriaGlobalDetalhe;
+  criadoEm: string;
 }
 
 export interface AutorAuditoria {

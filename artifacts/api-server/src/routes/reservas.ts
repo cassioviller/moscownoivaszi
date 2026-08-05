@@ -813,6 +813,8 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       lojaId: lojaId as string,
       contratoId: parsed.data.contratoId,
       numero: Number(maior) + 1,
+      // S26: o reparo NÃO é carnê — é o que permite ao contrato ainda gerar o dele.
+      origem: "AVARIA",
       descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
       valorPrevisto: avaria.custoReparo!,
       // Dia de negócio, não instante: `new Date()` das 21h à meia-noite jogava

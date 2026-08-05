@@ -151,7 +151,20 @@ function descreverFaixa(f: ComissaoFaixa): string {
 export default function Comissoes() {
   const { activeLojaId, acessosModulos } = useAuth();
   // Baixar estorno é ação de admin — a mesma régua do gate do backend.
-  const podeBaixarEstorno = podeNoModulo(acessosModulos, "admin", "editar");
+  /**
+   * S36 — o módulo é `comissao`, e era `admin`.
+   *
+   * As três ações desta tela (baixar estorno, reabrir fechamento, criar regra)
+   * vivem em `/lojas/:lojaId/comissao`, que o servidor guarda por
+   * `requireModulo("comissao")`. Gatear por `admin.editar` era pedir OUTRA
+   * coisa: quem tinha comissão e não admin não achava o botão, e quem tinha
+   * admin e não comissão o via e levava 403.
+   *
+   * Nos quatro perfis padrão nenhum dos dois casos acontece — Proprietária tem
+   * os dois, as demais não têm nenhum —, e é por isso que ninguém tropeçou:
+   * o defeito esperava a primeira loja que customizasse um perfil.
+   */
+  const podeMexerNaComissao = podeNoModulo(acessosModulos, "comissao", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -647,7 +660,7 @@ export default function Comissoes() {
                           : `${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
                       </p>
                     )}
-                    {soEstorno && podeBaixarEstorno && (
+                    {soEstorno && podeMexerNaComissao && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -783,7 +796,7 @@ export default function Comissoes() {
                     {/* E54: fechou errado, dá para desfazer sem SQL. Só admin —
                         a mesma régua da baixa de estorno, que também mexe em
                         dinheiro já apurado. */}
-                    {podeBaixarEstorno && (
+                    {podeMexerNaComissao && (
                       <Button
                         size="sm"
                         variant="ghost"

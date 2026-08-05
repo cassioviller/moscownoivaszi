@@ -43,6 +43,7 @@ import type {
   AtributoOpcaoInput,
   AtributoOpcaoUpdate,
   AtributoUpdate,
+  AuditoriaGlobal,
   AuditoriaItem,
   Ausencia,
   AusenciaInput,
@@ -86,6 +87,7 @@ import type {
   ConviteInput,
   ConvitePublico,
   CreateParcelaAvulsaBody,
+  DadosDaLojaInput,
   DashboardSummary,
   DisponibilidadeVestidos,
   EnviarContabilidadeInput,
@@ -654,6 +656,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getSelecionarLojaMutationOptions(options));
     }
+
+export const getListAuditoriaGlobalUrl = () => {
+
+
+
+
+  return `/api/admin/auditoria-global`
+}
+
+/**
+ * As linhas com `lojaId` nulo — apagar uma pessoa (tabela global) ou apagar uma loja. Elas não aparecem em `/lojas/{lojaId}/financeiro/auditoria`, que filtra por loja, e sem esta porta o rastro seria gravado e nunca lido. É o único lugar onde "quem apagou aquela loja?" tem resposta.
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+export const listAuditoriaGlobal = async ( options?: RequestInit): Promise<AuditoriaGlobal[]> => {
+
+  return customFetch<AuditoriaGlobal[]>(getListAuditoriaGlobalUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuditoriaGlobalQueryKey = () => {
+    return [
+    `/api/admin/auditoria-global`
+    ] as const;
+    }
+
+
+export const getListAuditoriaGlobalQueryOptions = <TData = Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuditoriaGlobalQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditoriaGlobal>>> = ({ signal }) => listAuditoriaGlobal({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAuditoriaGlobalQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditoriaGlobal>>>
+export type ListAuditoriaGlobalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+
+export function useListAuditoriaGlobal<TData = Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAuditoriaGlobalQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListLojasUrl = () => {
 
@@ -1969,6 +2049,78 @@ export function useDownloadBackup<TData = Awaited<ReturnType<typeof downloadBack
 
 
 
+
+export const getUpdateDadosDaLojaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/dados`
+}
+
+/**
+ * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da noiva, a linha "Endereço:" da confirmação de atendimento e o botão de WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const updateDadosDaLoja = async (lojaId: string,
+    dadosDaLojaInput: DadosDaLojaInput, options?: RequestInit): Promise<Loja> => {
+
+  return customFetch<Loja>(getUpdateDadosDaLojaUrl(lojaId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dadosDaLojaInput)
+  }
+);}
+
+
+
+
+export const getUpdateDadosDaLojaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext> => {
+
+const mutationKey = ['updateDadosDaLoja'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDadosDaLoja>>, {lojaId: string;data: BodyType<DadosDaLojaInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  updateDadosDaLoja(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDadosDaLojaMutationResult = NonNullable<Awaited<ReturnType<typeof updateDadosDaLoja>>>
+    export type UpdateDadosDaLojaMutationBody = BodyType<DadosDaLojaInput>
+    export type UpdateDadosDaLojaMutationError = ErrorType<void>
+
+    /**
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const useUpdateDadosDaLoja = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDadosDaLoja>>,
+        TError,
+        {lojaId: string;data: BodyType<DadosDaLojaInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateDadosDaLojaMutationOptions(options));
+    }
 
 export const getListEquipeUrl = (lojaId: string,) => {
 
