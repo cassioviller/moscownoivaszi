@@ -86,7 +86,9 @@ describe("E120 — contrato com vendedora divergente do orçamento deixa rastro"
     expect(linhas).toHaveLength(1);
     const detalhe = linhas[0].detalhe as Record<string, unknown>;
     expect(detalhe.orcamentoId).toBe(orcamento.id);
-    expect(detalhe.vendedoraDoOrcamentoId).toBe(f.vendedoraId);
+    // S-D29 renomeou a chave: a referência deixou de ser sempre o orçamento.
+    expect(detalhe.vendedoraDaReferenciaId).toBe(f.vendedoraId);
+    expect(detalhe.referenciaOrigem).toBe("ORCAMENTO");
     expect(detalhe.vendedoraDoContratoId).toBe(f.superAdminId);
     expect(detalhe.valorTotal).toBe(4200);
     // Autor da sessão: quem CLICOU, que não é o mesmo papel da vendedora da venda.
@@ -109,7 +111,40 @@ describe("E120 — contrato com vendedora divergente do orçamento deixa rastro"
     expect(await trilhaDe(r.body.id)).toHaveLength(0);
   });
 
-  it("contrato sem orçamento não grava — não há com o que divergir", async () => {
+  /**
+   * S-D29 — este bloco existia ao contrário. O teste abaixo se chamava
+   * "contrato sem orçamento não grava — NÃO HÁ COM O QUE DIVERGIR", e fixava o
+   * silêncio como se fosse a regra: sem orçamento, o E120 não tinha referência
+   * e não gravava nada. Só que `orcamentoId` não é obrigatório no
+   * `ContratoInput`, então esse era o caminho LARGO — um `POST /contratos` sem
+   * orçamento punha a venda, e a comissão que ela soma, no nome de qualquer
+   * colega da loja, sem uma linha de trilha e sem tela nenhuma.
+   *
+   * A referência sem orçamento é quem está REGISTRANDO. A pergunta é a mesma
+   * que o E120 fez: a venda está sendo posta no nome de outra pessoa?
+   */
+  it("sem orçamento e em nome de OUTRA pessoa → 201 e uma linha, com a referência da sessão", async () => {
+    const lead = await criarLead(f);
+    // A dona registra, e a venda sai no nome da vendedora. Numa escada de 5%,
+    // R$ 4.200,00 são R$ 210,00 de comissão trocando de bolso — a mesma conta
+    // do E120, pelo caminho que ele não cobria.
+    const r = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send({ leadId: lead.id, vendedoraId: f.vendedoraId, valorTotal: 4200 })
+      .expect(201);
+
+    const linhas = await trilhaDe(r.body.id);
+    expect(linhas).toHaveLength(1);
+    const detalhe = linhas[0].detalhe as Record<string, unknown>;
+    expect(detalhe.referenciaOrigem).toBe("SESSAO");
+    expect(detalhe.orcamentoId).toBeNull();
+    expect(detalhe.vendedoraDaReferenciaId).toBe(f.superAdminId);
+    expect(detalhe.vendedoraDoContratoId).toBe(f.vendedoraId);
+    expect(detalhe.valorTotal).toBe(4200);
+    expect(String(detalhe.descricao)).toMatch(/^Registrado por /);
+  });
+
+  it("sem orçamento e em nome de quem registra → 201 e trilha limpa", async () => {
     const lead = await criarLead(f);
     const r = await agent
       .post(`/api/lojas/${f.lojaId}/contratos`)

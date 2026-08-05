@@ -136,7 +136,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
-  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
+  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
   USUARIO_EXCLUIDO: "Pessoa excluída do cadastro (ato global)",
   LOJA_EXCLUIDA: "Loja excluída (ato global)",
