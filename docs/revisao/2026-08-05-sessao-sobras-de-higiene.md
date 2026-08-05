@@ -83,7 +83,13 @@ Duas regras novas no `METODO.md`, as duas com o custo medido:
 - **Não mexeu nas 186 cabines** (S-D25) nem nos 121 vestidos `AVA…` (S-D22): a
   faxina de vestidos não serve para nenhum dos dois, e cada um pede a própria
   guarda.
-- **Não tocou no zip** `imagens sistema legado …zip` da raiz, que segue não
-  rastreado. Ele é o original das 29 fotos que já estão versionadas em
-  `docs/revisao/2026-08-04-arqueologia-legado/fotos/` — mesma soma de bytes.
-  Decidir se apaga é de quem sabe se há outra cópia.
+- **O zip da raiz** (`imagens sistema legado …zip`, 3,7 MB) devia ter ficado de
+  fora e **não ficou**: um `git add -A` no commit da S37 (`85d5108`) o levou
+  junto, mudo — a mensagem daquele commit não o menciona. Saiu em `c4de30c`, com
+  `/*.zip` no `.gitignore` para fechar a porta. Ele é o original das 29 fotos já
+  versionadas em `docs/revisao/2026-08-04-arqueologia-legado/fotos/` (somas
+  conferidas), e evidência versiona uma vez só. **O blob segue no histórico** —
+  `git rm` tira do próximo commit, não do passado; tirá-lo de vez pede reescrever
+  histórico, e isso é de quem publica. É a terceira vez nesta sessão que um
+  `git add -A` alcança mais do que o escopo do épico, e as outras duas foram
+  benignas por sorte.
