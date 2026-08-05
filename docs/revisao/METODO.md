@@ -303,6 +303,16 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     a ordem de string É a numérica. Ela foi RETIRADA, e fica na tabela riscada em
     vez de apagada, porque sobra que some não ensina que a apuração desmentiu
     quem a escreveu.)*
+21. **A sobra também SAI do rastreador no commit que a fecha** — riscada, com o
+    hash e uma linha do que se fez. A regra 12 cobria só a entrada, e uma tabela
+    que só cresce deixa de dizer o que falta: quem a lê passa a conferir cada
+    linha contra o código para saber se ainda é verdade, que é exatamente o
+    trabalho que ela existia para poupar. Sobra fechada por DECISÃO se risca
+    igual, com a resposta escrita — decisão não registrada volta como pergunta.
+    *(Arqueologia do legado, sessão 5: a S-A4 e a S-A6 foram fechadas pelo E155,
+    a linha do épico dizia "Fecha: S-A4 · S-A6", e as duas continuaram abertas na
+    tabela por cinco commits — até alguém varrer a tabela inteira por outro
+    motivo.)*
 
 ---
 
@@ -338,7 +348,12 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   executadas no dia, três estavam erradas em algum ponto, e uma delas — a S-A22,
   escrita por mim horas antes — **não era defeito nenhum**. A sobra é pista, não
   achado: ela não passa pela passada adversarial, e quem a executa confere antes
-  de consertar.
+  de consertar. O dia terminou pelas duas sobras do expediente, e com uma
+  **pergunta que rendeu mais que o conserto**: ao responder "domingo com hora
+  marcada", a dona nomeou uma distinção que o modelo não sabe dizer — e isso
+  virou sobra nova (S-A24) em vez de virar uma tradução silenciosa. **Quatro
+  regras novas num dia (18–21)**, todas nascidas de execução, nenhuma de
+  opinião.
 - **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
   (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
   futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +

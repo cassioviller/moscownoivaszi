@@ -24,7 +24,7 @@ A lente é uma só: **o que o ateliê faz todo dia e o sistema não deixa fazer.
    — ela é o que manda sobre ordem, numeração e escopo dos épicos, e reordenou
    o que este rastreador propunha (o acervo ainda não entrou no sistema; a
    forma do cadastro custa mais caro que a régua de ocupação).
-6. **As sete perguntas de produto estão respondidas** (P1–P7, tabela abaixo).
+6. **As nove perguntas de produto estão respondidas** (P1–P9, tabela abaixo).
    Não há bloqueio nenhum, e a spec está na 4ª versão, com uma correção
    registrada na seção do E152 (S-A19).
 7. Leia **"Onde paramos"**, logo abaixo — é o estado da mesa no fim da última
@@ -37,10 +37,10 @@ está na tabela de Sobras, e é lá que a próxima sessão pega trabalho.
 
 | | |
 |---|---|
-| Último commit de código | `2a280af` (S-A15) |
+| Último commit de código | `3c0b5df` (S-A8 · S-A23) |
 | Último commit de docs | este |
 | Branch | `rodada-7-sobras`, **não fundida no main** |
-| Suítes no fim | API **996** · frontend **446** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
+| Suítes no fim | API **997** · frontend **451** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
 
 **Pela primeira vez a suíte inteira sai verde**, e `pnpm run test:e2e` volta a
 sair com `EXIT=0`. Os dois vermelhos que viveram do E148 ao E156 eram defeito de
@@ -48,28 +48,33 @@ FIXTURE sobre código certo, e fecharam hoje (S-A11 e S-A21) — viraram as regr
 18 e 19 do método. **Isso muda como se lê um vermelho daqui para a frente: agora
 ele é notícia de novo.**
 
+E **não resta nenhuma 🟠 na trilha**. As dez sobras fechadas hoje incluem as
+quatro que corroíam alguma régua do método (as duas suítes vermelhas, o `push`
+travado e a afirmação errada na spec).
+
 ### O que fazer primeiro na próxima sessão
 
-Não há épico pendente. Por peso:
+Não há épico pendente nem sobra 🟠. O que resta é escolha, não dívida:
 
-1. **S-A23 🟠** — a última 🟠 da trilha. A janela de prova some em silêncio
-   quando `provaDiasAntes <= usoDiasAntes`, e a **P7 acabou de proibir** reserva
-   sem prova. Não morde no padrão de hoje (14 × 3); morde na primeira loja
-   configurada diferente. Vale junto com a **S-A8**, que já pede uma passada em
-   toda premissa categórica do `configuracao-inicial.ts` — são a mesma família.
+1. **S-A3 🟡** — a segunda linha de negócio (festa/madrinha/dama, **38
+   compromissos em 15 páginas**, e em setembro elas superam as provas de noiva)
+   nunca foi olhada como JORNADA: prazo, preço e prova podem não ser os mesmos.
+   É a maior sobra ainda não medida, e a única que pode virar trilha inteira.
 2. **S-A2 🟡** — pedir à dona as fotos que faltam (o verso de 21–27/09 e as
    semanas de 28/09 a 11/10) antes que as 136 saídas virem número de negócio.
-   É a única sobra que depende de outra pessoa, e por isso a que mais demora.
-3. **S-A3 🟡** — a segunda linha de negócio (festa/madrinha/dama, 38
-   compromissos em 15 páginas) nunca foi olhada como jornada: prazo, preço e
-   prova podem não ser os mesmos da noiva. É a maior sobra ainda não medida.
+   Depende de outra pessoa, então quanto antes for pedida, melhor.
+3. **S-A24 🟡** — *"domingo com hora marcada"* é uma distinção que o modelo não
+   sabe dizer, e a P8 a expôs. Pergunta de produto antes de ser código.
+4. **As de higiene** (S-A12, S-A13, S-A9, S-A7 🔵) valem um commit só de faxina,
+   e a S-A13 é a que mais atrapalha: 223 atributos no banco de dev, com quatro
+   deles chamados "Cor", "Cor A", "Cor B" e "Tamanho".
 
 ### O estado do banco de dev
 
-Em dia. A migração do E156 e o script da S-A20 **já foram aplicados**, e a
-baseline do drizzle está no `0007_right_giant_man.sql`. Um banco que já existe
-precisa dos **oito** scripts de `docs/migracoes/2026-08-04-*.sql` mais o
-`2026-08-05-sa20-*.sql`.
+Em dia. As migrações do E156, da S-A20 e da S-A8 **já foram aplicadas**, e a
+baseline do drizzle está no `0008_tidy_red_skull.sql`. Um banco que já existe
+precisa dos **oito** scripts de `docs/migracoes/2026-08-04-*.sql` mais os
+**dois** de `2026-08-05-*.sql`.
 
 **E o `push` voltou a funcionar** (S-A20): ele diz "Changes applied" sem prompt.
 O `psql` continua sendo o caminho de quem já tem banco — é o que os scripts de
@@ -120,9 +125,9 @@ Legenda: ⬜ pendente · 🟨 em andamento · ✅ feito e commitado
 | A5 | Ausência de vendedora não existe no modelo, e é o 1º dado que a agenda registra | 🟡 | — |
 | A6 | Os dois cadernos guardam o mesmo dado e já divergem — decide a importação | 🟡 | reinterpretado em B3 |
 | B1 | Configurações mostra "2 min" para uma prova de 60 min — o valor está em slots de 30 | 🟠 | — |
-| B2 | O código fecha domingo por premissa escrita; o ateliê atendeu 5 domingos | 🟠 | — |
+| B2 | O código fecha domingo por premissa escrita; o ateliê atendeu 5 domingos | 🟠 | **FECHADO na S-A8** — P8 respondeu *"domingo com hora marcada"*, e o default abre os sete dias |
 | B3 | A cópia agenda↔caderno foi abandonada em 24/08, não falhada: 79 saídas sem nenhuma linha | 🟡 | — |
-| B4 | 6 provas às 18:30 não cabem no expediente padrão (última possível: 18:00) | 🟡 | — |
+| B4 | 6 provas às 18:30 não cabem no expediente padrão (última possível: 18:00) | 🟡 | **FECHADO na S-A8** — P8 respondeu *"até as 20h"*, e o fechamento padrão passou de 19 para 20 |
 
 **Correções que a trilha B fez na trilha A** (regra 9): o número de páginas
 com aviso de férias estava errado por fator 4 (8 → 2 na agenda, 7 no caderno);
@@ -187,6 +192,8 @@ de abrir um épico:
 | **P5** | *"é valor"* | O `7.600` é dinheiro, não código. **Destrava o A4** e entra o **E157** — a contagem de locações já existe e é da vida inteira (`routes/vestidos.ts:274-277`); falta a régua de preço |
 | **P6** | *"nada muda — segue recusado"* | O realuguel em 7 dias **continua sem caminho no sistema**, e o ateliê o trata como exceção fora dele. **A S-A19 fecha como decisão, não como pendência** — e o papel sustenta a escolha: o caso aparece **uma vez em 14 semanas** |
 | **P7** | *"toda reserva tem ao menos um dia de prova"* | Nem no realuguel se dispensa a prova: a peça é conferida antes de sair. **Vira invariante de negócio** — e a apuração mostrou que o código o quebra numa quina de configuração (**S-A23**) |
+| **P8** | *"atende até as 20h"* · *"domingo com hora marcada"* | O expediente padrão passa a ser o **deste ateliê**: sete dias abertos, fechamento às 20h. Fecha a **S-A8**. Domingo nasce ABERTO porque o sistema não sabe dizer "só sob demanda" — ele abre ou recusa o dia |
+| **P9** | *"tudo pode ser configurado em configurações"* | A configuração **não se recusa**, nem a que apaga a janela de prova. Com a P7 ao lado, sobra a única leitura que honra as duas: **aceita e mostra**. Fecha a **S-A23** pela metade que faltava — o defeito era o silêncio, não a permissão |
 
 A4 (preço de realuguel) **deixou de ser impressão**: P5 respondeu que o `7.600`
 é valor, e a releitura da trilha B já apontava para lá (ponto de milhar; nenhum
@@ -216,14 +223,19 @@ foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação 
 
 Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 
-**23 sobras: 7 fechadas, 1 retirada.** Resta **uma 🟠**: a **S-A23** — a janela
-de prova some em silêncio quando `provaDiasAntes <= usoDiasAntes`, contra o que
-a P7 acabou de decidir. Todas as outras são 🟡 e 🔵, de higiene ou dependentes
-de terceiros.
+**24 sobras: 10 fechadas, 1 retirada.** **Não resta nenhuma 🟠** — as treze que
+seguem abertas são 🟡 e 🔵: higiene, decisão de produto ainda não feita, ou
+dependência de outra pessoa.
 
-**A S-A22 é a única sobra retirada da trilha**, e fica na tabela em vez de sumir:
-ela foi registrada com uma afirmação que a apuração desmentiu, e uma sobra que
-some não ensina isso a ninguém.
+Duas notas que valem mais que a contagem:
+
+- **A S-A22 é a única sobra RETIRADA da trilha**, e fica na tabela em vez de
+  sumir: ela foi registrada com uma afirmação que a apuração desmentiu, e uma
+  sobra que some não ensina isso a ninguém.
+- **A S-A4 e a S-A6 estavam fechadas desde o E155 e a tabela não sabia** — a
+  linha do épico dizia "Fecha: S-A4 · S-A6" e as duas ficaram abertas aqui por
+  cinco commits. É a regra 12 pelo avesso: ela manda a sobra ENTRAR no
+  rastreador, e ninguém tinha escrito que ela também precisa SAIR dele.
 
 **Nenhuma suíte sai mais vermelha.** A S-A11 e a S-A21 fecharam na sessão 5, e
 as duas eram a mesma doença: teste reprovando por defeito da FIXTURE, sobre
@@ -234,10 +246,11 @@ código certo. Viraram as regras 18 e 19 do método.
 | S-A1 | **As 29 fotos entraram no git (3,8 MB).** Decisão contrária à da rodada 7, que deixou as 81 capturas fora (`.gitignore`) — e deliberada: aquelas eram **regeneráveis por script** (S-D1), estas são evidência primária de um sistema em papel que não se recaptura. Se o peso incomodar, o caminho é um repo de evidências, não apagar. | 🔵 | montagem da trilha |
 | S-A2 | **Falta o verso da última página do caderno.** A semana de 21–27/09 termina com "ATRÁS →" e o verso não foi fotografado; as semanas de 28/09 a 11/10 também faltam. As 136 saídas contadas são piso, não total. Pedir as fotos que faltam antes de qualquer contagem virar número de negócio. | 🟡 | trilha A |
 | S-A3 | **O ateliê tem uma segunda linha de negócio que o diagnóstico só tangenciou:** festa/madrinha/dama, indexada por COR e com código de 4 dígitos, contra noiva indexada por nome de modelo. São **38** compromissos em laranja nas 15 páginas de agenda (contagem da trilha B; a trilha A dizia ~20), e em setembro eles superam as provas de noiva. O A3 trata do filtro; ninguém olhou ainda se o fluxo comercial dessa linha (prazo, preço, prova) é o mesmo. | 🟡 | trilha A · recontada em B |
-| S-A4 | **A confecção sob medida aparece 3 vezes e não tem lugar no modelo:** *"Siam + Manga **será confeccionada**"* (10–16/08), *"conversar sobre confecção de manga"* (21/07 e 24/07, dois compromissos de 10:30 dedicados ao assunto). Não é ajuste de peça existente (`ajustesTable`) — é peça nova feita para a noiva. Sem âncora de código porque não há código: é ausência. | 🟡 | trilha A |
-| S-A6 | **A confecção sob medida ganhou uma segunda evidência na trilha B:** o caderno de 13–19/07 numera *"Manga renda c/ saia lisa"* como item **5** da semana, com a nota *"(Mesma noiva Dayfini)"* — a peça componente tem número de ordem próprio no acervo, igual a um vestido. Reforça a S-A4 e o A2. | 🟡 | trilha B |
+| ~~S-A4~~ | **FECHADA no E155** (`b7078ad`), e a tabela não sabia até a sessão 5 — a linha do épico dizia "Fecha: S-A4 · S-A6" e esta ficou aberta cinco commits depois do conserto. **A confecção sob medida aparece 3 vezes e não tem lugar no modelo:** *"Siam + Manga **será confeccionada**"* (10–16/08), *"conversar sobre confecção de manga"* (21/07 e 24/07, dois compromissos de 10:30 dedicados ao assunto). Não é ajuste de peça existente (`ajustesTable`) — é peça nova feita para a noiva. Sem âncora de código porque não há código: é ausência. | 🟡 | trilha A |
+| ~~S-A6~~ | **FECHADA no E155** (`b7078ad`), pelo mesmo épico e com o mesmo atraso de registro. **A confecção sob medida ganhou uma segunda evidência na trilha B:** o caderno de 13–19/07 numera *"Manga renda c/ saia lisa"* como item **5** da semana, com a nota *"(Mesma noiva Dayfini)"* — a peça componente tem número de ordem próprio no acervo, igual a um vestido. Reforça a S-A4 e o A2. | 🟡 | trilha B |
 | S-A7 | **O `provaDuracao` tem unidade implícita e não documentada** (slots de 30 min). O B1 conserta a tela; a raiz é o nome do campo não dizer a unidade — `provaDuracaoSlots` ou guardar minutos resolveria a classe. `e115-portal-agenda-api.test.ts:92` usa `provaDuracao: 3` (= 90 min) e `revisao-reguas-unit.test.ts:64` idem, então os testes já convivem com a ambiguidade. | 🔵 | trilha B |
-| S-A8 | **A régua de dias é do sistema, mas o expediente real do ateliê nunca foi perguntado.** B2 e B4 mostram domingo aberto e 18:30 usado; `configuracao-inicial.ts:125` afirma "como todo ateliê de noiva" sobre o mundo. Vale uma passada em TODA premissa categórica escrita em comentário do `configuracao-inicial.ts` antes de a próxima loja nascer com ela. | 🟡 | trilha B |
+| ~~S-A8~~ | **FECHADA em `3c0b5df`, e a varredura que ela pedia rendeu mais que o achado.** Perguntamos: a dona atende **até as 20h** e **domingo com hora marcada** (P8), e os dois defaults passaram a ser os dela — sete dias, fechamento 20h. A premissa *"como todo ateliê de noiva"* saiu do comentário e deu lugar à contagem que a refuta. **O que a varredura achou além:** a mesma régua estava escrita em **três lugares** — o default do schema, o `HORARIO_PADRAO` do seed e um fallback na tela de Cabines & horário —, e o comentário do seed afirmava ser "os defaults do schema escritos por extenso" sem nada que o obrigasse; agora há teste comparando os dois **campo a campo**. O script de migração mexe só no DEFAULT da coluna: o horário de uma loja que já existe é dela. O diagnóstico original: | ✅ | trilha B |
+| ~~S-A8 (diagnóstico)~~ | **A régua de dias é do sistema, mas o expediente real do ateliê nunca foi perguntado.** B2 e B4 mostram domingo aberto e 18:30 usado; `configuracao-inicial.ts:125` afirma "como todo ateliê de noiva" sobre o mundo. Vale uma passada em TODA premissa categórica escrita em comentário do `configuracao-inicial.ts` antes de a próxima loja nascer com ela. | 🟡 | trilha B |
 | S-A14 | **`contrato_itens.vestidoId` e `orcamento_itens.vestidoId` são `set null`** (`contratos.ts:75`, `orcamentos.ts:54`). Apagar um vestido do acervo transforma um item com peça num item de descrição livre — e a guarda do E150 deixa de valer para aquele contrato numa reedição futura. Não é regressão (o snapshot preserva a descrição), mas a régua nova depende de um vínculo que o schema deixa evaporar. Vale decidir se peça vendida pode ser apagada do acervo. | 🟡 | execução E150 |
 | S-A12 | **O output do `seed.ts` mostra o TOTAL da loja ao lado de um `+` que significa "criei algo nesta execução"** (`scripts/seed.ts:44-53`). Numa loja com 122 cabines de lixo de teste, criar 3 imprime `+ Cabines 122` — quem lê entende que o seed criou 122. Separar as duas contagens (`122 (+3)`) resolve. | 🔵 | execução E149 |
 | S-A13 | **O banco de dev tem 223 atributos, dos quais 9 são do catálogo** — o resto é `Decote 1785…` deixado por specs que criam e não limpam, mais 128 cabines. É a família S-D17/S-D25, agora com número. Pior que o volume: há atributos de teste chamados **"Cor", "Cor A", "Cor B" e "Tamanho"**, que colidem com o vocabulário real e vão confundir qualquer varredura futura por nome de atributo. | 🟡 | execução E149 |
@@ -250,9 +263,11 @@ código certo. Viraram as regras 18 e 19 do método.
 | S-A17 | **A fila da costureira não tem tela própria por trabalho.** O E155 põe confecção e ajuste na mesma lista e o item do orçamento aponta o trabalho, mas o link do item leva à FILA (`/ajustes?recorte=todos`), não ao trabalho — não existe rota `/ajustes/:id`. Numa loja com fila longa, "na fila da costureira" obriga a procurar a olho. Enquanto a confecção era inexistente isso não pesava; agora que ela tem custo e é cobrada, pesa. | 🔵 | execução E155 |
 | S-A18 | **A ausência não olha o que já está marcado.** Registrar férias por cima de uma agenda cheia é aceito em silêncio: o E151 decidiu (com a spec) que ela só impede o NOVO, mas quem cadastra não fica sabendo que há atendimentos naquele intervalo. Um aviso na hora de marcar — *"há 4 atendimentos nesse período; eles não serão alterados"* — fecharia o buraco entre a decisão certa e a pessoa que precisa agir sobre ela. Remarcação em lote segue sendo decisão de produto; **contar e avisar não é**. | 🟡 | execução E151 |
 | ~~S-A19~~ | **FECHADA por DECISÃO (P6), não por código.** A dona respondeu que o realuguel em 7 dias **segue recusado** e o ateliê o trata como exceção fora do sistema — o caderno mostra o caso uma vez em 14 semanas, e nenhuma das duas saídas técnicas se paga por isso. O que a sobra tinha de acionável era a **afirmação errada**, e ela foi corrigida na spec (`2026-08-04-acervo-a-identidade-da-peca.md`), com as janelas remedidas e o número da própria sobra consertado. O diagnóstico, agora com data e medida: | ✅ | execução E152 |
-| S-A23 | **A janela de PROVA some inteira, em silêncio, quando `provaDiasAntes <= usoDiasAntes`.** Medido em `janelasDoBloqueio` com casamento em 03/03: `prova=14 uso=3` → `PROVA,USO,LAVAGEM`; **`prova=3 uso=3` → `USO,LAVAGEM`**; `prova=2 uso=3` → idem. A janela nasce em `D − provaDiasAntes` e termina em `inicioUso − 1`, então basta a prova não começar antes do uso para ela deixar de existir — e ninguém é avisado. **P7 acabou de tornar isso proibido**: *"toda reserva tem ao menos um dia de prova"*. Não morde hoje (o padrão da loja é 14 × 3), morde na primeira loja que configurar "prova até 3 dias antes" — família da S-A8, que já pede uma passada em toda premissa categórica do `configuracao-inicial.ts`. | 🟠 | decisão P7, sessão 5 |
+| ~~S-A23~~ | **FECHADA em `3c0b5df`.** A dona decidiu que a configuração **não se recusa** (P9), então o conserto é a metade que faltava: Configurações mostra *"Período de prova: 11 dias por reserva"* e, quando a conta zera, *"nenhum — as reservas nascem sem prova"*, no token de aviso. **O defeito era o silêncio, não a permissão.** Régua em núcleo puro com 5 casos, incluindo as duas bordas (prova = uso apaga; prova = uso + 1 já é janela). O diagnóstico original: | ✅ | decisão P7, sessão 5 |
+| ~~S-A23 (diagnóstico)~~ | **A janela de PROVA some inteira, em silêncio, quando `provaDiasAntes <= usoDiasAntes`.** Medido em `janelasDoBloqueio` com casamento em 03/03: `prova=14 uso=3` → `PROVA,USO,LAVAGEM`; **`prova=3 uso=3` → `USO,LAVAGEM`**; `prova=2 uso=3` → idem. A janela nasce em `D − provaDiasAntes` e termina em `inicioUso − 1`, então basta a prova não começar antes do uso para ela deixar de existir — e ninguém é avisado. **P7 acabou de tornar isso proibido**: *"toda reserva tem ao menos um dia de prova"*. Não morde hoje (o padrão da loja é 14 × 3), morde na primeira loja que configurar "prova até 3 dias antes" — família da S-A8, que já pede uma passada em toda premissa categórica do `configuracao-inicial.ts`. | 🟠 | decisão P7, sessão 5 |
 | ~~S-A19 (diagnóstico)~~ | **O realuguel curto é barrado pela janela de PROVA da segunda noiva, não pela lavagem.** Remedido na sessão 5, com datas: casamento 1 em 03/03 e a volta da lavanderia registrada no dia da devolução ⇒ `PROVA[02-17..02-27]P USO[02-28..03-05]F`, **sem janela de lavagem**; a segunda reserva, casamento 10/03, traz `PROVA[02-24..03-06]` e dá **1 conflito** contra aquele USO — PROVA × FÍSICA. *(O número que esta linha trazia, `PROVA [D−6, D+4]`, estava errado por um dia nas duas pontas: é `[D−7, D+3]`.)* **A afirmação errada da spec foi corrigida em `2026-08-04-acervo-a-identidade-da-peca.md`.** E o caminho de saída também está medido: com `provaDataReal` num dia só (06/03), os conflitos vão a **zero**. O `POST /bloqueios` **não aceita `provaDataReal`**, então não há como criar a segunda reserva já com a prova num dia só, que é justamente o caso do realuguel (a noiva escolheu peça que já conhece). Duas saídas possíveis, e a escolha é de produto. **A spec do E152 afirma que aquele épico torna o caso Adelita registrável; ele NÃO torna** — há teste pregando isso. | 🟠 | execução E152 |
 | ~~S-A20~~ | **FECHADA em `7c3c794`, e era MAIOR do que esta linha dizia.** A divergência entre `docs/migracoes/` e o schema drizzle era em **quatro** pontos, e só um gritava. Os outros três eram índices criados pelos scripts e nunca declarados no schema — `itens_estoque_loja_idx` (E154), `avarias_parcela_id_idx` e `atendimentos_loja_contato_idx` (E97) —, que existiam em todo banco antigo e em **nenhum banco novo**: ninguém tropeça num índice que falta, só fica mais lento, e num banco que ainda é pequeno. O conserto foi do lado do SCHEMA (declarar os três, e nomear a unique como o script a nomeou), porque **nenhum banco consumiu o `migrate`** e assim o conserto custa zero DDL em banco real; vai junto o script para quem nasceu de `push` antes disto. E a classe fecha por **varredura**: `e115-migracao-snapshot-unit.test.ts` reprova nome de constraint ou índice criado em `docs/migracoes/` que o snapshot não conheça. O diagnóstico original: | ✅ | execução E156 |
 | ~~S-A22~~ | **RETIRADA em `2a280af` — não era defeito, e o erro foi meu.** Registrei que o `.sort()` de string mentiria no `0010`, *"porque `"0010" < "0006"`"*. **É falso**: o drizzle zera à esquerda em quatro dígitos, e com largura fixa a ordem de string **é** a ordem numérica — `"0010" > "0009"`, a diferença cai na terceira casa. Medido nos dois sentidos com 12 nomes sintéticos: as duas ordenações devolvem o mesmo arquivo. A ordenação numérica ficou no código assim mesmo, por não depender da largura do zero à esquerda, mas **não consertou nada** — e o teste que a cobre passou a usar o caso em que a de string erraria de verdade (larguras mistas). Fica registrada em vez de apagada: uma sobra que some não ensina que a apuração desmentiu quem a escreveu. | ✅ | execução S-A20 | O script à mão batizou a unique de `itens_estoque_loja_nome_tamanho_unq` (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`); o drizzle gera o nome sozinho e procura `itens_estoque_loja_id_nome_tamanho_unique`. Não acha, tenta CRIAR a duplicata e pergunta se pode **truncar `itens_estoque`** — sem TTY, morre. O caminho que o `replit.md` documenta ("aplique o DDL por psql e rode o push depois") deixou de existir para **todo banco que rodou os scripts à mão**, que é todo banco que já existia. Conserto: nomear a constraint no schema (`unique("itens_estoque_loja_nome_tamanho_unq")`) OU renomeá-la nos bancos. | 🟠 | execução E156 |
 | ~~S-A21~~ | ~~**`projecao-comissao-api.test.ts:106` reprova, e o código está certo.**~~ **FECHADA em `b22311c`** — a fixture passou a escrever os degraus em reais (`5_000`), e a API voltou a **990 passed, zero vermelho, zero skipped**. O diagnóstico original: A fixture insere `minAcumulado: 500_000` em `comissao_faixas`, coluna `decimal(10,2)` em **reais** que vira centavos no `paraCalc` (`routes/comissao.ts:91`): a segunda faixa do teste começa em **R$ 500.000,00**, não em R$ 5.000,00. Medido: 3.000 vendidos no dia 1, hoje dia 5 de 31 ⇒ `baseProjetada` **R$ 18.600,00**, `percentualProjetado` **3%**, `valorTotalProjetado` **R$ 558,00**; o teste espera 6% porque compara `baseProjetada >= 5000`. Família da crítica 3 do MÉTODO (reais × centavos são dois `number`) e do E94 (assert errado sobre código certo). **Estava `skipped` até ontem** (`MIN_DIAS_PROJECAO = 5`) e reprovou na primeira vez que rodou — enquanto viver, `pnpm --filter api-server test` sai vermelho, como a S-A11 no E2E. Conserto: `500_000` → `5_000` nos dois lugares da fixture. | ✅ | execução E156 |
+| S-A24 | **A dona nomeou uma distinção que o sistema não sabe dizer.** Ao responder a P8 ela não disse "domingo é dia de trabalho": disse *"domingo com hora marcada"* — atende quando a noiva pede, e não é expediente de rotina. O modelo tem uma alavanca só (`diasFuncionamento`: o dia está aberto ou o `POST` recusa), então a resposta virou **domingo aberto**, que é o que não perde a venda — mas a grade passa a oferecer domingo como qualquer outro dia, e ninguém marcou para trabalhar de rotina. Um dia "sob demanda" — fora da grade, mas aceito quando alguém insiste — não existe no modelo. É pergunta de produto antes de ser código, e o custo de hoje é pequeno: uma grade que oferece a mais. | 🟡 | decisão P8, sessão 5 |
 | ~~S-A5~~ | ~~**O `CLAUDE.md` segue apontando para o rastreador da rodada 6**~~ — **FECHADA no fim da sessão 4**: o ponteiro passou a apontar para esta trilha, e ganhou a tabela das três (arqueologia em curso; rodadas 6 e 7 fechadas, com as sobras delas ainda valendo). Era também a S-D28 da rodada 7. | ✅ | montagem da trilha |
