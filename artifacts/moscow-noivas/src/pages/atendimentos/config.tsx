@@ -169,8 +169,11 @@ export default function ConfigAtendimentos() {
       ? {
           abertura: String(regra.atendimentoAberturaHora),
           fechamento: String(regra.atendimentoFechamentoHora),
-          // Dias em que a loja abre (E38): 0=domingo … 6=sábado.
-          dias: regra.diasFuncionamento ?? [1, 2, 3, 4, 5, 6],
+          // Dias em que a loja abre (E38): 0=domingo … 6=sábado. O fallback
+          // acompanha o default do schema (S-A8: era `[1..6]` aqui e no
+          // servidor, e os dois tinham de mudar juntos — a mesma premissa
+          // escrita em três lugares é a mesma que pode divergir em três).
+          dias: regra.diasFuncionamento ?? [0, 1, 2, 3, 4, 5, 6],
         }
       : undefined,
     resetOptions: { keepDirtyValues: true },

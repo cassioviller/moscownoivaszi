@@ -10,6 +10,8 @@ import {
   LOJA_PADRAO,
   DONA_PADRAO,
 } from "../lib/configuracao-inicial";
+import { getTableConfig } from "drizzle-orm/pg-core";
+import { regraDisponibilidadeTable } from "@workspace/db";
 import { calcularComissao, validarFaixas, type FaixaCalc } from "../lib/comissao";
 import { normalizarAcessos, MODULOS, ACOES } from "../lib/permissoes";
 import { centavos } from "@workspace/financeiro-core";
@@ -193,10 +195,42 @@ describe("E147 — o catálogo do acervo", () => {
 });
 
 describe("E147 — agenda e ambiente", () => {
-  it("três cabines e um horário que abre seg–sáb", () => {
+  /**
+   * S-A8 — o horário padrão é o DESTE ateliê, medido no papel dele, e não uma
+   * premissa sobre "todo ateliê de noiva". Os dois números que mudaram têm
+   * evidência contada:
+   *
+   * · **domingo aberto** — 7 compromissos em 5 domingos (19/07, 02/08, 09/08,
+   *   16/08, 13/09), às 14h e às 18h. A dona: domingo é com hora marcada.
+   * · **fecha às 20h** — 6 provas às 18:30 no papel; com prova de 60 min e
+   *   fechamento às 19h, a última que cabia começava às 18:00.
+   */
+  it("três cabines, e o horário que o papel do ateliê mostra", () => {
     expect(CABINES_PADRAO).toHaveLength(3);
-    expect(HORARIO_PADRAO.diasFuncionamento).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(HORARIO_PADRAO.diasFuncionamento).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(HORARIO_PADRAO.atendimentoFechamentoHora).toBe(20);
     expect(HORARIO_PADRAO.atendimentoAberturaHora).toBeLessThan(HORARIO_PADRAO.atendimentoFechamentoHora);
+  });
+
+  /**
+   * S-A8 — a mesma régua escrita em dois lugares tem de bater. O comentário do
+   * `HORARIO_PADRAO` afirma que ele é "os defaults do schema escritos por
+   * extenso"; sem esta asserção, a afirmação era só uma frase, e uma loja criada
+   * SEM estes campos nasceria com um horário diferente da que passa pelo seed.
+   */
+  it("o horário padrão é o mesmo default do schema, campo a campo", () => {
+    const doSchema = getTableConfig(regraDisponibilidadeTable);
+    const defaultDe = (coluna: string) =>
+      doSchema.columns.find((c) => c.name === coluna)?.default;
+
+    expect(defaultDe("prova_dias_antes")).toBe(HORARIO_PADRAO.provaDiasAntes);
+    expect(defaultDe("prova_duracao")).toBe(HORARIO_PADRAO.provaDuracao);
+    expect(defaultDe("uso_dias_antes")).toBe(HORARIO_PADRAO.usoDiasAntes);
+    expect(defaultDe("uso_dias_depois")).toBe(HORARIO_PADRAO.usoDiasDepois);
+    expect(defaultDe("lavagem_dias_depois")).toBe(HORARIO_PADRAO.lavagemDiasDepois);
+    expect(defaultDe("atendimento_abertura_hora")).toBe(HORARIO_PADRAO.atendimentoAberturaHora);
+    expect(defaultDe("atendimento_fechamento_hora")).toBe(HORARIO_PADRAO.atendimentoFechamentoHora);
+    expect(defaultDe("dias_funcionamento")).toEqual([...HORARIO_PADRAO.diasFuncionamento]);
   });
 
   it("sem env, a configuração é a do desenvolvimento de sempre", () => {

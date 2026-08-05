@@ -120,9 +120,30 @@ export const CABINES_PADRAO = ["Cabine 1", "Cabine 2", "Cabine 3"] as const;
  * São os defaults do schema escritos por extenso, e escrever por extenso é o
  * ponto: sem uma linha em `regra_disponibilidade` a loja não tem horário
  * nenhum — `primeirosPassos` chama isso de `temHorario: false` e a agenda não
- * sabe onde encaixar um atendimento.
+ * sabe onde encaixar um atendimento. **Os dois lados têm de bater**: o schema é
+ * quem manda em linha criada sem estes campos (`lib/db/src/schema/loja.ts:29`).
  *
- * `diasFuncionamento` é seg–sáb (domingo fechado, como todo ateliê de noiva).
+ * **S-A8 — de onde vieram estes números, e por que dois deles mudaram.**
+ *
+ * Este bloco carregava uma afirmação sobre o mundo: *"domingo fechado, como
+ * todo ateliê de noiva"*. O ateliê que usa este sistema **refuta a frase 7
+ * vezes em 15 páginas de agenda** — provas em 19/07, 02/08, 09/08, 16/08 e
+ * 13/09, às 14h e às 18h. E o fechamento às 19h, com prova de 60 min, fazia a
+ * última prova possível começar às 18:00, enquanto o papel registra **6 provas
+ * às 18:30** (mais 12 às 18:00, que cabiam raspando).
+ *
+ * Nenhum dos dois era bug: os dois são configuráveis, e a loja os corrige numa
+ * linha da tela. O defeito era a ORIGEM — o default não tinha sido tirado de
+ * ateliê nenhum, e toda instalação nova nascia recusando o horário mais usado
+ * do fim do dia. Perguntamos, e a dona respondeu: **atende até as 20h**, e
+ * **domingo é com hora marcada** — não é expediente de rotina, mas ela atende
+ * quando a noiva pede. O sistema não sabe dizer essa diferença (só sabe abrir
+ * ou recusar o dia), e entre perder a venda e oferecer um dia a mais na grade,
+ * abrir é o que não custa nada desfazer.
+ *
+ * O resto continua sendo default de fábrica, e é honesto que seja: `provaDuracao`
+ * está em SLOTS de 30 min (2 = 60 min), e a régua de dias — prova 14, uso 3+2,
+ * lavagem 7 — foi confirmada pela dona em P1 (*"uma semana, lavagem externa"*).
  */
 export const HORARIO_PADRAO = {
   provaDiasAntes: 14,
@@ -131,8 +152,8 @@ export const HORARIO_PADRAO = {
   usoDiasDepois: 2,
   lavagemDiasDepois: 7,
   atendimentoAberturaHora: 9,
-  atendimentoFechamentoHora: 19,
-  diasFuncionamento: [1, 2, 3, 4, 5, 6],
+  atendimentoFechamentoHora: 20,
+  diasFuncionamento: [0, 1, 2, 3, 4, 5, 6],
 } as const;
 
 // ── O catálogo: o vocabulário do acervo ───────────────────────────────────────

@@ -33,6 +33,14 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `SEED_EXEMPLOS_FINANCEIROS=false` (sem escada nem recorrências).
   **Ele não cadastra noiva, vestido, contrato nem parcela** — isso é trabalho da
   loja, e entra pela tela.
+  **O expediente padrão é o DESTE ateliê, e não uma premissa** (S-A8): abre os
+  **sete dias** e fecha às **20h**. Os dois números vieram do papel — 7
+  compromissos em 5 domingos, e 6 provas às 18:30 que o fechamento anterior
+  (19h, com prova de 60 min) recusava. Domingo aberto é a resposta da dona
+  (*"com hora marcada"*) traduzida na única alavanca que o sistema tem: ele sabe
+  abrir ou recusar o dia, não sabe dizer "só sob demanda". **O default do schema
+  e o `HORARIO_PADRAO` do seed são comparados campo a campo por teste** — a
+  mesma régua morava em três lugares e podia divergir em três.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.

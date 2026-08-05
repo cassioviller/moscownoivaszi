@@ -32,10 +32,25 @@ export const regraDisponibilidadeTable = pgTable("regra_disponibilidade", {
   usoDiasDepois: integer("uso_dias_depois").notNull().default(2),
   lavagemDiasDepois: integer("lavagem_dias_depois").notNull().default(7),
   atendimentoAberturaHora: integer("atendimento_abertura_hora").notNull().default(9),
-  atendimentoFechamentoHora: integer("atendimento_fechamento_hora").notNull().default(19),
-  // Dias da semana em que a loja abre (E38): 0=domingo … 6=sábado. Default
-  // seg–sáb (loja de noiva fecha domingo). Sem dia aberto = agenda fechada.
-  diasFuncionamento: jsonb("dias_funcionamento").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6]),
+  /**
+   * S-A8 — era 19, e o papel do ateliê mostrava 6 provas às **18:30**. Com a
+   * prova de 60 min, a última que cabia começava às 18:00: o horário mais usado
+   * do fim do dia era justamente o que o default recusava. A dona confirmou o
+   * expediente real — **até as 20h** —, e o default passou a ser o dela.
+   */
+  atendimentoFechamentoHora: integer("atendimento_fechamento_hora").notNull().default(20),
+  /**
+   * Dias da semana em que a loja abre (E38): 0=domingo … 6=sábado. Sem dia
+   * aberto = agenda fechada.
+   *
+   * S-A8 — era `[1..6]`, com um comentário afirmando que loja de noiva fecha
+   * domingo. **Este ateliê atendeu 7 vezes em 5 domingos** (19/07, 02/08,
+   * 09/08, 16/08, 13/09), às 14h e às 18h. A dona explicou: domingo não é
+   * expediente de rotina, mas ela atende **com hora marcada** — e o sistema não
+   * sabe dizer essa diferença, só sabe abrir ou recusar. Aberto é o que não
+   * perde a venda; o que ele não faz é oferecer domingo como dia de rotina.
+   */
+  diasFuncionamento: jsonb("dias_funcionamento").$type<number[]>().notNull().default([0, 1, 2, 3, 4, 5, 6]),
 });
 
 export const insertRegraDisponibilidadeSchema = createInsertSchema(regraDisponibilidadeTable);

@@ -1,0 +1,2 @@
+ALTER TABLE "regra_disponibilidade" ALTER COLUMN "atendimento_fechamento_hora" SET DEFAULT 20;--> statement-breakpoint
+ALTER TABLE "regra_disponibilidade" ALTER COLUMN "dias_funcionamento" SET DEFAULT '[0,1,2,3,4,5,6]'::jsonb;
