@@ -64,6 +64,13 @@
       "when": 1785936457136,
       "tag": "0008_tidy_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785938169129,
+      "tag": "0009_chief_viper",
+      "breakpoints": true
     }
   ]
 }

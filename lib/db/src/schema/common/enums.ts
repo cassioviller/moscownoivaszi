@@ -145,6 +145,26 @@ export const parcelaStatusEnum = pgEnum("parcela_status", [
   "CANCELADA",
 ]);
 
+/**
+ * S26 — de onde a parcela veio, que é o que ninguém sabia responder.
+ *
+ * O guard do `gerar-plano` perguntava *"este contrato já tem carnê?"* e olhava
+ * `parcelas.length > 0` — QUALQUER parcela. Cobrado um reparo de avaria antes
+ * de montar o parcelamento, o contrato ficava em `409 JA_TEM_PLANO` **para
+ * sempre**, e a venda inteira era parcelada fora do sistema.
+ *
+ * A pergunta não era dedutível do dado: carnê, taxa avulsa e reparo eram todas
+ * "uma parcela com um número". `PLANO` é o carnê (a série que
+ * `montarPlanoParcelas` emite, e que existe **uma vez** por contrato); `AVARIA`
+ * é o reparo cobrado, que já tem coluna própria do outro lado
+ * (`avarias.parcela_id`); `AVULSA` é o resto — taxa, acerto, o que a loja
+ * lançar à mão.
+ *
+ * O default é `AVULSA` de propósito: é o que uma linha inserida por quem não
+ * conhece esta régua deve ser, e é a única das três que não tem consequência.
+ */
+export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA"]);
+
 export const contaPagarTipoEnum = pgEnum("conta_pagar_tipo", [
   "DESPESA",
   "FORNECEDOR",

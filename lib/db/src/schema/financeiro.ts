@@ -6,13 +6,26 @@ import { lojasTable } from "./loja";
 import { contratosTable } from "./contratos";
 import { usuariosTable } from "./usuarios";
 import { leadsTable } from "./leads";
-import { parcelaStatusEnum, formaPagamentoEnum, contaPagarTipoEnum, contaPagarStatusEnum } from "./common/enums";
+import { parcelaStatusEnum, parcelaOrigemEnum, formaPagamentoEnum, contaPagarTipoEnum, contaPagarStatusEnum } from "./common/enums";
 
 export const parcelasTable = pgTable("parcelas", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
   contratoId: text("contrato_id").notNull().references(() => contratosTable.id, { onDelete: "cascade" }),
   numero: integer("numero").notNull(), // 0 = entrada/sinal; 1..N parcelas
+  /**
+   * S26 — de onde esta linha veio. Ver `parcelaOrigemEnum`.
+   *
+   * É o que responde "este contrato já tem carnê?" sem perguntar "existe
+   * alguma parcela?", que era a pergunta errada: o reparo de avaria cobrado
+   * antes do parcelamento trancava o contrato em 409 para sempre.
+   *
+   * O `numero` continua sendo ORDENAÇÃO, e `numero === 0` continua sendo a
+   * entrada — seis pontos leem essa régua (as três telas, o portal, a
+   * conciliação e o PDF do contrato). Por isso o carnê nasce sempre em 0..N e
+   * quem se desloca, quando a ordem do balcão inverte, é o que não é carnê.
+   */
+  origem: parcelaOrigemEnum("origem").notNull().default("AVULSA"),
   descricao: text("descricao"),
   valorPrevisto: decimal("valor_previsto", { precision: 10, scale: 2, mode: "number" }).notNull(),
   vencimento: timestamp("vencimento", { withTimezone: true }).notNull(),
