@@ -54,7 +54,7 @@ import {
 } from "../lib/disponibilidade";
 import { comprometidoNoDia } from "../lib/estoque";
 import { identificarImagem } from "../lib/imagem";
-import { atributosDaLoja, vestidoNaLoja } from "../lib/escopo-loja";
+import { atributosDaLoja, vestidoNaLoja, confeccaoPodeVirarPeca } from "../lib/escopo-loja";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
@@ -116,6 +116,31 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
     });
     return;
   }
+
+  // E156 — a peça que nasce de uma CONFECÇÃO da fila da costureira (P4).
+  // O gesto é da loja e o preço é digitado; o que o servidor prova é que o
+  // trabalho citado é desta loja e que ele já existe como peça — a manga não
+  // vira acervo enquanto a costureira não termina.
+  if (vestidoData.origemAjusteId) {
+    const veredicto = await confeccaoPodeVirarPeca(vestidoData.origemAjusteId, lojaId);
+    if (veredicto === "FORA_DA_LOJA") {
+      res.status(422).json({
+        error: "REFERENCIA_INVALIDA",
+        detalhe: "Este trabalho da fila não é desta loja",
+        campos: [{ campo: "origemAjusteId", motivo: "Trabalho de outra loja" }],
+      });
+      return;
+    }
+    if (veredicto === "NAO_ESTA_PRONTA") {
+      res.status(422).json({
+        error: "CONFECCAO_INVALIDA",
+        detalhe: "Só uma confecção já concluída vira peça do acervo",
+        campos: [{ campo: "origemAjusteId", motivo: "Não é confecção, ou ainda não está pronta" }],
+      });
+      return;
+    }
+  }
+
   const vestidoId = randomUUID();
 
   const insertData = { ...vestidoData };

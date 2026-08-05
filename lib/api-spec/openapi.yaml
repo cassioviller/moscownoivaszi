@@ -4856,6 +4856,10 @@ components:
         # E157: nulo = a peça não tem preço de segunda saída, e o orçamento
         # segue com o precoBase (o comportamento de sempre).
         precoRealuguel: { type: ["number", "null"] }
+        # E156: de onde a peça veio, quando não veio do fornecedor — o trabalho
+        # de CONFECÇÃO da fila da costureira que virou item do acervo. Nulo é o
+        # caso de toda peça comprada.
+        origemAjusteId: { type: ["string", "null"] }
         tamanho: { type: ["string", "null"] }
         cor: { type: ["string", "null"] }
         categoria: { type: ["string", "null"] }
@@ -4923,6 +4927,11 @@ components:
         nome: { type: string, minLength: 1 }
         precoBase: { type: number }
         precoRealuguel: { type: number, minimum: 0 }
+        # E156: a proveniência se declara no NASCIMENTO da peça, e só aqui — o
+        # gesto é "esta confecção virou peça do acervo", não uma edição de ficha.
+        # O servidor exige que o trabalho seja desta loja, do tipo CONFECCAO e já
+        # FEITO.
+        origemAjusteId: { type: string }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
@@ -5389,6 +5398,20 @@ components:
         # depois da prova que criou o ajuste — é para ela que o ajuste precisa
         # estar pronto. Null = sem prova marcada (o casamento vira a referência).
         proximaProva: { type: ["string", "null"], format: date-time }
+        # E156: a peça do acervo que ESTE trabalho virou. Null enquanto não
+        # virou — e é o que troca o gesto "virou peça do acervo" pelo link para
+        # a peça, na mesma linha da fila.
+        pecaDoAcervo:
+          anyOf:
+            - $ref: "#/components/schemas/AjustePecaDoAcervo"
+            - type: "null"
+    AjustePecaDoAcervo:
+      type: object
+      required: [id, codigo, nome]
+      properties:
+        id: { type: string }
+        codigo: { type: string }
+        nome: { type: string }
     AjusteAtendimento:
       type: object
       required: [id, leadId, tipo, inicio, situacao]

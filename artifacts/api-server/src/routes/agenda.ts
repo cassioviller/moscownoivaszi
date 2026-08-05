@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable } from "@workspace/db";
+import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable, vestidosTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
@@ -698,6 +698,28 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
         ))
     : [];
 
+  // E156 — a confecção que já virou peça do acervo. A proveniência mora em
+  // `vestidos.origem_ajuste_id` (a peça é o que sobrevive), então a fila lê pelo
+  // lado de lá: uma query pelas peças que citam os trabalhos em cena. É o que
+  // troca o gesto "virou peça do acervo" pelo link para a peça — sem isto, a
+  // fila ofereceria o mesmo gesto para sempre, no mesmo trabalho já concluído.
+  const confeccaoIds = ajustes.filter((a) => a.tipo === "CONFECCAO").map((a) => a.id);
+  const pecas = confeccaoIds.length
+    ? await db
+        .select({
+          id: vestidosTable.id,
+          codigo: vestidosTable.codigo,
+          nome: vestidosTable.nome,
+          origemAjusteId: vestidosTable.origemAjusteId,
+        })
+        .from(vestidosTable)
+        .where(and(
+          eq(vestidosTable.lojaId, lojaId),
+          inArray(vestidosTable.origemAjusteId, confeccaoIds),
+        ))
+    : [];
+  const pecaPorAjuste = new Map(pecas.map(({ origemAjusteId, ...peca }) => [origemAjusteId!, peca]));
+
   const comPrazo = ajustes.map((a) => {
     const bloqueioId = a.atendimento?.bloqueioId;
     const aposEsta = a.atendimento?.inicio;
@@ -706,7 +728,7 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
           .filter((p) => p.bloqueioId === bloqueioId && p.inicio > aposEsta)
           .reduce<Date | null>((min, p) => (min === null || p.inicio < min ? p.inicio : min), null)
       : null;
-    return { ...a, proximaProva: proxima };
+    return { ...a, proximaProva: proxima, pecaDoAcervo: pecaPorAjuste.get(a.id) ?? null };
   });
 
   res.json(ListAjustesResponse.parse(comPrazo));

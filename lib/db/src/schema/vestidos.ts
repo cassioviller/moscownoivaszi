@@ -1,7 +1,8 @@
-import { pgTable, text, boolean, timestamp, integer, decimal, primaryKey, customType, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, integer, decimal, primaryKey, customType, unique, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
+import { ajustesTable } from "./atendimentos";
 import { atributoTipoEnum } from "./common/enums";
 
 // Drizzle doesn't have a built-in Bytes type for Postgres, using customType
@@ -58,6 +59,22 @@ export const vestidosTable = pgTable("vestidos", {
    * contratos (`GET /vestidos/utilizacao`), como toda contagem deste repo.
    */
   precoRealuguel: decimal("preco_realuguel", { precision: 10, scale: 2, mode: "number" }),
+  /**
+   * E156 — de onde esta peça veio, quando ela não veio do fornecedor.
+   *
+   * A confecção sob medida entra na fila da costureira (E155) e, depois do
+   * casamento, **vira peça do acervo** (P4). A proveniência mora aqui, e não em
+   * `ajustes.vestidoId`, porque a direção importa: **a peça do acervo é o que
+   * sobrevive**, o trabalho da costureira é de onde ela veio. Apontar ao
+   * contrário faria a fila carregar um campo que só interessa depois que ela
+   * terminou.
+   *
+   * `set null` pela mesma razão: apagar o trabalho da fila não pode apagar a
+   * peça que já está alugável — perde-se a proveniência, não o acervo.
+   *
+   * Nulo é o caso de toda peça comprada, que é a esmagadora maioria.
+   */
+  origemAjusteId: text("origem_ajuste_id").references((): AnyPgColumn => ajustesTable.id, { onDelete: "set null" }),
   tamanho: text("tamanho"),
   cor: text("cor"),
   categoria: text("categoria"),

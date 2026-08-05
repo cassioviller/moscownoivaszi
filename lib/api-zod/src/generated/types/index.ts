@@ -23,6 +23,7 @@ export * from './ajusteChecklistItemInput';
 export * from './ajusteChecklistItemUpdate';
 export * from './ajusteInput';
 export * from './ajusteInputTipo';
+export * from './ajustePecaDoAcervo';
 export * from './ajusteStatus';
 export * from './ajusteTipo';
 export * from './ajusteUpdate';

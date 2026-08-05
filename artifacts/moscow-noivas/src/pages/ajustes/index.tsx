@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { diasAteCasamento } from "../noivas/helpers";
 import { naSemana, prazoDias } from "@/lib/ajustes-da-semana";
+import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { Badge } from "@/components/ui/badge";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -76,6 +77,9 @@ export default function Ajustes() {
   const updateAjuste = useUpdateAjuste();
   const updateChecklist = useUpdateChecklistItem();
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
+  // E156: o gesto abre o CADASTRO de vestido — quem não cadastra acervo não vê
+  // um botão que a próxima tela recusaria.
+  const podeCadastrarPeca = podeNoModulo(acessosModulos, "vestidos", "criar");
 
   const { pendentes, foraDaSemana } = useMemo(() => {
     const alvo = recorte === "feitos" ? "FEITO" : "PENDENTE";
@@ -231,6 +235,17 @@ export default function Ajustes() {
                       {a.custo != null && (
                         <span className="text-xs text-muted-foreground">custo {brl(a.custo)}</span>
                       )}
+                      {/* E156: uma vez no acervo, a linha mostra a PEÇA e não o
+                          gesto — é o que impede a mesma confecção de virar duas
+                          peças, cada uma com um código. */}
+                      {a.pecaDoAcervo && (
+                        <Link
+                          to={`/loja/${lojaId}/vestidos/${a.pecaDoAcervo.id}`}
+                          className="text-xs text-muted-foreground hover:underline"
+                        >
+                          no acervo · {a.pecaDoAcervo.codigo}
+                        </Link>
+                      )}
                     </span>
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       {a.atendimento?.leadId ? (
@@ -305,6 +320,17 @@ export default function Ajustes() {
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {/* E156 — a confecção vira peça do acervo (P4), e é GESTO:
+                        nada vira sozinho quando o casamento passa. Quem decide
+                        se aquela manga entra no acervo é quem vai alugá-la de
+                        novo — mesma doutrina do E100/F37 e do E151. */}
+                    {podeCadastrarPeca && podeVirarPecaDoAcervo(a) && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/loja/${lojaId}/vestidos/novo?confeccao=${a.id}`}>
+                          Virou peça do acervo
+                        </Link>
+                      </Button>
+                    )}
                     {a.atendimento?.bloqueioId && (
                       <Button variant="ghost" size="sm" asChild>
                         <Link to={`/loja/${lojaId}/reservas/${a.atendimento.bloqueioId}`}>

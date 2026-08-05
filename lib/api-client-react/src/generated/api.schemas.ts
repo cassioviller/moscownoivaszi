@@ -434,6 +434,8 @@ export interface Vestido {
   /** @nullable */
   precoRealuguel?: number | null;
   /** @nullable */
+  origemAjusteId?: string | null;
+  /** @nullable */
   tamanho?: string | null;
   /** @nullable */
   cor?: string | null;
@@ -479,6 +481,7 @@ export interface VestidoInput {
   precoBase: number;
   /** @minimum 0 */
   precoRealuguel?: number;
+  origemAjusteId?: string;
   tamanho?: string;
   cor?: string;
   categoria?: string;
@@ -1093,6 +1096,12 @@ export interface AjusteAtendimento {
   bloqueio?: BloqueioVestido | null;
 }
 
+export interface AjustePecaDoAcervo {
+  id: string;
+  codigo: string;
+  nome: string;
+}
+
 export interface Ajuste {
   id: string;
   lojaId: string;
@@ -1106,6 +1115,7 @@ export interface Ajuste {
   atendimento?: AjusteAtendimento;
   /** @nullable */
   proximaProva?: string | null;
+  pecaDoAcervo?: AjustePecaDoAcervo | null;
 }
 
 export interface Atendimento {

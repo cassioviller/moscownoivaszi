@@ -302,7 +302,20 @@ rode o codegen.
   confecção (`ajuste_id`), e a prova é da NOIVA, não só da loja: cobrar o
   trabalho que a costureira faz para outra dá 404. Registrar em **Reserva →
   prova**; a fila mostra o selo *Confecção* e o custo. **Em aberto:** depois do
-  casamento a peça confeccionada vira item do acervo? Ninguém decidiu.
+  casamento a peça confeccionada vira item do acervo? **Respondido no E156.**
+- **A confecção vira peça do acervo (E156)** — `vestidos.origemAjusteId` guarda
+  de onde a peça veio quando ela não veio do fornecedor. É **gesto, não
+  gatilho**: na fila da costureira, no trabalho `CONFECCAO` já `FEITO`, o botão
+  *"Virou peça do acervo"* abre o cadastro de vestido com nome e observação
+  preenchidos — e o **preço é digitado**, porque `ajustes.custo` é o que a
+  costureira cobrou e `precoBase` é o que a noiva paga. A peça nasce **ativa e
+  sem reserva nenhuma**; o contrato antigo segue apontando a confecção pelo
+  `ajusteId` do item, e nada é reescrito para trás. Feita uma vez, a linha da
+  fila mostra *"no acervo · CÓDIGO"* no lugar do botão — a mesma confecção não
+  vira duas peças. O servidor recusa com 422 o que a tela já não oferece:
+  trabalho de outra loja (`REFERENCIA_INVALIDA`), ajuste comum ou confecção
+  ainda pendente (`CONFECCAO_INVALIDA`). Apagar o trabalho da fila **não** apaga
+  a peça: perde-se a proveniência, não o acervo.
 - **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
   `portal_tokens`, 30 dias **de inatividade**): proposta com aceite (E74),
   lookbook, próximas provas e extrato de parcelas só-leitura, com "falta pagar"
@@ -371,6 +384,16 @@ rode o codegen.
   confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
   `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
   existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
+- **`drizzle-kit push` está TRAVADO neste banco de dev desde o E154**, e não por
+  falta de TTY: o script `docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`
+  batizou a unique de `itens_estoque_loja_nome_tamanho_unq`, e o drizzle, que
+  gera o nome sozinho, procura `itens_estoque_loja_id_nome_tamanho_unique`. Ele
+  não a encontra, tenta CRIAR uma duplicata e pergunta se pode truncar a tabela —
+  prompt, sem TTY, morte. **Enquanto a S-A21 não fechar, aplique o DDL por
+  `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/migracoes/…sql` e pule o
+  push**; o `generate` não passa pelo banco e continua funcionando. Um banco
+  NOVO nasce certo pelos dois caminhos — o conflito é só de quem rodou os
+  scripts à mão, que é todo banco que já existia.
 - **`drizzle-kit generate` tem o MESMO defeito sem-TTY** (E115): com snapshot
   anterior ele pergunta "criada ou renomeada?" e morre sem terminal. O segundo
   defeito — `out` ABSOLUTO no `drizzle.config.ts`, que o kit relia como

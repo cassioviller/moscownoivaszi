@@ -144,6 +144,37 @@ export async function ajusteDaNoiva(
   return !!a;
 }
 
+/**
+ * E156 — o `origemAjusteId` que a peça nova declara é uma confecção desta loja,
+ * e já pronta?
+ *
+ * São DUAS perguntas com respostas diferentes de propósito, e por isso o retorno
+ * não é booleano:
+ *
+ * · **`FORA_DA_LOJA`** é a pergunta de tenancy das irmãs acima — a FK prova que
+ *   o trabalho existe, não de quem ele é. Sem ela, o acervo de A nasceria
+ *   apontando a manga que a costureira faz para a noiva de B, e a fila de B
+ *   passaria a mostrar a peça de A como "já no acervo".
+ * · **`NAO_ESTA_PRONTA`** é a régua do épico: só vira peça do acervo o trabalho
+ *   de **CONFECÇÃO** (bainha não é peça nova) e já **FEITO** (a manga não existe
+ *   até a costureira terminar).
+ */
+export type VeredictoConfeccao = "OK" | "FORA_DA_LOJA" | "NAO_ESTA_PRONTA";
+
+export async function confeccaoPodeVirarPeca(
+  ajusteId: string,
+  lojaId: string,
+): Promise<VeredictoConfeccao> {
+  const [a] = await db
+    .select({ tipo: ajustesTable.tipo, status: ajustesTable.status })
+    .from(ajustesTable)
+    .where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)))
+    .limit(1);
+  if (!a) return "FORA_DA_LOJA";
+  if (a.tipo !== "CONFECCAO" || a.status !== "FEITO") return "NAO_ESTA_PRONTA";
+  return "OK";
+}
+
 /** E115 — irmã da de cima: o `bloqueioId` opcional do POST /atendimentos. */
 export async function bloqueioNaLoja(bloqueioId: string, lojaId: string): Promise<boolean> {
   const [b] = await db.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)

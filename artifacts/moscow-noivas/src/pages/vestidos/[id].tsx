@@ -381,6 +381,26 @@ export default function VestidoDetail() {
                 <p className="text-sm mt-1">{vestido.observacoes}</p>
               </div>
             )}
+
+            {/* E156 — a peça que não veio do fornecedor: ela foi feita aqui, sob
+                medida, e entrou no acervo depois do casamento (P4). O link leva
+                à FILA e não ao trabalho porque não existe rota por trabalho
+                (S-A17); enquanto ela não existir, é o mais perto que se chega. */}
+            {vestido.origemAjusteId && (
+              <div>
+                <p className="text-muted-foreground text-sm">Origem</p>
+                <p className="text-sm mt-1">
+                  Peça confeccionada no ateliê — veio da{" "}
+                  <Link
+                    to={`/loja/${lojaId}/ajustes?recorte=feitos`}
+                    className="underline underline-offset-4 hover:text-foreground"
+                  >
+                    fila da costureira
+                  </Link>
+                  .
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

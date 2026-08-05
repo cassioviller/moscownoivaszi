@@ -7,6 +7,7 @@
  */
 import type { AjusteAtendimento } from './ajusteAtendimento';
 import type { AjusteChecklistItem } from './ajusteChecklistItem';
+import type { AjustePecaDoAcervo } from './ajustePecaDoAcervo';
 import type { AjusteStatus } from './ajusteStatus';
 import type { AjusteTipo } from './ajusteTipo';
 
@@ -23,4 +24,5 @@ export interface Ajuste {
   atendimento?: AjusteAtendimento;
   /** @nullable */
   proximaProva?: Date | null;
+  pecaDoAcervo?: AjustePecaDoAcervo | null;
 }
