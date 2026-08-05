@@ -23,12 +23,16 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 19 abertas (10 🟡 · 9 🔵). Era o backlog mais pesado do repositório: as oito 🟠 chegaram a zero em `d39c14d` |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 20 sobras abertas (9 🟡 · 11 🔵) |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 12 sobras abertas (7 🟡 · 5 🔵) |
+   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 19 abertas (1 🟠 · 10 🟡 · 8 🔵) |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 18 sobras abertas (1 🟠 · 6 🟡 · 11 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (1 🟠 · 7 🟡 · 5 🔵) |
 
-   **Nenhuma 🟠 nem 🔴 em trilha nenhuma**, pela primeira vez desde que há três
-   trilhas. São 51 sobras abertas, todas 🟡 ou 🔵.
+   **São 50 sobras abertas, e as três 🟠 nasceram todas da conferência de
+   2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`), que passou
+   sete agentes de leitura pura sobre 48 linhas: **S37** (a ficha da noiva monta
+   link de WhatsApp sem DDI), **S-D29** (contrato sem orçamento atribui comissão
+   sem auditoria) e **S-A25** (`DELETE /vestidos` sem guarda nenhuma). Antes dela
+   não havia 🟠 em trilha nenhuma — o backlog não ficou pior, ficou verdadeiro.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
    fundiu com as três suítes verdes. Hoje a régua é **API 1026 · frontend 469 ·
