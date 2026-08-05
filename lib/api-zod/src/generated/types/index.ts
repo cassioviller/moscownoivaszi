@@ -123,6 +123,7 @@ export * from './convite';
 export * from './conviteInput';
 export * from './convitePublico';
 export * from './createParcelaAvulsaBody';
+export * from './dadosDaLojaInput';
 export * from './dashboardSummary';
 export * from './disponibilidadeVestidos';
 export * from './disponibilidadeVestidosItensItem';

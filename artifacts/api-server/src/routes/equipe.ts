@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable, recorrenciasTable } from "@workspace/db";
+import { db, usuariosTable, usuariosLojasTable, perfisTable, convitesTable, auditLogTable, recorrenciasTable, lojasTable } from "@workspace/db";
 import { eq, and, gt, gte, isNull, desc, count } from "drizzle-orm";
 import {
   ListEquipeParams,
@@ -15,7 +15,9 @@ import {
   CreateConviteEquipeBody,
   CreateConviteEquipeResponse,
   ReenviarConviteEquipeResponse,
-  GetAtividadeEquipeResponse
+  GetAtividadeEquipeResponse,
+  UpdateDadosDaLojaBody,
+  UpdateDadosDaLojaResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { usuarioNaLoja } from "../lib/escopo-loja";
@@ -31,6 +33,94 @@ router.use(requireSessaoComLoja);
 // membro. Sem este gate, qualquer sessão com loja ativa se auto-promovia a
 // admin. O módulo é `admin` — o mesmo que a tela já exige (equipe/index.tsx).
 router.use("/lojas/:lojaId/equipe", requireModulo("admin"));
+// S17: os dados da loja são do mesmo módulo — quem administra a loja é quem
+// troca o endereço e o telefone dela. `editar` e não `ver`: a rota só escreve.
+router.use("/lojas/:lojaId/dados", requireModulo("admin", "editar"));
+
+/**
+ * S17 — a dona edita os dados da PRÓPRIA loja.
+ *
+ * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, que é
+ * rota top-level fora de `/loja/:lojaId` e com gate próprio: trocar o telefone
+ * virava chamado para quem tem o console. E não são dados decorativos — os dois
+ * alimentam o rodapé do portal da noiva (F35) e a linha "Endereço:" da mensagem
+ * de confirmação do atendimento.
+ *
+ * **O terceiro dependente é o que justifica a guarda de telefone.**
+ * `linkWhatsApp` (frontend) devolve `null` para telefone fora de 10–13 dígitos, e
+ * o botão do portal simplesmente não é renderizado: **telefone errado degrada
+ * tão calado quanto telefone vazio**. Aqui ele é recusado com uma frase, em vez
+ * de virar um botão que some.
+ *
+ * A régua dos dígitos é a MESMA de `moscow-noivas/src/lib/whatsapp.ts`, e as
+ * duas são cópias — está anotado como sobra. Mexeu numa, confira a outra.
+ */
+function viraLinkDeWhatsApp(telefone: string): boolean {
+  const digitos = telefone.replace(/\D/g, "");
+  if (digitos.length === 10 || digitos.length === 11) return true;
+  return digitos.length >= 12 && digitos.length <= 13 && digitos.startsWith("55");
+}
+
+const CAMPOS_DA_LOJA = ["nome", "cnpj", "endereco", "telefone"] as const;
+
+router.patch("/lojas/:lojaId/dados", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = UpdateDadosDaLojaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+
+  /**
+   * Campo de fora é RECUSADO, não descartado — medido: o zod gerado do Orval
+   * ESTRIPA o desconhecido, então um `{ ativo: false }` respondia 200 e não
+   * desativava nada. Silêncio bem-intencionado é o pior dos dois: quem chamou
+   * acha que desativou a loja.
+   */
+  const intrusos = Object.keys(req.body ?? {}).filter(
+    (k) => !(CAMPOS_DA_LOJA as readonly string[]).includes(k),
+  );
+  if (intrusos.length > 0) {
+    res.status(400).json({
+      error: "CAMPO_NAO_EDITAVEL",
+      detalhe: `Esta tela edita ${CAMPOS_DA_LOJA.join(", ")}. Desativar a loja é ato de superadmin.`,
+      campos: intrusos.map((campo) => ({ campo, motivo: "Não editável por aqui" })),
+    });
+    return;
+  }
+  // E corpo vazio também: `db.update().set({})` estoura no driver, e o 500 que
+  // ele devolve não diz nada a quem clicou em "Salvar" sem mexer em nada.
+  if (Object.keys(parsed.data).length === 0) {
+    res.status(400).json({ error: "NADA_PARA_ALTERAR", detalhe: "Nenhum campo foi informado." });
+    return;
+  }
+
+  const { telefone } = parsed.data;
+  // Vazio é permitido — a loja pode não ter WhatsApp — e vira NULL, não "".
+  if (telefone && telefone.trim() !== "" && !viraLinkDeWhatsApp(telefone)) {
+    res.status(422).json({
+      error: "TELEFONE_SEM_WHATSAPP",
+      detalhe:
+        "Este número não forma um link de WhatsApp: informe DDD + número (ex.: (11) 98888-7777). Sem isso, o botão de WhatsApp some do portal da noiva sem avisar.",
+      campos: [{ campo: "telefone", motivo: "Fora de 10 a 13 dígitos" }],
+    });
+    return;
+  }
+
+  const [loja] = await db
+    .update(lojasTable)
+    .set({
+      ...parsed.data,
+      ...(telefone !== undefined ? { telefone: telefone.trim() === "" ? null : telefone } : {}),
+    })
+    .where(eq(lojasTable.id, lojaId))
+    .returning();
+  if (!loja) {
+    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
+    return;
+  }
+  res.json(UpdateDadosDaLojaResponse.parse(loja));
+});
 
 router.get("/lojas/:lojaId/equipe", async (req, res): Promise<void> => {
   const params = ListEquipeParams.safeParse(req.params);

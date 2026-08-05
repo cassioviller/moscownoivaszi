@@ -483,6 +483,33 @@ paths:
           description: O arquivo deste backup já foi removido pela retenção
 
   # ───────────────────────── Equipe ─────────────────────────
+  /lojas/{lojaId}/dados:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    patch:
+      operationId: updateDadosDaLoja
+      tags: [admin]
+      summary: A dona edita os dados da própria loja (S17)
+      description: >
+        `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e
+        trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da
+        noiva, a linha "Endereço:" da confirmação de atendimento e o botão de
+        WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DadosDaLojaInput"
+      responses:
+        "200":
+          description: A loja atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loja"
+        "422":
+          description: Telefone que não vira link de WhatsApp
   /lojas/{lojaId}/equipe:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -4545,6 +4572,24 @@ components:
         endereco: { type: string }
         telefone: { type: string }
         ativo: { type: boolean }
+    # S17 — o que a DONA edita da própria loja, sem passar pelo console de
+    # superadmin. É o `LojaUpdate` menos o `ativo`: desativar a própria loja é
+    # ato de superadmin, e é a única coisa deste formulário que não teria
+    # caminho de volta pela tela.
+    DadosDaLojaInput:
+      type: object
+      additionalProperties: false
+      properties:
+        nome: { type: string, minLength: 1 }
+        cnpj: { type: string }
+        endereco: { type: string }
+        telefone:
+          type: string
+          description: >
+            Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de
+            render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP
+            o que `linkWhatsApp` transformaria em null, porque nesse caso o botão
+            do portal da noiva some sem erro e sem aviso.
 
     # Acessos por MÓDULO × AÇÃO. Era plano (`{leads: true}`), que só respondia
     # "entra ou não entra" — não dava para ver o financeiro sem poder mexer

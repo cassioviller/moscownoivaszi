@@ -498,6 +498,35 @@ export const DownloadBackupParams = zod.object({
 export const DownloadBackupResponse = zod.unknown()
 
 
+/**
+ * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da noiva, a linha "Endereço:" da confirmação de atendimento e o botão de WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const UpdateDadosDaLojaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+
+
+export const UpdateDadosDaLojaBody = zod.object({
+  "nome": zod.string().min(1).optional(),
+  "cnpj": zod.string().optional(),
+  "endereco": zod.string().optional(),
+  "telefone": zod.string().optional().describe('Vazio é permitido (a loja pode não ter WhatsApp). Preenchido, tem de render um link de wa.me — o servidor recusa com TELEFONE_SEM_WHATSAPP o que `linkWhatsApp` transformaria em null, porque nesse caso o botão do portal da noiva some sem erro e sem aviso.\n')
+})
+
+export const UpdateDadosDaLojaResponse = zod.object({
+  "id": zod.string(),
+  "nome": zod.string(),
+  "cnpj": zod.string().nullish(),
+  "endereco": zod.string().nullish(),
+  "telefone": zod.string().nullish(),
+  "ativo": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
 export const ListEquipeParams = zod.object({
   "lojaId": zod.coerce.string()
 })

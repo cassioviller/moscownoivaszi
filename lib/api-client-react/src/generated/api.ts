@@ -87,6 +87,7 @@ import type {
   ConviteInput,
   ConvitePublico,
   CreateParcelaAvulsaBody,
+  DadosDaLojaInput,
   DashboardSummary,
   DisponibilidadeVestidos,
   EnviarContabilidadeInput,
@@ -2048,6 +2049,78 @@ export function useDownloadBackup<TData = Awaited<ReturnType<typeof downloadBack
 
 
 
+
+export const getUpdateDadosDaLojaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/dados`
+}
+
+/**
+ * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da noiva, a linha "Endereço:" da confirmação de atendimento e o botão de WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const updateDadosDaLoja = async (lojaId: string,
+    dadosDaLojaInput: DadosDaLojaInput, options?: RequestInit): Promise<Loja> => {
+
+  return customFetch<Loja>(getUpdateDadosDaLojaUrl(lojaId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dadosDaLojaInput)
+  }
+);}
+
+
+
+
+export const getUpdateDadosDaLojaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext> => {
+
+const mutationKey = ['updateDadosDaLoja'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDadosDaLoja>>, {lojaId: string;data: BodyType<DadosDaLojaInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  updateDadosDaLoja(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDadosDaLojaMutationResult = NonNullable<Awaited<ReturnType<typeof updateDadosDaLoja>>>
+    export type UpdateDadosDaLojaMutationBody = BodyType<DadosDaLojaInput>
+    export type UpdateDadosDaLojaMutationError = ErrorType<void>
+
+    /**
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const useUpdateDadosDaLoja = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDadosDaLoja>>,
+        TError,
+        {lojaId: string;data: BodyType<DadosDaLojaInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateDadosDaLojaMutationOptions(options));
+    }
 
 export const getListEquipeUrl = (lojaId: string,) => {
 
