@@ -288,6 +288,21 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     código certo — S-A21. O relatório do E157 dizia "980 passed · 3 skipped" e
     estava correto; o que ele não podia dizer é que aqueles 3 escondiam um
     vermelho.)*
+20. **A sobra é uma PISTA, não um achado — e se confere antes de virar
+    trabalho.** Ela nasce de passagem, no meio de outro épico, sem a passada
+    adversarial que a regra 7 exige dos 🔴 e 🟠 do diagnóstico. Quem a executa
+    relê a âncora e remede o número ANTES de consertar; o que ela descreve pode
+    ter mudado, encolhido, crescido ou simplesmente não existir. *(Arqueologia
+    do legado, sessão 5: das quatro sobras executadas num dia, **três estavam
+    erradas em algum ponto**. A S-A19 trazia a janela `[D−6, D+4]` quando é
+    `[D−7, D+3]` — um dia em cada ponta. A S-A20 dizia "o `push` está travado" e
+    era só o ponto barulhento de quatro divergências; os outros três eram índices
+    ausentes de todo banco novo, e foi a varredura que os achou, não a leitura.
+    E a **S-A22 não existia**: eu a registrei afirmando que `"0010" < "0006"`, o
+    que é falso — o drizzle zera à esquerda em quatro dígitos, e com largura fixa
+    a ordem de string É a numérica. Ela foi RETIRADA, e fica na tabela riscada em
+    vez de apagada, porque sobra que some não ensina que a apuração desmentiu
+    quem a escreveu.)*
 
 ---
 
@@ -318,7 +333,12 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   scripts à mão e o schema drizzle que fazia barulho — os outros três eram
   índices que existiam em todo banco antigo e em nenhum banco novo. **A sobra
   registra o sintoma; quem a executa procura a classe** — e foi a varredura, não
-  a leitura, que achou os outros três.
+  a leitura, que achou os outros três. Fechou com as sobras da sonda de
+  migração, e aí veio a lição que virou a **regra 20**: das quatro sobras
+  executadas no dia, três estavam erradas em algum ponto, e uma delas — a S-A22,
+  escrita por mim horas antes — **não era defeito nenhum**. A sobra é pista, não
+  achado: ela não passa pela passada adversarial, e quem a executa confere antes
+  de consertar.
 - **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
   (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
   futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +

@@ -37,10 +37,10 @@ está na tabela de Sobras, e é lá que a próxima sessão pega trabalho.
 
 | | |
 |---|---|
-| Último commit de código | `7c3c794` (S-A20) |
+| Último commit de código | `2a280af` (S-A15) |
 | Último commit de docs | este |
 | Branch | `rodada-7-sobras`, **não fundida no main** |
-| Suítes no fim | API **991** · frontend **446** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
+| Suítes no fim | API **996** · frontend **446** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
 
 **Pela primeira vez a suíte inteira sai verde**, e `pnpm run test:e2e` volta a
 sair com `EXIT=0`. Os dois vermelhos que viveram do E148 ao E156 eram defeito de
@@ -52,16 +52,17 @@ ele é notícia de novo.**
 
 Não há épico pendente. Por peso:
 
-1. **S-A22 🟠 + S-A15 🟠** — as duas da sonda do snapshot, vizinhas no mesmo
-   arquivo e num commit só: a escolha do arquivo por ordem de string (mente a
-   partir do `0010`, e estamos no `0007`) e os valores de enum que ela não
-   compara.
-2. **S-A23 🟠** — a janela de prova some em silêncio quando `provaDiasAntes <=
-   usoDiasAntes`, e a **P7 acabou de proibir** reserva sem prova. Não morde no
-   padrão de hoje (14 × 3); morde na primeira loja configurada diferente.
-3. **S-A2 🟡** — pedir à dona as fotos que faltam (o verso de 21–27/09 e as
+1. **S-A23 🟠** — a última 🟠 da trilha. A janela de prova some em silêncio
+   quando `provaDiasAntes <= usoDiasAntes`, e a **P7 acabou de proibir** reserva
+   sem prova. Não morde no padrão de hoje (14 × 3); morde na primeira loja
+   configurada diferente. Vale junto com a **S-A8**, que já pede uma passada em
+   toda premissa categórica do `configuracao-inicial.ts` — são a mesma família.
+2. **S-A2 🟡** — pedir à dona as fotos que faltam (o verso de 21–27/09 e as
    semanas de 28/09 a 11/10) antes que as 136 saídas virem número de negócio.
    É a única sobra que depende de outra pessoa, e por isso a que mais demora.
+3. **S-A3 🟡** — a segunda linha de negócio (festa/madrinha/dama, 38
+   compromissos em 15 páginas) nunca foi olhada como jornada: prazo, preço e
+   prova podem não ser os mesmos da noiva. É a maior sobra ainda não medida.
 
 ### O estado do banco de dev
 
@@ -215,15 +216,14 @@ foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação 
 
 Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 
-**23 sobras, 6 fechadas.** As que pesam, em ordem: **S-A22 🟠** (a sonda do
-snapshot escolhe o arquivo por ordem de string, e mente a partir do `0010` —
-faltam três), **S-A15 🟠** (a mesma sonda não vê valor de enum) e **S-A23 🟠** (a
-janela de prova some em silêncio numa quina de configuração, contra o que a P7
-acabou de decidir). As 🔵 são de higiene e podem esperar.
+**23 sobras: 7 fechadas, 1 retirada.** Resta **uma 🟠**: a **S-A23** — a janela
+de prova some em silêncio quando `provaDiasAntes <= usoDiasAntes`, contra o que
+a P7 acabou de decidir. Todas as outras são 🟡 e 🔵, de higiene ou dependentes
+de terceiros.
 
-**As duas 🟠 da sonda são vizinhas de arquivo, e valem um commit só**: a S-A22 é
-a linha 36 de `e115-migracao-snapshot-unit.test.ts` e a S-A15 é o que falta
-comparar no mesmo `it`.
+**A S-A22 é a única sobra retirada da trilha**, e fica na tabela em vez de sumir:
+ela foi registrada com uma afirmação que a apuração desmentiu, e uma sobra que
+some não ensina isso a ninguém.
 
 **Nenhuma suíte sai mais vermelha.** A S-A11 e a S-A21 fecharam na sessão 5, e
 as duas eram a mesma doença: teste reprovando por defeito da FIXTURE, sobre
@@ -244,7 +244,8 @@ código certo. Viraram as regras 18 e 19 do método.
 | S-A9 | **`e2e/11-configuracoes.spec.ts:13-16` carrega um comentário "FALHA ESPERADA no main (achado C2-disponibilidade)"** descrevendo um 404 por URL divergente entre cliente e servidor — e o teste **passa** hoje. Ou o C2 foi consertado e o comentário ficou, ou ele passa por outro motivo. Comentário que mente sobre o estado do teste é pior que comentário nenhum. | 🔵 | execução E148 |
 | S-A10 | **"Duração da prova" é a única linha do bloco de disponibilidade sem contrapartida editável.** Para mudar, só `PATCH` na API. E o cabeçalho do próprio arquivo (`configuracoes/index.tsx:22-25`, do E98) afirma que "isso mora em 'Cabines & horário', dentro de Atendimentos" — **não mora**: `atendimentos/config.tsx` não expõe o campo, e o `EditarEm` do card (`:173`) leva a uma tela sem ele. | 🟡 | execução E148 |
 | ~~S-A11~~ | ~~**`e2e/09-financeiro.spec.ts:27` e `:40` falham no `main`**~~ **FECHADA em `4690f18`** — o describe passou a trazer a própria fixture (conta "Aluguel", lead, contrato com uma parcela) e a levá-la embora no `afterAll`, no molde do `35-recebimento-parcial`. O vencimento é HOJE, não data fixa: a janela padrão das duas telas é o mês corrente, e data fixa sairia dela na virada do mês. **E2E 156 passed, zero vermelho** — `pnpm run test:e2e` volta a sair com `EXIT=0`. O diagnóstico original: — provado rodando os dois contra a base, com o diff do E148 no stash. Esperam a conta "Aluguel" e uma parcela com botão "Receber", dados que o **E147** tornou opcionais (`SEED_EXEMPLOS_FINANCEIROS`) e que o seed idempotente não recria em banco já existente. Enquanto ficarem assim, **`pnpm run test:e2e` sai com `EXIT=1` para todo mundo** e a regra 11 perde o valor: quem roda a suíte aprende a ignorar dois vermelhos — que é como o terceiro passa. Consertar com `beforeAll` próprio (família da S-D17) ou semeando os exemplos no setup do E2E. | ✅ | execução E148 |
-| S-A15 | **A sonda do snapshot de migração não vê valor de enum.** `e115-migracao-snapshot-unit.test.ts` compara tabelas e COLUNAS; o `ACESSORIO` que o E150 acrescentou a `orcamento_item_tipo` ficou fora da baseline do drizzle por um dia inteiro com a suíte verde, e só apareceu porque o E154 mexeu em coluna e forçou o `generate` (o `0001` gerado traz o `ALTER TYPE … 'ACESSORIO'` junto). Um banco provisionado por `migrate` entre os dois épicos aceitaria o tipo só até o primeiro INSERT. Estender a sonda aos `enums` do snapshot é pequeno e fecha a classe. | 🟠 | execução E154 |
+| ~~S-A15~~ | **FECHADA em `2a280af`.** A sonda ganhou um `it` que compara os valores de todo `pgEnum` do schema com os do snapshot. **Vermelho antes medido**: acrescentei um valor ao enum sem regenerar a baseline e ela reprovou com `orcamento_item_tipo.SONDA_TEMPORARIA_SA15` — enquanto a sonda IRMÃ, a de tabelas e colunas, seguiu **verde**. É o buraco em duas linhas de saída. O diagnóstico original: | ✅ | execução E154 |
+| ~~S-A15 (diagnóstico)~~ | **A sonda do snapshot de migração não vê valor de enum.** `e115-migracao-snapshot-unit.test.ts` compara tabelas e COLUNAS; o `ACESSORIO` que o E150 acrescentou a `orcamento_item_tipo` ficou fora da baseline do drizzle por um dia inteiro com a suíte verde, e só apareceu porque o E154 mexeu em coluna e forçou o `generate` (o `0001` gerado traz o `ALTER TYPE … 'ACESSORIO'` junto). Um banco provisionado por `migrate` entre os dois épicos aceitaria o tipo só até o primeiro INSERT. Estender a sonda aos `enums` do snapshot é pequeno e fecha a classe. | 🟠 | execução E154 |
 | S-A16 | **A lavagem não entra na régua do estoque.** A janela do E154 é a de USO, como a spec pediu; mas o saiote também vai à lavagem, e a régua da loja reserva 7 dias para ela no vestido (P1: *"uma semana, lavagem externa"*). A conta é **otimista**: saiote devolvido no dia 21 aparece livre no 22, quando está molhado. Como o épico avisa e não bloqueia, o custo é um aviso que deixa de aparecer — não uma venda recusada à toa. Se a peça de estoque tem ciclo de lavagem é pergunta de produto. | 🟡 | execução E154 |
 | S-A17 | **A fila da costureira não tem tela própria por trabalho.** O E155 põe confecção e ajuste na mesma lista e o item do orçamento aponta o trabalho, mas o link do item leva à FILA (`/ajustes?recorte=todos`), não ao trabalho — não existe rota `/ajustes/:id`. Numa loja com fila longa, "na fila da costureira" obriga a procurar a olho. Enquanto a confecção era inexistente isso não pesava; agora que ela tem custo e é cobrada, pesa. | 🔵 | execução E155 |
 | S-A18 | **A ausência não olha o que já está marcado.** Registrar férias por cima de uma agenda cheia é aceito em silêncio: o E151 decidiu (com a spec) que ela só impede o NOVO, mas quem cadastra não fica sabendo que há atendimentos naquele intervalo. Um aviso na hora de marcar — *"há 4 atendimentos nesse período; eles não serão alterados"* — fecharia o buraco entre a decisão certa e a pessoa que precisa agir sobre ela. Remarcação em lote segue sendo decisão de produto; **contar e avisar não é**. | 🟡 | execução E151 |
@@ -252,6 +253,6 @@ código certo. Viraram as regras 18 e 19 do método.
 | S-A23 | **A janela de PROVA some inteira, em silêncio, quando `provaDiasAntes <= usoDiasAntes`.** Medido em `janelasDoBloqueio` com casamento em 03/03: `prova=14 uso=3` → `PROVA,USO,LAVAGEM`; **`prova=3 uso=3` → `USO,LAVAGEM`**; `prova=2 uso=3` → idem. A janela nasce em `D − provaDiasAntes` e termina em `inicioUso − 1`, então basta a prova não começar antes do uso para ela deixar de existir — e ninguém é avisado. **P7 acabou de tornar isso proibido**: *"toda reserva tem ao menos um dia de prova"*. Não morde hoje (o padrão da loja é 14 × 3), morde na primeira loja que configurar "prova até 3 dias antes" — família da S-A8, que já pede uma passada em toda premissa categórica do `configuracao-inicial.ts`. | 🟠 | decisão P7, sessão 5 |
 | ~~S-A19 (diagnóstico)~~ | **O realuguel curto é barrado pela janela de PROVA da segunda noiva, não pela lavagem.** Remedido na sessão 5, com datas: casamento 1 em 03/03 e a volta da lavanderia registrada no dia da devolução ⇒ `PROVA[02-17..02-27]P USO[02-28..03-05]F`, **sem janela de lavagem**; a segunda reserva, casamento 10/03, traz `PROVA[02-24..03-06]` e dá **1 conflito** contra aquele USO — PROVA × FÍSICA. *(O número que esta linha trazia, `PROVA [D−6, D+4]`, estava errado por um dia nas duas pontas: é `[D−7, D+3]`.)* **A afirmação errada da spec foi corrigida em `2026-08-04-acervo-a-identidade-da-peca.md`.** E o caminho de saída também está medido: com `provaDataReal` num dia só (06/03), os conflitos vão a **zero**. O `POST /bloqueios` **não aceita `provaDataReal`**, então não há como criar a segunda reserva já com a prova num dia só, que é justamente o caso do realuguel (a noiva escolheu peça que já conhece). Duas saídas possíveis, e a escolha é de produto. **A spec do E152 afirma que aquele épico torna o caso Adelita registrável; ele NÃO torna** — há teste pregando isso. | 🟠 | execução E152 |
 | ~~S-A20~~ | **FECHADA em `7c3c794`, e era MAIOR do que esta linha dizia.** A divergência entre `docs/migracoes/` e o schema drizzle era em **quatro** pontos, e só um gritava. Os outros três eram índices criados pelos scripts e nunca declarados no schema — `itens_estoque_loja_idx` (E154), `avarias_parcela_id_idx` e `atendimentos_loja_contato_idx` (E97) —, que existiam em todo banco antigo e em **nenhum banco novo**: ninguém tropeça num índice que falta, só fica mais lento, e num banco que ainda é pequeno. O conserto foi do lado do SCHEMA (declarar os três, e nomear a unique como o script a nomeou), porque **nenhum banco consumiu o `migrate`** e assim o conserto custa zero DDL em banco real; vai junto o script para quem nasceu de `push` antes disto. E a classe fecha por **varredura**: `e115-migracao-snapshot-unit.test.ts` reprova nome de constraint ou índice criado em `docs/migracoes/` que o snapshot não conheça. O diagnóstico original: | ✅ | execução E156 |
-| S-A22 | **A sonda do snapshot escolhe o arquivo por ordem de STRING**, não numérica: `e115-migracao-snapshot-unit.test.ts:36` faz `.sort()` sobre `NNNN_snapshot.json` e pega `.at(-1)`. Funciona até o `0009`; no `0010` a comparação lexicográfica põe `"0010"` antes de `"0006"`, e a sonda passa a conferir o schema contra um snapshot **velho** — calada, exatamente o modo de falhar que ela existe para impedir (o 0000 seis migrações atrás, com a noiva levando 500 no portal). Hoje estamos no `0007`: faltam três. Conserto: `sort((a,b) => Number(a.split("_")[0]) - Number(b.split("_")[0]))`, que a varredura da S-A20 já usa no mesmo arquivo, logo abaixo — a linha certa está a vinte linhas da errada. | 🟠 | execução S-A20 | O script à mão batizou a unique de `itens_estoque_loja_nome_tamanho_unq` (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`); o drizzle gera o nome sozinho e procura `itens_estoque_loja_id_nome_tamanho_unique`. Não acha, tenta CRIAR a duplicata e pergunta se pode **truncar `itens_estoque`** — sem TTY, morre. O caminho que o `replit.md` documenta ("aplique o DDL por psql e rode o push depois") deixou de existir para **todo banco que rodou os scripts à mão**, que é todo banco que já existia. Conserto: nomear a constraint no schema (`unique("itens_estoque_loja_nome_tamanho_unq")`) OU renomeá-la nos bancos. | 🟠 | execução E156 |
+| ~~S-A22~~ | **RETIRADA em `2a280af` — não era defeito, e o erro foi meu.** Registrei que o `.sort()` de string mentiria no `0010`, *"porque `"0010" < "0006"`"*. **É falso**: o drizzle zera à esquerda em quatro dígitos, e com largura fixa a ordem de string **é** a ordem numérica — `"0010" > "0009"`, a diferença cai na terceira casa. Medido nos dois sentidos com 12 nomes sintéticos: as duas ordenações devolvem o mesmo arquivo. A ordenação numérica ficou no código assim mesmo, por não depender da largura do zero à esquerda, mas **não consertou nada** — e o teste que a cobre passou a usar o caso em que a de string erraria de verdade (larguras mistas). Fica registrada em vez de apagada: uma sobra que some não ensina que a apuração desmentiu quem a escreveu. | ✅ | execução S-A20 | O script à mão batizou a unique de `itens_estoque_loja_nome_tamanho_unq` (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`); o drizzle gera o nome sozinho e procura `itens_estoque_loja_id_nome_tamanho_unique`. Não acha, tenta CRIAR a duplicata e pergunta se pode **truncar `itens_estoque`** — sem TTY, morre. O caminho que o `replit.md` documenta ("aplique o DDL por psql e rode o push depois") deixou de existir para **todo banco que rodou os scripts à mão**, que é todo banco que já existia. Conserto: nomear a constraint no schema (`unique("itens_estoque_loja_nome_tamanho_unq")`) OU renomeá-la nos bancos. | 🟠 | execução E156 |
 | ~~S-A21~~ | ~~**`projecao-comissao-api.test.ts:106` reprova, e o código está certo.**~~ **FECHADA em `b22311c`** — a fixture passou a escrever os degraus em reais (`5_000`), e a API voltou a **990 passed, zero vermelho, zero skipped**. O diagnóstico original: A fixture insere `minAcumulado: 500_000` em `comissao_faixas`, coluna `decimal(10,2)` em **reais** que vira centavos no `paraCalc` (`routes/comissao.ts:91`): a segunda faixa do teste começa em **R$ 500.000,00**, não em R$ 5.000,00. Medido: 3.000 vendidos no dia 1, hoje dia 5 de 31 ⇒ `baseProjetada` **R$ 18.600,00**, `percentualProjetado` **3%**, `valorTotalProjetado` **R$ 558,00**; o teste espera 6% porque compara `baseProjetada >= 5000`. Família da crítica 3 do MÉTODO (reais × centavos são dois `number`) e do E94 (assert errado sobre código certo). **Estava `skipped` até ontem** (`MIN_DIAS_PROJECAO = 5`) e reprovou na primeira vez que rodou — enquanto viver, `pnpm --filter api-server test` sai vermelho, como a S-A11 no E2E. Conserto: `500_000` → `5_000` nos dois lugares da fixture. | ✅ | execução E156 |
 | ~~S-A5~~ | ~~**O `CLAUDE.md` segue apontando para o rastreador da rodada 6**~~ — **FECHADA no fim da sessão 4**: o ponteiro passou a apontar para esta trilha, e ganhou a tabela das três (arqueologia em curso; rodadas 6 e 7 fechadas, com as sobras delas ainda valendo). Era também a S-D28 da rodada 7. | ✅ | montagem da trilha |
