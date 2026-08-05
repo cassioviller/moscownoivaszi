@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { db, auditLogTable, sessoesTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { db, auditLogTable, sessoesTable, usuariosTable } from "@workspace/db";
+import { and, eq, inArray } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { criarFixture, fecharPool, limparFixture, loginComLoja, SENHA_TESTE, type Fixture } from "./helpers";
 
@@ -22,6 +22,11 @@ describe("Auditoria de administração e sessões (E56)", () => {
   });
 
   afterAll(async () => {
+    // S18: antes da fixture — depois dela a loja já não existe, e quem foi
+    // desvinculado no meio do teste ficaria sem ninguém para reclamá-lo.
+    if (membrosCriados.length > 0) {
+      await db.delete(usuariosTable).where(inArray(usuariosTable.id, membrosCriados));
+    }
     await limparFixture(f);
     await fecharPool();
   });
@@ -35,6 +40,21 @@ describe("Auditoria de administração e sessões (E56)", () => {
   const sessoesDe = (usuarioId: string) =>
     db.select().from(sessoesTable).where(eq(sessoesTable.usuarioId, usuarioId));
 
+  /**
+   * S18 — os membros que este arquivo cria ficam anotados, e saem no `afterAll`.
+   *
+   * `limparFixture` passou a levar embora quem ficou sem vínculo NENHUM depois
+   * de a loja sumir, e isso cobre a esmagadora maioria dos casos. **Este arquivo
+   * é a exceção**, e é uma exceção honesta: um dos testes REMOVE o membro da
+   * loja de propósito (é o que ele prova), e a partir daí a pessoa não aparece
+   * mais na varredura de vínculos da fixture — ela já não é da loja quando a
+   * limpeza roda.
+   *
+   * Medido: com a fixture consertada e sem esta lista, uma passada da suíte
+   * ainda deixava UM órfão, e era este.
+   */
+  const membrosCriados: string[] = [];
+
   /** Um membro novo da loja, já logado (com sessão viva). */
   async function membroLogado(): Promise<{ id: string; email: string }> {
     const sufixo = randomUUID().slice(0, 8);
@@ -44,6 +64,7 @@ describe("Auditoria de administração e sessões (E56)", () => {
       .send({ nome: `Membro ${sufixo}`, email, senha: SENHA_TESTE, perfilId: f.perfilId })
       .expect(201);
     await loginComLoja(email, f.lojaId);
+    membrosCriados.push(res.body.usuarioId);
     return { id: res.body.usuarioId, email };
   }
 

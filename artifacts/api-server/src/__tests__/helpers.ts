@@ -110,8 +110,50 @@ export async function criarFixture(): Promise<Fixture> {
 // gatilhos, que não é garantida.
 export async function limparFixture(f: Fixture): Promise<void> {
   await db.delete(contratosTable).where(eq(contratosTable.lojaId, f.lojaId));
+
+  /**
+   * S18 — quem a fixture NÃO criou, mas nasceu dentro da loja dela.
+   *
+   * A limpeza apagava usuário por ID, e só os dois que o `Fixture` conhece.
+   * Toda pessoa criada pela ROTA (`POST /lojas/:id/equipe`, o caminho que a
+   * própria suíte exercita dezenas de vezes) tem id que nunca entra no
+   * `Fixture`: o cascade da loja levava só o VÍNCULO, e a pessoa ficava órfã no
+   * banco para sempre.
+   *
+   * Medido em 2026-08-05: **1.629 usuários órfãos, 98% dos 1.667** do banco de
+   * dev — e 2,7× o que o E100 mediu, porque cada passada da suíte acrescenta.
+   * O custo não é o disco: `GET /admin/usuarios` não pagina e devolve a tabela
+   * inteira, e uma varredura por e-mail passa a atravessar milhares de linhas
+   * de lixo.
+   *
+   * Os vínculos são lidos ANTES de a loja sumir (o cascade os apaga junto), e
+   * só se apaga quem ficou sem vínculo NENHUM — uma pessoa pode legitimamente
+   * pertencer a outra loja, e a fixture não é dona dela.
+   */
+  const daLoja = await db
+    .select({ usuarioId: usuariosLojasTable.usuarioId })
+    .from(usuariosLojasTable)
+    .where(eq(usuariosLojasTable.lojaId, f.lojaId));
+
   await db.delete(lojasTable).where(eq(lojasTable.id, f.lojaId));
-  await db.delete(usuariosTable).where(inArray(usuariosTable.id, [f.vendedoraId, f.superAdminId]));
+
+  const candidatos = [
+    ...new Set([...daLoja.map((v) => v.usuarioId), f.vendedoraId, f.superAdminId]),
+  ];
+  if (candidatos.length > 0) {
+    const aindaVinculados = await db
+      .select({ usuarioId: usuariosLojasTable.usuarioId })
+      .from(usuariosLojasTable)
+      .where(inArray(usuariosLojasTable.usuarioId, candidatos));
+    const presos = new Set(aindaVinculados.map((v) => v.usuarioId));
+    const orfaos = candidatos.filter((id) => !presos.has(id));
+    if (orfaos.length > 0) {
+      // Sessões e vínculos cascateiam do usuário; contratos e orçamentos são
+      // RESTRICT, e já sumiram com a loja logo acima.
+      await db.delete(usuariosTable).where(inArray(usuariosTable.id, orfaos));
+    }
+  }
+
   await db.delete(perfisTable).where(inArray(perfisTable.id, [f.perfilId, f.perfilAdminId]));
 }
 
