@@ -268,6 +268,26 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     importação (Arnalda ≠ Arnica), uma afirmação ilegível que teve de ser
     retirada, e 4 achados novos — dois deles com defeito de código
     demonstrável.)*
+18. Um vermelho que vira paisagem apaga a régua 11: **teste que reprova por
+    defeito da FIXTURE conserta-se antes do próximo épico**, não depois. Enquanto
+    ele vive, a suíte deixa de responder "quebrei alguma coisa?" e passa a
+    responder "quebrei mais alguma coisa?". *(Arqueologia do legado: os dois
+    vermelhos de `09-financeiro` viveram do E148 ao E156 — nove épicos —, e a
+    justificativa de cada um era a mesma frase copiada, "são conhecidos e não são
+    regressão". Os dois consertos custaram, juntos, uma linha de fixture e um
+    `beforeAll`: a S-A21 escrevia a faixa de comissão em centavos numa coluna de
+    reais e a S-A11 esperava dados que o E147 tornou opcionais. Nenhum era código
+    de produção, e nenhum precisava dos nove épicos.)*
+19. **A suíte lida inteira inclui os `skipped`.** Teste condicionado a
+    calendário, fuso ou ambiente não está verde: está AUSENTE, e a diferença não
+    aparece na linha de resumo que a regra 14 manda ler. Antes de declarar uma
+    suíte verde, olhe o que ela não rodou e diga por quê. *(Arqueologia do
+    legado: `MIN_DIAS_PROJECAO = 5` fez três testes de API e dois E2E ficarem
+    `skipped` na sessão do dia 4 e rodarem na do dia 5, sem uma linha de código
+    mudar entre as duas. Um deles reprovou na PRIMEIRA vez que rodou, sobre
+    código certo — S-A21. O relatório do E157 dizia "980 passed · 3 skipped" e
+    estava correto; o que ele não podia dizer é que aqueles 3 escondiam um
+    vermelho.)*
 
 ---
 
@@ -284,6 +304,14 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   ficou para trás; tabela de **Sobras** criada no rastreador da R6 com os itens
   que estavam presos nas notas; `CLAUDE.md` criado na raiz para que este arquivo
   seja lido no começo de toda sessão, e não por acaso.
+- **2026-08-05** — sessão 5 da arqueologia do legado, e a primeira em que as
+  **três suítes fecharam verdes ao mesmo tempo** (API 990, frontend 446, E2E
+  156, typecheck). O E156 fechou o último épico da trilha; as duas sobras que
+  sobraram do dia foram os dois vermelhos que ninguém consertava, e as duas eram
+  defeito de TESTE sobre código certo — a S-A21 escrevia a faixa de comissão em
+  centavos numa coluna de reais, a S-A11 esperava dados que o E147 tornou
+  opcionais. Duas regras novas (18 e 19), as duas nascidas daí: vermelho de
+  fixture se conserta antes do próximo épico, e `skipped` não é verde.
 - **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
   (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
   futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +

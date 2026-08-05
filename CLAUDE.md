@@ -24,7 +24,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | **em curso** — 9 épicos fechados, E156 aberto |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | **em curso** — 10 épicos fechados, **nenhum aberto**; o trabalho de hoje sai da tabela de Sobras |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada, com sobras `S-D*` |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada, com sobras |
 

@@ -29,47 +29,51 @@ A lente é uma só: **o que o ateliê faz todo dia e o sistema não deixa fazer.
 7. Leia **"Onde paramos"**, logo abaixo — é o estado da mesa no fim da última
    sessão, com o que sobrou para fazer.
 
-## Onde paramos — fim da sessão 4 (2026-08-04)
+## Onde paramos — fim da sessão 5 (2026-08-05)
 
-**Nove épicos fechados, um aberto.** O bloco inteiro da spec (E148 → E152) mais
-os dois que as respostas P4/P5 abriram; sobra o **E156**.
+**Os dez épicos estão fechados, e a trilha não tem épico aberto.** O que sobrou
+está na tabela de Sobras, e é lá que a próxima sessão pega trabalho.
 
 | | |
 |---|---|
-| Último commit de código | `f697136` (E157) |
+| Último commit de código | `4690f18` (S-A11) |
 | Último commit de docs | este |
 | Branch | `rodada-7-sobras`, **não fundida no main** |
-| Suítes no fim | API **980** passed / 3 skipped · frontend **438** · E2E **151** passed / **2 failed** / 2 skipped · typecheck verde |
+| Suítes no fim | API **990** · frontend **446** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
 
-**Os 2 vermelhos do E2E são conhecidos e NÃO são regressão** — `09-financeiro`
-:27 e :40, a **S-A11**, com pré-existência provada no E148. Enquanto ela viver,
-`pnpm run test:e2e` sai com `EXIT=1` para todo mundo: **confira o log pela
-linha de resumo, nunca pelo código de saída** (regra 14, e o E150 pagou para
-aprender).
+**Pela primeira vez a suíte inteira sai verde**, e `pnpm run test:e2e` volta a
+sair com `EXIT=0`. Os dois vermelhos que viveram do E148 ao E156 eram defeito de
+FIXTURE sobre código certo, e fecharam hoje (S-A11 e S-A21) — viraram as regras
+18 e 19 do método. **Isso muda como se lê um vermelho daqui para a frente: agora
+ele é notícia de novo.**
 
 ### O que fazer primeiro na próxima sessão
 
-1. **E156 — a confecção vira peça do acervo** (P4: *"vira"*). O escopo está
-   escrito na 4ª versão da spec: `vestidos.origem_ajuste_id`, o gesto *"virou
-   peça do acervo"* na fila da costureira (só em `CONFECCAO` já `FEITO`), e o
-   preço DIGITADO — o custo da costureira e o aluguel da noiva são números
-   diferentes. É gesto, não gatilho.
-2. **S-A11**, se a paciência com os dois vermelhos acabar. É 🟠 e é a única
-   sobra que corrói a régua 11 todo dia.
+Não há épico pendente. Por peso:
+
+1. **S-A20 🟠** — o `drizzle-kit push` está travado em todo banco que rodou os
+   scripts à mão, por causa do NOME da unique do E154. Enquanto ela viver, a
+   migração de dev é sempre por `psql` (o `replit.md` já diz como). Conserto:
+   nomear a constraint no schema ou renomeá-la nos bancos.
+2. **S-A19 🟠** — o realuguel curto é barrado pela janela de PROVA, não pela
+   lavagem, e **a spec do E152 afirma o contrário, com teste pregando**. É a
+   única sobra que deixa uma AFIRMAÇÃO errada no repositório.
+3. **S-A15 🟠** — a sonda do snapshot não vê valor de enum. É pequena e fecha a
+   classe.
+4. **S-A2 🟡** — pedir à dona as fotos que faltam (o verso de 21–27/09 e as
+   semanas de 28/09 a 11/10) antes que as 136 saídas virem número de negócio.
+   É a única sobra que depende de outra pessoa, e por isso a que mais demora.
 
 ### O estado do banco de dev
 
-As **cinco** migrações desta sessão (E154, E155, E151, E152, E157) **já foram
-aplicadas** no banco de dev, e a baseline do drizzle foi regenerada a cada uma
-(`0001` … `0005`). Um banco novo nasce certo pelos dois caminhos (`push` e
-`migrate`); um banco que já existe precisa dos **sete** scripts do dia em
-`docs/migracoes/2026-08-04-*.sql` (os do E149 e do E150 são das sessões
-anteriores de hoje).
+A migração do E156 **já foi aplicada** e a baseline do drizzle regenerada
+(`0006_grey_scream.sql`). Um banco que já existe precisa dos **oito** scripts em
+`docs/migracoes/2026-08-04-*.sql`.
 
-E o `pnpm --filter @workspace/db run generate` **voltou a funcionar** — o `out`
-absoluto do `drizzle.config.ts` o matava com ENOENT, e o `replit.md` documentava
-a volta pela CLI. Consertei no E154: um teste que manda rodar um comando que não
-roda é uma armadilha para quem vem depois.
+**Não use `pnpm --filter @workspace/db run push`** enquanto a S-A20 viver: ele
+morre num prompt sem TTY por causa do nome da unique de `itens_estoque`. Aplique
+o DDL por `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/migracoes/…sql`; o
+`generate` não passa pelo banco e continua funcionando.
 
 ### Fora do git, de propósito
 
@@ -208,13 +212,15 @@ foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação 
 
 Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 
-**21 sobras, 2 fechadas.** As que pesam, em ordem: **S-A11 🟠** (os dois vermelhos
-do E2E — a irmã da S-A21, e a última suíte que ainda sai vermelha por defeito de
-TESTE; a régua 11 perde o valor quando o vermelho é rotina), **S-A20 🟠** (o
-`push` do drizzle está travado em todo banco que rodou os scripts à mão),
-**S-A15 🟠** (a sonda do snapshot não vê valor de enum) e **S-A19 🟠** (o realuguel
-curto é barrado pela janela de PROVA, não pela lavagem — e a spec do E152 afirma
-o contrário). As 🔵 são de higiene e podem esperar.
+**21 sobras, 4 fechadas.** As que pesam, em ordem: **S-A20 🟠** (o `push` do
+drizzle está travado em todo banco que rodou os scripts à mão), **S-A15 🟠** (a
+sonda do snapshot não vê valor de enum) e **S-A19 🟠** (o realuguel curto é
+barrado pela janela de PROVA, não pela lavagem — e a spec do E152 afirma o
+contrário). As 🔵 são de higiene e podem esperar.
+
+**Nenhuma suíte sai mais vermelha.** A S-A11 e a S-A21 fecharam na sessão 5, e
+as duas eram a mesma doença: teste reprovando por defeito da FIXTURE, sobre
+código certo. Viraram as regras 18 e 19 do método.
 
 | # | O quê | Peso | Origem |
 |---|---|---|---|
@@ -230,7 +236,7 @@ o contrário). As 🔵 são de higiene e podem esperar.
 | S-A13 | **O banco de dev tem 223 atributos, dos quais 9 são do catálogo** — o resto é `Decote 1785…` deixado por specs que criam e não limpam, mais 128 cabines. É a família S-D17/S-D25, agora com número. Pior que o volume: há atributos de teste chamados **"Cor", "Cor A", "Cor B" e "Tamanho"**, que colidem com o vocabulário real e vão confundir qualquer varredura futura por nome de atributo. | 🟡 | execução E149 |
 | S-A9 | **`e2e/11-configuracoes.spec.ts:13-16` carrega um comentário "FALHA ESPERADA no main (achado C2-disponibilidade)"** descrevendo um 404 por URL divergente entre cliente e servidor — e o teste **passa** hoje. Ou o C2 foi consertado e o comentário ficou, ou ele passa por outro motivo. Comentário que mente sobre o estado do teste é pior que comentário nenhum. | 🔵 | execução E148 |
 | S-A10 | **"Duração da prova" é a única linha do bloco de disponibilidade sem contrapartida editável.** Para mudar, só `PATCH` na API. E o cabeçalho do próprio arquivo (`configuracoes/index.tsx:22-25`, do E98) afirma que "isso mora em 'Cabines & horário', dentro de Atendimentos" — **não mora**: `atendimentos/config.tsx` não expõe o campo, e o `EditarEm` do card (`:173`) leva a uma tela sem ele. | 🟡 | execução E148 |
-| S-A11 | **`e2e/09-financeiro.spec.ts:27` e `:40` falham no `main`** — provado rodando os dois contra a base, com o diff do E148 no stash. Esperam a conta "Aluguel" e uma parcela com botão "Receber", dados que o **E147** tornou opcionais (`SEED_EXEMPLOS_FINANCEIROS`) e que o seed idempotente não recria em banco já existente. Enquanto ficarem assim, **`pnpm run test:e2e` sai com `EXIT=1` para todo mundo** e a regra 11 perde o valor: quem roda a suíte aprende a ignorar dois vermelhos — que é como o terceiro passa. Consertar com `beforeAll` próprio (família da S-D17) ou semeando os exemplos no setup do E2E. | 🟠 | execução E148 |
+| ~~S-A11~~ | ~~**`e2e/09-financeiro.spec.ts:27` e `:40` falham no `main`**~~ **FECHADA em `4690f18`** — o describe passou a trazer a própria fixture (conta "Aluguel", lead, contrato com uma parcela) e a levá-la embora no `afterAll`, no molde do `35-recebimento-parcial`. O vencimento é HOJE, não data fixa: a janela padrão das duas telas é o mês corrente, e data fixa sairia dela na virada do mês. **E2E 156 passed, zero vermelho** — `pnpm run test:e2e` volta a sair com `EXIT=0`. O diagnóstico original: — provado rodando os dois contra a base, com o diff do E148 no stash. Esperam a conta "Aluguel" e uma parcela com botão "Receber", dados que o **E147** tornou opcionais (`SEED_EXEMPLOS_FINANCEIROS`) e que o seed idempotente não recria em banco já existente. Enquanto ficarem assim, **`pnpm run test:e2e` sai com `EXIT=1` para todo mundo** e a regra 11 perde o valor: quem roda a suíte aprende a ignorar dois vermelhos — que é como o terceiro passa. Consertar com `beforeAll` próprio (família da S-D17) ou semeando os exemplos no setup do E2E. | ✅ | execução E148 |
 | S-A15 | **A sonda do snapshot de migração não vê valor de enum.** `e115-migracao-snapshot-unit.test.ts` compara tabelas e COLUNAS; o `ACESSORIO` que o E150 acrescentou a `orcamento_item_tipo` ficou fora da baseline do drizzle por um dia inteiro com a suíte verde, e só apareceu porque o E154 mexeu em coluna e forçou o `generate` (o `0001` gerado traz o `ALTER TYPE … 'ACESSORIO'` junto). Um banco provisionado por `migrate` entre os dois épicos aceitaria o tipo só até o primeiro INSERT. Estender a sonda aos `enums` do snapshot é pequeno e fecha a classe. | 🟠 | execução E154 |
 | S-A16 | **A lavagem não entra na régua do estoque.** A janela do E154 é a de USO, como a spec pediu; mas o saiote também vai à lavagem, e a régua da loja reserva 7 dias para ela no vestido (P1: *"uma semana, lavagem externa"*). A conta é **otimista**: saiote devolvido no dia 21 aparece livre no 22, quando está molhado. Como o épico avisa e não bloqueia, o custo é um aviso que deixa de aparecer — não uma venda recusada à toa. Se a peça de estoque tem ciclo de lavagem é pergunta de produto. | 🟡 | execução E154 |
 | S-A17 | **A fila da costureira não tem tela própria por trabalho.** O E155 põe confecção e ajuste na mesma lista e o item do orçamento aponta o trabalho, mas o link do item leva à FILA (`/ajustes?recorte=todos`), não ao trabalho — não existe rota `/ajustes/:id`. Numa loja com fila longa, "na fila da costureira" obriga a procurar a olho. Enquanto a confecção era inexistente isso não pesava; agora que ela tem custo e é cobrada, pesa. | 🔵 | execução E155 |
