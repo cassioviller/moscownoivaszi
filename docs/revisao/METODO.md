@@ -312,7 +312,11 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     *(Arqueologia do legado, sessão 5: a S-A4 e a S-A6 foram fechadas pelo E155,
     a linha do épico dizia "Fecha: S-A4 · S-A6", e as duas continuaram abertas na
     tabela por cinco commits — até alguém varrer a tabela inteira por outro
-    motivo.)*
+    motivo. **E o tamanho real apareceu no mesmo dia, na rodada 6:** das oito 🟠
+    que a tabela apresentava como perigo, **três já não existiam** — a S7 e a S22
+    consertadas pelo E115/E146, a S20 pelo E143, que até achou a causa raiz (o
+    deadlock 40P01 fora do mapa de erros). **37% do backlog mais pesado do
+    repositório era defeito morto**, e a próxima sessão teria ido investigá-lo.)*
 
 ---
 
