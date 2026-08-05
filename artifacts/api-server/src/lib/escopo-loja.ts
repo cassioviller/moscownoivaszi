@@ -9,6 +9,8 @@ import {
   atributoOpcoesTable,
   atendimentosTable,
   bloqueioVestidosTable,
+  itensEstoqueTable,
+  ajustesTable,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -100,6 +102,77 @@ export async function atendimentoNaLoja(atendimentoId: string, lojaId: string): 
   const [a] = await db.select({ id: atendimentosTable.id }).from(atendimentosTable)
     .where(and(eq(atendimentosTable.id, atendimentoId), eq(atendimentosTable.lojaId, lojaId))).limit(1);
   return !!a;
+}
+
+/**
+ * E154 — o `itemEstoqueId` que o item de orçamento aponta é desta loja?
+ *
+ * Mesma família das de cima: a FK prova que o saiote EXISTE, e `itens_estoque`
+ * é por loja. Sem esta prova, o orçamento da loja A comprometeria o estoque da
+ * loja B — e o aviso da B contaria uma peça que ela nunca vendeu.
+ */
+export async function itemEstoqueNaLoja(itemEstoqueId: string, lojaId: string): Promise<boolean> {
+  const [i] = await db.select({ id: itensEstoqueTable.id }).from(itensEstoqueTable)
+    .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId))).limit(1);
+  return !!i;
+}
+
+/**
+ * E155 — o `ajusteId` que o item do orçamento aponta é da loja **e da noiva**?
+ *
+ * A pergunta é mais forte que a das irmãs de propósito, e a lição é do S2/E107:
+ * provar só a loja deixava o contrato da noiva A prender a reserva da B. Aqui
+ * seria o orçamento de A cobrando a manga que a costureira faz para B — e as
+ * duas leriam, cada uma na sua tela, que a peça está paga.
+ *
+ * O dono do ajuste é o lead do ATENDIMENTO que o gerou (`ajustes.atendimentoId`
+ * é obrigatório): a fila não tem coluna de noiva, tem a conversa que a marcou.
+ */
+export async function ajusteDaNoiva(
+  ajusteId: string,
+  lojaId: string,
+  leadId: string,
+): Promise<boolean> {
+  const [a] = await db.select({ id: ajustesTable.id })
+    .from(ajustesTable)
+    .innerJoin(atendimentosTable, eq(atendimentosTable.id, ajustesTable.atendimentoId))
+    .where(and(
+      eq(ajustesTable.id, ajusteId),
+      eq(ajustesTable.lojaId, lojaId),
+      eq(atendimentosTable.leadId, leadId),
+    )).limit(1);
+  return !!a;
+}
+
+/**
+ * E156 — o `origemAjusteId` que a peça nova declara é uma confecção desta loja,
+ * e já pronta?
+ *
+ * São DUAS perguntas com respostas diferentes de propósito, e por isso o retorno
+ * não é booleano:
+ *
+ * · **`FORA_DA_LOJA`** é a pergunta de tenancy das irmãs acima — a FK prova que
+ *   o trabalho existe, não de quem ele é. Sem ela, o acervo de A nasceria
+ *   apontando a manga que a costureira faz para a noiva de B, e a fila de B
+ *   passaria a mostrar a peça de A como "já no acervo".
+ * · **`NAO_ESTA_PRONTA`** é a régua do épico: só vira peça do acervo o trabalho
+ *   de **CONFECÇÃO** (bainha não é peça nova) e já **FEITO** (a manga não existe
+ *   até a costureira terminar).
+ */
+export type VeredictoConfeccao = "OK" | "FORA_DA_LOJA" | "NAO_ESTA_PRONTA";
+
+export async function confeccaoPodeVirarPeca(
+  ajusteId: string,
+  lojaId: string,
+): Promise<VeredictoConfeccao> {
+  const [a] = await db
+    .select({ tipo: ajustesTable.tipo, status: ajustesTable.status })
+    .from(ajustesTable)
+    .where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)))
+    .limit(1);
+  if (!a) return "FORA_DA_LOJA";
+  if (a.tipo !== "CONFECCAO" || a.status !== "FEITO") return "NAO_ESTA_PRONTA";
+  return "OK";
 }
 
 /** E115 — irmã da de cima: o `bloqueioId` opcional do POST /atendimentos. */

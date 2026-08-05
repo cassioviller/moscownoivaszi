@@ -59,6 +59,8 @@ describe("classificarErro", () => {
       { code: "23505" },
       { code: "23503" },
       { code: "23P01" },
+      { code: "40P01" },
+      { code: "40001" },
       new Error("qualquer outra coisa"),
     ];
     for (const err of casos) {
@@ -71,6 +73,20 @@ describe("classificarErro", () => {
 
   it("conflito de disponibilidade (23P01) vira 409", () => {
     expect(classificarErro({ code: "23P01" }).status).toBe(409);
+  });
+
+  /**
+   * S-D19/E143 — a corrida do EXCLUDE gist nem sempre termina em 23P01: em
+   * 300 pares de INSERTs concorrentes, 34 perdedores levaram DEADLOCK (40P01)
+   * e viravam 500 — o flake [201, 500] do lote17. Deadlock e falha de
+   * serialização (40001) são concorrência, não quebra: 409, tente de novo.
+   */
+  it("deadlock (40P01) e falha de serialização (40001) viram 409, mesmo em cause", () => {
+    const dead = classificarErro({ code: "40P01" });
+    expect(dead.status).toBe(409);
+    expect(dead.body.error).toBe("OPERACAO_CONCORRENTE");
+    expect(dead.logLevel).toBe("warn");
+    expect(classificarErro({ cause: { code: "40001" } }).status).toBe(409);
   });
 
   it("erro desconhecido é 500 genérico, logado como erro", () => {

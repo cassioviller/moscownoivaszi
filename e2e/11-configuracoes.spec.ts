@@ -24,4 +24,15 @@ test.describe("Configurações", () => {
     ).not.toBeVisible();
     await expect(page.getByText(/14 dias/)).toBeVisible();
   });
+
+  // E148: `provaDuracao` é contado em SLOTS de 30 min (`agenda.ts:93` faz
+  // `provaDuracao * 30 * 60_000`; o spec 26 registra "o seed usa 2 = 1h"), e a
+  // tela mostrava o número cru — "2 min" para uma prova de uma hora, na única
+  // tela que existe para explicar a régua. Com o seed padrão, 2 slots = 60 min.
+  test("a duração da prova é exibida em minutos, não em slots", async ({ page }) => {
+    await page.goto("/configuracoes");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(/60 min/)).toBeVisible();
+    await expect(page.getByText(/\b2 min\b/)).not.toBeVisible();
+  });
 });

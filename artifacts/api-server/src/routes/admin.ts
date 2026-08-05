@@ -87,7 +87,7 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
     .where(eq(lojasTable.id, params.data.lojaId))
     .returning();
   if (!loja) {
-    res.status(404).json({ error: "Loja not found" });
+    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
     return;
   }
   res.json(UpdateLojaResponse.parse(loja));
@@ -134,7 +134,7 @@ router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   // equipe: quem chamou não distinguia "apaguei" de "não existia".
   const [loja] = await db.select().from(lojasTable).where(eq(lojasTable.id, lojaId));
   if (!loja) {
-    res.status(404).json({ error: "Loja not found" });
+    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
     return;
   }
 
@@ -234,7 +234,7 @@ router.patch("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
     .where(eq(perfisTable.id, params.data.perfilId))
     .returning();
   if (!perfil) {
-    res.status(404).json({ error: "Perfil not found" });
+    res.status(404).json({ error: "PERFIL_NAO_ENCONTRADO", detalhe: "Este perfil não existe." });
     return;
   }
   res.json(
@@ -256,7 +256,7 @@ router.delete("/admin/perfis/:perfilId", async (req, res): Promise<void> => {
     return;
   }
   if (!alvo) {
-    res.status(404).json({ error: "Perfil not found" });
+    res.status(404).json({ error: "PERFIL_NAO_ENCONTRADO", detalhe: "Este perfil não existe." });
     return;
   }
   // Mesma régua do DELETE de usuário: o 409 LEGÍVEL sai antes de o banco
@@ -382,7 +382,7 @@ router.patch("/admin/usuarios/:usuarioId", async (req, res): Promise<void> => {
     return linha;
   });
   if (!usuario) {
-    res.status(404).json({ error: "Usuario not found" });
+    res.status(404).json({ error: "USUARIO_NAO_ENCONTRADO", detalhe: "Este usuário não existe." });
     return;
   }
   res.json(UpdateUsuarioResponse.parse(usuario));
@@ -566,7 +566,7 @@ router.delete("/admin/lojas/:lojaId/overrides/:perfilId", async (req, res): Prom
   });
 
   if (!removido) {
-    res.status(404).json({ error: "Este perfil não tem personalização nesta loja" });
+    res.status(404).json({ error: "PERSONALIZACAO_NAO_ENCONTRADA", detalhe: "Este perfil não tem personalização nesta loja." });
     return;
   }
   res.status(204).send();
@@ -660,7 +660,7 @@ router.get("/admin/backup/:backupId/download", async (req, res): Promise<void> =
     .from(backupLogTable)
     .where(eq(backupLogTable.id, params.data.backupId));
   if (!registro) {
-    res.status(404).json({ error: "Execução de backup não encontrada" });
+    res.status(404).json({ error: "BACKUP_NAO_ENCONTRADO", detalhe: "Esta execução de backup não existe." });
     return;
   }
   const caminho = caminhoDoDump(registro);

@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, vestidosTable, bloqueioVestidosTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -26,6 +28,16 @@ test.describe("Vestido — marcar em manutenção (E43)", () => {
     });
     expect(criado.status(), await criado.text()).toBe(201);
     vestidoId = (await criado.json()).id;
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste. A manutenção que a tela criou é uma linha em
+    // bloqueio_vestidos do vestido DESTE run — sai antes do vestido, na ordem
+    // do FK.
+    if (vestidoId) {
+      await db.delete(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.vestidoId, vestidoId));
+      await db.delete(vestidosTable).where(eq(vestidosTable.id, vestidoId));
+    }
   });
 
   test("marcar em manutenção adiciona o bloqueio na ficha", async ({ page }) => {

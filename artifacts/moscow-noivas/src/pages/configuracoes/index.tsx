@@ -15,6 +15,7 @@ import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { diasDeProva, temJanelaDeProva } from "@/lib/janela-de-prova";
 
 /**
  * F40/E98 — "Configurações" era a única tela do sistema que não configura nada.
@@ -181,7 +182,12 @@ export default function Configuracoes() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Duração da prova</span>
-                      <span className="font-medium">{disponibilidade.provaDuracao} min</span>
+                      {/* E148: `provaDuracao` é contado em SLOTS de 30 min, não em
+                          minutos — `agenda.ts:93` faz `provaDuracao * 30 * 60_000`, e o
+                          E2E 26 registra "o seed usa 2 = 1h". A tela mostrava o número
+                          cru: "2 min" para uma prova de uma hora, na única tela que
+                          existe para explicar a régua. */}
+                      <span className="font-medium">{disponibilidade.provaDuracao * 30} min</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Uso (dias antes)</span>
@@ -190,6 +196,26 @@ export default function Configuracoes() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Devolução (dias depois)</span>
                       <span className="font-medium">{disponibilidade.usoDiasDepois} dias</span>
+                    </div>
+                    {/* S-A23: os dois números acima não são independentes — a
+                        janela de prova é a diferença entre eles, e ela some
+                        inteira quando "provas" não passa de "uso". Some em
+                        SILÊNCIO, que era o defeito: a reserva nascia sem
+                        período de prova e ninguém era avisado. A dona decidiu
+                        que a configuração não se recusa; o que ela faz agora é
+                        aparecer. */}
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-muted-foreground">Período de prova</span>
+                      {temJanelaDeProva(disponibilidade) ? (
+                        <span className="font-medium">
+                          {diasDeProva(disponibilidade)} dia
+                          {diasDeProva(disponibilidade) === 1 ? "" : "s"} por reserva
+                        </span>
+                      ) : (
+                        <span className="font-medium text-aviso">
+                          nenhum — as reservas nascem sem prova
+                        </span>
+                      )}
                     </div>
                   </div>
                 ) : (

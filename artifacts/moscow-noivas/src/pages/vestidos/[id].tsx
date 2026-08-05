@@ -330,17 +330,19 @@ export default function VestidoDetail() {
                 <p className="font-medium text-lg">{brl(vestido.precoBase)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Categoria</p>
+                <p className="text-muted-foreground">Coleção</p>
                 <p className="font-medium">{vestido.categoria || 'Não definida'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Tamanho</p>
                 <p className="font-medium">{vestido.tamanho || 'Não definido'}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground">Cor</p>
-                <p className="font-medium">{vestido.cor || 'Não definida'}</p>
-              </div>
+              {/* E149: a COR saiu daqui e aparece logo abaixo, entre as
+                  características — ela virou atributo do catálogo. Manter o bloco
+                  seria pior que removê-lo: nos vestidos cadastrados a partir de
+                  agora ele diria "Não definida" com a cor visível dois blocos
+                  adiante. `vestido.cor` (legado) segue no payload para quem
+                  precisar dos cadastros antigos. */}
             </div>
 
             {/* Características do acervo — usadas para indicar o vestido às noivas. */}
@@ -377,6 +379,26 @@ export default function VestidoDetail() {
               <div>
                 <p className="text-muted-foreground text-sm">Observações</p>
                 <p className="text-sm mt-1">{vestido.observacoes}</p>
+              </div>
+            )}
+
+            {/* E156 — a peça que não veio do fornecedor: ela foi feita aqui, sob
+                medida, e entrou no acervo depois do casamento (P4). O link leva
+                à FILA e não ao trabalho porque não existe rota por trabalho
+                (S-A17); enquanto ela não existir, é o mais perto que se chega. */}
+            {vestido.origemAjusteId && (
+              <div>
+                <p className="text-muted-foreground text-sm">Origem</p>
+                <p className="text-sm mt-1">
+                  Peça confeccionada no ateliê — veio da{" "}
+                  <Link
+                    to={`/loja/${lojaId}/ajustes?recorte=feitos`}
+                    className="underline underline-offset-4 hover:text-foreground"
+                  >
+                    fila da costureira
+                  </Link>
+                  .
+                </p>
               </div>
             )}
           </CardContent>

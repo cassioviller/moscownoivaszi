@@ -19,7 +19,7 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { leadNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
@@ -238,7 +238,7 @@ router.get("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise<v
     },
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   res.json(GetOrcamentoResponse.parse(orcamento));
@@ -256,7 +256,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     where: and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)),
   });
   if (!existente) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
 
@@ -302,7 +302,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     return atualizado;
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   const fullOrcamento = await db.query.orcamentosTable.findFirst({
@@ -324,7 +324,7 @@ router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promis
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "APROVADO") {
@@ -370,7 +370,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
 
   const orcamento = await db.query.orcamentosTable.findFirst({ where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)) });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   // E115 — um orçamento APROVADO é um acordo fechado: o aceite (ou a
@@ -383,6 +383,74 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
       detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
     });
     return;
+  }
+
+  /**
+   * E154 — o item aponta a peça de UM dos dois jeitos, nunca dos dois.
+   *
+   * `vestidoId` é peça do acervo, que se RESERVA (E150); `itemEstoqueId` é peça
+   * de estoque, que se CONTA. O par não é redundância: um item ESTOQUE levando
+   * `vestidoId` passaria pela guarda do E150 sem ser cobrado — ela só olha
+   * VESTIDO e ACESSORIO — e venderia um bolero sem reserva com o rótulo de
+   * saiote. O caminho contrário some com a peça da conta do dia.
+   */
+  const { tipo, vestidoId, itemEstoqueId, ajusteId } = parsed.data;
+  const apontaEstoque = tipo === "ESTOQUE";
+  if (apontaEstoque && vestidoId) {
+    res.status(422).json({
+      error: "ITEM_APONTA_DUAS_PECAS",
+      detalhe: "Item de estoque é contado, não reservado — ele não aponta uma peça do acervo.",
+      campos: [{ campo: "vestidoId", motivo: "Item de estoque não tem peça do acervo" }],
+    });
+    return;
+  }
+  if (!apontaEstoque && itemEstoqueId) {
+    res.status(422).json({
+      error: "ITEM_APONTA_DUAS_PECAS",
+      detalhe: "Só item do tipo Estoque aponta uma peça de estoque.",
+      campos: [{ campo: "itemEstoqueId", motivo: `Tipo ${tipo} não usa peça de estoque` }],
+    });
+    return;
+  }
+  // A FK prova que o saiote existe; `itens_estoque.loja_id` é quem diz de quem
+  // ele é (família E91).
+  if (itemEstoqueId && !(await itemEstoqueNaLoja(itemEstoqueId, lojaId))) {
+    res.status(404).json({
+      error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
+      detalhe: "Este item de estoque não existe nesta loja.",
+      campos: [{ campo: "itemEstoqueId", motivo: "Item de estoque não encontrado nesta loja" }],
+    });
+    return;
+  }
+
+  /**
+   * E155 — o item que COBRA uma confecção aponta o trabalho na fila.
+   *
+   * Só `AJUSTE`: é o tipo que já existia para trabalho de agulha, e cobrar uma
+   * manga como VESTIDO faria a peça nova entrar na conta do acervo.
+   *
+   * E a prova é dupla, pela lição do S2/E107 (a reserva tinha de ser DESTA
+   * noiva): o ajuste é da loja E do mesmo lead do orçamento. Sem a segunda, o
+   * orçamento da noiva A cobraria a manga que a costureira faz para a B — e as
+   * duas leriam, cada uma na sua tela, que a peça está paga.
+   */
+  if (ajusteId) {
+    if (tipo !== "AJUSTE") {
+      res.status(422).json({
+        error: "ITEM_APONTA_DUAS_PECAS",
+        detalhe: "Só item do tipo Ajuste aponta um trabalho da costureira.",
+        campos: [{ campo: "ajusteId", motivo: `Tipo ${tipo} não usa trabalho da fila` }],
+      });
+      return;
+    }
+    if (!(await ajusteDaNoiva(ajusteId, lojaId, orcamento.leadId))) {
+      res.status(404).json({
+        error: "AJUSTE_NAO_ENCONTRADO",
+        detalhe: "Este trabalho da costureira não é desta noiva.",
+        campos: [{ campo: "ajusteId", motivo: "Trabalho não encontrado para esta noiva" }],
+      });
+      return;
+    }
   }
 
   const [item] = await db.insert(orcamentoItensTable).values({
@@ -411,7 +479,7 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   if (!pai) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
   if (pai.status === "APROVADO") {
@@ -427,7 +495,7 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
     .returning();
   if (!item) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
 
@@ -444,7 +512,7 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
     .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   if (!pai) {
-    res.status(404).json({ error: "Item not found" });
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
   if (pai.status === "APROVADO") {
@@ -471,7 +539,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads"
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "RECUSADO") {
@@ -511,7 +579,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("lea
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "APROVADO" || orcamento.status === "RECUSADO") {
@@ -535,7 +603,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("lea
     where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
   });
   if (!orcamento) {
-    res.status(404).json({ error: "Orcamento not found" });
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
   if (orcamento.status === "APROVADO" || orcamento.status === "RECUSADO") {

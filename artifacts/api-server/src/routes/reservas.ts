@@ -104,7 +104,7 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
   const [reserva] = await db.select().from(reservasTable)
     .where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)));
   if (!reserva) {
-    res.status(404).json({ error: "Reserva not found" });
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva não existe nesta loja." });
     return;
   }
 
@@ -159,6 +159,7 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
           provaDataReal: bloqueio.provaDataReal,
           retiradaDataReal: bloqueio.retiradaDataReal,
           devolucaoDataReal: bloqueio.devolucaoDataReal,
+          lavagemConcluidaEm: bloqueio.lavagemConcluidaEm,
           inicio: bloqueio.inicio,
           fim: bloqueio.fim,
         };
@@ -215,7 +216,7 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
     where: and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)),
   });
   if (!reserva) {
-    res.status(404).json({ error: "Reserva not found" });
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva não existe nesta loja." });
     return;
   }
 
@@ -325,7 +326,7 @@ router.get("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<voi
     with: { vestido: true, lead: true },
   });
   if (!bloqueio) {
-    res.status(404).json({ error: "Bloqueio not found" });
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva de vestido não existe nesta loja." });
     return;
   }
   res.json(GetBloqueioResponse.parse(bloqueio));
@@ -343,7 +344,7 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   const [vestido] = await db.select({ id: vestidosTable.id }).from(vestidosTable)
     .where(and(eq(vestidosTable.id, dados.vestidoId), eq(vestidosTable.lojaId, lojaId)));
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -375,6 +376,7 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: dados.inicio ?? null,
     fim: dados.fim ?? null,
   };
@@ -421,7 +423,7 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
   const [existente] = await db.select().from(bloqueioVestidosTable)
     .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)));
   if (!existente) {
-    res.status(404).json({ error: "Bloqueio not found" });
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva de vestido não existe nesta loja." });
     return;
   }
 
@@ -436,6 +438,9 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
       dados.retiradaDataReal === undefined ? existente.retiradaDataReal : dados.retiradaDataReal,
     devolucaoDataReal:
       dados.devolucaoDataReal === undefined ? existente.devolucaoDataReal : dados.devolucaoDataReal,
+    // E152: a última data real do ciclo, com a mesma régua de null-desfaz.
+    lavagemConcluidaEm:
+      dados.lavagemConcluidaEm === undefined ? existente.lavagemConcluidaEm : dados.lavagemConcluidaEm,
     inicio: dados.inicio ?? existente.inicio,
     fim: dados.fim ?? existente.fim,
   };
@@ -445,11 +450,29 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     res.status(400).json({ error: "Não dá para desfazer a retirada com a devolução registrada" });
     return;
   }
+  /**
+   * E152 — e a lavagem sem devolução é a mesma história, um passo à frente: a
+   * peça não pode ter voltado da lavanderia sem ter voltado da noiva.
+   *
+   * Morde nos dois sentidos, e o segundo é o que importa: desfazer a devolução
+   * com a lavagem registrada deixaria uma data real órfã, apontando um fato
+   * que o próprio sistema passou a negar.
+   */
+  if (candidato.lavagemConcluidaEm && !candidato.devolucaoDataReal) {
+    res.status(400).json({
+      error: "LAVAGEM_SEM_DEVOLUCAO",
+      detalhe:
+        "A peça não pode ter voltado da lavanderia sem ter sido devolvida — desfaça a volta da lavanderia primeiro.",
+      campos: [{ campo: "devolucaoDataReal", motivo: "Há volta da lavanderia registrada" }],
+    });
+    return;
+  }
 
   const mudouJanelas =
     dados.provaDataReal !== undefined ||
     dados.retiradaDataReal !== undefined ||
     dados.devolucaoDataReal !== undefined ||
+    dados.lavagemConcluidaEm !== undefined ||
     dados.inicio !== undefined ||
     dados.fim !== undefined;
 
@@ -478,6 +501,7 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
       provaDataReal: dados.provaDataReal,
       retiradaDataReal: dados.retiradaDataReal,
       devolucaoDataReal: dados.devolucaoDataReal,
+      lavagemConcluidaEm: dados.lavagemConcluidaEm,
       inicio: dados.inicio,
       fim: dados.fim,
       observacao: dados.observacao,
@@ -502,7 +526,7 @@ router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<
     where: and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)),
   });
   if (!bloqueio) {
-    res.status(404).json({ error: "Bloqueio not found" });
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva de vestido não existe nesta loja." });
     return;
   }
 
@@ -635,7 +659,7 @@ router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Pr
     .from(bloqueioVestidosTable)
     .where(and(eq(bloqueioVestidosTable.id, bloqueioId as string), eq(bloqueioVestidosTable.lojaId, lojaId as string)));
   if (!bloqueio) {
-    res.status(404).json({ error: "Bloqueio not found" });
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva de vestido não existe nesta loja." });
     return;
   }
 
@@ -699,7 +723,7 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
     where: and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)),
   });
   if (!avaria) {
-    res.status(404).json({ error: "Avaria not found" });
+    res.status(404).json({ error: "AVARIA_NAO_ENCONTRADA", detalhe: "Esta avaria não existe nesta loja." });
     return;
   }
   if (avaria.parcelaId && (await cobrancaViva(avaria.parcelaId))) {
@@ -841,7 +865,7 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
   if (!avaria) {
     // E115: era 204 — apagar o inexistente respondia "apagado", o 404
     // cosmético que o E106 consertou na loja.
-    res.status(404).json({ error: "Avaria not found" });
+    res.status(404).json({ error: "AVARIA_NAO_ENCONTRADA", detalhe: "Esta avaria não existe nesta loja." });
     return;
   }
   // Mesma régua da cobrança: o que impede apagar a avaria é uma cobrança VIVA,
@@ -884,7 +908,7 @@ router.get("/lojas/:lojaId/avarias/:avariaId/foto", async (req, res): Promise<vo
     .from(avariasTable)
     .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));
   if (!avaria?.fotoBytes || !avaria.fotoMime) {
-    res.status(404).json({ error: "Avaria sem foto" });
+    res.status(404).json({ error: "AVARIA_SEM_FOTO", detalhe: "Esta avaria não tem foto." });
     return;
   }
   res.setHeader("Content-Type", avaria.fotoMime);

@@ -219,6 +219,32 @@ export function classificarErro(err: unknown): Classificacao {
     };
   }
 
+  /**
+   * S-D19/E143 — a corrida que o mapa não conhecia.
+   *
+   * Dois INSERTs simultâneos contra o EXCLUDE gist de `bloqueio_vestidos` nem
+   * sempre terminam em 23P01: quando ambos se cruzam na checagem especulativa
+   * do índice, o Postgres resolve o impasse por DEADLOCK e o perdedor leva
+   * 40P01 — que caía aqui embaixo, no 500 genérico. Medido na reprodução
+   * (300 pares de INSERTs concorrentes no mesmo vestido×janela): 266× 23P01,
+   * 34× 40P01 — 11% das corridas respondiam "quebrei" onde a verdade é "outra
+   * pessoa chegou primeiro". Era o flake `[201, 500]` do lote17.
+   *
+   * 40001 (serialization_failure) é a mesma família: transação abortada por
+   * concorrência, cujo remédio é tentar de novo — entra no mesmo mapa.
+   */
+  if (code === "40P01" || code === "40001") {
+    return {
+      status: 409,
+      body: {
+        error: "OPERACAO_CONCORRENTE",
+        detalhe: "Outra operação mexeu nos mesmos dados neste instante. Tente de novo.",
+      },
+      logLevel: "warn",
+      logMsg: "Transação abortada por concorrência (deadlock/serialização)",
+    };
+  }
+
   return {
     status: 500,
     body: { error: "ERRO_INTERNO", detalhe: "Erro interno do servidor" },

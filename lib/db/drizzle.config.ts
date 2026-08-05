@@ -7,7 +7,11 @@ if (!process.env.DATABASE_URL) {
 
 export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
-  out: path.join(__dirname, "./migrations"),
+  // Relativo de propósito: com caminho ABSOLUTO o drizzle-kit prefixa "./" ao
+  // ler o snapshot (`.//home/.../meta/0000_snapshot.json`) e o `generate`
+  // morre com ENOENT — o script que o teste do E115 manda rodar quando
+  // reprova. Os scripts rodam com cwd em `lib/db`.
+  out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
     url: process.env.DATABASE_URL,

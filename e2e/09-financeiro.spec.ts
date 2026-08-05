@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { coletarErrosApi, resumoErros } from "./helpers";
+import { eq } from "drizzle-orm";
+import { db, leadsTable, contratosTable, parcelasTable, contasPagarTable } from "../lib/db/src/index";
+import { coletarErrosApi, resumoErros, lerEstado, API_URL } from "./helpers";
+
+const estado = lerEstado();
 
 test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 
@@ -10,9 +14,87 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  * (`/financeiro/pagar`, `/financeiro/receber`), então é lá que este spec as
  * procura. A intenção dos testes é a de sempre: o financeiro precisa ser
  * operável pela interface, dos dois lados.
+ *
+ * **S-A11 — a fixture é DAQUI desde o E156.** Estes dois testes esperavam a
+ * conta "Aluguel" e uma parcela em aberto que vinham do seed de demonstração; o
+ * E147 tornou os exemplos financeiros opcionais (`SEED_EXEMPLOS_FINANCEIROS`) e
+ * o seed idempotente não os recria em banco que já existe. Resultado: dois
+ * vermelhos permanentes, `pnpm run test:e2e` saindo com EXIT=1 para todo mundo,
+ * e a regra 11 valendo menos a cada run — quem roda a suíte aprende a ignorar
+ * dois vermelhos, que é como o terceiro passa.
+ *
+ * O molde é o do 35-recebimento-parcial: cada teste traz o que precisa e leva
+ * embora. **O vencimento é HOJE** porque a janela padrão das duas telas é o mês
+ * corrente (`resolverIntervalo`) — data fixa sairia da janela na virada do mês,
+ * que é o mesmo defeito com outro calendário.
  */
 
 test.describe("Financeiro", () => {
+  const stamp = Date.now();
+  let leadId: string | null = null;
+  let contratoId: string | null = null;
+  let contaId: string | null = null;
+
+  test.beforeAll(async ({ request }) => {
+    await request.post(`${API_URL}/api/auth/login`, {
+      data: { email: estado.adminEmail, senha: estado.senha },
+    });
+    await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+
+    // Meio-dia de São Paulo: o dia não escorrega para o vizinho em fuso nenhum.
+    const hoje = new Date().toISOString().slice(0, 10);
+    const vencimento = `${hoje}T12:00:00-03:00`;
+
+    const conta = await request.post(
+      `${API_URL}/api/lojas/${estado.lojaId}/financeiro/contas-pagar`,
+      {
+        data: {
+          tipo: "DESPESA",
+          descricao: "Aluguel",
+          categoria: "Ocupação",
+          valorPrevisto: 3200,
+          vencimento,
+        },
+      },
+    );
+    expect(conta.status(), await conta.text()).toBe(201);
+    contaId = ((await conta.json()) as { id: string }).id;
+
+    // Lead próprio: o contrato exige que o lead não tenha outro contrato ativo.
+    const lead = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
+      data: { noivaNome: `E2E Financeiro ${stamp}`, origem: "LOJA" },
+    });
+    expect(lead.status(), await lead.text()).toBe(201);
+    leadId = ((await lead.json()) as { id: string }).id;
+
+    const me = await request.get(`${API_URL}/api/auth/me`);
+    expect(me.status()).toBe(200);
+    const vendedoraId = (await me.json()).usuario.id;
+
+    const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
+      data: {
+        leadId,
+        vendedoraId,
+        valorTotal: 2500,
+        parcelas: [{ numero: 0, valorPrevisto: 2500, vencimento }],
+      },
+    });
+    expect(contrato.status(), await contrato.text()).toBe(201);
+    contratoId = ((await contrato.json()) as { id: string }).id;
+  });
+
+  test.afterAll(async () => {
+    // O banco do E2E persiste: sem limpar, cada run deixa uma noiva devendo R$
+    // 2.500 e um aluguel eterno na fila de pagar. Parcelas antes do contrato, e
+    // o contrato antes do lead — o FK lead→contrato é RESTRICT de propósito.
+    if (contaId) await db.delete(contasPagarTable).where(eq(contasPagarTable.id, contaId));
+    if (contratoId) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
+      await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
+    }
+    if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+  });
+
   test("hub carrega o caixa do período sem erros de API", async ({ page }) => {
     const erros = coletarErrosApi(page);
     await page.goto("/financeiro");

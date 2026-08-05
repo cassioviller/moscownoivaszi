@@ -90,7 +90,7 @@ const reais = (centavos: number) => centavos / 100;
 
 type ItemSnapshot = Pick<
   InsertContratoItem,
-  "tipo" | "vestidoId" | "descricao" | "valorUnitario" | "quantidade"
+  "tipo" | "vestidoId" | "itemEstoqueId" | "descricao" | "valorUnitario" | "quantidade"
 >;
 
 /** True se o contrato existe, é da loja e está ATIVO. */
@@ -110,9 +110,12 @@ router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
   // E124/D1: busca por noiva, status no banco, página e recentes-primeiro
   // (P2) — o contrato da semana passada era o último de ~29.000px de rolagem.
-  const { leadId, q, status, pagina, porPagina, ordem } = query.data;
+  const { leadId, orcamentoId, q, status, pagina, porPagina, ordem } = query.data;
   const condicoes = [eq(contratosTable.lojaId, lojaId)];
   if (leadId) condicoes.push(eq(contratosTable.leadId, leadId));
+  // E144/S-D16: o detalhe do orçamento pergunta "já virou contrato?" — antes
+  // baixava os 518 contratos da loja (615 KB) para um único find.
+  if (orcamentoId) condicoes.push(eq(contratosTable.orcamentoId, orcamentoId));
   if (status) condicoes.push(eq(contratosTable.status, status));
   const busca = q?.trim();
   if (busca) condicoes.push(inArray(contratosTable.leadId, leadsQueCasam(lojaId, busca)));
@@ -247,6 +250,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     itensSnapshot = itens.map((it) => ({
       tipo: it.tipo,
       vestidoId: it.vestidoId,
+      // E154: sem este campo no snapshot, o contrato fecha e a peça de estoque
+      // some da conta — o comprometimento do dia é derivado DAQUI, e um saiote
+      // vendido que não aparece na soma é pior que aviso nenhum.
+      itemEstoqueId: it.itemEstoqueId,
       descricao: it.descricao,
       valorUnitario: it.valorUnitario,
       quantidade: it.quantidade,
@@ -298,6 +305,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       ...(contratoData.bloqueioVestidoIds ?? []),
     ]),
   ];
+  // E150: os vestidos efetivamente reservados por este contrato, colhidos na
+  // mesma passada que já os valida — a guarda de "peça vendida sem reserva"
+  // logo abaixo compara contra esta lista.
+  const vestidosReservados = new Set<string>();
   for (const bloqueioId of bloqueioIds) {
     const [bloqueio] = await db.select().from(bloqueioVestidosTable)
       .where(and(
@@ -327,10 +338,16 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * `bloqueio.leadId` NULO é o caso legítimo e comum: a reserva nasceu sem
      * dona (a loja segurou a peça antes de saber de quem seria) e este contrato
      * é justamente quem lhe dá dono. Só o vínculo com OUTRA noiva é recusado.
+     *
+     * S-D12/E145 — o código era `REFERENCIA_INVALIDA`, o mesmo que o
+     * dicionário da tela de orçamento traduz como "Essa noiva não é desta
+     * loja." — a tradução genérica sombreava este `detalhe`, que é a frase
+     * certa. Código próprio, SEM entrada no dicionário: a régua do
+     * `mensagemApi` mostra o `detalhe` do servidor.
      */
     if (bloqueio.leadId && bloqueio.leadId !== contratoData.leadId) {
       res.status(422).json({
-        error: "REFERENCIA_INVALIDA",
+        error: "RESERVA_DE_OUTRA_NOIVA",
         detalhe: "Esta reserva de vestido é de outra noiva — escolha uma reserva desta noiva ou uma sem dona.",
         campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva pertence a outra noiva" }],
       });
@@ -401,6 +418,49 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     });
     if (!resultado.disponivel) {
       res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
+      return;
+    }
+    vestidosReservados.add(bloqueio.vestidoId);
+  }
+
+  /**
+   * E150 — o contrato não vende peça que não reservou.
+   *
+   * Até aqui, `itensSnapshot` (o que foi VENDIDO) e `bloqueioIds` (o que foi
+   * fisicamente RESERVADO) chegavam de fontes independentes: os itens vêm do
+   * orçamento, a lista de bloqueios vem do corpo da requisição. Nada obrigava
+   * as duas a falarem da mesma peça — e o schema declara a descrição em texto
+   * como registro autoritativo (`contratos.ts:66-69`), então um item apontando
+   * `vestidoId` sem reserva correspondente fechava com 201 e deixava a peça
+   * livre para a próxima noiva do mesmo sábado.
+   *
+   * O caderno do ateliê mostra o caso real: `Bolero Ricca Sposa` sai em duas
+   * semanas distintas, para noivas diferentes. É peça, e peça se reserva.
+   *
+   * Só VESTIDO e ACESSORIO entram na regra: SERVICO e AJUSTE não são peça
+   * física e não têm `vestidoId`. E a guarda só morde quando o item JÁ aponta
+   * uma peça — item de descrição livre segue passando, porque exigir reserva
+   * de algo que não está no acervo seria travar a venda por uma frase.
+   *
+   * A tela não é afetada: `orcamentos/[id].tsx:638-641` já manda todas as
+   * reservas da noiva não desmarcadas. Quem passa a ser recusado é o contrato
+   * montado fora dela — que é onde o defeito vivia.
+   */
+  const pecasVendidas = itensSnapshot.filter(
+    (it) => (it.tipo === "VESTIDO" || it.tipo === "ACESSORIO") && it.vestidoId,
+  );
+  if (pecasVendidas.length > 0) {
+    const semReserva = pecasVendidas.filter((it) => !vestidosReservados.has(it.vestidoId!));
+    if (semReserva.length > 0) {
+      res.status(422).json({
+        error: "ITEM_SEM_RESERVA",
+        detalhe:
+          "O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana.",
+        campos: semReserva.map((it) => ({
+          campo: "itens",
+          motivo: `«${it.descricao}» não tem reserva neste contrato`,
+        })),
+      });
       return;
     }
   }
@@ -545,7 +605,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<voi
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   // E72: as reservas físicas presas por este contrato.
@@ -570,7 +630,7 @@ router.get("/lojas/:lojaId/contratos/:contratoId/pdf", async (req, res): Promise
     with: { loja: true, lead: true, parcelas: true, itens: true },
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
 
@@ -634,7 +694,7 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     .returning();
 
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   res.json(UpdateContratoResponse.parse(contrato));
@@ -652,7 +712,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
     where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   if (contrato.status === "CANCELADO") {
@@ -828,7 +888,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
   const [existente] = await db.select().from(parcelasTable)
     .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
   if (!existente) {
-    res.status(404).json({ error: "Parcela not found" });
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
   if (existente.status === "PAGA") {
@@ -948,7 +1008,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
   const [existente] = await db.select().from(parcelasTable)
     .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
   if (!existente) {
-    res.status(404).json({ error: "Parcela not found" });
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
   // PARCIAL também estorna (E49). O estorno é tudo-ou-nada: a parcela não tem
@@ -1036,7 +1096,7 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
   const [existente] = await db.select().from(parcelasTable)
     .where(and(eq(parcelasTable.id, parcelaId as string), eq(parcelasTable.lojaId, lojaId as string)));
   if (!existente) {
-    res.status(404).json({ error: "Parcela not found" });
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
   if (existente.status !== "PREVISTA") {
@@ -1134,7 +1194,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     with: { parcelas: true },
   });
   if (!contrato) {
-    res.status(404).json({ error: "Contrato not found" });
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
     return;
   }
   if (contrato.status !== "ATIVO") {

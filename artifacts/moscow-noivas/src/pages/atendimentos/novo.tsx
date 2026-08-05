@@ -8,6 +8,8 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAtendimentos,
+  useListAusencias,
+  getListAusenciasQueryKey,
   getListAtendimentosQueryKey,
   useCreateAtendimento,
   useDeleteAtendimento,
@@ -60,12 +62,13 @@ import { ToastAction } from "@/components/ui/toast";
 import { MessageCircle } from "lucide-react";
 import { diaMesAbrevAno } from "@/lib/formatos";
 import { hojeLocal } from "@/lib/financeiro/datas";
-import { instanteCurto } from "@/lib/formatos";
+import { instanteCurto, diaMesAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import {
   slotsOferecidos,
   instanteDoSlot,
+  ausenciaQueCobre,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
   type Expediente,
@@ -187,6 +190,15 @@ export default function NovoAtendimento() {
       enabled: !!activeLojaId && !!dataEscolhida,
     },
   });
+  // E151: quem falta a partir do dia escolhido — o mesmo recorte que a grade
+  // usa, e a mesma lista que o servidor consulta ao recusar.
+  const paramsAusencias = { desde: dataEscolhida || hojeLocal() };
+  const ausencias = useListAusencias(activeLojaId!, paramsAusencias, {
+    query: {
+      queryKey: getListAusenciasQueryKey(activeLojaId!, paramsAusencias),
+      enabled: !!activeLojaId,
+    },
+  });
   const janelaFuturos = { de: hojeLocal() };
   const atendimentosFuturos = useListAtendimentos(activeLojaId!, janelaFuturos, {
     query: {
@@ -292,8 +304,17 @@ export default function NovoAtendimento() {
     const ocupadas: Marcacao[] = atendimentosDia.data.filter(
       (a) => a.situacao === "AGENDADO" || a.situacao === "EM_ATENDIMENTO",
     );
-    return slotsOferecidos(dataEscolhida, { cabineId, vendedoraId, tipo }, ocupadas, expediente);
-  }, [dataEscolhida, cabineId, vendedoraId, tipo, atendimentosDia.data, expediente]);
+    // E151: as ausências entram na MESMA função que a rota consulta — sem
+    // elas a tela ofereceria o dia inteiro de quem está de férias e o clique
+    // levaria 422, que é o defeito que a doutrina do E27 existe para evitar.
+    return slotsOferecidos(
+      dataEscolhida,
+      { cabineId, vendedoraId, tipo },
+      ocupadas,
+      expediente,
+      ausencias.data ?? [],
+    );
+  }, [dataEscolhida, cabineId, vendedoraId, tipo, atendimentosDia.data, expediente, ausencias.data]);
   // Seleção completa mas o dia ainda chegando — a mensagem certa é "carregando",
   // não "escolha cabine, vendedora e data".
   const carregandoDia =
@@ -302,6 +323,24 @@ export default function NovoAtendimento() {
     slotsDoDiaEscolhido !== null &&
     slotsDoDiaEscolhido.length > 0 &&
     slotsDoDiaEscolhido.every((s) => s.recusa === "LOJA_FECHADA");
+  /**
+   * E151 — o dia inteiro recusado porque a pessoa não está.
+   *
+   * É o irmão de `lojaFechadaNoDia`, e existe pela mesma razão: uma grade de
+   * vinte botões apagados não diz nada. Aqui a frase diz o nome e o período —
+   * a mesma informação que o 422 do servidor traria, antes do clique.
+   */
+  const ausenciaDoDia =
+    dataEscolhida && vendedoraId
+      ? ausenciaQueCobre(ausencias.data ?? [], vendedoraId, instanteDoSlot(dataEscolhida, "12:00"))
+      : null;
+  const vendedoraAusenteNoDia =
+    !lojaFechadaNoDia &&
+    slotsDoDiaEscolhido !== null &&
+    slotsDoDiaEscolhido.length > 0 &&
+    slotsDoDiaEscolhido.every((s) => s.recusa === "VENDEDORA_AUSENTE")
+      ? ausenciaDoDia
+      : null;
 
   // E8: confirmação por wa.me com nome/endereço da loja vindos da sessão.
   const lojaAtiva = session?.lojas?.find((l) => l.id === activeLojaId);
@@ -651,6 +690,14 @@ export default function NovoAtendimento() {
                       ) : lojaFechadaNoDia ? (
                         <p className="text-sm text-muted-foreground">
                           A loja não abre nesse dia da semana.
+                        </p>
+                      ) : vendedoraAusenteNoDia ? (
+                        <p className="text-sm text-muted-foreground" data-testid="aviso-vendedora-ausente">
+                          {(equipe.data ?? []).find((m) => m.usuarioId === vendedoraId)?.nome ??
+                            "A vendedora"}{" "}
+                          está ausente de {diaMesAno(vendedoraAusenteNoDia.inicio)} a{" "}
+                          {diaMesAno(vendedoraAusenteNoDia.fim)} — escolha outro dia ou outra
+                          pessoa.
                         </p>
                       ) : (
                         <div

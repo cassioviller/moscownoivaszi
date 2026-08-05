@@ -257,6 +257,62 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     *(R7-design: um `casamento_data` movido sem anotar pôs o bloqueio no
     topo da lista de reservas e derrubou o spec posicional 13 — E132; a
     mesma classe do 05-leads/E124.)*
+17. Evidência NÃO-TEXTUAL (foto, captura, gravação) se lê uma vez por
+    PERGUNTA, nunca uma vez por ARQUIVO. A leitura corrida produz a narrativa;
+    a leitura por pergunta produz a CONTAGEM — e é a contagem que corrige a
+    narrativa. *(Arqueologia do legado: a sessão 1 leu 29 fotos em ordem e
+    escreveu 6 achados; a sessão 2 leu as mesmas 29 sete vezes, uma por
+    pergunta, e achou um número errado por fator 4 (páginas com férias: 8 → 2),
+    dois subestimados pela metade (compromissos de cor 20 → 38), um par de
+    nomes fundido por engano que teria juntado duas peças de acervo na
+    importação (Arnalda ≠ Arnica), uma afirmação ilegível que teve de ser
+    retirada, e 4 achados novos — dois deles com defeito de código
+    demonstrável.)*
+18. Um vermelho que vira paisagem apaga a régua 11: **teste que reprova por
+    defeito da FIXTURE conserta-se antes do próximo épico**, não depois. Enquanto
+    ele vive, a suíte deixa de responder "quebrei alguma coisa?" e passa a
+    responder "quebrei mais alguma coisa?". *(Arqueologia do legado: os dois
+    vermelhos de `09-financeiro` viveram do E148 ao E156 — nove épicos —, e a
+    justificativa de cada um era a mesma frase copiada, "são conhecidos e não são
+    regressão". Os dois consertos custaram, juntos, uma linha de fixture e um
+    `beforeAll`: a S-A21 escrevia a faixa de comissão em centavos numa coluna de
+    reais e a S-A11 esperava dados que o E147 tornou opcionais. Nenhum era código
+    de produção, e nenhum precisava dos nove épicos.)*
+19. **A suíte lida inteira inclui os `skipped`.** Teste condicionado a
+    calendário, fuso ou ambiente não está verde: está AUSENTE, e a diferença não
+    aparece na linha de resumo que a regra 14 manda ler. Antes de declarar uma
+    suíte verde, olhe o que ela não rodou e diga por quê. *(Arqueologia do
+    legado: `MIN_DIAS_PROJECAO = 5` fez três testes de API e dois E2E ficarem
+    `skipped` na sessão do dia 4 e rodarem na do dia 5, sem uma linha de código
+    mudar entre as duas. Um deles reprovou na PRIMEIRA vez que rodou, sobre
+    código certo — S-A21. O relatório do E157 dizia "980 passed · 3 skipped" e
+    estava correto; o que ele não podia dizer é que aqueles 3 escondiam um
+    vermelho.)*
+20. **A sobra é uma PISTA, não um achado — e se confere antes de virar
+    trabalho.** Ela nasce de passagem, no meio de outro épico, sem a passada
+    adversarial que a regra 7 exige dos 🔴 e 🟠 do diagnóstico. Quem a executa
+    relê a âncora e remede o número ANTES de consertar; o que ela descreve pode
+    ter mudado, encolhido, crescido ou simplesmente não existir. *(Arqueologia
+    do legado, sessão 5: das quatro sobras executadas num dia, **três estavam
+    erradas em algum ponto**. A S-A19 trazia a janela `[D−6, D+4]` quando é
+    `[D−7, D+3]` — um dia em cada ponta. A S-A20 dizia "o `push` está travado" e
+    era só o ponto barulhento de quatro divergências; os outros três eram índices
+    ausentes de todo banco novo, e foi a varredura que os achou, não a leitura.
+    E a **S-A22 não existia**: eu a registrei afirmando que `"0010" < "0006"`, o
+    que é falso — o drizzle zera à esquerda em quatro dígitos, e com largura fixa
+    a ordem de string É a numérica. Ela foi RETIRADA, e fica na tabela riscada em
+    vez de apagada, porque sobra que some não ensina que a apuração desmentiu
+    quem a escreveu.)*
+21. **A sobra também SAI do rastreador no commit que a fecha** — riscada, com o
+    hash e uma linha do que se fez. A regra 12 cobria só a entrada, e uma tabela
+    que só cresce deixa de dizer o que falta: quem a lê passa a conferir cada
+    linha contra o código para saber se ainda é verdade, que é exatamente o
+    trabalho que ela existia para poupar. Sobra fechada por DECISÃO se risca
+    igual, com a resposta escrita — decisão não registrada volta como pergunta.
+    *(Arqueologia do legado, sessão 5: a S-A4 e a S-A6 foram fechadas pelo E155,
+    a linha do épico dizia "Fecha: S-A4 · S-A6", e as duas continuaram abertas na
+    tabela por cinco commits — até alguém varrer a tabela inteira por outro
+    motivo.)*
 
 ---
 
@@ -273,6 +329,31 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   ficou para trás; tabela de **Sobras** criada no rastreador da R6 com os itens
   que estavam presos nas notas; `CLAUDE.md` criado na raiz para que este arquivo
   seja lido no começo de toda sessão, e não por acaso.
+- **2026-08-05** — sessão 5 da arqueologia do legado, e a primeira em que as
+  **três suítes fecharam verdes ao mesmo tempo** (API 991, frontend 446, E2E
+  156, typecheck). O E156 fechou o último épico da trilha; as duas sobras que
+  sobraram do dia foram os dois vermelhos que ninguém consertava, e as duas eram
+  defeito de TESTE sobre código certo — a S-A21 escrevia a faixa de comissão em
+  centavos numa coluna de reais, a S-A11 esperava dados que o E147 tornou
+  opcionais. Duas regras novas (18 e 19), as duas nascidas daí: vermelho de
+  fixture se conserta antes do próximo épico, e `skipped` não é verde.
+  A sessão fechou pela S-A20, que rendeu a lição mais barata do dia: **a sobra
+  estava certa no defeito e errada no tamanho**. Ela dizia "o `push` está
+  travado"; o `push` era o único dos quatro pontos de divergência entre os
+  scripts à mão e o schema drizzle que fazia barulho — os outros três eram
+  índices que existiam em todo banco antigo e em nenhum banco novo. **A sobra
+  registra o sintoma; quem a executa procura a classe** — e foi a varredura, não
+  a leitura, que achou os outros três. Fechou com as sobras da sonda de
+  migração, e aí veio a lição que virou a **regra 20**: das quatro sobras
+  executadas no dia, três estavam erradas em algum ponto, e uma delas — a S-A22,
+  escrita por mim horas antes — **não era defeito nenhum**. A sobra é pista, não
+  achado: ela não passa pela passada adversarial, e quem a executa confere antes
+  de consertar. O dia terminou pelas duas sobras do expediente, e com uma
+  **pergunta que rendeu mais que o conserto**: ao responder "domingo com hora
+  marcada", a dona nomeou uma distinção que o modelo não sabe dizer — e isso
+  virou sobra nova (S-A24) em vez de virar uma tradução silenciosa. **Quatro
+  regras novas num dia (18–21)**, todas nascidas de execução, nenhuma de
+  opinião.
 - **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
   (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
   futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +

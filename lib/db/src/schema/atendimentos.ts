@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, unique, date } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, unique, index, date, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable, cabinesTable } from "./loja";
@@ -8,7 +8,8 @@ import { vestidosTable } from "./vestidos";
 import { 
   reservaStatusEnum, 
   bloqueioTipoEnum, 
-  ajusteStatusEnum, 
+  ajusteStatusEnum,
+  ajusteTipoEnum, 
   atendimentoTipoEnum, 
   atendimentoSituacaoEnum, 
   atendimentoDesfechoEnum 
@@ -38,6 +39,21 @@ export const bloqueioVestidosTable = pgTable("bloqueio_vestidos", {
   provaDataReal: timestamp("prova_data_real", { withTimezone: true }),
   retiradaDataReal: timestamp("retirada_data_real", { withTimezone: true }),
   devolucaoDataReal: timestamp("devolucao_data_real", { withTimezone: true }),
+  /**
+   * E152 — a lavagem era a única etapa do ciclo SEM data real.
+   *
+   * A assimetria estava escrita no schema: retirada e devolução têm datas reais
+   * que encurtam a janela quando a realidade diverge do previsto, e a lavagem
+   * era sempre `[fimUso+1, fimUso+lavagemDiasDepois]`, por soma. **A peça
+   * voltava da lavanderia e continuava ocupada até o sétimo dia**, pendurada na
+   * arara, e ninguém tinha como dizer ao sistema que ela chegou.
+   *
+   * A régua de 7 dias está CERTA (P1: *"uma semana, lavagem externa"*) — o
+   * defeito nunca foi o número. Isto não é um jeito de furá-la: a janela só
+   * encurta com alguém afirmando um fato, e o fato fica gravado como toda data
+   * real do bloqueio.
+   */
+  lavagemConcluidaEm: timestamp("lavagem_concluida_em", { withTimezone: true }),
   // Manutenção: janela [inicio, fim]; fim null = sem prazo definido.
   inicio: timestamp("inicio", { withTimezone: true }),
   fim: timestamp("fim", { withTimezone: true }),
@@ -113,17 +129,39 @@ export const atendimentosTable = pgTable("atendimentos", {
 }, (t) => ({
   cabineUnq: unique().on(t.cabineId, t.inicio),
   vendedoraUnq: unique().on(t.lojaId, t.vendedoraId, t.inicio),
+  /**
+   * S-A20 — existia nos bancos e não aqui. O script do E97
+   * (`docs/migracoes/2026-07-27-e97-contato-e-confirmacao.sql:89`) o criou para
+   * a fila do dia — *"quem falta contatar hoje"*, por loja —, o schema nunca o
+   * declarou, e todo banco nascido de `push` ou `migrate` ficou sem ele.
+   */
+  lojaContatoIdx: index("atendimentos_loja_contato_idx").on(t.lojaId, t.contatadoEm),
 }));
 
 export const insertAtendimentoSchema = createInsertSchema(atendimentosTable).omit({ createdAt: true, updatedAt: true });
 export type InsertAtendimento = z.infer<typeof insertAtendimentoSchema>;
 export type Atendimento = typeof atendimentosTable.$inferSelect;
 
+/**
+ * A fila da costureira (E14) — e, desde o E155, ela guarda as duas naturezas
+ * de trabalho de agulha: o AJUSTE de peça existente e a CONFECÇÃO de peça
+ * nova. Ver `ajusteTipoEnum` para o porquê de não ser tabela separada.
+ *
+ * `atendimentoId` é obrigatório e continua sendo: a confecção nasce de uma
+ * conversa marcada, exatamente como os dois compromissos de 10:30 do caderno.
+ */
 export const ajustesTable = pgTable("ajustes", {
   id: text("id").primaryKey(),
   lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
   atendimentoId: text("atendimento_id").notNull().references(() => atendimentosTable.id, { onDelete: "cascade" }),
   descricao: text("descricao").notNull(),
+  tipo: ajusteTipoEnum("tipo").notNull().default("AJUSTE"),
+  /**
+   * Material + mão de obra da CONFECÇÃO. Nulo é o caso de todo ajuste comum, e
+   * também o da confecção cujo custo ainda não se sabe — é o que a costureira
+   * cobra, não o que a noiva paga (isso é o item do orçamento).
+   */
+  custo: decimal("custo", { precision: 10, scale: 2, mode: "number" }),
   status: ajusteStatusEnum("status").notNull().default("PENDENTE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -144,3 +182,41 @@ export const ajusteChecklistItensTable = pgTable("ajuste_checklist_itens", {
 export const insertAjusteChecklistItemSchema = createInsertSchema(ajusteChecklistItensTable);
 export type InsertAjusteChecklistItem = z.infer<typeof insertAjusteChecklistItemSchema>;
 export type AjusteChecklistItem = typeof ajusteChecklistItensTable.$inferSelect;
+
+/**
+ * E151 — a ausência da vendedora existe, e a agenda a respeita.
+ *
+ * `grep -rniE "ferias|ausencia|indisponibilidade|folga"` em `artifacts/` e
+ * `lib/` não devolvia **nenhuma ocorrência de domínio**: a agenda sabia de
+ * cabine e de vendedora, e nada tornava uma pessoa indisponível num intervalo.
+ *
+ * No papel a ausência é a **primeira coisa que a página declara**, e mora no
+ * caderno que conta as peças que saem: **7 das 14 páginas** a anunciam, todas
+ * entre 22/06 e 16/08 (*"Volta da Marilza 15 dias"*). Nas semanas de férias a
+ * agenda esvazia — 09 e 10/07 riscados com um X que atravessa as duas colunas;
+ * 18, 19, 22, 23 e 24 de agosto sem um único compromisso.
+ *
+ * `date` e não `timestamptz` de propósito: férias são DIAS inteiros no fuso da
+ * loja, e o intervalo é inclusivo nas duas pontas — quem digita 10/07 a 20/07
+ * está dizendo que no dia 20 ainda não voltou.
+ *
+ * `usuarioId` e não `vendedoraId`: quem falta é uma pessoa da equipe, e a
+ * agenda a chama de vendedora só porque é o papel dela ali.
+ */
+export const ausenciasTable = pgTable("ausencias", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  usuarioId: text("usuario_id").notNull().references(() => usuariosTable.id, { onDelete: "cascade" }),
+  /** Dia local "YYYY-MM-DD", inclusivo. */
+  inicio: date("inicio").notNull(),
+  /** Dia local "YYYY-MM-DD", inclusivo — no último dia a pessoa ainda falta. */
+  fim: date("fim").notNull(),
+  motivo: text("motivo"),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  lojaPeriodoIdx: index("ausencias_loja_periodo_idx").on(t.lojaId, t.inicio, t.fim),
+}));
+
+export const insertAusenciaSchema = createInsertSchema(ausenciasTable).omit({ criadoEm: true });
+export type InsertAusencia = z.infer<typeof insertAusenciaSchema>;
+export type Ausencia = typeof ausenciasTable.$inferSelect;

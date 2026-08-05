@@ -104,7 +104,7 @@ router.get("/lookbooks/publico/foto", async (req, res): Promise<void> => {
       eq(lookbookItensTable.vestidoId, vestidoId),
     ));
   if (!pertence) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Esta foto não existe nesta loja." });
     return;
   }
 
@@ -112,7 +112,7 @@ router.get("/lookbooks/publico/foto", async (req, res): Promise<void> => {
     where: and(eq(vestidoFotosTable.vestidoId, vestidoId), eq(vestidoFotosTable.ordem, ordem)),
   });
   if (!foto) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Esta foto não existe nesta loja." });
     return;
   }
 

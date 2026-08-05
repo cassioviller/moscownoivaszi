@@ -12,6 +12,8 @@ export interface VestidoUtilizacao {
   nome: string;
   status: string;
   precoBase: number;
+  /** @nullable */
+  precoRealuguel?: number | null;
   provas: number;
   reservas: number;
   contratos: number;

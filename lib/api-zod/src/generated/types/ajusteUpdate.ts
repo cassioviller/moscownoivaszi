@@ -6,8 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AjusteUpdateStatus } from './ajusteUpdateStatus';
+import type { AjusteUpdateTipo } from './ajusteUpdateTipo';
 
 export interface AjusteUpdate {
   descricao?: string;
+  tipo?: AjusteUpdateTipo;
+  /** @nullable */
+  custo?: number | null;
   status?: AjusteUpdateStatus;
 }

@@ -48,6 +48,7 @@ const Vestidos = lazy(() => import("@/pages/vestidos"));
 const VestidoDetail = lazy(() => import("@/pages/vestidos/[id]"));
 const NovoVestido = lazy(() => import("@/pages/vestidos/novo"));
 const UtilizacaoVestidos = lazy(() => import("@/pages/vestidos/utilizacao"));
+const EstoqueVestidos = lazy(() => import("@/pages/vestidos/estoque"));
 const EditarVestido = lazy(() => import("@/pages/vestidos/[id]/editar"));
 const Orcamentos = lazy(() => import("@/pages/orcamentos"));
 const OrcamentoDetail = lazy(() => import("@/pages/orcamentos/[id]"));
@@ -237,6 +238,8 @@ function App() {
               <Route path="vestidos" element={<Vestidos />} />
               <Route path="vestidos/novo" element={<NovoVestido />} />
               <Route path="vestidos/utilizacao" element={<UtilizacaoVestidos />} />
+              {/* E154: antes de `vestidos/:id`, senão "estoque" vira um id. */}
+              <Route path="vestidos/estoque" element={<EstoqueVestidos />} />
               <Route path="vestidos/:id" element={<VestidoDetail />} />
               <Route path="vestidos/:id/editar" element={<EditarVestido />} />
               <Route path="orcamentos" element={<Orcamentos />} />

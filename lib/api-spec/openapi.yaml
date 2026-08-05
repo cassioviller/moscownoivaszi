@@ -1617,6 +1617,136 @@ paths:
           description: Registro desfeito
 
   # ───────────────────────── Agenda (Cabines / Atendimentos) ─────────────────────────
+  /lojas/{lojaId}/itens-estoque:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listItensEstoque
+      tags: [vestidos]
+      responses:
+        "200":
+          description: Itens de estoque da loja
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemEstoque"
+    post:
+      operationId: createItemEstoque
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemEstoqueInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemEstoque"
+  /lojas/{lojaId}/itens-estoque/comprometimento:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: getComprometimentoEstoque
+      tags: [vestidos]
+      parameters:
+        - name: data
+          in: query
+          required: true
+          description: Dia local "YYYY-MM-DD" para o qual se conta o comprometimento.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Quantas unidades de cada item estão comprometidas no dia
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComprometimentoEstoque"
+  /lojas/{lojaId}/itens-estoque/{itemEstoqueId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: itemEstoqueId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: updateItemEstoque
+      tags: [vestidos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemEstoqueUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemEstoque"
+    delete:
+      operationId: deleteItemEstoque
+      tags: [vestidos]
+      responses:
+        "204":
+          description: Deleted
+  /lojas/{lojaId}/ausencias:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAusencias
+      tags: [agenda]
+      parameters:
+        - name: desde
+          in: query
+          required: false
+          description: Só as ausências que terminam em ou depois deste dia (AAAA-MM-DD).
+          schema: { type: string }
+      responses:
+        "200":
+          description: Ausências da equipe
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ausencia"
+    post:
+      operationId: createAusencia
+      tags: [agenda]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AusenciaInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ausencia"
+  /lojas/{lojaId}/ausencias/{ausenciaId}:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: ausenciaId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteAusencia
+      tags: [agenda]
+      responses:
+        "204":
+          description: Deleted
   /lojas/{lojaId}/cabines:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -2866,8 +2996,15 @@ paths:
       # E62: mesmo recorte do listOrcamentos — o perfil da noiva pede só o dela.
       # E124: busca por noiva, página, status no banco e recentes-primeiro (P2)
       # — com ~290 contratos em 3 anos, o da semana passada era o ÚLTIMO card.
+      # E144/S-D16: o detalhe do orçamento pergunta "este orçamento já virou
+      # contrato?" — sem este filtro ele baixava a loja inteira (615 KB
+      # medidos) para um único find.
       parameters:
         - name: leadId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: orcamentoId
           in: query
           required: false
           schema: { type: string }
@@ -4716,6 +4853,13 @@ components:
         codigo: { type: string }
         nome: { type: string }
         precoBase: { type: number }
+        # E157: nulo = a peça não tem preço de segunda saída, e o orçamento
+        # segue com o precoBase (o comportamento de sempre).
+        precoRealuguel: { type: ["number", "null"] }
+        # E156: de onde a peça veio, quando não veio do fornecedor — o trabalho
+        # de CONFECÇÃO da fila da costureira que virou item do acervo. Nulo é o
+        # caso de toda peça comprada.
+        origemAjusteId: { type: ["string", "null"] }
         tamanho: { type: ["string", "null"] }
         cor: { type: ["string", "null"] }
         categoria: { type: ["string", "null"] }
@@ -4767,6 +4911,7 @@ components:
         nome: { type: string }
         status: { type: string }
         precoBase: { type: number }
+        precoRealuguel: { type: ["number", "null"] }
         # Provas agendadas no período (inclui FALTOU — a demanda existiu).
         provas: { type: integer }
         # Reservas de casamento ATIVAS com data no período.
@@ -4781,6 +4926,12 @@ components:
         codigo: { type: string, minLength: 1 }
         nome: { type: string, minLength: 1 }
         precoBase: { type: number }
+        precoRealuguel: { type: number, minimum: 0 }
+        # E156: a proveniência se declara no NASCIMENTO da peça, e só aqui — o
+        # gesto é "esta confecção virou peça do acervo", não uma edição de ficha.
+        # O servidor exige que o trabalho seja desta loja, do tipo CONFECCAO e já
+        # FEITO.
+        origemAjusteId: { type: string }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
@@ -4795,6 +4946,9 @@ components:
         codigo: { type: string }
         nome: { type: string }
         precoBase: { type: number }
+        # null EXPLÍCITO desfaz o preço de realuguel — a peça volta a ser
+        # cobrada pelo precoBase em toda saída.
+        precoRealuguel: { type: ["number", "null"] }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
@@ -5071,6 +5225,76 @@ components:
         observacao: { type: string }
 
     # ── Agenda ──
+    ItemEstoque:
+      type: object
+      required: [id, lojaId, nome, quantidade, ativo]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        nome: { type: string }
+        tamanho: { type: ["string", "null"] }
+        quantidade: { type: integer }
+        preco: { type: ["number", "null"] }
+        ativo: { type: boolean }
+    ItemEstoqueInput:
+      type: object
+      required: [nome, quantidade]
+      properties:
+        nome: { type: string, minLength: 1 }
+        tamanho: { type: string }
+        quantidade: { type: integer, minimum: 0 }
+        preco: { type: number, minimum: 0 }
+    ItemEstoqueUpdate:
+      type: object
+      properties:
+        nome: { type: string, minLength: 1 }
+        tamanho: { type: ["string", "null"] }
+        quantidade: { type: integer, minimum: 0 }
+        preco: { type: ["number", "null"] }
+        ativo: { type: boolean }
+    ComprometimentoEstoque:
+      type: object
+      required: [data, itens]
+      properties:
+        data: { type: string }
+        itens:
+          type: array
+          items:
+            type: object
+            required: [itemEstoqueId, nome, quantidade, comprometida, disponivel]
+            properties:
+              itemEstoqueId: { type: string }
+              nome: { type: string }
+              tamanho: { type: ["string", "null"] }
+              # Quantas a loja TEM.
+              quantidade: { type: integer }
+              # Quantas saem no dia, somadas dos contratos ATIVOS.
+              comprometida: { type: integer }
+              # `quantidade - comprometida`. NEGATIVO é resposta legítima: o
+              # sistema avisa, não bloqueia, e esconder o buraco seria mentir.
+              disponivel: { type: integer }
+    Ausencia:
+      type: object
+      required: [id, lojaId, usuarioId, inicio, fim]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        usuarioId: { type: string }
+        # Dias locais inclusivos nas DUAS pontas: 10/07 a 20/07 significa que no
+        # dia 20 a pessoa ainda não voltou.
+        inicio: { type: string }
+        fim: { type: string }
+        motivo: { type: ["string", "null"] }
+        # Nome de quem falta, para a agenda dizer o porquê sem segunda consulta.
+        usuarioNome: { type: ["string", "null"] }
+    AusenciaInput:
+      type: object
+      required: [usuarioId, inicio, fim]
+      properties:
+        usuarioId: { type: string }
+        inicio: { type: string }
+        fim: { type: string }
+        motivo: { type: string }
     Cabine:
       type: object
       required: [id, lojaId, nome, ativo]
@@ -5155,6 +5379,11 @@ components:
         lojaId: { type: string }
         atendimentoId: { type: string }
         descricao: { type: string }
+        # E155: a fila guarda AJUSTE (peça existente que se altera) e CONFECCAO
+        # (peça nova, feita para a noiva). Mesmo prazo, mesmo checklist, mesma
+        # tela — o que muda é o rótulo, e que confecção tem custo.
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: ["number", "null"] }
         status: { type: string, enum: [PENDENTE, FEITO] }
         checklist:
           type: array
@@ -5169,6 +5398,20 @@ components:
         # depois da prova que criou o ajuste — é para ela que o ajuste precisa
         # estar pronto. Null = sem prova marcada (o casamento vira a referência).
         proximaProva: { type: ["string", "null"], format: date-time }
+        # E156: a peça do acervo que ESTE trabalho virou. Null enquanto não
+        # virou — e é o que troca o gesto "virou peça do acervo" pelo link para
+        # a peça, na mesma linha da fila.
+        pecaDoAcervo:
+          anyOf:
+            - $ref: "#/components/schemas/AjustePecaDoAcervo"
+            - type: "null"
+    AjustePecaDoAcervo:
+      type: object
+      required: [id, codigo, nome]
+      properties:
+        id: { type: string }
+        codigo: { type: string }
+        nome: { type: string }
     AjusteAtendimento:
       type: object
       required: [id, leadId, tipo, inicio, situacao]
@@ -5212,10 +5455,14 @@ components:
       properties:
         atendimentoId: { type: string }
         descricao: { type: string, minLength: 1 }
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: number, minimum: 0 }
     AjusteUpdate:
       type: object
       properties:
         descricao: { type: string }
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: ["number", "null"] }
         status: { type: string, enum: [PENDENTE, FEITO] }
     RegraDisponibilidade:
       type: object
@@ -5289,6 +5536,9 @@ components:
         provaDataReal: { type: ["string", "null"], format: date-time }
         retiradaDataReal: { type: ["string", "null"], format: date-time }
         devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        # E152: a última data real do ciclo. A lavagem era a única etapa sem
+        # uma — a peça voltava da lavanderia e ficava presa até o sétimo dia.
+        lavagemConcluidaEm: { type: ["string", "null"], format: date-time }
         inicio: { type: ["string", "null"], format: date-time }
         fim: { type: ["string", "null"], format: date-time }
         canceladoEm: { type: ["string", "null"], format: date-time }
@@ -5355,6 +5605,7 @@ components:
         # volta a "não aconteceu"); campo ausente segue significando "não mexa".
         retiradaDataReal: { type: ["string", "null"], format: date-time }
         devolucaoDataReal: { type: ["string", "null"], format: date-time }
+        lavagemConcluidaEm: { type: ["string", "null"], format: date-time }
         inicio: { type: string, format: date-time }
         fim: { type: string, format: date-time }
         observacao: { type: string }
@@ -5518,8 +5769,10 @@ components:
       properties:
         id: { type: string }
         orcamentoId: { type: string }
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
+        itemEstoqueId: { type: ["string", "null"] }
+        ajusteId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5527,8 +5780,13 @@ components:
       type: object
       required: [tipo, descricao, valorUnitario]
       properties:
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: string }
+        itemEstoqueId: { type: string }
+        # E155: o item AJUSTE que cobra uma confecção aponta o trabalho na fila
+        # da costureira — o que foi cobrado e o que alguém costura viram a
+        # mesma coisa.
+        ajusteId: { type: string }
         descricao: { type: string, minLength: 1 }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5548,7 +5806,7 @@ components:
       type: object
       required: [tipo, descricao, valorUnitario, quantidade]
       properties:
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }
@@ -5792,8 +6050,9 @@ components:
         id: { type: string }
         lojaId: { type: string }
         contratoId: { type: string }
-        tipo: { type: string, enum: [VESTIDO, SERVICO, AJUSTE] }
+        tipo: { type: string, enum: [VESTIDO, ACESSORIO, ESTOQUE, SERVICO, AJUSTE] }
         vestidoId: { type: ["string", "null"] }
+        itemEstoqueId: { type: ["string", "null"] }
         descricao: { type: string }
         valorUnitario: { type: number }
         quantidade: { type: integer }

@@ -432,6 +432,10 @@ export interface Vestido {
   nome: string;
   precoBase: number;
   /** @nullable */
+  precoRealuguel?: number | null;
+  /** @nullable */
+  origemAjusteId?: string | null;
+  /** @nullable */
   tamanho?: string | null;
   /** @nullable */
   cor?: string | null;
@@ -461,6 +465,8 @@ export interface VestidoUtilizacao {
   nome: string;
   status: string;
   precoBase: number;
+  /** @nullable */
+  precoRealuguel?: number | null;
   provas: number;
   reservas: number;
   contratos: number;
@@ -473,6 +479,9 @@ export interface VestidoInput {
   /** @minLength 1 */
   nome: string;
   precoBase: number;
+  /** @minimum 0 */
+  precoRealuguel?: number;
+  origemAjusteId?: string;
   tamanho?: string;
   cor?: string;
   categoria?: string;
@@ -484,6 +493,8 @@ export interface VestidoUpdate {
   codigo?: string;
   nome?: string;
   precoBase?: number;
+  /** @nullable */
+  precoRealuguel?: number | null;
   tamanho?: string;
   cor?: string;
   categoria?: string;
@@ -873,6 +884,74 @@ export interface RegistroCobrancaInput {
   observacao?: string;
 }
 
+export interface ItemEstoque {
+  id: string;
+  lojaId: string;
+  nome: string;
+  /** @nullable */
+  tamanho?: string | null;
+  quantidade: number;
+  /** @nullable */
+  preco?: number | null;
+  ativo: boolean;
+}
+
+export interface ItemEstoqueInput {
+  /** @minLength 1 */
+  nome: string;
+  tamanho?: string;
+  /** @minimum 0 */
+  quantidade: number;
+  /** @minimum 0 */
+  preco?: number;
+}
+
+export interface ItemEstoqueUpdate {
+  /** @minLength 1 */
+  nome?: string;
+  /** @nullable */
+  tamanho?: string | null;
+  /** @minimum 0 */
+  quantidade?: number;
+  /** @nullable */
+  preco?: number | null;
+  ativo?: boolean;
+}
+
+export type ComprometimentoEstoqueItensItem = {
+  itemEstoqueId: string;
+  nome: string;
+  /** @nullable */
+  tamanho?: string | null;
+  quantidade: number;
+  comprometida: number;
+  disponivel: number;
+};
+
+export interface ComprometimentoEstoque {
+  data: string;
+  itens: ComprometimentoEstoqueItensItem[];
+}
+
+export interface Ausencia {
+  id: string;
+  lojaId: string;
+  usuarioId: string;
+  inicio: string;
+  fim: string;
+  /** @nullable */
+  motivo?: string | null;
+  /** @nullable */
+  usuarioNome?: string | null;
+}
+
+export interface AusenciaInput {
+  usuarioId: string;
+  inicio: string;
+  fim: string;
+  motivo?: string;
+}
+
 export interface Cabine {
   id: string;
   lojaId: string;
@@ -944,6 +1023,8 @@ export interface BloqueioVestido {
   /** @nullable */
   devolucaoDataReal?: string | null;
   /** @nullable */
+  lavagemConcluidaEm?: string | null;
+  /** @nullable */
   inicio?: string | null;
   /** @nullable */
   fim?: string | null;
@@ -960,6 +1041,14 @@ export interface BloqueioVestido {
   vestido?: Vestido;
   lead?: Lead | null;
 }
+
+export type AjusteTipo = typeof AjusteTipo[keyof typeof AjusteTipo];
+
+
+export const AjusteTipo = {
+  AJUSTE: 'AJUSTE',
+  CONFECCAO: 'CONFECCAO',
+} as const;
 
 export type AjusteStatus = typeof AjusteStatus[keyof typeof AjusteStatus];
 
@@ -1007,16 +1096,26 @@ export interface AjusteAtendimento {
   bloqueio?: BloqueioVestido | null;
 }
 
+export interface AjustePecaDoAcervo {
+  id: string;
+  codigo: string;
+  nome: string;
+}
+
 export interface Ajuste {
   id: string;
   lojaId: string;
   atendimentoId: string;
   descricao: string;
+  tipo?: AjusteTipo;
+  /** @nullable */
+  custo?: number | null;
   status: AjusteStatus;
   checklist?: AjusteChecklistItem[];
   atendimento?: AjusteAtendimento;
   /** @nullable */
   proximaProva?: string | null;
+  pecaDoAcervo?: AjustePecaDoAcervo | null;
 }
 
 export interface Atendimento {
@@ -1108,11 +1207,30 @@ export interface AjusteChecklistItemUpdate {
   ordem?: number;
 }
 
+export type AjusteInputTipo = typeof AjusteInputTipo[keyof typeof AjusteInputTipo];
+
+
+export const AjusteInputTipo = {
+  AJUSTE: 'AJUSTE',
+  CONFECCAO: 'CONFECCAO',
+} as const;
+
 export interface AjusteInput {
   atendimentoId: string;
   /** @minLength 1 */
   descricao: string;
+  tipo?: AjusteInputTipo;
+  /** @minimum 0 */
+  custo?: number;
 }
+
+export type AjusteUpdateTipo = typeof AjusteUpdateTipo[keyof typeof AjusteUpdateTipo];
+
+
+export const AjusteUpdateTipo = {
+  AJUSTE: 'AJUSTE',
+  CONFECCAO: 'CONFECCAO',
+} as const;
 
 export type AjusteUpdateStatus = typeof AjusteUpdateStatus[keyof typeof AjusteUpdateStatus];
 
@@ -1124,6 +1242,9 @@ export const AjusteUpdateStatus = {
 
 export interface AjusteUpdate {
   descricao?: string;
+  tipo?: AjusteUpdateTipo;
+  /** @nullable */
+  custo?: number | null;
   status?: AjusteUpdateStatus;
 }
 
@@ -1257,6 +1378,8 @@ export interface BloqueioVestidoUpdate {
   retiradaDataReal?: string | null;
   /** @nullable */
   devolucaoDataReal?: string | null;
+  /** @nullable */
+  lavagemConcluidaEm?: string | null;
   inicio?: string;
   fim?: string;
   observacao?: string;
@@ -1376,6 +1499,8 @@ export type OrcamentoItemTipo = typeof OrcamentoItemTipo[keyof typeof OrcamentoI
 
 export const OrcamentoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1386,6 +1511,10 @@ export interface OrcamentoItem {
   tipo: OrcamentoItemTipo;
   /** @nullable */
   vestidoId?: string | null;
+  /** @nullable */
+  itemEstoqueId?: string | null;
+  /** @nullable */
+  ajusteId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;
@@ -1476,6 +1605,8 @@ export type OrcamentoItemInputTipo = typeof OrcamentoItemInputTipo[keyof typeof 
 
 export const OrcamentoItemInputTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1483,6 +1614,8 @@ export const OrcamentoItemInputTipo = {
 export interface OrcamentoItemInput {
   tipo: OrcamentoItemInputTipo;
   vestidoId?: string;
+  itemEstoqueId?: string;
+  ajusteId?: string;
   /** @minLength 1 */
   descricao: string;
   valorUnitario: number;
@@ -1507,6 +1640,8 @@ export type OrcamentoPublicoItemTipo = typeof OrcamentoPublicoItemTipo[keyof typ
 
 export const OrcamentoPublicoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1764,6 +1899,8 @@ export type ContratoItemTipo = typeof ContratoItemTipo[keyof typeof ContratoItem
 
 export const ContratoItemTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;
@@ -1775,6 +1912,8 @@ export interface ContratoItem {
   tipo: ContratoItemTipo;
   /** @nullable */
   vestidoId?: string | null;
+  /** @nullable */
+  itemEstoqueId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;
@@ -2630,6 +2769,20 @@ export type GetDesempenhoVendedoras200Item = {
 
 export type ExportarDadosLead200 = { [key: string]: unknown };
 
+export type GetComprometimentoEstoqueParams = {
+/**
+ * Dia local "YYYY-MM-DD" para o qual se conta o comprometimento.
+ */
+data: string;
+};
+
+export type ListAusenciasParams = {
+/**
+ * Só as ausências que terminam em ou depois deste dia (AAAA-MM-DD).
+ */
+desde?: string;
+};
+
 export type ListAtendimentosParams = {
 /**
  * Só a agenda desta noiva (E125) — a ficha pergunta pela próxima prova DELA, não pela agenda da loja
@@ -2802,6 +2955,7 @@ export type ListPortais200Item = {
 
 export type ListContratosParams = {
 leadId?: string;
+orcamentoId?: string;
 /**
  * Busca pela noiva: nome da noiva/noivo e WhatsApp (dígitos), a mesma régua do listLeads
  * @maxLength 200

@@ -11,6 +11,8 @@ export interface VestidoUpdate {
   codigo?: string;
   nome?: string;
   precoBase?: number;
+  /** @nullable */
+  precoRealuguel?: number | null;
   tamanho?: string;
   cor?: string;
   categoria?: string;

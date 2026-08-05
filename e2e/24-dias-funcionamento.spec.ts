@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
 import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
 
 const estado = lerEstado();
@@ -27,6 +29,20 @@ function noProximo(alvo: number): string {
 }
 
 test.describe("Dias de funcionamento (E38)", () => {
+  // E146/S-D17: o atendimento já sai via DELETE da API no próprio teste
+  // (E115), mas a cabine POR EXECUÇÃO (`e24-${Date.now()}`) ficava — uma
+  // linha nova em `cabines` a cada run. Apaga-se só a desta execução, pelos
+  // ids capturados; o delete de atendimentos escopado pela cabine cobre o
+  // caso de o teste morrer entre criar e apagar.
+  let cabineIdCriada: string | null = null;
+
+  test.afterAll(async () => {
+    if (cabineIdCriada) {
+      await db.delete(atendimentosTable).where(eq(atendimentosTable.cabineId, cabineIdCriada));
+      await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineIdCriada));
+    }
+  });
+
   test("agendar em dia fechado é barrado, em dia aberto passa", async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
@@ -46,6 +62,7 @@ test.describe("Dias de funcionamento (E38)", () => {
     });
     expect(cab.status(), await cab.text()).toBe(201);
     const cabineId = ((await cab.json()) as { id: string }).id;
+    cabineIdCriada = cabineId;
 
     const criar = (inicio: string) =>
       request.post(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos`, {

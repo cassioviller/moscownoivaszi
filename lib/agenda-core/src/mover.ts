@@ -1,6 +1,7 @@
 import {
   dentroDoFuncionamento,
   diaDaSemanaLocal,
+  diaLocalYMD,
   horaLocal,
   instanteDoSlot,
   slotsDoDia,
@@ -21,13 +22,36 @@ import {
  * o mesmo desenho que o E1 provou sob `Promise.all`.
  */
 
-export type MotivoRecusa = "LOJA_FECHADA" | "FORA_DO_HORARIO" | "CABINE_OCUPADA" | "VENDEDORA_OCUPADA";
+export type MotivoRecusa =
+  | "LOJA_FECHADA"
+  | "FORA_DO_HORARIO"
+  | "VENDEDORA_AUSENTE"
+  | "CABINE_OCUPADA"
+  | "VENDEDORA_OCUPADA";
 
 export const DETALHE_RECUSA: Record<MotivoRecusa, string> = {
   LOJA_FECHADA: "a loja não abre nesse dia da semana",
   FORA_DO_HORARIO: "o horário está fora do expediente da loja",
+  // E151: a rota substitui esta frase por uma que diz QUEM e QUANDO — aqui
+  // fica a genérica, porque o núcleo puro não conhece nomes.
+  VENDEDORA_AUSENTE: "a vendedora está ausente nesse dia",
   CABINE_OCUPADA: "já há atendimento nessa cabine nesse horário",
   VENDEDORA_OCUPADA: "a vendedora já tem atendimento nesse horário",
+};
+
+/**
+ * E151 — um período em que alguém da equipe não atende.
+ *
+ * Dias locais inclusivos nas duas pontas: quem digita 10/07 a 20/07 está
+ * dizendo que no dia 20 ainda não voltou. É o formato que o `date` do banco já
+ * devolve, e o que a comparação de string "YYYY-MM-DD" ordena corretamente.
+ */
+export type Ausencia = {
+  usuarioId: string;
+  /** Dia local "YYYY-MM-DD", inclusivo. */
+  inicio: string;
+  /** Dia local "YYYY-MM-DD", inclusivo. */
+  fim: string;
 };
 
 /** O mínimo que a regra precisa saber — a linha do drizzle e o objeto da API entram igual. */
@@ -76,6 +100,26 @@ export const EXPEDIENTE_PADRAO: Expediente = { aberturaHora: 9, fechamentoHora: 
 const instante = (v: Date | string): number => new Date(v).getTime();
 
 /**
+ * A ausência desta pessoa que cobre o dia do instante — `null` se não há.
+ *
+ * A comparação é de STRING "YYYY-MM-DD", que ordena como data, no dia LOCAL da
+ * loja: comparar instantes traria de volta o defeito que o fuso já custou caro
+ * aqui — 21h de 09/07 em UTC é dia 10 em São Paulo, e a vendedora seria
+ * recusada num dia em que está trabalhando (ou aceita no dia em que não está).
+ */
+export function ausenciaQueCobre(
+  ausencias: readonly Ausencia[],
+  usuarioId: string,
+  instanteDestino: Date | string,
+): Ausencia | null {
+  if (ausencias.length === 0) return null;
+  const dia = diaLocalYMD(instanteDestino);
+  return (
+    ausencias.find((a) => a.usuarioId === usuarioId && a.inicio <= dia && dia <= a.fim) ?? null
+  );
+}
+
+/**
  * Por que este movimento seria recusado — `null` se é permitido.
  *
  * `outras` é a agenda com que o destino compete; o próprio atendimento movido é
@@ -87,6 +131,11 @@ export function recusaDeMover(
   destino: { cabineId: string; inicio: Date | string },
   outras: readonly Marcacao[],
   expediente: Expediente,
+  /**
+   * E151 — as ausências da equipe que tocam este dia. Ausente (ou vazio) = a
+   * régua de antes, que não sabia que gente falta.
+   */
+  ausencias: readonly Ausencia[] = [],
 ): MotivoRecusa | null {
   // E38: a loja pode não abrir nesse dia da semana — distinto de fora do horário.
   if (expediente.dias && !expediente.dias.includes(diaDaSemanaLocal(destino.inicio))) {
@@ -94,6 +143,20 @@ export function recusaDeMover(
   }
   if (!dentroDoFuncionamento(destino.inicio, expediente.aberturaHora, expediente.fechamentoHora)) {
     return "FORA_DO_HORARIO";
+  }
+  /**
+   * E151 — a pessoa falta nesse dia.
+   *
+   * Vem logo depois do expediente e ANTES da ocupação porque é da mesma
+   * natureza: um fato sobre o DIA, não sobre quem já está marcado. A agenda de
+   * uma vendedora em férias está vazia — dizer "livre" nela é o defeito.
+   *
+   * Só impede o NOVO: a ausência não cancela nem remarca o que já está
+   * agendado (fora do escopo do épico, e decisão de produto). Por isso a
+   * conferência olha o DESTINO, e não a agenda existente.
+   */
+  if (ausenciaQueCobre(ausencias, movida.vendedoraId, destino.inicio)) {
+    return "VENDEDORA_AUSENTE";
   }
   /**
    * E o FIM também tem de caber no expediente.
@@ -157,6 +220,8 @@ export function slotsOferecidos(
   candidata: { cabineId: string; vendedoraId: string; tipo?: "ATENDIMENTO" | "PROVA" },
   outras: readonly Marcacao[],
   expediente: Expediente,
+  /** E151 — sem elas a tela ofereceria o dia inteiro de quem está de férias. */
+  ausencias: readonly Ausencia[] = [],
 ): SlotOferecido[] {
   return slotsDoDia(expediente.aberturaHora, expediente.fechamentoHora).map((slot) => {
     const inicio = instanteDoSlot(diaYMD, slot);
@@ -165,6 +230,7 @@ export function slotsOferecidos(
       { cabineId: candidata.cabineId, inicio },
       outras,
       expediente,
+      ausencias,
     );
     return { slot, inicio, recusa };
   });

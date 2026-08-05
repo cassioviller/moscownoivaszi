@@ -333,7 +333,7 @@ router.post("/lojas/:lojaId/contas-pagar/:contaId/pagar", requireModulo("finance
   const [conta] = await db.select().from(contasPagarTable)
     .where(and(eq(contasPagarTable.id, contaId), eq(contasPagarTable.lojaId, lojaId)));
   if (!conta) {
-    res.status(404).json({ error: "Conta not found" });
+    res.status(404).json({ error: "CONTA_NAO_ENCONTRADA", detalhe: "Esta conta não existe nesta loja." });
     return;
   }
   if (conta.status === "PAGA") {
@@ -367,7 +367,7 @@ router.delete("/lojas/:lojaId/contas-pagar/:contaId", async (req, res): Promise<
   const [conta] = await db.select().from(contasPagarTable)
     .where(and(eq(contasPagarTable.id, contaId), eq(contasPagarTable.lojaId, lojaId)));
   if (!conta) {
-    res.status(404).json({ error: "Conta not found" });
+    res.status(404).json({ error: "CONTA_NAO_ENCONTRADA", detalhe: "Esta conta não existe nesta loja." });
     return;
   }
   if (conta.status === "PAGA") {
@@ -521,7 +521,7 @@ router.post("/lojas/:lojaId/financeiro/pagamentos/:pagamentoId/estornar", async 
     with: { itens: true },
   });
   if (!pagamento) {
-    res.status(404).json({ error: "Pagamento not found" });
+    res.status(404).json({ error: "PAGAMENTO_NAO_ENCONTRADO", detalhe: "Este pagamento não existe nesta loja." });
     return;
   }
 
@@ -841,7 +841,7 @@ router.patch("/lojas/:lojaId/financeiro/recorrencias/:recorrenciaId", async (req
     .where(and(eq(recorrenciasTable.id, recorrenciaId), eq(recorrenciasTable.lojaId, lojaId)))
     .returning();
   if (!recorrencia) {
-    res.status(404).json({ error: "Recorrencia not found" });
+    res.status(404).json({ error: "RECORRENCIA_NAO_ENCONTRADA", detalhe: "Esta recorrência não existe nesta loja." });
     return;
   }
   res.json(UpdateRecorrenciaResponse.parse(recorrencia));

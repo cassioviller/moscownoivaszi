@@ -8,8 +8,9 @@ import {
   bloqueioVestidosTable,
   contratosTable,
   contratoItensTable,
+  itensEstoqueTable,
 } from "@workspace/db";
-import { eq, and, gte, lt, isNull, isNotNull, count, sql } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, isNotNull, inArray, count, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   ListVestidosResponse,
@@ -25,7 +26,14 @@ import {
   CheckDisponibilidadeVestidosResponse,
   GetProximaJanelaVestidoResponse,
   GetUtilizacaoVestidosQueryParams,
-  GetUtilizacaoVestidosResponse
+  GetUtilizacaoVestidosResponse,
+  ListItensEstoqueResponse,
+  CreateItemEstoqueBody,
+  CreateItemEstoqueResponse,
+  UpdateItemEstoqueBody,
+  UpdateItemEstoqueResponse,
+  GetComprometimentoEstoqueQueryParams,
+  GetComprometimentoEstoqueResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -44,14 +52,19 @@ import {
   type ConflitoDetalhe,
   type Janela,
 } from "../lib/disponibilidade";
+import { comprometidoNoDia } from "../lib/estoque";
 import { identificarImagem } from "../lib/imagem";
-import { atributosDaLoja, vestidoNaLoja } from "../lib/escopo-loja";
+import { atributosDaLoja, vestidoNaLoja, confeccaoPodeVirarPeca } from "../lib/escopo-loja";
 import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/vestidos", requireModulo("vestidos"));
+// E154: o gate é montado por PREFIXO, e `itens-estoque` não é `vestidos` — sem
+// esta linha o estoque ficava só com a sessão, aberto a quem não tem o módulo
+// do acervo. Quem cuida das peças cuida das duas naturezas.
+router.use("/lojas/:lojaId/itens-estoque", requireModulo("vestidos"));
 
 // Fotos nas respostas de vestido: só a META (nunca bytes — `fotos: true`
 // arrastava o bytea inteiro do banco para o zod descartar). `updatedAt` sai
@@ -103,6 +116,31 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
     });
     return;
   }
+
+  // E156 — a peça que nasce de uma CONFECÇÃO da fila da costureira (P4).
+  // O gesto é da loja e o preço é digitado; o que o servidor prova é que o
+  // trabalho citado é desta loja e que ele já existe como peça — a manga não
+  // vira acervo enquanto a costureira não termina.
+  if (vestidoData.origemAjusteId) {
+    const veredicto = await confeccaoPodeVirarPeca(vestidoData.origemAjusteId, lojaId);
+    if (veredicto === "FORA_DA_LOJA") {
+      res.status(422).json({
+        error: "REFERENCIA_INVALIDA",
+        detalhe: "Este trabalho da fila não é desta loja",
+        campos: [{ campo: "origemAjusteId", motivo: "Trabalho de outra loja" }],
+      });
+      return;
+    }
+    if (veredicto === "NAO_ESTA_PRONTA") {
+      res.status(422).json({
+        error: "CONFECCAO_INVALIDA",
+        detalhe: "Só uma confecção já concluída vira peça do acervo",
+        campos: [{ campo: "origemAjusteId", motivo: "Não é confecção, ou ainda não está pronta" }],
+      });
+      return;
+    }
+  }
+
   const vestidoId = randomUUID();
 
   const insertData = { ...vestidoData };
@@ -184,6 +222,7 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: null,
     fim: null,
   };
@@ -273,6 +312,9 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         nome: vestidosTable.nome,
         status: vestidosTable.status,
         precoBase: vestidosTable.precoBase,
+        // E157: desce junto com a contagem — quem lê a utilização é quem
+        // decide se a peça já se pagou e quanto cobrar da próxima saída.
+        precoRealuguel: vestidosTable.precoRealuguel,
       })
       .from(vestidosTable)
       .where(eq(vestidosTable.lojaId, lojaId))
@@ -299,14 +341,18 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         ...recorte(bloqueioVestidosTable.casamentoData),
       ))
       .groupBy(bloqueioVestidosTable.vestidoId),
-    // Itens VESTIDO de contratos ATIVOS fechados no período — e a receita.
+    // Itens de PEÇA de contratos ATIVOS fechados no período — e a receita.
+    // E150: ACESSORIO entra aqui junto com VESTIDO. As duas são peça do acervo,
+    // com código e reserva próprios, e a utilização é por PEÇA — deixar o
+    // acessório de fora faria o bolero circular sem nunca aparecer no giro nem
+    // na receita da peça que o gerou.
     db
       .select({ vestidoId: contratoItensTable.vestidoId, qtd: count(), receita: receitaSql })
       .from(contratoItensTable)
       .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
       .where(and(
         eq(contratoItensTable.lojaId, lojaId),
-        eq(contratoItensTable.tipo, "VESTIDO"),
+        inArray(contratoItensTable.tipo, ["VESTIDO", "ACESSORIO"]),
         isNotNull(contratoItensTable.vestidoId),
         eq(contratosTable.status, "ATIVO"),
         ...recorte(contratosTable.fechadoEm),
@@ -339,7 +385,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/proxima-janela", async (req, res)
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
   });
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -385,7 +431,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void>
   });
 
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -415,7 +461,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
    * ninguém a quem perguntar. O 404 saía da consulta pós-commit.
    */
   if (!(await vestidoNaLoja(vestidoId as string, lojaId as string))) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
   if (atributos !== undefined && !(await atributosDaLoja(atributos, lojaId as string))) {
@@ -454,7 +500,7 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
   });
 
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -492,7 +538,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
   });
 
   if (!foto || foto.vestido.lojaId !== lojaId) {
-    res.status(404).json({ error: "Foto not found" });
+    res.status(404).json({ error: "FOTO_NAO_ENCONTRADA", detalhe: "Esta foto não existe nesta loja." });
     return;
   }
 
@@ -531,7 +577,7 @@ router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
   });
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
 
@@ -597,10 +643,150 @@ router.delete("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res
     where: and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)),
   });
   if (!vestido) {
-    res.status(404).json({ error: "Vestido not found" });
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Este vestido não existe nesta loja." });
     return;
   }
   await db.delete(vestidoFotosTable).where(and(eq(vestidoFotosTable.vestidoId, vestidoId as string), eq(vestidoFotosTable.ordem, ordem)));
+  res.status(204).send();
+});
+
+// ── Itens de ESTOQUE (E154) ──────────────────────────────────────────────────
+//
+// A peça que se CONTA, ao lado da peça que se RESERVA. Saiote, crinol, anágua:
+// existem dez iguais, e reservar "o nº 7" não significa nada porque ninguém vai
+// atrás daquele. Ficam fora de `vestidos` para não encher de anágua a lista que
+// a vendedora abre com a noiva na cabine.
+//
+// Gate: o mesmo módulo `vestidos` do acervo — quem cuida das peças cuida das
+// duas naturezas.
+
+router.get("/lojas/:lojaId/itens-estoque", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const itens = await db.select().from(itensEstoqueTable)
+    .where(eq(itensEstoqueTable.lojaId, lojaId))
+    .orderBy(itensEstoqueTable.nome);
+  res.json(ListItensEstoqueResponse.parse(itens));
+});
+
+router.post("/lojas/:lojaId/itens-estoque", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = CreateItemEstoqueBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const [item] = await db.insert(itensEstoqueTable).values({
+    id: randomUUID(),
+    lojaId,
+    ...parsed.data,
+  }).returning();
+  res.status(201).json(CreateItemEstoqueResponse.parse(item));
+});
+
+/**
+ * Quantas unidades de cada item saem no dia — a conta que faz o aviso.
+ *
+ * Vem dos contratos ATIVOS cuja janela de USO cobre o dia, somando a
+ * `quantidade` dos itens de estoque do snapshot. Nunca de um contador gravado:
+ * o estoque diz quantas a loja TEM, e o comprometimento é sempre derivado.
+ *
+ * Contrato CANCELADO não conta (a peça voltou ao mercado), e contrato sem
+ * nenhuma data não conta em dia nenhum — `janelaDeUsoDoContrato` explica por
+ * quê.
+ *
+ * `disponivel` pode vir NEGATIVO, e é o ponto do épico: a tela avisa e deixa
+ * fechar. Recusar uma venda de R$ 4.000 por causa de uma anágua seria um
+ * defeito, não uma proteção — saiote é substituível, o bolero que a noiva
+ * escolheu pela foto não é (e por isso ele é peça do acervo, e bloqueia).
+ */
+router.get("/lojas/:lojaId/itens-estoque/comprometimento", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const params = GetComprometimentoEstoqueQueryParams.safeParse(req.query);
+  if (!params.success) {
+    res.status(400).json(erroDeValidacao(params.error));
+    return;
+  }
+  const dia = params.data.data;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+    res.status(400).json({
+      error: "DATA_INVALIDA",
+      detalhe: "Informe o dia no formato AAAA-MM-DD.",
+      campos: [{ campo: "data", motivo: "Formato esperado: AAAA-MM-DD" }],
+    });
+    return;
+  }
+
+  const [itens, linhas, regra] = await Promise.all([
+    db.select().from(itensEstoqueTable)
+      .where(and(eq(itensEstoqueTable.lojaId, lojaId), eq(itensEstoqueTable.ativo, true)))
+      .orderBy(itensEstoqueTable.nome),
+    db.select({
+      itemEstoqueId: contratoItensTable.itemEstoqueId,
+      quantidade: contratoItensTable.quantidade,
+      dataCasamento: contratosTable.dataCasamento,
+      dataRetirada: contratosTable.dataRetirada,
+      dataDevolucao: contratosTable.dataDevolucao,
+    })
+      .from(contratoItensTable)
+      .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
+      .where(and(
+        eq(contratoItensTable.lojaId, lojaId),
+        eq(contratosTable.status, "ATIVO"),
+        isNotNull(contratoItensTable.itemEstoqueId),
+      )),
+    buscarRegra(lojaId),
+  ]);
+
+  const comprometido = comprometidoNoDia(
+    linhas.map((l) => ({ ...l, itemEstoqueId: l.itemEstoqueId! })),
+    dia,
+    regra,
+  );
+
+  res.json(GetComprometimentoEstoqueResponse.parse({
+    data: dia,
+    itens: itens.map((it) => {
+      const comprometida = comprometido.get(it.id) ?? 0;
+      return {
+        itemEstoqueId: it.id,
+        nome: it.nome,
+        tamanho: it.tamanho,
+        quantidade: it.quantidade,
+        comprometida,
+        disponivel: it.quantidade - comprometida,
+      };
+    }),
+  }));
+});
+
+router.patch("/lojas/:lojaId/itens-estoque/:itemEstoqueId", async (req, res): Promise<void> => {
+  const { lojaId, itemEstoqueId } = req.params as { lojaId: string; itemEstoqueId: string };
+  const parsed = UpdateItemEstoqueBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const [item] = await db.update(itensEstoqueTable)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)))
+    .returning();
+  if (!item) {
+    res.status(404).json({
+      error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
+      detalhe: "Este item de estoque não existe nesta loja.",
+    });
+    return;
+  }
+  res.json(UpdateItemEstoqueResponse.parse(item));
+});
+
+router.delete("/lojas/:lojaId/itens-estoque/:itemEstoqueId", async (req, res): Promise<void> => {
+  const { lojaId, itemEstoqueId } = req.params as { lojaId: string; itemEstoqueId: string };
+  // O item some do cadastro; os itens de contrato que o citam ficam com
+  // `item_estoque_id` nulo (set null) e a descrição em texto preservada — o que
+  // foi vendido continua contado, que é o mesmo tratamento do vestido.
+  await db.delete(itensEstoqueTable)
+    .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)));
   res.status(204).send();
 });
 

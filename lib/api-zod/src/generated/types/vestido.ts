@@ -15,6 +15,10 @@ export interface Vestido {
   nome: string;
   precoBase: number;
   /** @nullable */
+  precoRealuguel?: number | null;
+  /** @nullable */
+  origemAjusteId?: string | null;
+  /** @nullable */
   tamanho?: string | null;
   /** @nullable */
   cor?: string | null;

@@ -50,7 +50,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, ClipboardPlus, BarChart3, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
+import { Plus, ClipboardPlus, BarChart3, Layers, Image as ImageIcon, CalendarIcon, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { mensagemApi } from "@/lib/erro-api";
@@ -69,7 +69,6 @@ const novoVestidoSchema = z.object({
     else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
   }),
   tamanho: z.string().optional(),
-  cor: z.string().optional(),
   categoria: z.string().optional(),
   observacoes: z.string().optional(),
 });
@@ -163,7 +162,6 @@ export default function Vestidos() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [busca, setBusca] = useBuscaNaUrl();
   const tamanho = searchParams.get("tamanho") ?? TODOS;
-  const cor = searchParams.get("cor") ?? TODOS;
   const categoria = searchParams.get("categoria") ?? TODOS;
   // atributoId → opcaoId escolhida (E41), num param só (`atributos=id:op,…`).
   const filtrosAtributo = useMemo(
@@ -211,7 +209,6 @@ export default function Vestidos() {
     const chips: string[] = [];
     if (busca.trim()) chips.push(`“${busca.trim()}”`);
     if (tamanho !== TODOS) chips.push(`Tamanho ${tamanho}`);
-    if (cor !== TODOS) chips.push(cor);
     if (categoria !== TODOS) chips.push(categoria);
     for (const [attrId, opcaoId] of Object.entries(filtrosAtributo)) {
       const attr = atributosAtivos.find((a) => a.id === attrId);
@@ -221,7 +218,7 @@ export default function Vestidos() {
     if (dataSelecionada) chips.push(format(parseDia(dataSelecionada), "dd/MM/yyyy"));
     if (soDisponiveis) chips.push("Só disponíveis");
     return chips;
-  }, [busca, tamanho, cor, categoria, filtrosAtributo, atributosAtivos, dataSelecionada, soDisponiveis]);
+  }, [busca, tamanho, categoria, filtrosAtributo, atributosAtivos, dataSelecionada, soDisponiveis]);
   const nAtributosAtivos = Object.keys(filtrosAtributo).length;
 
   const disponibilidade = useCheckDisponibilidadeVestidos(
@@ -248,7 +245,6 @@ export default function Vestidos() {
       );
     return {
       tamanhos: derivar((v) => v.tamanho),
-      cores: derivar((v) => v.cor),
       categorias: derivar((v) => v.categoria),
     };
   }, [vestidos]);
@@ -259,7 +255,6 @@ export default function Vestidos() {
     return (vestidos ?? []).filter((v) => {
       if (consulta && !normalizar(v.nome).includes(consulta) && !normalizar(v.codigo).includes(consulta)) return false;
       if (tamanho !== TODOS && v.tamanho !== tamanho) return false;
-      if (cor !== TODOS && v.cor !== cor) return false;
       if (categoria !== TODOS && v.categoria !== categoria) return false;
       // E41: cada atributo escolhido precisa bater — o vestido tem aquele par.
       for (const [atributoId, opcaoId] of paresAtributo) {
@@ -269,11 +264,11 @@ export default function Vestidos() {
       if (soDisponiveis && dataSelecionada && !dispPorVestido.get(v.id)?.disponivel) return false;
       return true;
     });
-  }, [vestidos, busca, tamanho, cor, categoria, filtrosAtributo, soDisponiveis, dataSelecionada, dispPorVestido]);
+  }, [vestidos, busca, tamanho, categoria, filtrosAtributo, soDisponiveis, dataSelecionada, dispPorVestido]);
 
   const temAtributoFiltrado = Object.values(filtrosAtributo).some((op) => op && op !== TODOS);
   const temFiltrosAtivos =
-    busca.trim() !== "" || tamanho !== TODOS || cor !== TODOS || categoria !== TODOS || !!dataSelecionada || temAtributoFiltrado || soDisponiveis;
+    busca.trim() !== "" || tamanho !== TODOS || categoria !== TODOS || !!dataSelecionada || temAtributoFiltrado || soDisponiveis;
 
   function limparFiltros() {
     // Uma escrita só limpa tudo; o input de busca adota o `q` vazio da URL
@@ -283,7 +278,6 @@ export default function Vestidos() {
         comFiltros(p, {
           q: null,
           tamanho: null,
-          cor: null,
           categoria: null,
           atributos: null,
           disponiveis: null,
@@ -308,7 +302,6 @@ export default function Vestidos() {
       nome: "",
       precoBase: "",
       tamanho: "",
-      cor: "",
       categoria: "",
       observacoes: "",
     },
@@ -323,7 +316,6 @@ export default function Vestidos() {
           nome: values.nome,
           precoBase: parseValor(values.precoBase) as number,
           tamanho: values.tamanho || undefined,
-          cor: values.cor || undefined,
           categoria: values.categoria || undefined,
           observacoes: values.observacoes || undefined,
         },
@@ -374,6 +366,14 @@ export default function Vestidos() {
             <Link to={`/loja/${activeLojaId}/vestidos/utilizacao`}>
               <BarChart3 className="h-4 w-4 mr-2" />
               Utilização
+            </Link>
+          </Button>
+          {/* E154: a outra natureza de peça. Fica ao lado do acervo, e não
+              dentro dele — o saiote não é escolhido pela noiva na cabine. */}
+          <Button variant="ghost" asChild>
+            <Link to={`/loja/${activeLojaId}/vestidos/estoque`}>
+              <Layers className="h-4 w-4 mr-2" />
+              Estoque
             </Link>
           </Button>
           {podeCriar && (
@@ -461,19 +461,9 @@ export default function Vestidos() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="cor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cor</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Branco" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* E149: cor saiu da porta rápida junto com o campo do form
+                      completo — ela é atributo do catálogo agora, e esta porta
+                      já não cria características (o toast oferece completar). */}
                   <FormField
                     control={form.control}
                     name="categoria"
@@ -562,17 +552,12 @@ export default function Vestidos() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={cor} onValueChange={(v) => definirFiltroUrl("cor", v)}>
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Cor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todas</SelectItem>
-            {opcoes.cores.map((opcao) => (
-              <SelectItem key={opcao} value={opcao}>{opcao}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* E149: o filtro de COR saiu daqui. Ele derivava as opções dos valores
+            digitados (`new Set` sobre `v.cor`, sem normalizar) e comparava com
+            `!==`, então "Verde", "verde" e "VERDE" apareciam como três entradas,
+            cada uma filtrando um pedaço do acervo. Cor virou atributo do
+            catálogo e é filtrada pelo bloco de atributos, que compara por id de
+            opção — grafia não entra na conta. */}
         <Select value={categoria} onValueChange={(v) => definirFiltroUrl("categoria", v)}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Categoria" />

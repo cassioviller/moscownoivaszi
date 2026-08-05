@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, leadsTable, contratosTable, parcelasTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -14,6 +16,8 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  */
 test.describe("Recebimentos por meio (E50)", () => {
   const stamp = Date.now();
+  let leadId: string;
+  let contratoId: string;
   /** Competência do mês corrente: é onde o recebimento de hoje cai. */
   const hoje = new Date();
   const competencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
@@ -33,10 +37,11 @@ test.describe("Recebimentos por meio (E50)", () => {
       data: { noivaNome: `E2E Meio ${stamp}`, origem: "LOJA" },
     });
     expect(lead.status(), await lead.text()).toBe(201);
+    leadId = ((await lead.json()) as { id: string }).id;
 
     const contrato = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
       data: {
-        leadId: (await lead.json()).id,
+        leadId,
         vendedoraId,
         valorTotal: 900,
         parcelas: [
@@ -46,6 +51,7 @@ test.describe("Recebimentos por meio (E50)", () => {
       },
     });
     expect(contrato.status(), await contrato.text()).toBe(201);
+    contratoId = (await contrato.json()).id;
 
     const parcelas = (await contrato.json()).parcelas as { id: string; numero: number }[];
     const receber = (id: string, valor: number, forma: string) =>
@@ -57,6 +63,18 @@ test.describe("Recebimentos por meio (E50)", () => {
     const p1 = parcelas.find((p) => p.numero === 1)!;
     expect((await receber(p0.id, 300, "PIX")).status()).toBe(200);
     expect((await receber(p1.id, 600, "CARTAO_CREDITO")).status()).toBe(200);
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste: os R$ 900 deste run não podem inflar o DRE das
+    // próximas competências a cada execução. Parcelas antes do contrato, e o
+    // contrato antes do lead — o FK lead→contrato é RESTRICT. A auditoria é
+    // append-only e fica.
+    if (contratoId) {
+      await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
+      await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
+    }
+    if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
   });
 
   test("o DRE mostra o recorte por meio, com Pix e cartão", async ({ page }) => {

@@ -10,6 +10,8 @@ import type { OrcamentoItemInputTipo } from './orcamentoItemInputTipo';
 export interface OrcamentoItemInput {
   tipo: OrcamentoItemInputTipo;
   vestidoId?: string;
+  itemEstoqueId?: string;
+  ajusteId?: string;
   /** @minLength 1 */
   descricao: string;
   valorUnitario: number;

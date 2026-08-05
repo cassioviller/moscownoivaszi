@@ -142,9 +142,13 @@ describe("Lote 17 — agendamento sob concorrência", () => {
 
   it("mesmo vestido + janelas sobrepostas sob corrida: [201, 409], um bloqueio só", async () => {
     // O check da rota (verificarDisponibilidade) roda ANTES do insert, sem
-    // transação: sob corrida os dois passam. Quem decide é o EXCLUDE gist de
-    // vestido×daterange — o perdedor leva 23P01, que o handler traduz em 409
-    // (sem a lista amigável de conflitos, mas nunca 500 e nunca duplicata).
+    // transação: numa corrida apertada os dois passam por ele e quem decide é
+    // o EXCLUDE gist de vestido×daterange — o perdedor leva 23P01, ou DEADLOCK
+    // 40P01 quando os dois se cruzam na checagem especulativa do índice
+    // (medido: 34 em 300 corridas). O handler traduz os dois em 409 (E143 —
+    // o 40P01 fora do mapa era o flake [201, 500] desta suíte). Numa corrida
+    // frouxa o perdedor nem chega ao banco: a pré-checagem já viu a linha do
+    // vencedor e responde 409 VESTIDO_INDISPONIVEL. Nunca 500, nunca duplicata.
     const vestido = await criarVestido(f);
     const [leadA, leadB] = await Promise.all([criarLead(f), criarLead(f)]);
     const casamento = dia("2027-09-18").toISOString();
@@ -159,6 +163,16 @@ describe("Lote 17 — agendamento sob concorrência", () => {
     ]);
 
     expect([r1.status, r2.status].sort()).toEqual([201, 409]);
+    // O corpo entra no assert (lição da S20): o perdedor tem TRÊS finais
+    // legítimos — a pré-checagem da rota viu a linha do vencedor commitada
+    // (VESTIDO_INDISPONIVEL, o mesmo padrão do 422 do E115 acima), a exclusão
+    // do gist (23P01 → CONFLITO_DE_DISPONIBILIDADE) ou o deadlock da checagem
+    // especulativa (40P01 → OPERACAO_CONCORRENTE). A primeira versão deste
+    // assert listava só os dois últimos e flakou em 1/20 passadas — o
+    // vermelho está no E143.md.
+    const perdedor = r1.status === 409 ? r1 : r2;
+    expect(["VESTIDO_INDISPONIVEL", "CONFLITO_DE_DISPONIBILIDADE", "OPERACAO_CONCORRENTE"])
+      .toContain(perdedor.body.error);
     const gravados = await db
       .select({ id: bloqueioVestidosTable.id })
       .from(bloqueioVestidosTable)

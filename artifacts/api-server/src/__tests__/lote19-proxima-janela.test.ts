@@ -35,6 +35,7 @@ function reserva(over: Partial<BloqueioJanelasInput> = {}): BloqueioJanelasInput
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: null,
     fim: null,
     ...over,

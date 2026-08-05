@@ -39,6 +39,7 @@ function bloqueio(over: Partial<BloqueioJanelasInput> = {}): BloqueioJanelasInpu
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: null,
     fim: null,
     ...over,

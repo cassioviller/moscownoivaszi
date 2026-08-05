@@ -70,7 +70,10 @@ describe("E107 — nenhuma escrita sem prova, nenhum dinheiro sem rastro", () =>
       })
       .expect(422);
 
-    expect(r.body.error).toBe("REFERENCIA_INVALIDA");
+    // E145 (S-D12): o código deixou de ser REFERENCIA_INVALIDA — a tela de
+    // orçamento traduzia esse código genérico como "Essa noiva não é desta
+    // loja.", sombreando o detalhe que explica o caso de verdade.
+    expect(r.body.error).toBe("RESERVA_DE_OUTRA_NOIVA");
     expect(r.body.detalhe).toMatch(/outra noiva/);
   });
 

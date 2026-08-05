@@ -1,0 +1,1 @@
+ALTER TABLE "vestidos" ADD COLUMN "preco_realuguel" numeric(10, 2);

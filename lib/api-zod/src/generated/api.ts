@@ -898,6 +898,8 @@ export const ListVestidosResponseItem = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -925,12 +927,16 @@ export const CreateVestidoParams = zod.object({
 
 
 
+export const createVestidoBodyPrecoRealuguelMin = 0;
+
 
 
 export const CreateVestidoBody = zod.object({
   "codigo": zod.string().min(1),
   "nome": zod.string().min(1),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().min(createVestidoBodyPrecoRealuguelMin).optional(),
+  "origemAjusteId": zod.string().optional(),
   "tamanho": zod.string().optional(),
   "cor": zod.string().optional(),
   "categoria": zod.string().optional(),
@@ -947,6 +953,8 @@ export const CreateVestidoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -1025,6 +1033,7 @@ export const GetUtilizacaoVestidosResponseItem = zod.object({
   "nome": zod.string(),
   "status": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
   "provas": zod.number(),
   "reservas": zod.number(),
   "contratos": zod.number(),
@@ -1059,6 +1068,8 @@ export const GetVestidoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -1088,6 +1099,7 @@ export const UpdateVestidoBody = zod.object({
   "codigo": zod.string().optional(),
   "nome": zod.string().optional(),
   "precoBase": zod.number().optional(),
+  "precoRealuguel": zod.number().nullish(),
   "tamanho": zod.string().optional(),
   "cor": zod.string().optional(),
   "categoria": zod.string().optional(),
@@ -1105,6 +1117,8 @@ export const UpdateVestidoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -1708,6 +1722,159 @@ export const DesfazerRegistroCobrancaParams = zod.object({
 export const DesfazerRegistroCobrancaResponse = zod.void()
 
 
+export const ListItensEstoqueParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListItensEstoqueResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "tamanho": zod.string().nullish(),
+  "quantidade": zod.number(),
+  "preco": zod.number().nullish(),
+  "ativo": zod.boolean()
+})
+export const ListItensEstoqueResponse = zod.array(ListItensEstoqueResponseItem)
+
+
+export const CreateItemEstoqueParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+
+export const createItemEstoqueBodyQuantidadeMin = 0;
+
+export const createItemEstoqueBodyPrecoMin = 0;
+
+
+
+export const CreateItemEstoqueBody = zod.object({
+  "nome": zod.string().min(1),
+  "tamanho": zod.string().optional(),
+  "quantidade": zod.number().min(createItemEstoqueBodyQuantidadeMin),
+  "preco": zod.number().min(createItemEstoqueBodyPrecoMin).optional()
+})
+
+export const CreateItemEstoqueResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "tamanho": zod.string().nullish(),
+  "quantidade": zod.number(),
+  "preco": zod.number().nullish(),
+  "ativo": zod.boolean()
+})
+
+
+export const GetComprometimentoEstoqueParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const GetComprometimentoEstoqueQueryParams = zod.object({
+  "data": zod.coerce.string().describe('Dia local \"YYYY-MM-DD\" para o qual se conta o comprometimento.')
+})
+
+export const GetComprometimentoEstoqueResponse = zod.object({
+  "data": zod.string(),
+  "itens": zod.array(zod.object({
+  "itemEstoqueId": zod.string(),
+  "nome": zod.string(),
+  "tamanho": zod.string().nullish(),
+  "quantidade": zod.number(),
+  "comprometida": zod.number(),
+  "disponivel": zod.number()
+}))
+})
+
+
+export const UpdateItemEstoqueParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "itemEstoqueId": zod.coerce.string()
+})
+
+
+export const updateItemEstoqueBodyQuantidadeMin = 0;
+
+
+
+export const UpdateItemEstoqueBody = zod.object({
+  "nome": zod.string().min(1).optional(),
+  "tamanho": zod.string().nullish(),
+  "quantidade": zod.number().min(updateItemEstoqueBodyQuantidadeMin).optional(),
+  "preco": zod.number().nullish(),
+  "ativo": zod.boolean().optional()
+})
+
+export const UpdateItemEstoqueResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "nome": zod.string(),
+  "tamanho": zod.string().nullish(),
+  "quantidade": zod.number(),
+  "preco": zod.number().nullish(),
+  "ativo": zod.boolean()
+})
+
+
+export const DeleteItemEstoqueParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "itemEstoqueId": zod.coerce.string()
+})
+
+export const DeleteItemEstoqueResponse = zod.void()
+
+
+export const ListAusenciasParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const ListAusenciasQueryParams = zod.object({
+  "desde": zod.coerce.string().optional().describe('Só as ausências que terminam em ou depois deste dia (AAAA-MM-DD).')
+})
+
+export const ListAusenciasResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "usuarioId": zod.string(),
+  "inicio": zod.string(),
+  "fim": zod.string(),
+  "motivo": zod.string().nullish(),
+  "usuarioNome": zod.string().nullish()
+})
+export const ListAusenciasResponse = zod.array(ListAusenciasResponseItem)
+
+
+export const CreateAusenciaParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const CreateAusenciaBody = zod.object({
+  "usuarioId": zod.string(),
+  "inicio": zod.string(),
+  "fim": zod.string(),
+  "motivo": zod.string().optional()
+})
+
+export const CreateAusenciaResponse = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.string(),
+  "usuarioId": zod.string(),
+  "inicio": zod.string(),
+  "fim": zod.string(),
+  "motivo": zod.string().nullish(),
+  "usuarioNome": zod.string().nullish()
+})
+
+
+export const DeleteAusenciaParams = zod.object({
+  "lojaId": zod.coerce.string(),
+  "ausenciaId": zod.coerce.string()
+})
+
+export const DeleteAusenciaResponse = zod.void()
+
+
 export const ListCabinesParams = zod.object({
   "lojaId": zod.coerce.string()
 })
@@ -1852,6 +2019,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -1865,6 +2033,8 @@ export const ListAtendimentosResponseItem = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -1919,6 +2089,8 @@ export const ListAtendimentosResponseItem = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -1974,6 +2146,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -1987,6 +2160,8 @@ export const ListAtendimentosResponseItem = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2037,7 +2212,12 @@ export const ListAtendimentosResponseItem = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })).optional()
 })
 export const ListAtendimentosResponse = zod.array(ListAtendimentosResponseItem)
@@ -2127,6 +2307,7 @@ export const CreateAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2140,6 +2321,8 @@ export const CreateAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2194,6 +2377,8 @@ export const CreateAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -2249,6 +2434,7 @@ export const CreateAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2262,6 +2448,8 @@ export const CreateAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2312,7 +2500,12 @@ export const CreateAtendimentoResponse = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })).optional()
 })
 
@@ -2401,6 +2594,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2414,6 +2608,8 @@ export const UpdateAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2468,6 +2664,8 @@ export const UpdateAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -2523,6 +2721,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2536,6 +2735,8 @@ export const UpdateAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2586,7 +2787,12 @@ export const UpdateAtendimentoResponse = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })).optional()
 })
 
@@ -2680,6 +2886,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2693,6 +2900,8 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2747,6 +2956,8 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -2802,6 +3013,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2815,6 +3027,8 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -2865,7 +3079,12 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })).optional()
 })
 
@@ -2949,6 +3168,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -2962,6 +3182,8 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3016,6 +3238,8 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3071,6 +3295,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3084,6 +3309,8 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3134,7 +3361,12 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })).optional()
 })
 
@@ -3148,6 +3380,8 @@ export const ListAjustesResponseItem = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3203,6 +3437,7 @@ export const ListAjustesResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3216,6 +3451,8 @@ export const ListAjustesResponseItem = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3266,7 +3503,12 @@ export const ListAjustesResponseItem = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })
 export const ListAjustesResponse = zod.array(ListAjustesResponseItem)
 
@@ -3276,11 +3518,15 @@ export const CreateAjusteParams = zod.object({
 })
 
 
+export const createAjusteBodyCustoMin = 0;
+
 
 
 export const CreateAjusteBody = zod.object({
   "atendimentoId": zod.string(),
-  "descricao": zod.string().min(1)
+  "descricao": zod.string().min(1),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().min(createAjusteBodyCustoMin).optional()
 })
 
 export const CreateAjusteResponse = zod.object({
@@ -3288,6 +3534,8 @@ export const CreateAjusteResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3343,6 +3591,7 @@ export const CreateAjusteResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3356,6 +3605,8 @@ export const CreateAjusteResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3406,7 +3657,12 @@ export const CreateAjusteResponse = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })
 
 
@@ -3417,6 +3673,8 @@ export const UpdateAjusteParams = zod.object({
 
 export const UpdateAjusteBody = zod.object({
   "descricao": zod.string().optional(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']).optional()
 })
 
@@ -3425,6 +3683,8 @@ export const UpdateAjusteResponse = zod.object({
   "lojaId": zod.string(),
   "atendimentoId": zod.string(),
   "descricao": zod.string(),
+  "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
+  "custo": zod.number().nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']),
   "checklist": zod.array(zod.object({
   "id": zod.string(),
@@ -3480,6 +3740,7 @@ export const UpdateAjusteResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3493,6 +3754,8 @@ export const UpdateAjusteResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3543,7 +3806,12 @@ export const UpdateAjusteResponse = zod.object({
 }),zod.null()]).optional()
 }),zod.null()]).optional()
 }).optional(),
-  "proximaProva": zod.coerce.date().nullish()
+  "proximaProva": zod.coerce.date().nullish(),
+  "pecaDoAcervo": zod.union([zod.object({
+  "id": zod.string(),
+  "codigo": zod.string(),
+  "nome": zod.string()
+}),zod.null()]).optional()
 })
 
 
@@ -3688,6 +3956,7 @@ export const ListReservasResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3701,6 +3970,8 @@ export const ListReservasResponseItem = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3809,6 +4080,7 @@ export const CreateReservaResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3822,6 +4094,8 @@ export const CreateReservaResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -3930,6 +4204,7 @@ export const UpdateReservaResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -3943,6 +4218,8 @@ export const UpdateReservaResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -4053,6 +4330,7 @@ export const ListBloqueiosResponseItem = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -4066,6 +4344,8 @@ export const ListBloqueiosResponseItem = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -4143,6 +4423,7 @@ export const CreateBloqueioResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -4156,6 +4437,8 @@ export const CreateBloqueioResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -4225,6 +4508,7 @@ export const GetBloqueioResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -4238,6 +4522,8 @@ export const GetBloqueioResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -4298,6 +4584,7 @@ export const UpdateBloqueioBody = zod.object({
   "provaDataReal": zod.coerce.date().optional(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().optional(),
   "fim": zod.coerce.date().optional(),
   "observacao": zod.string().optional()
@@ -4313,6 +4600,7 @@ export const UpdateBloqueioResponse = zod.object({
   "provaDataReal": zod.coerce.date().nullish(),
   "retiradaDataReal": zod.coerce.date().nullish(),
   "devolucaoDataReal": zod.coerce.date().nullish(),
+  "lavagemConcluidaEm": zod.coerce.date().nullish(),
   "inicio": zod.coerce.date().nullish(),
   "fim": zod.coerce.date().nullish(),
   "canceladoEm": zod.coerce.date().nullish(),
@@ -4326,6 +4614,8 @@ export const UpdateBloqueioResponse = zod.object({
   "codigo": zod.string(),
   "nome": zod.string(),
   "precoBase": zod.number(),
+  "precoRealuguel": zod.number().nullish(),
+  "origemAjusteId": zod.string().nullish(),
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
@@ -4566,8 +4856,10 @@ export const ListOrcamentosResponse = zod.object({
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4643,8 +4935,10 @@ export const CreateOrcamentoResponse = zod.object({
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4708,8 +5002,10 @@ export const GetOrcamentoResponse = zod.object({
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4781,8 +5077,10 @@ export const UpdateOrcamentoResponse = zod.object({
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4808,8 +5106,10 @@ export const AddOrcamentoItemParams = zod.object({
 
 
 export const AddOrcamentoItemBody = zod.object({
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().optional(),
+  "itemEstoqueId": zod.string().optional(),
+  "ajusteId": zod.string().optional(),
   "descricao": zod.string().min(1),
   "valorUnitario": zod.number(),
   "quantidade": zod.number().optional()
@@ -4818,8 +5118,10 @@ export const AddOrcamentoItemBody = zod.object({
 export const AddOrcamentoItemResponse = zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4844,8 +5146,10 @@ export const UpdateOrcamentoItemBody = zod.object({
 export const UpdateOrcamentoItemResponse = zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4915,8 +5219,10 @@ export const AprovarOrcamentoResponse = zod.object({
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -4980,8 +5286,10 @@ export const RecusarOrcamentoResponse = zod.object({
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "orcamentoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
+  "ajusteId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5024,7 +5332,7 @@ export const GetOrcamentoPublicoResponse = zod.object({
   "versaoNumero": zod.number().nullish(),
   "aceitoEm": zod.coerce.date().nullish(),
   "itens": zod.array(zod.object({
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5076,7 +5384,7 @@ export const GetPortalResponse = zod.object({
   "versaoNumero": zod.number().nullish(),
   "aceitoEm": zod.coerce.date().nullish(),
   "itens": zod.array(zod.object({
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5119,7 +5427,7 @@ export const GetPortalResponse = zod.object({
   "fechadoEm": zod.coerce.date(),
   "dataCasamento": zod.coerce.date().nullish(),
   "itens": zod.array(zod.object({
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5292,6 +5600,7 @@ export const listContratosQueryOrdemDefault = `recentes`;
 
 export const ListContratosQueryParams = zod.object({
   "leadId": zod.coerce.string().optional(),
+  "orcamentoId": zod.coerce.string().optional(),
   "q": zod.coerce.string().max(listContratosQueryQMax).optional().describe('Busca pela noiva: nome da noiva\/noivo e WhatsApp (dígitos), a mesma régua do listLeads'),
   "status": zod.enum(['ATIVO', 'CANCELADO']).optional(),
   "pagina": zod.coerce.number().min(1).optional(),
@@ -5374,8 +5683,9 @@ export const ListContratosResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "contratoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5524,8 +5834,9 @@ export const CreateContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "contratoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5649,8 +5960,9 @@ export const GetContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "contratoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5784,8 +6096,9 @@ export const UpdateContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "contratoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()
@@ -5925,8 +6238,9 @@ export const CancelarContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "contratoId": zod.string(),
-  "tipo": zod.enum(['VESTIDO', 'SERVICO', 'AJUSTE']),
+  "tipo": zod.enum(['VESTIDO', 'ACESSORIO', 'ESTOQUE', 'SERVICO', 'AJUSTE']),
   "vestidoId": zod.string().nullish(),
+  "itemEstoqueId": zod.string().nullish(),
   "descricao": zod.string(),
   "valorUnitario": zod.number(),
   "quantidade": zod.number()

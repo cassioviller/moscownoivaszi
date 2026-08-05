@@ -81,7 +81,7 @@ router.post("/lojas/:lojaId/captacao/token", async (req, res): Promise<void> => 
     .where(and(eq(lojasTable.id, lojaId), eq(lojasTable.ativo, true)))
     .returning({ token: lojasTable.captacaoToken });
   if (!loja) {
-    res.status(404).json({ error: "Loja not found" });
+    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
     return;
   }
   req.log.info({ lojaId }, "captacao_token_rotacionado");

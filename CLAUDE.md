@@ -13,12 +13,25 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **O rastreador da rodada em curso** — hoje
-   `docs/revisao/2026-07-25-rodada-6/EXECUCAO.md`. Ele traz o estado de cada
-   épico, o diário das sessões e a tabela de **Sobras**. A seção "Como retomar"
-   é o roteiro.
+2. **O rastreador da trilha em curso** — hoje
+   `docs/revisao/2026-08-04-arqueologia-legado/EXECUCAO.md`. Ele traz o estado
+   de cada épico, o diário das sessões e a tabela de **Sobras**. A seção "Como
+   retomar" é o roteiro, e a de "Onde paramos" diz o que a última sessão deixou
+   na mesa.
 
-Se a rodada mudar, é aqui que o ponteiro muda.
+   **São três trilhas, e as três estão vivas** — o ponteiro é UM porque o
+   trabalho de hoje é um só, mas as sobras das outras duas continuam valendo:
+
+   | Trilha | Rastreador | Estado |
+   |---|---|---|
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | **em curso** — 10 épicos fechados, **nenhum aberto**; o trabalho de hoje sai da tabela de Sobras |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada, com sobras `S-D*` |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada, com sobras |
+
+Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 desta trilha que
+mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando
+para a anterior, e quem abrisse a sessão leria o estado errado como se fosse o
+de hoje.
 
 ## As regras que mais mordem no dia a dia
 

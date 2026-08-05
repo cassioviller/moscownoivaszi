@@ -143,4 +143,36 @@ describe("E124 — busca, página e recentes-primeiro no acervo", () => {
     const ordenadoDesc = [...criadosEm].sort().reverse();
     expect(criadosEm).toEqual(ordenadoDesc);
   });
+
+  // ÚLTIMO do describe de propósito: cria noiva, orçamentos e contrato
+  // próprios, e os testes acima pregam contagens (total de ATIVOs, orçamentos
+  // por noiva) que não podem ver estes registros.
+  it("contratos: ?orcamentoId= devolve só o contrato daquele orçamento (E144/S-D16)", async () => {
+    // O caso da tela: o detalhe do orçamento só quer saber "este orçamento já
+    // virou contrato?" — e baixava a loja inteira (615 KB) para um find.
+    const clara = await criarLead(f, { noivaNome: "Clara Filtro E144" });
+    const orc = await criarOrcamento(f, { leadId: clara.id });
+    const contratoDoOrc = await criarContrato(f, {
+      leadId: clara.id,
+      orcamentoId: orc.id,
+      valorTotal: 5400,
+      fechadoEm: new Date("2026-07-25T15:00:00Z"),
+    });
+
+    const res = await agent
+      .get(`/api/lojas/${f.lojaId}/contratos?orcamentoId=${orc.id}`)
+      .expect(200);
+    expect(res.body.total).toBe(1);
+    expect(res.body.itens).toHaveLength(1);
+    expect(res.body.itens[0].id).toBe(contratoDoOrc.id);
+
+    // Orçamento sem contrato: lista vazia com total zero — é o que alterna
+    // o botão para "Gerar contrato".
+    const semContrato = await criarOrcamento(f, { leadId: clara.id });
+    const vazio = await agent
+      .get(`/api/lojas/${f.lojaId}/contratos?orcamentoId=${semContrato.id}`)
+      .expect(200);
+    expect(vazio.body.total).toBe(0);
+    expect(vazio.body.itens).toEqual([]);
+  });
 });

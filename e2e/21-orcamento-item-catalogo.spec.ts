@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, orcamentosTable, orcamentoItensTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -12,11 +14,22 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  * item mostra como link para a ficha.
  */
 test.describe("Orçamento — item do catálogo (E35)", () => {
+  let orcamentoId: string | null = null;
+
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
     });
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+  });
+
+  test.afterAll(async () => {
+    // O banco do e2e persiste: o orçamento (e o item que a tela adicionou nele)
+    // sai no fim. Itens antes do orçamento; o vestido é o do seed e fica.
+    if (orcamentoId) {
+      await db.delete(orcamentoItensTable).where(eq(orcamentoItensTable.orcamentoId, orcamentoId));
+      await db.delete(orcamentosTable).where(eq(orcamentosTable.id, orcamentoId));
+    }
   });
 
   test("escolher vestido preenche descrição/valor e vincula o item", async ({ page, request }) => {
@@ -25,6 +38,7 @@ test.describe("Orçamento — item do catálogo (E35)", () => {
     });
     expect(orc.status(), await orc.text()).toBe(201);
     const { id } = (await orc.json()) as { id: string };
+    orcamentoId = id;
 
     await page.goto(`/orcamentos/${id}`);
 

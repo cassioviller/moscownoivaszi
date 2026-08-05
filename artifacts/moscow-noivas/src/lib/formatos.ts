@@ -60,6 +60,12 @@ export function statusContratoLabel(status: string): string {
  */
 const TIPO_ITEM_LABELS: Record<string, string> = {
   VESTIDO: "Vestido",
+  // O fallback devolve o enum CRU, e estes dois rótulos aparecem no portal da
+  // noiva e no orçamento público: sem eles, ela lê "ACESSORIO" e "ESTOQUE" em
+  // caixa alta, sem acento, no documento que decide a compra. O ACESSORIO é do
+  // E150 e passou batido — a lista só ganhou o tipo, não o rótulo.
+  ACESSORIO: "Acessório",
+  ESTOQUE: "Estoque",
   SERVICO: "Serviço",
   AJUSTE: "Ajuste",
 };

@@ -231,6 +231,7 @@ export async function criarOrcamentoItem(
     valorUnitario?: number;
     quantidade?: number;
     vestidoId?: string | null;
+    itemEstoqueId?: string | null;
   },
 ): Promise<OrcamentoItem> {
   const sufixo = randomUUID().slice(0, 8);
@@ -245,6 +246,7 @@ export async function criarOrcamentoItem(
       valorUnitario: params.valorUnitario ?? 5000,
       quantidade: params.quantidade ?? 1,
       vestidoId: params.vestidoId ?? null,
+      itemEstoqueId: params.itemEstoqueId ?? null,
     })
     .returning();
   return item;
@@ -274,6 +276,7 @@ export async function criarContrato(
   params: {
     leadId: string;
     vendedoraId?: string;
+    orcamentoId?: string;
     valorTotal: number;
     fechadoEm: Date;
     canceladoEm?: Date | null;
@@ -287,6 +290,7 @@ export async function criarContrato(
       id: randomUUID(),
       lojaId: f.lojaId,
       leadId: params.leadId,
+      orcamentoId: params.orcamentoId ?? null,
       vendedoraId: params.vendedoraId ?? f.vendedoraId,
       valorTotal: params.valorTotal,
       fechadoEm: params.fechadoEm,
@@ -307,6 +311,7 @@ export interface CriarBloqueioParams {
   provaDataReal?: Date | null;
   retiradaDataReal?: Date | null;
   devolucaoDataReal?: Date | null;
+  lavagemConcluidaEm?: Date | null;
   inicio?: Date | null;
   fim?: Date | null;
   canceladoEm?: Date | null;
@@ -326,6 +331,7 @@ export async function criarBloqueio(
     provaDataReal: params.provaDataReal ?? null,
     retiradaDataReal: params.retiradaDataReal ?? null,
     devolucaoDataReal: params.devolucaoDataReal ?? null,
+    lavagemConcluidaEm: params.lavagemConcluidaEm ?? null,
     inicio: params.inicio ?? null,
     fim: params.fim ?? null,
   };
