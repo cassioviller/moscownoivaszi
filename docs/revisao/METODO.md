@@ -331,6 +331,38 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     PADRÃO: a Recepção via "Criar reserva" e levava 403. A mesma forma fechou a
     S20 (nomes de constraint × snapshot), a S28 (assert × assert) e a S11 (enum
     da tela × enum do contrato).)*
+23. **Sobra IMPRECISA custa mais que sobra morta, e nada na tabela as
+    distingue.** A morta desperdiça uma sessão; a imprecisa desperdiça o épico
+    inteiro, porque o conserto é planejado contra o mecanismo errado — e a
+    tabela de sobras é lida justamente para decidir a ORDEM do trabalho.
+    Conferir antes de consertar é uma rodada de leitura que não produz commit
+    de código nenhum, e é o melhor gasto do backlog. *(Conferência de
+    2026-08-05: das 48 sobras conferidas, 4 estavam mortas (8%) e **9 descreviam
+    errado o defeito que apontavam**. As três mais caras erravam na estimativa
+    de custo, nos dois sentidos: a **S13** dizia "migrar o roteador toca todas as
+    rotas" sobre meia dúzia de linhas em um arquivo; a **S-D21** dizia que
+    estender a varredura "exige tratar os `parsed.error.message`", e havia ZERO
+    deles desde o E96; a **S-D23** prometia `playwright test --list` como régua
+    interina, e o Playwright transpila com Babel, que APAGA os tipos — não havia
+    régua nenhuma. Duas diziam "é caro" sobre trabalho barato, uma dizia "está
+    coberto" sobre o que não estava.)*
+24. **Fan-out de leitura acha o que a leitura sequencial não acha — e a divisão
+    é pelo RECURSO COMPARTILHADO, não pelo assunto.** Agente lendo em paralelo
+    é barato e seguro; agente ESCREVENDO em paralelo colide no que o repositório
+    tem de único. Neste repo o recurso único é o banco de dev (`workers: 1` no
+    playwright, `fileParallelism: false` no vitest, um só `DATABASE_URL`):
+    worktree isola arquivo e **não** isola banco. E há um segundo recurso único
+    que se esquece — **as tabelas de Sobras**: toda linha fechada mexe no mesmo
+    arquivo, então agente nenhum as toca, e quem risca com o hash é quem
+    orquestra. *(2026-08-05: sete agentes de leitura pura sobre 48 sobras acharam
+    **três defeitos 🟠 que quatro rodadas de revisão não tinham achado** — a ficha
+    da noiva montando link de WhatsApp sem DDI, o contrato sem orçamento
+    atribuindo comissão sem auditoria, e o `DELETE /vestidos` sem guarda com R$
+    43.400,00 em avarias na cascata. Os três na fronteira entre dois arquivos,
+    que é a regra 22. E vale desconfiar do retorno: um agente deu "VIVA E PIOR" a
+    uma sobra alegando que um backfill piorou um 409, e o próprio script do
+    backfill declarava e justificava aquela aproximação — o orquestrador confere,
+    não repassa.)*
 
 ---
 

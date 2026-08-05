@@ -13,17 +13,20 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **O rastreador da trilha em curso** — hoje
-   `docs/revisao/2026-07-25-rodada-6/EXECUCAO.md`. Ele traz o estado de cada
-   épico, o diário das sessões e a tabela de **Sobras**. A seção "Como retomar"
-   é o roteiro.
+2. **O registro da sessão em curso** — hoje
+   `docs/revisao/2026-08-05-sessao-sobras-de-higiene.md`. A seção "Como retomar"
+   é o roteiro, e ela manda ler primeiro
+   **`docs/revisao/2026-08-05-conferencia-de-sobras.md`**, que traz o veredito
+   de cada uma das 48 sobras conferidas — quais estavam mortas, quais
+   descreviam errado o próprio defeito, e o número de hoje de cada uma.
 
-   **São três trilhas, e as três estão vivas** — o ponteiro é UM porque o
-   trabalho de hoje é um só, mas as sobras das outras duas continuam valendo:
+   **O trabalho em curso não é de uma trilha: é o BACKLOG DE SOBRAS das três.**
+   Os épicos das três estão fechados; o que resta são as tabelas de Sobras, e
+   elas continuam sendo a fonte da verdade de cada rastreador:
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 18 abertas (10 🟡 · 8 🔵) |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 18 sobras abertas (10 🟡 · 8 🔵). Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 17 sobras abertas (6 🟡 · 11 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (8 🟡 · 5 🔵) |
 
