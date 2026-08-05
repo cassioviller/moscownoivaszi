@@ -128,6 +128,25 @@ paths:
                 $ref: "#/components/schemas/Sessao"
 
   # ───────────────────────── Admin ─────────────────────────
+  /admin/auditoria-global:
+    get:
+      operationId: listAuditoriaGlobal
+      tags: [admin]
+      summary: A trilha do que não pertence a loja nenhuma (S3)
+      description: >
+        As linhas com `lojaId` nulo — apagar uma pessoa (tabela global) ou apagar
+        uma loja. Elas não aparecem em `/lojas/{lojaId}/financeiro/auditoria`,
+        que filtra por loja, e sem esta porta o rastro seria gravado e nunca
+        lido. É o único lugar onde "quem apagou aquela loja?" tem resposta.
+      responses:
+        "200":
+          description: Atos globais, do mais recente ao mais antigo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditoriaGlobal"
   /admin/lojas:
     get:
       operationId: listLojas
@@ -5676,6 +5695,29 @@ components:
         detalhe:
           type: ["object", "null"]
           additionalProperties: true
+        criadoEm: { type: string, format: date-time }
+
+    # S3 — a linha da trilha GLOBAL. Igual à `AuditoriaItem`, mais o `lojaId`
+    # NULO que a define: o que não pertence a loja nenhuma. No caso da loja
+    # apagada, o nulo é o que faz o registro existir — com o id dela, o CASCADE
+    # o levaria junto no mesmo DELETE.
+    AuditoriaGlobal:
+      type: object
+      required: [id, lojaId, acao, entidade, entidadeId, usuarioNome, criadoEm]
+      properties:
+        id: { type: string }
+        lojaId:
+          type: "null"
+          description: "Sempre nulo — é o que define o ato global"
+        acao: { type: string }
+        entidade: { type: string }
+        entidadeId: { type: string }
+        usuarioId: { type: ["string", "null"] }
+        usuarioNome: { type: string, description: "Quem fez, desnormalizado" }
+        detalhe:
+          type: ["object", "null"]
+          additionalProperties: true
+          description: "O NOME do que sumiu — depois do DELETE não há linha para consultar"
         criadoEm: { type: string, format: date-time }
 
     AutorAuditoria:

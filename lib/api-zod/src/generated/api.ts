@@ -127,6 +127,24 @@ export const SelecionarLojaResponse = zod.object({
 })
 
 
+/**
+ * As linhas com `lojaId` nulo — apagar uma pessoa (tabela global) ou apagar uma loja. Elas não aparecem em `/lojas/{lojaId}/financeiro/auditoria`, que filtra por loja, e sem esta porta o rastro seria gravado e nunca lido. É o único lugar onde "quem apagou aquela loja?" tem resposta.
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+export const ListAuditoriaGlobalResponseItem = zod.object({
+  "id": zod.string(),
+  "lojaId": zod.null().describe('Sempre nulo — é o que define o ato global'),
+  "acao": zod.string(),
+  "entidade": zod.string(),
+  "entidadeId": zod.string(),
+  "usuarioId": zod.string().nullish(),
+  "usuarioNome": zod.string().describe('Quem fez, desnormalizado'),
+  "detalhe": zod.record(zod.string(), zod.unknown()).nullish().describe('O NOME do que sumiu — depois do DELETE não há linha para consultar'),
+  "criadoEm": zod.coerce.date()
+})
+export const ListAuditoriaGlobalResponse = zod.array(ListAuditoriaGlobalResponseItem)
+
+
 export const ListLojasResponseItem = zod.object({
   "id": zod.string(),
   "nome": zod.string(),

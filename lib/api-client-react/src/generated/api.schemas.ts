@@ -1454,6 +1454,34 @@ export interface DisponibilidadeVestidos {
   itens: DisponibilidadeVestidosItensItem[];
 }
 
+/**
+ * O NOME do que sumiu — depois do DELETE não há linha para consultar
+ * @nullable
+ */
+export type AuditoriaGlobalDetalhe = { [key: string]: unknown } | null;
+
+export interface AuditoriaGlobal {
+  id: string;
+  /**
+     * Sempre nulo — é o que define o ato global
+     * @nullable
+     */
+  lojaId: null;
+  acao: string;
+  entidade: string;
+  entidadeId: string;
+  /** @nullable */
+  usuarioId?: string | null;
+  /** Quem fez, desnormalizado */
+  usuarioNome: string;
+  /**
+     * O NOME do que sumiu — depois do DELETE não há linha para consultar
+     * @nullable
+     */
+  detalhe?: AuditoriaGlobalDetalhe;
+  criadoEm: string;
+}
+
 export interface AutorAuditoria {
   usuarioId: string;
   /** O nome mais recente com que este autor aparece na trilha */

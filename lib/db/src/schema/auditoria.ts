@@ -16,9 +16,21 @@ export const auditLogTable = pgTable(
   "audit_log",
   {
     id: text("id").primaryKey(),
-    lojaId: text("loja_id")
-      .notNull()
-      .references(() => lojasTable.id, { onDelete: "cascade" }),
+    /**
+     * A loja em que a ação aconteceu — **nulo é o ATO GLOBAL** (S3).
+     *
+     * Era `notNull`, e a trilha inteira é por loja. As duas ações que não
+     * pertencem a loja nenhuma ficavam de fora, com um `req.log.warn` no lugar:
+     * `DELETE /admin/usuarios/:id` (pessoas são tabela global) e
+     * `DELETE /admin/lojas/:id`.
+     *
+     * No segundo, a coluna obrigatória era pior que inútil: gravar "loja X
+     * apagada" com `loja_id = X` num FK em CASCADE **apagaria o próprio
+     * registro junto com a loja**. O rastro morreria no instante exato em que
+     * passasse a importar — e é por isso que nulo não é buraco de modelagem, é
+     * o que faz o registro sobreviver ao que ele registra.
+     */
+    lojaId: text("loja_id").references(() => lojasTable.id, { onDelete: "cascade" }),
     // Autor pode ser removido da equipe; a linha fica ("perder quem fez é
     // recuperável", padrão das FKs de autoria) — o nome vai desnormalizado.
     usuarioId: text("usuario_id").references(() => usuariosTable.id, { onDelete: "set null" }),

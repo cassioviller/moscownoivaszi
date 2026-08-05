@@ -49,6 +49,8 @@ export * from './atributoOpcaoInput';
 export * from './atributoOpcaoUpdate';
 export * from './atributoTipo';
 export * from './atributoUpdate';
+export * from './auditoriaGlobal';
+export * from './auditoriaGlobalDetalhe';
 export * from './auditoriaItem';
 export * from './auditoriaItemDetalhe';
 export * from './ausencia';

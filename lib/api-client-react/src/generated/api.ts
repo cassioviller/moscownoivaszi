@@ -43,6 +43,7 @@ import type {
   AtributoOpcaoInput,
   AtributoOpcaoUpdate,
   AtributoUpdate,
+  AuditoriaGlobal,
   AuditoriaItem,
   Ausencia,
   AusenciaInput,
@@ -654,6 +655,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getSelecionarLojaMutationOptions(options));
     }
+
+export const getListAuditoriaGlobalUrl = () => {
+
+
+
+
+  return `/api/admin/auditoria-global`
+}
+
+/**
+ * As linhas com `lojaId` nulo — apagar uma pessoa (tabela global) ou apagar uma loja. Elas não aparecem em `/lojas/{lojaId}/financeiro/auditoria`, que filtra por loja, e sem esta porta o rastro seria gravado e nunca lido. É o único lugar onde "quem apagou aquela loja?" tem resposta.
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+export const listAuditoriaGlobal = async ( options?: RequestInit): Promise<AuditoriaGlobal[]> => {
+
+  return customFetch<AuditoriaGlobal[]>(getListAuditoriaGlobalUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuditoriaGlobalQueryKey = () => {
+    return [
+    `/api/admin/auditoria-global`
+    ] as const;
+    }
+
+
+export const getListAuditoriaGlobalQueryOptions = <TData = Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuditoriaGlobalQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditoriaGlobal>>> = ({ signal }) => listAuditoriaGlobal({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAuditoriaGlobalQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditoriaGlobal>>>
+export type ListAuditoriaGlobalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+
+export function useListAuditoriaGlobal<TData = Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAuditoriaGlobalQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListLojasUrl = () => {
 

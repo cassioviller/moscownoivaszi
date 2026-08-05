@@ -83,6 +83,13 @@ export const ACOES_AUDITORIA = [
   // único lugar que lembra o que o registro dizia, então o detalhe carrega
   // canal, observação e o instante do contato desfeito.
   "REGISTRO_COBRANCA_DESFEITO",
+  // S3: os dois atos GLOBAIS de superadmin, os únicos que não pertencem a loja
+  // nenhuma — e por isso os únicos que gravam `loja_id` nulo. Eram um
+  // `req.log.warn`: greppável enquanto o log existir, invisível para quem abre
+  // o sistema. O detalhe carrega o NOME do que sumiu, porque depois do DELETE
+  // não sobra linha para consultar.
+  "USUARIO_EXCLUIDO",
+  "LOJA_EXCLUIDA",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -131,6 +138,8 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   AVARIA_REMOVIDA: "Avaria removida",
   CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
+  USUARIO_EXCLUIDO: "Pessoa excluída do cadastro (ato global)",
+  LOJA_EXCLUIDA: "Loja excluída (ato global)",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -151,7 +160,13 @@ export function quandoLocalSP(instante: Date): string {
 }
 
 export interface RegistroAuditoria {
-  lojaId: string;
+  /**
+   * S3 — **`null` é o ato GLOBAL**, o que não pertence a loja nenhuma: apagar
+   * uma pessoa (tabela global) ou apagar uma loja. No segundo caso o nulo é o
+   * que faz o registro existir: com o id da loja, o CASCADE o apagaria junto
+   * com ela.
+   */
+  lojaId: string | null;
   /** Autor da sessão (req.usuario) — id + nome desnormalizado. */
   usuario: { id: string; nome: string };
   acao: AcaoAuditoria;
@@ -173,7 +188,10 @@ export interface RegistroAuditoria {
     | "avaria"
     | "conciliacao"
     // E123 — o desfazer do registro de cobrança.
-    | "registro_cobranca";
+    | "registro_cobranca"
+    // S3 — a loja como ENTIDADE, e não como escopo: é o que ela é quando o
+    // que aconteceu foi ela ter sido apagada.
+    | "loja";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }
