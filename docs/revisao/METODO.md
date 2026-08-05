@@ -305,13 +305,20 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   que estavam presos nas notas; `CLAUDE.md` criado na raiz para que este arquivo
   seja lido no começo de toda sessão, e não por acaso.
 - **2026-08-05** — sessão 5 da arqueologia do legado, e a primeira em que as
-  **três suítes fecharam verdes ao mesmo tempo** (API 990, frontend 446, E2E
+  **três suítes fecharam verdes ao mesmo tempo** (API 991, frontend 446, E2E
   156, typecheck). O E156 fechou o último épico da trilha; as duas sobras que
   sobraram do dia foram os dois vermelhos que ninguém consertava, e as duas eram
   defeito de TESTE sobre código certo — a S-A21 escrevia a faixa de comissão em
   centavos numa coluna de reais, a S-A11 esperava dados que o E147 tornou
   opcionais. Duas regras novas (18 e 19), as duas nascidas daí: vermelho de
   fixture se conserta antes do próximo épico, e `skipped` não é verde.
+  A sessão fechou pela S-A20, que rendeu a lição mais barata do dia: **a sobra
+  estava certa no defeito e errada no tamanho**. Ela dizia "o `push` está
+  travado"; o `push` era o único dos quatro pontos de divergência entre os
+  scripts à mão e o schema drizzle que fazia barulho — os outros três eram
+  índices que existiam em todo banco antigo e em nenhum banco novo. **A sobra
+  registra o sintoma; quem a executa procura a classe** — e foi a varredura, não
+  a leitura, que achou os outros três.
 - **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
   (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
   futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +

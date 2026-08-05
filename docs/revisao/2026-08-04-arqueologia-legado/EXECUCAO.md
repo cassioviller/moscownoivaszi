@@ -36,10 +36,10 @@ está na tabela de Sobras, e é lá que a próxima sessão pega trabalho.
 
 | | |
 |---|---|
-| Último commit de código | `4690f18` (S-A11) |
+| Último commit de código | `7c3c794` (S-A20) |
 | Último commit de docs | este |
 | Branch | `rodada-7-sobras`, **não fundida no main** |
-| Suítes no fim | API **990** · frontend **446** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
+| Suítes no fim | API **991** · frontend **446** · E2E **156** · typecheck verde — **zero vermelho, zero skipped nas três** |
 
 **Pela primeira vez a suíte inteira sai verde**, e `pnpm run test:e2e` volta a
 sair com `EXIT=0`. Os dois vermelhos que viveram do E148 ao E156 eram defeito de
@@ -51,29 +51,29 @@ ele é notícia de novo.**
 
 Não há épico pendente. Por peso:
 
-1. **S-A20 🟠** — o `drizzle-kit push` está travado em todo banco que rodou os
-   scripts à mão, por causa do NOME da unique do E154. Enquanto ela viver, a
-   migração de dev é sempre por `psql` (o `replit.md` já diz como). Conserto:
-   nomear a constraint no schema ou renomeá-la nos bancos.
-2. **S-A19 🟠** — o realuguel curto é barrado pela janela de PROVA, não pela
+1. **S-A19 🟠** — o realuguel curto é barrado pela janela de PROVA, não pela
    lavagem, e **a spec do E152 afirma o contrário, com teste pregando**. É a
-   única sobra que deixa uma AFIRMAÇÃO errada no repositório.
-3. **S-A15 🟠** — a sonda do snapshot não vê valor de enum. É pequena e fecha a
-   classe.
-4. **S-A2 🟡** — pedir à dona as fotos que faltam (o verso de 21–27/09 e as
+   única sobra que deixa uma AFIRMAÇÃO errada no repositório, e a única cujo
+   conserto tem decisão de produto no meio (o `POST /bloqueios` não aceita
+   `provaDataReal` — são duas saídas possíveis, e a escolha é da dona).
+2. **S-A22 🟠 + S-A15 🟠** — as duas da sonda do snapshot, vizinhas no mesmo
+   arquivo e num commit só: a escolha do arquivo por ordem de string (mente a
+   partir do `0010`, e estamos no `0007`) e os valores de enum que ela não
+   compara.
+3. **S-A2 🟡** — pedir à dona as fotos que faltam (o verso de 21–27/09 e as
    semanas de 28/09 a 11/10) antes que as 136 saídas virem número de negócio.
    É a única sobra que depende de outra pessoa, e por isso a que mais demora.
 
 ### O estado do banco de dev
 
-A migração do E156 **já foi aplicada** e a baseline do drizzle regenerada
-(`0006_grey_scream.sql`). Um banco que já existe precisa dos **oito** scripts em
-`docs/migracoes/2026-08-04-*.sql`.
+Em dia. A migração do E156 e o script da S-A20 **já foram aplicados**, e a
+baseline do drizzle está no `0007_right_giant_man.sql`. Um banco que já existe
+precisa dos **oito** scripts de `docs/migracoes/2026-08-04-*.sql` mais o
+`2026-08-05-sa20-*.sql`.
 
-**Não use `pnpm --filter @workspace/db run push`** enquanto a S-A20 viver: ele
-morre num prompt sem TTY por causa do nome da unique de `itens_estoque`. Aplique
-o DDL por `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/migracoes/…sql`; o
-`generate` não passa pelo banco e continua funcionando.
+**E o `push` voltou a funcionar** (S-A20): ele diz "Changes applied" sem prompt.
+O `psql` continua sendo o caminho de quem já tem banco — é o que os scripts de
+`docs/migracoes/` existem para fazer —, mas deixou de ser a única saída.
 
 ### Fora do git, de propósito
 
@@ -212,11 +212,16 @@ foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação 
 
 Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 
-**21 sobras, 4 fechadas.** As que pesam, em ordem: **S-A20 🟠** (o `push` do
-drizzle está travado em todo banco que rodou os scripts à mão), **S-A15 🟠** (a
-sonda do snapshot não vê valor de enum) e **S-A19 🟠** (o realuguel curto é
-barrado pela janela de PROVA, não pela lavagem — e a spec do E152 afirma o
-contrário). As 🔵 são de higiene e podem esperar.
+**22 sobras, 5 fechadas.** As que pesam, em ordem: **S-A19 🟠** (o realuguel
+curto é barrado pela janela de PROVA, não pela lavagem — e a spec do E152 afirma
+o contrário, com teste pregando), **S-A22 🟠** (a sonda do snapshot escolhe o
+arquivo por ordem de string, e mente a partir do `0010` — faltam três) e
+**S-A15 🟠** (a mesma sonda não vê valor de enum). As 🔵 são de higiene e podem
+esperar.
+
+**As duas 🟠 da sonda são vizinhas de arquivo, e valem um commit só**: a S-A22 é
+a linha 36 de `e115-migracao-snapshot-unit.test.ts` e a S-A15 é o que falta
+comparar no mesmo `it`.
 
 **Nenhuma suíte sai mais vermelha.** A S-A11 e a S-A21 fecharam na sessão 5, e
 as duas eram a mesma doença: teste reprovando por defeito da FIXTURE, sobre
@@ -242,6 +247,7 @@ código certo. Viraram as regras 18 e 19 do método.
 | S-A17 | **A fila da costureira não tem tela própria por trabalho.** O E155 põe confecção e ajuste na mesma lista e o item do orçamento aponta o trabalho, mas o link do item leva à FILA (`/ajustes?recorte=todos`), não ao trabalho — não existe rota `/ajustes/:id`. Numa loja com fila longa, "na fila da costureira" obriga a procurar a olho. Enquanto a confecção era inexistente isso não pesava; agora que ela tem custo e é cobrada, pesa. | 🔵 | execução E155 |
 | S-A18 | **A ausência não olha o que já está marcado.** Registrar férias por cima de uma agenda cheia é aceito em silêncio: o E151 decidiu (com a spec) que ela só impede o NOVO, mas quem cadastra não fica sabendo que há atendimentos naquele intervalo. Um aviso na hora de marcar — *"há 4 atendimentos nesse período; eles não serão alterados"* — fecharia o buraco entre a decisão certa e a pessoa que precisa agir sobre ela. Remarcação em lote segue sendo decisão de produto; **contar e avisar não é**. | 🟡 | execução E151 |
 | S-A19 | **O realuguel curto é barrado pela janela de PROVA da segunda noiva, não pela lavagem.** Medido no E152: com casamento em D e regra padrão, a segunda reserva em D+7 traz `PROVA [D−6, D+4]`, que sobrepõe o `USO [D−3, D+2]` da primeira — e PROVA × FÍSICA é conflito. O `POST /bloqueios` **não aceita `provaDataReal`**, então não há como criar a segunda reserva já com a prova num dia só, que é justamente o caso do realuguel (a noiva escolheu peça que já conhece). Duas saídas possíveis, e a escolha é de produto. **A spec do E152 afirma que aquele épico torna o caso Adelita registrável; ele NÃO torna** — há teste pregando isso. | 🟠 | execução E152 |
-| S-A20 | **O `drizzle-kit push` está travado neste banco desde o E154**, e não por falta de TTY. O script à mão batizou a unique de `itens_estoque_loja_nome_tamanho_unq` (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`); o drizzle gera o nome sozinho e procura `itens_estoque_loja_id_nome_tamanho_unique`. Não acha, tenta CRIAR a duplicata e pergunta se pode **truncar `itens_estoque`** — sem TTY, morre. O caminho que o `replit.md` documenta ("aplique o DDL por psql e rode o push depois") deixou de existir para **todo banco que rodou os scripts à mão**, que é todo banco que já existia. Conserto: nomear a constraint no schema (`unique("itens_estoque_loja_nome_tamanho_unq")`) OU renomeá-la nos bancos. | 🟠 | execução E156 |
+| ~~S-A20~~ | **FECHADA em `7c3c794`, e era MAIOR do que esta linha dizia.** A divergência entre `docs/migracoes/` e o schema drizzle era em **quatro** pontos, e só um gritava. Os outros três eram índices criados pelos scripts e nunca declarados no schema — `itens_estoque_loja_idx` (E154), `avarias_parcela_id_idx` e `atendimentos_loja_contato_idx` (E97) —, que existiam em todo banco antigo e em **nenhum banco novo**: ninguém tropeça num índice que falta, só fica mais lento, e num banco que ainda é pequeno. O conserto foi do lado do SCHEMA (declarar os três, e nomear a unique como o script a nomeou), porque **nenhum banco consumiu o `migrate`** e assim o conserto custa zero DDL em banco real; vai junto o script para quem nasceu de `push` antes disto. E a classe fecha por **varredura**: `e115-migracao-snapshot-unit.test.ts` reprova nome de constraint ou índice criado em `docs/migracoes/` que o snapshot não conheça. O diagnóstico original: | ✅ | execução E156 |
+| S-A22 | **A sonda do snapshot escolhe o arquivo por ordem de STRING**, não numérica: `e115-migracao-snapshot-unit.test.ts:36` faz `.sort()` sobre `NNNN_snapshot.json` e pega `.at(-1)`. Funciona até o `0009`; no `0010` a comparação lexicográfica põe `"0010"` antes de `"0006"`, e a sonda passa a conferir o schema contra um snapshot **velho** — calada, exatamente o modo de falhar que ela existe para impedir (o 0000 seis migrações atrás, com a noiva levando 500 no portal). Hoje estamos no `0007`: faltam três. Conserto: `sort((a,b) => Number(a.split("_")[0]) - Number(b.split("_")[0]))`, que a varredura da S-A20 já usa no mesmo arquivo, logo abaixo — a linha certa está a vinte linhas da errada. | 🟠 | execução S-A20 | O script à mão batizou a unique de `itens_estoque_loja_nome_tamanho_unq` (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`); o drizzle gera o nome sozinho e procura `itens_estoque_loja_id_nome_tamanho_unique`. Não acha, tenta CRIAR a duplicata e pergunta se pode **truncar `itens_estoque`** — sem TTY, morre. O caminho que o `replit.md` documenta ("aplique o DDL por psql e rode o push depois") deixou de existir para **todo banco que rodou os scripts à mão**, que é todo banco que já existia. Conserto: nomear a constraint no schema (`unique("itens_estoque_loja_nome_tamanho_unq")`) OU renomeá-la nos bancos. | 🟠 | execução E156 |
 | ~~S-A21~~ | ~~**`projecao-comissao-api.test.ts:106` reprova, e o código está certo.**~~ **FECHADA em `b22311c`** — a fixture passou a escrever os degraus em reais (`5_000`), e a API voltou a **990 passed, zero vermelho, zero skipped**. O diagnóstico original: A fixture insere `minAcumulado: 500_000` em `comissao_faixas`, coluna `decimal(10,2)` em **reais** que vira centavos no `paraCalc` (`routes/comissao.ts:91`): a segunda faixa do teste começa em **R$ 500.000,00**, não em R$ 5.000,00. Medido: 3.000 vendidos no dia 1, hoje dia 5 de 31 ⇒ `baseProjetada` **R$ 18.600,00**, `percentualProjetado` **3%**, `valorTotalProjetado` **R$ 558,00**; o teste espera 6% porque compara `baseProjetada >= 5000`. Família da crítica 3 do MÉTODO (reais × centavos são dois `number`) e do E94 (assert errado sobre código certo). **Estava `skipped` até ontem** (`MIN_DIAS_PROJECAO = 5`) e reprovou na primeira vez que rodou — enquanto viver, `pnpm --filter api-server test` sai vermelho, como a S-A11 no E2E. Conserto: `500_000` → `5_000` nos dois lugares da fixture. | ✅ | execução E156 |
 | ~~S-A5~~ | ~~**O `CLAUDE.md` segue apontando para o rastreador da rodada 6**~~ — **FECHADA no fim da sessão 4**: o ponteiro passou a apontar para esta trilha, e ganhou a tabela das três (arqueologia em curso; rodadas 6 e 7 fechadas, com as sobras delas ainda valendo). Era também a S-D28 da rodada 7. | ✅ | montagem da trilha |
