@@ -149,6 +149,19 @@ export default function NovoAtendimento() {
   // cabines é gateada por `agenda` também — era `config`, que o servidor não
   // conhece e por isso negava para todo mundo.
   const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
+  /**
+   * S36 — reservar a peça é do módulo `vestidos`, não do `agenda`.
+   *
+   * O botão "Criar reserva" desta tela chama `POST /lojas/:lojaId/bloqueios`,
+   * que o servidor guarda por `requireModulo("vestidos")` — e o POST vira ação
+   * `criar`. Ele estava dentro do bloco de `agenda.criar` e mais nada.
+   *
+   * **A RECEPÇÃO tropeçava nisso**, e é perfil PADRÃO: `agenda: TUDO` e
+   * `vestidos: SO_VER`. Ela via o botão, clicava, e levava 403 — o defeito
+   * exato do E111 (a tela pedindo um módulo e o servidor outro), vivo em outra
+   * tela e achado pela varredura da S36.
+   */
+  const podeReservarPeca = podeNoModulo(acessosModulos, "vestidos", "criar");
   const podeVerConfig = podeNoModulo(acessosModulos, "agenda", "ver");
 
   const form = useForm<AgendarValues>({
@@ -531,10 +544,17 @@ export default function NovoAtendimento() {
                           <p className="text-sm text-muted-foreground">Carregando reservas…</p>
                         ) : reservasDaNoiva.length === 0 ? (
                           <div className="space-y-3 rounded-md border p-3">
+                            {/* S36: quem não reserva peça vê o RECADO, não o
+                                formulário — a recepção marca a prova e pede a
+                                reserva a quem cuida do acervo, em vez de clicar
+                                num botão que o servidor recusa. */}
                             <p className="text-sm text-muted-foreground">
-                              Esta noiva ainda não tem reserva de casamento — crie agora,
-                              sem sair daqui.
+                              {podeReservarPeca
+                                ? "Esta noiva ainda não tem reserva de casamento — crie agora, sem sair daqui."
+                                : "Esta noiva ainda não tem reserva de casamento. Quem cuida do acervo pode criar uma."}
                             </p>
+                            {podeReservarPeca && (
+                              <>
                             <Select
                               value={novaReservaVestidoId}
                               onValueChange={setNovaReservaVestidoId}
@@ -579,6 +599,8 @@ export default function NovoAtendimento() {
                                 {createBloqueio.isPending ? "Reservando…" : "Criar reserva"}
                               </Button>
                             </div>
+                              </>
+                            )}
                           </div>
                         ) : (
                           <Select value={field.value ?? ""} onValueChange={field.onChange}>
