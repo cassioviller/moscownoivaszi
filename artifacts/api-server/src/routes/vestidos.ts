@@ -9,6 +9,8 @@ import {
   contratosTable,
   contratoItensTable,
   itensEstoqueTable,
+  orcamentoItensTable,
+  avariasTable,
 } from "@workspace/db";
 import { eq, and, gte, lt, isNull, isNotNull, inArray, count, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
@@ -507,9 +509,69 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
   res.json(UpdateVestidoResponse.parse(comFotosMeta(vestido)));
 });
 
+/**
+ * S-A25 — apagar peça do acervo era cinco linhas sem guarda nenhuma, e a
+ * cascata do banco é mais funda do que parece ao ler esta rota.
+ *
+ * `bloqueio_vestidos.vestido_id` é CASCADE, e dele descem outras três: os
+ * `atendimentos` (a prova marcada da noiva), as `avarias` (o reparo COBRADO) e
+ * os `contrato_bloqueios`. Um DELETE aqui levava a reserva, a prova e a
+ * cobrança junto, em silêncio e com 204. Medido no banco de dev: 334 peças têm
+ * bloqueio, com 14 atendimentos e 124 avarias pendurados neles — **R$
+ * 43.400,00 em reparos que sumiriam com as peças**. E `contrato_itens` /
+ * `orcamento_itens` são `set null` (S-A14): a peça vendida vira descrição
+ * livre, e a guarda do E150 deixa de valer para aquele contrato.
+ *
+ * A régua é a mesma que o E91 fixou para gente e que a migração da S-A13
+ * respeitou para o acervo: **o que tem história não se apaga**. O 409 sai antes
+ * de o banco decidir por nós — e diz QUEM depende, no molde do `PERFIL_EM_USO`
+ * do `admin.ts`, porque "há registros dependendo deste" não dá próximo passo a
+ * ninguém.
+ */
 router.delete("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void> => {
   const { lojaId, vestidoId } = req.params;
-  await db.delete(vestidosTable).where(and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)));
+
+  const [alvo] = await db.select({ id: vestidosTable.id }).from(vestidosTable)
+    .where(and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)));
+  if (!alvo) {
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Esta peça não existe nesta loja." });
+    return;
+  }
+
+  const [[emContrato], [emOrcamento], [bloqueios], [provas], [avarias]] = await Promise.all([
+    db.select({ n: count() }).from(contratoItensTable)
+      .where(eq(contratoItensTable.vestidoId, alvo.id)),
+    db.select({ n: count() }).from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.vestidoId, alvo.id)),
+    db.select({ n: count() }).from(bloqueioVestidosTable)
+      .where(eq(bloqueioVestidosTable.vestidoId, alvo.id)),
+    // Prova e avaria descem do bloqueio, não do vestido — quem lê a rota não
+    // vê que elas estão em jogo, e são as duas que doem.
+    db.select({ n: count() }).from(atendimentosTable)
+      .innerJoin(bloqueioVestidosTable, eq(atendimentosTable.bloqueioId, bloqueioVestidosTable.id))
+      .where(eq(bloqueioVestidosTable.vestidoId, alvo.id)),
+    db.select({ n: count() }).from(avariasTable)
+      .innerJoin(bloqueioVestidosTable, eq(avariasTable.bloqueioId, bloqueioVestidosTable.id))
+      .where(eq(bloqueioVestidosTable.vestidoId, alvo.id)),
+  ]);
+
+  const historia = [
+    emContrato!.n > 0 ? `${emContrato!.n} item(ns) de contrato` : null,
+    emOrcamento!.n > 0 ? `${emOrcamento!.n} item(ns) de orçamento` : null,
+    bloqueios!.n > 0 ? `${bloqueios!.n} reserva(s)` : null,
+    provas!.n > 0 ? `${provas!.n} atendimento(s)` : null,
+    avarias!.n > 0 ? `${avarias!.n} avaria(s)` : null,
+  ].filter(Boolean);
+
+  if (historia.length > 0) {
+    res.status(409).json({
+      error: "VESTIDO_COM_HISTORIA",
+      detalhe: `Esta peça tem ${historia.join(", ")} e não pode ser apagada — apagá-la levaria essa história junto. Marque-a como indisponível se ela saiu do acervo.`,
+    });
+    return;
+  }
+
+  await db.delete(vestidosTable).where(and(eq(vestidosTable.id, alvo.id), eq(vestidosTable.lojaId, lojaId as string)));
   res.status(204).send();
 });
 
