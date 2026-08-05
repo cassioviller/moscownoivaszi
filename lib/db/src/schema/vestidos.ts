@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp, integer, decimal, primaryKey, customType, unique, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, integer, decimal, primaryKey, customType, unique, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -157,7 +157,30 @@ export const itensEstoqueTable = pgTable("itens_estoque", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
-  unq: unique().on(t.lojaId, t.nome, t.tamanho),
+  /**
+   * S-A20 — o nome é EXPLÍCITO, e é o que os bancos de verdade têm.
+   *
+   * O script do E154 (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`)
+   * batizou a constraint de `itens_estoque_loja_nome_tamanho_unq`; sem nome
+   * aqui, o drizzle gera `itens_estoque_loja_id_nome_tamanho_unique`, não
+   * encontra a dele, tenta CRIAR a duplicata e pergunta se pode truncar a
+   * tabela — prompt, sem TTY, `push` morto. Ficou assim de 2026-08-04 a
+   * 2026-08-05, e o caminho documentado no `replit.md` deixou de existir para
+   * todo banco provisionado pelos scripts, que é todo banco que já existia.
+   *
+   * A direção do conserto é esta e não a inversa porque **nenhum banco consumiu
+   * o `migrate`** (`__drizzle_migrations` não existe — conferido no E115 e de
+   * novo aqui): adotar o nome do script custa zero DDL em banco real; renomear
+   * nos bancos custaria um script em cada um, para ganhar só consistência de
+   * nomenclatura.
+   */
+  unq: unique("itens_estoque_loja_nome_tamanho_unq").on(t.lojaId, t.nome, t.tamanho),
+  /**
+   * S-A20 — o índice existia nos bancos e não no schema: o script do E154 o
+   * criou, o drizzle nunca soube dele, e todo banco novo nascia SEM ele. Toda
+   * query de estoque abre por `loja_id`.
+   */
+  lojaIdx: index("itens_estoque_loja_idx").on(t.lojaId),
 }));
 
 export const insertItemEstoqueSchema = createInsertSchema(itensEstoqueTable).omit({ createdAt: true, updatedAt: true });

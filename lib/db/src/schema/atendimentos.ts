@@ -129,6 +129,13 @@ export const atendimentosTable = pgTable("atendimentos", {
 }, (t) => ({
   cabineUnq: unique().on(t.cabineId, t.inicio),
   vendedoraUnq: unique().on(t.lojaId, t.vendedoraId, t.inicio),
+  /**
+   * S-A20 — existia nos bancos e não aqui. O script do E97
+   * (`docs/migracoes/2026-07-27-e97-contato-e-confirmacao.sql:89`) o criou para
+   * a fila do dia — *"quem falta contatar hoje"*, por loja —, o schema nunca o
+   * declarou, e todo banco nascido de `push` ou `migrate` ficou sem ele.
+   */
+  lojaContatoIdx: index("atendimentos_loja_contato_idx").on(t.lojaId, t.contatadoEm),
 }));
 
 export const insertAtendimentoSchema = createInsertSchema(atendimentosTable).omit({ createdAt: true, updatedAt: true });

@@ -384,16 +384,21 @@ rode o codegen.
   confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
   `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
   existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
-- **`drizzle-kit push` está TRAVADO neste banco de dev desde o E154**, e não por
-  falta de TTY: o script `docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`
-  batizou a unique de `itens_estoque_loja_nome_tamanho_unq`, e o drizzle, que
-  gera o nome sozinho, procura `itens_estoque_loja_id_nome_tamanho_unique`. Ele
-  não a encontra, tenta CRIAR uma duplicata e pergunta se pode truncar a tabela —
-  prompt, sem TTY, morte. **Enquanto a S-A21 não fechar, aplique o DDL por
-  `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/migracoes/…sql` e pule o
-  push**; o `generate` não passa pelo banco e continua funcionando. Um banco
-  NOVO nasce certo pelos dois caminhos — o conflito é só de quem rodou os
-  scripts à mão, que é todo banco que já existia.
+- **O que os scripts de `docs/migracoes/` criam tem de existir no schema
+  drizzle, com o MESMO NOME** (S-A20). O drizzle nunca lê aqueles scripts: são
+  duas descrições do mesmo banco, e quando divergem, um banco novo e um banco
+  antigo deixam de ser o mesmo banco. Divergiram em quatro pontos, e só um
+  gritou — o E154 batizou a unique de `itens_estoque_loja_nome_tamanho_unq` e o
+  drizzle gera `itens_estoque_loja_id_nome_tamanho_unique`, então o `push`
+  tentava criar a duplicata e morria num prompt sem TTY. Os outros três eram
+  índices (`itens_estoque_loja_idx`, `avarias_parcela_id_idx`,
+  `atendimentos_loja_contato_idx`) que existiam nos bancos antigos e em nenhum
+  banco novo: ninguém tropeça num índice que falta. **A varredura de
+  `e115-migracao-snapshot-unit.test.ts` agora reprova nome novo que o snapshot
+  não conheça** — e a pergunta, quando ela reprovar, é qual das duas pontas está
+  certa, nunca como calá-la. Nome divergente conserta-se do lado do SCHEMA
+  enquanto nenhum banco consumir o `migrate` (`__drizzle_migrations` não existe),
+  porque assim o conserto custa zero DDL em banco de verdade.
 - **`drizzle-kit generate` tem o MESMO defeito sem-TTY** (E115): com snapshot
   anterior ele pergunta "criada ou renomeada?" e morre sem terminal. O segundo
   defeito — `out` ABSOLUTO no `drizzle.config.ts`, que o kit relia como
