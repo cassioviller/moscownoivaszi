@@ -54,11 +54,11 @@ export function isoParaDia(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-/** Só os dígitos do WhatsApp, para montar o link wa.me. Vazio → null. */
-export function whatsappDigits(whatsapp: string | null | undefined): string | null {
-  const digits = (whatsapp ?? "").replace(/\D/g, "");
-  return digits.length > 0 ? digits : null;
-}
+// S37: `whatsappDigits` morava aqui e era a TERCEIRA régua de telefone do
+// sistema — devolvia qualquer quantidade de dígitos, sem DDI e sem faixa, e a
+// ficha da noiva montava `wa.me/` com ela. Quem monta deep-link é
+// `lib/whatsapp.ts`, e agora é só ele: a varredura de `whatsapp-uma-regua`
+// reprova qualquer arquivo que volte a escrever `https://wa.me/` fora de lá.
 
 // O gate de permissão vive em `@/lib/permissoes` — `podeNoModulo(acessos,
 // modulo, acao)`. `podeLeads` e a cópia local de `moduloLiberado` saíram daqui:

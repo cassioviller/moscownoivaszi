@@ -468,14 +468,31 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // E120/S-D4 — a venda trocou de dona em relação ao orçamento. Os nomes são
   // lidos antes da transação (leitura pura) para a linha da trilha dizer
   // quem→quem sem garimpo de id; a ESCRITA do rastro fica dentro dela.
-  const vendedoraDivergente =
-    vendedoraDoOrcamentoId !== null && vendedoraDoOrcamentoId !== contratoData.vendedoraId;
+  /**
+   * S-D29 — o rastro do E120 tinha porta dos fundos, e ela era a porta larga.
+   *
+   * `vendedoraDoOrcamentoId` só é lido dentro do `if (contratoData.orcamentoId)`
+   * lá em cima, e `orcamentoId` NÃO é obrigatório no `ContratoInput`. Resultado:
+   * contrato SEM orçamento atribuía a venda — e a comissão que ela soma por
+   * `contratos.vendedora_id` — a qualquer colega da loja com zero linhas de
+   * trilha. O E120 fechou a porta da frente e a S-D4 foi registrada como se
+   * fechasse as duas.
+   *
+   * A referência é a melhor que existir: quando há orçamento, quem o MONTOU
+   * (é a dona anterior da venda, e continua sendo a comparação mais forte);
+   * sem orçamento, quem está CRIANDO o contrato, que é a única outra pessoa
+   * que o sistema sabe ligar a este ato. Nos dois casos a pergunta é a mesma —
+   * a venda está sendo posta no nome de outra pessoa?
+   */
+  const referenciaVendedoraId = vendedoraDoOrcamentoId ?? req.usuario!.id;
+  const referenciaOrigem = vendedoraDoOrcamentoId ? "ORCAMENTO" : "SESSAO";
+  const vendedoraDivergente = referenciaVendedoraId !== contratoData.vendedoraId;
   let nomesDivergencia: Record<string, string> = {};
   if (vendedoraDivergente) {
     const pessoas = await db
       .select({ id: usuariosTable.id, nome: usuariosTable.nome })
       .from(usuariosTable)
-      .where(inArray(usuariosTable.id, [vendedoraDoOrcamentoId!, contratoData.vendedoraId]));
+      .where(inArray(usuariosTable.id, [referenciaVendedoraId, contratoData.vendedoraId]));
     nomesDivergencia = Object.fromEntries(pessoas.map((p) => [p.id, p.nome]));
   }
 
@@ -566,11 +583,18 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         entidade: "contrato",
         entidadeId: contrato.id,
         detalhe: {
-          orcamentoId: contratoData.orcamentoId,
-          vendedoraDoOrcamentoId,
+          orcamentoId: contratoData.orcamentoId ?? null,
+          // S-D29: a linha diz CONTRA O QUE se comparou. Sem isso, quem lê a
+          // trilha não sabe se "de Ana para Bia" quer dizer que Ana montou o
+          // orçamento ou que Ana registrou o contrato — são atos diferentes.
+          referenciaOrigem,
+          vendedoraDaReferenciaId: referenciaVendedoraId,
           vendedoraDoContratoId: contratoData.vendedoraId,
           valorTotal: contratoData.valorTotal,
-          descricao: `Orçamento de ${nomesDivergencia[vendedoraDoOrcamentoId!] ?? vendedoraDoOrcamentoId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`,
+          descricao:
+            referenciaOrigem === "ORCAMENTO"
+              ? `Orçamento de ${nomesDivergencia[referenciaVendedoraId] ?? referenciaVendedoraId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`
+              : `Registrado por ${nomesDivergencia[referenciaVendedoraId] ?? referenciaVendedoraId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`,
         },
       });
     }

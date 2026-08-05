@@ -13,24 +13,37 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **O rastreador da trilha em curso** — hoje
-   `docs/revisao/2026-07-25-rodada-6/EXECUCAO.md`. Ele traz o estado de cada
-   épico, o diário das sessões e a tabela de **Sobras**. A seção "Como retomar"
-   é o roteiro.
+2. **O registro da sessão em curso** — hoje
+   `docs/revisao/2026-08-05-sessao-sobras-de-higiene.md`. A seção "Como retomar"
+   é o roteiro, e ela manda ler primeiro
+   **`docs/revisao/2026-08-05-conferencia-de-sobras.md`**, que traz o veredito
+   de cada uma das 48 sobras conferidas — quais estavam mortas, quais
+   descreviam errado o próprio defeito, e o número de hoje de cada uma.
 
-   **São três trilhas, e as três estão vivas** — o ponteiro é UM porque o
-   trabalho de hoje é um só, mas as sobras das outras duas continuam valendo:
+   **O trabalho em curso não é de uma trilha: é o BACKLOG DE SOBRAS das três.**
+   Os épicos das três estão fechados; o que resta são as tabelas de Sobras, e
+   elas continuam sendo a fonte da verdade de cada rastreador:
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 28 abertas, e **9 delas 🟠**. É o backlog mais pesado e o mais antigo do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 28 sobras abertas, **nenhuma 🟠 nem 🔴** |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, e **nenhuma sobra 🟠** |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 18 sobras abertas (10 🟡 · 8 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 17 sobras abertas (6 🟡 · 11 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (8 🟡 · 5 🔵) |
+
+   **São 48 sobras abertas e nenhuma 🟠**, o que é diferente de antes: a
+   **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
+   passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
+   quatro rodadas de revisão não tinham achado — os três na fronteira entre dois
+   arquivos, que é o que a regra 22 diz não se pegar lendo nenhum dos dois. **As
+   três fecharam no mesmo dia:** S37 (`85d5108`), S-D29 (`042d1b5`) e S-A25
+   (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
+   é que agora é verdade.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes (API 997 · frontend 451 · E2E 156). O `main`
-   está **174 commits à frente do `origin/main`** e não foi publicado — quem for
-   publicar decide isso com a dona do repositório.
+   fundiu com as três suítes verdes. Hoje a régua é **API 1031 · frontend 473 ·
+   E2E 156 · typecheck verde**. O `main` está **250 commits à frente do
+   `origin/main`** e não foi publicado — quem for publicar decide isso com a dona
+   do repositório.
 
 Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
 mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando

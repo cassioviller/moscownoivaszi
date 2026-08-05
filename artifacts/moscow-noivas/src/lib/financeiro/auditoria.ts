@@ -49,7 +49,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   AVARIA_REMOVIDA: "Avaria removida",
   // E120: a venda que trocou de dona entre o orçamento e o contrato — é ela
   // que decide de quem é a comissão, por isso a linha existe e é filtrável.
-  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
+  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
   // E123: o desfazer da cobrança registrada por engano — depois do DELETE a
   // trilha é o único lugar que lembra o que o registro dizia.
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
