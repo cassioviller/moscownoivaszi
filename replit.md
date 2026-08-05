@@ -286,7 +286,13 @@ rode o codegen.
   ela chegou — em **Reserva → Movimentação**, depois da devolução. Encurtar a
   janela só REDUZ ocupação, nunca cria conflito, e a peça não volta da
   lavanderia sem ter voltado da noiva (400 `LAVAGEM_SEM_DEVOLUCAO` nos dois
-  sentidos).
+  sentidos). **O que ele NÃO resolve, e é decisão da dona, não limitação a
+  consertar** (P6, 2026-08-05): a mesma peça alugada de novo em **7 dias** segue
+  recusada, e não pela lavagem — é a janela de PROVA de 11 dias da segunda noiva
+  que invade o USO da primeira (medido: `PROVA[02-24..03-06]` × `USO[02-28..
+  03-05]`). O ateliê trata o caso como exceção fora do sistema; o caderno o
+  mostra uma vez em 14 semanas. E **toda reserva guarda ao menos um dia de
+  prova** (P7): nem no realuguel se dispensa conferir a peça antes de ela sair.
 - **A ausência da equipe (E151)** — `ausencias` (loja, pessoa, `inicio`/`fim`
   em DIAS locais **inclusivos**, motivo) é o primeiro fato de indisponibilidade
   de GENTE que o sistema guarda. A recusa mora na mesma régua que já recusa dia

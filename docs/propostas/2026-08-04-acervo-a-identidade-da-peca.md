@@ -384,10 +384,30 @@ Na tela da reserva (`pages/reservas/[bloqueioId].tsx`), um campo ao lado de
 retirada e devolução: **"voltou da lavanderia em"**.
 
 **O que isto resolve, em português:** a dona sabe que a peça voltou na
-quarta-feira; hoje ela fica presa até domingo. E o caso *Adelita* do papel —
-uma peça alugada de novo em 7 dias — passa a ser **registrável**: a dona marca
-que a lavagem terminou (ou que não houve), e a segunda locação entra. Hoje o
-sistema recusa e não oferece caminho nenhum.
+quarta-feira; hoje ela fica presa até domingo. Para uma segunda locação em
+`fimUso+20`, registrar a volta em `fimUso+2` muda a resposta de **409 para
+201** — cinco dias de mercado devolvidos, que é o tamanho exato do
+encurtamento.
+
+> **CORREÇÃO (S-A19, 2026-08-05).** Esta seção afirmava que o E152 tornava o
+> caso *Adelita* — a mesma peça alugada de novo em **7 dias** — registrável.
+> **Ele não torna, e o teste do épico prega o contrário**
+> (`e152-lavagem-real-api.test.ts:125`). Medido na régua, com casamento em
+> 03/03, devolução em 05/03 e a volta da lavanderia registrada no mesmo dia
+> (ou seja, sem janela de lavagem nenhuma para culpar):
+>
+> ```
+> 1ª peça      : PROVA[02-17..02-27]P  USO[02-28..03-05]F   (sem LAVAGEM)
+> 2ª em 10/03  : PROVA[02-24..03-06]P  USO[03-07..03-12]F   → 1 conflito
+> ```
+>
+> O que barra é a **janela de PROVA de 11 dias da segunda noiva**, que invade o
+> USO da primeira — e PROVA × FÍSICA é conflito. A lavagem era o alvo certo do
+> A1 e foi resolvida; **o realuguel curto é outro problema**, e está aberto como
+> **S-A19**. Medido também o caminho de saída: com a prova da segunda noiva
+> num dia só (`provaDataReal` em 06/03), os conflitos vão a **zero** — mas o
+> `POST /bloqueios` não aceita esse campo na criação, só o `PATCH`, e a reserva
+> nem chega a existir para ser corrigida.
 
 **O que isto NÃO é:** um jeito de furar a régua. A janela só encurta com
 alguém afirmando um fato — a peça voltou —, e fica gravado quem afirmou e
