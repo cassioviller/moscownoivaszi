@@ -14,21 +14,25 @@ para o documento que manda.
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
 2. **O rastreador da trilha em curso** — hoje
-   `docs/revisao/2026-08-04-arqueologia-legado/EXECUCAO.md`. Ele traz o estado
-   de cada épico, o diário das sessões e a tabela de **Sobras**. A seção "Como
-   retomar" é o roteiro, e a de "Onde paramos" diz o que a última sessão deixou
-   na mesa.
+   `docs/revisao/2026-07-25-rodada-6/EXECUCAO.md`. Ele traz o estado de cada
+   épico, o diário das sessões e a tabela de **Sobras**. A seção "Como retomar"
+   é o roteiro.
 
    **São três trilhas, e as três estão vivas** — o ponteiro é UM porque o
    trabalho de hoje é um só, mas as sobras das outras duas continuam valendo:
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | **em curso** — 10 épicos fechados, **nenhum aberto**; o trabalho de hoje sai da tabela de Sobras |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada, com sobras `S-D*` |
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada, com sobras |
+   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 28 abertas, e **9 delas 🟠**. É o backlog mais pesado e o mais antigo do repositório |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 28 sobras abertas, **nenhuma 🟠 nem 🔴** |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, e **nenhuma sobra 🟠** |
 
-Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 desta trilha que
+   **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
+   fundiu com as três suítes verdes (API 997 · frontend 451 · E2E 156). O `main`
+   está **174 commits à frente do `origin/main`** e não foi publicado — quem for
+   publicar decide isso com a dona do repositório.
+
+Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
 mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando
 para a anterior, e quem abrisse a sessão leria o estado errado como se fosse o
 de hoje.
