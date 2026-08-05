@@ -208,13 +208,13 @@ foto: `CHLOE → se sabe que tá 15 dias` (21–27/09, item 10). Se a locação 
 
 Regra 12 do método: a sobra entra aqui no MESMO commit que a viu.
 
-**21 sobras, 1 fechada.** As que pesam, em ordem: **S-A21 🟠** e **S-A11 🟠** (as
-duas suítes saem vermelhas por defeito de TESTE, não de código — a régua 11
-perde o valor quando o vermelho é rotina), **S-A20 🟠** (o `push` do drizzle está
-travado em todo banco que rodou os scripts à mão), **S-A15 🟠** (a sonda do
-snapshot não vê valor de enum) e **S-A19 🟠** (o realuguel curto é barrado pela
-janela de PROVA, não pela lavagem — e a spec do E152 afirma o contrário). As 🔵
-são de higiene e podem esperar.
+**21 sobras, 2 fechadas.** As que pesam, em ordem: **S-A11 🟠** (os dois vermelhos
+do E2E — a irmã da S-A21, e a última suíte que ainda sai vermelha por defeito de
+TESTE; a régua 11 perde o valor quando o vermelho é rotina), **S-A20 🟠** (o
+`push` do drizzle está travado em todo banco que rodou os scripts à mão),
+**S-A15 🟠** (a sonda do snapshot não vê valor de enum) e **S-A19 🟠** (o realuguel
+curto é barrado pela janela de PROVA, não pela lavagem — e a spec do E152 afirma
+o contrário). As 🔵 são de higiene e podem esperar.
 
 | # | O quê | Peso | Origem |
 |---|---|---|---|
@@ -237,5 +237,5 @@ são de higiene e podem esperar.
 | S-A18 | **A ausência não olha o que já está marcado.** Registrar férias por cima de uma agenda cheia é aceito em silêncio: o E151 decidiu (com a spec) que ela só impede o NOVO, mas quem cadastra não fica sabendo que há atendimentos naquele intervalo. Um aviso na hora de marcar — *"há 4 atendimentos nesse período; eles não serão alterados"* — fecharia o buraco entre a decisão certa e a pessoa que precisa agir sobre ela. Remarcação em lote segue sendo decisão de produto; **contar e avisar não é**. | 🟡 | execução E151 |
 | S-A19 | **O realuguel curto é barrado pela janela de PROVA da segunda noiva, não pela lavagem.** Medido no E152: com casamento em D e regra padrão, a segunda reserva em D+7 traz `PROVA [D−6, D+4]`, que sobrepõe o `USO [D−3, D+2]` da primeira — e PROVA × FÍSICA é conflito. O `POST /bloqueios` **não aceita `provaDataReal`**, então não há como criar a segunda reserva já com a prova num dia só, que é justamente o caso do realuguel (a noiva escolheu peça que já conhece). Duas saídas possíveis, e a escolha é de produto. **A spec do E152 afirma que aquele épico torna o caso Adelita registrável; ele NÃO torna** — há teste pregando isso. | 🟠 | execução E152 |
 | S-A20 | **O `drizzle-kit push` está travado neste banco desde o E154**, e não por falta de TTY. O script à mão batizou a unique de `itens_estoque_loja_nome_tamanho_unq` (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`); o drizzle gera o nome sozinho e procura `itens_estoque_loja_id_nome_tamanho_unique`. Não acha, tenta CRIAR a duplicata e pergunta se pode **truncar `itens_estoque`** — sem TTY, morre. O caminho que o `replit.md` documenta ("aplique o DDL por psql e rode o push depois") deixou de existir para **todo banco que rodou os scripts à mão**, que é todo banco que já existia. Conserto: nomear a constraint no schema (`unique("itens_estoque_loja_nome_tamanho_unq")`) OU renomeá-la nos bancos. | 🟠 | execução E156 |
-| S-A21 | **`projecao-comissao-api.test.ts:106` reprova, e o código está certo.** A fixture insere `minAcumulado: 500_000` em `comissao_faixas`, coluna `decimal(10,2)` em **reais** que vira centavos no `paraCalc` (`routes/comissao.ts:91`): a segunda faixa do teste começa em **R$ 500.000,00**, não em R$ 5.000,00. Medido: 3.000 vendidos no dia 1, hoje dia 5 de 31 ⇒ `baseProjetada` **R$ 18.600,00**, `percentualProjetado` **3%**, `valorTotalProjetado` **R$ 558,00**; o teste espera 6% porque compara `baseProjetada >= 5000`. Família da crítica 3 do MÉTODO (reais × centavos são dois `number`) e do E94 (assert errado sobre código certo). **Estava `skipped` até ontem** (`MIN_DIAS_PROJECAO = 5`) e reprovou na primeira vez que rodou — enquanto viver, `pnpm --filter api-server test` sai vermelho, como a S-A11 no E2E. Conserto: `500_000` → `5_000` nos dois lugares da fixture. | 🟠 | execução E156 |
+| ~~S-A21~~ | ~~**`projecao-comissao-api.test.ts:106` reprova, e o código está certo.**~~ **FECHADA em `b22311c`** — a fixture passou a escrever os degraus em reais (`5_000`), e a API voltou a **990 passed, zero vermelho, zero skipped**. O diagnóstico original: A fixture insere `minAcumulado: 500_000` em `comissao_faixas`, coluna `decimal(10,2)` em **reais** que vira centavos no `paraCalc` (`routes/comissao.ts:91`): a segunda faixa do teste começa em **R$ 500.000,00**, não em R$ 5.000,00. Medido: 3.000 vendidos no dia 1, hoje dia 5 de 31 ⇒ `baseProjetada` **R$ 18.600,00**, `percentualProjetado` **3%**, `valorTotalProjetado` **R$ 558,00**; o teste espera 6% porque compara `baseProjetada >= 5000`. Família da crítica 3 do MÉTODO (reais × centavos são dois `number`) e do E94 (assert errado sobre código certo). **Estava `skipped` até ontem** (`MIN_DIAS_PROJECAO = 5`) e reprovou na primeira vez que rodou — enquanto viver, `pnpm --filter api-server test` sai vermelho, como a S-A11 no E2E. Conserto: `500_000` → `5_000` nos dois lugares da fixture. | ✅ | execução E156 |
 | ~~S-A5~~ | ~~**O `CLAUDE.md` segue apontando para o rastreador da rodada 6**~~ — **FECHADA no fim da sessão 4**: o ponteiro passou a apontar para esta trilha, e ganhou a tabela das três (arqueologia em curso; rodadas 6 e 7 fechadas, com as sobras delas ainda valendo). Era também a S-D28 da rodada 7. | ✅ | montagem da trilha |
