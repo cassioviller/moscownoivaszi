@@ -23,14 +23,18 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 28 abertas, e **9 delas 🟠**. É o backlog mais pesado e o mais antigo do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 28 sobras abertas, **nenhuma 🟠 nem 🔴** |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, e **nenhuma sobra 🟠** |
+   | Rodada 6 | `2026-07-25-rodada-6/` | **em curso pelas sobras** — 19 abertas (10 🟡 · 9 🔵). Era o backlog mais pesado do repositório: as oito 🟠 chegaram a zero em `d39c14d` |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 20 sobras abertas (9 🟡 · 11 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 12 sobras abertas (7 🟡 · 5 🔵) |
+
+   **Nenhuma 🟠 nem 🔴 em trilha nenhuma**, pela primeira vez desde que há três
+   trilhas. São 51 sobras abertas, todas 🟡 ou 🔵.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes (API 997 · frontend 451 · E2E 156). O `main`
-   está **174 commits à frente do `origin/main`** e não foi publicado — quem for
-   publicar decide isso com a dona do repositório.
+   fundiu com as três suítes verdes. Hoje a régua é **API 1026 · frontend 469 ·
+   E2E 156 · typecheck verde**. O `main` está **250 commits à frente do
+   `origin/main`** e não foi publicado — quem for publicar decide isso com a dona
+   do repositório.
 
 Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
 mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando
