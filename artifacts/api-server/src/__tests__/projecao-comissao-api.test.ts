@@ -34,6 +34,14 @@ describe("Projeção de comissão (E51)", () => {
 
     // Escada com dois degraus: é a troca de faixa entre o realizado e o
     // projetado que dá sentido ao épico.
+    //
+    // S-A21 — os degraus vão em REAIS. `comissao_faixas.min_acumulado` é
+    // `decimal(10,2)` e só vira centavos no `paraCalc` (`routes/comissao.ts:91`);
+    // escritos como 500_000 aqui, eles diziam **R$ 500.000,00**, e nenhuma
+    // projeção deste teste alcançava a segunda faixa: com 3.000 vendidos no dia
+    // 1 e a suíte rodando no dia 5 de 31, a base projetada é R$ 18.600,00 e o
+    // percentual saía 3% contra um `expect(6)`. O código estava certo — a
+    // fixture é que falava outra unidade, a mesma família da crítica 3 do MÉTODO.
     const regraId = randomUUID();
     await db.insert(comissaoRegrasTable).values({
       id: regraId,
@@ -43,8 +51,8 @@ describe("Projeção de comissão (E51)", () => {
       bonusAcumulaFaixas: false,
     });
     await db.insert(comissaoFaixasTable).values([
-      { id: randomUUID(), lojaId: f.lojaId, regraId, minAcumulado: 0, maxAcumulado: 500_000, percentual: 3, bonusFixo: null },
-      { id: randomUUID(), lojaId: f.lojaId, regraId, minAcumulado: 500_000, maxAcumulado: null, percentual: 6, bonusFixo: null },
+      { id: randomUUID(), lojaId: f.lojaId, regraId, minAcumulado: 0, maxAcumulado: 5_000, percentual: 3, bonusFixo: null },
+      { id: randomUUID(), lojaId: f.lojaId, regraId, minAcumulado: 5_000, maxAcumulado: null, percentual: 6, bonusFixo: null },
     ]);
 
     // Uma venda no PRIMEIRO dia da competência corrente: dentro do mês, com
