@@ -61,3 +61,9 @@ backups/
 
 # Capturas de tela das rodadas de revisão ficam fora do git (7,5 MB por rodada)
 docs/revisao/*/capturas/**/*.png
+
+# Material bruto de evidência na raiz — o zip das 29 fotos do caderno legado é
+# o ORIGINAL do que já está versionado em `docs/revisao/*/fotos/` (mesma soma de
+# bytes, conferida). Ele entrou por engano num `git add -A` (S37, `85d5108`) e
+# saiu em seguida: evidência versiona uma vez, na forma que se lê.
+/*.zip
