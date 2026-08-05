@@ -1,10 +1,45 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { getTableConfig } from "drizzle-orm/pg-core";
+import { getTableConfig, isPgEnum } from "drizzle-orm/pg-core";
 import { is } from "drizzle-orm";
 import { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@workspace/db";
+
+const metaDir = join(import.meta.dirname, "..", "..", "..", "..", "lib", "db", "migrations", "meta");
+const migracoesDir = join(import.meta.dirname, "..", "..", "..", "..", "docs", "migracoes");
+
+/**
+ * O snapshot mais recente — a pergunta "de qual arquivo esta sonda está
+ * falando", que as duas asserções abaixo dependem de acertar.
+ *
+ * **A S-A22 foi RETIRADA, e a correção fica aqui porque é o tipo de coisa que
+ * se erra duas vezes.** Eu a registrei afirmando que o `.sort()` de string
+ * mentiria no `0010` (`"0010" < "0006"`). **É falso**: o drizzle zera à esquerda
+ * em quatro dígitos, e com largura fixa a ordem de string É a ordem numérica —
+ * `"0010" > "0009"` porque a diferença cai na terceira casa. Medido nos dois
+ * sentidos com 12 nomes sintéticos: as duas ordenações devolvem o mesmo arquivo.
+ *
+ * A ordenação numérica fica, e não porque conserta algo: ela é a única que não
+ * depende da largura do zero à esquerda. Se o drizzle passar a numerar com cinco
+ * dígitos, ou alguém renomear um arquivo à mão, esta função continua certa e a
+ * de string deixaria de estar.
+ */
+export function ultimoSnapshot(nomes: readonly string[]): string | undefined {
+  return [...nomes]
+    .filter((f) => f.endsWith("_snapshot.json"))
+    .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))
+    .at(-1);
+}
+
+function tabelasDoSnapshot(): {
+  tables: Record<string, Record<string, unknown>>;
+  enums: Record<string, { values: string[] }>;
+} {
+  const arquivo = ultimoSnapshot(readdirSync(metaDir));
+  expect(arquivo).toBeTruthy();
+  return JSON.parse(readFileSync(join(metaDir, arquivo!), "utf8"));
+}
 
 /**
  * E115 — o snapshot das migrações não pode apodrecer em silêncio.
@@ -28,22 +63,14 @@ import * as schema from "@workspace/db";
  * `select remarcacao_pedida_em from atendimentos` → 42703.
  */
 describe("E115 — o snapshot do migrate acompanha o schema", () => {
-  const metaDir = join(import.meta.dirname, "..", "..", "..", "..", "lib", "db", "migrations", "meta");
-
   it("toda tabela e coluna do schema drizzle existe no último snapshot", () => {
-    const arquivos = readdirSync(metaDir)
-      .filter((f) => f.endsWith("_snapshot.json"))
-      .sort();
-    expect(arquivos.length).toBeGreaterThan(0);
-    const snapshot = JSON.parse(readFileSync(join(metaDir, arquivos.at(-1)!), "utf8")) as {
-      tables: Record<string, { columns: Record<string, unknown> }>;
-    };
+    const { tables } = tabelasDoSnapshot();
 
     const faltando: string[] = [];
     for (const exportado of Object.values(schema)) {
       if (!is(exportado, PgTable)) continue;
       const cfg = getTableConfig(exportado);
-      const tabela = snapshot.tables[`public.${cfg.name}`];
+      const tabela = tables[`public.${cfg.name}`] as { columns: Record<string, unknown> } | undefined;
       if (!tabela) {
         faltando.push(`tabela ${cfg.name}`);
         continue;
@@ -57,6 +84,71 @@ describe("E115 — o snapshot do migrate acompanha o schema", () => {
     // regenerável enquanto nenhum banco de verdade consumir o `migrate` — o
     // banco de dev usa `push` e não tem __drizzle_migrations).
     expect(faltando).toEqual([]);
+  });
+
+  /**
+   * S-A15 — a sonda via tabela e COLUNA, e não via VALOR DE ENUM.
+   *
+   * O `ACESSORIO` que o E150 acrescentou a `orcamento_item_tipo` ficou **um dia
+   * inteiro fora da baseline, com a suíte verde**, e só apareceu porque o E154
+   * mexeu numa coluna e forçou o `generate` — o `0001` gerado trouxe o
+   * `ALTER TYPE … 'ACESSORIO'` junto, de carona.
+   *
+   * O custo do buraco é discreto e tardio: um banco provisionado por `migrate`
+   * entre os dois épicos aceita o tipo novo **até o primeiro INSERT** — a coluna
+   * existe, o enum é que não tem o valor, e o 22P02 chega quando a vendedora
+   * salva o orçamento, não quando alguém roda a migração.
+   */
+  it("todo valor de enum do schema drizzle existe no último snapshot", () => {
+    const { enums } = tabelasDoSnapshot();
+
+    const faltando: string[] = [];
+    for (const exportado of Object.values(schema)) {
+      if (!isPgEnum(exportado)) continue;
+      const noSnapshot = enums[`public.${exportado.enumName}`];
+      if (!noSnapshot) {
+        faltando.push(`enum ${exportado.enumName}`);
+        continue;
+      }
+      for (const valor of exportado.enumValues) {
+        if (!noSnapshot.values.includes(valor)) faltando.push(`${exportado.enumName}.${valor}`);
+      }
+    }
+
+    // Mesmo conserto da irmã de cima: `drizzle-kit generate` em lib/db.
+    expect(faltando).toEqual([]);
+  });
+});
+
+/**
+ * De qual arquivo a sonda está falando — as duas asserções de cima só valem se
+ * lerem o snapshot MAIS NOVO, e nenhuma delas reprovaria se a escolha errasse:
+ * um snapshot velho tem MENOS coisas, não coisas erradas, então a comparação
+ * simplesmente não veria o que falta.
+ *
+ * Estes casos existem por isso, e não por causa da S-A22 (que foi retirada —
+ * ver a nota em `ultimoSnapshot`). O terceiro é o que mais importa: sem
+ * snapshot nenhum, é melhor `undefined` e um erro alto que escolher errado
+ * calado.
+ */
+describe("a sonda lê o snapshot mais novo", () => {
+  it("a numeração de dois dígitos não confunde a escolha", () => {
+    const nomes = Array.from({ length: 12 }, (_, i) => `${String(i).padStart(4, "0")}_snapshot.json`);
+    expect(ultimoSnapshot(nomes)).toBe("0011_snapshot.json");
+  });
+
+  it("larguras MISTAS, que é o caso em que a ordem de string erraria de verdade", () => {
+    expect(ultimoSnapshot(["0009_snapshot.json", "10_snapshot.json"])).toBe("10_snapshot.json");
+  });
+
+  it("ignora o que não é snapshot, e a ordem em que o disco devolve", () => {
+    expect(
+      ultimoSnapshot(["0002_snapshot.json", "_journal.json", "0010_snapshot.json", "0001_snapshot.json"]),
+    ).toBe("0010_snapshot.json");
+  });
+
+  it("sem snapshot nenhum, devolve undefined em vez de escolher errado", () => {
+    expect(ultimoSnapshot(["_journal.json"])).toBeUndefined();
   });
 });
 
@@ -84,28 +176,8 @@ describe("E115 — o snapshot do migrate acompanha o schema", () => {
  * VERMELHO ANTES: os quatro nomes acima, com o schema do `3cdaa83`.
  */
 describe("S-A20 — os scripts à mão e o schema falam os mesmos nomes", () => {
-  const metaDir = join(import.meta.dirname, "..", "..", "..", "..", "lib", "db", "migrations", "meta");
-  const migracoesDir = join(import.meta.dirname, "..", "..", "..", "..", "docs", "migracoes");
-
-  /**
-   * O último snapshot por ORDEM NUMÉRICA. A sonda de cima ordena como string, e
-   * isso passa a mentir no `0010` (`"0010" < "0006"`) — está anotado como
-   * S-A22; aqui já nasce certo.
-   */
-  function ultimoSnapshot(): Record<string, Record<string, unknown>> {
-    const arquivos = readdirSync(metaDir)
-      .filter((f) => f.endsWith("_snapshot.json"))
-      .sort((a, b) => Number(a.split("_")[0]) - Number(b.split("_")[0]));
-    expect(arquivos.length).toBeGreaterThan(0);
-    return (
-      JSON.parse(readFileSync(join(metaDir, arquivos.at(-1)!), "utf8")) as {
-        tables: Record<string, Record<string, unknown>>;
-      }
-    ).tables;
-  }
-
   it("todo nome de constraint ou índice criado em docs/migracoes existe no snapshot", () => {
-    const tabelas = ultimoSnapshot();
+    const { tables: tabelas } = tabelasDoSnapshot();
     const conhecidos = new Set<string>();
     for (const t of Object.values(tabelas)) {
       for (const grupo of [
