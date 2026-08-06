@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -179,7 +179,7 @@ export default function NovoAtendimento() {
   });
   // D14: aqui o `form.reset()` roda no sucesso, então `isDirty` volta a false
   // sozinho — não precisa do `salvou` que o `noiva-form` precisa.
-  useConfirmarSaida(form.formState.isDirty);
+  useConfirmarSaida(sujoParaConfirmar(form.formState));
   const tipo = form.watch("tipo");
   const leadId = form.watch("leadId");
   const cabineId = form.watch("cabineId");

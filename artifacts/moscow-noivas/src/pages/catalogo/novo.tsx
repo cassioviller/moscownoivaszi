@@ -6,7 +6,7 @@ import {
   getListAtributosQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -51,7 +51,7 @@ export default function NovoAtributo() {
 
   // E133/B7: fechar/recarregar com trabalho digitado avisa; cala após o
   // submit bem-sucedido (a tela navega sem reset).
-  useConfirmarSaida(form.formState.isDirty && !form.formState.isSubmitSuccessful);
+  useConfirmarSaida(sujoParaConfirmar(form.formState));
 
   const salvando = createAtributo.isPending || createOpcao.isPending;
 

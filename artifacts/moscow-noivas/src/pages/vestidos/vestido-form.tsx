@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Atributo, VestidoAtributo } from "@workspace/api-client-react";
@@ -100,9 +100,7 @@ export function VestidoForm({
   const selecoesMudaram =
     JSON.stringify(Object.entries(selecoes).sort()) !==
     JSON.stringify(Object.entries(selecoesIniciais ?? {}).sort());
-  useConfirmarSaida(
-    (form.formState.isDirty || selecoesMudaram) && !form.formState.isSubmitSuccessful,
-  );
+  useConfirmarSaida(sujoParaConfirmar(form.formState, selecoesMudaram));
 
   async function handleSubmit(values: VestidoFormCampos) {
     const atributos: VestidoAtributo[] = Object.entries(selecoes)

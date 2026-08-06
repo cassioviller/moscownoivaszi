@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { linkWhatsApp } from "@/lib/whatsapp";
 
 /**
@@ -55,7 +55,7 @@ export function DadosDaLoja() {
     resetOptions: { keepDirtyValues: true },
   });
 
-  useConfirmarSaida(form.formState.isDirty);
+  useConfirmarSaida(sujoParaConfirmar(form.formState));
 
   const telefone = form.watch("telefone");
   const telefoneVira = !telefone.trim() || linkWhatsApp(telefone, "") !== null;

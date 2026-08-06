@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -93,18 +92,22 @@ export function NoivaForm({
    *
    * As duas telas que usam este formulário NAVEGAM depois de salvar, e o
    * react-hook-form continua `isDirty` até o `reset()` — que aqui nunca
-   * acontece, porque a tela some. Sem este `salvou`, salvar uma noiva
-   * perguntaria "quer descartar as alterações?" logo depois de a pessoa ter
-   * salvado: um aviso que treina quem usa a ignorar.
+   * acontece, porque a tela some. Sem guarda, salvar uma noiva perguntaria
+   * "quer descartar as alterações?" logo depois de a pessoa ter salvado: um
+   * aviso que treina quem usa a ignorar.
+   *
+   * O `salvou` que morava aqui não bastava, e o E2E provou: quem navega é o
+   * PAI, dentro do `await onSubmit`, antes do render que ligava o estado.
+   * `sujoParaConfirmar` traz o termo que faltava — `isSubmitting`, ligado
+   * durante esse mesmo `await`.
    */
-  const [salvou, setSalvou] = useState(false);
-  useConfirmarSaida(form.formState.isDirty && !salvou);
+  useConfirmarSaida(sujoParaConfirmar(form.formState));
 
   const submeter = async (values: NoivaFormValues) => {
+    // Se o `onSubmit` lançar, o react-hook-form deixa `isSubmitSuccessful`
+    // falso e o formulário continua sujo e protegido — que é o caso em que
+    // perder o que foi digitado dói mais.
     await onSubmit(values);
-    // Só depois do await: se o `onSubmit` lançar, o formulário continua sujo e
-    // protegido — que é o caso em que perder o que foi digitado dói mais.
-    setSalvou(true);
   };
 
   return (
