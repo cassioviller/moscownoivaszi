@@ -63,6 +63,7 @@ import {
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
+import { SEM_PERFIS_TITULO, SEM_PERFIS_DESCRICAO } from "@/lib/perfis-do-sistema";
 import { AtividadeEquipe } from "./atividade";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { instanteDia } from "@/lib/formatos";
@@ -499,7 +500,13 @@ export default function Equipe() {
                 ))}
               </div>
             ) : perfis?.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Nenhum perfil encontrado.</p>
+              // S-D9 — a terceira cópia da mesma frase, e a mesma verdade. Aqui
+              // o `<Vazio>` do E99 não serve: ele é um Card, e este ramo já vive
+              // dentro de um. A régua que vale é a da FRASE — dizer por quê.
+              <div className="space-y-1">
+                <p className="text-sm font-medium">{SEM_PERFIS_TITULO}</p>
+                <p className="text-muted-foreground text-sm">{SEM_PERFIS_DESCRICAO}</p>
+              </div>
             ) : (
               <ul className="space-y-3">
                 {perfis?.map((perfil) => (

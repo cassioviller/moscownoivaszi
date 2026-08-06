@@ -13,8 +13,9 @@ import {
   ehPerfilAdmin,
 } from "@/components/permissoes/matriz-permissoes";
 import { Card } from "@/components/ui/card";
-import { Erro } from "@/components/estado";
+import { Erro, Vazio } from "@/components/estado";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { SEM_PERFIS_TITULO, SEM_PERFIS_DESCRICAO } from "@/lib/perfis-do-sistema";
 import { mensagemApi } from "@/lib/erro-api";
 
 /** Templates globais de perfil — rota top-level /admin/perfis (fora de /loja). */
@@ -80,7 +81,10 @@ export default function AdminPerfis() {
             ))}
           </div>
         ) : perfis?.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nenhum perfil encontrado.</p>
+          // S-D9 — a MESMA lista da tela de Permissões, e a mesma notícia. Era
+          // a cópia que a sobra não tinha visto: esta é justamente a tela do
+          // superadmin, a única sessão que consegue chegar num vazio destes.
+          <Vazio titulo={SEM_PERFIS_TITULO} descricao={SEM_PERFIS_DESCRICAO} />
         ) : (
           <div className="space-y-6">
             {perfis?.map((perfil) => {

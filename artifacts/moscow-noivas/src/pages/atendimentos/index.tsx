@@ -406,7 +406,12 @@ export default function Atendimentos() {
                     setDesfechos((prev) => ({ ...prev, [a.id]: v as AtendimentoUpdateDesfecho }))
                   }
                 >
-                  <SelectTrigger className="h-8 w-40" aria-label="Desfecho do atendimento">
+                  {/* S-D18: o único select do app com altura própria (32px,
+                      denso porque vive dentro da linha da fila). O `min-h-11`
+                      do primitivo o leva a 44px no mobile — `h-8` é `height`, e
+                      `min-height` manda —, e o `md:min-h-8` devolve os 32px no
+                      desktop, que é onde a densidade foi decidida. */}
+                  <SelectTrigger className="h-8 w-40 md:min-h-8" aria-label="Desfecho do atendimento">
                     <SelectValue placeholder="Como terminou?" />
                   </SelectTrigger>
                   <SelectContent>
@@ -515,7 +520,12 @@ export default function Atendimentos() {
       </div>
 
       {/* F11: a aba que faltava. A PROVA usa a MESMA linha, as mesmas ações e o
-          mesmo agrupamento — o que não existia era o caminho até ela. */}
+          mesmo agrupamento — o que não existia era o caminho até ela.
+
+          S-D18: a aba é um alvo de toque como qualquer outro, e a caixa dela
+          soma 38px (py-2 8+8 + linha de 20px + border-b-2) — abaixo dos 44px
+          que o E137 fixou para o Button. `min-h-11` no mobile, e no desktop o
+          `md:min-h-9` (36px) fica abaixo dos 38px naturais: nada muda lá. */}
       <div className="flex gap-1 border-b" role="tablist" aria-label="Tipo de atendimento">
         {(["ATENDIMENTO", "PROVA"] as const).map((t) => (
           <button
@@ -524,7 +534,7 @@ export default function Atendimentos() {
             role="tab"
             aria-selected={aba === t}
             onClick={() => definirFiltroUrl("tipo", t, "ATENDIMENTO")}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`-mb-px min-h-11 border-b-2 px-4 py-2 text-sm font-medium transition-colors md:min-h-9 ${
               aba === t
                 ? "border-primary text-foreground"
                 : "text-muted-foreground hover:text-foreground border-transparent"

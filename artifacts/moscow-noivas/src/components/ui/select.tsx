@@ -19,7 +19,18 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      // S-D18/E137 — o piso de 44px do alvo de toque, a MESMA grafia do
+      // `button.tsx:39`. Este primitivo ficou em `h-9` (36px em qualquer
+      // largura) quando o E137 mudou o Button: os 2 únicos alvos abaixo de
+      // 44px que sobraram em /atendimentos a 390px eram SelectTriggers, e são
+      // todos os selects de filtro do app.
+      //
+      // A grafia é `min-h-11 md:min-h-9`, e não `min-h-11 md:h-9` como a nota
+      // do E137 previa: `min-h-11` sem prefixo vale em toda largura, e no CSS
+      // a altura usada é limitada pelo `min-height` — a segunda forma deixaria
+      // o DESKTOP em 44px também. Sem `h-`, o desktop volta ao mesmo 36px de
+      // antes (py-2 8+8 + linha de 20px = 36, e o `min-h-9` é 36).
+      "flex min-h-11 md:min-h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}

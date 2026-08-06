@@ -42,6 +42,7 @@ import { diaMesAno, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
 import { AlertaCaixa } from "@/components/alerta-caixa";
 import { Erro } from "@/components/estado";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 
@@ -52,6 +53,49 @@ import {
   orcamentosVencendoNaJanela,
   resumoDaFila,
 } from "@/lib/mensagens-do-dia";
+
+/**
+ * S-D10 — as descrições dos dois cartões de aviso são FIXAS, e ficam aqui
+ * porque o esqueleto que reserva o lugar deles usa a MESMA frase. É o que faz
+ * a caixa do esqueleto bater com a do cartão em qualquer largura: a 390px a
+ * frase da fila quebra em 3 linhas, e um esqueleto de altura fixa erraria por
+ * 40px justamente onde o salto dói.
+ */
+const DESCRICAO_FILA =
+  "Presenças a confirmar, cobranças e orçamentos vencendo — com o WhatsApp pronto. Desça a fila clicando.";
+const DESCRICAO_FILA_INCOMPLETA =
+  "Parte da fila não carregou, então o número aqui não sairia certo. A fila mostra o que já dá para ver.";
+const DESCRICAO_AJUSTES = "Prova mais próxima primeiro — a fila diz peça, noiva e prazo.";
+
+/**
+ * O lugar do cartão de aviso, RESERVADO enquanto as consultas dele contam.
+ *
+ * O painel destrava com **1** das 8 consultas desta tela — o `useGetDashboard`
+ * do `painelQuery`, e as outras 7 são os 6 hooks abaixo dele mais o
+ * `useGetAlertaCaixa` do `<AlertaCaixa />`. Os dois cartões do topo dependem de
+ * **4** delas, e o esqueleto de abertura não cobre nenhuma das 4. Sem
+ * reserva, eles se inserem ACIMA dos quatro contadores segundos depois de a
+ * página pintar — e os contadores são links desde o E132/B8, então o dedo que
+ * já estava a caminho de "Noivas ativas" cai no cartão que acabou de nascer.
+ *
+ * O esqueleto repete a estrutura do cabeçalho do cartão (título de uma linha +
+ * a frase fixa, invisível), então a troca esqueleto → cartão não move um pixel.
+ */
+function AvisoCarregando({ descricao }: { descricao: string }) {
+  return (
+    <Card className="animate-pulse" aria-busy="true" aria-label="Contando os avisos do dia">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+        <div className="min-w-0">
+          <div className="bg-muted h-4 w-56 max-w-full rounded" />
+          <p className="invisible mt-0.5 text-sm" aria-hidden="true">
+            {descricao}
+          </p>
+        </div>
+        <div className="bg-muted h-5 w-5 shrink-0 rounded-full" />
+      </CardHeader>
+    </Card>
+  );
+}
 
 /**
  * E66 — "meu dia", não "números da loja".
@@ -161,6 +205,29 @@ export default function Dashboard() {
     return resumoDaFila(aContatar + emAtraso + vencendo);
   }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data]);
 
+  /**
+   * S-D10 — o estado das TRÊS consultas que somam o número do cartão, na
+   * decisão que o E121 já extraiu (`lib/estado-consulta`, e consulta desligada
+   * por permissão não conta).
+   *
+   * Ele resolve duas coisas de uma vez. **Carregando** reserva o lugar em vez
+   * de deixar o cartão saltar. E **erro** tira o NÚMERO da tela: as três
+   * parcelas do total entram por `?? []`, então uma consulta falhada não
+   * zerava o cartão — ela o fazia prometer 3 com 5 esperando na fila, que é
+   * exatamente a divergência que `lib/mensagens-do-dia` existe para impedir.
+   */
+  const estadoDaFila = estadoDasConsultas(
+    atendimentosQuery,
+    parcelasAbertas,
+    orcamentosEnviados,
+  );
+  const avisoDaFila =
+    estadoDaFila === "erro"
+      ? { frase: "A fila do dia não pôde ser contada", descricao: DESCRICAO_FILA_INCOMPLETA }
+      : filaDeMensagens
+        ? { frase: filaDeMensagens.frase, descricao: DESCRICAO_FILA }
+        : null;
+
   // "Minha comissão" mora fora do gate de módulo (E11); quem não tem escada
   // vigente volta temRegra=false e o cartão simplesmente não aparece.
   const competencia = competenciaAtual();
@@ -259,27 +326,36 @@ export default function Dashboard() {
       {/* F7: o painel promete "o que precisa da sua atenção agora" e não
           mencionava a única tela que responde isso. O número é o MESMO da fila,
           por construção (`lib/mensagens-do-dia`), e o cartão some quando ela
-          está vazia — a disciplina do AlertaCaixa. */}
-      {filaDeMensagens && (
+          está vazia — a disciplina do AlertaCaixa.
+
+          S-D10: enquanto as três consultas contam, o lugar fica reservado. O
+          cartão saía do nada segundos depois da pintura, ACIMA dos quatro
+          contadores — 108px de empurrão (a caixa do cabeçalho, 76px, mais os
+          32px do `space-y-8`), e mais que isso a 390px, onde a descrição
+          quebra em três linhas. */}
+      {estadoDaFila === "carregando" ? (
+        <AvisoCarregando descricao={DESCRICAO_FILA} />
+      ) : avisoDaFila ? (
         <Link to={`/loja/${activeLojaId}/mensagens`} className="block">
           <Card className="hover-elevate border-primary/40">
             <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
               <div className="min-w-0">
-                <CardTitle className="text-base">{filaDeMensagens.frase}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Presenças a confirmar, cobranças e orçamentos vencendo — com o
-                  WhatsApp pronto. Desça a fila clicando.
-                </p>
+                <CardTitle className="text-base">{avisoDaFila.frase}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">{avisoDaFila.descricao}</p>
               </div>
               <MessageCircle className="h-5 w-5 shrink-0 text-primary" />
             </CardHeader>
           </Card>
         </Link>
-      )}
+      ) : null}
 
       {/* E132/D10: o cartão da costureira — some quando vazio (a disciplina
-          do AlertaCaixa e do cartão de mensagens acima). */}
-      {ajustesSemana.length > 0 && (
+          do AlertaCaixa e do cartão de mensagens acima). Ele nasceu DEPOIS da
+          S-D10 e com a mesma ausência: são dois saltos no mesmo lugar da tela,
+          e por isso a reserva vale para os dois. */}
+      {ajustesQuery.isLoading ? (
+        <AvisoCarregando descricao={DESCRICAO_AJUSTES} />
+      ) : ajustesSemana.length > 0 ? (
         <Link to={`/loja/${activeLojaId}/ajustes`} className="block">
           <Card className="hover-elevate border-primary/40">
             <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
@@ -289,15 +365,13 @@ export default function Dashboard() {
                     ? "1 ajuste para costurar esta semana"
                     : `${ajustesSemana.length} ajustes para costurar esta semana`}
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Prova mais próxima primeiro — a fila diz peça, noiva e prazo.
-                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">{DESCRICAO_AJUSTES}</p>
               </div>
               <Scissors className="h-5 w-5 shrink-0 text-primary" />
             </CardHeader>
           </Card>
         </Link>
-      )}
+      ) : null}
 
       {/* E121/C3 — os contadores e o dinheiro saem da MESMA query: falhou,
           é UMA notícia com saída, não seis zeros que parecem medição. O ramo

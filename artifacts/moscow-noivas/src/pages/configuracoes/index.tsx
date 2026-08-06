@@ -107,7 +107,9 @@ export default function Configuracoes() {
             role="tab"
             aria-selected={aba === chave}
             onClick={() => setAba(chave)}
-            className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            // S-D18: o mesmo piso de 44px da aba de /atendimentos — a caixa
+            // natural é de 38px, e no desktop o `md:min-h-9` (36px) não morde.
+            className={`-mb-px flex min-h-11 items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors md:min-h-9 ${
               aba === chave
                 ? "border-primary text-foreground"
                 : "text-muted-foreground hover:text-foreground border-transparent"
