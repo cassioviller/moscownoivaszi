@@ -185,10 +185,11 @@ andaram, em dez commits — cinco de código e cinco de `docs(...)` com o hash:
 | 7 | `4ea4fe2` · `2a9ab0b` | **S34**, **S-D20**, **S-D21** — o campo do código para de carregar frase, e a régua varre o servidor inteiro |
 | 4 | `0e395ae` · `237d1b6` | **S31** — o vocabulário cascateia com a loja, e a rota diz quantas peças e noivas dependiam da palavra |
 | — | `3185812` · `6b79071` | **S-D38** — a suíte sobe num banco virgem (nasceu na 1, fechou na mesma onda) |
+| 5 | `408d0bb` · `<docs>` | **S16** — o carimbo é efeito do contrato, e não de a etapa ter avançado |
 
-**Sobras: 48 → 46.** Fecham S-D27, S25, S-D22, S34, S-D20, S-D21, S31 e S-D38;
-nascem S-D38 a S-D43. Nenhuma 🟠 nem 🔴; **22 🟡 · 24 🔵**. Continuam na fila a
-**S-D25** (item 3) e a **S16** (item 5).
+**Sobras: 48 → 46.** Fecham S-D27, S25, S-D22, S34, S-D20, S-D21, S31, S-D38 e
+S16; nascem S-D38 a S-D43 e a S39. Nenhuma 🟠 nem 🔴; **22 🟡 · 24 🔵**. Continua
+na fila só a **S-D25** (item 3).
 
 ### Seis das nove descreviam errado o próprio tamanho
 
@@ -212,6 +213,14 @@ vezes.)
   do E107. O CHECK proposto chegou a ser aplicado e caiu com 17 vermelhos.
 - **S-D38** acertou o mecanismo e **errou o conserto**: o `target: lojaId` que
   ela prescrevia só troca um 23505 pelo outro.
+- **S16** errava o pouco que faltava depois da conferência — ela tinha razão nas
+  duas portas e no número (836 leads com contrato, 3 sem carimbo) —, mas a
+  metade que sobrou **cresceu na remedição** e virou a S39: a curva de
+  sazonalidade devolve 0 linhas para toda loja deste banco, e não por falta de
+  carimbo. 4 de 1.351 leads têm `casamento_data`, todas fora da janela;
+  `contratos.data_casamento` está em 0 de 836. **A barra que o carimbo alimenta
+  nunca foi desenhada** — não há captura de `/noivas/conversao` entre as 94 da
+  rodada 7, e o único spec que abre a tela não olha o cartão.
 
 ### O que só a fila serial podia ver
 
@@ -240,14 +249,14 @@ vezes.)
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem dois itens em pé, e continua serial.** A **S-D25** (item
-   3 — a limpeza única das cabines de spec, com guarda própria) e a **S16** (item
-   5 — o carimbo `contrato_fechado_em`), que é **a única sobra aberta que faz um
-   relatório mentir**: lead levado de `NOVO` direto a `EM_PROVAS` fecha contrato
-   sem que a etapa mude, a coluna nunca é preenchida, e o `comContrato` de
-   `/leads/sazonalidade` não o conta na curva que diz quando falta vestido.
-3. **As três perguntas para a dona** (S-A16 a lavagem, S-A18 a ausência, S-A24 o
-   domingo) estão com a frase exata na conferência. A **S-D41** acrescenta uma
-   quarta que não é pergunta, é conserto: o resumo do seed diz à dona que domingo
-   está fechado quando o sistema vai abrir — contra a decisão que ela mesma tomou
-   na S-A8. Nenhuma trava as outras 43.
+2. **A fila do banco tem um item em pé, e continua serial:** a **S-D25** (item 3
+   — a limpeza única das 186 cabines de spec, com guarda própria, que precisa
+   distinguir `Cabine E2E {timestamp}` de cabine de loja viva). A **S-D40** mede
+   a mesma população por outro recorte e diz a taxa: ~26 cabines por semana.
+3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da
+   conferência (S-A16 a lavagem, S-A18 a ausência, S-A24 o domingo) estão com a
+   frase exata lá. A **S39** acrescenta a quarta, e ela é anterior às outras: *o
+   ateliê registra a data do casamento em algum lugar?* Sem resposta, a curva que
+   diz quando falta vestido não tem o que desenhar. E a **S-D41** não é pergunta,
+   é conserto: o resumo do seed diz à dona que domingo está fechado quando o
+   sistema vai abrir — contra a decisão que ela mesma tomou na S-A8.
