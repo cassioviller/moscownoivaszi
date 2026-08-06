@@ -14,11 +14,17 @@ para o documento que manda.
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
 2. **O registro da sessão em curso** — hoje
-   `docs/revisao/2026-08-05-sessao-sobras-de-higiene.md`. A seção "Como retomar"
+   `docs/revisao/2026-08-06-sessao-faixa-b.md`. A seção "Como retomar"
    é o roteiro, e ela manda ler primeiro
    **`docs/revisao/2026-08-05-conferencia-de-sobras.md`**, que traz o veredito
    de cada uma das 48 sobras conferidas — quais estavam mortas, quais
    descreviam errado o próprio defeito, e o número de hoje de cada uma.
+
+   O registro de hoje também traz **as seis correções que a conferência fez no
+   plano de subagentes** (ele foi escrito antes dela, e abre numa fase que já
+   acabou), e a régua de varredura que a higiene de hoje pagou: **enumere com
+   `git ls-files`, não com `find`/`grep -r`** — 65% do que o disco devolvia era
+   cópia de worktree órfão.
 
    **O trabalho em curso não é de uma trilha: é o BACKLOG DE SOBRAS das três.**
    Os épicos das três estão fechados; o que resta são as tabelas de Sobras, e

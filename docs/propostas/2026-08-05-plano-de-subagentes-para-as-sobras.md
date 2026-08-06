@@ -1,5 +1,14 @@
 # Plano de ação — subagentes contra as 51 sobras
 
+> **Leia antes:** este plano foi escrito em `3211e74`, **antes** da conferência.
+> A **fase 0 dele já rodou** (`475d49f`), são **48 sobras** e não 51, e a
+> conferência corrigiu seis pontos das fases seguintes — a tabela está em
+> `docs/revisao/2026-08-06-sessao-faixa-b.md`. As mais caras: a **S-D8 está
+> morta** (some da família da régua), a **S13 encolheu** para meia dúzia de
+> linhas em `App.tsx`, e a **S-D23 não tem régua interina** nenhuma. A higiene
+> da abertura acrescentou uma regra: **enumere com `git ls-files`**, porque
+> `find`/`grep -r` leem o disco e 65% do que o disco devolvia era cópia órfã.
+
 **2026-08-05** · branch `sobras-de-higiene` · base `3211e74`
 
 As três trilhas somam **51 sobras abertas** (rodada 6: 19 · rodada 7: 20 ·
