@@ -364,6 +364,30 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     backfill declarava e justificava aquela aproximação — o orquestrador confere,
     não repassa.)*
 
+25. **Verde na faixa que o AGENTE pode rodar não é verde — a régua é a do
+    orquestrador, e ela roda antes do commit, não depois.** O agente de faixa B
+    entrega com a suíte que lhe é permitida; se o épico mexe no que alguma tela
+    monta, quem tem o banco roda o E2E ANTES de commitar (regra 11), e conta o
+    que caiu. *(2026-08-06: a migração do roteador da S13 voltou com **483
+    testes de unidade verdes e typecheck verde**, e o E2E completo derrubou dois
+    specs — `05-leads` e `59-confeccao-vira-peca`. O `useBlocker` novo bloqueava
+    a navegação do PRÓPRIO salvamento: `salvou` e `isSubmitSuccessful` são
+    estado do React e a navegação é síncrona, então o bloqueio lia o valor
+    velho. No Playwright o `confirm` é auto-dismissado e a navegação morria
+    calada; para quem vende, o sistema perguntaria "você tem coisa que não foi
+    salva" logo depois de salvar. **Nenhum teste de unidade daquele arquivo
+    podia pegar isso** — os quatro que o agente escreveu montam o hook com o
+    booleano já decidido, e o defeito mora em QUANDO ele é decidido.)*
+
+26. **Quando o mesmo cuidado aparece escrito de cinco formas diferentes, ele
+    não está sendo cumprido — está sendo lembrado.** Cinco grafias é a medida de
+    que falta uma régua, e o sítio que esqueceu é o que quebra. *(2026-08-06: os
+    8 sítios de `useConfirmarSaida` tinham cinco grafias para a mesma guarda e
+    **três não tinham guarda nenhuma**; o docblock do E97 descrevia o cuidado
+    corretamente e nenhuma das cinco o implementava por inteiro. Virou uma
+    função — `sujoParaConfirmar` — mais uma varredura que cobra que não nasça a
+    sexta.)*
+
 ---
 
 ## Histórico
