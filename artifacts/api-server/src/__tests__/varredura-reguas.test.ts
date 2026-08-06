@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * As assinaturas mecânicas das classes de defeito que a revisão do E111 achou —
@@ -30,21 +31,27 @@ const PASTAS_FONTE = [
   "lib/agenda-core/src",
 ];
 
+/**
+ * Os arquivos-fonte VERSIONADOS, em caminho relativo à raiz.
+ *
+ * A enumeração saía do `readdirSync`, que lê o disco, com uma lista de
+ * diretórios a pular mantida à mão (`generated`, `node_modules`). `git
+ * ls-files` deriva do `.gitignore` a exclusão do que não é código nosso —
+ * `node_modules`, `dist`, `coverage`, `build` —, que é onde a decisão já mora.
+ * Régua da S38. Medido em 2026-08-06: os dois caminhos devolvem **os mesmos 237
+ * arquivos**; a troca não muda a conta, tira a dependência de uma lista mantida
+ * à mão. O `generated/` segue excluído à mão porque ele É versionado (334
+ * arquivos em `lib/api-zod` e `lib/api-client-react`) e mesmo assim não é
+ * código escrito por gente: cobrar régua de saída de codegen é cobrar do
+ * gerador.
+ */
 function arquivosFonte(): string[] {
-  const achados: string[] = [];
-  const anda = (dir: string) => {
-    for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-      const caminho = join(dir, entrada.name);
-      if (entrada.isDirectory()) {
-        if (entrada.name === "generated" || entrada.name === "node_modules") continue;
-        anda(caminho);
-      } else if (/\.tsx?$/.test(entrada.name) && !entrada.name.includes(".test.")) {
-        achados.push(caminho);
-      }
-    }
-  };
-  for (const pasta of PASTAS_FONTE) anda(join(RAIZ, pasta));
-  return achados;
+  return arquivosVersionados(RAIZ, PASTAS_FONTE).filter(
+    (relativo) =>
+      /\.tsx?$/.test(relativo) &&
+      !relativo.includes(".test.") &&
+      !relativo.split("/").includes("generated"),
+  );
 }
 
 /** Comentários fora: eles CITAM o código errado para explicar o conserto. */
@@ -52,12 +59,17 @@ function semComentarios(fonte: string): string {
   return fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
+/** Quantas vezes a assinatura aparece no arquivo, comentários fora. */
+function contar(assinatura: RegExp, relativo: string): number {
+  const fonte = semComentarios(readFileSync(join(RAIZ, relativo), "utf8"));
+  return (fonte.match(new RegExp(assinatura.source, "g")) ?? []).length;
+}
+
 function varrer(assinatura: RegExp, perdoados: readonly string[]): string[] {
   const ofensores: string[] = [];
-  for (const arquivo of arquivosFonte()) {
-    const relativo = relative(RAIZ, arquivo);
+  for (const relativo of arquivosFonte()) {
     if (perdoados.includes(relativo)) continue;
-    const fonte = semComentarios(readFileSync(arquivo, "utf8"));
+    const fonte = semComentarios(readFileSync(join(RAIZ, relativo), "utf8"));
     const re = new RegExp(assinatura.source, "g");
     let m: RegExpExecArray | null;
     while ((m = re.exec(fonte)) !== null) {
@@ -160,29 +172,56 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
     "artifacts/api-server/src/lib/disponibilidade.ts",
   ];
 
-  /** O passivo herdado. Cada linha é dívida reconhecida, não permissão. */
-  const HERDADOS = [
-    "artifacts/moscow-noivas/src/lib/financeiro/cobranca.ts",
-    "artifacts/moscow-noivas/src/lib/whatsapp.ts",
-    "artifacts/moscow-noivas/src/pages/financeiro/fluxo.tsx",
-    "artifacts/moscow-noivas/src/pages/financeiro/projecao.tsx",
-    "artifacts/moscow-noivas/src/pages/minha-comissao/index.tsx",
-    "artifacts/moscow-noivas/src/pages/noiva-portal.tsx",
-    "artifacts/moscow-noivas/src/pages/noivas/conversao.tsx",
-    "artifacts/moscow-noivas/src/pages/noivas/helpers.ts",
-    "artifacts/moscow-noivas/src/pages/reservas/helpers.ts",
-  ];
+  /**
+   * O passivo herdado, arquivo por arquivo, com **quantos** formatadores cada
+   * um declara. Cada linha é dívida reconhecida, não permissão.
+   *
+   * **Era uma lista de nomes, e a lista não é o número.** A sonda só perguntava
+   * se cada herdado ainda declarava *pelo menos um* formatador
+   * (`ASSINATURA.test(fonte)`), então `reservas/helpers.ts` podia ir de 6 para
+   * 60 com a suíte verde — o passivo cresce dentro dos arquivos que já estão
+   * perdoados, que é justamente onde é mais fácil crescer. Foi o que a
+   * conferência de 2026-08-05 mediu ao conferir a S30: *"trava a lista de
+   * arquivos, não a contagem"*. Medido em 2026-08-06 e congelado abaixo:
+   * **17 formatadores no passivo**, os mesmos 17 de `fc2182a` — o número não
+   * tinha crescido, mas não foi a sonda que impediu.
+   *
+   * Consolidou um? A conta cai, o teste fica vermelho, e o vermelho é o
+   * lembrete de baixar a dívida aqui.
+   */
+  const HERDADOS: Record<string, number> = {
+    "artifacts/moscow-noivas/src/lib/financeiro/cobranca.ts": 1,
+    "artifacts/moscow-noivas/src/lib/whatsapp.ts": 2,
+    "artifacts/moscow-noivas/src/pages/financeiro/fluxo.tsx": 2,
+    "artifacts/moscow-noivas/src/pages/financeiro/projecao.tsx": 2,
+    "artifacts/moscow-noivas/src/pages/minha-comissao/index.tsx": 1,
+    "artifacts/moscow-noivas/src/pages/noiva-portal.tsx": 1,
+    "artifacts/moscow-noivas/src/pages/noivas/conversao.tsx": 1,
+    "artifacts/moscow-noivas/src/pages/noivas/helpers.ts": 1,
+    "artifacts/moscow-noivas/src/pages/reservas/helpers.ts": 6,
+  };
 
   it("nenhum arquivo NOVO declara formatador fora da régua", () => {
-    expect(varrer(ASSINATURA, [...REGUAS, ...HERDADOS])).toEqual([]);
+    expect(varrer(ASSINATURA, [...REGUAS, ...Object.keys(HERDADOS)])).toEqual([]);
   });
 
-  it("e o passivo não cresce às escondidas — a lista é o número", () => {
-    // Se um herdado for consolidado, esta conta cai e a linha sai da lista
-    // acima: o teste vermelho é o lembrete de apagar a dívida da planilha.
-    const aindaDeclaram = HERDADOS.filter((f) =>
-      new RegExp(ASSINATURA.source).test(semComentarios(readFileSync(join(RAIZ, f), "utf8"))),
-    );
-    expect(aindaDeclaram).toEqual(HERDADOS);
+  it("e o passivo não cresce às escondidas — a CONTAGEM é o número", () => {
+    const hoje: Record<string, number> = {};
+    for (const arquivo of Object.keys(HERDADOS)) hoje[arquivo] = contar(ASSINATURA, arquivo);
+    expect(hoje).toEqual(HERDADOS);
+  });
+
+  it("e o total do passivo é 17 — o mesmo de `fc2182a`", () => {
+    const total = Object.keys(HERDADOS).reduce((s, f) => s + contar(ASSINATURA, f), 0);
+    expect(total).toBe(17);
+  });
+
+  /**
+   * A varredura enumera pelo versionamento, e conjunto vazio aprova tudo em
+   * silêncio. O piso é o número medido em 2026-08-06 — 237 arquivos-fonte
+   * versionados nas cinco pastas — com folga para baixo.
+   */
+  it("a varredura olha para os arquivos, e não para um conjunto vazio", () => {
+    expect(arquivosFonte().length).toBeGreaterThan(200);
   });
 });
