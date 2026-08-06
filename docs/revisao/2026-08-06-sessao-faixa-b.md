@@ -1,8 +1,8 @@
-# Sessão de 2026-08-06 — a faixa B em paralelo, e a higiene que a precedeu
+# Sessão de 2026-08-06 — a faixa B em paralelo, e a fila do banco em série
 
-**Branch `main`** · base `4a3fd64` · 9 commits
+**Branch `main`** · base `4a3fd64` · 20 commits
 Régua na abertura: API 1031 · frontend 473 · E2E 156 · typecheck verde
-Régua no fim: **API 1036 · frontend 495 · E2E 156 · typecheck verde, e agora
+Régua no fim: **API 1042 · frontend 495 · E2E 161 · typecheck verde, e agora
 inclui os 63 arquivos de `e2e/`**
 
 Esta sessão executa o `docs/propostas/2026-08-05-plano-de-subagentes-para-as-sobras.md`
@@ -172,14 +172,82 @@ QUANDO ele é decidido.
   correção do `useBlocker` tentou voltar para o B3 e não teve para onde ir — quem
   orquestra termina o que o agente não pôde ver.
 
+## O que a onda 2 entregou — a fila do banco, em série
+
+Sem paralelismo a ganhar: um banco, `workers: 1`, `fileParallelism: false`. O
+ganho é ORDEM, e a fase 2 do plano a fixou por risco. Cinco itens da fila
+andaram, em dez commits — cinco de código e cinco de `docs(...)` com o hash:
+
+| # | Hash | O quê |
+|---|---|---|
+| 1 | `e01bff4` · `9e1d695` | **S-D27** — a suíte diz contra qual loja roda, e banco sem ela estoura |
+| 2 | `3b71a43` · `a7fc4e9` | **S25**, **S-D22** e metade da **S27** — a ficha da noiva para de sair deixando o vestido ocupado sem dona |
+| 7 | `4ea4fe2` · `2a9ab0b` | **S34**, **S-D20**, **S-D21** — o campo do código para de carregar frase, e a régua varre o servidor inteiro |
+| 4 | `0e395ae` · `237d1b6` | **S31** — o vocabulário cascateia com a loja, e a rota diz quantas peças e noivas dependiam da palavra |
+| — | `3185812` · `6b79071` | **S-D38** — a suíte sobe num banco virgem (nasceu na 1, fechou na mesma onda) |
+
+**Sobras: 48 → 46.** Fecham S-D27, S25, S-D22, S34, S-D20, S-D21, S31 e S-D38;
+nascem S-D38 a S-D43. Nenhuma 🟠 nem 🔴; **22 🟡 · 24 🔵**. Continuam na fila a
+**S-D25** (item 3) e a **S16** (item 5).
+
+### Seis das nove descreviam errado o próprio tamanho
+
+A onda 1 mediu 7 em 11; a onda 2, **6 em 9** — e o erro nunca foi para o lado
+seguro. (As três que estavam certas: a S-D27, já remedida pela conferência da
+véspera, e a S34 e a S-D20, que erravam por outro motivo — estarem escritas duas
+vezes.)
+
+- **S31** errava as duas metades: são **4 FKs** em `NO ACTION` por omissão, não
+  uma, e a quinta da família já era CASCADE — **é a assimetria que produz o
+  defeito**. E não dá 500: dá **409 `VINCULO_EXISTENTE`**, uma recusa plausível
+  para um pedido correto.
+- **S-D21** listava 7 sítios e existem **21**. Os **13 que nenhuma das três
+  sobras viu são os que mais rodam** — 8 no middleware de autenticação, no
+  caminho de toda requisição autenticada.
+- **S25 / S-D22** diziam que faltava um `afterAll` que **existe desde o primeiro
+  commit do spec** (`5a1e038`). Ele apagava na ordem errada.
+- **S27** dizia 61 reservas de casamento sem noiva; eram **131**. E a promoção a
+  🟠 que estava combinada **não se sustentou**: dependia de "reserva de casamento
+  tem dona por definição", e o repositório decidiu o contrário num teste nomeado
+  do E107. O CHECK proposto chegou a ser aplicado e caiu com 17 vermelhos.
+- **S-D38** acertou o mecanismo e **errou o conserto**: o `target: lojaId` que
+  ela prescrevia só troca um 23505 pelo outro.
+
+### O que só a fila serial podia ver
+
+- **O custo da S-D21 não estava em nenhuma das três sobras.** As quatro páginas
+  públicas leem `data.error` como CHAVE de mapa, então a noiva que esbarrava no
+  teto de requisições lia *"Link inválido — confira se ele veio inteiro do
+  WhatsApp"* sobre um link perfeito. **Nenhuma das 1.038 provas de API nem dos
+  161 specs podia ver:** os três limitadores são pulados sob `VITEST` e
+  `E2E_SUITE`.
+- **A S31 pagou o épico recolhendo contornos**: o `afterAll` do
+  `e115-fronteira-corpo-api.test.ts` voltou a ser `limparFixture` + `fecharPool`
+  (13 linhas a menos) e duas frases "sem cascade" nos specs 27 e 30 deixaram de
+  ser verdade no mesmo commit em que passariam a mentir (regra 21).
+- **A S-D38 exigiu um banco que este repositório nunca teve.** O defeito mora no
+  ramo "banco sem admin, roda o seed" do `global-setup.ts:47-56`, que run nenhum
+  executa. `createdb` + `pnpm --filter @workspace/db run push` + o setup: três
+  minutos, e foi o mesmo experimento que derrubou o conserto prescrito. Virou a
+  **regra 27** e a **S-D43**.
+- **Terceira vez que uma linha vive duplicada no backlog:** S34 e S-D21 eram
+  `financeiro.ts:445` das duas trilhas, depois de S-D28/S-A5 e S25/S-D22. Quem
+  fecha uma risca as duas.
+
 ## Como retomar
 
 1. **Leia a [conferência](2026-08-05-conferencia-de-sobras.md) antes de escolher
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
-   as nove imprecisas dizem o que erraram.
-2. **A onda 2 é a fila do banco, e é serial.** `playwright workers: 1`, vitest da
-   API com `fileParallelism: false`, sem `DATABASE_URL` de teste. A ordem está na
-   fase 2 do plano, com a **S-D27 primeiro**: é a única sobra do repositório que
-   falha **sem vermelho**, e toda a fase 2 roda E2E contra a loja que ela elege.
+   as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
+   seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
+2. **A fila do banco tem dois itens em pé, e continua serial.** A **S-D25** (item
+   3 — a limpeza única das cabines de spec, com guarda própria) e a **S16** (item
+   5 — o carimbo `contrato_fechado_em`), que é **a única sobra aberta que faz um
+   relatório mentir**: lead levado de `NOVO` direto a `EM_PROVAS` fecha contrato
+   sem que a etapa mude, a coluna nunca é preenchida, e o `comContrato` de
+   `/leads/sazonalidade` não o conta na curva que diz quando falta vestido.
 3. **As três perguntas para a dona** (S-A16 a lavagem, S-A18 a ausência, S-A24 o
-   domingo) estão com a frase exata na conferência. Nenhuma trava as outras 45.
+   domingo) estão com a frase exata na conferência. A **S-D41** acrescenta uma
+   quarta que não é pergunta, é conserto: o resumo do seed diz à dona que domingo
+   está fechado quando o sistema vai abrir — contra a decisão que ela mesma tomou
+   na S-A8. Nenhuma trava as outras 43.
