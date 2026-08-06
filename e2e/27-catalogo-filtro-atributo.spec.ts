@@ -56,7 +56,9 @@ test.describe("Catálogo — filtro por atributo (E41)", () => {
   test.afterAll(async () => {
     // O banco do e2e persiste: sem limpar, cada run soma um atributo ao filtro
     // e dois vestidos ao catálogo. Os vestidos saem primeiro — o vínculo em
-    // vestido_atributos referencia atributo e opção sem cascade — e só depois
+    // A ORDEM continua correta e continua explícita; o motivo mudou. Até a S31
+    // o vínculo referenciava atributo e opção SEM cascade, e a ordem era
+    // obrigatória. Hoje o banco cascateia — a ordem fica por clareza, e só depois
     // a opção e o atributo.
     const vestidos = [vestidoComId, vestidoSemId].filter(Boolean);
     if (vestidos.length > 0) await db.delete(vestidosTable).where(inArray(vestidosTable.id, vestidos));

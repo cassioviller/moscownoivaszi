@@ -114,8 +114,13 @@ export type VestidoFoto = typeof vestidoFotosTable.$inferSelect;
 
 export const vestidoAtributosTable = pgTable("vestido_atributos", {
   vestidoId: text("vestido_id").notNull().references(() => vestidosTable.id, { onDelete: "cascade" }),
-  atributoId: text("atributo_id").notNull().references(() => atributosTable.id),
-  opcaoId: text("opcao_id").notNull().references(() => atributoOpcoesTable.id),
+  // S31 — vocabulário é CONFIGURAÇÃO, e configuração cascateia (régua do E91).
+  // Apagar a palavra apaga a CLASSIFICAÇÃO, não a peça nem a noiva: o que a
+  // noiva escreveu com as próprias palavras mora em `lead_interesses` e fica.
+  // **Não troque por RESTRICT**: a guarda contra apagar sem querer é de
+  // APLICAÇÃO e vive em `routes/catalogo.ts` (409 ATRIBUTO_EM_USO / OPCAO_EM_USO).
+  atributoId: text("atributo_id").notNull().references(() => atributosTable.id, { onDelete: "cascade" }),
+  opcaoId: text("opcao_id").notNull().references(() => atributoOpcoesTable.id, { onDelete: "cascade" }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.vestidoId, t.atributoId] }),
 }));

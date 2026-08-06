@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, atributosTable, atributoOpcoesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, atributosTable, atributoOpcoesTable, vestidoAtributosTable, leadInteresseAtributosTable } from "@workspace/db";
+import { eq, and, count } from "drizzle-orm";
 import { 
   ListAtributosResponse,
   CreateAtributoBody,
@@ -88,6 +88,29 @@ router.delete("/lojas/:lojaId/atributos/:atributoId", async (req, res): Promise<
     res.status(400).json(erroDeValidacao(params.error));
     return;
   }
+  // S31 — o cascade do banco apagaria a classificação em silêncio. A guarda é
+  // de APLICAÇÃO, no molde do `DELETE /vestidos/:id` da S-A25: quem apaga a
+  // palavra fica sabendo quantas peças e quantas noivas dependiam dela.
+  const alvo = await db.query.atributosTable.findFirst({
+    where: and(eq(atributosTable.id, params.data.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
+  });
+  if (!alvo) {
+    res.status(404).json({ error: "ATRIBUTO_NAO_ENCONTRADO", detalhe: "Este atributo não existe nesta loja." });
+    return;
+  }
+  const [[emPecas], [emNoivas]] = await Promise.all([
+    db.select({ n: count() }).from(vestidoAtributosTable).where(eq(vestidoAtributosTable.atributoId, alvo.id)),
+    db.select({ n: count() }).from(leadInteresseAtributosTable).where(eq(leadInteresseAtributosTable.atributoId, alvo.id)),
+  ]);
+  if (emPecas.n > 0 || emNoivas.n > 0) {
+    res.status(409).json({
+      error: "ATRIBUTO_EM_USO",
+      detalhe:
+        `"${alvo.nome}" classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto. ` +
+        "Para tirá-lo do catálogo sem perder o que já foi classificado, desmarque \"Atributo ativo\".",
+    });
+    return;
+  }
   await db.delete(atributosTable).where(and(eq(atributosTable.id, params.data.atributoId), eq(atributosTable.lojaId, params.data.lojaId)));
   res.status(204).send();
 });
@@ -170,16 +193,32 @@ router.delete("/lojas/:lojaId/atributos/opcoes/:opcaoId", async (req, res): Prom
   const existing = await db.query.atributoOpcoesTable.findFirst({
     where: eq(atributoOpcoesTable.id, params.data.opcaoId),
   });
-  if (existing) {
-    const atributo = await db.query.atributosTable.findFirst({
-      where: and(eq(atributosTable.id, existing.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
-    });
-    if (!atributo) {
-      res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
-      return;
-    }
-    await db.delete(atributoOpcoesTable).where(eq(atributoOpcoesTable.id, params.data.opcaoId));
+  // S31 — antes, opção inexistente saía com 204: a tela dizia "apagado" sobre
+  // o que nunca existiu. Agora 404, como a irmã acima.
+  if (!existing) {
+    res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
+    return;
   }
+  const atributo = await db.query.atributosTable.findFirst({
+    where: and(eq(atributosTable.id, existing.atributoId), eq(atributosTable.lojaId, params.data.lojaId)),
+  });
+  if (!atributo) {
+    res.status(404).json({ error: "OPCAO_NAO_ENCONTRADA", detalhe: "Esta opção não existe nesta loja." });
+    return;
+  }
+  const [[emPecas], [emNoivas]] = await Promise.all([
+    db.select({ n: count() }).from(vestidoAtributosTable).where(eq(vestidoAtributosTable.opcaoId, existing.id)),
+    db.select({ n: count() }).from(leadInteresseAtributosTable).where(eq(leadInteresseAtributosTable.opcaoId, existing.id)),
+  ]);
+  if (emPecas.n > 0 || emNoivas.n > 0) {
+    res.status(409).json({
+      error: "OPCAO_EM_USO",
+      detalhe:
+        `"${existing.valor}" classifica ${emPecas.n} peça(s) e ${emNoivas.n} noiva(s) — apagar levaria essa classificação junto.`,
+    });
+    return;
+  }
+  await db.delete(atributoOpcoesTable).where(eq(atributoOpcoesTable.id, params.data.opcaoId));
   res.status(204).send();
 });
 
