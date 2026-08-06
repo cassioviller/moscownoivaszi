@@ -185,7 +185,7 @@ andaram, em dez commits — cinco de código e cinco de `docs(...)` com o hash:
 | 7 | `4ea4fe2` · `2a9ab0b` | **S34**, **S-D20**, **S-D21** — o campo do código para de carregar frase, e a régua varre o servidor inteiro |
 | 4 | `0e395ae` · `237d1b6` | **S31** — o vocabulário cascateia com a loja, e a rota diz quantas peças e noivas dependiam da palavra |
 | — | `3185812` · `6b79071` | **S-D38** — a suíte sobe num banco virgem (nasceu na 1, fechou na mesma onda) |
-| 5 | `408d0bb` · `<docs>` | **S16** — o carimbo é efeito do contrato, e não de a etapa ter avançado |
+| 5 | `408d0bb` · `c1d8153` | **S16** — o carimbo é efeito do contrato, e não de a etapa ter avançado |
 
 **Sobras: 48 → 46.** Fecham S-D27, S25, S-D22, S34, S-D20, S-D21, S31, S-D38 e
 S16; nascem S-D38 a S-D43 e a S39. Nenhuma 🟠 nem 🔴; **22 🟡 · 24 🔵**. Continua
