@@ -32,8 +32,8 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 18 sobras abertas (10 🟡 · 8 🔵). Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 17 sobras abertas (6 🟡 · 11 🔵) |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 17 sobras abertas (9 🟡 · 8 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 18 sobras abertas (8 🟡 · 10 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (8 🟡 · 5 🔵) |
 
    **São 48 sobras abertas e nenhuma 🟠**, o que é diferente de antes: a
@@ -46,10 +46,11 @@ para o documento que manda.
    é que agora é verdade.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1031 · frontend 473 ·
-   E2E 156 · typecheck verde**. O `main` está **250 commits à frente do
-   `origin/main`** e não foi publicado — quem for publicar decide isso com a dona
-   do repositório.
+   fundiu com as três suítes verdes. Hoje a régua é **API 1036 · frontend 495 ·
+   E2E 156 · typecheck verde — e o typecheck passou a incluir os 63 arquivos de
+   `e2e/`** (S-D23, `acdd9b3`), que nenhum `tsconfig` cobria. O `main` está
+   **276 commits à frente do `origin/main`** e não foi publicado — quem for
+   publicar decide isso com a dona do repositório.
 
 Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
 mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando

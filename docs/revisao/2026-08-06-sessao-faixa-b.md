@@ -1,7 +1,9 @@
 # Sessão de 2026-08-06 — a faixa B em paralelo, e a higiene que a precedeu
 
-**Branch `main`** · base `4a3fd64` · **em curso**
-Régua na abertura: **API 1031 · frontend 473 · E2E 156 · typecheck verde**
+**Branch `main`** · base `4a3fd64` · 9 commits
+Régua na abertura: API 1031 · frontend 473 · E2E 156 · typecheck verde
+Régua no fim: **API 1036 · frontend 495 · E2E 156 · typecheck verde, e agora
+inclui os 63 arquivos de `e2e/`**
 
 Esta sessão executa o `docs/propostas/2026-08-05-plano-de-subagentes-para-as-sobras.md`
 a partir da **fase 1** — porque a fase 0 dele já rodou ontem, e é a
@@ -82,6 +84,93 @@ o versionamento — e a diferença entre as duas foi medida hoje em 65%.
 Contrato de todo agente, do plano: **nenhum commita, nenhum toca nas tabelas de
 Sobras.** As três tabelas são o ponto de contenção do repositório; quem risca a
 linha com o hash é o orquestrador, porque só ele conhece o hash.
+
+## O que a onda 1 entregou
+
+Os quatro voltaram, 48 minutos de relógio, e os quatro patches aplicaram no
+`main` — um deles com socorro. **Onze sobras tratadas, oito fechadas, oito
+nascidas.**
+
+| # | Hash | O quê |
+|---|---|---|
+| 1 | `6a3d5c1` | **S38** — a higiene de 1,04 GB, e o que ela mediu |
+| 2 | `973c364` | **S-D7** e o mecanismo da **S30** — a sonda passa a enumerar pelo git |
+| 3 | `612e557` | Hashes, e as quatro sobras que a sonda revelou de si mesma |
+| 4 | `a77e3ef` | **S-D3** e **S-D6** — a poda de 5 arquivos, e 1.147 bytes de CSS |
+| 5 | `544f6c4` | Hashes, e os vereditos medidos da S23 e da S29 |
+| 6 | `3c463bb` | **S-D9**, **S-D10**, **S-D18** — o dedo alcança o select, o painel para de saltar |
+| 7 | `19d3887` | Hashes, e por que a S-D13 vai para a fila serial |
+| 8 | `acdd9b3` | **S13** e **S-D23** — o data router, e o typecheck vendo os 63 specs |
+| 9 | `f76fb84` | Hashes, e as regras 25 e 26 |
+
+**Sobras: 48 → 48.** Fecham S-D3, S-D6, S-D7, S-D9, S-D10, S-D18, S13, S-D23 e o
+mecanismo da S30; nascem S-D30 a S-D37. Nenhuma 🟠 nem 🔴; 25 🟡 · 23 🔵.
+
+### As correções ao diagnóstico — que foi o que mais rendeu
+
+Das 11 sobras tratadas, **7 descreviam errado o próprio defeito**, e quase todas
+erravam para o lado que mais atrapalha: o custo.
+
+- **S13** dizia "toca TODAS as rotas do app". Tocou **uma**: 59 `<Route>`
+  intactos, `git diff -w` de 98+/16-, e 88 das linhas restantes são reindentação.
+- **S-D23** prometia uma régua interina (`playwright test --list`). Ela não
+  existe por **dois** motivos: o Babel apaga os tipos, e o `--list` nem roda sem
+  `globalSetup` porque 55 dos 63 arquivos leem `e2e/.state.json` no topo.
+- **S-D3** repetia do E99 que a poda "não muda um byte do bundle". Muda
+  **1.147 bytes, todos de CSS** — o Tailwind v4 varre os fontes atrás de nomes de
+  classe, e o E99 mediu o JS sem olhar o `index.css`.
+- **S-D9** falava de 1 tela; a frase morta estava em **3**.
+- **S-D10** falava de 1 cartão e 3 consultas; hoje são **2 e 4** — o E132
+  acrescentou o segundo salto depois de a sobra ser escrita.
+- **S-D18**: a grafia que a nota do E137 prescreve (`min-h-11 md:h-9`) teria
+  engordado o **desktop** para 44px enquanto consertava o mobile.
+- **S-D13**: o lote que ela diz não existir **já existe** (`ultimoContatoPorLead`,
+  `leads.ts:59-70`); falta um sítio, e ele está na rota — por isso ela vai para a
+  fila serial em vez de fechar aqui.
+
+E uma correção ao registro da onda 0, que o B4 fez e vale escrever: **os
+worktrees órfãos nunca poluíram uma varredura versionada.** As 19 âncoras de
+`import.meta.dirname` não andam a partir da raiz — elas escaparam por sorte de
+CAMINHO, não por régua. Os 65% valem para grep feito à mão, que foi o que se
+mediu.
+
+### O que o E2E pegou e a faixa B não podia pegar
+
+A migração do roteador voltou com **483 testes de unidade verdes e typecheck
+verde**, e o E2E completo derrubou dois specs — `05-leads` e
+`59-confeccao-vira-peca`. O `useBlocker` novo bloqueava a navegação do **próprio
+salvamento**: `salvou` e `isSubmitSuccessful` são estado do React e a navegação é
+síncrona, então o bloqueio lia o valor velho. No Playwright o `confirm` é
+auto-dismissado e a navegação morria calada; para quem vende, o sistema
+perguntaria *"você tem coisa que não foi salva"* logo depois de salvar.
+
+Os 8 sítios do hook tinham **cinco grafias diferentes** para a mesma guarda, e
+**três não tinham guarda nenhuma**. Virou uma régua só (`sujoParaConfirmar` mais
+o `liberarSaida` que escreve num `ref`, porque estado do React vale no próximo
+render e a navegação é agora), com varredura cobrando que não nasça a sexta.
+
+Daí as **regras 25 e 26** do METODO. E o diagnóstico que fecha o argumento:
+nenhum teste de unidade daquele arquivo podia pegar isso — os quatro que o
+agente escreveu montam o hook com o booleano já decidido, e o defeito mora em
+QUANDO ele é decidido.
+
+### O que o formato de fan-out cobrou
+
+- **Os worktrees nasceram em `fe47ed5`, 267 commits atrás do `main`.** Os quatro
+  agentes perceberam sozinhos e deram `git reset --hard`, mas o sintoma é
+  silencioso: tudo compila, tudo passa, e só diverge na hora de aplicar. Foi o B1
+  quem avisou, e foi o primeiro parágrafo do retorno dele.
+- **Dois patches disputaram o `pnpm-lock.yaml`** (B1 e B3). O do B3 não aplicou
+  e o `git apply --3way` reverteu tudo em silêncio — `git status` limpo depois de
+  dizer "Applied cleanly" três vezes. Resolvido aplicando com
+  `--exclude=pnpm-lock.yaml` e regenerando com `pnpm install --lockfile-only`.
+  **Lock é arquivo derivado: não deve viajar em patch de agente.**
+- **Os quatro worktrees somaram 2,2 GB** e foram apagados no fim — o mesmo lixo
+  que a onda 0 tirou. Fan-out em worktree cria a sujeira que a S38 descreve; a
+  diferença é limpar no mesmo dia.
+- **Agente de workflow não é endereçável depois que o workflow fecha.** A
+  correção do `useBlocker` tentou voltar para o B3 e não teve para onde ir — quem
+  orquestra termina o que o agente não pôde ver.
 
 ## Como retomar
 
