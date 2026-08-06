@@ -56,22 +56,20 @@ export default async function globalSetup() {
   }
 
   /**
-   * A loja da suíte é a MAIS ANTIGA do banco, e a ordem é explícita.
+   * A loja da suíte é a do ID configurado, e banco sem ela é erro — a S-D27
+   * tirou daqui a eleição por IDADE, e o porquê está em `loja-da-suite.ts`.
    *
-   * Era `limit(1)` sem `order by`, o que em Postgres devolve a linha que a
-   * varredura encontrar primeiro — ou seja, **posição física no heap**. Duas
-   * coisas quebram isso, e as duas estão neste banco:
+   * Este bloco descrevia a régua antiga desde `e01bff4`, o commit que a
+   * aposentou: dizia "a MAIS ANTIGA do banco" sobre uma função que casa
+   * `LOJA_DA_SUITE_PADRAO` e ESTOURA se não achar. A idade era frágil pelo
+   * mesmo motivo que o `limit(1)` sem `order by` que ela substituiu — qualquer
+   * `UPDATE` em `lojas` reescreve a linha no fim do heap, e as 23 "Loja Teste"
+   * que as fixtures de API deixam no banco de dev eram candidatas.
    *
-   * 1. qualquer `UPDATE` em `lojas` reescreve a linha no fim do heap e reelege
-   *    outra loja no run seguinte (foi o que aconteceu: o spec 45 passou a
-   *    gravar telefone/endereço da loja para o rodapé do E100/F35);
-   * 2. as "Loja Teste" que as fixtures de API deixam no banco de dev (sobra do
-   *    E104) são candidatas à eleição — e uma delas ganhou.
-   *
-   * O sintoma não foi um teste vermelho: foi o SEED estourando com `duplicate
-   * key ... regra_disponibilidade_pkey`, porque a regra abaixo já existia
-   * apontando para a loja da eleição anterior. A loja de verdade é a primeira
-   * que existiu; fixture nasce sempre depois.
+   * O sintoma nunca foi um teste vermelho: era o seed estourando com
+   * `duplicate key ... regra_disponibilidade_pkey`, porque a regra abaixo
+   * sobrevivia apontando para a loja da eleição anterior. É o caso 1 do bloco
+   * da regra de disponibilidade, e continua tratado lá.
    */
   const loja = escolherLojaDaSuite(await db.select().from(lojasTable));
 
@@ -171,17 +169,51 @@ export default async function globalSetup() {
     db.insert(cabinesTable).values({ id: "e2e-cabine-1", lojaId: loja.id, nome: "E2E Cabine" }),
   );
 
-  // Regra de disponibilidade da loja (upsert — unique por loja). A loja do seed
-  // abre TODOS os dias (E38): assim os testes que criam atendimento "hoje" não
-  // dependem de o dia da suíte cair num dia fechado. O teste do E38 gere e
-  // restaura sua própria configuração de dias.
-  // O conflito é resolvido pelo `id`, e não pelo `lojaId`: a tabela tem as duas
-  // restrições únicas, e só a do `id` cobre o caso que estourou — a linha
-  // `e2e-regra-disp` sobrevivendo de um run que elegeu OUTRA loja. Reapontar é
-  // o conserto; recusar era o bug.
-  await db.insert(regraDisponibilidadeTable)
-    .values({ id: "e2e-regra-disp", lojaId: loja.id, provaDiasAntes: 14, usoDiasAntes: 3, usoDiasDepois: 2, lavagemDiasDepois: 7, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] })
-    .onConflictDoUpdate({ target: regraDisponibilidadeTable.id, set: { lojaId: loja.id, diasFuncionamento: [0, 1, 2, 3, 4, 5, 6] } });
+  // Regra de disponibilidade da loja. A loja do seed abre TODOS os dias (E38):
+  // assim os testes que criam atendimento "hoje" não dependem de o dia da suíte
+  // cair num dia fechado. O teste do E38 gere e restaura sua própria
+  // configuração de dias.
+  //
+  // A tabela tem DUAS restrições únicas — `regra_disponibilidade_pkey (id)` e
+  // `regra_disponibilidade_loja_id_unique (loja_id)`, medidas em `pg_constraint`
+  // — e um `ON CONFLICT` cobre uma só. Os dois conflitos acontecem, em bancos
+  // diferentes, e por isso não há alvo único que sirva:
+  //
+  // 1. **run anterior com OUTRA loja:** a linha `e2e-regra-disp` sobrevive
+  //    apontando para a loja velha e a loja de hoje não tem regra — o conflito
+  //    é no `id`, e reapontar é o conserto. Era o estado que a eleição por
+  //    idade produzia sozinha, e continua alcançável de propósito: quem aponta
+  //    `E2E_LOJA_ID` para outra loja cai exatamente aqui;
+  // 2. **banco virgem:** o seed acabou de criar o horário da loja com id
+  //    `<loja>-horario` (`configuracao-inicial.ts:533`), então a loja de hoje
+  //    JÁ TEM regra e `e2e-regra-disp` não existe — o conflito é no `loja_id`,
+  //    e o alvo `id` não o cobria. Medido num banco novo: o setup morria com
+  //    23505 `regra_disponibilidade_loja_id_unique` antes de a suíte começar,
+  //    logo depois de o seed rodar.
+  //
+  // Ler a regra da loja ANTES resolve os dois: se ela existe, o que importa é o
+  // conteúdo e o id é o que o banco já tinha; se não existe, o `id` volta a ser
+  // o alvo, para reapontar a linha órfã do caso 1. O ajuste grava os cinco
+  // campos em vez de só os dias — hoje os números do E2E e os do
+  // `HORARIO_PADRAO` do seed são idênticos, e a fixture não pode depender disso
+  // continuar verdade.
+  const AJUSTE_E2E = {
+    provaDiasAntes: 14,
+    usoDiasAntes: 3,
+    usoDiasDepois: 2,
+    lavagemDiasDepois: 7,
+    diasFuncionamento: [0, 1, 2, 3, 4, 5, 6],
+  };
+  const [regraDaLoja] = await db.select().from(regraDisponibilidadeTable)
+    .where(eq(regraDisponibilidadeTable.lojaId, loja.id));
+  if (regraDaLoja) {
+    await db.update(regraDisponibilidadeTable).set(AJUSTE_E2E)
+      .where(eq(regraDisponibilidadeTable.id, regraDaLoja.id));
+  } else {
+    await db.insert(regraDisponibilidadeTable)
+      .values({ id: "e2e-regra-disp", lojaId: loja.id, ...AJUSTE_E2E })
+      .onConflictDoUpdate({ target: regraDisponibilidadeTable.id, set: { lojaId: loja.id, ...AJUSTE_E2E } });
+  }
 
   // Escada de comissão da admin — alvo da tela de comissões. Vigência bem no
   // passado para valer em qualquer competência que o teste olhe. As faixas são
