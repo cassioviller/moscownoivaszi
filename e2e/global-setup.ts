@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { escolherLojaDaSuite } from "./loja-da-suite";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { eq, and } from "drizzle-orm";
@@ -72,11 +73,7 @@ export default async function globalSetup() {
    * apontando para a loja da eleição anterior. A loja de verdade é a primeira
    * que existiu; fixture nasce sempre depois.
    */
-  const todasAsLojas = await db.select().from(lojasTable);
-  const loja = todasAsLojas.sort(
-    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-  )[0];
-  if (!loja) throw new Error("[e2e-setup] nenhuma loja no banco");
+  const loja = escolherLojaDaSuite(await db.select().from(lojasTable));
 
   // E93/D1: uma SEGUNDA loja da mesma pessoa. Sem ela a fixture não conseguia
   // exprimir a divergência "URL em B, sessão em A" — que é o estado exato em
