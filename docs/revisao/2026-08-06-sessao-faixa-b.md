@@ -245,12 +245,16 @@ vezes.)
 
 ## Como retomar
 
-0. **O resto está planejado:**
+0. **O resto está planejado, e as duas primeiras fases já andaram.**
    [`docs/propostas/2026-08-06-plano-do-resto-das-sobras.md`](../propostas/2026-08-06-plano-do-resto-das-sobras.md)
-   agrupa as 46 em cinco fases e cobre todas — a conferência mais as ondas de
+   agrupa as sobras em cinco fases e cobre todas — a conferência mais as ondas de
    hoje deixaram **todas medidas nos últimos dois dias**, que é a primeira vez
-   que isso é verdade, e por isso o plano abre sem fase de leitura. Os itens 1 a
-   3 abaixo são o resumo dele.
+   que isso é verdade, e por isso o plano abre sem fase de leitura. A **fase 0**
+   riscou por decisão as três linhas que descreviam decisões já tomadas (S14, S24
+   e S-A1): **46 → 43**. A **fase 1** está escrita e esperando resposta —
+   [`a folha de perguntas`](../propostas/2026-08-06-folha-de-perguntas.md) traz
+   as 11 que não têm conserto até alguém perguntar, com o número medido e o que
+   muda com cada resposta possível. Os itens 1 a 3 abaixo são o resumo.
 1. **Leia a [conferência](2026-08-05-conferencia-de-sobras.md) antes de escolher
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**

@@ -32,15 +32,19 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 14 sobras abertas (7 🟡 · 7 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 12 sobras abertas (7 🟡 · 5 🔵). Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 19 sobras abertas (7 🟡 · 12 🔵) |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (8 🟡 · 5 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 12 sobras abertas (8 🟡 · 4 🔵) |
 
-   **São 46 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
-   2026-08-06, depois da onda 2. As 48 da conferência viraram 46 pelo caminho
-   longo: as ondas 1 e 2 fecharam 16 linhas e escreveram 14 novas, e a única 🟠
-   que existiu neste intervalo (a S-D38, banco virgem) nasceu e morreu no mesmo
-   dia. A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
+   **São 43 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
+   2026-08-06, depois da fase 0 do plano do resto. **O resto está planejado e
+   agrupado:** `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre as
+   43 em cinco fases, e `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm
+   conserto até alguém responder. As 48 da conferência viraram 43 pelo caminho
+   longo: as ondas 1 e 2 fecharam 16 linhas e escreveram 14 novas, a fase 0
+   riscou 3 por decisão já tomada, e a única 🟠 que existiu neste intervalo (a
+   S-D38, banco virgem) nasceu e morreu no mesmo dia. A frase abaixo é a da
+   conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
    passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
    quatro rodadas de revisão não tinham achado — os três na fronteira entre dois

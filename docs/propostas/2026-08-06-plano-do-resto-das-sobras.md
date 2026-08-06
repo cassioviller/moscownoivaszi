@@ -21,7 +21,7 @@ que esteve.
 Isso muda o formato: os planos anteriores abriam com uma fase de leitura. Este
 não precisa dela, e por isso começa pelo que não tem código nenhum.
 
-## Fase 0 — três linhas que não são trabalho (custo: um commit de documento)
+## Fase 0 — três linhas que não são trabalho ✅ **EXECUTADA em 2026-08-06**
 
 A regra 21 diz que sobra fechada por DECISÃO se risca com a resposta escrita.
 Estas três já trazem a decisão dentro do próprio texto e continuam ocupando a
@@ -37,7 +37,12 @@ O ganho não é o número: é que uma tabela onde 3 de 46 linhas descrevem decis
 já tomadas obriga quem a lê a conferir cada uma contra o código para saber o que
 ainda é verdade — exatamente o trabalho que ela existe para poupar.
 
-## Fase 1 — a folha de perguntas (custo: zero código; destrava 11 linhas)
+## Fase 1 — a folha de perguntas ✍️ **ESCRITA em 2026-08-06**, esperando resposta
+
+A folha está em [`2026-08-06-folha-de-perguntas.md`](2026-08-06-folha-de-perguntas.md),
+com a frase de cada pergunta na linguagem de quem responde e, embaixo de cada
+uma, o número medido e **o que muda com cada resposta possível**. O que segue
+aqui é o índice.
 
 **Um quarto do backlog não tem conserto até alguém perguntar.** Não são pedidos
 de funcionalidade: são pontos onde o sistema já se comporta de um jeito e
