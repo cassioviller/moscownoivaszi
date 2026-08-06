@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable } from "@workspace/db";
+import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable, bloqueioVestidosTable } from "@workspace/db";
 import { eq, and, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
 import { atributosDaLoja } from "../lib/escopo-loja";
 import {
@@ -596,11 +596,24 @@ router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> =>
     return;
   }
 
-  const [[c1], [c2], [c3]] = await Promise.all([
+  const [[c1], [c2], [c3], [c4]] = await Promise.all([
     db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.leadId, lead.id)),
     db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.leadId, lead.id)),
     db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.leadId, lead.id)),
+    // S27 — a quarta contagem que faltava. `bloqueio_vestidos.lead_id` é
+    // `set null`: sem esta guarda a noiva saía com 204, o vestido continuava
+    // ocupado e o ÚNICO ponteiro para a dona era apagado, contra a promessa do
+    // docblock desta rota. Conta TODAS as linhas, inclusive as canceladas — o
+    // `set null` dispara nelas do mesmo jeito, e com o CHECK isso vira 23514.
+    db.select({ n: count() }).from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.leadId, lead.id)),
   ]);
+  if (c4.n > 0) {
+    res.status(409).json({
+      error: "LEAD_COM_RESERVA",
+      detalhe: `Esta noiva tem ${c4.n} reserva(s) de vestido — excluir deixaria a peça ocupada sem dona. Cancele as reservas primeiro.`,
+    });
+    return;
+  }
   if (c1.n > 0) {
     res.status(409).json({
       error: "LEAD_COM_CONTRATO",
