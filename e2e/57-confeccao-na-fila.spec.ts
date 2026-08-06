@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, ajustesTable, atendimentosTable, leadsTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -21,6 +21,7 @@ test.describe("Confecção na fila da costureira (E155)", () => {
   let leadId: string | null = null;
   let atendimentoId: string | null = null;
   let ajusteId: string | null = null;
+  let cabineId: string | null = null;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
@@ -33,6 +34,8 @@ test.describe("Confecção na fila da costureira (E155)", () => {
     if (ajusteId) await db.delete(ajustesTable).where(eq(ajustesTable.id, ajusteId));
     if (atendimentoId) await db.delete(atendimentosTable).where(eq(atendimentosTable.id, atendimentoId));
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+    // S-D25: a cabine por execução também sai — eram 26 `e57-` acumuladas.
+    await apagarCabineCriada(cabineId);
   });
 
   test("a confecção aparece na fila com selo e custo, ao lado dos ajustes", async ({
@@ -54,10 +57,11 @@ test.describe("Confecção na fila da costureira (E155)", () => {
       data: { nome: `e57-${Date.now()}` },
     });
     expect(cabine.status(), await cabine.text()).toBe(201);
+    cabineId = ((await cabine.json()) as { id: string }).id;
 
     const atendimento = await criarAtendimentoLivre(request, estado.lojaId, {
       leadId,
-      cabineId: ((await cabine.json()) as { id: string }).id,
+      cabineId,
       vendedoraId: vendedoras[0]!.usuarioId,
       ymd: new Date().toISOString().slice(0, 10),
     });

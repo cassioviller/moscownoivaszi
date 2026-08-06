@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, ajustesTable, atendimentosTable, leadsTable, vestidosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -22,6 +22,7 @@ test.describe("A confecção vira peça do acervo (E156)", () => {
   let atendimentoId: string | null = null;
   let ajusteId: string | null = null;
   let vestidoId: string | null = null;
+  let cabineId: string | null = null;
 
   const codigo = `E2E-CONF-${Date.now().toString(36)}`;
 
@@ -39,6 +40,8 @@ test.describe("A confecção vira peça do acervo (E156)", () => {
     if (ajusteId) await db.delete(ajustesTable).where(eq(ajustesTable.id, ajusteId));
     if (atendimentoId) await db.delete(atendimentosTable).where(eq(atendimentosTable.id, atendimentoId));
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+    // S-D25: a cabine por execução também sai — eram 24 `e59-` acumuladas.
+    await apagarCabineCriada(cabineId);
   });
 
   test("a confecção feita entra no acervo, e a fila passa a mostrar a peça", async ({
@@ -57,10 +60,11 @@ test.describe("A confecção vira peça do acervo (E156)", () => {
       data: { nome: `e59-${Date.now()}` },
     });
     expect(cabine.status(), await cabine.text()).toBe(201);
+    cabineId = ((await cabine.json()) as { id: string }).id;
 
     const atendimento = await criarAtendimentoLivre(request, estado.lojaId, {
       leadId,
-      cabineId: ((await cabine.json()) as { id: string }).id,
+      cabineId,
       vendedoraId: vendedoras[0]!.usuarioId,
       ymd: new Date().toISOString().slice(0, 10),
     });

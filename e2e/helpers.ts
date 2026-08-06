@@ -1,6 +1,8 @@
 import { expect, type Page, type Locator, type APIRequestContext, request } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
+import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
 
 export interface E2EState {
   lojaId: string;
@@ -74,6 +76,29 @@ export async function criarAtendimentoLivre(
   throw new Error(
     "criarAtendimentoLivre: 12 horários tentados e todos ocupados — o banco do E2E precisa de limpeza (família S18/S25)",
   );
+}
+
+/**
+ * S-D25/S-D40 — a régua única de limpeza da cabine criada por execução.
+ *
+ * O banco do E2E persiste entre execuções, e cabine esquecida não é lixo
+ * invisível: ela nasce ATIVA na loja do seed e vira coluna que a agenda
+ * desenha. Quando esta régua nasceu eram **220 `e<NN>-<timestamp>`** acumuladas
+ * em uma semana (e22 68, e25 66, e24 36, e57 26, e59 24) — quatro novas por
+ * passada completa da suíte. Os três specs que já limpavam escreviam a mesma
+ * limpeza em três grafias, que é a regra 26 pedindo uma régua; a varredura
+ * `varredura-cabines-do-e2e` cobra que spec que cria cabine chame esta.
+ *
+ * O delete de atendimentos é explícito, e não confiança no CASCADE do schema:
+ * se a FK um dia virar RESTRICT, a limpeza continua inteira. Os imports são
+ * ESTÁTICOS de propósito: `await import(...)` aqui atravessa a transpilação do
+ * Playwright e chega ao `.ts` cru como ESM — `exports is not defined`, medido
+ * com 7 specs vermelhos na primeira execução desta régua.
+ */
+export async function apagarCabineCriada(cabineId: string | null | undefined): Promise<void> {
+  if (!cabineId) return;
+  await db.delete(atendimentosTable).where(eq(atendimentosTable.cabineId, cabineId));
+  await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
 }
 
 /** Login pela UI (o mesmo caminho da usuária real). */

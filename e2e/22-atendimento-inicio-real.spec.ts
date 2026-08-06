@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -12,6 +12,7 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  */
 test.describe("Atendimento — início real (E36)", () => {
   let atendimentoId: string;
+  let cabineId: string;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
@@ -38,7 +39,7 @@ test.describe("Atendimento — início real (E36)", () => {
       data: { nome: `e22-${stamp}` },
     });
     expect(cab.status(), await cab.text()).toBe(201);
-    const cabineId = ((await cab.json()) as { id: string }).id;
+    cabineId = ((await cab.json()) as { id: string }).id;
     const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
     const hh = String(9 + (stamp % 8)).padStart(2, "0");
     const mm = String(Math.floor(stamp / 1000) % 60).padStart(2, "0");
@@ -70,10 +71,13 @@ test.describe("Atendimento — início real (E36)", () => {
    * teste da barra reproduziu o problema que a barra existe para resolver.
    */
   test.afterAll(async ({ request }) => {
-    if (!atendimentoId) return;
-    await request.delete(
-      `${API_URL}/api/lojas/${estado.lojaId}/atendimentos/${atendimentoId}`,
-    );
+    if (atendimentoId) {
+      await request.delete(
+        `${API_URL}/api/lojas/${estado.lojaId}/atendimentos/${atendimentoId}`,
+      );
+    }
+    // S-D25: a cabine por execução também sai — eram 68 `e22-` acumuladas.
+    await apagarCabineCriada(cabineId);
   });
 
   test("iniciar carimba atendidoEm e a fila mostra o início real", async ({ page }) => {

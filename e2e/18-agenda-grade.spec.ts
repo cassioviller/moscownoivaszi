@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, arrastar } from "./helpers";
+import { db, atendimentosTable } from "../lib/db/src/index";
+import { lerEstado, API_URL, arrastar, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -91,7 +91,7 @@ test.describe("Agenda — grade do dia", () => {
     }
     // A "Cabine E2E Grade" é reusável entre runs: só sai se ESTE run a criou.
     if (cabineCriadaNesteRun) {
-      await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineDoisId));
+      await apagarCabineCriada(cabineDoisId);
     }
   });
 
