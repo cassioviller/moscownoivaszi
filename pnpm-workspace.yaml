@@ -23,9 +23,29 @@ packages:
   # `[services.env]` do `artifact.toml` define as duas: elas nunca faltaram para
   # quem roda o preview.
   #
-  # Se um dia ficar claro que ninguém abre o preview, a poda é um `rm -rf` — e aí
-  # morrem junto as 4 cópias divergentes de `ui/` (incluindo um `calendar.tsx`
-  # que não recebeu o conserto do S19). Isso é a sobra S23, não este arquivo.
+  # Se um dia ficar claro que ninguém abre o preview, a poda é um `rm -rf`. O que
+  # morre junto foi MEDIDO em 2026-08-06, e não são "4 cópias divergentes de
+  # `ui/`": o repositório tem **2** diretórios `components/ui/` — 55 arquivos
+  # aqui, 33 no app —, 33 são homônimos e **8 divergem**. Cada uma das 8 é uma
+  # correção que o app recebeu e a cópia daqui não: o `calendar.tsx` sem o S19
+  # (10 `[--cell-size]` em 7 linhas, sintaxe que o Tailwind v4 descarta) e sem o
+  # E92/D15 (`toLocaleString("default")`, o seletor de mês em inglês), o
+  # `badge.tsx` ainda `<div>` (E92/E22) e sem a variante `aviso` (E130), o
+  # `CardTitle` ainda `<div>` em vez de `<h3>` (E136/E12), o `button.tsx` com
+  # alvo de 36px onde a régua é 44px abaixo de `md` (E137/E9), e o `select.tsx`
+  # sem o teto do F13/E98. **Duas delas são acessibilidade.**
+  #
+  # A outra saída que a S23 propõe — "o `ui/` de lá vira um link para o de
+  # verdade" — está morta: **22 dos 55 primitivos daqui não existem no app**
+  # (accordion, carousel, chart, drawer, sidebar, sonner, …), e o link apagaria
+  # os 22 da paleta do preview.
+  #
+  # O que zera o custo hoje é o grafo de import: `main.tsx` → `App.tsx` →
+  # `src/.generated/mockup-components.ts`, que declara **0 módulos**. Dos 61
+  # arquivos `.ts`/`.tsx` de `src/`, o `main.tsx` alcança **3**; os 55 de `ui/`
+  # estão entre os 58 inalcançáveis. E o typecheck da raiz nem olha para cá — o
+  # `package.json` filtra `!@workspace/mockup-sandbox`. Isso é a sobra S23, não
+  # este arquivo.
   - artifacts/*
   - lib/*
   - lib/integrations/*
