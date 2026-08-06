@@ -599,9 +599,29 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       });
     }
 
-    // Fechar contrato avança o funil do lead (nunca regride).
+    /**
+     * Fechar contrato avança o funil do lead (nunca regride) — e carimba a
+     * data, que é coisa diferente (S16).
+     *
+     * O carimbo morava DENTRO do `if (etapaNova !== lead.etapa)`, então ele era
+     * efeito do avanço e não do contrato. Quem já estava adiante no funil não
+     * avançava — `avancarEtapaLead` devolve a mesma etapa — e ficava sem
+     * carimbo para sempre. O funil aceita pular (`transicaoLeadValida` só exige
+     * `iPara > iDe`), então "a noiva já está EM_PROVAS quando o contrato é
+     * registrado" é um caminho normal, não um estado corrompido. E `PERDIDO`
+     * cai no mesmo buraco por outra porta: `avancarEtapaLead` não mexe em quem
+     * está fora do funil.
+     *
+     * A outra porta é o PATCH de `/leads`: o `carimboEtapa` de `leads.ts:45`
+     * só carimba quando a etapa é `CONTRATO_FECHADO` exatamente. As duas
+     * conspiravam — nenhuma das duas cobria pular a etapa.
+     *
+     * Quem lê a coluna é o `comContrato` de `/leads/sazonalidade`
+     * (`leads.ts:451`), que filtra por `is not null`: a noiva sem carimbo não
+     * é contada como "já fechou" na curva que diz quando falta vestido.
+     */
     const etapaNova = avancarEtapaLead(lead.etapa, "CONTRATO_FECHADO");
-    if (etapaNova !== lead.etapa) {
+    if (etapaNova !== lead.etapa || !lead.contratoFechadoEm) {
       await tx.update(leadsTable)
         .set({
           etapa: etapaNova,
