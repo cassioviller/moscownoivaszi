@@ -26,6 +26,7 @@ import { brl, instanteLongo, tipoItemLabel } from "@/lib/formatos";
 const ERROS: Record<string, string> = {
   LINK_EXPIRADO: "Este link expirou. Peça um novo para a sua vendedora.",
   LINK_INVALIDO: "Link inválido — confira se ele veio inteiro do WhatsApp.",
+  MUITAS_TENTATIVAS: "Muitas tentativas em pouco tempo. Espere alguns minutos e abra o link de novo.",
 };
 
 

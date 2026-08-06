@@ -40,7 +40,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const hashParaComparar = usuario && usuario.ativo ? usuario.senhaHash : null;
   const senhaValida = await compararSenhaConstante(parsed.data.senha, hashParaComparar);
   if (!senhaValida) {
-    res.status(401).json({ error: "Credenciais inválidas" });
+    // Sem `detalhe`: aqui o `porStatus` da tela de login é que manda dizer
+    // "e-mail ou senha não conferem", e `detalhe` ganharia dele (erro-api.ts:62).
+    res.status(401).json({ error: "CREDENCIAIS_INVALIDAS" });
     return;
   }
 
@@ -163,7 +165,7 @@ router.post("/auth/selecionar-loja", requireSessao, async (req, res): Promise<vo
   }
 
   if (!temAcesso) {
-    res.status(403).json({ error: "Acesso negado a esta loja" });
+    res.status(403).json({ error: "ACESSO_NEGADO_LOJA" });
     return;
   }
 

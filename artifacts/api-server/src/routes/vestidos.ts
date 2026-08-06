@@ -197,7 +197,10 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   const lojaId = req.params.lojaId as string;
   const parsedQuery = CheckDisponibilidadeVestidosQueryParams.safeParse(req.query);
   if (!parsedQuery.success) {
-    res.status(400).json({ error: "Parâmetro 'data' inválido (esperado YYYY-MM-DD)" });
+    res.status(400).json({
+      error: "FILTRO_INVALIDO",
+      detalhe: "Parâmetro 'data' inválido: esperado YYYY-MM-DD.",
+    });
     return;
   }
   const { data } = parsedQuery.data;
@@ -584,7 +587,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
   const { lojaId, vestidoId, ordem: ordemStr } = req.params;
   const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
   if (Number.isNaN(ordem)) {
-    res.status(400).json({ error: "Ordem inválida" });
+    res.status(400).json({ error: "ORDEM_INVALIDA", detalhe: "Ordem de foto inválida." });
     return;
   }
   const query = GetVestidoFotoQueryParams.safeParse(req.query);

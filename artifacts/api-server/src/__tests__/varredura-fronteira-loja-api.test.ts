@@ -101,7 +101,7 @@ describe("varredura — a loja da URL é conferida em TODA rota de loja", () => 
   it("e o 403 vem da FRONTEIRA, não de permissão — a loja de casa responde", async () => {
     const r = await agenteA.get(`/api/lojas/${B.lojaId}/leads`);
     expect(r.status).toBe(403);
-    expect(r.body.error).toBe("Acesso negado a esta loja");
+    expect(r.body.error).toBe("LOJA_DIVERGE_DA_SESSAO");
     await agenteA.get(`/api/lojas/${A.lojaId}/leads`).expect(200);
   });
 });

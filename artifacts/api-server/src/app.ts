@@ -74,7 +74,13 @@ const loginLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   skip: () => !!process.env.VITEST || !!process.env.E2E_SUITE,
-  message: { error: "Muitas tentativas de login. Tente novamente em alguns minutos." },
+  // S-D21 — CÓDIGO no campo do código. As quatro páginas públicas leem
+  // `data.error` como CHAVE de mapa: com a frase aqui, a noiva que esbarra no
+  // teto lia "Link inválido — confira se ele veio inteiro do WhatsApp".
+  message: {
+    error: "MUITAS_TENTATIVAS",
+    detalhe: "Muitas tentativas de login. Tente novamente em alguns minutos.",
+  },
 });
 app.use("/api/auth/login", loginLimiter);
 
@@ -86,7 +92,10 @@ const conviteLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   skip: () => !!process.env.VITEST || !!process.env.E2E_SUITE,
-  message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
+  message: {
+    error: "MUITAS_TENTATIVAS",
+    detalhe: "Muitas tentativas. Tente novamente em alguns minutos.",
+  },
 });
 app.use("/api/equipe/convites", conviteLimiter);
 // O link público do orçamento é a mesma probing surface do convite.
@@ -101,7 +110,10 @@ const lookbookLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   skip: () => !!process.env.VITEST || !!process.env.E2E_SUITE,
-  message: { error: "Muitas tentativas. Tente novamente em alguns minutos." },
+  message: {
+    error: "MUITAS_TENTATIVAS",
+    detalhe: "Muitas tentativas. Tente novamente em alguns minutos.",
+  },
 });
 app.use("/api/lookbooks/publico", lookbookLimiter);
 // Portal da noiva (E78): mesma régua do lookbook — a página carrega N fotos
@@ -111,7 +123,9 @@ app.use("/api/portal", lookbookLimiter);
 app.use("/api", router);
 
 app.use("/api", (_req, res) => {
-  res.status(404).json({ error: "Rota não encontrada" });
+  // S-D20 — o 404 de rota desconhecida é o único que o E145 não alcançou,
+  // porque ele mora em `app.ts` e a varredura parava em `routes/`.
+  res.status(404).json({ error: "ROTA_NAO_ENCONTRADA" });
 });
 
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {

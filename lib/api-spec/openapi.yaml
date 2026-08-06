@@ -480,7 +480,7 @@ paths:
         "404":
           description: Execução de backup não encontrada
         "410":
-          description: O arquivo deste backup já foi removido pela retenção
+          description: O arquivo do dump já saiu pela retenção (`BACKUP_SEM_ARQUIVO`)
 
   # ───────────────────────── Equipe ─────────────────────────
   /lojas/{lojaId}/dados:

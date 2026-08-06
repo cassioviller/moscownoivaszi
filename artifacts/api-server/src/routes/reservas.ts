@@ -360,11 +360,17 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   }
 
   if (dados.tipo === "RESERVA_CASAMENTO" && !dados.casamentoData) {
-    res.status(400).json({ error: "casamentoData é obrigatória para bloqueio RESERVA_CASAMENTO" });
+    res.status(400).json({
+      error: "RESERVA_SEM_DATA_DE_CASAMENTO",
+      detalhe: "Reserva de casamento precisa da data do casamento.",
+    });
     return;
   }
   if (dados.tipo === "MANUTENCAO" && !dados.inicio) {
-    res.status(400).json({ error: "inicio é obrigatório para bloqueio MANUTENCAO" });
+    res.status(400).json({
+      error: "MANUTENCAO_SEM_INICIO",
+      detalhe: "Manutenção precisa da data de início.",
+    });
     return;
   }
 
@@ -447,7 +453,10 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
 
   // Devolução sem retirada é uma história impossível de contar.
   if (candidato.devolucaoDataReal && !candidato.retiradaDataReal) {
-    res.status(400).json({ error: "Não dá para desfazer a retirada com a devolução registrada" });
+    res.status(400).json({
+      error: "DEVOLUCAO_SEM_RETIRADA",
+      detalhe: "Não dá para desfazer a retirada com a devolução já registrada.",
+    });
     return;
   }
   /**

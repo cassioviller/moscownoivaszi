@@ -442,7 +442,10 @@ router.get("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<voi
   const lojaId = req.params.lojaId as string;
   const parsed = ListPagamentosQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: "Filtro inválido (de/ate esperam YYYY-MM-DD)" });
+    res.status(400).json({
+      error: "FILTRO_INVALIDO",
+      detalhe: "Filtro inválido: de/ate esperam YYYY-MM-DD.",
+    });
     return;
   }
   const { de, ate, colaboradorId } = parsed.data;

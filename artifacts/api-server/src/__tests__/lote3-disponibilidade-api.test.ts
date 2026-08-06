@@ -350,14 +350,18 @@ describe("cenário 7 — validações 400 na criação de bloqueio", () => {
       tipo: "MANUTENCAO",
     });
     expect(semInicio.status).toBe(400);
-    expect(semInicio.body.error).toMatch(/inicio/);
+    // S-D21: o assert casava a PROSA dentro do campo do código. Agora casa o
+    // código, e a prosa tem lugar próprio.
+    expect(semInicio.body.error).toBe("MANUTENCAO_SEM_INICIO");
+    expect(semInicio.body.detalhe).toMatch(/início/);
 
     const semData = await agent.post(`/api/lojas/${f.lojaId}/bloqueios`).send({
       vestidoId: vestido.id,
       tipo: "RESERVA_CASAMENTO",
     });
     expect(semData.status).toBe(400);
-    expect(semData.body.error).toMatch(/casamentoData/);
+    expect(semData.body.error).toBe("RESERVA_SEM_DATA_DE_CASAMENTO");
+    expect(semData.body.detalhe).toMatch(/data do casamento/);
 
     expect(await bloqueiosDoVestido(vestido.id)).toHaveLength(0);
   });

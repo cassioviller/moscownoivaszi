@@ -77,7 +77,7 @@ describe("mensagemApi", () => {
    * pessoa nem tinha sessão. `porStatus` existe só para este caso.
    */
   it("o login sobrescreve o 401 com 'e-mail ou senha não conferem'", () => {
-    const err = erroApi(401, { error: "Credenciais inválidas" });
+    const err = erroApi(401, { error: "CREDENCIAIS_INVALIDAS" });
     expect(
       mensagemApi(err, "Não consegui entrar agora.", {}, { 401: "E-mail ou senha não conferem." }),
     ).toBe("E-mail ou senha não conferem.");

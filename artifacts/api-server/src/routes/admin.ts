@@ -724,7 +724,10 @@ router.get("/admin/backup/:backupId/download", async (req, res): Promise<void> =
   }
   const caminho = caminhoDoDump(registro);
   if (!caminho || !existsSync(caminho)) {
-    res.status(410).json({ error: "O arquivo deste backup já foi removido pela retenção" });
+    res.status(410).json({
+      error: "BACKUP_SEM_ARQUIVO",
+      detalhe: "O arquivo deste backup já foi removido pela retenção.",
+    });
     return;
   }
   res.setHeader("Content-Type", "application/gzip");

@@ -38,13 +38,13 @@ export function lojaIdDaUrl(req: Request): string | undefined {
 export async function requireSessao(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies[COOKIE_NOME];
   if (!sessionId) {
-    res.status(401).json({ error: "Não autenticado" });
+    res.status(401).json({ error: "NAO_AUTENTICADO" });
     return;
   }
 
   const data = await buscarSessao(sessionId);
   if (!data) {
-    res.status(401).json({ error: "Sessão inválida ou expirada" });
+    res.status(401).json({ error: "SESSAO_INVALIDA" });
     return;
   }
 
@@ -56,25 +56,29 @@ export async function requireSessao(req: Request, res: Response, next: NextFunct
 export async function requireSessaoComLoja(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies[COOKIE_NOME];
   if (!sessionId) {
-    res.status(401).json({ error: "Não autenticado" });
+    res.status(401).json({ error: "NAO_AUTENTICADO" });
     return;
   }
 
   const data = await buscarSessao(sessionId);
-  if (!data || !data.sessao.lojaAtivaId) {
-    res.status(401).json({ error: "Selecione uma loja" });
+  if (!data) {
+    res.status(401).json({ error: "SESSAO_INVALIDA" });
+    return;
+  }
+  if (!data.sessao.lojaAtivaId) {
+    res.status(401).json({ error: "SEM_LOJA_ATIVA" });
     return;
   }
 
   const loja = await buscarLoja(data.sessao.lojaAtivaId);
   if (!loja) {
-    res.status(403).json({ error: "Loja ativa inválida" });
+    res.status(403).json({ error: "LOJA_ATIVA_INVALIDA" });
     return;
   }
 
   const lojaIdParam = lojaIdDaUrl(req);
   if (lojaIdParam && lojaIdParam !== data.sessao.lojaAtivaId) {
-    res.status(403).json({ error: "Acesso negado a esta loja" });
+    res.status(403).json({ error: "LOJA_DIVERGE_DA_SESSAO" });
     return;
   }
 
@@ -86,7 +90,7 @@ export async function requireSessaoComLoja(req: Request, res: Response, next: Ne
 
 export async function requireSuperAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.usuario?.isSuperAdmin) {
-    res.status(403).json({ error: "Acesso negado (SuperAdmin only)" });
+    res.status(403).json({ error: "ACESSO_NEGADO_SUPERADMIN" });
     return;
   }
   next();
@@ -105,7 +109,7 @@ export function requireModulo(modulo: string, acao?: Acao) {
     const usuario = req.usuario;
     const lojaId = req.sessao?.lojaAtivaId;
     if (!usuario || !lojaId) {
-      res.status(401).json({ error: "Selecione uma loja" });
+      res.status(401).json({ error: "SEM_LOJA_ATIVA" });
       return;
     }
     if (usuario.isSuperAdmin) {
