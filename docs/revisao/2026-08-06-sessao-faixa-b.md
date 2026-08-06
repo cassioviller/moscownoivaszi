@@ -2,7 +2,7 @@
 
 **Branch `main`** · base `4a3fd64` · 28 commits
 Régua na abertura: API 1031 · frontend 473 · E2E 156 · typecheck verde
-Régua no fim: **API 1047 · frontend 495 · E2E 161 · typecheck verde em 4
+Régua no fim: **API 1050 · frontend 495 · E2E 161 · typecheck verde em 4
 projetos** — ele passou a incluir os 63 arquivos de `e2e/` (S-D23) e o
 `scripts/` (S-D43) —, mais uma **quarta régua fora das suítes**:
 `scripts/banco-virgem.ts`, que exercita o caminho da primeira execução.
@@ -255,9 +255,11 @@ começar a executar**, em quatro commits:
 | `fda25c4` | **O plano do resto** — as 46 sobras em cinco fases, conferido linha a linha: nenhuma ficou de fora |
 | `49c5cdb` | **Fase 0 e fase 1** — três linhas riscadas por decisão já tomada, e a folha de perguntas escrita |
 | `60adc7c` | **Fase 2, épico 1** — S-D43, S-D41 e S-A12: a régua do banco virgem, e o resumo do seed que só ela vê |
-| *(este)* | Os hashes, a S-D44, e a remedição da S-D25 |
+| `affa52c` | Os hashes, a S-D44, e a remedição da S-D25 |
+| `80d7d35` | **Fase 2, épico 2** — S-D25 e S-D40: spec que cria cabine apaga a sua, e a régua é uma só |
 
-**Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11).
+**Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
+20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce).
 
 ### O plano abriu sem fase de leitura, e é a primeira vez
 
@@ -305,6 +307,40 @@ para 4 projetos. Sobrou o quarto caso, que virou a **S-D44**:
 `lib/api-spec/orval.config.ts`, o último TypeScript do repositório fora de todo
 typecheck — e é o que configura o codegen que já apagou `generated/` ao falhar.
 
+### Fase 2, épico 2 — a faxina das cabines, e o que os dois runs vermelhos ensinaram
+
+O épico veio nas quatro peças que a remedição pediu: a régua única
+`apagarCabineCriada` em `e2e/helpers.ts` (os três specs que limpavam escreviam
+três grafias — regra 26; os quatro que não limpavam ganharam a chamada), a
+faxina única com guarda de cabine VAZIA — `atendimentos.cabine_id` é CASCADE, e
+apagar cabine com história levaria a história junto — que fez **DELETE 224,
+restando 16 cabines**, e a varredura `varredura-cabines-do-e2e.test.ts` (API
++3) com piso de população, porque conjunto vazio aprova tudo em silêncio.
+**Prova de ciclo fechado: uma suíte completa depois da faxina termina com zero
+cabines de fixture.**
+
+**A primeira execução custou dois runs, e o erro rendeu mais que o acerto:**
+
+- A régua nasceu com `await import(...)` dinâmico — para não abrir o Pool do
+  banco nos ~50 specs que não tocam o banco — e o E2E derrubou **7 specs** com
+  `ReferenceError: exports is not defined in ES module scope`: o import
+  dinâmico atravessa a transpilação do Playwright e chega ao `.ts` cru como
+  ESM. O import estático, que todos os specs já usavam, passa pelo transform.
+- **O crash produziu, ele mesmo, a demonstração da classe que o épico fecha:**
+  os sete `afterAll` morreram NO MEIO da limpeza — o do spec 55 antes de apagar
+  contrato e parcelas — e no run seguinte o spec 37 caiu com `Expected: 1550,
+  Received: 4340`: o contrato vazado de R$ 8.400 (3×840 recebidas no dia) deu
+  projeção de comissão a uma SEGUNDA vendedora, e o
+  `linhas.find(l => l.projecao !== null)` do spec pega a primeira. Rastro de
+  spec não é lixo inerte: é um teste verde que vira vermelho noutro arquivo, um
+  run depois. A limpeza manual seguiu a ordem dos próprios specs (10 parcelas,
+  1 contrato, 2 leads, 7 cabines) e o run 3 fechou com 161 verdes.
+
+**Visto de passagem, virou S-D45:** o spec 41 CANCELA os contratos em vez de
+apagar — **274 contratos `E2E Colocacao` e 274 leads** de 21/07 a 06/08, zero
+parcelas, +2 por passada (272 → 274 dentro desta própria sessão). Mesma família
+da S-D25, outra tabela.
+
 ### A S-D25 estava olhando para a população errada
 
 Medida em `psql` antes de começar o épico 2, e o épico não chegou a ser feito —
@@ -341,13 +377,15 @@ regra 26 pedindo uma régua.
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem cinco épicos em pé, e o próximo é a S-D25 — já medida e
-   pronta para executar.** Não é a limpeza que ela descreve: é a linha de
-   `delete(cabinesTable)` nos specs 22, 25, 57 e 59, a faxina única das 225
-   cabines de fixture, e uma varredura cobrando que spec que cria cabine apague a
-   sua (as três grafias existentes são a regra 26 pedindo régua). Depois dele:
-   S-D13+S-D37, S-D26, S-D42+S-D39, S-D24. A ordem e o porquê de cada par estão
-   na fase 2 do plano.
+2. **A fila do banco tem quatro épicos em pé — a S-D25/S-D40 fechou em
+   `80d7d35`.** A ordem que resta: **S-D13+S-D37** (a marca de cobrada e o lead
+   inteiro na parcela — `financeiro.ts:141` chama o agregado
+   `ultimoContatoPorLead` que `leads.ts:59-70` já tem, e o payload emagrece),
+   **S-D26** (37 perfis planos, e a fonte em `__tests__/helpers.ts` que os
+   recria a cada suíte), **S-D42+S-D39** (a hora de fechamento que os dois
+   bancos discordam, e o `bloqueioId` que o state grava e ninguém lê),
+   **S-D24** (o teto de 100.000 que o spec 19 deixa no lead do seed). O porquê
+   de cada par está na fase 2 do plano.
 3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da
    conferência (S-A16 a lavagem, S-A18 a ausência, S-A24 o domingo) estão com a
    frase exata lá. A **S39** acrescenta a quarta, e ela é anterior às outras: *o
