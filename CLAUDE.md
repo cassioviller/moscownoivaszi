@@ -32,11 +32,15 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 17 sobras abertas (9 🟡 · 8 🔵). Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 18 sobras abertas (8 🟡 · 10 🔵) |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 14 sobras abertas (7 🟡 · 7 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 19 sobras abertas (7 🟡 · 12 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 13 sobras abertas (8 🟡 · 5 🔵) |
 
-   **São 48 sobras abertas e nenhuma 🟠**, o que é diferente de antes: a
+   **São 46 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
+   2026-08-06, depois da onda 2. As 48 da conferência viraram 46 pelo caminho
+   longo: as ondas 1 e 2 fecharam 16 linhas e escreveram 14 novas, e a única 🟠
+   que existiu neste intervalo (a S-D38, banco virgem) nasceu e morreu no mesmo
+   dia. A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
    passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
    quatro rodadas de revisão não tinham achado — os três na fronteira entre dois
@@ -46,10 +50,10 @@ para o documento que manda.
    é que agora é verdade.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1036 · frontend 495 ·
-   E2E 156 · typecheck verde — e o typecheck passou a incluir os 63 arquivos de
+   fundiu com as três suítes verdes. Hoje a régua é **API 1042 · frontend 495 ·
+   E2E 161 · typecheck verde — e o typecheck passou a incluir os 63 arquivos de
    `e2e/`** (S-D23, `acdd9b3`), que nenhum `tsconfig` cobria. O `main` está
-   **276 commits à frente do `origin/main`** e não foi publicado — quem for
+   **285 commits à frente do `origin/main`** e não foi publicado — quem for
    publicar decide isso com a dona do repositório.
 
 Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que

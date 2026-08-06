@@ -388,6 +388,23 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     função — `sujoParaConfirmar` — mais uma varredura que cobra que não nasça a
     sexta.)*
 
+27. **O caminho da PRIMEIRA execução não é exercitado por nenhuma suíte — e é o
+    único que um cliente novo percorre.** Tudo aqui roda contra o banco que já
+    existe: o ramo "banco vazio", o seed que se dispara sozinho, a migração que
+    nunca rodou duas vezes. Defeito que mora ali não fica escondido por sorte,
+    fica escondido por CONSTRUÇÃO — e a régua custa um banco descartável, não um
+    ambiente. *(2026-08-06: a S-D38 dizia que o `global-setup.ts` do E2E não sobe
+    num banco virgem, sem confirmação por execução. Um `createdb` mais
+    `pnpm --filter @workspace/db run push` bastou para reproduzir em três
+    minutos: 23505 `regra_disponibilidade_loja_id_unique`, logo depois de o seed
+    que o próprio setup chama criar a linha. **E o mesmo experimento derrubou o
+    conserto que a sobra prescrevia:** trocar o alvo do `ON CONFLICT` para
+    `lojaId` só troca um 23505 pelo outro, porque a tabela tem duas restrições
+    únicas, os dois conflitos são reais e vivem em bancos diferentes, e um
+    `ON CONFLICT` aceita um alvo só. Sem o banco descartável, o conserto de uma
+    linha teria sido commitado com a suíte verde no banco de dev — que é
+    exatamente onde ele não falha.)*
+
 ---
 
 ## Histórico
