@@ -1,0 +1,22 @@
+{
+  // A mesma fresta da S-D23, no diretório vizinho: nenhum tsconfig incluía
+  // `scripts/`. O `tsconfig.json` da raiz tem `files: []` e só referencia
+  // `lib/`; o script de typecheck da raiz passa `--filter "./scripts"` com
+  // `--if-present`, e o pacote não tinha script `typecheck` — então o filtro
+  // acertava o alvo e não fazia nada, em silêncio.
+  //
+  // Enquanto aqui só vivia um `.sh` isso não custava nada. O `banco-virgem.ts`
+  // (S-D43) é o primeiro TypeScript do pacote, e ele nasce coberto: medido ao
+  // ligar, **1 arquivo entra no programa e dá 0 erro**.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // `incremental` vem ligado do base e escreveria um `.tsbuildinfo` aqui
+    // dentro, ao lado dos scripts.
+    "incremental": false,
+    // Script de linha de comando é Node puro: `node:child_process`, `node:fs`,
+    // `process`, `import.meta.dirname`.
+    "types": ["node"]
+  },
+  "include": ["."]
+}

@@ -9,6 +9,8 @@ import {
   configuracaoDoAmbiente,
   LOJA_PADRAO,
   DONA_PADRAO,
+  descreverDias,
+  descreverHorario,
 } from "../lib/configuracao-inicial";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { regraDisponibilidadeTable } from "@workspace/db";
@@ -257,5 +259,48 @@ describe("E147 — agenda e ambiente", () => {
   it("variável vazia não apaga o default — string em branco é engano, não escolha", () => {
     const c = configuracaoDoAmbiente({ SEED_LOJA_NOME: "   " });
     expect(c.loja.nome).toBe(LOJA_PADRAO.nome);
+  });
+});
+
+/**
+ * S-D41 — o resumo do seed descreve o que ele GRAVOU.
+ *
+ * A frase era `"seg–sáb, 9h–19h"`, cravada em `scripts/seed.ts`, e as duas
+ * metades estavam erradas desde a S-A8: a loja abre domingo e fecha às 20h. A
+ * linha é a única prova que o script dá de que o ateliê ficou configurado do
+ * jeito da dona — e ela dizia que domingo estava fechado quando o sistema ia
+ * abrir. O caso que casa a descrição com o DEFAULT é o que impede a frase de
+ * envelhecer de novo sozinha.
+ */
+describe("S-D41 — o horário se descreve a partir do dado", () => {
+  it("o default de hoje é 'todos os dias, 9h–20h' — e é o que a S-A8 decidiu", () => {
+    expect(descreverHorario(HORARIO_PADRAO)).toBe("todos os dias, 9h–20h");
+  });
+
+  it("a frase antiga do seed descrevia OUTRO horário", () => {
+    // Se um dia o default voltar a ser seg–sáb 9h–19h, esta linha reprova e
+    // alguém relê a S-A8 antes de mexer.
+    expect(descreverHorario(HORARIO_PADRAO)).not.toBe("seg–sáb, 9h–19h");
+  });
+
+  it("junta bloco corrido, separa dia solto e nomeia os extremos", () => {
+    expect(descreverDias([1, 2, 3, 4, 5, 6])).toBe("seg–sáb");
+    expect(descreverDias([1, 2, 3, 4, 5])).toBe("seg–sex");
+    // A ordem de entrada não importa: [1..5, 0] ordena para dom–sex, que é UM
+    // bloco corrido. O assert aqui nasceu errado — pedia "dom, seg–sex" — e o
+    // código estava certo. A semana começa no domingo (0), e é ele que fecha o
+    // bloco pela esquerda.
+    expect(descreverDias([1, 2, 3, 4, 5, 0])).toBe("dom–sex");
+    // O buraco no meio é o que separa: sem segunda, sobram dois blocos.
+    expect(descreverDias([0, 2, 3, 4, 5, 6])).toBe("dom, ter–sáb");
+    expect(descreverDias([2, 4])).toBe("ter, qui");
+    expect(descreverDias([0, 1])).toBe("dom, seg");
+    expect(descreverDias([])).toBe("nenhum dia");
+  });
+
+  it("dia repetido e dia fora da semana não entram na frase", () => {
+    expect(descreverDias([3, 3, 3])).toBe("qua");
+    expect(descreverDias([0, 1, 2, 3, 4, 5, 6, 7])).toBe("todos os dias");
+    expect(descreverDias([-1, 2])).toBe("ter");
   });
 });

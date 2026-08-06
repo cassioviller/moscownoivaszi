@@ -16,6 +16,7 @@ import {
   contarConfiguracao,
   CATALOGO_PADRAO,
   CABINES_PADRAO,
+  HORARIO_PADRAO,
   ESCADA_PADRAO,
   RECORRENCIAS_PADRAO,
   PERFIS_PADRAO,
@@ -95,6 +96,15 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
     expect(c).toEqual({
       cabines: CABINES_PADRAO.length,
       temHorario: true,
+      // S-D41: a contagem passou a devolver o horário GRAVADO, não só o "existe".
+      // Quem imprime o resumo do seed precisa descrevê-lo, e a frase cravada que
+      // ele tinha antes negava o domingo e a hora que a S-A8 decidiu. O assert
+      // é a régua: o que o seed grava é o que a dona respondeu.
+      horario: {
+        diasFuncionamento: [...HORARIO_PADRAO.diasFuncionamento],
+        atendimentoAberturaHora: HORARIO_PADRAO.atendimentoAberturaHora,
+        atendimentoFechamentoHora: HORARIO_PADRAO.atendimentoFechamentoHora,
+      },
       atributos: CATALOGO_PADRAO.length,
       opcoes: TOTAL_OPCOES,
       // O único zero, e é o zero pretendido: `primeirosPassos` de

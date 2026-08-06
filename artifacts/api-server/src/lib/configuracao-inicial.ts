@@ -156,6 +156,45 @@ export const HORARIO_PADRAO = {
   diasFuncionamento: [0, 1, 2, 3, 4, 5, 6],
 } as const;
 
+/** 0 = domingo … 6 = sábado, como em `diasFuncionamento` (E38). */
+const DIAS_ROTULO = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/**
+ * "todos os dias" · "seg–sáb" · "seg–sex, dom" — os dias que a loja abre, na
+ * forma que a dona lê.
+ *
+ * S-D41: o resumo do seed trazia a frase `"seg–sáb, 9h–19h"` CRAVADA, e as duas
+ * metades dela estavam erradas desde a S-A8 — a loja abre domingo e fecha às
+ * 20h. A frase é a única prova que o script dá de que o ateliê ficou configurado
+ * do jeito da dona, e ela dizia que domingo estava fechado quando o sistema ia
+ * abrir. Descrição que não sai do DADO volta a mentir na próxima vez que o dado
+ * mudar; esta sai.
+ */
+export function descreverDias(dias: readonly number[]): string {
+  const unicos = [...new Set(dias)].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b);
+  if (unicos.length === 0) return "nenhum dia";
+  if (unicos.length === 7) return "todos os dias";
+
+  const blocos: number[][] = [];
+  for (const d of unicos) {
+    const ultimo = blocos[blocos.length - 1];
+    if (ultimo && d === ultimo[ultimo.length - 1]! + 1) ultimo.push(d);
+    else blocos.push([d]);
+  }
+  return blocos
+    .map((b) => (b.length >= 3 ? `${DIAS_ROTULO[b[0]!]}–${DIAS_ROTULO[b[b.length - 1]!]}` : b.map((d) => DIAS_ROTULO[d]).join(", ")))
+    .join(", ");
+}
+
+/** "todos os dias, 9h–20h" — o horário como ele está gravado. */
+export function descreverHorario(h: {
+  diasFuncionamento: readonly number[];
+  atendimentoAberturaHora: number;
+  atendimentoFechamentoHora: number;
+}): string {
+  return `${descreverDias(h.diasFuncionamento)}, ${h.atendimentoAberturaHora}h–${h.atendimentoFechamentoHora}h`;
+}
+
 // ── O catálogo: o vocabulário do acervo ───────────────────────────────────────
 
 export type AtributoPadrao = {
@@ -641,6 +680,8 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
 export async function contarConfiguracao(lojaId: string): Promise<{
   cabines: number;
   temHorario: boolean;
+  /** O horário como está gravado — para quem precisa DESCREVÊ-lo, não só saber que existe (S-D41). */
+  horario: { diasFuncionamento: number[]; atendimentoAberturaHora: number; atendimentoFechamentoHora: number } | null;
   atributos: number;
   opcoes: number;
   vestidos: number;
@@ -649,7 +690,12 @@ export async function contarConfiguracao(lojaId: string): Promise<{
 }> {
   const [cabines, horario, atributos, escadas, recorrencias, vestidos] = await Promise.all([
     db.select({ id: cabinesTable.id }).from(cabinesTable).where(eq(cabinesTable.lojaId, lojaId)),
-    db.select({ id: regraDisponibilidadeTable.id }).from(regraDisponibilidadeTable).where(eq(regraDisponibilidadeTable.lojaId, lojaId)),
+    db.select({
+      id: regraDisponibilidadeTable.id,
+      diasFuncionamento: regraDisponibilidadeTable.diasFuncionamento,
+      atendimentoAberturaHora: regraDisponibilidadeTable.atendimentoAberturaHora,
+      atendimentoFechamentoHora: regraDisponibilidadeTable.atendimentoFechamentoHora,
+    }).from(regraDisponibilidadeTable).where(eq(regraDisponibilidadeTable.lojaId, lojaId)),
     db.select({ id: atributosTable.id }).from(atributosTable).where(eq(atributosTable.lojaId, lojaId)),
     db.select({ id: comissaoRegrasTable.id }).from(comissaoRegrasTable).where(eq(comissaoRegrasTable.lojaId, lojaId)),
     db.select({ id: recorrenciasTable.id }).from(recorrenciasTable).where(eq(recorrenciasTable.lojaId, lojaId)),
@@ -668,6 +714,13 @@ export async function contarConfiguracao(lojaId: string): Promise<{
   return {
     cabines: cabines.length,
     temHorario: horario.length > 0,
+    horario: horario[0]
+      ? {
+          diasFuncionamento: horario[0].diasFuncionamento,
+          atendimentoAberturaHora: horario[0].atendimentoAberturaHora,
+          atendimentoFechamentoHora: horario[0].atendimentoFechamentoHora,
+        }
+      : null,
     atributos: atributos.length,
     opcoes,
     vestidos: vestidos.length,

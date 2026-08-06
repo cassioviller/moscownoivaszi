@@ -41,6 +41,25 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   abrir ou recusar o dia, não sabe dizer "só sob demanda". **O default do schema
   e o `HORARIO_PADRAO` do seed são comparados campo a campo por teste** — a
   mesma régua morava em três lugares e podia divergir em três.
+  **O resumo que ele imprime sai do DADO** (S-D41): a linha do horário era a
+  frase `"seg–sáb, 9h–19h"` cravada no script, e as duas metades estavam erradas
+  desde a S-A8. Hoje ela é `descreverHorario` sobre a linha gravada, e as
+  contagens dizem o **total e, entre parênteses, o que aquela execução criou**
+  (`Cabines 122 (+3)`) — antes era um `+` na frente do total, e criar 3 numa loja
+  com 122 imprimia `+ Cabines 122` (S-A12).
+- **A régua do banco VIRGEM** (S-D43): `cd artifacts/api-server &&
+  ./node_modules/.bin/tsx ../../scripts/banco-virgem.ts`. Cria um banco
+  descartável, aplica o schema com `push`, roda o seed, **confere que o resumo
+  impresso descreve o que o banco guarda**, sobe o `global-setup` do E2E inteiro,
+  roda o seed de novo para provar a idempotência, e apaga o banco — inclusive se
+  algum passo estourar. Leva ~40 s. **Rode-a antes de publicar e depois de mexer
+  no seed, no schema ou no `global-setup`.** As três suítes rodam contra o banco
+  de `DATABASE_URL`, que existe desde antes do E147: o caminho da PRIMEIRA
+  execução — o único que um ateliê novo percorre — não é exercitado por nenhuma
+  delas, e foi ali que a S-D38 viveu (o setup morria com 23505
+  `regra_disponibilidade_loja_id_unique` antes do primeiro spec). Ela guarda e
+  devolve o `e2e/.state.json`, então pode rodar no meio de outra coisa. Sobrepor
+  o nome do banco: `BANCO_VIRGEM=...`.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.

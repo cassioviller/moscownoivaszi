@@ -23,6 +23,7 @@ import {
   aplicarConfiguracaoInicial,
   configuracaoDoAmbiente,
   contarConfiguracao,
+  descreverHorario,
   DONA_PADRAO,
   ESCADA_PADRAO,
   RECORRENCIAS_PADRAO,
@@ -41,17 +42,27 @@ async function main(): Promise<void> {
   const c = await contarConfiguracao(resumo.lojaId);
   const novo = resumo.criado;
 
+  /**
+   * O TOTAL da loja, e entre parênteses o que ESTA execução criou.
+   *
+   * S-A12: a marca era um `+` na frente da linha, e o número ao lado era o
+   * total. Numa loja com 122 cabines de lixo de teste, criar 3 imprimia
+   * `+ Cabines 122` — quem lê entende que o seed criou 122. As duas contagens
+   * sempre estiveram aqui; o que faltava era separá-las.
+   */
   const linha = (rotulo: string, tem: number | string, criou: number | boolean): string => {
-    const marca = (typeof criou === "boolean" ? criou : criou > 0) ? "+" : "·";
-    return `  ${marca} ${rotulo.padEnd(24)} ${String(tem)}`;
+    const marca = typeof criou === "boolean" ? (criou ? " (novo)" : "") : criou > 0 ? ` (+${criou})` : "";
+    return `  ${rotulo.padEnd(24)} ${String(tem)}${marca}`;
   };
 
-  console.log("O que a loja tem agora (+ = criado nesta execução):");
+  console.log("O que a loja tem agora — o total, e entre parênteses o que esta execução criou:");
   console.log(linha("Loja", resumo.lojaNome, novo.loja));
   console.log(linha("Perfis de acesso", 4, novo.perfis));
   console.log(linha("Dona", resumo.donaEmail, novo.dona || novo.vinculo));
   console.log(linha("Cabines", c.cabines, novo.cabines));
-  console.log(linha("Horário de funcionamento", c.temHorario ? "seg–sáb, 9h–19h" : "NÃO CONFIGURADO", novo.horario));
+  // S-D41: o horário sai do que o banco guarda. A frase cravada dizia
+  // "seg–sáb, 9h–19h" e as duas metades estavam erradas desde a S-A8.
+  console.log(linha("Horário de funcionamento", c.horario ? descreverHorario(c.horario) : "NÃO CONFIGURADO", novo.horario));
   console.log(linha("Atributos do catálogo", `${c.atributos} (${c.opcoes} opções)`, novo.atributos));
   console.log(
     linha(
