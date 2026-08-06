@@ -245,6 +245,12 @@ vezes.)
 
 ## Como retomar
 
+0. **O resto está planejado:**
+   [`docs/propostas/2026-08-06-plano-do-resto-das-sobras.md`](../propostas/2026-08-06-plano-do-resto-das-sobras.md)
+   agrupa as 46 em cinco fases e cobre todas — a conferência mais as ondas de
+   hoje deixaram **todas medidas nos últimos dois dias**, que é a primeira vez
+   que isso é verdade, e por isso o plano abre sem fase de leitura. Os itens 1 a
+   3 abaixo são o resumo dele.
 1. **Leia a [conferência](2026-08-05-conferencia-de-sobras.md) antes de escolher
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
