@@ -33,18 +33,19 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 12 sobras abertas (7 🟡 · 5 🔵). Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 19 sobras abertas (7 🟡 · 12 🔵) |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 12 sobras abertas (8 🟡 · 4 🔵) |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 18 sobras abertas (5 🟡 · 13 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 11 sobras abertas (8 🟡 · 3 🔵) |
 
-   **São 43 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
-   2026-08-06, depois da fase 0 do plano do resto. **O resto está planejado e
-   agrupado:** `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre as
-   43 em cinco fases, e `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm
-   conserto até alguém responder. As 48 da conferência viraram 43 pelo caminho
-   longo: as ondas 1 e 2 fecharam 16 linhas e escreveram 14 novas, a fase 0
-   riscou 3 por decisão já tomada, e a única 🟠 que existiu neste intervalo (a
-   S-D38, banco virgem) nasceu e morreu no mesmo dia. A frase abaixo é a da
-   conferência, e continua valendo pelo mesmo motivo: a
+   **São 41 sobras abertas e nenhuma 🟠** — contadas nas três tabelas no fim de
+   2026-08-06. **O resto está planejado e agrupado:**
+   `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre todas em cinco
+   fases (a **0 está feita** e a **1 está escrita, esperando resposta**), e
+   `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm conserto até alguém
+   responder. As 48 da conferência viraram 41 pelo caminho longo: as ondas 1 e 2
+   fecharam 16 linhas e escreveram 14 novas, a fase 0 riscou 3 por decisão já
+   tomada, o primeiro épico da fase 2 fechou mais 3, e a única 🟠 que existiu
+   neste intervalo (a S-D38, banco virgem) nasceu e morreu no mesmo dia. A frase
+   abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
    passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
    quatro rodadas de revisão não tinham achado — os três na fronteira entre dois
@@ -54,11 +55,16 @@ para o documento que manda.
    é que agora é verdade.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1042 · frontend 495 ·
-   E2E 161 · typecheck verde — e o typecheck passou a incluir os 63 arquivos de
-   `e2e/`** (S-D23, `acdd9b3`), que nenhum `tsconfig` cobria. O `main` está
-   **285 commits à frente do `origin/main`** e não foi publicado — quem for
-   publicar decide isso com a dona do repositório.
+   fundiu com as três suítes verdes. Hoje a régua é **API 1047 · frontend 495 ·
+   E2E 161 · typecheck verde em 4 projetos — o typecheck passou a incluir os 63
+   arquivos de `e2e/`** (S-D23, `acdd9b3`) **e o `scripts/`** (`60adc7c`), que
+   nenhum `tsconfig` cobria. Há uma **quarta régua fora das suítes**:
+   `scripts/banco-virgem.ts` (S-D43), que exercita o caminho da primeira execução
+   — banco descartável, seed, `global-setup` — e é a única que enxerga defeito de
+   instalação nova. O `main` está **quase 300 commits à frente do `origin/main`**
+   e não foi publicado — quem for publicar decide isso com a dona do repositório.
+   O número exato sai de `git rev-list --count origin/main..main`, e é ele que
+   vale: esta linha envelhece a cada commit, e já envelheceu duas vezes.
 
 Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
 mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando

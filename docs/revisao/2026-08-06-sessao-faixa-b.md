@@ -1,9 +1,11 @@
 # Sessão de 2026-08-06 — a faixa B em paralelo, e a fila do banco em série
 
-**Branch `main`** · base `4a3fd64` · 20 commits
+**Branch `main`** · base `4a3fd64` · 28 commits
 Régua na abertura: API 1031 · frontend 473 · E2E 156 · typecheck verde
-Régua no fim: **API 1042 · frontend 495 · E2E 161 · typecheck verde, e agora
-inclui os 63 arquivos de `e2e/`**
+Régua no fim: **API 1047 · frontend 495 · E2E 161 · typecheck verde em 4
+projetos** — ele passou a incluir os 63 arquivos de `e2e/` (S-D23) e o
+`scripts/` (S-D43) —, mais uma **quarta régua fora das suítes**:
+`scripts/banco-virgem.ts`, que exercita o caminho da primeira execução.
 
 Esta sessão executa o `docs/propostas/2026-08-05-plano-de-subagentes-para-as-sobras.md`
 a partir da **fase 1** — porque a fase 0 dele já rodou ontem, e é a
@@ -243,6 +245,86 @@ vezes.)
   `financeiro.ts:445` das duas trilhas, depois de S-D28/S-A5 e S25/S-D22. Quem
   fecha uma risca as duas.
 
+## O que veio depois da onda 2 — o plano do resto, e o primeiro épico dele
+
+A sessão não fechou na onda 2. O que veio depois foi **planejar o que sobrou e
+começar a executar**, em quatro commits:
+
+| Hash | O quê |
+|---|---|
+| `fda25c4` | **O plano do resto** — as 46 sobras em cinco fases, conferido linha a linha: nenhuma ficou de fora |
+| `49c5cdb` | **Fase 0 e fase 1** — três linhas riscadas por decisão já tomada, e a folha de perguntas escrita |
+| `60adc7c` | **Fase 2, épico 1** — S-D43, S-D41 e S-A12: a régua do banco virgem, e o resumo do seed que só ela vê |
+| *(este)* | Os hashes, a S-D44, e a remedição da S-D25 |
+
+**Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11).
+
+### O plano abriu sem fase de leitura, e é a primeira vez
+
+As 46 estavam **medidas nos últimos dois dias** — 31 pela conferência de 05/08 e
+15 nascidas com número nas ondas 1 e 2. A regra 20 manda remedir antes de
+consertar, e o pedágio estava pago para o backlog inteiro. Os planos anteriores
+todos abriam com uma fase de leitura; este não precisou.
+
+O que o agrupamento mostrou, e não estava visível linha a linha: **um quarto do
+backlog não tem código.** Onze linhas são perguntas — sete para a dona do ateliê,
+três para a dona do repositório —, e três descreviam decisões já tomadas.
+Enquanto elas parecem trabalho, quem lê a tabela relê as 46 para descobrir, de
+novo, que não dá para começar por ali.
+
+### A fase 0 fechou três linhas sem uma linha de código
+
+**S14**, **S24** e **S-A1** já traziam a decisão dentro do próprio texto. Cada uma
+sai dizendo o que a reabriria — a S14 volta se aparecer uma FONTE nova (coluna de
+origem, auditoria que amarre avaria a parcela), não com um esforço maior de
+casamento por texto.
+
+### A régua nova nasceu achando
+
+O `scripts/banco-virgem.ts` é a resposta à S-D43, e **as três primeiras
+afirmações que ele reprovou eram as outras duas sobras do épico**:
+
+```
+✗ o resumo não nega o domingo que o banco abre
+    o banco guarda [0,1,2,3,4,5,6] e a linha diz "seg–sáb, 9h–19h"
+✗ o resumo diz a hora de fechamento que o banco guarda
+    o banco guarda fechamento 20h e a linha diz "9h–19h"
+✗ a linha das cabines separa o total do que esta execução criou
+    o banco tem 3 cabines e a linha diz "+ Cabines 3"
+```
+
+A frase do horário estava **cravada no script** e as duas metades erradas desde a
+S-A8: a linha que a dona lê para conferir a configuração dizia que domingo estava
+fechado quando o sistema ia abrir. Nenhuma suíte podia ver isso, porque o resumo
+do seed só se lê numa instalação NOVA.
+
+**E a mesma fresta da S-D23 estava no diretório vizinho:** `scripts/` não tinha
+`tsconfig` nem script `typecheck`, e o `--filter "./scripts"` da raiz acertava o
+pacote e, com `--if-present`, não fazia nada em silêncio. O typecheck passou de 3
+para 4 projetos. Sobrou o quarto caso, que virou a **S-D44**:
+`lib/api-spec/orval.config.ts`, o último TypeScript do repositório fora de todo
+typecheck — e é o que configura o codegen que já apagou `generated/` ao falhar.
+
+### A S-D25 estava olhando para a população errada
+
+Medida em `psql` antes de começar o épico 2, e o épico não chegou a ser feito —
+mas a medida fica, porque é ela que muda o trabalho. Das 240 cabines do banco:
+
+| Família | Quantas | Estado |
+|---|---|---|
+| `e<NN>-<timestamp>` — cinco specs do E2E | **220** | todas ATIVAS |
+| `Cabine E2E {timestamp}` — o spec 18, que a S-D25 nomeia | **5** | 4 inativas |
+| do seed | 4 | ativas |
+| outras | 11 | ativas |
+
+**O alvo que a sobra nomeia são 5 linhas; o passivo são 220**, e 230 das 240 vivem
+na loja do seed — que é a loja contra a qual o E2E roda. O crescimento não é por
+semana, é **por RUN**: cada suíte completa deixa quatro cabines para trás (specs
+22, 25, 57 e 59). E o conserto já tem prova de que funciona — o `e24` **parou de
+crescer em 30/07**, no dia em que ganhou `delete(cabinesTable)` no `afterAll`. Os
+três specs que limpam escrevem a limpeza em **três grafias diferentes**, que é a
+regra 26 pedindo uma régua.
+
 ## Como retomar
 
 0. **O resto está planejado, e as duas primeiras fases já andaram.**
@@ -259,10 +341,13 @@ vezes.)
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem um item em pé, e continua serial:** a **S-D25** (item 3
-   — a limpeza única das 186 cabines de spec, com guarda própria, que precisa
-   distinguir `Cabine E2E {timestamp}` de cabine de loja viva). A **S-D40** mede
-   a mesma população por outro recorte e diz a taxa: ~26 cabines por semana.
+2. **A fila do banco tem cinco épicos em pé, e o próximo é a S-D25 — já medida e
+   pronta para executar.** Não é a limpeza que ela descreve: é a linha de
+   `delete(cabinesTable)` nos specs 22, 25, 57 e 59, a faxina única das 225
+   cabines de fixture, e uma varredura cobrando que spec que cria cabine apague a
+   sua (as três grafias existentes são a regra 26 pedindo régua). Depois dele:
+   S-D13+S-D37, S-D26, S-D42+S-D39, S-D24. A ordem e o porquê de cada par estão
+   na fase 2 do plano.
 3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da
    conferência (S-A16 a lavagem, S-A18 a ausência, S-A24 o domingo) estão com a
    frase exata lá. A **S39** acrescenta a quarta, e ela é anterior às outras: *o
