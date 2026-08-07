@@ -18,6 +18,9 @@ export interface E2EState {
   orcamentoId: string;
   contratoId: string | null;
   cabineId: string;
+  // S-D39: `bloqueioId` era gravado no state e nenhum spec o lia — saiu de lá
+  // em vez de entrar aqui. Quem precisa do bloqueio da fixture o acha pelo
+  // nome da noiva (13-onda2) ou cria o seu (23, 48).
 }
 
 export function lerEstado(): E2EState {

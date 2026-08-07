@@ -203,6 +203,11 @@ export default async function globalSetup() {
     usoDiasDepois: 2,
     lavagemDiasDepois: 7,
     diasFuncionamento: [0, 1, 2, 3, 4, 5, 6],
+    // S-D42: a hora de fechamento era a que o banco tivesse — 19 no banco de
+    // dev (anterior à S-A8), 20 num banco novo — e nada no repositório dizia
+    // qual expediente a suíte pretendia testar. Fixado no 20, que é a decisão
+    // da dona (S-A8: as provas das 18:30 que o fechamento às 19h recusava).
+    atendimentoFechamentoHora: 20,
   };
   const [regraDaLoja] = await db.select().from(regraDisponibilidadeTable)
     .where(eq(regraDisponibilidadeTable.lojaId, loja.id));
@@ -306,7 +311,9 @@ export default async function globalSetup() {
     orcamentoId: "e2e-orcamento-1",
     contratoId: contrato?.id ?? null,
     cabineId: "e2e-cabine-1",
-    bloqueioId: "e2e-bloqueio-1",
+    // S-D39: `bloqueioId` foi gravado aqui por 60 specs sem um leitor — a
+    // interface E2EState nunca o declarou, e quem precisa do bloqueio da
+    // fixture o acha pelo nome da noiva (13-onda2) ou cria o seu (23, 48).
   };
   mkdirSync(path.join(__dirname, ".auth"), { recursive: true });
   writeFileSync(path.join(__dirname, ".state.json"), JSON.stringify(state, null, 2));
