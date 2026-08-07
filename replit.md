@@ -60,6 +60,14 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `regra_disponibilidade_loja_id_unique` antes do primeiro spec). Ela guarda e
   devolve o `e2e/.state.json`, então pode rodar no meio de outra coisa. Sobrepor
   o nome do banco: `BANCO_VIRGEM=...`.
+- **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
+  `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
+  ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —
+  27 rotas × claro/escuro/390px, locale **pt-BR fixada**, e o manifest de saída
+  declara o ambiente inteiro (navegador, timezone, viewport, tema, data). As
+  env obrigatórias falham alto: o destino das 81 capturas da rodada 7 nasceu
+  `undefined/` por env ausente, e o script se perdeu com o scratchpad — este é
+  versionado. Detalhes: `scripts/README.md`.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.
