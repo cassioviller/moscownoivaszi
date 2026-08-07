@@ -89,6 +89,9 @@ export default function ConversaoLeads() {
     // A competência já é ancorada ao meio-dia de SP na linha abaixo, então o fuso
   // não mudava a resposta — mas deixá-lo implícito era o convite para a próxima
   // cópia deste formatador nascer sem âncora nenhuma.
+  // S30: fica — "jul. de 26" é o único ano de 2 dígitos do sistema, escolhido
+  // para o eixo apertado do gráfico de sazonalidade; promover um rótulo de eixo
+  // a régua convidaria telas de leitura a usá-lo.
   const mesFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" });
   const rotuloMes = (competencia: string) =>
     mesFmt.format(new Date(`${competencia}-15T12:00:00-03:00`));

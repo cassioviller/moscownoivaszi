@@ -10,9 +10,9 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { etapaLabel } from "@/lib/formatos";
+import { etapaLabel, mesAbrev, mesAnoLongo } from "@/lib/formatos";
 import { diasAteCasamento, casamentoUrgente } from "../noivas/helpers";
-import { agruparPorMes, mesAbrevFmt, mesAnoFmt } from "./helpers";
+import { agruparPorMes } from "./helpers";
 import { Erro } from "@/components/estado";
 
 /**
@@ -53,7 +53,7 @@ export default function Reservas() {
   );
 
   const meses = useMemo(
-    () => agruparPorMes(reservas, (r) => new Date(r.casamentoData!), mesAnoFmt, true),
+    () => agruparPorMes(reservas, (r) => new Date(r.casamentoData!), mesAnoLongo, true),
     [reservas],
   );
 
@@ -116,7 +116,7 @@ export default function Reservas() {
                             {casamento.getUTCDate()}
                           </span>
                           <span className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                            {mesAbrevFmt.format(casamento).replace(".", "")}
+                            {mesAbrev(casamento)}
                           </span>
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-1.5">

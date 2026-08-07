@@ -24,8 +24,6 @@ import {
   resumoCaixa,
   tendenciaCaixa,
   horizonteAberto,
-  entradasDoIntervalo,
-  saidasDoIntervalo,
   entradasPorMeio,
   dreDoIntervalo,
   STATUS_ABERTO,
@@ -63,6 +61,7 @@ import {
   ExportarFolhaQueryParams,
   ExportarContasPagarQueryParams,
   ExportarParcelasQueryParams,
+  ExportarFluxoQueryParams,
   EnviarContabilidadeBody,
   EnviarContabilidadeResponse,
   GetFluxoCaixaQueryParams,
@@ -87,6 +86,7 @@ import {
 import { montarContasDaCompetencia, TIPOS_RECORRENCIA } from "../lib/recorrencias";
 import { montarCsv, responderCsv } from "../lib/csv";
 import { intervaloValidado } from "../lib/intervalo";
+import { movimentosDoFluxo, linhasCsvFluxo } from "../lib/fluxo";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -937,40 +937,9 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
   ]);
 
   const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
-  const entradas = entradasDoIntervalo(parcelasRecebidas, intervalo);
-
-  const descricaoParcela = (p: (typeof parcelasRecebidas)[number]): string =>
-    p.descricao || (p.numero === 0 ? "Entrada/sinal" : `Parcela ${p.numero}`);
-
-  const movimentos = [
-    ...entradas.map((p) => ({
-      id: `parcela-${p.id}`,
-      tipo: "ENTRADA" as const,
-      data: p.recebidoEm!,
-      valor: p.valorRecebido ?? 0,
-      descricao: descricaoParcela(p),
-      rotulo: p.contrato?.lead?.noivaNome ?? null,
-      contratoId: p.contratoId,
-    })),
-    ...saidasDoIntervalo(pagamentos, intervalo).map((pg) => {
-      const contas = (pg.itens ?? [])
-        .map((i) => i.contaPagar)
-        .filter((c): c is NonNullable<typeof c> => !!c);
-      return {
-        id: `pagamento-${pg.id}`,
-        tipo: "SAIDA" as const,
-        data: pg.data,
-        valor: pg.valorPago,
-        descricao: contas.length > 0 ? contas.map((c) => c.descricao).join(" · ") : "Pagamento",
-        rotulo:
-          pg.colaborador?.nome ??
-          contas.find((c) => c.fornecedor)?.fornecedor ??
-          contas.find((c) => c.categoria)?.categoria ??
-          null,
-        contratoId: null,
-      };
-    }),
-  ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  // S21: a montagem morava inline aqui; foi para lib/fluxo.ts para o export
+  // CSV derivar da MESMA linha do tempo em vez de copiá-la.
+  const movimentos = movimentosDoFluxo(parcelasRecebidas, pagamentos, intervalo);
 
   res.json(
     GetFluxoCaixaResponse.parse({
@@ -986,6 +955,56 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
       horizonte: horizonteAberto(parcelasAbertas, contasAbertas),
       movimentos,
     }),
+  );
+});
+
+/**
+ * S21/F34 — o pacote da contabilidade, derivado do fluxo. Os quatro exports
+ * recortam por réguas diferentes (parcelas por VENCIMENTO, folha por data de
+ * pagamento); juntá-los daria regime misto. Este sai dos MESMOS motores da
+ * rota do fluxo (`movimentosDoFluxo` + `resumoCaixa`), com as MESMAS duas
+ * consultas recortadas ao intervalo — entradas e saídas pela data REAL, no dia
+ * local da loja — e por isso fecha com a tela e com o DRE por construção.
+ *
+ * SÓ LÊ, como os outros exports: um GET tem de ser seguro para
+ * refresh/prefetch. `ini`/`fim` são os params da tela do fluxo (a URL dela é a
+ * fonte do intervalo), e ausente/invertido resolve como lá: `resolverIntervalo`
+ * cai no mês corrente e troca pontas trocadas.
+ */
+router.get("/lojas/:lojaId/financeiro/fluxo/exportar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const q = intervaloValidado(res, ExportarFluxoQueryParams.safeParse(req.query), {
+    error: "FILTRO_INVALIDO",
+  });
+  if (!q) return;
+  const intervalo = resolverIntervalo(q.ini ?? null, q.fim ?? null);
+
+  const [parcelasRecebidas, pagamentos] = await Promise.all([
+    db.query.parcelasTable.findMany({
+      where: and(
+        eq(parcelasTable.lojaId, lojaId),
+        isNotNull(parcelasTable.recebidoEm),
+        gte(parcelasTable.recebidoEm, inicioDoDia(intervalo.iniYMD)),
+        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(intervalo.fimYMD, 1))),
+      ),
+      with: { contrato: { with: { lead: true } } },
+    }),
+    db.query.pagamentosTable.findMany({
+      where: and(
+        eq(pagamentosTable.lojaId, lojaId),
+        gte(pagamentosTable.data, inicioDoDia(intervalo.iniYMD)),
+        lt(pagamentosTable.data, inicioDoDia(addDias(intervalo.fimYMD, 1))),
+      ),
+      with: { colaborador: true, itens: { with: { contaPagar: true } } },
+    }),
+  ]);
+
+  const movimentos = movimentosDoFluxo(parcelasRecebidas, pagamentos, intervalo);
+  const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
+  responderCsv(
+    res,
+    `fluxo-${intervalo.iniYMD}-a-${intervalo.fimYMD}`,
+    montarCsv(linhasCsvFluxo(movimentos, resumo)),
   );
 });
 

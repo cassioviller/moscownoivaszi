@@ -3176,6 +3176,19 @@ export type GetFluxoCaixa200 = {
   movimentos: GetFluxoCaixa200MovimentosItem[];
 };
 
+export type ExportarFluxoParams = {
+/**
+ * Início do intervalo (inclusivo); ausente, o mês corrente
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+ini?: string;
+/**
+ * Fim do intervalo (inclusivo); ausente, o mês corrente
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+fim?: string;
+};
+
 export type GetDreParams = {
 /**
  * Competência YYYY-MM; ausente cai no mês corrente

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escaparCsv, montarCsv, linhasDre, linhasFluxo, type Movimento } from "./exportar";
+import { escaparCsv, montarCsv, linhasDre } from "./exportar";
 import type { DRE } from "./dre";
 
 /**
@@ -77,30 +77,6 @@ describe("linhasDre / linhasFluxo", () => {
     expect(linhasDre(dre, "2027-03").some((l) => l[1].startsWith("Recebimento — "))).toBe(false);
   });
 
-  it("fluxo: um movimento por linha, saída negativa, dia local na data", () => {
-    const movs: Movimento[] = [
-      {
-        id: "parcela-1",
-        tipo: "ENTRADA",
-        data: "2026-07-10T14:00:00.000Z",
-        valor: 500,
-        descricao: "Parcela 1",
-        rotulo: "Helena",
-        href: null,
-      },
-      {
-        id: "pagamento-1",
-        tipo: "SAIDA",
-        data: "2026-07-11T14:00:00.000Z",
-        valor: 200,
-        descricao: "Aluguel",
-        rotulo: null,
-        href: null,
-      },
-    ];
-    const linhas = linhasFluxo(movs);
-    expect(linhas[0]).toEqual(["Data", "Tipo", "Descrição", "Quem", "Valor"]);
-    expect(linhas[1]).toEqual(["2026-07-10", "Entrada", "Parcela 1", "Helena", "500.00"]);
-    expect(linhas[2]).toEqual(["2026-07-11", "Saída", "Aluguel", "", "-200.00"]);
-  });
+  // `linhasFluxo` tinha aqui seu teste; a montagem foi para o servidor na S21
+  // (api-server: lib/fluxo.ts, provado em fluxo-csv-unit.test.ts).
 });

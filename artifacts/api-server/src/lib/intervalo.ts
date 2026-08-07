@@ -35,17 +35,21 @@ const ERRO_ORDEM: ErroParse = {
  * devolve null — quem chama só faz `if (!q) return;`. A comparação é
  * lexicográfica, que para AAAA-MM-DD é a cronológica; só dispara com as DUAS
  * pontas presentes (rotas de listagem têm as duas opcionais).
+ *
+ * S21: o export do fluxo fala `ini`/`fim` — a grafia da URL da tela do fluxo,
+ * não a `de`/`ate` dos outros exports — e entra aqui só pelo 400 do parse: a
+ * ordem, para essa família, é decisão de `resolverIntervalo` (pontas trocadas
+ * se corrigem, como na própria tela), então a checagem de ordem abaixo segue
+ * lendo apenas `de`/`ate`.
  */
-export function intervaloValidado<Q extends { de?: string; ate?: string }>(
-  res: RespostaJson,
-  parsed: Parseado<Q>,
-  erroParse: ErroParse = ERRO_PARSE_PADRAO,
-): Q | null {
+export function intervaloValidado<
+  Q extends { de?: string; ate?: string } | { ini?: string; fim?: string },
+>(res: RespostaJson, parsed: Parseado<Q>, erroParse: ErroParse = ERRO_PARSE_PADRAO): Q | null {
   if (!parsed.success) {
     res.status(400).json(erroParse);
     return null;
   }
-  const { de, ate } = parsed.data;
+  const { de, ate } = parsed.data as { de?: string; ate?: string };
   if (de && ate && de > ate) {
     res.status(400).json(ERRO_ORDEM);
     return null;

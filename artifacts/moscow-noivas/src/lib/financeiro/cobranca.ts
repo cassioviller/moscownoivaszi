@@ -2,6 +2,7 @@ import type { Parcela } from "@workspace/api-client-react";
 import { estaAberta, saldoAberto } from "@workspace/financeiro-core";
 import { centavos, reais } from "./dinheiro";
 import { diaDeNegocio, diasEntre, hojeLocal } from "./datas";
+import { instanteCurto } from "../formatos";
 
 /**
  * Cobrança/inadimplência: aging por faixa de atraso, agrupado por noiva.
@@ -41,22 +42,17 @@ export const ROTULO_CANAL: Record<Canal, string> = {
   OUTRO: "Outro",
 };
 
-const formatadorContato = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 /**
  * `data` do registro é um INSTANTE — o momento em que se falou com a noiva.
  * A hora importa aqui ("liguei hoje de manhã"), então mostramos dia E hora no
  * fuso da loja; lido em UTC, um contato das 21h apareceria no dia seguinte.
+ *
+ * S30: havia aqui um `Intl.DateTimeFormat` opção a opção idêntico ao de
+ * `instanteCurto` — a régua responde "28/07/2026, 14:30" e só a vírgula vira
+ * "às", que é voz desta tela, não formato.
  */
 export function rotuloContato(instante: Date | string): string {
-  return formatadorContato.format(new Date(instante)).replace(", ", " às ");
+  return instanteCurto(instante).replace(", ", " às ");
 }
 
 export type NoivaInadimplente = {

@@ -135,6 +135,7 @@ export * from './errorResponseCamposItem';
 export * from './exportarAuditoriaParams';
 export * from './exportarContasPagarParams';
 export * from './exportarDadosLead200';
+export * from './exportarFluxoParams';
 export * from './exportarFolhaParams';
 export * from './exportarParcelasParams';
 export * from './expurgarLeadsPerdidos200';

@@ -6485,6 +6485,26 @@ export const GetFluxoCaixaResponse = zod.object({
 
 
 /**
+ * S21/F34: o "UM pacote" que os quatro exports não podiam ser — eles recortam por réguas diferentes (parcelas por vencimento, folha por data de pagamento) e juntá-los dá regime misto. Este deriva dos MESMOS motores de GET …/financeiro/fluxo: entradas e saídas pela data REAL do movimento, no fuso da loja, com os totais do resumo no rodapé — fecha com a tela do fluxo e com o DRE por construção. SÓ LÊ: um GET precisa ser seguro para refresh/prefetch; carimbar continua sendo o POST …/contabilidade/enviar.
+ * @summary CSV dos movimentos do período — o pacote da contabilidade, na régua do fluxo
+ */
+export const ExportarFluxoParams = zod.object({
+  "lojaId": zod.coerce.string()
+})
+
+export const exportarFluxoQueryIniRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const exportarFluxoQueryFimRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ExportarFluxoQueryParams = zod.object({
+  "ini": zod.coerce.string().regex(exportarFluxoQueryIniRegExp).optional().describe('Início do intervalo (inclusivo); ausente, o mês corrente'),
+  "fim": zod.coerce.string().regex(exportarFluxoQueryFimRegExp).optional().describe('Fim do intervalo (inclusivo); ausente, o mês corrente')
+})
+
+export const ExportarFluxoResponse = zod.unknown()
+
+
+/**
  * E79: o mesmo movimento do /financeiro/fluxo, para o DRE. O MESMO motor (`dreDoIntervalo`, financeiro-core) roda aqui sobre linhas filtradas pela competência no SQL — fluxo e DRE fecham entre si porque saem do mesmo lugar. `porMeio` reusa a régua do E50: `porMeio.total` e `receitas` são o mesmo dinheiro por construção.
  * @summary O resultado do mês agregado no banco — regime de caixa
  */

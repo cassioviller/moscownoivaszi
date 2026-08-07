@@ -52,11 +52,11 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaMesAbrevAno, diaParaISO } from "@/lib/formatos";
+import { brl, diaMesAbrevAno, diaMesAnoLongo, diaParaISO } from "@/lib/formatos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { diaDeNegocio } from "@/lib/financeiro/datas";
-import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
+import { ROTULO_SITUACAO, dataHoraFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
@@ -487,9 +487,9 @@ export default function ReservaDetalhe() {
         <section className="space-y-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Indisponível</h2>
           <p className="text-sm">
-            {reserva.ocupacaoInicio && <>De {dataLongaUTCFmt.format(new Date(reserva.ocupacaoInicio))} </>}
+            {reserva.ocupacaoInicio && <>De {diaMesAnoLongo(reserva.ocupacaoInicio)} </>}
             {reserva.ocupacaoFim
-              ? <>a {dataLongaUTCFmt.format(new Date(reserva.ocupacaoFim))}.</>
+              ? <>a {diaMesAnoLongo(reserva.ocupacaoFim)}.</>
               : <>(em aberto, peça ainda fora).</>}
           </p>
         </section>
@@ -503,7 +503,7 @@ export default function ReservaDetalhe() {
             <CardContent className="pt-6 space-y-3">
               <div className="space-y-1">
                 <p className="text-sm">
-                  Devolvido em {dataLongaUTCFmt.format(new Date(reserva.devolucaoDataReal))}.
+                  Devolvido em {diaMesAnoLongo(reserva.devolucaoDataReal)}.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   A jornada desta noiva está encerrada.
@@ -530,7 +530,7 @@ export default function ReservaDetalhe() {
                 <div className="space-y-1 border-t pt-3">
                   <p className="text-sm" data-testid="lavagem-concluida">
                     Voltou da lavanderia em{" "}
-                    {dataLongaUTCFmt.format(new Date(reserva.lavagemConcluidaEm))} — o vestido
+                    {diaMesAnoLongo(reserva.lavagemConcluidaEm)} — o vestido
                     está livre a partir do dia seguinte.
                   </p>
                   {podeMovimentar && (
@@ -582,7 +582,7 @@ export default function ReservaDetalhe() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <p className="text-sm">
-                Retirado em {dataLongaUTCFmt.format(new Date(reserva.retiradaDataReal))} — com a
+                Retirado em {diaMesAnoLongo(reserva.retiradaDataReal)} — com a
                 noiva.
               </p>
               <p className="text-xs text-muted-foreground">

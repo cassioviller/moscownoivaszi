@@ -10,13 +10,11 @@ import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { diaMesAbrevAno } from "@/lib/formatos";
+import { diaMesAbrevAno, instanteMesAbrev, instanteMesAno } from "@/lib/formatos";
 import {
   ROTULO_SITUACAO,
   agruparPorMes,
   diasAteLocal,
-  mesAbrevLocalFmt,
-  mesAnoLocalFmt,
 } from "../reservas/helpers";
 import { Erro } from "@/components/estado";
 
@@ -67,7 +65,7 @@ export default function Provas() {
   }, [atendimentos, passadas]);
 
   const meses = useMemo(
-    () => agruparPorMes(provas, (p) => new Date(p.inicio), mesAnoLocalFmt, false),
+    () => agruparPorMes(provas, (p) => new Date(p.inicio), instanteMesAno, false),
     [provas],
   );
 
@@ -134,7 +132,7 @@ export default function Provas() {
                             {Number(diaLocal(inicio).slice(8, 10))}
                           </span>
                           <span className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                            {mesAbrevLocalFmt.format(inicio).replace(".", "")}
+                            {instanteMesAbrev(inicio)}
                           </span>
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-1.5">

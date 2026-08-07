@@ -182,24 +182,26 @@ describe("varredura — dinheiro do teclado passa por parseValor", () => {
  *
  * Quatro números circularam como "os formatadores do sistema" — 15, 17, 25,
  * 36, 46 — e nenhum dizia seu recorte; foi assim que a S30 nasceu dizendo
- * quinze. Cada número abaixo foi medido em 2026-08-07, com a assinatura desta
- * seção (`new Intl.DateTimeFormat(` ou `new Intl.NumberFormat(`), comentários
- * fora, enumerando por `git ls-files`:
+ * quinze. Cada número abaixo foi remedido em 2026-08-07 DEPOIS da consolidação
+ * da S30 (o valor antes dela entre parênteses), com a assinatura desta seção
+ * (`new Intl.DateTimeFormat(` ou `new Intl.NumberFormat(`), comentários fora,
+ * enumerando por `git ls-files`:
  *
- * - **17 — o passivo herdado**: a soma das contagens de `HERDADOS` (9
- *   arquivos). É o número que o teste "o total do passivo é 17" congela, e o
+ * - **5 — o passivo herdado** (era 17): a soma das contagens de `HERDADOS`
+ *   (5 arquivos). É o número que o teste "o total do passivo é 5" congela, e o
  *   único que esta sonda DEFENDE.
- * - **19 — os arquivos-régua**: a soma nos 7 arquivos de `REGUAS`, com
- *   `formatos.ts` sozinho em 10. Formatador aqui é o produto, não dívida.
- * - **36 — o código de aplicação**: 17 + 19, sobre os arquivos de
+ * - **26 — os arquivos-régua** (era 19): a soma nos 7 arquivos de `REGUAS`,
+ *   com `formatos.ts` sozinho em 17 — os 7 que a S30 promoveu nasceram lá.
+ *   Formatador aqui é o produto, não dívida.
+ * - **31 — o código de aplicação** (era 36): 5 + 26, sobre os arquivos de
  *   `arquivosFonte()` (as cinco `PASTAS_FONTE`, `.ts`/`.tsx`, sem `.test.`,
  *   sem `generated/`). Zero fora das duas listas — é o que o primeiro caso
- *   desta seção prova.
- * - **45 — contando testes e E2E**: as mesmas cinco pastas COM os `.test.` +
- *   `e2e/` + `scripts/`, sem `generated/`. Os 9 além da aplicação: 4 em testes
- *   de `moscow-noivas/src/lib` e 5 no E2E (4 specs + `global-setup.ts`). A
- *   S-D32 registrava **46** neste recorte; remedido hoje, é 45 — mais um
- *   número que andou por não ter o recorte escrito ao lado.
+ *   desta seção prova. A diferença de 5 é o que a S30 APAGOU: cinco cópias
+ *   opção a opção de funções que a régua já tinha.
+ * - **40 — contando testes e E2E** (era 45): as mesmas cinco pastas COM os
+ *   `.test.` + `e2e/` + `scripts/`, sem `generated/`. Os 9 além da aplicação:
+ *   4 em testes de `moscow-noivas/src/lib` e 5 no E2E (4 specs +
+ *   `global-setup.ts`).
  */
 describe("varredura — formatador novo fora da régua exige decisão", () => {
   const ASSINATURA = /new Intl\.(?:DateTimeFormat|NumberFormat)\(/;
@@ -225,23 +227,30 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
    * 60 com a suíte verde — o passivo cresce dentro dos arquivos que já estão
    * perdoados, que é justamente onde é mais fácil crescer. Foi o que a
    * conferência de 2026-08-05 mediu ao conferir a S30: *"trava a lista de
-   * arquivos, não a contagem"*. Medido em 2026-08-06 e congelado abaixo:
-   * **17 formatadores no passivo**, os mesmos 17 de `fc2182a` — o número não
-   * tinha crescido, mas não foi a sonda que impediu.
+   * arquivos, não a contagem"*.
+   *
+   * **S30 (2026-08-07) julgou os 17 um a um e o passivo caiu para 5.** O que
+   * desceu: **5 eram cópia opção a opção de função que `formatos.ts` já
+   * oferecia** e sumiram (o `formatadorContato` de cobranca = `instanteCurto`;
+   * o `horaFmt` do whatsapp = `instanteHora`; o `diaFmt` do fluxo =
+   * `diaMesAbrevAno`; o `quandoFmt` de minha-comissao = `instanteDia`; o
+   * `mesAnoFmt` de reservas = `mesAnoLongo`), e **7 eram opção-sets gerais com
+   * 2+ usos ou par de fuso de régua existente** e viraram funções públicas em
+   * `formatos.ts` (`diaMesAbrev`, `diaMesLongo`, `diaMesAnoLongo`, `mesAbrev`,
+   * `instanteDiaMesAbrev`, `instanteMesAno`, `instanteMesAbrev`). Os 5 que
+   * ficam têm, cada um, o comentário do porquê no próprio arquivo — três
+   * carregam o dia da SEMANA, que régua nenhuma traz, e dois são voz de uma
+   * única tela.
    *
    * Consolidou um? A conta cai, o teste fica vermelho, e o vermelho é o
    * lembrete de baixar a dívida aqui.
    */
   const HERDADOS: Record<string, number> = {
-    "artifacts/moscow-noivas/src/lib/financeiro/cobranca.ts": 1,
-    "artifacts/moscow-noivas/src/lib/whatsapp.ts": 2,
-    "artifacts/moscow-noivas/src/pages/financeiro/fluxo.tsx": 2,
-    "artifacts/moscow-noivas/src/pages/financeiro/projecao.tsx": 2,
-    "artifacts/moscow-noivas/src/pages/minha-comissao/index.tsx": 1,
+    "artifacts/moscow-noivas/src/lib/whatsapp.ts": 1,
     "artifacts/moscow-noivas/src/pages/noiva-portal.tsx": 1,
     "artifacts/moscow-noivas/src/pages/noivas/conversao.tsx": 1,
     "artifacts/moscow-noivas/src/pages/noivas/helpers.ts": 1,
-    "artifacts/moscow-noivas/src/pages/reservas/helpers.ts": 6,
+    "artifacts/moscow-noivas/src/pages/reservas/helpers.ts": 1,
   };
 
   it("nenhum arquivo NOVO declara formatador fora da régua", () => {
@@ -254,9 +263,9 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
     expect(hoje).toEqual(HERDADOS);
   });
 
-  it("e o total do passivo é 17 — o mesmo de `fc2182a`", () => {
+  it("e o total do passivo é 5 — a S30 julgou os 17 de `fc2182a` um a um", () => {
     const total = Object.keys(HERDADOS).reduce((s, f) => s + contar(ASSINATURA, f), 0);
-    expect(total).toBe(17);
+    expect(total).toBe(5);
   });
 
   /**

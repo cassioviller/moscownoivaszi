@@ -5,7 +5,11 @@
  */
 import { diaDeNegocio, diasEntre, hojeLocal } from "@/lib/financeiro/datas";
 
-/** Formata a data do casamento por extenso ("sábado, 12 de setembro de 2026"). */
+/**
+ * Formata a data do casamento por extenso ("sábado, 12 de setembro de 2026").
+ * S30: fica — o dia da SEMANA é a informação que decide um casamento, e nenhuma
+ * função de `formatos.ts` o traz; um uso só (a ficha da noiva) não paga régua.
+ */
 export const dataLongaFmt = new Intl.DateTimeFormat("pt-BR", {
   weekday: "long",
   day: "2-digit",

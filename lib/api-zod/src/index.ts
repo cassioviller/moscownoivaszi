@@ -14,6 +14,7 @@ export {
   GetVestidoFotoParams,
   ExportarContasPagarParams,
   ExportarParcelasParams,
+  ExportarFluxoParams,
   ListLeadsParams,
   GetMinhaComissaoParams,
   GetUtilizacaoVestidosParams,

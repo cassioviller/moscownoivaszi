@@ -3471,6 +3471,43 @@ paths:
                         descricao: { type: string }
                         contratoId: { type: ["string", "null"] }
 
+  /lojas/{lojaId}/financeiro/fluxo/exportar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: exportarFluxo
+      tags: [financeiro]
+      summary: CSV dos movimentos do período — o pacote da contabilidade, na régua do fluxo
+      description: >
+        S21/F34: o "UM pacote" que os quatro exports não podiam ser — eles
+        recortam por réguas diferentes (parcelas por vencimento, folha por data
+        de pagamento) e juntá-los dá regime misto. Este deriva dos MESMOS
+        motores de GET …/financeiro/fluxo: entradas e saídas pela data REAL do
+        movimento, no fuso da loja, com os totais do resumo no rodapé — fecha
+        com a tela do fluxo e com o DRE por construção. SÓ LÊ: um GET precisa
+        ser seguro para refresh/prefetch; carimbar continua sendo o POST
+        …/contabilidade/enviar.
+      parameters:
+        - name: ini
+          in: query
+          required: false
+          description: Início do intervalo (inclusivo); ausente, o mês corrente
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - name: fim
+          in: query
+          required: false
+          description: Fim do intervalo (inclusivo); ausente, o mês corrente
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      responses:
+        "200":
+          description: Planilha CSV (UTF-8 com BOM)
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Filtro inválido (FILTRO_INVALIDO)
+
   /lojas/{lojaId}/financeiro/dre:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"

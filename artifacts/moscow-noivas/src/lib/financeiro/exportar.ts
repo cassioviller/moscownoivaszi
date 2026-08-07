@@ -1,12 +1,11 @@
 import type { DRE } from "./dre";
 import type { RecebimentosPorForma } from "./forma";
-import { diaLocal } from "./datas";
 
 /**
  * Exportação CSV no CLIENTE (E22, auditado no E88): desde o E79 os números vêm
- * do SERVIDOR (GET /financeiro/dre e /financeiro/fluxo) — aqui só se FORMATA o
- * que a tela já buscou. Fica no front de propósito: o CSV nasce dos MESMOS
- * números que a tela mostra, sem uma segunda ida ao motor.
+ * do SERVIDOR (GET /financeiro/dre) — aqui só se FORMATA o que a tela já
+ * buscou. Fica no front de propósito: o CSV nasce dos MESMOS números que a
+ * tela mostra, sem uma segunda ida ao motor.
  *
  * `escaparCsv`/`montarCsv` são ESPELHO de api-server/src/lib/csv.ts (RFC 4180
  * + neutralização de injeção de fórmula, C5). Só `baixarCsv` os chama, mas
@@ -63,34 +62,8 @@ export function linhasDre(
   return linhas;
 }
 
-/**
- * Uma linha da linha do tempo do fluxo, como a tela monta a partir de
- * GET /financeiro/fluxo (E79). Morava em fluxo.ts; veio para cá no E88 quando
- * a poda aposentou o resto daquele módulo — o CSV é o único consumidor.
- */
-export type Movimento = {
-  id: string;
-  tipo: "ENTRADA" | "SAIDA";
-  data: string;
-  valor: number;
-  /** Quem/o quê, quando dá para nomear (noiva, colaborador, fornecedor). */
-  rotulo: string | null;
-  descricao: string;
-  /** Destino do clique, quando existe uma tela que explica o movimento. */
-  href: string | null;
-};
-
-/** Um movimento por linha, saída com sinal negativo — importável sem retrabalho. */
-export function linhasFluxo(movimentos: readonly Movimento[]): string[][] {
-  const linhas: string[][] = [["Data", "Tipo", "Descrição", "Quem", "Valor"]];
-  for (const m of movimentos) {
-    linhas.push([
-      diaLocal(m.data),
-      m.tipo === "ENTRADA" ? "Entrada" : "Saída",
-      m.descricao,
-      m.rotulo ?? "",
-      (m.tipo === "ENTRADA" ? m.valor : -m.valor).toFixed(2),
-    ]);
-  }
-  return linhas;
-}
+// `linhasFluxo` e o tipo `Movimento` moravam aqui (E22/E88). S21 aposentou os
+// dois: o CSV do fluxo virou o pacote da contabilidade e é montado no SERVIDOR
+// (api-server/src/lib/fluxo.ts), pela MESMA função da rota do fluxo — manter um
+// segundo gerador no cliente era coincidência mantida à mão, a mesma classe que
+// o `brl()` do whatsapp documenta. O DRE segue aqui: ele não tem rota de export.

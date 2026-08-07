@@ -96,6 +96,7 @@ import type {
   ExportarAuditoriaParams,
   ExportarContasPagarParams,
   ExportarDadosLead200,
+  ExportarFluxoParams,
   ExportarFolhaParams,
   ExportarParcelasParams,
   ExpurgarLeadsPerdidos200,
@@ -11569,6 +11570,96 @@ export function useGetFluxoCaixa<TData = Awaited<ReturnType<typeof getFluxoCaixa
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFluxoCaixaQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportarFluxoUrl = (lojaId: string,
+    params?: ExportarFluxoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/fluxo/exportar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/fluxo/exportar`
+}
+
+/**
+ * S21/F34: o "UM pacote" que os quatro exports não podiam ser — eles recortam por réguas diferentes (parcelas por vencimento, folha por data de pagamento) e juntá-los dá regime misto. Este deriva dos MESMOS motores de GET …/financeiro/fluxo: entradas e saídas pela data REAL do movimento, no fuso da loja, com os totais do resumo no rodapé — fecha com a tela do fluxo e com o DRE por construção. SÓ LÊ: um GET precisa ser seguro para refresh/prefetch; carimbar continua sendo o POST …/contabilidade/enviar.
+ * @summary CSV dos movimentos do período — o pacote da contabilidade, na régua do fluxo
+ */
+export const exportarFluxo = async (lojaId: string,
+    params?: ExportarFluxoParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportarFluxoUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarFluxoQueryKey = (lojaId: string,
+    params?: ExportarFluxoParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/fluxo/exportar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportarFluxoQueryOptions = <TData = Awaited<ReturnType<typeof exportarFluxo>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ExportarFluxoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarFluxo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarFluxoQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarFluxo>>> = ({ signal }) => exportarFluxo(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarFluxo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarFluxoQueryResult = NonNullable<Awaited<ReturnType<typeof exportarFluxo>>>
+export type ExportarFluxoQueryError = ErrorType<void>
+
+
+/**
+ * @summary CSV dos movimentos do período — o pacote da contabilidade, na régua do fluxo
+ */
+
+export function useExportarFluxo<TData = Awaited<ReturnType<typeof exportarFluxo>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ExportarFluxoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarFluxo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarFluxoQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -259,6 +259,57 @@ export function mesAnoLongo(valor: Date | string): string {
   return mesAnoLongoFmt.format(comoData(valor));
 }
 
+const diaMesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "short",
+});
+/**
+ * "28 de jul." — listas densas em que o ano é o do contexto (projeção de
+ * caixa). É `diaMesAbrevAno` sem o ano; para instantes, use o par
+ * `instanteDiaMesAbrev`.
+ */
+export function diaMesAbrev(valor: Date | string): string {
+  return diaMesAbrevFmt.format(comoData(valor));
+}
+
+const diaMesLongoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "long",
+});
+/** "28 de julho" — frases correntes ("o caixa fica negativo em 28 de julho"). */
+export function diaMesLongo(valor: Date | string): string {
+  return diaMesLongoFmt.format(comoData(valor));
+}
+
+const diaMesAnoLongoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+});
+/**
+ * "12 de setembro de 2026" — a data de negócio por extenso (ocupação, retirada,
+ * devolução na ficha da reserva). É o par UTC de `instanteLongo`, que fala do
+ * relógio da loja; o dia 2-digit ("02 de maio") vem das telas que já a usavam.
+ */
+export function diaMesAnoLongo(valor: Date | string): string {
+  return diaMesAnoLongoFmt.format(comoData(valor));
+}
+
+const mesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  month: "short",
+});
+/**
+ * "set" — o selo de mês dos cartões de data de negócio (casamentos, na lista
+ * de reservas). Sem o ponto do ICU, como o par `instanteMesAbrev`.
+ */
+export function mesAbrev(valor: Date | string): string {
+  return mesAbrevFmt.format(comoData(valor)).replace(".", "");
+}
+
 const instanteDiaFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: FUSO_LOJA,
   day: "2-digit",
@@ -287,6 +338,47 @@ const instanteDiaHoraFmt = new Intl.DateTimeFormat("pt-BR", {
 /** "28/07, 21:30" — a fila de mensagens e a agenda do dia. */
 export function instanteDiaHora(valor: Date | string): string {
   return instanteDiaHoraFmt.format(comoData(valor));
+}
+
+const instanteDiaMesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  day: "2-digit",
+  month: "short",
+});
+/**
+ * "28 de jul." para um INSTANTE — a linha do tempo do fluxo de caixa.
+ *
+ * Par de `diaMesAbrev` (abaixo), separado de propósito como `instanteDia` é de
+ * `diaMesAno`: mesmo desenho, fusos diferentes. Um recebimento das 22h de
+ * 28/07 é dia 28 no relógio da loja; lido em UTC viraria 29.
+ */
+export function instanteDiaMesAbrev(valor: Date | string): string {
+  return instanteDiaMesAbrevFmt.format(comoData(valor));
+}
+
+const instanteMesAnoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  month: "long",
+  year: "numeric",
+});
+/**
+ * "setembro de 2026" para um INSTANTE — o cabeçalho de mês da lista de provas.
+ * Par de `mesAnoLongo`: a prova é um momento, e o mês dela é o da loja.
+ */
+export function instanteMesAno(valor: Date | string): string {
+  return instanteMesAnoFmt.format(comoData(valor));
+}
+
+const instanteMesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  month: "short",
+});
+/**
+ * "set" para um INSTANTE — o selo de mês dos cartões de data (provas).
+ * Sem o ponto do ICU: o selo é um carimbo visual, não uma frase.
+ */
+export function instanteMesAbrev(valor: Date | string): string {
+  return instanteMesAbrevFmt.format(comoData(valor)).replace(".", "");
 }
 
 /**
