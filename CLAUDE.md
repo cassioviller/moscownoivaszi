@@ -14,11 +14,14 @@ para o documento que manda.
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
 2. **O registro da última sessão** —
-   `docs/revisao/2026-08-06-sessao-faixa-b.md`, fechado na madrugada de
+   `docs/revisao/2026-08-07-sessao-zerando-o-codigo.md`, fechado em
    2026-08-07. A seção **"Como retomar"** é o roteiro, e a primeira coisa que
-   ela diz é a que mais muda o dia: **não há plano em aberto** — o plano das
-   cinco fases foi executado inteiro, e quem abre a próxima sessão **escolhe
-   trabalho, não herda fila**.
+   ela diz é a que mais muda o dia: **o backlog de código ZEROU** — as sete
+   sobras de código e a dívida de spec fecharam em oito commits, e o que
+   resta são as 13 perguntas da folha. Quem abre a próxima sessão precisa de
+   RESPOSTAS, não de fila. (O registro da véspera,
+   `2026-08-06-sessao-faixa-b.md`, continua sendo onde as regras 28–31
+   nasceram.)
 
    O registro traz também o que a execução ensinou e virou regra (28–31 do
    METODO), e a régua de varredura que continua valendo: **enumere com
