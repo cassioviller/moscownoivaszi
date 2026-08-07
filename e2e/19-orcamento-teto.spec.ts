@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { inArray } from "drizzle-orm";
-import { db, orcamentosTable, orcamentoItensTable } from "../lib/db/src/index";
+import { eq, inArray } from "drizzle-orm";
+import { db, orcamentosTable, orcamentoItensTable, leadInteressesTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -17,20 +17,43 @@ test.describe("Orçamento — aviso de teto (E33)", () => {
   // Cada teste cria um orçamento novo e o banco do e2e persiste: o afterAll
   // apaga exatamente os ids que este run juntou aqui.
   const orcamentoIds: string[] = [];
+  // S-D24: `definirTeto` muta o interesse do lead do SEED, e o último valor do
+  // run ficava — o banco de dev carregou um teto de 100.000 desde a primeira
+  // execução deste spec, estado que qualquer outro spec herdaria. O que havia
+  // ANTES volta no afterAll, inclusive o caso "não havia interesse".
+  let tetoAntes: number | null = null;
+  let haviaInteresse = false;
 
   test.beforeAll(async ({ request }) => {
     await request.post(`${API_URL}/api/auth/login`, {
       data: { email: estado.adminEmail, senha: estado.senha },
     });
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
+
+    const [interesse] = await db
+      .select()
+      .from(leadInteressesTable)
+      .where(eq(leadInteressesTable.leadId, estado.leadId));
+    haviaInteresse = !!interesse;
+    tetoAntes = interesse?.tetoOrcamento ?? null;
   });
 
   test.afterAll(async () => {
     if (orcamentoIds.length > 0) {
-      // Itens antes dos orçamentos (mesma ordem que os FKs pedem); o lead e o
-      // interesse (upsert único por lead) são do seed e ficam.
+      // Itens antes dos orçamentos (mesma ordem que os FKs pedem); o lead é do
+      // seed e fica.
       await db.delete(orcamentoItensTable).where(inArray(orcamentoItensTable.orcamentoId, orcamentoIds));
       await db.delete(orcamentosTable).where(inArray(orcamentosTable.id, orcamentoIds));
+    }
+    // O teto volta a ser o que era. Se o interesse nem existia, ele sai — o
+    // upsert do PUT foi este spec quem disparou.
+    if (haviaInteresse) {
+      await db
+        .update(leadInteressesTable)
+        .set({ tetoOrcamento: tetoAntes })
+        .where(eq(leadInteressesTable.leadId, estado.leadId));
+    } else {
+      await db.delete(leadInteressesTable).where(eq(leadInteressesTable.leadId, estado.leadId));
     }
   });
 
