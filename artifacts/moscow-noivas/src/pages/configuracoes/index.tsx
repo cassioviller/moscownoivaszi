@@ -208,6 +208,16 @@ export default function Configuracoes() {
                       <span className="text-muted-foreground">Devolução (dias depois)</span>
                       <span className="font-medium">{disponibilidade.usoDiasDepois} dias</span>
                     </div>
+                    {/* S-A16 — decidida configurável em 2026-08-07: a lavagem
+                        da peça de estoque, separada da semana do vestido. */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Lavagem do estoque</span>
+                      <span className="font-medium">
+                        {disponibilidade.estoqueLavagemDiasDepois > 0
+                          ? `${disponibilidade.estoqueLavagemDiasDepois} dia${disponibilidade.estoqueLavagemDiasDepois === 1 ? "" : "s"}`
+                          : "sem lavagem na conta"}
+                      </span>
+                    </div>
                     {/* S-A23: os dois números acima não são independentes — a
                         janela de prova é a diferença entre eles, e ela some
                         inteira quando "provas" não passa de "uso". Some em

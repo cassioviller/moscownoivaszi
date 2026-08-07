@@ -1289,6 +1289,8 @@ export interface RegraDisponibilidade {
   usoDiasAntes: number;
   usoDiasDepois: number;
   lavagemDiasDepois: number;
+  /** @minimum 0 */
+  estoqueLavagemDiasDepois: number;
   atendimentoAberturaHora: number;
   atendimentoFechamentoHora: number;
   /**
@@ -1306,6 +1308,8 @@ export interface RegraDisponibilidadeInput {
   usoDiasAntes?: number;
   usoDiasDepois?: number;
   lavagemDiasDepois?: number;
+  /** @minimum 0 */
+  estoqueLavagemDiasDepois?: number;
   atendimentoAberturaHora?: number;
   atendimentoFechamentoHora?: number;
   /**

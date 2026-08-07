@@ -5573,7 +5573,7 @@ components:
         status: { type: string, enum: [PENDENTE, FEITO] }
     RegraDisponibilidade:
       type: object
-      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora, diasFuncionamento]
+      required: [lojaId, provaDiasAntes, provaDuracao, usoDiasAntes, usoDiasDepois, lavagemDiasDepois, estoqueLavagemDiasDepois, atendimentoAberturaHora, atendimentoFechamentoHora, diasFuncionamento]
       properties:
         lojaId: { type: string }
         provaDiasAntes: { type: integer }
@@ -5583,6 +5583,9 @@ components:
         usoDiasAntes: { type: integer }
         usoDiasDepois: { type: integer }
         lavagemDiasDepois: { type: integer }
+        # S-A16: a lavagem da peça de ESTOQUE, separada da do vestido — a dona
+        # decidiu que é configurável; 0 = estoque sem lavagem na conta.
+        estoqueLavagemDiasDepois: { type: integer, minimum: 0 }
         atendimentoAberturaHora: { type: integer }
         atendimentoFechamentoHora: { type: integer }
         diasFuncionamento:
@@ -5600,6 +5603,8 @@ components:
         usoDiasAntes: { type: integer }
         usoDiasDepois: { type: integer }
         lavagemDiasDepois: { type: integer }
+        # S-A16: mesma unidade da resposta; negativo não é lavagem.
+        estoqueLavagemDiasDepois: { type: integer, minimum: 0 }
         atendimentoAberturaHora: { type: integer }
         atendimentoFechamentoHora: { type: integer }
         diasFuncionamento:

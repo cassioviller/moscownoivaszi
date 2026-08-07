@@ -31,6 +31,9 @@ export interface RegraJanelas {
   usoDiasAntes: number;
   usoDiasDepois: number;
   lavagemDiasDepois: number;
+  /** S-A16: a lavagem da peça de ESTOQUE, separada da do vestido — quem a lê é
+   *  `estoque.ts`; 0 = estoque sem lavagem na conta (o comportamento antigo). */
+  estoqueLavagemDiasDepois: number;
 }
 
 /** Defaults do schema — loja sem regra cadastrada nunca falha. */
@@ -39,6 +42,7 @@ export const REGRA_DEFAULT: RegraJanelas = {
   usoDiasAntes: 3,
   usoDiasDepois: 2,
   lavagemDiasDepois: 7,
+  estoqueLavagemDiasDepois: 0,
 };
 
 export type ClasseJanela = "FISICA" | "PROVA";
@@ -375,6 +379,7 @@ export async function buscarRegra(
       usoDiasAntes: regraDisponibilidadeTable.usoDiasAntes,
       usoDiasDepois: regraDisponibilidadeTable.usoDiasDepois,
       lavagemDiasDepois: regraDisponibilidadeTable.lavagemDiasDepois,
+      estoqueLavagemDiasDepois: regraDisponibilidadeTable.estoqueLavagemDiasDepois,
     })
     .from(regraDisponibilidadeTable)
     .where(eq(regraDisponibilidadeTable.lojaId, lojaId));

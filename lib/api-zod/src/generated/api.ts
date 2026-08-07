@@ -3928,6 +3928,8 @@ export const GetDisponibilidadeParams = zod.object({
 })
 
 
+export const getDisponibilidadeResponseEstoqueLavagemDiasDepoisMin = 0;
+
 export const getDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
 export const getDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
 
@@ -3940,6 +3942,7 @@ export const GetDisponibilidadeResponse = zod.object({
   "usoDiasAntes": zod.number(),
   "usoDiasDepois": zod.number(),
   "lavagemDiasDepois": zod.number(),
+  "estoqueLavagemDiasDepois": zod.number().min(getDisponibilidadeResponseEstoqueLavagemDiasDepoisMin),
   "atendimentoAberturaHora": zod.number(),
   "atendimentoFechamentoHora": zod.number(),
   "diasFuncionamento": zod.array(zod.number().min(getDisponibilidadeResponseDiasFuncionamentoItemMin).max(getDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)')
@@ -3950,6 +3953,8 @@ export const SetDisponibilidadeParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+
+export const setDisponibilidadeBodyEstoqueLavagemDiasDepoisMin = 0;
 
 export const setDisponibilidadeBodyDiasFuncionamentoItemMin = 0;
 export const setDisponibilidadeBodyDiasFuncionamentoItemMax = 6;
@@ -3962,11 +3967,14 @@ export const SetDisponibilidadeBody = zod.object({
   "usoDiasAntes": zod.number().optional(),
   "usoDiasDepois": zod.number().optional(),
   "lavagemDiasDepois": zod.number().optional(),
+  "estoqueLavagemDiasDepois": zod.number().min(setDisponibilidadeBodyEstoqueLavagemDiasDepoisMin).optional(),
   "atendimentoAberturaHora": zod.number().optional(),
   "atendimentoFechamentoHora": zod.number().optional(),
   "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeBodyDiasFuncionamentoItemMin).max(setDisponibilidadeBodyDiasFuncionamentoItemMax)).optional()
 })
 
+
+export const setDisponibilidadeResponseEstoqueLavagemDiasDepoisMin = 0;
 
 export const setDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
 export const setDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
@@ -3980,6 +3988,7 @@ export const SetDisponibilidadeResponse = zod.object({
   "usoDiasAntes": zod.number(),
   "usoDiasDepois": zod.number(),
   "lavagemDiasDepois": zod.number(),
+  "estoqueLavagemDiasDepois": zod.number().min(setDisponibilidadeResponseEstoqueLavagemDiasDepoisMin),
   "atendimentoAberturaHora": zod.number(),
   "atendimentoFechamentoHora": zod.number(),
   "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeResponseDiasFuncionamentoItemMin).max(setDisponibilidadeResponseDiasFuncionamentoItemMax)).describe('Dias da semana em que a loja abre: 0=domingo … 6=sábado (E38)')

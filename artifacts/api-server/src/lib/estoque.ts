@@ -13,9 +13,15 @@
  *
  * A janela de cada contrato é a **de uso**, a mesma régua do vestido
  * (`disponibilidade.ts`): [casamento − usoDiasAntes, casamento + usoDiasDepois],
- * com as datas REAIS de retirada e devolução mandando quando existem. A
- * lavagem fica de fora — é o que a spec do épico pediu, e a nota registra o
- * que isso custa.
+ * com as datas REAIS de retirada e devolução mandando quando existem.
+ *
+ * S-A16 — a LAVAGEM do estoque entrou, configurável e separada da do vestido:
+ * a spec do E154 a deixava de fora, e a medição mostrou o custo (casamento em
+ * 19/09, vestido comprometido até 28/09 e o saiote do MESMO contrato livre em
+ * 22/09 — sete dias de diferença entre peças que voltaram juntas). A dona
+ * decidiu em 2026-08-07: dias próprios por loja
+ * (`regra_disponibilidade.estoque_lavagem_dias_depois`), somados ao FIM da
+ * janela; o default 0 preserva o comportamento antigo até alguém preencher.
  *
  * Núcleo puro, sem IO: quem lê o banco é a rota.
  */
@@ -58,7 +64,11 @@ export function janelaDeUsoDoContrato(
   if (inicio === null) return null;
 
   // Sem devolução real, o previsto manda; sem casamento, a janela é aberta.
-  const fim = devolucao ?? (casamento ? addDias(casamento, regra.usoDiasDepois) : null);
+  const fimDoUso = devolucao ?? (casamento ? addDias(casamento, regra.usoDiasDepois) : null);
+  // S-A16: a lavagem do ESTOQUE estica o fim quando a loja a configurou —
+  // devolvida em D, a peça só volta à arara em D + lavagem. Com 0 (o default
+  // e o comportamento histórico), esta linha é identidade.
+  const fim = fimDoUso === null ? null : addDias(fimDoUso, regra.estoqueLavagemDiasDepois);
   return { inicio, fim };
 }
 

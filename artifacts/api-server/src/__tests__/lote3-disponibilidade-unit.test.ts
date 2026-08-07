@@ -104,6 +104,9 @@ describe("REGRA_DEFAULT", () => {
       usoDiasAntes: 3,
       usoDiasDepois: 2,
       lavagemDiasDepois: 7,
+      // S-A16: a lavagem do ESTOQUE nasce em 0 — sem lavagem na conta, o
+      // comportamento que sempre valeu, até a loja configurar.
+      estoqueLavagemDiasDepois: 0,
     });
   });
 });

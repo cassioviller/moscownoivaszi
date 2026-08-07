@@ -151,6 +151,10 @@ export const HORARIO_PADRAO = {
   usoDiasAntes: 3,
   usoDiasDepois: 2,
   lavagemDiasDepois: 7,
+  // S-A16: a lavagem do ESTOQUE nasce em 0 — configurável por loja, e zero é
+  // o comportamento que sempre valeu (estoque sem lavagem na conta). A da
+  // linha acima é a do VESTIDO, confirmada pela dona em P1.
+  estoqueLavagemDiasDepois: 0,
   atendimentoAberturaHora: 9,
   atendimentoFechamentoHora: 20,
   diasFuncionamento: [0, 1, 2, 3, 4, 5, 6],

@@ -68,6 +68,39 @@ describe("E154 — janela de uso do contrato", () => {
     ).toBeNull();
   });
 
+  it("S-A16: a lavagem do estoque configurada estica o FIM — e o exemplo é o da sobra", () => {
+    // O caso medido que motivou a sobra: casamento em 19/09, e o saiote
+    // aparecia livre em 22/09 enquanto o vestido ficava até 28/09. Com 7 dias
+    // de lavagem configurados, o fim vai de 21/09 para 28/09 — as peças que
+    // saíram juntas voltam juntas.
+    const j = janelaDeUsoDoContrato(
+      { dataCasamento: meioDia("2026-09-19"), dataRetirada: null, dataDevolucao: null },
+      { ...REGRA_DEFAULT, estoqueLavagemDiasDepois: 7 },
+    );
+    expect(j).toEqual({ inicio: "2026-09-16", fim: "2026-09-28" });
+  });
+
+  it("S-A16: a devolução real também espera a lavagem — devolvida em D, volta em D + lavagem", () => {
+    const j = janelaDeUsoDoContrato(
+      {
+        dataCasamento: meioDia("2026-09-19"),
+        dataRetirada: null,
+        dataDevolucao: meioDia("2026-09-22"),
+      },
+      { ...REGRA_DEFAULT, estoqueLavagemDiasDepois: 3 },
+    );
+    expect(j?.fim).toBe("2026-09-25");
+  });
+
+  it("S-A16: com lavagem 0 — o default e o comportamento histórico — nada muda", () => {
+    const sem = janelaDeUsoDoContrato(
+      { dataCasamento: meioDia("2026-09-19"), dataRetirada: null, dataDevolucao: null },
+      REGRA_DEFAULT,
+    );
+    expect(REGRA_DEFAULT.estoqueLavagemDiasDepois).toBe(0);
+    expect(sem).toEqual({ inicio: "2026-09-16", fim: "2026-09-21" });
+  });
+
   it("a janela é inclusiva nas duas pontas", () => {
     const j = { inicio: "2026-09-16", fim: "2026-09-21" };
     expect(janelaCobre(j, "2026-09-16")).toBe(true);

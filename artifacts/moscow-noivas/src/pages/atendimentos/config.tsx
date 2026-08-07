@@ -172,8 +172,9 @@ export default function ConfigAtendimentos() {
     fechamento: string;
     dias: number[];
     duracaoProvaMin: string;
+    lavagemEstoqueDias: string;
   }>({
-    defaultValues: { abertura: "", fechamento: "", dias: [], duracaoProvaMin: "" },
+    defaultValues: { abertura: "", fechamento: "", dias: [], duracaoProvaMin: "", lavagemEstoqueDias: "" },
     values: regra
       ? {
           abertura: String(regra.atendimentoAberturaHora),
@@ -186,6 +187,9 @@ export default function ConfigAtendimentos() {
           // S-A10: a dona fala em MINUTOS; o banco conta em slots de 30 min
           // (S-A7, `2` = 1h). A conversão é a régua de `lib/duracao-da-prova`.
           duracaoProvaMin: String(minutosDaProva(regra.provaDuracao)),
+          // S-A16: a lavagem da peça de ESTOQUE, separada da do vestido —
+          // decidida configurável em 2026-08-07; 0 = sem lavagem na conta.
+          lavagemEstoqueDias: String(regra.estoqueLavagemDiasDepois ?? 0),
         }
       : undefined,
     resetOptions: { keepDirtyValues: true },
@@ -196,9 +200,18 @@ export default function ConfigAtendimentos() {
   useConfirmarSaida(sujoParaConfirmar(form.formState, nomeCabine.trim() !== ""));
 
   const salvarHorario = async () => {
-    const { abertura, fechamento, dias, duracaoProvaMin } = form.getValues();
+    const { abertura, fechamento, dias, duracaoProvaMin, lavagemEstoqueDias } = form.getValues();
     const a = Number(abertura);
     const f = Number(fechamento);
+    const lavagemEstoque = Number(lavagemEstoqueDias);
+    if (!Number.isInteger(lavagemEstoque) || lavagemEstoque < 0) {
+      toast({
+        title: "Lavagem do estoque inválida",
+        description: "Informe os dias em número inteiro — 0 desliga a lavagem da conta.",
+        variant: "destructive",
+      });
+      return;
+    }
     // O select só oferece múltiplos de 30, então isto não dispara por gesto —
     // é a guarda contra um estado que não veio dele (a rota aceita 0, S-A7).
     const duracaoProva = slotsDaProva(Number(duracaoProvaMin));
@@ -239,6 +252,8 @@ export default function ConfigAtendimentos() {
           usoDiasAntes: regra?.usoDiasAntes,
           usoDiasDepois: regra?.usoDiasDepois,
           lavagemDiasDepois: regra?.lavagemDiasDepois,
+          // S-A16: o campo novo da tela — os demais seguem preservados acima.
+          estoqueLavagemDiasDepois: lavagemEstoque,
           atendimentoAberturaHora: a,
           atendimentoFechamentoHora: f,
           diasFuncionamento: [...dias].sort((x, y) => x - y),
@@ -246,7 +261,7 @@ export default function ConfigAtendimentos() {
       });
       // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o
       // `keepDirtyValues` continuaria protegendo campos que já não divergem.
-      form.reset({ abertura, fechamento, dias, duracaoProvaMin });
+      form.reset({ abertura, fechamento, dias, duracaoProvaMin, lavagemEstoqueDias });
       await queryClient.invalidateQueries({
         queryKey: getGetDisponibilidadeQueryKey(activeLojaId!),
       });
@@ -396,6 +411,25 @@ export default function ConfigAtendimentos() {
                 <p className="text-xs text-muted-foreground">
                   Quanto tempo cada prova ocupa na agenda — as cabines ficam reservadas por esse
                   período.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {/* S-A16 — decidido em 2026-08-07: a lavagem da peça de ESTOQUE
+                    (saiote, véu, bolero) é da loja, separada da semana do
+                    vestido. 0 = a peça volta à arara no dia da devolução, que
+                    é como o sistema sempre contou. */}
+                <Label htmlFor="lavagem-estoque">Lavagem do estoque (dias)</Label>
+                <Input
+                  id="lavagem-estoque"
+                  type="number"
+                  min={0}
+                  className="w-24"
+                  data-testid="lavagem-estoque"
+                  {...form.register("lavagemEstoqueDias")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Dias que a peça de estoque fica na lavagem depois de devolvida, antes de contar
+                  como disponível de novo. Zero desliga a lavagem da conta.
                 </p>
               </div>
               <Button

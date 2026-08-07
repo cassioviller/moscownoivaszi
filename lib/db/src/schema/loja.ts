@@ -31,6 +31,13 @@ export const regraDisponibilidadeTable = pgTable("regra_disponibilidade", {
   usoDiasAntes: integer("uso_dias_antes").notNull().default(3),
   usoDiasDepois: integer("uso_dias_depois").notNull().default(2),
   lavagemDiasDepois: integer("lavagem_dias_depois").notNull().default(7),
+  /**
+   * S-A16 — a lavagem da PEÇA DE ESTOQUE (saiote, véu, bolero), separada da do
+   * vestido de propósito: a dona decidiu em 2026-08-07 que ela é configurável,
+   * e o default 0 preserva o comportamento que sempre valeu (estoque sem
+   * lavagem na conta) até alguém preencher. Quem a soma é `estoque.ts`.
+   */
+  estoqueLavagemDiasDepois: integer("estoque_lavagem_dias_depois").notNull().default(0),
   atendimentoAberturaHora: integer("atendimento_abertura_hora").notNull().default(9),
   /**
    * S-A8 — era 19, e o papel do ateliê mostrava 6 provas às **18:30**. Com a
