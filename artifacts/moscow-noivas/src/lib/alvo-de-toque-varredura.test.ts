@@ -77,6 +77,28 @@ describe("a régua dos 44px vale por primitivo", () => {
     expect(fonte).toContain(`${PISO_MOBILE} ${TETO_DESKTOP}`);
   });
 
+  it("o Toggle tem piso de toque nas três variantes de tamanho", () => {
+    // S-D47 — o QUARTO primitivo com `h-9` cru, e em uso real: o
+    // ToggleGroupItem da troca lista/funil (`noivas/index.tsx`) ficava em
+    // 36px no mobile. O toggle-group herda `toggleVariants`, então a régua
+    // no toggle.tsx cobre os dois. A segunda metade da sobra morreu por
+    // medição: `BreadcrumbEllipsis` (`breadcrumb.tsx`) é `<span
+    // role="presentation" aria-hidden>` com zero consumidores — não é alvo.
+    const fonte = readFileSync(join(raizSrc, "components/ui/toggle.tsx"), "utf8");
+    // O bloco `size:` vem depois do `variant:` — e `default:` existe nos dois;
+    // ancorar no bloco certo é o que separa medir tamanho de medir cor.
+    const blocoSize = fonte.slice(fonte.indexOf("size: {"));
+    for (const tamanho of ["default", "sm", "lg"] as const) {
+      const linha = blocoSize.split("\n").find((l) => l.trim().startsWith(`${tamanho}: "`))!;
+      expect(linha, `variante ${tamanho} sem a linha de classe`).toBeDefined();
+      expect(linha).toContain(PISO_MOBILE);
+      // O toggle também é alvo na LARGURA — pode ser só ícone.
+      expect(linha).toContain("min-w-11");
+      // `h-9`/`h-8`/`h-10` crus: 36px (ou menos) em qualquer largura.
+      expect(linha).not.toMatch(/(^|[\s"])h-(8|9|10)(\s|"|`)/);
+    }
+  });
+
   it("toda aba do tablist à mão carrega o mesmo piso", () => {
     const semPiso: string[] = [];
     for (const relativo of paginasTsx()) {
