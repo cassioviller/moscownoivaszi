@@ -1,13 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getTableConfig, isPgEnum } from "drizzle-orm/pg-core";
 import { is } from "drizzle-orm";
 import { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@workspace/db";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 const metaDir = join(import.meta.dirname, "..", "..", "..", "..", "lib", "db", "migrations", "meta");
 const migracoesDir = join(import.meta.dirname, "..", "..", "..", "..", "docs", "migracoes");
+
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30) — um snapshot gerado
+ * e não commitado deixaria a sonda comparar o schema com um arquivo que o
+ * repositório não tem. Conjunto vazio aprovaria tudo em silêncio (S-D31); o
+ * piso de cada chamada é medido no teste que a usa.
+ */
+function nomesEmMeta(): string[] {
+  return arquivosVersionados(metaDir, ["."]);
+}
+
+function sqlsEmMigracoes(): string[] {
+  return arquivosVersionados(migracoesDir, ["."]).filter((f) => f.endsWith(".sql"));
+}
 
 /**
  * O snapshot mais recente — a pergunta "de qual arquivo esta sonda está
@@ -36,7 +51,11 @@ function tabelasDoSnapshot(): {
   tables: Record<string, Record<string, unknown>>;
   enums: Record<string, { values: string[] }>;
 } {
-  const arquivo = ultimoSnapshot(readdirSync(metaDir));
+  const nomes = nomesEmMeta();
+  // Piso (S-D31): 11 snapshots versionados em 2026-08-07, com folga para
+  // baixo — a baseline só cresce.
+  expect(nomes.filter((n) => n.endsWith("_snapshot.json")).length).toBeGreaterThan(8);
+  const arquivo = ultimoSnapshot(nomes);
   expect(arquivo).toBeTruthy();
   return JSON.parse(readFileSync(join(metaDir, arquivo!), "utf8"));
 }
@@ -202,8 +221,13 @@ describe("S-A20 — os scripts à mão e o schema falam os mesmos nomes", () => 
     const criaNome =
       /(?:ADD\s+CONSTRAINT|^\s*CONSTRAINT|RENAME\s+CONSTRAINT\s+\w+\s+TO|CREATE\s+(?:UNIQUE\s+)?INDEX(?:\s+CONCURRENTLY)?(?:\s+IF\s+NOT\s+EXISTS)?)\s+([a-z_0-9]+)/gim;
 
+    const scripts = sqlsEmMigracoes();
+    // Piso (S-D31): 36 scripts `.sql` versionados em 2026-08-07, com folga
+    // para baixo — migração não se apaga.
+    expect(scripts.length).toBeGreaterThan(30);
+
     const desconhecidos: string[] = [];
-    for (const arquivo of readdirSync(migracoesDir).filter((f) => f.endsWith(".sql"))) {
+    for (const arquivo of scripts) {
       const sql = readFileSync(join(migracoesDir, arquivo), "utf8");
       for (const [, nome] of sql.matchAll(criaNome)) {
         if (!conhecidos.has(nome)) desconhecidos.push(`${arquivo} → ${nome}`);

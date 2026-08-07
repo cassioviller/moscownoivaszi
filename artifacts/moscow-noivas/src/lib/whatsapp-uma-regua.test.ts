@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 import { linkWhatsApp } from "./whatsapp";
 
 /**
@@ -35,16 +36,14 @@ const SRC = join(import.meta.dirname, "..");
 /** O único arquivo autorizado a construir a URL. */
 const DONO_DA_REGUA = "lib/whatsapp.ts";
 
-function arquivosDeCodigo(dir: string): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const caminho = join(dir, entrada.name);
-    if (entrada.isDirectory()) achados.push(...arquivosDeCodigo(caminho));
-    else if (/\.tsx?$/.test(entrada.name) && !/\.test\.tsx?$/.test(entrada.name)) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function arquivosDeCodigo(): string[] {
+  return arquivosVersionados(SRC, ["."]).filter(
+    (r) => /\.tsx?$/.test(r) && !/\.test\.tsx?$/.test(r),
+  );
 }
 
 /** Comentário citando `wa.me` é prosa, e há dezenas dela — só o código conta. */
@@ -54,12 +53,22 @@ function semComentarios(codigo: string): string {
 
 describe("S37 — a régua do wa.me é uma só", () => {
   it("nenhum arquivo fora de lib/whatsapp.ts constrói a URL do wa.me", () => {
-    const ofensores = arquivosDeCodigo(SRC)
-      .filter((caminho) => relative(SRC, caminho) !== DONO_DA_REGUA)
-      .filter((caminho) => semComentarios(readFileSync(caminho, "utf8")).includes("wa.me/"))
-      .map((caminho) => relative(SRC, caminho));
+    const ofensores = arquivosDeCodigo()
+      .filter((relativo) => relativo !== DONO_DA_REGUA)
+      .filter((relativo) => semComentarios(readFileSync(join(SRC, relativo), "utf8")).includes("wa.me/"));
 
     expect(ofensores).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 166 arquivos `.ts`/`.tsx` versionados em `src/`, fora os
+   * testes, com o dono da régua entre eles — com folga para baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    const arquivos = arquivosDeCodigo();
+    expect(arquivos.length).toBeGreaterThan(140);
+    expect(arquivos).toContain(DONO_DA_REGUA);
   });
 
   it("o DDI nacional é prefixado, e é o que a ficha da noiva perdia", () => {

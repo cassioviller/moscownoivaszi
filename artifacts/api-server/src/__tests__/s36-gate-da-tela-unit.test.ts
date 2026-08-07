@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * S36 — a tela pede o MESMO módulo que o servidor guarda.
@@ -29,12 +30,15 @@ import { join } from "node:path";
 
 const RAIZ = join(import.meta.dirname, "..", "..", "..", "..");
 
-/** O que o SERVIDOR exige, por prefixo de caminho. */
+/**
+ * O que o SERVIDOR exige, por prefixo de caminho. A enumeração sai do
+ * versionamento, não do disco (S-D30) — esta é a varredura que o METODO cita
+ * como exemplar da regra 22, e ela enumerava as DUAS pontas pelo disco.
+ */
 function modulosPorPrefixo(): { caminho: string; modulo: string }[] {
-  const dir = join(RAIZ, "artifacts", "api-server", "src", "routes");
   const achados: { caminho: string; modulo: string }[] = [];
-  for (const arquivo of readdirSync(dir)) {
-    const src = readFileSync(join(dir, arquivo), "utf8");
+  for (const arquivo of arquivosVersionados(RAIZ, ["artifacts/api-server/src/routes"])) {
+    const src = readFileSync(join(RAIZ, arquivo), "utf8");
     for (const m of src.matchAll(/router\.use\(\s*"([^"]+)"[^)]*requireModulo\(\s*"(\w+)"/g)) {
       achados.push({ caminho: m[1], modulo: m[2] });
     }
@@ -69,13 +73,11 @@ function moduloPorOperacao(): Map<string, string> {
 const VERBOS_QUE_ESCREVEM =
   /^(create|update|delete|set|add|remove|gerar|pagar|receber|estornar|cancelar|marcar|reenviar|aceitar|desfazer|rotacionar|aplicar|fechar|reabrir|enviar|importar|anonimizar|cobrar|run|executar|baixar)/i;
 
-function telas(dir: string, achados: string[] = []): string[] {
-  for (const nome of readdirSync(dir)) {
-    const caminho = join(dir, nome);
-    if (statSync(caminho).isDirectory()) telas(caminho, achados);
-    else if (nome.endsWith(".tsx") && !nome.includes(".test.")) achados.push(caminho);
-  }
-  return achados;
+/** A outra ponta, também pelo versionamento (S-D30). Caminhos absolutos. */
+function telas(): string[] {
+  return arquivosVersionados(RAIZ, ["artifacts/moscow-noivas/src/pages"])
+    .filter((relativo) => relativo.endsWith(".tsx") && !relativo.includes(".test."))
+    .map((relativo) => join(RAIZ, relativo));
 }
 
 describe("S36 — o gate da tela e o guard do servidor pedem o mesmo módulo", () => {
@@ -86,7 +88,7 @@ describe("S36 — o gate da tela e o guard do servidor pedem o mesmo módulo", (
     expect(porOperacao.size).toBeGreaterThan(100);
 
     const suspeitos: string[] = [];
-    for (const arquivo of telas(join(RAIZ, "artifacts", "moscow-noivas", "src", "pages"))) {
+    for (const arquivo of telas()) {
       const src = readFileSync(arquivo, "utf8");
       const gates = new Set(
         [...src.matchAll(/podeNoModulo\([^,]+,\s*"(\w+)"/g)].map((m) => m[1]),
@@ -129,5 +131,17 @@ describe("S36 — o gate da tela e o guard do servidor pedem o mesmo módulo", (
     // E a especificidade importa: contas-pagar é `financeiro`, não o prefixo
     // mais curto que casaria por acidente.
     expect(porOperacao.get("createContaPagar")).toBe("financeiro");
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31), e esta varredura tem DUAS
+   * pontas que podem esvaziar sem barulho. O piso é o medido em 2026-08-07 —
+   * 22 prefixos com `requireModulo` e 66 telas `.tsx` em `pages/` — com folga
+   * para baixo. (A terceira ponta, o cliente gerado, já tem o piso de 100
+   * operações no primeiro caso.)
+   */
+  it("as duas pontas enumeradas têm população de verdade", () => {
+    expect(modulosPorPrefixo().length).toBeGreaterThan(15);
+    expect(telas().length).toBeGreaterThan(50);
   });
 });

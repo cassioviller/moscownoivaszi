@@ -144,6 +144,26 @@ describe("varredura — dinheiro do teclado passa por parseValor", () => {
   });
 });
 
+// ───────────── 3. router montado sem path — mora em OUTRO arquivo ─────────────
+
+/**
+ * O item 3 nunca esteve neste arquivo, e o buraco na numeração era a pergunta
+ * da S-D33. A resposta está no histórico: este arquivo nasceu em `fc2182a` já
+ * pulando do 2 para o 4, e a numeração segue a tabela do adendo do E111
+ * (`docs/revisao/2026-07-25-rodada-6/execucao/E111.md`, "Adendo — a varredura
+ * mecânica das quatro assinaturas"), que lista as quatro classes nesta ordem:
+ * 1. `setHours`/`setMonth` sobre `new Date()` · 2. `Number(…replace(` ·
+ * 3. `router.use(fn)` sem path · 4. `new Intl.` fora da régua.
+ *
+ * A terceira não virou grep porque grep não a prova: `router.use(fn)` sem path
+ * era "seguras hoje" no veredito do E111, e o que decide se um router novo
+ * nasce aberto é o COMPORTAMENTO — o 403 da fronteira em cada recurso. Ela
+ * virou a sonda `varredura-fronteira-loja-api.test.ts`, criada no MESMO commit
+ * `fc2182a`, que extrai os recursos de `routes/*.ts` e chama cada um com a
+ * sessão da outra loja. A numeração fica com o buraco de propósito: ela existe
+ * para casar a sonda com o diagnóstico, e renumerar apagaria o casamento.
+ */
+
 // ─────────────── 4. formatador declarado fora dos arquivos-régua ───────────────
 
 /**
@@ -157,6 +177,29 @@ describe("varredura — dinheiro do teclado passa por parseValor", () => {
  * próxima consolidação, e o E92 já tinha deixado parte delas de propósito
  * (eram 36, foram a 17). O que esta sonda garante é que o número não cresça em
  * SILÊNCIO: arquivo novo declarando formatador reprova, e alguém decide.
+ *
+ * ## Os quatro recortes de "quantos formatadores Intl o sistema tem" (S-D32)
+ *
+ * Quatro números circularam como "os formatadores do sistema" — 15, 17, 25,
+ * 36, 46 — e nenhum dizia seu recorte; foi assim que a S30 nasceu dizendo
+ * quinze. Cada número abaixo foi medido em 2026-08-07, com a assinatura desta
+ * seção (`new Intl.DateTimeFormat(` ou `new Intl.NumberFormat(`), comentários
+ * fora, enumerando por `git ls-files`:
+ *
+ * - **17 — o passivo herdado**: a soma das contagens de `HERDADOS` (9
+ *   arquivos). É o número que o teste "o total do passivo é 17" congela, e o
+ *   único que esta sonda DEFENDE.
+ * - **19 — os arquivos-régua**: a soma nos 7 arquivos de `REGUAS`, com
+ *   `formatos.ts` sozinho em 10. Formatador aqui é o produto, não dívida.
+ * - **36 — o código de aplicação**: 17 + 19, sobre os arquivos de
+ *   `arquivosFonte()` (as cinco `PASTAS_FONTE`, `.ts`/`.tsx`, sem `.test.`,
+ *   sem `generated/`). Zero fora das duas listas — é o que o primeiro caso
+ *   desta seção prova.
+ * - **45 — contando testes e E2E**: as mesmas cinco pastas COM os `.test.` +
+ *   `e2e/` + `scripts/`, sem `generated/`. Os 9 além da aplicação: 4 em testes
+ *   de `moscow-noivas/src/lib` e 5 no E2E (4 specs + `global-setup.ts`). A
+ *   S-D32 registrava **46** neste recorte; remedido hoje, é 45 — mais um
+ *   número que andou por não ter o recorte escrito ao lado.
  */
 describe("varredura — formatador novo fora da régua exige decisão", () => {
   const ASSINATURA = /new Intl\.(?:DateTimeFormat|NumberFormat)\(/;
@@ -218,8 +261,11 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
 
   /**
    * A varredura enumera pelo versionamento, e conjunto vazio aprova tudo em
-   * silêncio. O piso é o número medido em 2026-08-06 — 237 arquivos-fonte
-   * versionados nas cinco pastas — com folga para baixo.
+   * silêncio. O piso é o número remedido em 2026-08-07 — 235 arquivos-fonte
+   * versionados nas cinco pastas; o 237 de 2026-08-06 envelheceu porque cinco
+   * fontes saíram (quatro `ui/` órfãos e o `use-mobile.tsx`) e duas entraram
+   * desde a medida, e a cópia de `arquivos-versionados.ts` que a S-D30 pôs em
+   * `moscow-noivas/src/lib` faz 236 no commit dela — com folga para baixo.
    */
   it("a varredura olha para os arquivos, e não para um conjunto vazio", () => {
     expect(arquivosFonte().length).toBeGreaterThan(200);

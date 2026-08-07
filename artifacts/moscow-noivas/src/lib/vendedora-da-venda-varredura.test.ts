@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * B1/E120 — a varredura que impede a venda de trocar de bolso de novo.
@@ -21,28 +22,26 @@ import { join, relative } from "node:path";
 
 const RAIZ = join(import.meta.dirname, "..");
 
-function arquivosFonte(dir: string): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const caminho = join(dir, entrada.name);
-    if (entrada.isDirectory()) achados.push(...arquivosFonte(caminho));
-    else if (/\.tsx?$/.test(entrada.name) && !entrada.name.includes(".test.")) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function arquivosFonte(): string[] {
+  return arquivosVersionados(RAIZ, ["pages"]).filter(
+    (r) => /\.tsx?$/.test(r) && !r.includes(".test."),
+  );
 }
 
 describe("varredura: a dona da venda não é quem clicou", () => {
   it("nenhum payload envia vendedoraId lido da sessão (user.id / user!.id)", () => {
     const ofensores: string[] = [];
-    for (const arquivo of arquivosFonte(join(RAIZ, "pages"))) {
-      const fonte = readFileSync(arquivo, "utf-8")
+    for (const relativo of arquivosFonte()) {
+      const fonte = readFileSync(join(RAIZ, relativo), "utf-8")
         // Comentários citam o código errado para explicar o conserto.
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/(^|[^:])\/\/.*$/gm, "$1");
       if (/vendedoraId:\s*user\b/.test(fonte)) {
-        ofensores.push(relative(RAIZ, arquivo));
+        ofensores.push(relativo);
       }
     }
     expect(
@@ -50,5 +49,14 @@ describe("varredura: a dona da venda não é quem clicou", () => {
       "vendedoraId veio da SESSÃO num payload — a dona da venda se escolhe num select " +
         "(precedentes: E98 na agenda, E120 no contrato)",
     ).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 68 arquivos `.ts`/`.tsx` versionados em `pages/`, fora os
+   * testes — com folga para baixo.
+   */
+  it("a varredura olha telas de verdade, não um conjunto vazio", () => {
+    expect(arquivosFonte().length).toBeGreaterThan(50);
   });
 });

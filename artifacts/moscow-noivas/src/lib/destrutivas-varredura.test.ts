@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * E10/E99 — **a régua da ação destrutiva**, escrita uma vez.
@@ -73,16 +74,14 @@ const PERDOADOS: Record<string, string> = {
     "linha de orçamento em rascunho; o orçamento só existe depois de enviado",
 };
 
-function fontes(dir: string, achados: string[] = []): string[] {
-  for (const nome of readdirSync(dir)) {
-    const caminho = join(dir, nome);
-    if (statSync(caminho).isDirectory()) {
-      fontes(caminho, achados);
-    } else if (/\.tsx$/.test(nome) && !/\.test\.tsx$/.test(nome)) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function fontes(): string[] {
+  return arquivosVersionados(RAIZ, ["."]).filter(
+    (r) => /\.tsx$/.test(r) && !/\.test\.tsx$/.test(r),
+  );
 }
 
 /** Comentário não é interface. (Mesma decisão de `datas-varredura`.) */
@@ -101,8 +100,8 @@ describe("a régua da ação destrutiva (E10)", () => {
   it("todo arquivo com gatilho de verbo destrutivo tem AlertDialog — não prova o par, prova a ausência", () => {
     const semConfirmacao: string[] = [];
 
-    for (const arquivo of fontes(RAIZ.replace(/\/lib$/, ""))) {
-      const codigo = semComentarios(readFileSync(arquivo, "utf8"));
+    for (const relativo of fontes()) {
+      const codigo = semComentarios(readFileSync(join(RAIZ, relativo), "utf8"));
       const temGatilho = VERBOS.some((verbo) => {
         const re = new RegExp(`["'\`>]\\s*${verbo}\\b`);
         if (!re.test(codigo)) return false;
@@ -113,11 +112,20 @@ describe("a régua da ação destrutiva (E10)", () => {
         return re.test(semPerdoados);
       });
       if (temGatilho && !codigo.includes("AlertDialog")) {
-        semConfirmacao.push(arquivo.replace(RAIZ.replace(/\/lib$/, ""), "src"));
+        semConfirmacao.push(`src/${relativo}`);
       }
     }
 
     expect(semConfirmacao).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 117 arquivos `.tsx` versionados em `src/`, fora os testes —
+   * com folga para baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(fontes().length).toBeGreaterThan(100);
   });
 
   /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * S-D18 — **a régua dos 44px, agora nos primitivos que o E137 não mediu.**
@@ -37,17 +38,12 @@ const TETO_DESKTOP = "md:min-h-9";
 
 const raizSrc = join(__dirname, "..");
 
-function arquivosDe(dir: string, sufixos: string[]): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir)) {
-    const caminho = join(dir, entrada);
-    if (statSync(caminho).isDirectory()) {
-      achados.push(...arquivosDe(caminho, sufixos));
-    } else if (sufixos.some((s) => entrada.endsWith(s))) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function paginasTsx(): string[] {
+  return arquivosVersionados(raizSrc, ["pages"]).filter((r) => r.endsWith(".tsx"));
 }
 
 describe("a régua dos 44px vale por primitivo", () => {
@@ -68,17 +64,26 @@ describe("a régua dos 44px vale por primitivo", () => {
 
   it("toda aba do tablist à mão carrega o mesmo piso", () => {
     const semPiso: string[] = [];
-    for (const arquivo of arquivosDe(join(raizSrc, "pages"), [".tsx"])) {
-      const fonte = readFileSync(arquivo, "utf8");
+    for (const relativo of paginasTsx()) {
+      const fonte = readFileSync(join(raizSrc, relativo), "utf8");
       if (!fonte.includes('role="tab"')) continue;
       // O className da aba é o template literal que traz o sublinhado da aba
       // ativa — `border-b-2` é a assinatura dele.
       const linhas = fonte.split("\n").filter((l) => l.includes("border-b-2 px-4 py-2"));
       for (const l of linhas) {
-        if (!l.includes(PISO_MOBILE)) semPiso.push(`${arquivo.slice(raizSrc.length + 1)}: ${l.trim()}`);
+        if (!l.includes(PISO_MOBILE)) semPiso.push(`${relativo}: ${l.trim()}`);
       }
-      expect(linhas.length, `${arquivo}: tablist sem a linha de classe da aba`).toBeGreaterThan(0);
+      expect(linhas.length, `${relativo}: tablist sem a linha de classe da aba`).toBeGreaterThan(0);
     }
     expect(semPiso).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 66 telas `.tsx` versionadas em `pages/` — com folga para
+   * baixo.
+   */
+  it("a varredura olha telas de verdade, não um conjunto vazio", () => {
+    expect(paginasTsx().length).toBeGreaterThan(50);
   });
 });

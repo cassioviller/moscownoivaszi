@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 import { SEM_PERFIS_TITULO } from "./perfis-do-sistema";
 
 /**
@@ -22,23 +23,16 @@ import { SEM_PERFIS_TITULO } from "./perfis-do-sistema";
 
 const raizSrc = join(__dirname, "..");
 
-function arquivosDe(dir: string, sufixos: string[]): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir)) {
-    const caminho = join(dir, entrada);
-    if (statSync(caminho).isDirectory()) {
-      achados.push(...arquivosDe(caminho, sufixos));
-    } else if (sufixos.some((s) => entrada.endsWith(s))) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
-}
-
-const telas = arquivosDe(join(raizSrc, "pages"), [".tsx"]).map((caminho) => ({
-  caminho: caminho.slice(raizSrc.length + 1),
-  fonte: readFileSync(caminho, "utf8"),
-}));
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+const telas = arquivosVersionados(raizSrc, ["pages"])
+  .filter((relativo) => relativo.endsWith(".tsx"))
+  .map((relativo) => ({
+    caminho: relativo,
+    fonte: readFileSync(join(raizSrc, relativo), "utf8"),
+  }));
 
 describe("o vazio da lista de perfis", () => {
   it("nenhuma tela repete a frase que não diz por quê", () => {
@@ -59,5 +53,15 @@ describe("o vazio da lista de perfis", () => {
   it("a frase diz o que aconteceu, não o que a pessoa já está vendo", () => {
     expect(SEM_PERFIS_TITULO).not.toMatch(/nenhum resultado|não encontrad/i);
     expect(SEM_PERFIS_TITULO.length).toBeGreaterThan(20);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 66 telas `.tsx` versionadas em `pages/`, 3 delas lendo
+   * `useListPerfis` — com folga para baixo.
+   */
+  it("a varredura olha telas de verdade, e acha quem lista perfis", () => {
+    expect(telas.length).toBeGreaterThan(50);
+    expect(telas.filter((t) => t.fonte.includes("useListPerfis")).length).toBeGreaterThanOrEqual(3);
   });
 });
