@@ -262,6 +262,7 @@ começar a executar**, em quatro commits:
 | `13d1204` | **Fase 2, épico 5** — S-D42 e S-D39: a fixture vira dona da hora de fechamento, e o state só grava o que alguém lê |
 | `f72628c` | **Fase 2, épico 6** — S-D24: o spec 19 devolve o teto que pegou emprestado. **A fila do banco fechou.** |
 | `cbe79f6` | **Fase 3, B3** — S-D1, S-D2 e S-A9: a ferramenta de captura vira versionada, e o manifest diz o ambiente |
+| `cc9720f` | **Fase 3, B4** — S8, S9, S-A26 e S-A7: dinheiro numa régua, status com enum, e o 30 com uma fonte só |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -440,6 +441,19 @@ script perdido com um script nunca executado seria recriá-la: 78 capturas em
 ~90 s, as duas falhas-altas exercitadas, e um `undefined` solto no resumo que
 era do wrapper `pnpm exec`, não do script (o README manda chamar o `tsx`
 direto). As 4 linhas de comentário mentiroso do spec 11 (S-A9) saíram.
+
+### B4 — o servidor sem banco (S8 · S9 · S-A26 · S-A7) → `cc9720f`
+
+As quatro fecharam como a remedição pediu, e duas renderam número novo: o
+limiar do S9 foi medido em node (líquido R$ 950,47 × teto `950.466` — float
+dizia "acima" com excedente R$ 0,00), e o enum da S-A26 foi fechado depois de
+varrer o sistema inteiro por `git ls-files` (só `ativo`/`inativo` existem; o
+"ATIVO" do e2e/48 é status de CONTRATO). O risco que o agente nomeou — enum na
+resposta transforma grafia legada em 500 na listagem — foi medido antes de
+aplicar: 403 vestidos, todos `ativo`; a migração de normalização fica para
+bancos que não tiveram a mesma sorte. Vistos de passagem do B4, sem virar
+sobra: `dashboard.ts:65` filtra por literal `"ativo"` em SQL (consistência,
+não defeito) e dois comentários citam a linha antiga do `30`.
 
 ### A S-D25 estava olhando para a população errada
 
