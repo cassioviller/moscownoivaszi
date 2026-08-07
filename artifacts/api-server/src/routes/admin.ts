@@ -123,7 +123,8 @@ router.patch("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
  *
  * A rota tinha o gate certo (`requireSuperAdmin`, acima) e **nenhuma guarda de
  * destruição**: `DELETE FROM lojas WHERE id = ?` e 204. `lojas` é referenciada
- * por **31 FKs em CASCADE** — medidas em `pg_constraint`, não estimadas —, e
+ * por **33 FKs em CASCADE e zero RESTRICT** — medidas em `pg_constraint` (o
+ * número era 31 quando este bloco nasceu e cresceu com E151/E154) —, e
  * entre elas estão `parcelas` (com `recebido_em` preenchido), `pagamentos`,
  * `contratos`, `vestidos` (o acervo inteiro), `usuarios_lojas` (os vínculos da
  * equipe) e `audit_log`. Uma linha some e leva 31 tabelas junto.
@@ -153,52 +154,59 @@ router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
   }
   const lojaId = params.data.lojaId;
 
-  // 404 ANTES de qualquer coisa. O `delete` devolvia 204 mesmo sem ter removido
-  // linha nenhuma — o mesmo 404 cosmético que o E91 corrigiu no DELETE da
-  // equipe: quem chamou não distinguia "apaguei" de "não existia".
-  const [loja] = await db.select().from(lojasTable).where(eq(lojasTable.id, lojaId));
-  if (!loja) {
-    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
-    return;
-  }
-
-  const [[l], [c], [p], [pg], [v], [e]] = await Promise.all([
-    db.select({ n: count() }).from(leadsTable).where(eq(leadsTable.lojaId, lojaId)),
-    db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.lojaId, lojaId)),
-    db.select({ n: count() }).from(parcelasTable).where(eq(parcelasTable.lojaId, lojaId)),
-    db.select({ n: count() }).from(pagamentosTable).where(eq(pagamentosTable.lojaId, lojaId)),
-    db.select({ n: count() }).from(vestidosTable).where(eq(vestidosTable.lojaId, lojaId)),
-    db.select({ n: count() }).from(usuariosLojasTable).where(eq(usuariosLojasTable.lojaId, lojaId)),
-  ]);
-
-  // A ordem é a do estrago: dinheiro primeiro, porque é o irreversível de
-  // verdade — o resto se recadastra, uma parcela recebida não.
-  const historico = [
-    p.n > 0 ? `${p.n} parcela(s)` : null,
-    pg.n > 0 ? `${pg.n} pagamento(s)` : null,
-    c.n > 0 ? `${c.n} contrato(s)` : null,
-    l.n > 0 ? `${l.n} noiva(s)` : null,
-    v.n > 0 ? `${v.n} vestido(s) no acervo` : null,
-    e.n > 0 ? `${e.n} pessoa(s) na equipe` : null,
-  ].filter(Boolean);
-
-  if (historico.length > 0) {
-    res.status(409).json({
-      error: "LOJA_COM_HISTORICO",
-      detalhe: `Esta loja tem ${historico.join(", ")} — excluir apagaria tudo isso, inclusive parcelas já recebidas. Desative a loja em vez de excluir: ela sai dos seletores e ninguém entra nela, e nada é perdido.`,
-    });
-    return;
-  }
-
   /**
-   * S3 — e aqui o `loja_id` nulo é o que faz o registro EXISTIR.
+   * S33 — a LEITURA da guarda entra na transação, e com tranca.
    *
-   * Gravar "loja X apagada" com `loja_id = X` num FK em CASCADE apagaria o
-   * próprio registro no mesmo `DELETE`. O rastro morreria no instante exato em
-   * que passasse a importar — que é o motivo de a coluna ter deixado de ser
-   * obrigatória, e não uma frouxidão de modelagem.
+   * O `DELETE` sempre esteve em transação; quem ficava fora era a contagem, e
+   * em READ COMMITTED movê-la para dentro NÃO fecha a corrida: a linha
+   * inserida por outra sessão entre a contagem e o delete continuava invisível
+   * para o `count()` e visível para o CASCADE — e aqui são 33 CASCADE e zero
+   * RESTRICT, não há rede do banco (o irmão DELETE /admin/usuarios só não
+   * corre o risco porque lá existem 5 RESTRICT).
+   *
+   * O `FOR UPDATE` na linha da loja fecha de verdade: todo INSERT de filho
+   * precisa de `FOR KEY SHARE` na linha-pai para validar a FK, e KEY SHARE
+   * conflita com FOR UPDATE. Um insert em voo segura a nossa tranca até
+   * commitar (e a contagem, statement novo, o vê); um insert que chegue depois
+   * espera a transação inteira — e encontra a loja apagada, FK recusada.
    */
-  await db.transaction(async (tx) => {
+  const veredito = await db.transaction(async (tx) => {
+    // 404 ANTES de qualquer coisa — e trancando. O `delete` devolvia 204 mesmo
+    // sem ter removido linha nenhuma (o 404 cosmético que o E91 corrigiu no
+    // DELETE da equipe).
+    const [loja] = await tx.select().from(lojasTable).where(eq(lojasTable.id, lojaId)).for("update");
+    if (!loja) return { status: 404 as const };
+
+    const [[l], [c], [p], [pg], [v], [e]] = await Promise.all([
+      tx.select({ n: count() }).from(leadsTable).where(eq(leadsTable.lojaId, lojaId)),
+      tx.select({ n: count() }).from(contratosTable).where(eq(contratosTable.lojaId, lojaId)),
+      tx.select({ n: count() }).from(parcelasTable).where(eq(parcelasTable.lojaId, lojaId)),
+      tx.select({ n: count() }).from(pagamentosTable).where(eq(pagamentosTable.lojaId, lojaId)),
+      tx.select({ n: count() }).from(vestidosTable).where(eq(vestidosTable.lojaId, lojaId)),
+      tx.select({ n: count() }).from(usuariosLojasTable).where(eq(usuariosLojasTable.lojaId, lojaId)),
+    ]);
+
+    // A ordem é a do estrago: dinheiro primeiro, porque é o irreversível de
+    // verdade — o resto se recadastra, uma parcela recebida não.
+    const historico = [
+      p.n > 0 ? `${p.n} parcela(s)` : null,
+      pg.n > 0 ? `${pg.n} pagamento(s)` : null,
+      c.n > 0 ? `${c.n} contrato(s)` : null,
+      l.n > 0 ? `${l.n} noiva(s)` : null,
+      v.n > 0 ? `${v.n} vestido(s) no acervo` : null,
+      e.n > 0 ? `${e.n} pessoa(s) na equipe` : null,
+    ].filter(Boolean);
+
+    if (historico.length > 0) return { status: 409 as const, historico };
+
+    /**
+     * S3 — e aqui o `loja_id` nulo é o que faz o registro EXISTIR.
+     *
+     * Gravar "loja X apagada" com `loja_id = X` num FK em CASCADE apagaria o
+     * próprio registro no mesmo `DELETE`. O rastro morreria no instante exato
+     * em que passasse a importar — que é o motivo de a coluna ter deixado de
+     * ser obrigatória, e não uma frouxidão de modelagem.
+     */
     await tx.delete(lojasTable).where(eq(lojasTable.id, lojaId));
     await registrarAuditoria(tx, {
       lojaId: null,
@@ -208,7 +216,20 @@ router.delete("/admin/lojas/:lojaId", async (req, res): Promise<void> => {
       entidadeId: lojaId,
       detalhe: { nome: loja.nome, cnpj: loja.cnpj ?? null },
     });
+    return { status: 204 as const };
   });
+
+  if (veredito.status === 404) {
+    res.status(404).json({ error: "LOJA_NAO_ENCONTRADA", detalhe: "Esta loja não existe." });
+    return;
+  }
+  if (veredito.status === 409) {
+    res.status(409).json({
+      error: "LOJA_COM_HISTORICO",
+      detalhe: `Esta loja tem ${veredito.historico.join(", ")} — excluir apagaria tudo isso, inclusive parcelas já recebidas. Desative a loja em vez de excluir: ela sai dos seletores e ninguém entra nela, e nada é perdido.`,
+    });
+    return;
+  }
   res.status(204).send();
 });
 
