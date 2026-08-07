@@ -265,6 +265,7 @@ começar a executar**, em quatro commits:
 | `cc9720f` | **Fase 3, B4** — S8, S9, S-A26 e S-A7: dinheiro numa régua, status com enum, e o 30 com uma fonte só |
 | `c98341e` | **Fase 3, B1** — S-D30 a S-D33: toda varredura enumera pelo git, com piso e recorte nomeado |
 | `f4cb527` | **Fase 3, B2** — S-D34, S-D35 e S-A10: o dedo alcança o Input, o painel para de saltar, e a prova ganha campo. **A fase 3 fechou.** |
+| `f901275` | **Fase 4.1** — S32: o guard de sessão roda uma vez por request, não onze — dashboard de 15,3 para 5,3 ms |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -497,6 +498,19 @@ cru, em uso real via `ToggleGroupItem`; `breadcrumb.tsx:98` a conferir.
 deletara, sem os quais o typecheck e as varreduras por `git ls-files` liam o
 passado. O patch dele saiu como `git diff --cached main` restrito aos 7
 arquivos, porque `git add -A` re-adicionaria ~1.600 sobras de disco.
+
+## Fase 4 — os sete que não cabem numa onda
+
+### 4.1 — S32, o guard de sessão memoizado → `f901275`
+
+Onze routers montam `requireSessaoComLoja` sem path e o Express atravessa
+todos: 22 consultas sequenciais no `GET /dashboard`. A memoização é por
+request e mora no próprio guard — as três marcas juntas (`lojaAtiva` só nasce
+ali) pulam para a checagem de loja da URL, que não custa banco. **Medido no
+dev server, 20 requests após aquecimento: mediana de 15,3 ms para 5,3 ms
+(−65%)** — e um router novo montado sem path deixa de encarecer os que vêm
+depois. O teste prova o mecanismo por construção: o req do ramo memoizado não
+tem cookie, e sem a memo o guard responderia 401 antes de qualquer consulta.
 
 ### A S-D25 estava olhando para a população errada
 
