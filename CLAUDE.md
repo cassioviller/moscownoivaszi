@@ -72,7 +72,7 @@ para o documento que manda.
    assumir que ainda está em dia — esta linha envelhece a cada commit, e já
    envelheceu três vezes.
 
-   Hoje a régua é **API 1086 · frontend 530 · E2E 161 · typecheck verde em 5
+   Hoje a régua é **API 1086 · frontend 530 · E2E 164 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
