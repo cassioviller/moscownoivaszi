@@ -54,6 +54,24 @@ export async function requireSessao(req: Request, res: Response, next: NextFunct
 }
 
 export async function requireSessaoComLoja(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // S32 — este guard é montado SEM path por onze routers em série, e o Express
+  // atravessa todos até casar a rota: a MESMA request o executava até 11 vezes
+  // (22 consultas sequenciais no GET /dashboard, 20 na comissão, 18 no
+  // financeiro — medido na conferência de 2026-08-05). A sessão não muda entre
+  // dois routers da mesma request: quem já foi autenticado AQUI (as três
+  // marcas juntas — `lojaAtiva` só nasce neste guard) pula direto para a
+  // checagem de URL, que é a única parte que não custa banco. O custo deixa de
+  // ser função da posição do router no index.ts.
+  if (req.sessao && req.usuario && req.lojaAtiva) {
+    const lojaIdParam = lojaIdDaUrl(req);
+    if (lojaIdParam && lojaIdParam !== req.sessao.lojaAtivaId) {
+      res.status(403).json({ error: "LOJA_DIVERGE_DA_SESSAO" });
+      return;
+    }
+    next();
+    return;
+  }
+
   const sessionId = req.cookies[COOKIE_NOME];
   if (!sessionId) {
     res.status(401).json({ error: "NAO_AUTENTICADO" });
