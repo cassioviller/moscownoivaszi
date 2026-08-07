@@ -9,6 +9,7 @@ import {
   comRegistroDaCobranca,
   semMarcaDeCobranca,
   particionaPorCobranca,
+  marcasPersistentesDeCobranca,
   type MarcasCobranca,
 } from "./mensagens-do-dia";
 
@@ -203,5 +204,67 @@ describe("a marca de cobrada da fila de inadimplentes", () => {
     const marcas = comMarcaDeCobranca(vazia, "ana", "2026-07-30T10:00:00.000Z");
     const { aCobrar } = particionaPorCobranca([semLead], marcas);
     expect(aCobrar).toEqual([semLead]);
+  });
+});
+
+describe("S-D13 — a metade persistente da marca de cobrada", () => {
+  // O dia no fuso da loja, como `diaLocal` faz — fixado aqui para o teste não
+  // depender do relógio de quem executa.
+  const diaSP = (instante: string) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(instante));
+  const HOJE = "2026-08-06";
+
+  it("contato de HOJE no fuso da loja marca a noiva como cobrada, sem alvo de desfazer", () => {
+    const marcas = marcasPersistentesDeCobranca(
+      [{ leadId: "ana", ultimoContatoEm: "2026-08-06T14:00:00.000-03:00" }],
+      HOJE,
+      diaSP,
+    );
+    expect(marcas.get("ana")).toEqual({ quando: "2026-08-06T14:00:00.000-03:00" });
+    expect(marcas.get("ana")!.registroId).toBeUndefined();
+  });
+
+  it("contato de ANTEONTEM não tira a linha da fila de hoje — a régua é o dia, não 'houve contato'", () => {
+    const marcas = marcasPersistentesDeCobranca(
+      [{ leadId: "ana", ultimoContatoEm: "2026-08-04T09:00:00.000-03:00" }],
+      HOJE,
+      diaSP,
+    );
+    expect(marcas.size).toBe(0);
+  });
+
+  it("o contato das 22h de ontem em SP é 01h de hoje em UTC — e continua sendo ontem", () => {
+    // 2026-08-06T01:00Z = 2026-08-05 22:00 em São Paulo. Comparar o instante
+    // pelo dia UTC marcaria como cobrada hoje uma noiva procurada ontem.
+    const marcas = marcasPersistentesDeCobranca(
+      [{ leadId: "ana", ultimoContatoEm: "2026-08-06T01:00:00.000Z" }],
+      HOJE,
+      diaSP,
+    );
+    expect(marcas.size).toBe(0);
+  });
+
+  it("sem leadId ou sem contato, não há marca", () => {
+    const marcas = marcasPersistentesDeCobranca(
+      [
+        { leadId: null, ultimoContatoEm: "2026-08-06T14:00:00.000-03:00" },
+        { leadId: "bia", ultimoContatoEm: null },
+      ],
+      HOJE,
+      diaSP,
+    );
+    expect(marcas.size).toBe(0);
+  });
+
+  it("fundida com a marca de sessão, a da sessão manda — é ela que tem o registroId", () => {
+    const persistente = marcasPersistentesDeCobranca(
+      [{ leadId: "ana", ultimoContatoEm: "2026-08-06T10:00:00.000-03:00" }],
+      HOJE,
+      diaSP,
+    );
+    let sessao = comMarcaDeCobranca(new Map(), "ana", "2026-08-06T14:00:00.000-03:00");
+    sessao = comRegistroDaCobranca(sessao, "ana", "reg-1");
+    const fundidas = new Map([...persistente, ...sessao]);
+    expect(fundidas.get("ana")).toEqual({ quando: "2026-08-06T14:00:00.000-03:00", registroId: "reg-1" });
   });
 });

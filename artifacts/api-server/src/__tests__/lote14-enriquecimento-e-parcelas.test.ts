@@ -171,6 +171,44 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
       .expect(422);
   });
 
+  it("S-D13/S-D37: a lista de parcelas embute o recorte da noiva com o último contato — não o Lead inteiro", async () => {
+    const lead = await criarLead(f, { whatsapp: "11988887777" });
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 300, fechadoEm: dataFutura(-10) });
+    await agent
+      .post(`/api/lojas/${f.lojaId}/contratos/${contrato.id}/parcelas/gerar-plano`)
+      .send({ numParcelas: 3, primeiroVencimento: dataFutura(10).toISOString() })
+      .expect(201);
+
+    // O módulo financeiro é da dona: a vendedora da fixture não o tem.
+    const dona = await loginComLoja(f.superAdminEmail, f.lojaId);
+
+    // Antes de qualquer contato: o recorte existe e o agregado é null.
+    const antes = await dona.get(`/api/lojas/${f.lojaId}/financeiro/parcelas?status=abertas`).expect(200);
+    const daNoiva = antes.body.filter((p: any) => p.contrato?.leadId === lead.id);
+    expect(daNoiva).toHaveLength(3);
+    expect(daNoiva[0].contrato.lead.noivaNome).toBe(lead.noivaNome);
+    expect(daNoiva[0].contrato.lead.whatsapp).toBe("11988887777");
+    expect(daNoiva[0].contrato.lead.ultimoContatoEm).toBeNull();
+    // S-D37: o Lead inteiro ficou para trás — etapa, casamento, interesse não
+    // viajam mais em cada parcela; a fila consome exatamente estes três.
+    expect(Object.keys(daNoiva[0].contrato.lead).sort()).toEqual([
+      "noivaNome",
+      "ultimoContatoEm",
+      "whatsapp",
+    ]);
+
+    // O contato registrado aparece no agregado da MESMA listagem — é o que
+    // deixa a marca de "cobrada hoje" da fila sobreviver ao F5 (S-D13).
+    const quando = new Date().toISOString();
+    await dona
+      .post(`/api/lojas/${f.lojaId}/leads/${lead.id}/cobrancas`)
+      .send({ data: quando, canal: "WHATSAPP", observacao: "cobrança do teste S-D13" })
+      .expect(201);
+    const depois = await dona.get(`/api/lojas/${f.lojaId}/financeiro/parcelas?status=abertas`).expect(200);
+    const linha = depois.body.find((p: any) => p.contrato?.leadId === lead.id);
+    expect(new Date(linha.contrato.lead.ultimoContatoEm).toISOString()).toBe(quando);
+  });
+
   it("gerar-plano sem divisão exata: última parcela absorve o resto (sem drift)", async () => {
     const lead = await criarLead(f);
     const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 100, fechadoEm: dataFutura(-10) });

@@ -44,8 +44,14 @@ for (const { rota, titulo } of TELAS) {
 
 test("navegação lateral expõe as telas da Onda 2", async ({ page }) => {
   await page.goto("/dashboard");
+  // Escopado à sidebar (o <aside>): `name` do getByRole casa por SUBSTRING, e
+  // "Atendimentos" também vive no cartão do dashboard e no link "Fila de
+  // atendimentos →". O assert só passava enquanto os cartões ainda não tinham
+  // montado — o payload magro das parcelas (S-D37) encurtou essa janela e a
+  // ambiguidade latente virou strict mode violation.
+  const sidebar = page.getByRole("complementary");
   for (const label of ["Atendimentos", "Provas", "Ajustes", "Reservas"]) {
-    await expect(page.getByRole("link", { name: label })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: label })).toBeVisible();
   }
 });
 

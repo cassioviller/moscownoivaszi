@@ -6248,8 +6248,21 @@ components:
         leadId: { type: string }
         lead:
           anyOf:
-            - $ref: "#/components/schemas/Lead"
+            - $ref: "#/components/schemas/ParcelaLead"
             - type: "null"
+    # S-D37: o recorte da noiva que a parcela carrega. Era o Lead INTEIRO —
+    # etapa, casamento, motivo de perda, interesse — para uma fila que consome
+    # nome, WhatsApp e leadId. O `ultimoContatoEm` (S-D13) é o mesmo agregado
+    # que o Lead da listagem já traz (max(contatoData) de registros_cobranca):
+    # é ele que deixa a marca de "cobrada hoje" sobreviver ao F5 — a tela
+    # compara contra o dia no fuso da loja, não contra "houve contato algum".
+    ParcelaLead:
+      type: object
+      required: [noivaNome]
+      properties:
+        noivaNome: { type: string }
+        whatsapp: { type: ["string", "null"] }
+        ultimoContatoEm: { type: ["string", "null"], format: date-time }
     ReceberParcelaInput:
       type: object
       required: [valorRecebido, recebidoEm]

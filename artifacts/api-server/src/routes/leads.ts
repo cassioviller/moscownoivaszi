@@ -29,6 +29,7 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
+import { ultimoContatoPorLead } from "../lib/ultimo-contato";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
 import { addDias, addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
@@ -45,28 +46,6 @@ function carimboEtapa(
   if (etapa === "CONTRATO_FECHADO" && !atual.contratoFechadoEm) return { contratoFechadoEm: agora };
   if (etapa === "PERDIDO" && !atual.perdidaEm) return { perdidaEm: agora };
   return {};
-}
-
-/**
- * Último contato de cada lead (E27): `max(contatoData)` de registros_cobranca.
- * É uma query agregada à parte, não uma subquery correlacionada dentro do
- * relational builder — ali o drizzle aliasa a tabela e a correlação com
- * `leads.id` sai errada em silêncio. Um SELECT a mais, limitado à página.
- *
- * Alimenta o "parada há N dias sem contato" do funil; sem isto o kanban faria
- * uma consulta de cobranças por card.
- */
-async function ultimoContatoPorLead(leadIds: string[]): Promise<Map<string, Date>> {
-  if (leadIds.length === 0) return new Map();
-  const linhas = await db
-    .select({
-      leadId: registrosCobrancaTable.leadId,
-      ultimo: sql<Date>`max(${registrosCobrancaTable.contatoData})`,
-    })
-    .from(registrosCobrancaTable)
-    .where(inArray(registrosCobrancaTable.leadId, leadIds))
-    .groupBy(registrosCobrancaTable.leadId);
-  return new Map(linhas.map((l) => [l.leadId, l.ultimo]));
 }
 
 router.use(requireSessaoComLoja);

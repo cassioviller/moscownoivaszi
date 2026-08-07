@@ -82,6 +82,13 @@ export type NoivaInadimplente = {
    * parcelas diferentes entre dois carregamentos.
    */
   parcelaMaisAntigaId: string;
+  /**
+   * S-D13 — o instante do contato mais recente com a noiva (qualquer canal),
+   * vindo do agregado que a parcela embute. É a metade persistente da marca
+   * de "cobrada hoje": a sessão de tela sabe o que ELA registrou; isto sabe o
+   * que sobreviveu ao F5.
+   */
+  ultimoContatoEm: string | null;
 };
 export type FaixaResumo = { total: number; qtdNoivas: number };
 export type Aging = {
@@ -94,7 +101,11 @@ export type Aging = {
 export type ParcelaComNoiva = Parcela & {
   contrato?: {
     leadId?: string;
-    lead?: { noivaNome?: string; whatsapp?: string | null } | null;
+    lead?: {
+      noivaNome?: string;
+      whatsapp?: string | null;
+      ultimoContatoEm?: string | Date | null;
+    } | null;
   } | null;
 };
 
@@ -115,6 +126,7 @@ export function agingDeParcelas(
       qtd: number;
       vencMaisAntigo: string;
       parcelaMaisAntigaId: string;
+      ultimoContatoEm: string | null;
     }
   >();
 
@@ -137,6 +149,7 @@ export function agingDeParcelas(
 
     let n = porNoiva.get(leadId);
     if (!n) {
+      const contato = p.contrato?.lead?.ultimoContatoEm;
       n = {
         noivaNome: p.contrato?.lead?.noivaNome ?? null,
         whatsapp: p.contrato?.lead?.whatsapp ?? null,
@@ -145,6 +158,7 @@ export function agingDeParcelas(
         qtd: 0,
         vencMaisAntigo: venc,
         parcelaMaisAntigaId: p.id,
+        ultimoContatoEm: contato ? new Date(contato).toISOString() : null,
       };
       porNoiva.set(leadId, n);
     }
@@ -171,6 +185,7 @@ export function agingDeParcelas(
         diasMaisAntigo,
         faixaMaisAntiga: faixaDeAtraso(diasMaisAntigo),
         parcelaMaisAntigaId: n.parcelaMaisAntigaId,
+        ultimoContatoEm: n.ultimoContatoEm,
       };
     })
     .sort((a, b) => b.diasMaisAntigo - a.diasMaisAntigo);

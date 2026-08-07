@@ -1902,9 +1902,17 @@ export const ParcelaFormaRecebimento = {
   OUTRO: 'OUTRO',
 } as const;
 
+export interface ParcelaLead {
+  noivaNome: string;
+  /** @nullable */
+  whatsapp?: string | null;
+  /** @nullable */
+  ultimoContatoEm?: string | null;
+}
+
 export interface ParcelaContrato {
   leadId: string;
-  lead?: Lead | null;
+  lead?: ParcelaLead | null;
 }
 
 export interface Parcela {

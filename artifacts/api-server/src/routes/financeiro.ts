@@ -72,6 +72,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { usuarioNaLoja } from "../lib/escopo-loja";
+import { ultimoContatoPorLead } from "../lib/ultimo-contato";
 // C10/E104: `addDias`/`inicioDoDia` são régua de DATA DE NEGÓCIO e moram no
 // financeiro-core. Vinham do módulo de disponibilidade de VESTIDOS, que é outro
 // assunto — a duplicação sobreviveu porque as duas cópias estavam certas.
@@ -112,7 +113,11 @@ router.use("/lojas/:lojaId/contas-pagar", requireModulo("financeiro"));
 // `de`/`ate` recortam por vencimento (dia local, inclusivo nas duas pontas),
 // no mesmo padrão do GET /pagamentos. O join contrato→lead existe para a
 // cobrança saber quem cobrar sem rebuscar todos os contratos — o `.parse`
-// reduz o contrato inteiro ao `{leadId, lead}` do schema.
+// reduz o contrato inteiro ao `{leadId, lead}` do schema, e o lead ao recorte
+// `ParcelaLead` (S-D37): nome, WhatsApp e o último contato. O agregado
+// `ultimoContatoPorLead` (S-D13) é o que deixa a marca de "cobrada hoje" da
+// fila de mensagens sobreviver ao F5 — a tela compara o instante contra o dia
+// no fuso da loja.
 router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = ListParcelasQueryParams.safeParse(req.query);
@@ -141,7 +146,21 @@ router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void>
     with: { contrato: { with: { lead: true } } },
     orderBy: parcelasTable.vencimento,
   });
-  res.json(ListParcelasResponse.parse(parcelas));
+  const contatos = await ultimoContatoPorLead(
+    [...new Set(parcelas.map((p) => p.contrato?.leadId).filter((id): id is string => !!id))],
+  );
+  const comContato = parcelas.map((p) =>
+    p.contrato?.lead
+      ? {
+          ...p,
+          contrato: {
+            ...p.contrato,
+            lead: { ...p.contrato.lead, ultimoContatoEm: contatos.get(p.contrato.leadId) ?? null },
+          },
+        }
+      : p,
+  );
+  res.json(ListParcelasResponse.parse(comContato));
 });
 
 router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {

@@ -5,9 +5,9 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Lead } from './lead';
+import type { ParcelaLead } from './parcelaLead';
 
 export interface ParcelaContrato {
   leadId: string;
-  lead?: Lead | null;
+  lead?: ParcelaLead | null;
 }
