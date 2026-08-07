@@ -37,24 +37,24 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 5 sobras abertas (3 🟡 · 2 🔵): S23, S27, S29, S39, S43 |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 2 sobras abertas (0 🟡 · 2 🔵): S-D36, S-D48 |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 6 sobras abertas (6 🟡 · 0 🔵) |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 1 sobra aberta (🔵): S-D36, decidida, esperando código |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 3 sobras abertas (3 🟡): S-A2, S-A16, S-A27 |
 
-   **São 13 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
-   2026-08-07, depois de sete fechos no mesmo dia: S40 (`475b991`, que pariu
-   S42 e S43), S42 (`05cf366`), S-D44 (`c092e71`, que pariu a S-D48), S-D47
-   (`015a0db`), S-D45 (`a38f994`), S-D46 (`fda7cf2`) e S41 (`f0f1f49`) — e **o plano das cinco fases está EXECUTADO de
+   **São 4 sobras abertas e nenhuma 🟠** — contadas nas três tabelas no fim de
+   2026-08-07, depois de sete fechos de código, da dívida do S-A17 paga e da
+   **folha de perguntas RESPONDIDA na sessão** (doze das treze por decisão
+   escrita; só a S-A2, as fotos, segue esperando) — e **o plano das cinco fases está EXECUTADO de
    ponta a ponta**: fase 0 e 1 no dia 06 (`49c5cdb`), fase 2 em seis épicos
    seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
    aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
    `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 13 que restam, **TODAS são perguntas da folha**
-   (`2026-08-06-folha-de-perguntas.md`, esperando gente): as 11 originais
-   mais S43 e S-D48, as duas decisões que os fechos de 2026-08-07 mediram —
-   não há linha na tabela que não esteja esperando uma resposta escrita. **O que destrava mais
-   é uma conversa, não código:** `docs/propostas/2026-08-06-folha-de-perguntas.md`
-   traz as treze, com o número medido e o que muda com cada resposta possível.
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 4 que restam, **duas são código com a decisão já
+   escrita** — S-D36 (a tela do superadmin ganha o botão de criar perfil) e
+   S-A16 (a lavagem do estoque vira configurável por loja; toca schema/seed,
+   então banco-virgem antes do commit) — **e duas esperam gente**: S-A2 (as
+   fotos do caderno) e S-A27 (classificar as 496 peças com a dona). **A folha** (`docs/propostas/2026-08-06-folha-de-perguntas.md`) guarda as
+   treze respostas com a data — o que era conversa virou decisão registrada.
 
    A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)

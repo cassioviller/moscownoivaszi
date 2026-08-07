@@ -1,5 +1,17 @@
 # Folha de perguntas — as 13 sobras que não têm conserto até alguém responder
 
+> **RESPONDIDA em 2026-08-07, na sessão.** Doze das treze fecharam por decisão
+> — cada linha riscada no seu rastreador com a resposta escrita (regra 21):
+> 1 (S39) *anota — passa a digitar no campo que existe* · 2 (S-A16) *vira
+> CONFIGURÁVEL nas configurações — sobra de código* · 3 (S-A18) *entra em
+> silêncio, de propósito* · 4 (S-A24) *domingo aberto para a noiva* · 5 (S27)
+> *reserva sem dona é aceita* · 6 (S-A3) *mesmo caminho — classificar virou a
+> S-A27* · 7 (S-A14) *pode apagar, o snapshot preserva* · 9 (S23) *fica como
+> está* · 10 (S29) *a dependência fica* · 11 (S-D36) *a tela ganha o botão —
+> sobra de código* · 12 (S43) *fica como está, escrito* · 13 (S-D48) *formatter
+> desligado*. **Só a 8 (S-A2) continua aberta** — fotos não se decidem, se
+> tiram.
+
 **2026-08-06.** É a fase 1 do
 [`plano do resto das sobras`](2026-08-06-plano-do-resto-das-sobras.md). Nenhuma
 destas 13 linhas é pedido de funcionalidade: são pontos em que o sistema **já se
