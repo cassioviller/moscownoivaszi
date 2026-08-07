@@ -74,16 +74,9 @@ export function diasAteLocal(iso: string): number {
   return diasEntre(hojeLocal(), diaLocal(iso));
 }
 
-/**
- * Prazo do casamento na voz de uma fila de trabalho (pode estar atrasado):
- * "casamento passou" | "casamento hoje" | "casamento amanhã" | "casamento em N dias".
- */
-export function prazoCasamento(dias: number): string {
-  if (dias < 0) return "casamento passou";
-  if (dias === 0) return "casamento hoje";
-  if (dias === 1) return "casamento amanhã";
-  return `casamento em ${dias} dias`;
-}
+// S35: `prazoCasamento` morava aqui com zero usos no repositório (provado por
+// `git ls-files` + grep) — a fila de confecção fala esse prazo por conta
+// própria. Exportação sem chamador é API fantasma; saiu.
 
 export type GrupoMes<T> = { chave: string; rotulo: string; itens: T[] };
 

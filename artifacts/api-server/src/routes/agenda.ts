@@ -51,6 +51,7 @@ import {
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+import { intervaloValidado } from "../lib/intervalo";
 
 const router: IRouter = Router();
 
@@ -250,18 +251,14 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   // a tela de provas pede só PROVA; ninguém baixa a agenda inteira para filtrar.
   // E83: janela de/ate sobre `inicio` (dia local, inclusivo) — o poll do sino
   // e as telas do dia pedem a janela, não a história.
-  const query = ListAtendimentosQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ error: "FILTRO_INVALIDO" });
-    return;
-  }
+  // O parse recusado responde o corpo histórico DESTA rota (só o código).
+  const query = intervaloValidado(res, ListAtendimentosQueryParams.safeParse(req.query), {
+    error: "FILTRO_INVALIDO",
+  });
+  if (!query) return;
   // E125: recorte por noiva — a ficha pergunta pela próxima prova DELA e não
   // tem por que baixar a agenda da loja inteira (a classe do E62).
-  const { leadId, bloqueioId, tipo, de, ate } = query.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const { leadId, bloqueioId, tipo, de, ate } = query;
   const atendimentos = await db.query.atendimentosTable.findMany({
     where: and(
       eq(atendimentosTable.lojaId, lojaId),

@@ -288,3 +288,43 @@ const instanteDiaHoraFmt = new Intl.DateTimeFormat("pt-BR", {
 export function instanteDiaHora(valor: Date | string): string {
   return instanteDiaHoraFmt.format(comoData(valor));
 }
+
+/**
+ * "há 5 min" / "há 3 h" / "há 12 dias" / "agora há pouco" — o tempo relativo
+ * dos cards, ou null para o chamador cair na data absoluta.
+ *
+ * S35: esta função existia em TRÊS páginas (portal da noiva, backup,
+ * atividade da equipe), cada uma com um teto diferente para desistir do
+ * relativo — 90 dias no backup, 60 na atividade, nenhum no portal. Nada
+ * documentava a divergência, então ela vira PARÂMETRO e cada tela declara o
+ * seu teto onde chama. Instante no futuro (relógio adiantado) devolve null em
+ * vez de inventar um "há -3 min".
+ */
+export function haQuanto(instante: string, tetoDias?: number): string | null {
+  const ms = Date.now() - new Date(instante).getTime();
+  if (ms < 0) return null;
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "agora há pouco";
+  if (min < 60) return `há ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return `há ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  if (tetoDias !== undefined && dias > tetoDias) return null;
+  return `há ${dias} dia${dias === 1 ? "" : "s"}`;
+}
+
+/**
+ * Normaliza texto para busca insensível a caixa e acento ("joao" acha "João").
+ *
+ * S35: a mesma conta (NFD + tirar diacríticos + minúsculas) estava escrita em
+ * três lugares — busca do financeiro, seletor de loja e acervo de vestidos —
+ * com variações que não mudavam o resultado (ordem das etapas, `trim`). Uma
+ * régua; o `trim` fica porque busca digitada chega com espaço nas pontas.
+ */
+export function normalizar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}

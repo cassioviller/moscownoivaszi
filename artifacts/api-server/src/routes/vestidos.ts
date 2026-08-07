@@ -59,6 +59,7 @@ import { comprometidoNoDia } from "../lib/estoque";
 import { identificarImagem } from "../lib/imagem";
 import { atributosDaLoja, vestidoNaLoja, confeccaoPodeVirarPeca } from "../lib/escopo-loja";
 import { erroDeValidacao } from "../lib/erros";
+import { intervaloValidado } from "../lib/intervalo";
 
 const router: IRouter = Router();
 
@@ -291,16 +292,9 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
 // Três agregações no banco (nunca as linhas) + costura em memória.
 router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = GetUtilizacaoVestidosQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const q = intervaloValidado(res, GetUtilizacaoVestidosQueryParams.safeParse(req.query));
+  if (!q) return;
+  const { de, ate } = q;
   const inicio = de ? inicioDoDia(de) : null;
   const fim = ate ? inicioDoDia(addDias(ate, 1)) : null;
   // Vale para qualquer coluna de instante (inicio, casamentoData, fechadoEm).

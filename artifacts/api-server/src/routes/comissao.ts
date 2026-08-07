@@ -52,6 +52,7 @@ import {
   vencimentoComissao,
   type FaixaCalc,
 } from "../lib/comissao";
+import { diaLocal } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
 
@@ -385,8 +386,9 @@ router.post("/lojas/:lojaId/comissao/regras", async (req, res): Promise<void> =>
    */
   // A pergunta é sobre o DIA, não sobre o instante: `2020-01-01T12:00-03:00` e
   // `2020-01-01T00:00-03:00` são o mesmo primeiro dia, e comparar `getTime()`
-  // reprovaria o segundo. Mesmo deslocamento de fuso que `competenciaDe` usa.
-  const diaDoMesSP = new Date(vigenciaInicio.getTime() - 3 * 60 * 60 * 1000).getUTCDate();
+  // reprovaria o segundo. Mesma régua de `competenciaDe`: `diaLocal` do
+  // financeiro-core (S35 — o `-3h` à mão saiu; equivalência provada em teste).
+  const diaDoMesSP = Number(diaLocal(vigenciaInicio).slice(8, 10));
   if (diaDoMesSP !== 1) {
     res.status(422).json({
       error: "VIGENCIA_FORA_DA_COMPETENCIA",
@@ -481,14 +483,9 @@ router.delete("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promi
 });
 
 // ── Simulador de escada (E23) ──
-
-/** A competência `n` meses antes de `comp` ("2026-07", 1 → "2026-06"). */
-function competenciaAnterior(comp: string, n: number): string {
-  const ano = Number(comp.slice(0, 4));
-  const mes = Number(comp.slice(5, 7));
-  const d = new Date(Date.UTC(ano, mes - 1 - n, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
+// S35: havia aqui uma `competenciaAnterior(comp, n)` reimplementando, mês a
+// mês, o que `competenciasAnteriores` (importada deste MESMO arquivo desde o
+// E53) já devolve de uma vez — o mesmo `Date.UTC(ano, mes - 1 - n, 1)`.
 
 /**
  * "Se a faixa fosse Y%, quanto teria pago?" — a escada hipotética aplicada às
@@ -524,7 +521,7 @@ router.post("/lojas/:lojaId/comissao/simular", async (req, res): Promise<void> =
   // As N competências ANTERIORES à corrente — mês em curso não responde
   // "quanto teria pago" (a base ainda cresce).
   const atual = competenciaDe(new Date());
-  const comps = Array.from({ length: meses }, (_, i) => competenciaAnterior(atual, meses - i));
+  const comps = competenciasAnteriores(atual, meses);
 
   const fechamentos = await db
     .select()
@@ -535,6 +532,74 @@ router.post("/lojas/:lojaId/comissao/simular", async (req, res): Promise<void> =
       inArray(comissaoFechamentosTable.competencia, comps),
     ));
   const fechadaPor = new Map(fechamentos.map((f) => [f.competencia, f]));
+
+  /**
+   * S35 — o laço abaixo rodava DUAS buscas por competência aberta
+   * (`vendasDaCompetencia` + `regrasVigentes`, esta em dois selects): com os 3
+   * meses do padrão sem fechamento eram 9 consultas dentro do laço. Agora as
+   * competências abertas se agregam ANTES: uma consulta de contratos cobrindo
+   * o intervalo inteiro e uma de regras (+ uma de faixas), particionadas em
+   * memória pelas MESMAS réguas dos helpers (`competenciaDe` para o balde do
+   * contrato, `vigenciaInicio < fim` na ordem desc para a regra vigente).
+   */
+  const abertas = comps.filter((c) => !fechadaPor.has(c));
+  const vendasAbertasC = new Map<string, number>();
+  const regraPorAberta = new Map<string, { bonusAcumulaFaixas: boolean; faixas: FaixaCalc[] }>();
+  if (abertas.length > 0) {
+    const { inicio } = limitesCompetencia(abertas[0]);
+    const { fim } = limitesCompetencia(abertas[abertas.length - 1]);
+    const contratos = await db
+      .select({ valorTotal: contratosTable.valorTotal, fechadoEm: contratosTable.fechadoEm })
+      .from(contratosTable)
+      .where(and(
+        eq(contratosTable.lojaId, lojaId),
+        eq(contratosTable.vendedoraId, vendedoraId),
+        eq(contratosTable.status, "ATIVO"),
+        gte(contratosTable.fechadoEm, inicio),
+        lt(contratosTable.fechadoEm, fim),
+      ));
+    for (const c of contratos) {
+      const comp = competenciaDe(c.fechadoEm!);
+      if (!fechadaPor.has(comp)) {
+        vendasAbertasC.set(comp, (vendasAbertasC.get(comp) ?? 0) + cent(c.valorTotal));
+      }
+    }
+
+    const regras = await db
+      .select()
+      .from(comissaoRegrasTable)
+      .where(and(
+        eq(comissaoRegrasTable.lojaId, lojaId),
+        eq(comissaoRegrasTable.vendedoraId, vendedoraId),
+        eq(comissaoRegrasTable.ativo, true),
+        lt(comissaoRegrasTable.vigenciaInicio, fim),
+      ))
+      .orderBy(desc(comissaoRegrasTable.vigenciaInicio));
+    const faixasRows = regras.length > 0
+      ? await db
+          .select()
+          .from(comissaoFaixasTable)
+          .where(inArray(comissaoFaixasTable.regraId, regras.map((r) => r.id)))
+      : [];
+    const faixasPorRegra = new Map<string, FaixaCalc[]>();
+    for (const f of faixasRows) {
+      const lista = faixasPorRegra.get(f.regraId) ?? [];
+      lista.push(paraCalc(f));
+      faixasPorRegra.set(f.regraId, lista);
+    }
+    for (const comp of abertas) {
+      // desc → a primeira cuja vigência começou antes do fim do mês é a
+      // vigente naquele mês: o MESMO critério de `regrasVigentes`.
+      const fimComp = limitesCompetencia(comp).fim;
+      const vigente = regras.find((r) => r.vigenciaInicio < fimComp);
+      if (vigente) {
+        regraPorAberta.set(comp, {
+          bonusAcumulaFaixas: vigente.bonusAcumulaFaixas,
+          faixas: faixasPorRegra.get(vigente.id) ?? [],
+        });
+      }
+    }
+  }
 
   const linhas = [];
   for (const competencia of comps) {
@@ -547,8 +612,8 @@ router.post("/lojas/:lojaId/comissao/simular", async (req, res): Promise<void> =
       pagoRealC = cent(fechamento.valorTotal);
       pagoRealPercentual = fechamento.percentualAplicado;
     } else {
-      baseC = (await vendasDaCompetencia(db, lojaId, competencia)).get(vendedoraId) ?? 0;
-      const regra = (await regrasVigentes(db, lojaId, [vendedoraId], competencia)).get(vendedoraId);
+      baseC = vendasAbertasC.get(competencia) ?? 0;
+      const regra = regraPorAberta.get(competencia);
       const r = regra ? calcularComissao(baseC, regra.faixas, regra.bonusAcumulaFaixas) : null;
       pagoRealC = r?.valorTotal ?? 0;
       pagoRealPercentual = r?.percentualAplicado ?? null;

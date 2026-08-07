@@ -2,7 +2,7 @@ import { varianteAtivo } from "@/lib/status-badge";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl } from "@/lib/formatos";
+import { brl, normalizar } from "@/lib/formatos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import {
   useListVestidos,
@@ -78,13 +78,8 @@ type NovoVestidoValues = z.infer<typeof novoVestidoSchema>;
 /** Sentinela do item "Todos" nos Selects (Radix não aceita value=""). */
 const TODOS = "__todos__";
 
-/** Comparação case/acentos-insensitive para a busca. */
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
+// S35: `normalizar` (busca sem caixa/acento) veio para `@/lib/formatos` — era
+// a terceira cópia da mesma conta.
 
 /** Converte "YYYY-MM-DD" em Date local (new Date(string) cairia em UTC e erraria o dia). */
 function parseDia(dia: string): Date {

@@ -85,7 +85,8 @@ import {
   type ItemContabil,
 } from "../lib/folha";
 import { montarContasDaCompetencia, TIPOS_RECORRENCIA } from "../lib/recorrencias";
-import { montarCsv } from "../lib/csv";
+import { montarCsv, responderCsv } from "../lib/csv";
+import { intervaloValidado } from "../lib/intervalo";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -120,16 +121,9 @@ router.use("/lojas/:lojaId/contas-pagar", requireModulo("financeiro"));
 // no fuso da loja.
 router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ListParcelasQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate, status, recebidasDe } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const q = intervaloValidado(res, ListParcelasQueryParams.safeParse(req.query));
+  if (!q) return;
+  const { de, ate, status, recebidasDe } = q;
 
   const parcelas = await db.query.parcelasTable.findMany({
     where: and(
@@ -196,16 +190,9 @@ router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<
 // torna a saída estornável e a fatia rateada que de fato saiu do caixa.
 router.get("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ListContasPagarQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate, status } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const q = intervaloValidado(res, ListContasPagarQueryParams.safeParse(req.query));
+  if (!q) return;
+  const { de, ate, status } = q;
 
   const contas = await db.query.contasPagarTable.findMany({
     where: and(
@@ -459,19 +446,13 @@ router.delete("/lojas/:lojaId/contas-pagar/:contaId", async (req, res): Promise<
 // início do dia seguinte (exclusivo) para pegar o dia inteiro.
 router.get("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ListPagamentosQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({
-      error: "FILTRO_INVALIDO",
-      detalhe: "Filtro inválido: de/ate esperam YYYY-MM-DD.",
-    });
-    return;
-  }
-  const { de, ate, colaboradorId } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  // O corpo do parse recusado é o histórico DESTA rota — preservado à letra.
+  const q = intervaloValidado(res, ListPagamentosQueryParams.safeParse(req.query), {
+    error: "FILTRO_INVALIDO",
+    detalhe: "Filtro inválido: de/ate esperam YYYY-MM-DD.",
+  });
+  if (!q) return;
+  const { de, ate, colaboradorId } = q;
 
   const pagamentos = await db.query.pagamentosTable.findMany({
     where: and(
@@ -767,12 +748,7 @@ router.get("/lojas/:lojaId/financeiro/auditoria/exportar", async (req, res): Pro
   }
 
   const sufixo = parsed.data.de && parsed.data.ate ? `-${parsed.data.de}-a-${parsed.data.ate}` : "";
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="auditoria${sufixo}.csv"`);
-  // BOM: sem ele o Excel lê UTF-8 como latin-1 e "comissão" vira "comissÃ£o".
-  res.send("﻿" + montarCsv(csv));
+  responderCsv(res, `auditoria${sufixo}`, montarCsv(csv));
 });
 
 // ───────────────────────── Recorrências (E48) ─────────────────────────
@@ -1271,29 +1247,19 @@ async function itensContabeis(lojaId: string, de: string, ate: string): Promise<
  */
 router.get("/lojas/:lojaId/financeiro/folha/exportar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ExportarFolhaQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  // Sem intervalo, o mês corrente — o período que a contabilidade fecha.
-  // `hojeLocal()` é a régua (importada acima); o `-3h` cravado à mão era a
-  // mesma conta escrita pela segunda vez no arquivo.
-  const hoje = hojeLocal();
-  const de = parsed.data.de ?? primeiroDiaDoMes(hoje);
-  const ate = parsed.data.ate ?? hoje;
-  if (de > ate) {
+  const q = intervaloValidado(res, ExportarFolhaQueryParams.safeParse(req.query));
+  if (!q) return;
+  // S35: a janela-padrão (sem intervalo, o mês corrente) estava escrita inline
+  // aqui, ao lado da `janelaExportacao` que já dizia a mesma coisa — e que as
+  // outras duas exportações usam. Agora é ela nas três.
+  const janela = janelaExportacao(q.de, q.ate);
+  if (!janela) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
   }
 
-  const csv = montarCsvContabilidade(await itensContabeis(lojaId, de, ate));
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="contabilidade-${de}-a-${ate}.csv"`);
-  // BOM: sem ele o Excel lê UTF-8 como latin-1 e "Salário" vira "SalÃ¡rio".
-  res.send("﻿" + csv);
+  const csv = montarCsvContabilidade(await itensContabeis(lojaId, janela.de, janela.ate));
+  responderCsv(res, `contabilidade-${janela.de}-a-${janela.ate}`, csv);
 });
 
 /**
@@ -1311,12 +1277,9 @@ function janelaExportacao(de?: string, ate?: string): { de: string; ate: string 
 // da folha: um GET tem de ser seguro para refresh/prefetch.
 router.get("/lojas/:lojaId/financeiro/contas-pagar/exportar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ExportarContasPagarQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const janela = janelaExportacao(parsed.data.de, parsed.data.ate);
+  const q = intervaloValidado(res, ExportarContasPagarQueryParams.safeParse(req.query));
+  if (!q) return;
+  const janela = janelaExportacao(q.de, q.ate);
   if (!janela) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -1346,23 +1309,16 @@ router.get("/lojas/:lojaId/financeiro/contas-pagar/exportar", async (req, res): 
       c.status,
     ]);
   }
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="contas-pagar-${janela.de}-a-${janela.ate}.csv"`);
-  res.send("﻿" + montarCsv(linhas));
+  responderCsv(res, `contas-pagar-${janela.de}-a-${janela.ate}`, montarCsv(linhas));
 });
 
 // CSV das parcelas (a receber) por vencimento, com a noiva na linha — o
 // mapa da inadimplência que a contadora importa sem redigitar.
 router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ExportarParcelasQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const janela = janelaExportacao(parsed.data.de, parsed.data.ate);
+  const q = intervaloValidado(res, ExportarParcelasQueryParams.safeParse(req.query));
+  if (!q) return;
+  const janela = janelaExportacao(q.de, q.ate);
   if (!janela) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -1392,11 +1348,7 @@ router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Prom
       p.formaRecebimento ?? "",
     ]);
   }
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="parcelas-${janela.de}-a-${janela.ate}.csv"`);
-  res.send("﻿" + montarCsv(linhas));
+  responderCsv(res, `parcelas-${janela.de}-a-${janela.ate}`, montarCsv(linhas));
 });
 
 /**
@@ -1409,16 +1361,10 @@ router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Prom
  */
 router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = EnviarContabilidadeBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate } = parsed.data;
-  if (de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  // Aqui `de`/`ate` são OBRIGATÓRIOS no corpo; o helper compara igual.
+  const q = intervaloValidado(res, EnviarContabilidadeBody.safeParse(req.body));
+  if (!q) return;
+  const { de, ate } = q;
 
   /**
    * F34/E103 — carimba os DOIS lados, e deixa rastro.

@@ -11,13 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2, Search, SearchX, Store } from "lucide-react";
 import { mensagemApi } from "@/lib/erro-api";
 
-/** Normaliza texto para comparação case/acento-insensível. */
-function normalizar(texto: string): string {
-  return texto
-    .toLocaleLowerCase("pt-BR")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
+// S35: a cópia local (`toLocaleLowerCase("pt-BR")` antes do NFD, sem trim)
+// produzia o mesmo resultado da régua da casa — consolidada.
+import { normalizar } from "@/lib/formatos";
 
 export default function SelecionarLoja() {
   // As lojas vêm da sessão (/auth/me): é exatamente o que o usuário pode acessar.

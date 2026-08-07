@@ -49,10 +49,10 @@ export function casamentoUrgente(dias: number): boolean {
   return dias >= 0 && dias <= 14;
 }
 
-/** ISO → "YYYY-MM-DD" para inputs type=date (dia UTC = dia de negócio). */
-export function isoParaDia(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10);
-}
+// S35: `isoParaDia` morava aqui com o corpo LITERALMENTE igual ao de
+// `diaDeNegocio` do financeiro-core (`new Date(x).toISOString().slice(0, 10)`)
+// — os dois sítios que a usavam (editar noiva, ficha da reserva) agora chamam
+// a régua via `@/lib/financeiro/datas`.
 
 // S37: `whatsappDigits` morava aqui e era a TERCEIRA régua de telefone do
 // sistema — devolvia qualquer quantidade de dígitos, sem DDI e sem faixa, e a

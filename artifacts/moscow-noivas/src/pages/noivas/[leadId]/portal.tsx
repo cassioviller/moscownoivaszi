@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { portalVivo, portalVencido, linkDoPortal } from "@/lib/portal";
+import { haQuanto } from "@/lib/formatos";
 import { DoorOpen, Copy, Ban } from "lucide-react";
 import { useState } from "react";
 import {
@@ -36,15 +37,12 @@ import { mensagemApi } from "@/lib/erro-api";
  */
 
 
-/** "há 3 dias" / "há 2 horas" / "agora há pouco" — vocabulário de card. */
-function haQuanto(instante: string): string {
-  const ms = Date.now() - new Date(instante).getTime();
-  const horas = Math.floor(ms / 3_600_000);
-  if (horas < 1) return "agora há pouco";
-  if (horas < 24) return `há ${horas} hora${horas > 1 ? "s" : ""}`;
-  const dias = Math.floor(horas / 24);
-  return `há ${dias} dia${dias > 1 ? "s" : ""}`;
-}
+// S35: o "há quanto" mora em `@/lib/formatos`. A cópia daqui era a mais
+// grossa das três (só horas/dias, sem teto); a régua da casa acrescenta a
+// granulação de minutos — "há 2 horas" desta tela agora sai "há 2 h". Sem
+// teto de propósito: "ela abriu há 200 dias" ainda é a resposta certa aqui. O
+// null (instante no futuro, relógio adiantado) cai no "agora há pouco" que a
+// cópia antiga respondia nesse caso.
 
 export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?: string }) {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -146,7 +144,7 @@ export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?:
             {vivo && (
               <p className="text-sm">
                 {portal!.ultimoAcessoEm ? (
-                  <>Ela abriu {haQuanto(String(portal!.ultimoAcessoEm))}.</>
+                  <>Ela abriu {haQuanto(String(portal!.ultimoAcessoEm)) ?? "agora há pouco"}.</>
                 ) : (
                   <>Ela ainda não abriu.</>
                 )}{" "}

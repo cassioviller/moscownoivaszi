@@ -55,7 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAbrevAno, diaParaISO } from "@/lib/formatos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
-import { isoParaDia } from "../noivas/helpers";
+import { diaDeNegocio } from "@/lib/financeiro/datas";
 import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
@@ -233,7 +233,7 @@ export default function ReservaDetalhe() {
 
   // Formularios locais: data da retirada/devolução, novo ajuste por prova,
   // novo item de checklist por ajuste, ajuste aguardando confirmação de remoção.
-  const casamentoYmd = reserva?.casamentoData ? isoParaDia(reserva.casamentoData) : "";
+  const casamentoYmd = reserva?.casamentoData ? diaDeNegocio(reserva.casamentoData) : "";
   const [dataMovimentacao, setDataMovimentacao] = useState<string | null>(null);
   const [novoAjuste, setNovoAjuste] = useState<Record<string, string>>({});
   // E155: por atendimento, porque cada prova tem seu formulário na tela.

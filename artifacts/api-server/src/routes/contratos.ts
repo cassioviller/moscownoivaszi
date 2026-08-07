@@ -709,14 +709,18 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
       .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
       .from(contratoBloqueiosTable)
       .where(eq(contratoBloqueiosTable.contratoId, contratoId as string));
-    for (const { bloqueioId } of vinculos) {
-      const [bloqueio] = await db.select().from(bloqueioVestidosTable)
-        .where(and(
-          eq(bloqueioVestidosTable.id, bloqueioId),
-          eq(bloqueioVestidosTable.lojaId, lojaId as string),
-          isNull(bloqueioVestidosTable.canceladoEm),
-        ));
-      if (!bloqueio) continue;
+    // S35: era um SELECT por vínculo dentro do laço — um contrato com N
+    // reservas custava 1+N consultas para conferir a data. Agora é 1+1: os
+    // bloqueios vivos vêm de uma vez (`inArray`) e a conferência é em memória.
+    const bloqueios = vinculos.length > 0
+      ? await db.select().from(bloqueioVestidosTable)
+          .where(and(
+            inArray(bloqueioVestidosTable.id, vinculos.map((v) => v.bloqueioId)),
+            eq(bloqueioVestidosTable.lojaId, lojaId as string),
+            isNull(bloqueioVestidosTable.canceladoEm),
+          ))
+      : [];
+    for (const bloqueio of bloqueios) {
       if (
         bloqueio.casamentoData &&
         diaLocal(parsed.data.dataCasamento) !== diaLocal(bloqueio.casamentoData)
