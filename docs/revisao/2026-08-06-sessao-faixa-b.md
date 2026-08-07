@@ -2,7 +2,7 @@
 
 **Branch `main`** · base `4a3fd64` · 28 commits
 Régua na abertura: API 1031 · frontend 473 · E2E 156 · typecheck verde
-Régua no fim: **API 1050 · frontend 495 · E2E 161 · typecheck verde em 4
+Régua no fim: **API 1051 · frontend 500 · E2E 161 · typecheck verde em 4
 projetos** — ele passou a incluir os 63 arquivos de `e2e/` (S-D23) e o
 `scripts/` (S-D43) —, mais uma **quarta régua fora das suítes**:
 `scripts/banco-virgem.ts`, que exercita o caminho da primeira execução.
@@ -257,9 +257,11 @@ começar a executar**, em quatro commits:
 | `60adc7c` | **Fase 2, épico 1** — S-D43, S-D41 e S-A12: a régua do banco virgem, e o resumo do seed que só ela vê |
 | `affa52c` | Os hashes, a S-D44, e a remedição da S-D25 |
 | `80d7d35` | **Fase 2, épico 2** — S-D25 e S-D40: spec que cria cabine apaga a sua, e a régua é uma só |
+| `a0e8cd4` | **Fase 2, épico 3** (madrugada de 07/08) — S-D13 e S-D37: a marca de cobrada sobrevive ao F5, e a parcela emagrece |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
-20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce).
+20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
+(20 🟡 · 18 🔵; 12 · 15 · 11).
 
 ### O plano abriu sem fase de leitura, e é a primeira vez
 
@@ -341,6 +343,39 @@ apagar — **274 contratos `E2E Colocacao` e 274 leads** de 21/07 a 06/08, zero
 parcelas, +2 por passada (272 → 274 dentro desta própria sessão). Mesma família
 da S-D25, outra tabela.
 
+### Fase 2, épico 3 — a marca de cobrada sobrevive ao F5, e a parcela emagrece
+
+A S-D13 e a S-D37 eram a mesma linha (`financeiro.ts:141`) por dois lados, e o
+conserto foi um só (`a0e8cd4`, madrugada de 07/08):
+
+- **`ParcelaContrato.lead` deixou de ser o `Lead` inteiro** e virou
+  `ParcelaLead` `{noivaNome, whatsapp, ultimoContatoEm}` no contrato. O teste
+  de API afirma as três chaves por `Object.keys`; o typecheck não acusou
+  consumidor nenhum fora dos três campos que a fila já usava.
+- **O agregado subiu de rota para lib** — `ultimoContatoPorLead` saiu de
+  `leads.ts` para `lib/ultimo-contato.ts` ao ganhar o quinto chamador — e a
+  rota de parcelas o anexa ao recorte.
+- **A fila de `/mensagens` ganhou a metade persistente da marca:**
+  `marcasPersistentesDeCobranca` compara o instante do último contato contra o
+  DIA no fuso da loja — `diaLocal`, não `diaDeNegocio`: as 22h de ontem em SP
+  são 01h de hoje em UTC, e há teste fixando exatamente esse caso. A marca
+  derivada não tem `registroId` de propósito (desfazer só existe para o
+  registro que ESTA sessão criou), e a fusão é sessão-por-cima.
+
+**O que o E2E pegou — um latente e um de propósito:**
+
+- O spec 13 caiu com strict mode violation: `getByRole` casa nome por
+  SUBSTRING e "Atendimentos" vive em três links (sidebar, cartão do dashboard,
+  "Fila de atendimentos →") — o assert só passava enquanto os cartões não
+  tinham montado, e o payload magro encurtou a janela. Locator escopado à
+  sidebar.
+- O spec 53 pregava o comportamento ANTIGO: a porta 1 cobrava e a porta 2
+  esperava a noiva de volta na fila — o próprio defeito da S-D13. Ganhou uma
+  segunda noiva: a primeira chega em /mensagens já marcada, com o "Não cobrei"
+  desabilitado (o registro não é da sessão), o fluxo de marcar-e-desfazer roda
+  na segunda, e a volta prova que a marca persistente se corrige quando o
+  registro sai do banco.
+
 ### A S-D25 estava olhando para a população errada
 
 Medida em `psql` antes de começar o épico 2, e o épico não chegou a ser feito —
@@ -377,12 +412,12 @@ regra 26 pedindo uma régua.
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem quatro épicos em pé — a S-D25/S-D40 fechou em
-   `80d7d35`.** A ordem que resta: **S-D13+S-D37** (a marca de cobrada e o lead
-   inteiro na parcela — `financeiro.ts:141` chama o agregado
-   `ultimoContatoPorLead` que `leads.ts:59-70` já tem, e o payload emagrece),
-   **S-D26** (37 perfis planos, e a fonte em `__tests__/helpers.ts` que os
-   recria a cada suíte), **S-D42+S-D39** (a hora de fechamento que os dois
+2. **A fila do banco tem três épicos em pé — S-D25/S-D40 fechou em `80d7d35` e
+   S-D13/S-D37 em `a0e8cd4`.** A ordem que resta: **S-D26** (os perfis planos —
+   remedidos em 07/08: **45 de 48**, porque 44 são fixture de suíte
+   interrompida presa a lojas zumbis; a fonte é `__tests__/helpers.ts` e a
+   conversão é identidade semântica do `normalizarAcessos`, então nenhuma
+   sessão precisa cair), **S-D42+S-D39** (a hora de fechamento que os dois
    bancos discordam, e o `bloqueioId` que o state grava e ninguém lê),
    **S-D24** (o teto de 100.000 que o spec 19 deixa no lead do seed). O porquê
    de cada par está na fase 2 do plano.
