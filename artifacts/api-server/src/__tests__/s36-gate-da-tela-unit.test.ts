@@ -143,11 +143,9 @@ describe("S36 — o gate da tela e o guard do servidor pedem o mesmo módulo", (
    */
   it("toda tela que ESCREVE em financeiro afirma um gate", () => {
     const porOperacao = moduloPorOperacao();
-    // S42 — conciliacao.tsx chama `marcarConciliado` sem gate; mesma classe
-    // da S40, fora do escopo dela. Quem fechar a S42 apaga esta linha.
-    const DIVIDA_ANOTADA = new Set([
-      "artifacts/moscow-noivas/src/pages/financeiro/conciliacao.tsx",
-    ]);
+    // A exceção anotada (S42, conciliacao.tsx) fechou em seguida à S40 — a
+    // lista vazia fica de molde para a próxima dívida COM DONO, não sem.
+    const DIVIDA_ANOTADA = new Set<string>([]);
 
     const semGate: string[] = [];
     for (const arquivo of telas()) {

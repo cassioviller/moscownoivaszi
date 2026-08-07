@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { comFiltros } from "@/lib/filtro-url";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListParcelas,
   getListParcelasQueryKey,
@@ -49,7 +50,12 @@ function diaCurto(ymd: string): string {
 
 export default function Conciliacao() {
   const { lojaId } = useParams();
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // S42 — a comparação com o extrato é leitura pura no navegador e fica para
+  // qualquer sessão; o que ESCREVE é só o "Marcar como conferidas" (POST
+  // /financeiro/conciliacao/marcar, guardado por financeiro/criar via o
+  // prefixo de financeiro.ts:111). Era a última tela de financeiro sem gate.
+  const podeMarcar = podeNoModulo(acessosModulos, "financeiro", "criar");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [transacoes, setTransacoes] = useState<TransacaoExtrato[] | null>(null);
@@ -315,18 +321,22 @@ export default function Conciliacao() {
                     novo a marcar: dizer "0 conferidos" seria oferecer trabalho
                     que não existe. */}
                 {casadasNovas.length > 0 ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    disabled={marcar.isPending}
-                    onClick={onMarcarConciliadas}
-                    data-testid="marcar-conciliadas"
-                  >
-                    {marcar.isPending
-                      ? "Marcando…"
-                      : `Marcar ${casadasNovas.length} como conferidas`}
-                  </Button>
+                  // Sem o gate não há botão nem o texto do ramo vazio: dizer
+                  // "todas já conferidas" com novas na tela seria mentira.
+                  podeMarcar && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      disabled={marcar.isPending}
+                      onClick={onMarcarConciliadas}
+                      data-testid="marcar-conciliadas"
+                    >
+                      {marcar.isPending
+                        ? "Marcando…"
+                        : `Marcar ${casadasNovas.length} como conferidas`}
+                    </Button>
+                  )
                 ) : (
                   conciliacao.casadas.length > 0 && (
                     <p className="text-xs text-muted-foreground">
