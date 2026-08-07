@@ -384,15 +384,15 @@ export default function VestidoDetail() {
 
             {/* E156 — a peça que não veio do fornecedor: ela foi feita aqui, sob
                 medida, e entrou no acervo depois do casamento (P4). O link leva
-                à FILA e não ao trabalho porque não existe rota por trabalho
-                (S-A17); enquanto ela não existir, é o mais perto que se chega. */}
+                ao TRABALHO que a fez — a rota por trabalho existe desde a S-A17;
+                antes dela, o mais perto que se chegava era a fila inteira. */}
             {vestido.origemAjusteId && (
               <div>
                 <p className="text-muted-foreground text-sm">Origem</p>
                 <p className="text-sm mt-1">
                   Peça confeccionada no ateliê — veio da{" "}
                   <Link
-                    to={`/loja/${lojaId}/ajustes?recorte=feitos`}
+                    to={`/loja/${lojaId}/ajustes/${vestido.origemAjusteId}`}
                     className="underline underline-offset-4 hover:text-foreground"
                   >
                     fila da costureira

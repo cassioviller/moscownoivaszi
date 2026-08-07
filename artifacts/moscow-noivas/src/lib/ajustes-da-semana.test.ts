@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ajustesDaSemana, prazoDias } from "./ajustes-da-semana";
+import { ajustesDaSemana, prazoDias, rotuloCasamento, rotuloProva } from "./ajustes-da-semana";
 
 /** Um dia YMD a N dias de hoje, no fuso da loja. */
 function emDias(n: number): string {
@@ -40,5 +40,18 @@ describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E13
       atendimento: { bloqueio: { casamentoData: emDias(30) } },
     };
     expect(prazoDias(a)).toBeLessThanOrEqual(2);
+  });
+
+  // S-A17: os rótulos saíram da fila para cá — a ficha do trabalho diz o
+  // prazo com as mesmas palavras, e o singular não vira "em 1 dias".
+  it("os rótulos do prazo cobrem atrasado, hoje, amanhã e o plural", () => {
+    expect(rotuloProva(-1)).toBe("prova atrasada");
+    expect(rotuloProva(0)).toBe("prova hoje");
+    expect(rotuloProva(1)).toBe("prova amanhã");
+    expect(rotuloProva(4)).toBe("prova em 4 dias");
+    expect(rotuloCasamento(-1)).toBe("casamento passou");
+    expect(rotuloCasamento(0)).toBe("casamento hoje");
+    expect(rotuloCasamento(1)).toBe("casamento amanhã");
+    expect(rotuloCasamento(14)).toBe("casamento em 14 dias");
   });
 });

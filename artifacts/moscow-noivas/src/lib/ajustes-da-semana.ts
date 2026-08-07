@@ -31,3 +31,20 @@ export function naSemana(a: AjusteComPrazo): boolean {
 export function ajustesDaSemana<T extends AjusteComPrazo>(lista: readonly T[]): T[] {
   return lista.filter((a) => a.status === "PENDENTE" && naSemana(a));
 }
+
+// S-A17: os rótulos moravam inline na fila; a ficha do trabalho
+// (`/ajustes/:ajusteId`) mostra o MESMO prazo com as MESMAS palavras.
+
+export function rotuloProva(dias: number): string {
+  if (dias < 0) return "prova atrasada";
+  if (dias === 0) return "prova hoje";
+  if (dias === 1) return "prova amanhã";
+  return `prova em ${dias} dias`;
+}
+
+export function rotuloCasamento(dias: number): string {
+  if (dias < 0) return "casamento passou";
+  if (dias === 0) return "casamento hoje";
+  if (dias === 1) return "casamento amanhã";
+  return `casamento em ${dias} dias`;
+}

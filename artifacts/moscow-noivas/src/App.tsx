@@ -52,6 +52,7 @@ const MensagensDoDia = lazy(() => import("@/pages/mensagens"));
 const NovoAtendimento = lazy(() => import("@/pages/atendimentos/novo"));
 const ConfigAtendimentos = lazy(() => import("@/pages/atendimentos/config"));
 const Ajustes = lazy(() => import("@/pages/ajustes"));
+const AjusteDetalhe = lazy(() => import("@/pages/ajustes/[ajusteId]"));
 const Provas = lazy(() => import("@/pages/provas"));
 const Reservas = lazy(() => import("@/pages/reservas"));
 const ReservaDetalhe = lazy(() => import("@/pages/reservas/[bloqueioId]"));
@@ -298,6 +299,9 @@ export const rotas = createRoutesFromElements(
       <Route path="atendimentos/novo" element={<NovoAtendimento />} />
       <Route path="atendimentos/config" element={<ConfigAtendimentos />} />
       <Route path="ajustes" element={<Ajustes />} />
+      {/* S-A17: a ficha de UM trabalho — o item do orçamento e a peça do
+          acervo apontam para ela, não mais para a fila inteira. */}
+      <Route path="ajustes/:ajusteId" element={<AjusteDetalhe />} />
       <Route path="provas" element={<Provas />} />
       <Route path="reservas" element={<Reservas />} />
       <Route path="reservas/:bloqueioId" element={<ReservaDetalhe />} />

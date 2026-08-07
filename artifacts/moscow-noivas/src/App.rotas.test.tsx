@@ -44,10 +44,12 @@ describe("S13 — a árvore de rotas sobrevive ao data router", () => {
     expect(rotas[0].children).toBeDefined();
   });
 
-  it("as 59 rotas do <BrowserRouter> continuam as mesmas 59", () => {
+  it("as 59 rotas da migração seguem lá — mais a ficha do trabalho (S-A17)", () => {
     // 59 é a contagem do `App.tsx` antes da migração — o número que a sobra
-    // dizia que "toca todas".
-    expect(todos).toHaveLength(59);
+    // dizia que "toca todas". A 60ª é `/ajustes/:ajusteId`, criada DEPOIS
+    // (S-A17): rota nova de propósito passa por aqui, rota perdida também.
+    expect(todos).toHaveLength(60);
+    expect(todos).toContain("/loja/:lojaId/ajustes/:ajusteId");
   });
 
   it("as rotas públicas, as de loja e as de admin continuam casando", () => {

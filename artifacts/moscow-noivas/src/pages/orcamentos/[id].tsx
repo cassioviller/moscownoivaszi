@@ -72,14 +72,15 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto, diaMesAno } from "@/lib/formatos";
+import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto } from "@/lib/formatos";
 import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
 import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
 import { confeccoesDaNoiva as confeccoesDoOrcamento } from "@/lib/confeccoes-da-noiva";
 import { precoDaSaida } from "@/lib/preco-da-saida";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
-import { montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
+import { planoDaDigitacao } from "@/lib/financeiro/plano";
+import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
 
 // E95: não existe aritmética de dinheiro neste arquivo. O `round2` que morava
@@ -156,67 +157,8 @@ type GerarContratoValues = z.infer<typeof gerarContratoSchema>;
 
 const FORMAS = ["PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "DINHEIRO", "BOLETO", "TRANSFERENCIA", "OUTRO"] as const;
 
-// E115: era `format(ancoraDeNegocio(dia), "dd/MM/yyyy")` — o date-fns desenha
-// no relógio do NAVEGADOR, e a âncora de meio-dia SP vira véspera para quem
-// abre de um fuso a leste de UTC+9. A régua dos dias de negócio é `diaMesAno`.
-const diaCurto = (dia: string) => diaMesAno(dia);
-
-/**
- * F16 — o carnê que vai ser criado, à vista, antes de criar.
- *
- * A noiva pergunta "quanto fica por mês?" e a vendedora dividia de cabeça: o
- * plano só aparecia DEPOIS do contrato gerado, numa outra tela. E como a tela
- * montava as parcelas com uma conta própria, o que ela teria mostrado nem era
- * o que o servidor gravaria.
- *
- * As linhas aqui são o MESMO array que o `POST /contratos` recebe — não há
- * segunda conta entre o que a noiva vê e o que vai para o banco.
- */
-function PreviaDoCarne({ erro, linhas }: { erro: string | null; linhas: ParcelaPlanejada[] | null }) {
-  if (erro) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{erro}</AlertDescription>
-      </Alert>
-    );
-  }
-  if (!linhas || linhas.length === 0) return null;
-
-  const entrada = linhas.find((l) => l.numero === 0);
-  const parcelas = linhas.filter((l) => l.numero > 0);
-  const primeira = parcelas[0];
-  const ultima = parcelas[parcelas.length - 1];
-  // A última só difere das irmãs quando a divisão não é exata — e é por isso
-  // que ela merece ser dita: é o centavo que a noiva confere no carnê.
-  const ultimaDifere = !!primeira && !!ultima && ultima.valorCentavos !== primeira.valorCentavos;
-
-  return (
-    <div className="bg-muted/40 space-y-2 rounded-md border p-3">
-      <p className="text-sm font-medium">
-        {entrada ? `Entrada de ${brl(reais(entrada.valorCentavos))} em ${diaCurto(entrada.vencimento)}` : null}
-        {entrada && parcelas.length > 0 ? " · " : null}
-        {parcelas.length > 0 ? (
-          <>
-            {parcelas.length}× de {brl(reais(primeira.valorCentavos))}
-            {ultimaDifere ? ` (a última de ${brl(reais(ultima.valorCentavos))})` : null}
-            {parcelas.length > 1 ? `, de ${diaCurto(primeira.vencimento)} a ${diaCurto(ultima.vencimento)}` : ` em ${diaCurto(primeira.vencimento)}`}
-          </>
-        ) : null}
-      </p>
-      <ul className="max-h-40 space-y-0.5 overflow-y-auto text-sm">
-        {linhas.map((l) => (
-          <li key={l.numero} className="flex justify-between gap-4">
-            <span className="text-muted-foreground">{l.descricao}</span>
-            <span className="tabular-nums">
-              {brl(reais(l.valorCentavos))} · {diaCurto(l.vencimento)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// F16 — a prévia do carnê (e o `diaCurto`/E115 que morava aqui) vive em
+// `components/previa-do-carne` desde a S10: a tela de contrato mostra a mesma.
 
 export default function OrcamentoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -442,44 +384,22 @@ export default function OrcamentoDetail() {
   const entradaDigitada = contratoForm.watch("entrada");
   const numParcelasDigitado = contratoForm.watch("numParcelas");
   const primeiroVencimento = contratoForm.watch("primeiroVencimento");
-  const plano = useMemo((): { erro: string | null; linhas: ParcelaPlanejada[] | null } => {
-    const totalC = totais.liquidoC;
-    if (totalC <= 0) return { erro: "Adicione itens antes de gerar o contrato.", linhas: null };
-
-    const entrada = parseValor(entradaDigitada ?? "");
-    if (entrada !== null && !Number.isFinite(entrada)) {
-      return { erro: "Entrada inválida — use apenas números.", linhas: null };
-    }
-    const entradaC = entrada === null ? 0 : centavos(entrada);
-    if (entradaC < 0) return { erro: "A entrada não pode ser negativa.", linhas: null };
-    if (entradaC > totalC) return { erro: "A entrada não pode superar o total.", linhas: null };
-
-    const numParcelas = Math.trunc(Number(numParcelasDigitado) || 0);
-    if (totalC - entradaC > 0 && numParcelas < 1) {
-      return { erro: "Informe o número de parcelas.", linhas: null };
-    }
-    // Sem a data ainda não há carnê a mostrar — e isso não é erro, é formulário
-    // pela metade: o toast só aparece se ela tentar enviar assim.
-    if (!primeiroVencimento) return { erro: null, linhas: null };
-
-    try {
-      return {
-        erro: null,
-        linhas: montarPlanoParcelas({
-          totalCentavos: totalC,
-          entradaCentavos: entradaC,
-          numParcelas,
-          primeiroVencimento,
-          // C6: o dia de HOJE no fuso da loja, não o instante. `new Date()`
-          // das 21h à meia-noite carimbava a entrada no dia seguinte — e no
-          // dia 31, no mês e na competência seguintes.
-          vencimentoEntrada: hojeLocal(),
-        }),
-      };
-    } catch {
-      return { erro: "Não consegui montar o carnê com esses valores.", linhas: null };
-    }
-  }, [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento]);
+  // S10: a validação da digitação (e as frases dela) mora em `planoDaDigitacao`
+  // — a tela de contrato chama a MESMA para a prévia do gerar-plano.
+  const plano = useMemo(
+    () =>
+      planoDaDigitacao({
+        totalCentavos: totais.liquidoC,
+        entradaDigitada: entradaDigitada ?? "",
+        numParcelasDigitado: numParcelasDigitado ?? "",
+        primeiroVencimento: primeiroVencimento ?? "",
+        // C6: o dia de HOJE no fuso da loja, não o instante. `new Date()`
+        // das 21h à meia-noite carimbava a entrada no dia seguinte — e no
+        // dia 31, no mês e na competência seguintes.
+        vencimentoEntrada: hojeLocal(),
+      }),
+    [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento],
+  );
 
   // Desconto (aplicado via PATCH; estado local só para os inputs).
   const [descontoTipo, setDescontoTipo] = useState<string>("");
@@ -974,10 +894,12 @@ export default function OrcamentoDetail() {
                         </Link>
                       )}
                       {/* E155: este item cobra um trabalho que está na fila —
-                          sem a marca, o vínculo existiria só no banco. */}
+                          sem a marca, o vínculo existiria só no banco.
+                          S-A17: o link leva ao TRABALHO, não mais à fila
+                          inteira — numa fila longa era busca a olho. */}
                       {item.ajusteId && (
                         <Link
-                          to={`/loja/${activeLojaId}/ajustes?recorte=todos`}
+                          to={`/loja/${activeLojaId}/ajustes/${item.ajusteId}`}
                           className="ml-2 text-xs font-normal text-muted-foreground underline underline-offset-2 hover:text-primary"
                           data-testid="link-item-confeccao"
                         >
