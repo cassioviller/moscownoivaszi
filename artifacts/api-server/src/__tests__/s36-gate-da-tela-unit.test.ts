@@ -134,6 +134,39 @@ describe("S36 — o gate da tela e o guard do servidor pedem o mesmo módulo", (
   });
 
   /**
+   * S40 — a fresta do primeiro caso: tela sem gate NENHUM era "outra conversa"
+   * (`gates.size === 0 → continue`), e foi exatamente onde a tela de dinheiro
+   * SAINDO viveu com quatro mutações e zero gate, verde nesta varredura. Para
+   * DINHEIRO a conversa acaba aqui: quem chama mutação de `financeiro` afirma
+   * pelo menos um `podeNoModulo`, e aí o primeiro caso confere QUAL. A exceção
+   * é dívida anotada com dono, não licença.
+   */
+  it("toda tela que ESCREVE em financeiro afirma um gate", () => {
+    const porOperacao = moduloPorOperacao();
+    // S42 — conciliacao.tsx chama `marcarConciliado` sem gate; mesma classe
+    // da S40, fora do escopo dela. Quem fechar a S42 apaga esta linha.
+    const DIVIDA_ANOTADA = new Set([
+      "artifacts/moscow-noivas/src/pages/financeiro/conciliacao.tsx",
+    ]);
+
+    const semGate: string[] = [];
+    for (const arquivo of telas()) {
+      const relativo = arquivo.replace(RAIZ + "/", "");
+      if (DIVIDA_ANOTADA.has(relativo)) continue;
+      const src = readFileSync(arquivo, "utf8");
+      if (/podeNoModulo\(/.test(src)) continue;
+      for (const m of src.matchAll(/\buse([A-Z]\w+)\b/g)) {
+        const operacao = m[1][0].toLowerCase() + m[1].slice(1);
+        if (porOperacao.get(operacao) === "financeiro" && VERBOS_QUE_ESCREVEM.test(operacao)) {
+          semGate.push(`${relativo} — chama ${operacao} sem afirmar gate nenhum`);
+          break;
+        }
+      }
+    }
+    expect(semGate).toEqual([]);
+  });
+
+  /**
    * Conjunto vazio aprova tudo em silêncio (S-D31), e esta varredura tem DUAS
    * pontas que podem esvaziar sem barulho. O piso é o medido em 2026-08-07 —
    * 22 prefixos com `requireModulo` e 66 telas `.tsx` em `pages/` — com folga
