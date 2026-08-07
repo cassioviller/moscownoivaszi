@@ -34,21 +34,21 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 6 sobras abertas (3 🟡 · 3 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 5 sobras abertas (3 🟡 · 2 🔵): S23, S27, S29, S39, S43 |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 2 sobras abertas (0 🟡 · 2 🔵): S-D36, S-D48 |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 6 sobras abertas (6 🟡 · 0 🔵) |
 
-   **São 14 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
-   2026-08-07, depois de seis fechos no mesmo dia: S40 (`475b991`, que pariu
+   **São 13 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
+   2026-08-07, depois de sete fechos no mesmo dia: S40 (`475b991`, que pariu
    S42 e S43), S42 (`05cf366`), S-D44 (`c092e71`, que pariu a S-D48), S-D47
-   (`015a0db`), S-D45 (`a38f994`) e S-D46 (`fda7cf2`) — e **o plano das cinco fases está EXECUTADO de
+   (`015a0db`), S-D45 (`a38f994`), S-D46 (`fda7cf2`) e S41 (`f0f1f49`) — e **o plano das cinco fases está EXECUTADO de
    ponta a ponta**: fase 0 e 1 no dia 06 (`49c5cdb`), fase 2 em seis épicos
    seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
    aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
    `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 14 que restam,
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 13 que restam,
    **11 são as perguntas da folha** (`2026-08-06-folha-de-perguntas.md`,
-   esperando gente) e **3 são achados medidos no nascimento** (S41, S43, S-D48) — não há linha na
+   esperando gente) e **2 são achados medidos no nascimento** (S43, S-D48) — não há linha na
    tabela que não seja pergunta ou achado recém-medido. **O que destrava mais
    é uma conversa, não código:** `docs/propostas/2026-08-06-folha-de-perguntas.md`
    traz as onze, com o número medido e o que muda com cada resposta possível.
