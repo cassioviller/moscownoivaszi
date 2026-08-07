@@ -34,20 +34,22 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 6 sobras abertas (4 🟡 · 2 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 7 sobras abertas (3 🟡 · 4 🔵). Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 5 sobras abertas (0 🟡 · 5 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 6 sobras abertas (6 🟡 · 0 🔵) |
 
-   **São 17 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
-   madrugada de 2026-08-07 — e **o plano das cinco fases está EXECUTADO de
+   **São 18 sobras abertas e nenhuma 🟠** — contadas nas três tabelas em
+   2026-08-07, depois do fecho da S40 (`475b991`: eram 17, fechou 1, nasceram
+   S42 e S43) — e **o plano das cinco fases está EXECUTADO de
    ponta a ponta**: fase 0 e 1 no dia 06 (`49c5cdb`), fase 2 em seis épicos
    seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
    aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
    `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 17 que restam,
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 18 que restam,
    **11 são as perguntas da folha** (`2026-08-06-folha-de-perguntas.md`,
-   esperando gente) e **6 nasceram desta própria execução, todas medidas no
-   nascimento** (S40, S41, S-D44, S-D45, S-D46, S-D47) — não há linha na
+   esperando gente) e **7 são achados medidos no nascimento** (S41, S42,
+   S43, S-D44, S-D45, S-D46, S-D47; a S40 fechou em `475b991` e pariu as
+   duas últimas) — não há linha na
    tabela que não seja pergunta ou achado recém-medido. **O que destrava mais
    é uma conversa, não código:** `docs/propostas/2026-08-06-folha-de-perguntas.md`
    traz as onze, com o número medido e o que muda com cada resposta possível.
@@ -71,7 +73,7 @@ para o documento que manda.
    assumir que ainda está em dia — esta linha envelhece a cada commit, e já
    envelheceu três vezes.
 
-   Hoje a régua é **API 1082 · frontend 529 · E2E 161 · typecheck verde em 4
+   Hoje a régua é **API 1083 · frontend 529 · E2E 161 · typecheck verde em 4
    projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
