@@ -1,8 +1,8 @@
-# Folha de perguntas — as 11 sobras que não têm conserto até alguém responder
+# Folha de perguntas — as 13 sobras que não têm conserto até alguém responder
 
 **2026-08-06.** É a fase 1 do
 [`plano do resto das sobras`](2026-08-06-plano-do-resto-das-sobras.md). Nenhuma
-destas 11 linhas é pedido de funcionalidade: são pontos em que o sistema **já se
+destas 13 linhas é pedido de funcionalidade: são pontos em que o sistema **já se
 comporta de um jeito** e ninguém decidiu se é o certo. Regra 21: sobra fechada
 por decisão se risca com a resposta escrita — decisão não registrada volta como
 pergunta.
@@ -139,7 +139,7 @@ fotos que faltam.
 
 ---
 
-## Para a dona do repositório (3)
+## Para a dona do repositório (5)
 
 ### 9. O `mockup-sandbox` — **S23**
 
@@ -170,6 +170,33 @@ lista e edita. Quem apagar um perfil não tem por onde repor.
 
 **Escolher entre:** a tela ganha o botão · fica escrito que perfil se cria por
 outro caminho, e a linha sai.
+
+### 12. Estornar pagamento com permissão de CRIAR — **S43** *(nasceu em 2026-08-07, no fecho da S40)*
+
+O middleware deriva a ação do método HTTP e `POST …/pagamentos/:id/estornar`
+não tem override: quem tem `financeiro: criar` **sem editar** desfaz rastro de
+caixa — e não pode remover uma conta PREVISTA (DELETE→editar). As duas rotas
+que pagam conta também divergem entre si: `/contas-pagar/:id/pagar` exige
+`editar` explícito e `POST /financeiro/pagamentos` (a única que a tela usa)
+deriva `criar`. O estorno de RECEBIMENTO tem gate explícito. Nos 4 perfis
+padrão nada muda (`financeiro` é TUDO ou NADA); a fresta é só de perfil
+customizado.
+
+**Escolher entre:** o estorno (e talvez o pagar) ganham `requireModulo("financeiro",
+"editar")` explícito, e a tela acompanha · fica como está, escrito que criar
+basta para estornar.
+
+### 13. Ligar a formatação do codegen — **S-D48** *(nasceu em 2026-08-07, no fecho da S-D44)*
+
+O `orval.config.ts` dizia `prettier: true` — opção que o orval 8 **ignora em
+silêncio**; os `generated/` commitados são o produto sem formatação e o codegen
+os reproduz byte a byte. Ligar o `formatter: "prettier"` custa **232 arquivos
+reformatados (+27.888/−21.341)** que as varreduras do repositório leem por
+forma (regra 13) — se ligar, é no mesmo commit que as varreduras forem
+reconferidas.
+
+**Escolher entre:** ligar e pagar o churn uma vez · deixar desligado, que é o
+que a config (agora honesta) já diz.
 
 ---
 

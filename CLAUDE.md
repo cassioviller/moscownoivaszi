@@ -46,12 +46,12 @@ para o documento que manda.
    seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
    aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
    `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 13 que restam,
-   **11 são as perguntas da folha** (`2026-08-06-folha-de-perguntas.md`,
-   esperando gente) e **2 são achados medidos no nascimento** (S43, S-D48) — não há linha na
-   tabela que não seja pergunta ou achado recém-medido. **O que destrava mais
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 13 que restam, **TODAS são perguntas da folha**
+   (`2026-08-06-folha-de-perguntas.md`, esperando gente): as 11 originais
+   mais S43 e S-D48, as duas decisões que os fechos de 2026-08-07 mediram —
+   não há linha na tabela que não esteja esperando uma resposta escrita. **O que destrava mais
    é uma conversa, não código:** `docs/propostas/2026-08-06-folha-de-perguntas.md`
-   traz as onze, com o número medido e o que muda com cada resposta possível.
+   traz as treze, com o número medido e o que muda com cada resposta possível.
 
    A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
