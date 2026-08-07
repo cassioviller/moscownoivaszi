@@ -8,7 +8,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
-    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:e2e && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --filter \"!@workspace/mockup-sandbox\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:e2e && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --filter \"./lib/api-spec\" --filter \"!@workspace/mockup-sandbox\" --if-present run typecheck"
   },
   "private": true,
   "dependencies": {
