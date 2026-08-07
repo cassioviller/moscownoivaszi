@@ -258,10 +258,12 @@ começar a executar**, em quatro commits:
 | `affa52c` | Os hashes, a S-D44, e a remedição da S-D25 |
 | `80d7d35` | **Fase 2, épico 2** — S-D25 e S-D40: spec que cria cabine apaga a sua, e a régua é uma só |
 | `a0e8cd4` | **Fase 2, épico 3** (madrugada de 07/08) — S-D13 e S-D37: a marca de cobrada sobrevive ao F5, e a parcela emagrece |
+| `5be1895` | **Fase 2, épico 4** — S-D26: os perfis planos, a fonte fecha e o banco converte |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
-(20 🟡 · 18 🔵; 12 · 15 · 11).
+(20 🟡 · 18 🔵; 12 · 15 · 11) **→ 38 com o épico 4** (S-D26 fecha, S-D46 nasce —
+as lojas zumbis; a contagem não anda, o backlog fica mais honesto).
 
 ### O plano abriu sem fase de leitura, e é a primeira vez
 
@@ -376,6 +378,26 @@ conserto foi um só (`a0e8cd4`, madrugada de 07/08):
   na segunda, e a volta prova que a marca persistente se corrige quando o
   registro sai do banco.
 
+### Fase 2, épico 4 — os perfis planos: a fonte fecha e o banco converte
+
+Remedição antes do conserto (regra 20): **45 de 48 planos**, não 37 de 40 — e a
+diferença era a própria doença. 44 dos 48 perfis do banco são fixture de suíte
+interrompida (`Perfil (Admin) Teste`), recriados PLANOS a cada passada por
+`__tests__/helpers.ts`: qualquer `UPDATE` seria desfeito pela suíte seguinte,
+exatamente como a conferência previu ao derrubar o "um UPDATE de duas linhas
+fecha".
+
+Três peças (`5be1895`): a fixture passou a escrever módulo × ação; a migração
+converteu **48 de 48** espelhando `normalizarAcessos` — identidade semântica da
+ponte de leitura, e por isso **nenhuma sessão caiu** (o E56/E60 derruba sessão
+quando o acesso MUDA; aqui não mudou um bit); e a sonda
+`sd26-perfis-modulo-acao` (API +2) reprova as duas regressões, com piso de
+população. `perfil_overrides_lojas`: 0 linhas, e a rota normaliza na entrada.
+
+Visto de passagem → **S-D46**: as 26 lojas de fixture zumbis que nenhuma faxina
+alcança (S18 limpou usuários, S-A13 o acervo, S-D25 as cabines — ninguém tocou
+`lojas`), segurando os 44 perfis por FK.
+
 ### A S-D25 estava olhando para a população errada
 
 Medida em `psql` antes de começar o épico 2, e o épico não chegou a ser feito —
@@ -412,13 +434,11 @@ regra 26 pedindo uma régua.
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem três épicos em pé — S-D25/S-D40 fechou em `80d7d35` e
-   S-D13/S-D37 em `a0e8cd4`.** A ordem que resta: **S-D26** (os perfis planos —
-   remedidos em 07/08: **45 de 48**, porque 44 são fixture de suíte
-   interrompida presa a lojas zumbis; a fonte é `__tests__/helpers.ts` e a
-   conversão é identidade semântica do `normalizarAcessos`, então nenhuma
-   sessão precisa cair), **S-D42+S-D39** (a hora de fechamento que os dois
-   bancos discordam, e o `bloqueioId` que o state grava e ninguém lê),
+2. **A fila do banco tem dois épicos em pé — S-D25/S-D40 (`80d7d35`),
+   S-D13/S-D37 (`a0e8cd4`) e S-D26 (`5be1895`) fecharam.** A ordem que resta:
+   **S-D42+S-D39** (a hora de fechamento que os dois bancos discordam — o
+   conserto é a fixture fixar `atendimentoFechamentoHora: 20`, a decisão da
+   S-A8; e o `bloqueioId` que o state grava e nenhum spec lê — sai do state),
    **S-D24** (o teto de 100.000 que o spec 19 deixa no lead do seed). O porquê
    de cada par está na fase 2 do plano.
 3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da

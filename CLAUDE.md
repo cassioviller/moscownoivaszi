@@ -43,9 +43,9 @@ para o documento que manda.
    `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm conserto até alguém
    responder. As 48 da conferência viraram 38 pelo caminho longo: as ondas 1 e 2
    fecharam 16 linhas e escreveram 14 novas, a fase 0 riscou 3 por decisão já
-   tomada, os três primeiros épicos da fase 2 fecharam mais 7 e escreveram 2
-   (S-D44, S-D45), e a única 🟠 que existiu neste intervalo (a S-D38, banco
-   virgem) nasceu e morreu no mesmo dia. A frase
+   tomada, os quatro primeiros épicos da fase 2 fecharam mais 8 e escreveram 3
+   (S-D44, S-D45, S-D46), e a única 🟠 que existiu neste intervalo (a S-D38,
+   banco virgem) nasceu e morreu no mesmo dia. A frase
    abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
    passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
@@ -56,7 +56,7 @@ para o documento que manda.
    é que agora é verdade.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1051 · frontend 500 ·
+   fundiu com as três suítes verdes. Hoje a régua é **API 1053 · frontend 500 ·
    E2E 161 · typecheck verde em 4 projetos — o typecheck passou a incluir os 63
    arquivos de `e2e/`** (S-D23, `acdd9b3`) **e o `scripts/`** (`60adc7c`), que
    nenhum `tsconfig` cobria. Há uma **quarta régua fora das suítes**:
