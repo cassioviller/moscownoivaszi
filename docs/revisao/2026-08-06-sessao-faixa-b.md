@@ -266,6 +266,7 @@ começar a executar**, em quatro commits:
 | `c98341e` | **Fase 3, B1** — S-D30 a S-D33: toda varredura enumera pelo git, com piso e recorte nomeado |
 | `f4cb527` | **Fase 3, B2** — S-D34, S-D35 e S-A10: o dedo alcança o Input, o painel para de saltar, e a prova ganha campo. **A fase 3 fechou.** |
 | `f901275` | **Fase 4.1** — S32: o guard de sessão roda uma vez por request, não onze — dashboard de 15,3 para 5,3 ms |
+| `24e9054` | **Fase 4.3** — S33: a leitura da guarda do DELETE de loja entra na transação, com tranca — e a corrida reproduzida de verdade |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -511,6 +512,20 @@ dev server, 20 requests após aquecimento: mediana de 15,3 ms para 5,3 ms
 (−65%)** — e um router novo montado sem path deixa de encarecer os que vêm
 depois. O teste prova o mecanismo por construção: o req do ramo memoizado não
 tem cookie, e sem a memo o guard responderia 401 antes de qualquer consulta.
+
+### 4.3 — S33, a corrida do DELETE de loja fechada com tranca → `24e9054`
+
+O `FOR UPDATE` na linha da loja é o que fecha: KEY SHARE de INSERT filho
+conflita com ele, então o insert em voo segura a tranca e a contagem
+(statement novo em READ COMMITTED) o vê. **A corrida foi reproduzida num
+teste com duas conexões** — INSERT não commitado, rota pendurada na tranca,
+COMMIT com ela pendurada — e o vermelho contra o código velho foi literal:
+`expected 204 to be 409`, com o lead recém-nascido indo embora no cascade.
+
+O teste ensinou uma pegadinha que fica: **o `Test` do supertest é lazy** — só
+dispara a request no `.then()` —, e a primeira versão da corrida passava verde
+até no código errado, com a request ainda no papel. `Promise.resolve`
+assimilando o thenable dispara antes do sleep; está comentado no teste.
 
 ### A S-D25 estava olhando para a população errada
 
