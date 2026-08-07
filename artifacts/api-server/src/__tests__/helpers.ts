@@ -57,16 +57,22 @@ export async function criarFixture(): Promise<Fixture> {
 
   const perfilId = randomUUID();
   const perfilAdminId = randomUUID();
+  // Módulo × ação, o formato que o E147 tornou canônico. A fixture escrevia o
+  // formato PLANO antigo ({ leads: true }) a cada execução da suíte — era a
+  // FONTE que a S-D26 mandou fechar: qualquer UPDATE no banco seria desfeito
+  // pela passada seguinte. `true` valia ver+criar+editar, e é isso que se
+  // escreve por extenso agora (a semântica não muda um bit).
+  const TUDO = { ver: true, criar: true, editar: true };
   await db.insert(perfisTable).values([
     {
       id: perfilId,
       nome: `Perfil Teste ${sufixo}`,
-      acessosModulos: { leads: true, vestidos: true, agenda: true },
+      acessosModulos: { leads: TUDO, vestidos: TUDO, agenda: TUDO },
     },
     {
       id: perfilAdminId,
       nome: `Perfil Admin Teste ${sufixo}`,
-      acessosModulos: { leads: true, vestidos: true, agenda: true, admin: true, financeiro: true, comissao: true },
+      acessosModulos: { leads: TUDO, vestidos: TUDO, agenda: TUDO, admin: TUDO, financeiro: TUDO, comissao: TUDO },
     },
   ]);
 
