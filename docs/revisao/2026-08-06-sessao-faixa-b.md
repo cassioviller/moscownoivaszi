@@ -268,6 +268,7 @@ começar a executar**, em quatro commits:
 | `f901275` | **Fase 4.1** — S32: o guard de sessão roda uma vez por request, não onze — dashboard de 15,3 para 5,3 ms |
 | `24e9054` | **Fase 4.3** — S33: a leitura da guarda do DELETE de loja entra na transação, com tranca — e a corrida reproduzida de verdade |
 | `cafe56c` | **Fase 4.2** — S35: os 18 do E115, cada régua numa casa só, N+1 medidos — nascem S40 e S41 |
+| `8b9c574` | **Fases 4.6 e 4.7** — S10 e S-A17: a prévia do carnê na tela de contrato, e a ficha do trabalho da costureira |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -541,6 +542,18 @@ dinheiro 7→5); `compararSenha` morta era exatamente a variante SEM tempo
 constante que alguém importaria por engano. Os residuais viraram **S40**
 (pagar.tsx sem gate de ação — tela de dinheiro) e **S41** (agenda 404→422 e o
 N+1 do POST de contratos, deixado de propósito pelos 4 erros com precedência).
+
+### 4.6 e 4.7 — S10 e S-A17, as duas telas → `8b9c574`
+
+A prévia do carnê saiu do inline da tela de orçamento e virou componente
+compartilhado, com a validação da digitação virando função pura testada (era
+lógica sem teste dentro de um `useMemo`). E a ficha `/ajustes/:id` nasceu SEM
+rota nova de servidor — a mesma lista da fila, mesma query key, mesmo cache —
+com as ações da fila unificadas em `useAcoesDeAjuste`. **Dívida anotada pelo
+próprio agente: a rota nova não tem spec E2E de ponta a ponta** (deep link,
+marcar feito pela ficha, o caminho item-de-orçamento → ficha) — fica como
+trabalho apontado, não como sobra formal, porque a rota acabou de nascer no
+mesmo commit.
 
 ### A S-D25 estava olhando para a população errada
 
