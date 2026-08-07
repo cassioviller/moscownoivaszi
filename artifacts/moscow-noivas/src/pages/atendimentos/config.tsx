@@ -47,11 +47,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { mensagemApi } from "@/lib/erro-api";
+import { minutosDaProva, opcoesDeDuracaoDaProva, slotsDaProva } from "@/lib/duracao-da-prova";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
- * feat/orcamentos). O horário vive na regra de disponibilidade da loja
- * (atendimentoAberturaHora/FechamentoHora); salvar preserva os demais campos.
+ * feat/orcamentos). O horário e a duração da prova vivem na regra de
+ * disponibilidade da loja (atendimentoAberturaHora/FechamentoHora e
+ * provaDuracao — S-A10: este era o único campo do bloco sem contrapartida
+ * editável, com o "Editar" de Configurações apontando para cá); salvar
+ * preserva os demais campos da regra.
  */
 
 // Índice = dia da semana (0=domingo … 6=sábado), como no diasFuncionamento (E38).
@@ -163,8 +167,13 @@ export default function ConfigAtendimentos() {
    * Era a última tela do app com o padrão do effect — as outras 11 já usavam
    * `react-hook-form`.
    */
-  const form = useForm<{ abertura: string; fechamento: string; dias: number[] }>({
-    defaultValues: { abertura: "", fechamento: "", dias: [] },
+  const form = useForm<{
+    abertura: string;
+    fechamento: string;
+    dias: number[];
+    duracaoProvaMin: string;
+  }>({
+    defaultValues: { abertura: "", fechamento: "", dias: [], duracaoProvaMin: "" },
     values: regra
       ? {
           abertura: String(regra.atendimentoAberturaHora),
@@ -174,6 +183,9 @@ export default function ConfigAtendimentos() {
           // servidor, e os dois tinham de mudar juntos — a mesma premissa
           // escrita em três lugares é a mesma que pode divergir em três).
           dias: regra.diasFuncionamento ?? [0, 1, 2, 3, 4, 5, 6],
+          // S-A10: a dona fala em MINUTOS; o banco conta em slots de 30 min
+          // (S-A7, `2` = 1h). A conversão é a régua de `lib/duracao-da-prova`.
+          duracaoProvaMin: String(minutosDaProva(regra.provaDuracao)),
         }
       : undefined,
     resetOptions: { keepDirtyValues: true },
@@ -184,9 +196,20 @@ export default function ConfigAtendimentos() {
   useConfirmarSaida(sujoParaConfirmar(form.formState, nomeCabine.trim() !== ""));
 
   const salvarHorario = async () => {
-    const { abertura, fechamento, dias } = form.getValues();
+    const { abertura, fechamento, dias, duracaoProvaMin } = form.getValues();
     const a = Number(abertura);
     const f = Number(fechamento);
+    // O select só oferece múltiplos de 30, então isto não dispara por gesto —
+    // é a guarda contra um estado que não veio dele (a rota aceita 0, S-A7).
+    const duracaoProva = slotsDaProva(Number(duracaoProvaMin));
+    if (!Number.isInteger(duracaoProva) || duracaoProva < 1) {
+      toast({
+        title: "Duração da prova inválida",
+        description: "Escolha uma das durações da lista.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!Number.isInteger(a) || !Number.isInteger(f) || a < 0 || f > 24 || a >= f) {
       toast({
         title: "Horário inválido",
@@ -209,7 +232,10 @@ export default function ConfigAtendimentos() {
         lojaId: activeLojaId!,
         data: {
           provaDiasAntes: regra?.provaDiasAntes,
-          provaDuracao: regra?.provaDuracao,
+          // S-A10: o único campo do bloco de disponibilidade que não tinha
+          // contrapartida editável — e o "Editar" de Configurações sempre
+          // apontou para cá. A rota conta em SLOTS; a tela, em minutos.
+          provaDuracao: duracaoProva,
           usoDiasAntes: regra?.usoDiasAntes,
           usoDiasDepois: regra?.usoDiasDepois,
           lavagemDiasDepois: regra?.lavagemDiasDepois,
@@ -220,7 +246,7 @@ export default function ConfigAtendimentos() {
       });
       // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o
       // `keepDirtyValues` continuaria protegendo campos que já não divergem.
-      form.reset({ abertura, fechamento, dias });
+      form.reset({ abertura, fechamento, dias, duracaoProvaMin });
       await queryClient.invalidateQueries({
         queryKey: getGetDisponibilidadeQueryKey(activeLojaId!),
       });
@@ -341,6 +367,37 @@ export default function ConfigAtendimentos() {
                   )}
                 />
               </div>
+              <div className="space-y-1.5">
+                {/* S-A10 — a única linha do bloco de disponibilidade que não
+                    tinha onde ser editada; o "Editar" de Configurações sempre
+                    apontou para esta tela. Em MINUTOS (S-A7): o banco conta em
+                    slots de 30 min e "2" na tela seria uma prova de 2 minutos
+                    para quem lê. As opções vêm da régua de
+                    `lib/duracao-da-prova`, com o valor vigente sempre listado. */}
+                <Label htmlFor="duracao-prova">Duração da prova</Label>
+                <Controller
+                  control={form.control}
+                  name="duracaoProvaMin"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="duracao-prova" className="w-40" data-testid="duracao-prova">
+                        <SelectValue placeholder="Escolher duração" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {opcoesDeDuracaoDaProva(Number(field.value) || 60).map((min) => (
+                          <SelectItem key={min} value={String(min)}>
+                            {min} min
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quanto tempo cada prova ocupa na agenda — as cabines ficam reservadas por esse
+                  período.
+                </p>
+              </div>
               <Button
                 variant="outline"
                 onClick={salvarHorario}
@@ -354,7 +411,7 @@ export default function ConfigAtendimentos() {
               {regra
                 ? `${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h · ${
                     regra.diasFuncionamento?.map((d) => DIAS_ROTULO[d]).join(", ") ?? "—"
-                  }`
+                  } · prova de ${minutosDaProva(regra.provaDuracao)} min`
                 : "Carregando…"}
             </p>
           )}

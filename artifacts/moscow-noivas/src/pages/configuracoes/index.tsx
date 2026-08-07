@@ -17,13 +17,17 @@ import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { diasDeProva, temJanelaDeProva } from "@/lib/janela-de-prova";
+import { minutosDaProva } from "@/lib/duracao-da-prova";
 
 /**
  * F40/E98 — "Configurações" era a única tela do sistema que não configura nada.
  *
  * Ela mostra o que está valendo — atributos, regras, cabines — e não dizia onde
- * mudar. Quem via "Duração Prova: 60 min" e queria 90 tinha de saber, de cabeça,
- * que isso mora em "Cabines & horário", dentro de Atendimentos.
+ * mudar. Quem via "Duração da prova: 60 min" e queria 90 seguia o "Editar" até
+ * "Cabines & horário" (S-A10: este cabeçalho afirmava que a duração já morava
+ * lá quando lá não havia campo nenhum — era a única linha do bloco de
+ * disponibilidade sem contrapartida editável, e só um PATCH direto na API a
+ * mudava; agora o campo existe na tela para onde o link sempre apontou).
  *
  * O `aria-label` diz O QUE se edita: três links "Editar" na mesma tela são
  * indistinguíveis para quem navega por leitor de tela.
@@ -191,8 +195,10 @@ export default function Configuracoes() {
                           minutos — `agenda.ts:93` faz `provaDuracao * 30 * 60_000`, e o
                           E2E 26 registra "o seed usa 2 = 1h". A tela mostrava o número
                           cru: "2 min" para uma prova de uma hora, na única tela que
-                          existe para explicar a régua. */}
-                      <span className="font-medium">{disponibilidade.provaDuracao * 30} min</span>
+                          existe para explicar a régua. S-A10: a conta inline virou a
+                          régua de `lib/duracao-da-prova`, a mesma que o campo editável
+                          de "Cabines & horário" usa na volta. */}
+                      <span className="font-medium">{minutosDaProva(disponibilidade.provaDuracao)} min</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Uso (dias antes)</span>

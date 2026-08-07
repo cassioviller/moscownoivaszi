@@ -25,6 +25,8 @@ import { arquivosVersionados } from "./arquivos-versionados";
  * ## O escopo desta varredura, dito por extenso
  *
  * ✔ cobre: a classe do `SelectTrigger` (`components/ui/select.tsx`), a do
+ *   `Input` (`components/ui/input.tsx` — S-D34: o terceiro primitivo com o
+ *   MESMO `h-9` cru, no campo que toda tela de formulário toca), a do
  *   `Button` (`components/ui/button.tsx`, a linha que o E137 escreveu) e todo
  *   `<button role="tab">` de `src/pages/**`.
  * ✘ NÃO cobre: altura RENDERIZADA — isto lê classe, não pixel. Quem mede pixel
@@ -51,6 +53,19 @@ describe("a régua dos 44px vale por primitivo", () => {
     const fonte = readFileSync(join(raizSrc, "components/ui/select.tsx"), "utf8");
     const classe = fonte.slice(fonte.indexOf("SelectPrimitive.Trigger"));
     const linha = classe.split("\n").find((l) => l.includes("whitespace-nowrap rounded-md"))!;
+    expect(linha).toContain(PISO_MOBILE);
+    expect(linha).toContain(TETO_DESKTOP);
+    // `h-9` cru é o defeito que a sobra nomeou: 36px em qualquer largura.
+    expect(linha).not.toMatch(/(^|\s)h-9(\s|"|`)/);
+  });
+
+  it("o Input tem piso de toque no mobile e volta a 36px no desktop", () => {
+    // S-D34 — a mesma classe da S-D18, no primitivo que ninguém mediu: campo
+    // de texto também é alvo de dedo, e o E137 contava alvos por PAPEL
+    // clicável. O `textarea.tsx` já nasce acima do piso (`min-h-[60px]`).
+    const fonte = readFileSync(join(raizSrc, "components/ui/input.tsx"), "utf8");
+    const linha = fonte.split("\n").find((l) => l.includes("w-full rounded-md border border-input"))!;
+    expect(linha).toBeDefined();
     expect(linha).toContain(PISO_MOBILE);
     expect(linha).toContain(TETO_DESKTOP);
     // `h-9` cru é o defeito que a sobra nomeou: 36px em qualquer largura.
