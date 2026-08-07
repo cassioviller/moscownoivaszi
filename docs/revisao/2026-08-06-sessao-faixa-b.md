@@ -260,12 +260,15 @@ começar a executar**, em quatro commits:
 | `a0e8cd4` | **Fase 2, épico 3** (madrugada de 07/08) — S-D13 e S-D37: a marca de cobrada sobrevive ao F5, e a parcela emagrece |
 | `5be1895` | **Fase 2, épico 4** — S-D26: os perfis planos, a fonte fecha e o banco converte |
 | `13d1204` | **Fase 2, épico 5** — S-D42 e S-D39: a fixture vira dona da hora de fechamento, e o state só grava o que alguém lê |
+| `f72628c` | **Fase 2, épico 6** — S-D24: o spec 19 devolve o teto que pegou emprestado. **A fila do banco fechou.** |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
 (20 🟡 · 18 🔵; 12 · 15 · 11) **→ 38 com o épico 4** (S-D26 fecha, S-D46 nasce —
 as lojas zumbis; a contagem não anda, o backlog fica mais honesto) **→ 36 com o
-épico 5** (20 🟡 · 16 🔵; 12 · 13 · 11 — S-D42 e S-D39 fecham).
+épico 5** (20 🟡 · 16 🔵; 12 · 13 · 11 — S-D42 e S-D39 fecham) **→ 35 com o
+épico 6** (20 🟡 · 15 🔵; 12 · 12 · 11 — S-D24 fecha, e **a fase 2 inteira está
+executada**: seis épicos, onze sobras fechadas, três nascidas).
 
 ### O plano abriu sem fase de leitura, e é a primeira vez
 
@@ -451,12 +454,12 @@ regra 26 pedindo uma régua.
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem um épico em pé — S-D25/S-D40 (`80d7d35`), S-D13/S-D37
-   (`a0e8cd4`), S-D26 (`5be1895`) e S-D42/S-D39 (`13d1204`) fecharam.** Resta a
-   **S-D24**: o spec 19 captura o teto do lead do seed no `beforeAll` e
-   restaura no `afterAll`, mais a correção única do resíduo (o teto está em
-   100.000 desde a primeira execução do spec; o interesse do `e2e-lead-1` só
-   existe porque o próprio spec o criou — anotado antes de mudar, regra 16).
+2. **A fila do banco FECHOU** — seis épicos em cinco commits de código:
+   S-D25/S-D40 (`80d7d35`), S-D13/S-D37 (`a0e8cd4`), S-D26 (`5be1895`),
+   S-D42/S-D39 (`13d1204`) e S-D24 (`f72628c`), além do épico 1 do banco
+   virgem (`60adc7c`). O que segue é a **fase 3** (faixa B em paralelo, 4
+   agentes, 14 sobras) e a **fase 4** (os sete que não cabem numa onda), na
+   ordem do plano.
 3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da
    conferência (S-A16 a lavagem, S-A18 a ausência, S-A24 o domingo) estão com a
    frase exata lá. A **S39** acrescenta a quarta, e ela é anterior às outras: *o
