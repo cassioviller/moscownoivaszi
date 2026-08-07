@@ -63,18 +63,39 @@ sete vezes, porque a linha envelhece a cada commit e a sessão levou a sério.
    fica em `docs/migracoes/` com os três tempos escritos, porque faxina sem
    diff é como a onda 0: o registro é o único rastro.
 
+## O adendo do mesmo dia — a folha foi respondida
+
+O registro acima fechava com "13 perguntas esperando gente". **Elas foram
+respondidas na própria sessão**, e a tarde fez o resto:
+
+- **Doze das treze fecharam por decisão escrita** (regra 21), cada linha
+  riscada no seu rastreador com a frase da resposta. Dez eram "o comportamento
+  atual é a decisão"; a S39 confirmou que a dona ANOTA a data do casamento (o
+  campo existe, passa a ser usado); a S-A3 confirmou o mesmo caminho comercial
+  (classificar as 496 peças virou a S-A27).
+- **Duas respostas eram código, e ele foi feito no mesmo dia:** a S-D36
+  (`74c540f` — a tela de perfis globais ganha o "Novo perfil", que nasce sem
+  acesso nenhum, E2E no spec 46) e a S-A16 (`8179ae5` — a lavagem do estoque
+  configurável por loja, default 0, atravessando schema → openapi → codegen →
+  cálculo → telas, com banco-virgem verde e o exemplo da sobra pregado em
+  teste: o saiote e o vestido do mesmo contrato voltam juntos).
+- A resposta da S-A16 veio melhor que as duas opções que a folha oferecia —
+  "configurável" em vez de "mesma semana ou zero". Pergunta bem medida não
+  garante que as alternativas listadas esgotam a resposta.
+
 ## Como retomar
 
-1. **Não há linha de código no backlog.** As 13 sobras abertas são as 13
-   perguntas da folha (`2026-08-06-folha-de-perguntas.md`): 8 para a dona do
-   ateliê, 5 para a dona do repositório. **O que destrava o resto é conversa.**
-2. A mais barata continua sendo a **S39** (*o ateliê anota a data do
-   casamento?*) — sem ela a curva de "quando faltará vestido" devolve zero
-   linhas para toda loja.
-3. As duas perguntas novas têm número medido: **S43** (estorno com permissão de
-   `criar` — a fresta é só de perfil customizado) e **S-D48** (ligar o
-   formatter custa 232 arquivos).
-4. A régua é **API 1086 · frontend 530 · E2E 164 · typecheck verde em 5** — e
-   a quarta régua fora das suítes (`scripts/banco-virgem.ts`, ~40 s) continua
-   obrigatória antes de mexer em seed, schema ou `global-setup`. Ela **não**
-   rodou nesta sessão: nada tocou os três.
+1. **Não há linha de código aberta em rastreador nenhum** — rodada 6 zerada,
+   rodada 7 zerada, arqueologia com 2. A régua é **API 1089 · frontend 530 ·
+   E2E 165 · typecheck verde em 5**, banco-virgem verde.
+2. **As 2 sobras que restam esperam gente, não código:** S-A2 (o verso da
+   última página do caderno e as semanas de 28/09 a 11/10 — as 136 saídas
+   contadas são piso, não total) e S-A27 (classificar as 496 peças do acervo
+   com a dona — uma tarde, o vocabulário já existe).
+3. **Duas configurações novas esperam a dona usar:** a data do casamento no
+   cadastro (S39 — a curva da Conversão ganha matéria-prima conforme as fichas
+   forem preenchidas) e a lavagem do estoque em "Cabines & horário" (S-A16 —
+   está em 0, o comportamento de sempre, até ela dizer o número).
+4. A quarta régua (`scripts/banco-virgem.ts`, ~40 s) continua obrigatória
+   antes de mexer em seed, schema ou `global-setup` — rodou verde no fecho
+   da S-A16.

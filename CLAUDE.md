@@ -38,22 +38,21 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 1 sobra aberta (🔵): S-D36, decidida, esperando código |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 3 sobras abertas (3 🟡): S-A2, S-A16, S-A27 |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
 
-   **São 4 sobras abertas e nenhuma 🟠** — contadas nas três tabelas no fim de
-   2026-08-07, depois de sete fechos de código, da dívida do S-A17 paga e da
-   **folha de perguntas RESPONDIDA na sessão** (doze das treze por decisão
-   escrita; só a S-A2, as fotos, segue esperando) — e **o plano das cinco fases está EXECUTADO de
+   **São 2 sobras abertas e nenhuma 🟠** — S-A2 (as fotos do caderno) e
+   S-A27 (classificar as 496 peças com a dona): **as duas esperam gente, não
+   código**. É o fim de 2026-08-07: nove fechos de código, a dívida do S-A17
+   paga, a folha respondida (doze por decisão escrita) e as duas decisões que
+   viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no
+   mesmo dia — e **o plano das cinco fases está EXECUTADO de
    ponta a ponta**: fase 0 e 1 no dia 06 (`49c5cdb`), fase 2 em seis épicos
    seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
    aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
    `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 4 que restam, **duas são código com a decisão já
-   escrita** — S-D36 (a tela do superadmin ganha o botão de criar perfil) e
-   S-A16 (a lavagem do estoque vira configurável por loja; toca schema/seed,
-   então banco-virgem antes do commit) — **e duas esperam gente**: S-A2 (as
-   fotos do caderno) e S-A27 (classificar as 496 peças com a dona). **A folha** (`docs/propostas/2026-08-06-folha-de-perguntas.md`) guarda as
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Não há NENHUMA linha de código aberta em rastreador nenhum — a primeira
+   vez desde a rodada 6. **A folha** (`docs/propostas/2026-08-06-folha-de-perguntas.md`) guarda as
    treze respostas com a data — o que era conversa virou decisão registrada.
 
    A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
@@ -75,7 +74,7 @@ para o documento que manda.
    assumir que ainda está em dia — esta linha envelhece a cada commit, e já
    envelheceu três vezes.
 
-   Hoje a régua é **API 1086 · frontend 530 · E2E 164 · typecheck verde em 5
+   Hoje a régua é **API 1089 · frontend 530 · E2E 165 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
