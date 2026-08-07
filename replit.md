@@ -408,6 +408,40 @@ rode o codegen.
 
 ## Gotchas
 
+- **O `Test` do supertest é LAZY: a request só sai no `.then()`.** `agent.delete(...)`
+  devolve um *thenable* que ainda não falou com o servidor — guardar a variável
+  não dispara nada. Num teste comum isso é invisível (o `await` vem na linha
+  seguinte); num teste de CONCORRÊNCIA é a diferença entre provar e não provar.
+  O teste da corrida da S33 (`s33-corrida-delete-loja-api.test.ts`) precisa da
+  rota pendurada numa tranca do Postgres ENQUANTO outra conexão commita: a
+  primeira versão guardava o `Test` numa variável, dormia 300 ms e commitava —
+  com a request ainda no papel. Ela passava verde inclusive contra o código
+  SEM o conserto. `Promise.resolve(agent.delete(...))` assimila o thenable e
+  dispara agora; com isso o vermelho apareceu, literal: `expected 204 to be 409`.
+- **Em `e2e/`, `await import(...)` não sobrevive à transpilação do Playwright.**
+  O import dinâmico chega ao `.ts` cru como ESM e estoura
+  `ReferenceError: exports is not defined in ES module scope`; o import
+  ESTÁTICO passa pelo transform normalmente. Medido no épico da S-D25: a régua
+  de limpeza nasceu com `await import("../lib/db/src/index")` — para não abrir o
+  Pool do banco nos ~50 specs que não o tocam — e derrubou **7 specs**. A
+  cautela era desnecessária por medida: todo spec que usa o banco já o importava
+  estático. **E o estrago do crash não fica no run:** os sete `afterAll`
+  morreram no meio da limpeza, e o rastro que ficou derrubou OUTRO spec no run
+  seguinte (o gotcha logo abaixo).
+- **O banco do E2E PERSISTE entre execuções: rastro de spec vira vermelho em
+  outro arquivo, um run depois — e se lê como flake.** As três suítes rodam
+  contra o `DATABASE_URL` de sempre; um `afterAll` que não roda (ou que morre no
+  meio) não perde nada hoje, perde amanhã. Medido na sessão de 2026-08-06/07: o
+  `afterAll` do `55-ficha-responde-o-telefone` morreu antes de apagar o contrato
+  que ele cria, e no run SEGUINTE o `37-projecao-comissao` reprovou com
+  `expected 1550 to be 4340` — o contrato vazado de R$ 8.400 (com 3 parcelas de
+  840 recebidas no dia) deu projeção de comissão a uma SEGUNDA vendedora, e o
+  spec pega a primeira linha com projeção. Não há retry no `playwright.config`
+  (`retries: 0`, de propósito): **vermelho é achado**, e quando ele não bate com
+  o que você mexeu, procure o rastro do run anterior antes de suspeitar do
+  próprio código. A limpeza segue a ordem dos FKs — parcelas → contratos →
+  leads → cabines.
+
 - **Import morto num módulo ANSIOSO custa caro desde o E104/D8.** Enquanto o app
   era um chunk só, um `import` sem uso não pesava nada — o E99 mediu a poda de 24
   primitivos e o bundle não mudou um byte, porque tudo já era tree-shaken. Com o

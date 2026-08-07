@@ -1,11 +1,16 @@
-# Sessão de 2026-08-06 — a faixa B em paralelo, e a fila do banco em série
+# Sessão de 2026-08-06/07 — a faixa B em paralelo, a fila do banco em série, e o plano inteiro executado
 
-**Branch `main`** · base `4a3fd64` · 28 commits
+**Branch `main`** · base `4a3fd64` · **52 commits**, virando a madrugada
 Régua na abertura: API 1031 · frontend 473 · E2E 156 · typecheck verde
-Régua no fim: **API 1051 · frontend 500 · E2E 161 · typecheck verde em 4
+Régua no fim: **API 1082 · frontend 529 · E2E 161 · typecheck verde em 4
 projetos** — ele passou a incluir os 63 arquivos de `e2e/` (S-D23) e o
 `scripts/` (S-D43) —, mais uma **quarta régua fora das suítes**:
 `scripts/banco-virgem.ts`, que exercita o caminho da primeira execução.
+
+**O `main` foi PUBLICADO no fim desta sessão**: `fe47ed5` → `d9c9f12`, **322
+commits**, fast-forward puro, com autorização da dona do repositório. O que
+estava só no disco desde a rodada 5 — rodadas 6 e 7, arqueologia do legado,
+conferência das 48 sobras e as cinco fases deste plano — está no GitHub.
 
 Esta sessão executa o `docs/propostas/2026-08-05-plano-de-subagentes-para-as-sobras.md`
 a partir da **fase 1** — porque a fase 0 dele já rodou ontem, e é a
@@ -595,32 +600,103 @@ crescer em 30/07**, no dia em que ganhou `delete(cabinesTable)` no `afterAll`. O
 três specs que limpam escrevem a limpeza em **três grafias diferentes**, que é a
 regra 26 pedindo uma régua.
 
+## O que esta sessão fechou, em números
+
+| | Abertura | Fim |
+|---|---|---|
+| Sobras abertas | 48 (o backlog da conferência) | **17** |
+| 🟠 / 🔴 | 0 | **0** |
+| API · frontend · E2E | 1031 · 473 · 156 | **1082 · 529 · 161** |
+| Typecheck | 3 projetos | **4** (+ `e2e/`, + `scripts/`) |
+| `origin/main` | `fe47ed5`, 322 commits atrás | **`d9c9f12`, em dia** |
+
+**O plano `2026-08-06-plano-do-resto-das-sobras.md` está executado de ponta a
+ponta.** Fases 0 e 1 no dia 06; fases 2, 3 e 4 na madrugada do 07, em 24
+commits — doze de código, doze de `docs(...)` com o hash —, **cada um com a
+régua completa verde antes do commit**. A regra 25 foi cumprida doze vezes e
+pegou coisa em três delas.
+
+**A composição do backlog mudou de natureza, e é isso que importa mais que o
+número.** Das 17 que restam, **onze são as perguntas da folha** — não têm
+conserto até alguém perguntar — e as **seis outras nasceram desta execução**,
+medidas no nascimento (S40, S41, S-D44, S-D45, S-D46, S-D47). Não há mais
+nenhuma linha que seja achado velho esperando conferência: o passivo de
+"sobras por remedir", que a conferência de 05/08 mostrou custar um épico
+inteiro quando erra, está zerado.
+
+### O fecho da sessão achou mais uma, e é a regra 21 de novo
+
+Ao conferir o número do ponteiro **contando as tabelas em vez de confiar na
+aritmética da sessão**, a contagem mecânica devolveu **24 onde havia 17**. A
+diferença eram **sete linhas da rodada 7 fechadas por épico e nunca riscadas**
+— S-D11, S-D12, S-D14, S-D15, S-D16, S-D17 e S-D19, todas com `✅ E14x` na
+coluna de estado e o hash escrito no próprio texto (*"Fechada no E143
+(`d7c2b7b`)"*), faltando só o risco. Elas ficaram assim desde 28–30/07.
+
+O estrago não é o número: é que **uma tabela cujo grep não distingue aberta de
+fechada obriga quem a lê a conferir cada linha contra o código** — exatamente o
+trabalho que ela existe para poupar, e exatamente o que a regra 21 diz. As sete
+foram riscadas no commit de fecho, com a nota de por que tarde. Depois disso a
+contagem por máquina fecha com a contagem à mão: **6 + 5 + 6 = 17**.
+
+Vale como aviso para a próxima sessão: **o número de sobras se CONTA, não se
+deduz.** Somar e subtrair ao longo do dia dá o número certo por sorte; foi a
+contagem da tabela que achou as sete.
+
+## O que a execução ensinou (e virou regra)
+
+Quatro regras novas no METODO (28–31), todas de execução e nenhuma de opinião:
+
+- **28 — sobra de ferramenta fecha rodando, não escrevendo.** O substituto do
+  script de captura perdido só provou que existia quando subiu o app: 78
+  capturas em ~90 s, e a execução achou que o comando documentado imprimia um
+  `undefined` solto — a mesma matéria de que o defeito original era feito.
+- **29 — worktree de agente nasce na ponta do REMOTO.** A onda 1 tinha
+  registrado isso como acaso ("o commit em que foi criado"); os cinco agentes
+  desta sessão nasceram todos em `fe47ed5`, que era `origin/main`. O conserto
+  de verdade era publicar — e foi feito.
+- **30 — consolidação exige prova de equivalência, e a prova corrige o repo.**
+  A varredura de 30.750 instantes reprovou na primeira execução e mostrou que
+  "sem DST desde 2019", escrito em três módulos, tem fronteira em **17/02/2019**.
+- **31 — a sonda de passivo cobra o julgamento, e o vermelho é o lembrete.** A
+  contagem congelada na onda 1 cobrou exatamente o que prometeu:
+  `expected 5 to be 17`.
+
+E duas armadilhas de teste subiram para o `replit.md` (regra 8): o `Test` do
+supertest é **lazy** — a corrida da S33 passava verde contra o código errado
+enquanto a request ficava no papel — e `await import()` **não sobrevive à
+transpilação do Playwright**, cujo crash, ao matar sete `afterAll` no meio,
+produziu sozinho a demonstração da classe que aquele épico estava fechando.
+
 ## Como retomar
 
-0. **O resto está planejado, e as duas primeiras fases já andaram.**
-   [`docs/propostas/2026-08-06-plano-do-resto-das-sobras.md`](../propostas/2026-08-06-plano-do-resto-das-sobras.md)
-   agrupa as sobras em cinco fases e cobre todas — a conferência mais as ondas de
-   hoje deixaram **todas medidas nos últimos dois dias**, que é a primeira vez
-   que isso é verdade, e por isso o plano abre sem fase de leitura. A **fase 0**
-   riscou por decisão as três linhas que descreviam decisões já tomadas (S14, S24
-   e S-A1): **46 → 43**. A **fase 1** está escrita e esperando resposta —
-   [`a folha de perguntas`](../propostas/2026-08-06-folha-de-perguntas.md) traz
-   as 11 que não têm conserto até alguém perguntar, com o número medido e o que
-   muda com cada resposta possível. Os itens 1 a 3 abaixo são o resumo.
-1. **Leia a [conferência](2026-08-05-conferencia-de-sobras.md) antes de escolher
-   trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
-   as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
-   seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco FECHOU** — seis épicos em cinco commits de código:
-   S-D25/S-D40 (`80d7d35`), S-D13/S-D37 (`a0e8cd4`), S-D26 (`5be1895`),
-   S-D42/S-D39 (`13d1204`) e S-D24 (`f72628c`), além do épico 1 do banco
-   virgem (`60adc7c`). O que segue é a **fase 3** (faixa B em paralelo, 4
-   agentes, 14 sobras) e a **fase 4** (os sete que não cabem numa onda), na
-   ordem do plano.
-3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da
-   conferência (S-A16 a lavagem, S-A18 a ausência, S-A24 o domingo) estão com a
-   frase exata lá. A **S39** acrescenta a quarta, e ela é anterior às outras: *o
-   ateliê registra a data do casamento em algum lugar?* Sem resposta, a curva que
-   diz quando falta vestido não tem o que desenhar. E a **S-D41** não é pergunta,
-   é conserto: o resumo do seed diz à dona que domingo está fechado quando o
-   sistema vai abrir — contra a decisão que ela mesma tomou na S-A8.
+1. **Não há plano em aberto.** O
+   [plano do resto das sobras](../propostas/2026-08-06-plano-do-resto-das-sobras.md)
+   fechou; as cinco fases estão executadas e cada linha riscada tem hash nos
+   três rastreadores. Quem abrir a próxima sessão **escolhe trabalho, não
+   herda fila**.
+2. **O que destrava mais é uma conversa, não código.**
+   [`2026-08-06-folha-de-perguntas.md`](../propostas/2026-08-06-folha-de-perguntas.md)
+   tem as **onze perguntas** com o número medido e o que muda com cada resposta
+   possível — sete para a dona do ateliê (a lavagem da peça de estoque, a
+   ausência por cima de agenda cheia, o domingo, a data do casamento, a reserva
+   sem dona, a segunda linha de negócio, o `set null` da peça vendida) e quatro
+   para a dona do repositório. **Um terço do que resta no backlog está atrás
+   dessas onze linhas.** A mais barata e a mais antiga é a S39: *o ateliê anota
+   a data do casamento em algum lugar?* — sem ela, a curva que diz quando falta
+   vestido devolve 0 linhas para toda loja.
+3. **As seis sobras novas, se quiser código já medido:** S40 🟡 (`pagar.tsx` sem
+   gate de ação — a tela de dinheiro SAINDO oferece botão a quem não pode),
+   S-D46 🔵 (26 lojas de fixture zumbis que nenhuma faxina alcança e que seguram
+   44 perfis por FK), S-D45 🔵 (274 contratos `E2E Colocacao` cancelados desde
+   21/07, +2 por passada), S-D47 🔵 (`toggle.tsx`, o quarto primitivo com `h-9`
+   cru, em uso real), S-D44 🔵 (`orval.config.ts`, o último TypeScript fora de
+   todo typecheck), S41 🔵 (agenda respondendo 404 onde a régua pede 422, e o
+   N+1 do `POST /contratos` que a S35 deixou de propósito).
+4. **Uma dívida que não virou sobra, porque nasceu no mesmo commit:** a ficha
+   `/ajustes/:id` (S-A17, `8b9c574`) **não tem spec E2E de ponta a ponta** —
+   deep link, marcar feito pela ficha, e o caminho item-de-orçamento → ficha.
+   Foi o próprio agente que apontou.
+5. **Antes de mexer em seed, schema ou `global-setup`, rode a régua do banco
+   virgem** (`scripts/banco-virgem.ts`, ~40 s) — é a única que enxerga defeito
+   de instalação nova, e ela rodou verde no fim desta sessão.

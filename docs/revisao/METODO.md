@@ -405,6 +405,62 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     linha teria sido commitado com a suíte verde no banco de dev — que é
     exatamente onde ele não falha.)*
 
+28. **Sobra de FERRAMENTA não fecha com a ferramenta escrita: fecha com ela
+    EXECUTADA.** O agente entrega compilando; quem orquestra roda. Fechar a
+    sobra de um script que se perdeu com um script que nunca rodou é recriar a
+    sobra com outro nome. *(2026-08-07, S-D1: o script das 81 capturas da rodada
+    7 morreu num scratchpad, e o diretório de saída dele tinha nascido
+    `undefined/` — uma env var interpolada sem conferência. O agente devolveu o
+    substituto com typecheck verde e o contrato o proibia de subir o app; o
+    orquestrador subiu API e frontend e rodou: **78 capturas em ~90 s**, e a
+    execução achou o que a leitura não acharia — o comando documentado no README
+    (`pnpm --filter … exec tsx`) imprime um **`undefined` solto** no meio do
+    resumo, que é exatamente a matéria de que o defeito original era feito. O
+    README passou a mandar chamar o `tsx` direto. As duas falhas-altas de env
+    também foram exercitadas de verdade, não afirmadas.)*
+
+29. **Worktree de agente nasce na ponta do REMOTO, não no `main` local — e o
+    diagnóstico anterior disto estava errado.** *(2026-08-07: a onda 1 registrou
+    que "worktree de agente nasce no commit em que foi criado, 267 commits atrás
+    do `main`", tratando como acaso. Não era: os cinco agentes desta sessão
+    nasceram todos em `fe47ed5`, que era **exatamente `origin/main`** — o
+    repositório estava 322 commits à frente sem publicar. O sintoma é silencioso
+    (tudo compila, tudo passa, só diverge na hora de aplicar o patch), e o custo
+    é por agente: os cinco gastaram o primeiro gesto em `git reset --hard main`,
+    e um deles, com o `reset` bloqueado, teve de sincronizar por
+    `git checkout main -- .` + `git read-tree` e ainda apagar do disco 34 fontes
+    órfãos que o `main` já tinha deletado — sem isso o typecheck e as varreduras
+    por `git ls-files` liam o passado. **O conserto de verdade é publicar**; o
+    contorno é o reset no primeiro gesto, e ele tem de estar no prompt.)*
+
+30. **Consolidar régua duplicada exige prova de EQUIVALÊNCIA antes da troca — e
+    a prova costuma corrigir uma premissa escrita no repositório.** Duas funções
+    com o mesmo nome e o mesmo corpo aparente não são a mesma função até que
+    alguém enumere o domínio. *(2026-08-07, S35: a varredura de equivalência dos
+    três offsets `-3h` à mão contra o `diaLocal` do core percorreu **30.750
+    instantes** (mar/2019–dez/2035 × 5 horários cercando a virada do dia em SP) e
+    **reprovou na primeira execução** — os comentários de três módulos afirmam
+    "sem DST desde 2019", e o último horário de verão terminou em **17/02/2019**:
+    `2019-01-01T02:00Z` é dia 1 para o `Intl` e dia 31 para a conta à mão. No
+    domínio real do sistema a equivalência é exata, e a fronteira ficou escrita
+    no teste. O mesmo gesto aplicado aos outros itens achou que `isoParaDia` era
+    `diaDeNegocio` letra por letra, que `competenciaValida` aceitava o mesmo
+    conjunto em 100 meses enumerados, e que `compararSenha` — morta — era
+    justamente a variante SEM tempo constante que alguém importaria por engano.)*
+
+31. **A sonda que congela um número paga o prometido no dia em que alguém
+    consolida — e o vermelho é o lembrete, não o obstáculo.** *(2026-08-07: a
+    onda 1 trocou a lista de arquivos da sonda de formatadores por uma CONTAGEM
+    por arquivo mais um total (S30/S-D7), dizendo que "consolidou um, a conta
+    cai, o teste fica vermelho, e o vermelho é o lembrete de baixar a dívida
+    aqui". Doze dias depois — três dias, no relógio do repositório — a
+    consolidação aconteceu e a sonda cobrou exatamente isso: **`expected 5 to be
+    17`**. O passivo caiu de 17 para 5 com veredito escrito para cada um dos 17
+    (5 apagados, 7 promovidos a função pública, 5 mantidos com o porquê no
+    arquivo), e os quatro recortes que a S-D32 tinha nomeado foram atualizados no
+    mesmo commit. **O objetivo de uma sonda de passivo nunca é zerar o número: é
+    que nenhuma linha dele siga sem julgamento.**)*
+
 ---
 
 ## Histórico
@@ -445,6 +501,28 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
   virou sobra nova (S-A24) em vez de virar uma tradução silenciosa. **Quatro
   regras novas num dia (18–21)**, todas nascidas de execução, nenhuma de
   opinião.
+- **2026-08-07** (madrugada, emendada na sessão do dia 06) — o
+  `2026-08-06-plano-do-resto-das-sobras.md` foi executado **de ponta a ponta**:
+  fases 2 (seis épicos seriais na fila do banco), 3 (quatro agentes de faixa B
+  aplicados em série) e 4 (os sete que não cabiam numa onda), em 24 commits —
+  doze de código, doze de `docs(...)` com o hash —, **cada um com a régua
+  completa verde ANTES do commit** (regra 25 cumprida doze vezes, e ela pegou
+  coisa em três delas). O backlog foi de 41 para **17 sobras, nenhuma 🟠**, e a
+  composição mudou de natureza: **onze são as perguntas da folha** e as outras
+  seis nasceram desta execução, medidas no nascimento — não há mais linha na
+  tabela que seja achado velho por conferir. Régua: API 1047 → **1082**,
+  frontend 495 → **529**, E2E 161, typecheck em 4 projetos. **E o `main` foi
+  publicado**: 322 commits, `fe47ed5` → `d9c9f12`, fast-forward puro.
+  Quatro regras novas (28–31), todas de execução: ferramenta se fecha rodando,
+  worktree nasce na ponta do remoto (corrigindo o diagnóstico da onda 1),
+  consolidação exige prova de equivalência (e a prova corrigiu a premissa "sem
+  DST desde 2019" para 17/02/2019), e a sonda de passivo cobra o julgamento —
+  `expected 5 to be 17`. Duas armadilhas de teste subiram para o `replit.md`
+  pela regra 8: o `Test` do supertest é lazy (a corrida da S33 passava verde
+  contra o código errado enquanto a request ficava no papel) e `await import()`
+  não sobrevive à transpilação do Playwright — cujo crash, ao matar sete
+  `afterAll` no meio, produziu sozinho a demonstração da classe de defeito que o
+  épico daquele dia estava fechando.
 - **2026-07-30** — a rodada 7 virou RODADA DE DESIGN por decisão do dono
   (as lentes E'/F' rodaram; traçador e arqueologia ficaram para rodada
   futura). Diagnóstico de 58 achados em 6 trilhas + adversarial +

@@ -13,22 +13,24 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **O registro da sessão em curso** — hoje
-   `docs/revisao/2026-08-06-sessao-faixa-b.md`. A seção "Como retomar"
-   é o roteiro, e ela manda ler primeiro
-   **`docs/revisao/2026-08-05-conferencia-de-sobras.md`**, que traz o veredito
-   de cada uma das 48 sobras conferidas — quais estavam mortas, quais
-   descreviam errado o próprio defeito, e o número de hoje de cada uma.
+2. **O registro da última sessão** —
+   `docs/revisao/2026-08-06-sessao-faixa-b.md`, fechado na madrugada de
+   2026-08-07. A seção **"Como retomar"** é o roteiro, e a primeira coisa que
+   ela diz é a que mais muda o dia: **não há plano em aberto** — o plano das
+   cinco fases foi executado inteiro, e quem abre a próxima sessão **escolhe
+   trabalho, não herda fila**.
 
-   O registro de hoje também traz **as seis correções que a conferência fez no
-   plano de subagentes** (ele foi escrito antes dela, e abre numa fase que já
-   acabou), e a régua de varredura que a higiene de hoje pagou: **enumere com
+   O registro traz também o que a execução ensinou e virou regra (28–31 do
+   METODO), e a régua de varredura que continua valendo: **enumere com
    `git ls-files`, não com `find`/`grep -r`** — 65% do que o disco devolvia era
-   cópia de worktree órfão.
+   cópia de worktree órfão, e desde `c98341e` as **16 varreduras** do
+   repositório enumeram pelo versionamento, com piso de população.
 
-   **O trabalho em curso não é de uma trilha: é o BACKLOG DE SOBRAS das três.**
-   Os épicos das três estão fechados; o que resta são as tabelas de Sobras, e
-   elas continuam sendo a fonte da verdade de cada rastreador:
+   **Não há trilha nem plano em curso: o que resta é o BACKLOG DE SOBRAS das
+   três.** Os épicos das três estão fechados, e as tabelas de Sobras continuam
+   sendo a fonte da verdade de cada rastreador. **Conte-as, não deduza** — a
+   linha aberta é a que NÃO está riscada, e o fecho de 2026-08-07 achou sete
+   fechadas sem risco justamente por contar:
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
@@ -46,16 +48,11 @@ para o documento que manda.
    **11 são as perguntas da folha** (`2026-08-06-folha-de-perguntas.md`,
    esperando gente) e **6 nasceram desta própria execução, todas medidas no
    nascimento** (S40, S41, S-D44, S-D45, S-D46, S-D47) — não há linha na
-   tabela que não seja pergunta ou achado recém-medido.
-   `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre tudo em cinco
-   fases (a **0 está feita**, a **1 está escrita, esperando resposta**, a **2
-   fechou**), e `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm
-   conserto até alguém responder. As 48 da conferência viraram 35 pelo caminho
-   longo: as ondas 1 e 2 fecharam 16 linhas e escreveram 14 novas, a fase 0
-   riscou 3 por decisão já tomada, a fase 2 fechou mais 11 e escreveu 3
-   (S-D44, S-D45, S-D46), e a única 🟠 que existiu neste intervalo (a S-D38,
-   banco virgem) nasceu e morreu no mesmo dia. A frase
-   abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
+   tabela que não seja pergunta ou achado recém-medido. **O que destrava mais
+   é uma conversa, não código:** `docs/propostas/2026-08-06-folha-de-perguntas.md`
+   traz as onze, com o número medido e o que muda com cada resposta possível.
+
+   A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
    **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
    passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
    quatro rodadas de revisão não tinham achado — os três na fronteira entre dois
@@ -64,17 +61,23 @@ para o documento que manda.
    (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
    é que agora é verdade.
 
-   **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1082 · frontend 529 ·
-   E2E 161 · typecheck verde em 4 projetos — o typecheck passou a incluir os 63
-   arquivos de `e2e/`** (S-D23, `acdd9b3`) **e o `scripts/`** (`60adc7c`), que
-   nenhum `tsconfig` cobria. Há uma **quarta régua fora das suítes**:
-   `scripts/banco-virgem.ts` (S-D43), que exercita o caminho da primeira execução
-   — banco descartável, seed, `global-setup` — e é a única que enxerga defeito de
-   instalação nova. O `main` está **quase 300 commits à frente do `origin/main`**
-   e não foi publicado — quem for publicar decide isso com a dona do repositório.
-   O número exato sai de `git rev-list --count origin/main..main`, e é ele que
-   vale: esta linha envelhece a cada commit, e já envelheceu duas vezes.
+   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-07 o
+   `origin/main` foi de `fe47ed5` para `d9c9f12` — **322 commits**,
+   fast-forward puro, com autorização da dona do repositório. Antes disso o
+   remoto estava parado na rodada 5, e isso tinha um custo que ninguém tinha
+   ligado ao remoto: **todo worktree de agente nascia em `origin/main`**, 322
+   commits atrás, e cada agente gastava o primeiro gesto se reposicionando
+   (regra 29). Confira com `git rev-list --count origin/main..main` antes de
+   assumir que ainda está em dia — esta linha envelhece a cada commit, e já
+   envelheceu três vezes.
+
+   Hoje a régua é **API 1082 · frontend 529 · E2E 161 · typecheck verde em 4
+   projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
+   `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
+   uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
+   exercita o caminho da primeira execução — banco descartável, seed,
+   `global-setup` — e é a única que enxerga defeito de instalação nova. **Rode-a
+   antes de mexer em seed, schema ou `global-setup`**; leva ~40 s.
 
 Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
 mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando
