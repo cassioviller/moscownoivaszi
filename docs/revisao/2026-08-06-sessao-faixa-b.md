@@ -259,11 +259,13 @@ começar a executar**, em quatro commits:
 | `80d7d35` | **Fase 2, épico 2** — S-D25 e S-D40: spec que cria cabine apaga a sua, e a régua é uma só |
 | `a0e8cd4` | **Fase 2, épico 3** (madrugada de 07/08) — S-D13 e S-D37: a marca de cobrada sobrevive ao F5, e a parcela emagrece |
 | `5be1895` | **Fase 2, épico 4** — S-D26: os perfis planos, a fonte fecha e o banco converte |
+| `13d1204` | **Fase 2, épico 5** — S-D42 e S-D39: a fixture vira dona da hora de fechamento, e o state só grava o que alguém lê |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
 (20 🟡 · 18 🔵; 12 · 15 · 11) **→ 38 com o épico 4** (S-D26 fecha, S-D46 nasce —
-as lojas zumbis; a contagem não anda, o backlog fica mais honesto).
+as lojas zumbis; a contagem não anda, o backlog fica mais honesto) **→ 36 com o
+épico 5** (20 🟡 · 16 🔵; 12 · 13 · 11 — S-D42 e S-D39 fecham).
 
 ### O plano abriu sem fase de leitura, e é a primeira vez
 
@@ -398,6 +400,21 @@ Visto de passagem → **S-D46**: as 26 lojas de fixture zumbis que nenhuma faxin
 alcança (S18 limpou usuários, S-A13 o acervo, S-D25 as cabines — ninguém tocou
 `lojas`), segurando os 44 perfis por FK.
 
+### Fase 2, épico 5 — a fixture vira dona da hora de fechamento
+
+A S-D42 fechou pelas duas pontas que ela mesma ofereceu (`13d1204`): o
+`AJUSTE_E2E` grava `atendimentoFechamentoHora: 20` — a decisão da dona na
+S-A8, e não uma preferência de teste — e o spec 18 passou a PREGAR o
+expediente escolhido: o 19:30 é o último slot que o fechamento às 20 produz, e
+o 20:00 não existe na grade. Medido depois do run: o banco de dev guarda 20 e
+a divergência entre os dois bancos morreu. A régua do banco virgem rodou (o
+`global-setup` mudou) e passou inteira.
+
+A S-D39 fechou pelo lado de fora: o `bloqueioId` SAIU do `.state.json` em vez
+de entrar na interface — nenhum dos 60 specs o lia, o 13-onda2 acha o bloqueio
+da fixture pelo nome da noiva, e os specs 23/48 criam os seus. Superfície que
+ninguém consome é promessa que alguém um dia acredita.
+
 ### A S-D25 estava olhando para a população errada
 
 Medida em `psql` antes de começar o épico 2, e o épico não chegou a ser feito —
@@ -434,13 +451,12 @@ regra 26 pedindo uma régua.
    trabalho** — os números de cada sobra viva estão atualizados até 2026-08-05, e
    as nove imprecisas dizem o que erraram. **A onda 2 confirmou a regra 20:**
    seis das nove sobras tratadas precisaram ser remedidas antes do conserto.
-2. **A fila do banco tem dois épicos em pé — S-D25/S-D40 (`80d7d35`),
-   S-D13/S-D37 (`a0e8cd4`) e S-D26 (`5be1895`) fecharam.** A ordem que resta:
-   **S-D42+S-D39** (a hora de fechamento que os dois bancos discordam — o
-   conserto é a fixture fixar `atendimentoFechamentoHora: 20`, a decisão da
-   S-A8; e o `bloqueioId` que o state grava e nenhum spec lê — sai do state),
-   **S-D24** (o teto de 100.000 que o spec 19 deixa no lead do seed). O porquê
-   de cada par está na fase 2 do plano.
+2. **A fila do banco tem um épico em pé — S-D25/S-D40 (`80d7d35`), S-D13/S-D37
+   (`a0e8cd4`), S-D26 (`5be1895`) e S-D42/S-D39 (`13d1204`) fecharam.** Resta a
+   **S-D24**: o spec 19 captura o teto do lead do seed no `beforeAll` e
+   restaura no `afterAll`, mais a correção única do resíduo (o teto está em
+   100.000 desde a primeira execução do spec; o interesse do `e2e-lead-1` só
+   existe porque o próprio spec o criou — anotado antes de mudar, regra 16).
 3. **As perguntas para a dona somam quatro, e duas nasceram hoje.** As três da
    conferência (S-A16 a lavagem, S-A18 a ausência, S-A24 o domingo) estão com a
    frase exata lá. A **S39** acrescenta a quarta, e ela é anterior às outras: *o

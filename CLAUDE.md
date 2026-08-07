@@ -33,17 +33,17 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 12 sobras abertas (7 🟡 · 5 🔵). Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 15 sobras abertas (5 🟡 · 10 🔵) |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 13 sobras abertas (5 🟡 · 8 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 11 sobras abertas (8 🟡 · 3 🔵) |
 
-   **São 38 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
+   **São 36 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
    madrugada de 2026-08-07. **O resto está planejado e agrupado:**
    `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre todas em cinco
    fases (a **0 está feita** e a **1 está escrita, esperando resposta**), e
    `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm conserto até alguém
-   responder. As 48 da conferência viraram 38 pelo caminho longo: as ondas 1 e 2
+   responder. As 48 da conferência viraram 36 pelo caminho longo: as ondas 1 e 2
    fecharam 16 linhas e escreveram 14 novas, a fase 0 riscou 3 por decisão já
-   tomada, os quatro primeiros épicos da fase 2 fecharam mais 8 e escreveram 3
+   tomada, os cinco primeiros épicos da fase 2 fecharam mais 10 e escreveram 3
    (S-D44, S-D45, S-D46), e a única 🟠 que existiu neste intervalo (a S-D38,
    banco virgem) nasceu e morreu no mesmo dia. A frase
    abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
