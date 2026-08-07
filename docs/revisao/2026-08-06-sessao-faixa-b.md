@@ -263,6 +263,7 @@ começar a executar**, em quatro commits:
 | `f72628c` | **Fase 2, épico 6** — S-D24: o spec 19 devolve o teto que pegou emprestado. **A fila do banco fechou.** |
 | `cbe79f6` | **Fase 3, B3** — S-D1, S-D2 e S-A9: a ferramenta de captura vira versionada, e o manifest diz o ambiente |
 | `cc9720f` | **Fase 3, B4** — S8, S9, S-A26 e S-A7: dinheiro numa régua, status com enum, e o 30 com uma fonte só |
+| `c98341e` | **Fase 3, B1** — S-D30 a S-D33: toda varredura enumera pelo git, com piso e recorte nomeado |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -454,6 +455,26 @@ aplicar: 403 vestidos, todos `ativo`; a migração de normalização fica para
 bancos que não tiveram a mesma sorte. Vistos de passagem do B4, sem virar
 sobra: `dashboard.ts:65` filtra por literal `"ativo"` em SQL (consistência,
 não defeito) e dois comentários citam a linha antiga do `30`.
+
+### B1 — as varreduras (S-D30 · S-D31 · S-D32 · S-D33) → `c98341e`
+
+A sobra dizia 14; eram **16 arquivos, 19 call-sites** — e o agente provou disco
+= git nos 11 escopos ANTES de migrar, que é a ordem certa (a migração que muda
+o número no mesmo gesto não sabe dizer o que mudou). Piso de população nas 16.
+Os quatro números de formatadores ganharam recorte nomeado (17 · 19 · 36 · 45 —
+o "46" da sobra era 45), e a população de fontes foi remedida de passagem
+(237 → 235, entradas e saídas verificadas por `git log --diff-filter`).
+
+**A S-D33 tinha a melhor resposta possível: o item 3 nunca existiu no
+arquivo.** O `fc2182a` nasceu com 1, 2 e 4, e o adendo do E111 lista a terceira
+assinatura — `router.use(fn)` sem path — como a que virou sonda de
+COMPORTAMENTO noutro arquivo (a `varredura-fronteira-loja-api`, criada no mesmo
+commit), porque grep não prova guard: o 403 por recurso prova. O buraco ganhou
+a seção "3." com essa resposta, sem renumerar — renumerar às cegas apagaria a
+pergunta em vez de respondê-la.
+
+Frontend 500 → 510; API 1057 → 1060 (os pisos novos). Regra 11 não disparou:
+mudança só em testes de leitura pura.
 
 ### A S-D25 estava olhando para a população errada
 
