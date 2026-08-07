@@ -32,18 +32,21 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 8 sobras abertas (5 🟡 · 3 🔵). Era o backlog mais pesado do repositório |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 6 sobras abertas (4 🟡 · 2 🔵). Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 5 sobras abertas (0 🟡 · 5 🔵) |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 6 sobras abertas (6 🟡 · 0 🔵) |
 
-   **São 19 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
-   madrugada de 2026-08-07. **As fases 2 e 3 do plano estão EXECUTADAS
-   inteiras** — a 2 em seis épicos seriais (`60adc7c` → `f72628c`), a 3 em
-   quatro agentes de faixa B aplicados em série (B3 `cbe79f6`, B4 `cc9720f`,
-   B1 `c98341e`, B2 `f4cb527`) — 25 sobras fechadas e 4 nascidas entre as
-   duas; **a fase 4 está quase fechada** — S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c` (nascendo S40 e S41), S10+S-A17 `8b9c574`; restam **S30 e S21**;
-   o resto está planejado:
+   **São 17 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
+   madrugada de 2026-08-07 — e **o plano das cinco fases está EXECUTADO de
+   ponta a ponta**: fase 0 e 1 no dia 06 (`49c5cdb`), fase 2 em seis épicos
+   seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
+   aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
+   `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Das 17 que restam,
+   **11 são as perguntas da folha** (`2026-08-06-folha-de-perguntas.md`,
+   esperando gente) e **6 nasceram desta própria execução, todas medidas no
+   nascimento** (S40, S41, S-D44, S-D45, S-D46, S-D47) — não há linha na
+   tabela que não seja pergunta ou achado recém-medido.
    `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre tudo em cinco
    fases (a **0 está feita**, a **1 está escrita, esperando resposta**, a **2
    fechou**), e `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm
@@ -62,7 +65,7 @@ para o documento que manda.
    é que agora é verdade.
 
    **Tudo isso está no `main`** desde `6d80be4`: a branch `rodada-7-sobras`
-   fundiu com as três suítes verdes. Hoje a régua é **API 1053 · frontend 500 ·
+   fundiu com as três suítes verdes. Hoje a régua é **API 1082 · frontend 529 ·
    E2E 161 · typecheck verde em 4 projetos — o typecheck passou a incluir os 63
    arquivos de `e2e/`** (S-D23, `acdd9b3`) **e o `scripts/`** (`60adc7c`), que
    nenhum `tsconfig` cobria. Há uma **quarta régua fora das suítes**:

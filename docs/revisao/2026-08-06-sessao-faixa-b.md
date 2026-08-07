@@ -269,6 +269,7 @@ começar a executar**, em quatro commits:
 | `24e9054` | **Fase 4.3** — S33: a leitura da guarda do DELETE de loja entra na transação, com tranca — e a corrida reproduzida de verdade |
 | `cafe56c` | **Fase 4.2** — S35: os 18 do E115, cada régua numa casa só, N+1 medidos — nascem S40 e S41 |
 | `8b9c574` | **Fases 4.6 e 4.7** — S10 e S-A17: a prévia do carnê na tela de contrato, e a ficha do trabalho da costureira |
+| `d8ef73f` | **Fases 4.4 e 4.5** — S30 e S21: os 17 formatadores julgados um a um, e o pacote que o F34 pediu. **O plano das cinco fases está executado.** |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -554,6 +555,25 @@ próprio agente: a rota nova não tem spec E2E de ponta a ponta** (deep link,
 marcar feito pela ficha, o caminho item-de-orçamento → ficha) — fica como
 trabalho apontado, não como sobra formal, porque a rota acabou de nascer no
 mesmo commit.
+
+### 4.4 e 4.5 — S21 e S30, os dois últimos → `d8ef73f`
+
+O passivo de formatadores caiu de 17 para **5, cada um dos 17 com veredito
+escrito** — e o objetivo nunca foi zerar: era cada linha ter sido julgada
+(cinco ficam de propósito, com o porquê no arquivo). A sonda congelada da onda
+1 pagou o prometido: o vermelho de lembrete na transição foi literal,
+`expected 5 to be 17`. E o pacote da contabilidade que o F34 pediu nasceu
+derivado do fluxo — a rota, a tela e o CSV chamam a MESMA função de montagem
+(`lib/fluxo.ts`, puro), e o item (d) da sobra estava desatualizado: a tela já
+tinha um Exportar client-side, que repontou para o servidor e aposentou o
+gerador duplicado.
+
+**Com isso o plano `2026-08-06-plano-do-resto-das-sobras.md` está executado de
+ponta a ponta** — fases 0 e 1 no dia 06, fases 2, 3 e 4 nesta madrugada. O que
+o backlog tem agora: **17 sobras abertas, nenhuma 🟠** — 11 delas são as
+perguntas da folha (`2026-08-06-folha-de-perguntas.md`, esperando gente), e as
+outras 6 nasceram DESTA execução, todas medidas no nascimento (S40, S41,
+S-D44, S-D45, S-D46, S-D47).
 
 ### A S-D25 estava olhando para a população errada
 
