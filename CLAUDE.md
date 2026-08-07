@@ -33,14 +33,15 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 10 sobras abertas (6 🟡 · 4 🔵). Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 6 sobras abertas (2 🟡 · 4 🔵) |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 8 sobras abertas (7 🟡 · 1 🔵) |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 5 sobras abertas (0 🟡 · 5 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 7 sobras abertas (6 🟡 · 1 🔵) |
 
-   **São 24 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
-   madrugada de 2026-08-07. **A fase 2 do plano está EXECUTADA inteira** (seis
-   épicos, onze sobras fechadas, três nascidas) e a **fase 3 está em execução**
-   (B3 fechou S-D1/S-D2/S-A9 em `cbe79f6`; B4 fechou S8/S9/S-A26/S-A7 em
-   `cc9720f`; B1 fechou S-D30–33 em `c98341e`); o resto está planejado:
+   **São 22 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
+   madrugada de 2026-08-07. **As fases 2 e 3 do plano estão EXECUTADAS
+   inteiras** — a 2 em seis épicos seriais (`60adc7c` → `f72628c`), a 3 em
+   quatro agentes de faixa B aplicados em série (B3 `cbe79f6`, B4 `cc9720f`,
+   B1 `c98341e`, B2 `f4cb527`) — 25 sobras fechadas e 4 nascidas entre as
+   duas; o resto está planejado:
    `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre tudo em cinco
    fases (a **0 está feita**, a **1 está escrita, esperando resposta**, a **2
    fechou**), e `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm

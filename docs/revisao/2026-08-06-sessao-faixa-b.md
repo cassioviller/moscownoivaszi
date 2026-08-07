@@ -264,6 +264,7 @@ começar a executar**, em quatro commits:
 | `cbe79f6` | **Fase 3, B3** — S-D1, S-D2 e S-A9: a ferramenta de captura vira versionada, e o manifest diz o ambiente |
 | `cc9720f` | **Fase 3, B4** — S8, S9, S-A26 e S-A7: dinheiro numa régua, status com enum, e o 30 com uma fonte só |
 | `c98341e` | **Fase 3, B1** — S-D30 a S-D33: toda varredura enumera pelo git, com piso e recorte nomeado |
+| `f4cb527` | **Fase 3, B2** — S-D34, S-D35 e S-A10: o dedo alcança o Input, o painel para de saltar, e a prova ganha campo. **A fase 3 fechou.** |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -475,6 +476,27 @@ pergunta em vez de respondê-la.
 
 Frontend 500 → 510; API 1057 → 1060 (os pisos novos). Regra 11 não disparou:
 mudança só em testes de leitura pura.
+
+### B2 — a tela (S-D34 · S-D35 · S-A10) → `f4cb527`, e a fase 3 fechou
+
+O Input em `h-9` alcançava **41 arquivos, 36 telas** — todo formulário do app
+em 36px de alvo no mobile; a varredura ganhou o caso ANTES do conserto e o
+vermelho literal ficou registrado. O AlertaCaixa ganhou a MESMA reserva de
+lugar dos dois irmãos de `3c463bb` (a decisão do E103 intacta: erro segue
+calado; o que mudou é o layout não saltar). E a "Duração da prova" ganhou o
+Select em minutos na tela para onde o `EditarEm` sempre apontou, com a unidade
+slots↔minutos virando régua única sobre o `SLOT_MINUTOS` do core.
+
+**Visto de passagem → S-D47:** `toggle.tsx` é o quarto primitivo com `h-9`
+cru, em uso real via `ToggleGroupItem`; `breadcrumb.tsx:98` a conferir.
+
+**O que o formato cobrou desta vez:** os quatro worktrees nasceram em
+`fe47ed5` de novo; três agentes resetaram sozinhos e avisaram, e o B2 — com
+`git reset` bloqueado pelo classificador — sincronizou por `git checkout main
+-- .` + `git read-tree` e apagou do disco 34 fontes órfãos que o main já
+deletara, sem os quais o typecheck e as varreduras por `git ls-files` liam o
+passado. O patch dele saiu como `git diff --cached main` restrito aos 7
+arquivos, porque `git add -A` re-adicionaria ~1.600 sobras de disco.
 
 ### A S-D25 estava olhando para a população errada
 
