@@ -8,6 +8,7 @@
 
 export interface RegraDisponibilidadeInput {
   provaDiasAntes?: number;
+  /** @minimum 1 */
   provaDuracao?: number;
   usoDiasAntes?: number;
   usoDiasDepois?: number;

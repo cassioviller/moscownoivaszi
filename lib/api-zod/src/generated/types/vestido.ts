@@ -7,6 +7,7 @@
  */
 import type { VestidoAtributo } from './vestidoAtributo';
 import type { VestidoFotoMeta } from './vestidoFotoMeta';
+import type { VestidoStatus } from './vestidoStatus';
 
 export interface Vestido {
   id: string;
@@ -24,7 +25,7 @@ export interface Vestido {
   cor?: string | null;
   /** @nullable */
   categoria?: string | null;
-  status: string;
+  status: VestidoStatus;
   /** @nullable */
   observacoes?: string | null;
   createdAt: Date;

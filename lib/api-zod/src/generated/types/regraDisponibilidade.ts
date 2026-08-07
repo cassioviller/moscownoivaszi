@@ -9,6 +9,7 @@
 export interface RegraDisponibilidade {
   lojaId: string;
   provaDiasAntes: number;
+  /** @minimum 1 */
   provaDuracao: number;
   usoDiasAntes: number;
   usoDiasDepois: number;

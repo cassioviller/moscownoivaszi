@@ -4927,7 +4927,10 @@ components:
         tamanho: { type: ["string", "null"] }
         cor: { type: ["string", "null"] }
         categoria: { type: ["string", "null"] }
-        status: { type: string }
+        # S-A26: a régua de estado da peça, que vivia implícita numa comparação
+        # de string (`status !== "ativo"` decide INATIVO). São só estes dois
+        # valores no sistema inteiro — banco (default "ativo"), telas e testes.
+        status: { type: string, enum: [ativo, inativo] }
         observacoes: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         atributos:
@@ -4973,7 +4976,7 @@ components:
         vestidoId: { type: string }
         codigo: { type: string }
         nome: { type: string }
-        status: { type: string }
+        status: { type: string, enum: [ativo, inativo] }
         precoBase: { type: number }
         precoRealuguel: { type: ["number", "null"] }
         # Provas agendadas no período (inclui FALTOU — a demanda existiu).
@@ -5016,7 +5019,10 @@ components:
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
-        status: { type: string }
+        # S-A26: sem o enum, um PATCH com "Ativo" (ou qualquer grafia) tirava a
+        # peça do acervo em silêncio — `vestidos.ts` decide INATIVO por
+        # `status !== "ativo"`. Agora a grafia errada é 400 na borda.
+        status: { type: string, enum: [ativo, inativo] }
         observacoes: { type: string }
         atributos:
           type: array
@@ -5534,7 +5540,9 @@ components:
       properties:
         lojaId: { type: string }
         provaDiasAntes: { type: integer }
-        provaDuracao: { type: integer }
+        # S-A7: em SLOTS de 30 min (2 = 60 min), o passo do agenda-core
+        # (SLOT_MINUTOS). Zero slots não é duração de prova.
+        provaDuracao: { type: integer, minimum: 1 }
         usoDiasAntes: { type: integer }
         usoDiasDepois: { type: integer }
         lavagemDiasDepois: { type: integer }
@@ -5548,7 +5556,10 @@ components:
       type: object
       properties:
         provaDiasAntes: { type: integer }
-        provaDuracao: { type: integer }
+        # S-A7: mesma unidade do schema de resposta — SLOTS de 30 min, mínimo 1.
+        # Antes o zod aceitava `provaDuracao: 0`; só os `Math.max(1, …)` de
+        # leitura impediam a janela de conflito de colapsar.
+        provaDuracao: { type: integer, minimum: 1 }
         usoDiasAntes: { type: integer }
         usoDiasDepois: { type: integer }
         lavagemDiasDepois: { type: integer }

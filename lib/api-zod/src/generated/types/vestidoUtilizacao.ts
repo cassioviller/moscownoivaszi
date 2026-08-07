@@ -5,12 +5,13 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VestidoUtilizacaoStatus } from './vestidoUtilizacaoStatus';
 
 export interface VestidoUtilizacao {
   vestidoId: string;
   codigo: string;
   nome: string;
-  status: string;
+  status: VestidoUtilizacaoStatus;
   precoBase: number;
   /** @nullable */
   precoRealuguel?: number | null;

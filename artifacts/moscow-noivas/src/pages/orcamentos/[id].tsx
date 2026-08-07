@@ -368,9 +368,16 @@ export default function OrcamentoDetail() {
   // Teto de orçamento da noiva (E33): o número que ela deu em Interesses e que
   // até agora ninguém confrontava. Se o líquido passa, a tela avisa ANTES do
   // envio — a conversa difícil na hora de ajustar, não depois do "achei caro".
+  // A comparação é em CENTAVOS INTEIROS, como o excedente logo abaixo — a
+  // versão em float (`totais.liquido > teto`) discordava desta por um centavo
+  // no limiar: com líquido de R$ 950,47 (95047c) e teto gravado como 950.466,
+  // o float dizia "acima" (950.47 > 950.466) e o excedente saía R$ 0,00
+  // (95047 − Math.round(95046,6) = 0) — aviso ligado apontando excedente zero.
+  // Em centavos, 95047 > 95047 é falso e o aviso não acende.
   const teto = leadCompleto.data?.interesse?.tetoOrcamento ?? null;
-  const acimaDoTeto = teto != null && teto > 0 && totais.liquido > teto;
-  const excedenteTeto = acimaDoTeto ? reais(totais.liquidoC - centavos(teto)) : 0;
+  const tetoC = teto != null && teto > 0 ? centavos(teto) : null;
+  const acimaDoTeto = tetoC != null && totais.liquidoC > tetoC;
+  const excedenteTeto = acimaDoTeto ? reais(totais.liquidoC - tetoC!) : 0;
 
   /**
    * E154 — quantas peças de estoque saem no dia do casamento desta noiva.

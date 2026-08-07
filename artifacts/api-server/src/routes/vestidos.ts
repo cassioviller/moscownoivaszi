@@ -35,7 +35,8 @@ import {
   UpdateItemEstoqueBody,
   UpdateItemEstoqueResponse,
   GetComprometimentoEstoqueQueryParams,
-  GetComprometimentoEstoqueResponse
+  GetComprometimentoEstoqueResponse,
+  VestidoStatus
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
@@ -248,7 +249,9 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   }
 
   const itens = vestidos.map((vestido) => {
-    if (vestido.status !== "ativo") {
+    // S-A26: a régua de estado é o enum do contrato (`VestidoStatus`), não uma
+    // grafia solta — e a borda do PATCH agora recusa qualquer valor fora dele.
+    if (vestido.status !== VestidoStatus.ativo) {
       return {
         vestidoId: vestido.id,
         disponivel: false,
@@ -395,7 +398,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/proxima-janela", async (req, res)
   }
 
   const hojeDia = diaLocal(new Date());
-  if (vestido.status !== "ativo") {
+  if (vestido.status !== VestidoStatus.ativo) {
     res.json(GetProximaJanelaVestidoResponse.parse({
       proximaData: null,
       aPartirDe: hojeDia,

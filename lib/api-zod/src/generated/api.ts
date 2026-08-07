@@ -950,7 +950,7 @@ export const ListVestidosResponseItem = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -1005,7 +1005,7 @@ export const CreateVestidoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -1078,7 +1078,7 @@ export const GetUtilizacaoVestidosResponseItem = zod.object({
   "vestidoId": zod.string(),
   "codigo": zod.string(),
   "nome": zod.string(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "precoBase": zod.number(),
   "precoRealuguel": zod.number().nullish(),
   "provas": zod.number(),
@@ -1120,7 +1120,7 @@ export const GetVestidoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -1150,7 +1150,7 @@ export const UpdateVestidoBody = zod.object({
   "tamanho": zod.string().optional(),
   "cor": zod.string().optional(),
   "categoria": zod.string().optional(),
-  "status": zod.string().optional(),
+  "status": zod.enum(['ativo', 'inativo']).optional(),
   "observacoes": zod.string().optional(),
   "atributos": zod.array(zod.object({
   "atributoId": zod.string(),
@@ -1169,7 +1169,7 @@ export const UpdateVestidoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2085,7 +2085,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2212,7 +2212,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2373,7 +2373,7 @@ export const CreateAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2500,7 +2500,7 @@ export const CreateAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2660,7 +2660,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2787,7 +2787,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -2952,7 +2952,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3079,7 +3079,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3234,7 +3234,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3361,7 +3361,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3503,7 +3503,7 @@ export const ListAjustesResponseItem = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3657,7 +3657,7 @@ export const CreateAjusteResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3806,7 +3806,7 @@ export const UpdateAjusteResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -3927,6 +3927,7 @@ export const GetDisponibilidadeParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+
 export const getDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
 export const getDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
 
@@ -3935,7 +3936,7 @@ export const getDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
 export const GetDisponibilidadeResponse = zod.object({
   "lojaId": zod.string(),
   "provaDiasAntes": zod.number(),
-  "provaDuracao": zod.number(),
+  "provaDuracao": zod.number().min(1),
   "usoDiasAntes": zod.number(),
   "usoDiasDepois": zod.number(),
   "lavagemDiasDepois": zod.number(),
@@ -3949,6 +3950,7 @@ export const SetDisponibilidadeParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+
 export const setDisponibilidadeBodyDiasFuncionamentoItemMin = 0;
 export const setDisponibilidadeBodyDiasFuncionamentoItemMax = 6;
 
@@ -3956,7 +3958,7 @@ export const setDisponibilidadeBodyDiasFuncionamentoItemMax = 6;
 
 export const SetDisponibilidadeBody = zod.object({
   "provaDiasAntes": zod.number().optional(),
-  "provaDuracao": zod.number().optional(),
+  "provaDuracao": zod.number().min(1).optional(),
   "usoDiasAntes": zod.number().optional(),
   "usoDiasDepois": zod.number().optional(),
   "lavagemDiasDepois": zod.number().optional(),
@@ -3964,6 +3966,7 @@ export const SetDisponibilidadeBody = zod.object({
   "atendimentoFechamentoHora": zod.number().optional(),
   "diasFuncionamento": zod.array(zod.number().min(setDisponibilidadeBodyDiasFuncionamentoItemMin).max(setDisponibilidadeBodyDiasFuncionamentoItemMax)).optional()
 })
+
 
 export const setDisponibilidadeResponseDiasFuncionamentoItemMin = 0;
 export const setDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
@@ -3973,7 +3976,7 @@ export const setDisponibilidadeResponseDiasFuncionamentoItemMax = 6;
 export const SetDisponibilidadeResponse = zod.object({
   "lojaId": zod.string(),
   "provaDiasAntes": zod.number(),
-  "provaDuracao": zod.number(),
+  "provaDuracao": zod.number().min(1),
   "usoDiasAntes": zod.number(),
   "usoDiasDepois": zod.number(),
   "lavagemDiasDepois": zod.number(),
@@ -4022,7 +4025,7 @@ export const ListReservasResponseItem = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -4146,7 +4149,7 @@ export const CreateReservaResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -4270,7 +4273,7 @@ export const UpdateReservaResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -4396,7 +4399,7 @@ export const ListBloqueiosResponseItem = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -4489,7 +4492,7 @@ export const CreateBloqueioResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -4574,7 +4577,7 @@ export const GetBloqueioResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({
@@ -4666,7 +4669,7 @@ export const UpdateBloqueioResponse = zod.object({
   "tamanho": zod.string().nullish(),
   "cor": zod.string().nullish(),
   "categoria": zod.string().nullish(),
-  "status": zod.string(),
+  "status": zod.enum(['ativo', 'inativo']),
   "observacoes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "atributos": zod.array(zod.object({

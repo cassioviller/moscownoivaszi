@@ -45,6 +45,7 @@ import {
   diaLocalYMD,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
+  SLOT_MINUTOS,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
@@ -96,7 +97,12 @@ async function recusaDeMoverAtendimento(
   // exato — busca-se uma JANELA em torno do destino (± a duração máxima de prova)
   // e o `recusaDeMover` decide a sobreposição de intervalo. A janela é curta:
   // longe do desperdício de carregar o dia inteiro.
-  const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * 30 * 60_000;
+  //
+  // S-A7: o passo é SLOT_MINUTOS, do agenda-core — a MESMA fonte que rege a
+  // grade e o `recusaDeMover`. O `30` vivia cravado aqui como literal: mudar a
+  // constante corrigia a grade e não corrigia esta busca, e as duas divergiam
+  // em silêncio.
+  const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * SLOT_MINUTOS * 60_000;
   const destinoMs = new Date(destino.inicio).getTime();
   const concorrentes = await db
     .select({

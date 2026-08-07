@@ -419,6 +419,14 @@ export interface AtributoOpcaoUpdate {
   ativo?: boolean;
 }
 
+export type VestidoStatus = typeof VestidoStatus[keyof typeof VestidoStatus];
+
+
+export const VestidoStatus = {
+  ativo: 'ativo',
+  inativo: 'inativo',
+} as const;
+
 export interface VestidoAtributo {
   atributoId: string;
   opcaoId: string;
@@ -450,7 +458,7 @@ export interface Vestido {
   cor?: string | null;
   /** @nullable */
   categoria?: string | null;
-  status: string;
+  status: VestidoStatus;
   /** @nullable */
   observacoes?: string | null;
   createdAt: string;
@@ -468,11 +476,19 @@ export interface VestidoFotoInput {
   thumbBase64?: string | null;
 }
 
+export type VestidoUtilizacaoStatus = typeof VestidoUtilizacaoStatus[keyof typeof VestidoUtilizacaoStatus];
+
+
+export const VestidoUtilizacaoStatus = {
+  ativo: 'ativo',
+  inativo: 'inativo',
+} as const;
+
 export interface VestidoUtilizacao {
   vestidoId: string;
   codigo: string;
   nome: string;
-  status: string;
+  status: VestidoUtilizacaoStatus;
   precoBase: number;
   /** @nullable */
   precoRealuguel?: number | null;
@@ -498,6 +514,14 @@ export interface VestidoInput {
   atributos?: VestidoAtributo[];
 }
 
+export type VestidoUpdateStatus = typeof VestidoUpdateStatus[keyof typeof VestidoUpdateStatus];
+
+
+export const VestidoUpdateStatus = {
+  ativo: 'ativo',
+  inativo: 'inativo',
+} as const;
+
 export interface VestidoUpdate {
   codigo?: string;
   nome?: string;
@@ -507,7 +531,7 @@ export interface VestidoUpdate {
   tamanho?: string;
   cor?: string;
   categoria?: string;
-  status?: string;
+  status?: VestidoUpdateStatus;
   observacoes?: string;
   atributos?: VestidoAtributo[];
 }
@@ -1260,6 +1284,7 @@ export interface AjusteUpdate {
 export interface RegraDisponibilidade {
   lojaId: string;
   provaDiasAntes: number;
+  /** @minimum 1 */
   provaDuracao: number;
   usoDiasAntes: number;
   usoDiasDepois: number;
@@ -1276,6 +1301,7 @@ export interface RegraDisponibilidade {
 
 export interface RegraDisponibilidadeInput {
   provaDiasAntes?: number;
+  /** @minimum 1 */
   provaDuracao?: number;
   usoDiasAntes?: number;
   usoDiasDepois?: number;

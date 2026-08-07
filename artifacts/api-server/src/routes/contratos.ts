@@ -39,10 +39,12 @@ import {
 import {
   ancoraDeNegocio,
   brutoEmCentavos,
+  centavos,
   diaDeNegocio,
   estaAberta,
   liquidoEmCentavos,
   montarPlanoParcelas,
+  reais,
   STATUS_ABERTO,
 } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
@@ -78,9 +80,6 @@ router.use("/lojas/:lojaId/contratos", requireModulo("leads"));
  */
 router.use("/lojas/:lojaId/parcelas", requireModulo("leads"));
 
-/** Dinheiro soma em CENTAVOS inteiros — reais é float e não fecha na soma. */
-const cent = (reais: number) => Math.round(reais * 100);
-const reais = (centavos: number) => centavos / 100;
 
 // O líquido do orçamento é `liquidoEmCentavos`, do financeiro-core. Ele morava
 // aqui, e o comentário desta função afirmava que a conta era feita "EXATAMENTE
@@ -268,7 +267,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     descontoValor = orcamento.descontoValor;
     const brutoC = brutoEmCentavos(itens);
     const liquidoC = liquidoEmCentavos(brutoC, orcamento.descontoTipo, orcamento.descontoValor);
-    if (liquidoC !== cent(contratoData.valorTotal)) {
+    if (liquidoC !== centavos(contratoData.valorTotal)) {
       res.status(422).json({
         error: "VALOR_TOTAL_NAO_BATE",
         detalhe: `Itens menos desconto (${reais(liquidoC)}) difere do valor total (${contratoData.valorTotal})`,
@@ -286,8 +285,8 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // float e comparar com tolerância (o que estava aqui) aceita um plano com um
   // centavo de folga e recusa um plano válido por erro de ponto flutuante.
   if (parcelasInput && parcelasInput.length > 0) {
-    const somaC = parcelasInput.reduce((acc, p) => acc + cent(p.valorPrevisto), 0);
-    if (somaC !== cent(contratoData.valorTotal)) {
+    const somaC = parcelasInput.reduce((acc, p) => acc + centavos(p.valorPrevisto), 0);
+    if (somaC !== centavos(contratoData.valorTotal)) {
       res.status(422).json({
         error: "PARCELAS_NAO_BATEM",
         detalhe: `Soma das parcelas (${reais(somaC)}) difere do valor total (${contratoData.valorTotal})`,
@@ -776,12 +775,12 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
   const comRecebimento = parcelasAntes.filter((p) => (p.valorRecebido ?? 0) > 0);
   const idsComRecebimento = comRecebimento.map((p) => p.id);
   const totalRecebidoAntes = reais(
-    comRecebimento.reduce((s, p) => s + cent(p.valorRecebido ?? 0), 0),
+    comRecebimento.reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0),
   );
   const abertasAntes = parcelasAntes.filter((p) => estaAberta(p));
   const totalAbertoAntes = reais(
     abertasAntes.reduce(
-      (s, p) => s + Math.max(0, cent(p.valorPrevisto) - cent(p.valorRecebido ?? 0)),
+      (s, p) => s + Math.max(0, centavos(p.valorPrevisto) - centavos(p.valorRecebido ?? 0)),
       0,
     ),
   );
@@ -955,9 +954,9 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
    * cobrável, em vez de sumir do "a receber" (marcada PAGA faltando dinheiro)
    * ou de ficar 100% aberta (o que entrou não apareceria no caixa).
    */
-  const jaRecebidoC = cent(existente.valorRecebido ?? 0);
-  const entrandoC = cent(parsed.data.valorRecebido);
-  const saldoC = cent(existente.valorPrevisto) - jaRecebidoC;
+  const jaRecebidoC = centavos(existente.valorRecebido ?? 0);
+  const entrandoC = centavos(parsed.data.valorRecebido);
+  const saldoC = centavos(existente.valorPrevisto) - jaRecebidoC;
 
   // Receber mais que o saldo é recusado, e não clampado: o caso comum é dígito
   // a mais, e aceitar inflaria o caixa REALIZADO com dinheiro que não entrou —
@@ -972,7 +971,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
   }
 
   const totalRecebidoC = jaRecebidoC + entrandoC;
-  const quitada = totalRecebidoC >= cent(existente.valorPrevisto);
+  const quitada = totalRecebidoC >= centavos(existente.valorPrevisto);
 
   const parcela = await db.transaction(async (tx) => {
     /**
@@ -1027,7 +1026,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
         // trilha não diz se quitou.
         valorRecebido: parsed.data.valorRecebido,
         totalRecebido: reais(totalRecebidoC),
-        saldoRestante: reais(cent(existente.valorPrevisto) - totalRecebidoC),
+        saldoRestante: reais(centavos(existente.valorPrevisto) - totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento ?? null,
       },
     });
@@ -1260,8 +1259,8 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     return;
   }
 
-  const totalCentavos = cent(Number(contrato.valorTotal));
-  const entradaCentavos = cent(parsed.data.entrada ?? 0);
+  const totalCentavos = centavos(Number(contrato.valorTotal));
+  const entradaCentavos = centavos(parsed.data.entrada ?? 0);
   if (entradaCentavos > totalCentavos) {
     res.status(422).json({ error: "ENTRADA_MAIOR", detalhe: "Entrada maior que o valor total do contrato" });
     return;

@@ -335,5 +335,8 @@ export * from './vestidoAtributo';
 export * from './vestidoFotoInput';
 export * from './vestidoFotoMeta';
 export * from './vestidoInput';
+export * from './vestidoStatus';
 export * from './vestidoUpdate';
+export * from './vestidoUpdateStatus';
 export * from './vestidoUtilizacao';
+export * from './vestidoUtilizacaoStatus';
