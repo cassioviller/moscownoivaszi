@@ -267,6 +267,7 @@ começar a executar**, em quatro commits:
 | `f4cb527` | **Fase 3, B2** — S-D34, S-D35 e S-A10: o dedo alcança o Input, o painel para de saltar, e a prova ganha campo. **A fase 3 fechou.** |
 | `f901275` | **Fase 4.1** — S32: o guard de sessão roda uma vez por request, não onze — dashboard de 15,3 para 5,3 ms |
 | `24e9054` | **Fase 4.3** — S33: a leitura da guarda do DELETE de loja entra na transação, com tranca — e a corrida reproduzida de verdade |
+| `cafe56c` | **Fase 4.2** — S35: os 18 do E115, cada régua numa casa só, N+1 medidos — nascem S40 e S41 |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -526,6 +527,20 @@ O teste ensinou uma pegadinha que fica: **o `Test` do supertest é lazy** — s�
 dispara a request no `.then()` —, e a primeira versão da corrida passava verde
 até no código errado, com a request ainda no papel. `Promise.resolve`
 assimilando o thenable dispara antes do sleep; está comentado no teste.
+
+### 4.2 — S35, os 18 do E115 → `cafe56c`
+
+O item mais barato do épico rendeu a lição mais cara: a varredura de
+equivalência dos três `-3h` (30.750 instantes contra a conta antiga)
+**reprovou na primeira execução** — os comentários do repo dizem "sem DST
+desde 2019" e o último horário de verão só terminou em **17/02/2019**. No
+domínio real (instantes de 2026) a equivalência é exata; a fronteira ficou
+documentada no teste. Consolidação com prova antes da troca em todos os
+itens; N+1 medidos (PATCH contrato 5→2, simulador 11→5, dashboard sem
+dinheiro 7→5); `compararSenha` morta era exatamente a variante SEM tempo
+constante que alguém importaria por engano. Os residuais viraram **S40**
+(pagar.tsx sem gate de ação — tela de dinheiro) e **S41** (agenda 404→422 e o
+N+1 do POST de contratos, deixado de propósito pelos 4 erros com precedência).
 
 ### A S-D25 estava olhando para a população errada
 
