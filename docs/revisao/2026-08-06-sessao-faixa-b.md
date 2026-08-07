@@ -261,6 +261,7 @@ começar a executar**, em quatro commits:
 | `5be1895` | **Fase 2, épico 4** — S-D26: os perfis planos, a fonte fecha e o banco converte |
 | `13d1204` | **Fase 2, épico 5** — S-D42 e S-D39: a fixture vira dona da hora de fechamento, e o state só grava o que alguém lê |
 | `f72628c` | **Fase 2, épico 6** — S-D24: o spec 19 devolve o teto que pegou emprestado. **A fila do banco fechou.** |
+| `cbe79f6` | **Fase 3, B3** — S-D1, S-D2 e S-A9: a ferramenta de captura vira versionada, e o manifest diz o ambiente |
 
 **Sobras: 46 → 41** (20 🟡 · 21 🔵; 12 · 18 · 11) **→ 40 com o épico 2** (20 🟡 ·
 20 🔵; 12 · 17 · 11 — S-D25 e S-D40 fecham, S-D45 nasce) **→ 38 com o épico 3**
@@ -417,6 +418,28 @@ A S-D39 fechou pelo lado de fora: o `bloqueioId` SAIU do `.state.json` em vez
 de entrar na interface — nenhum dos 60 specs o lia, o 13-onda2 acha o bloqueio
 da fixture pelo nome da noiva, e os specs 23/48 criam os seus. Superfície que
 ninguém consome é promessa que alguém um dia acredita.
+
+## Fase 3 — a faixa B de novo, quatro agentes em worktree
+
+Mesmo contrato da onda 1 (nenhum commita, nenhum toca nas tabelas, nenhum roda
+suíte de banco — regra 24), divisão por arquivo tocado, patch por
+`git diff --cached` no scratchpad. **Os quatro worktrees nasceram DE NOVO em
+`fe47ed5`** — a mesma armadilha da onda 1, agora esperada: os quatro receberam
+o aviso no prompt implícito da lição registrada, e os que voltaram primeiro
+fizeram `git reset --hard main` sozinhos e o disseram no primeiro parágrafo.
+
+### B3 — a evidência visual (S-D1 · S-D2 · S-A9) → `cbe79f6`
+
+O script de captura renasceu versionado (`scripts/capturar-telas.ts`), com as
+env obrigatórias falhando alto (a lição do `undefined/` no texto do erro),
+locale **pt-BR fixada** — a rodada 7 capturou em en-US sem saber — e o bloco
+`ambiente` gravado no manifest de saída; o manifest das 81 originais ganhou o
+mesmo bloco com a verdade parcial (o que se sabe, e `desconhecido` escrito onde
+não se sabe). **O orquestrador validou com o app de pé** — fechar a sobra do
+script perdido com um script nunca executado seria recriá-la: 78 capturas em
+~90 s, as duas falhas-altas exercitadas, e um `undefined` solto no resumo que
+era do wrapper `pnpm exec`, não do script (o README manda chamar o `tsx`
+direto). As 4 linhas de comentário mentiroso do spec 11 (S-A9) saíram.
 
 ### A S-D25 estava olhando para a população errada
 

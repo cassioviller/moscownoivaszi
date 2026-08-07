@@ -33,12 +33,13 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — 12 sobras abertas (7 🟡 · 5 🔵). Era o backlog mais pesado do repositório |
-   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 12 sobras abertas (5 🟡 · 7 🔵) |
-   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 11 sobras abertas (8 🟡 · 3 🔵) |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — 10 sobras abertas (4 🟡 · 6 🔵) |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 10 sobras abertas (8 🟡 · 2 🔵) |
 
-   **São 35 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
+   **São 32 sobras abertas e nenhuma 🟠** — contadas nas três tabelas na
    madrugada de 2026-08-07. **A fase 2 do plano está EXECUTADA inteira** (seis
-   épicos, onze sobras fechadas, três nascidas); o resto está planejado:
+   épicos, onze sobras fechadas, três nascidas) e a **fase 3 está em execução**
+   (B3 fechou S-D1/S-D2/S-A9 em `cbe79f6`); o resto está planejado:
    `docs/propostas/2026-08-06-plano-do-resto-das-sobras.md` cobre tudo em cinco
    fases (a **0 está feita**, a **1 está escrita, esperando resposta**, a **2
    fechou**), e `2026-08-06-folha-de-perguntas.md` traz as 11 que não têm
