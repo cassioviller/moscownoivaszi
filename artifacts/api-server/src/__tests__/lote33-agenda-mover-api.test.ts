@@ -172,7 +172,7 @@ describe("Agenda — mover atendimento (E28)", () => {
 
     const res = await mover(id, { cabineId: cabineDaVizinha });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(422);
     expect(res.body.error).toBe("REFERENCIA_INVALIDA");
 
     // E não escreveu: a cabine continua sendo a desta loja.

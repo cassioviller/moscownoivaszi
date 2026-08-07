@@ -308,12 +308,35 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // mesma passada que já os valida — a guarda de "peça vendida sem reserva"
   // logo abaixo compara contra esta lista.
   const vestidosReservados = new Set<string>();
+  // S41: eram DOIS SELECTs por bloqueio dentro do laço — o irmão N+1 do PATCH
+  // que a S35 consolidou (`:712`). Os bloqueios vêm de uma vez e os vínculos
+  // ativos também; o LAÇO continua, porque a precedência dos quatro erros é
+  // por bloqueio na ordem da lista, e é ela que os testes pregam. Só o
+  // `verificarDisponibilidade` segue por candidato: o motor de conflito é por
+  // peça e período, e consolidá-lo mudaria contagem em caminho de erro.
+  const bloqueiosEncontrados = bloqueioIds.length > 0
+    ? await db.select().from(bloqueioVestidosTable)
+        .where(and(
+          inArray(bloqueioVestidosTable.id, bloqueioIds),
+          eq(bloqueioVestidosTable.lojaId, lojaId),
+        ))
+    : [];
+  const bloqueioPorId = new Map(bloqueiosEncontrados.map((b) => [b.id, b]));
+  const presosPorContratoAtivo = new Set(
+    (bloqueioIds.length > 0
+      ? await db
+          .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+          .from(contratoBloqueiosTable)
+          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+          .where(and(
+            inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
+            eq(contratosTable.status, "ATIVO"),
+          ))
+      : []
+    ).map((p) => p.bloqueioId),
+  );
   for (const bloqueioId of bloqueioIds) {
-    const [bloqueio] = await db.select().from(bloqueioVestidosTable)
-      .where(and(
-        eq(bloqueioVestidosTable.id, bloqueioId),
-        eq(bloqueioVestidosTable.lojaId, lojaId),
-      ));
+    const bloqueio = bloqueioPorId.get(bloqueioId);
     if (!bloqueio) {
       // S-D8/E122: era `{ error: "Bloqueio not found" }` — inglês, sem código
       // nem detalhe, no clique que fecha a venda. A régua da casa é
@@ -371,15 +394,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * de no máximo um contrato ATIVO. Contrato cancelado não conta — ele
      * libera a peça (soft-cancel do bloqueio) e a reserva volta ao mercado.
      */
-    const [presoPor] = await db
-      .select({ contratoId: contratoBloqueiosTable.contratoId })
-      .from(contratoBloqueiosTable)
-      .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
-      .where(and(
-        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
-        eq(contratosTable.status, "ATIVO"),
-      ));
-    if (presoPor) {
+    if (presosPorContratoAtivo.has(bloqueioId)) {
       res.status(409).json({
         error: "RESERVA_JA_CONTRATADA",
         detalhe: "Esta reserva de vestido já está presa por outro contrato ativo.",

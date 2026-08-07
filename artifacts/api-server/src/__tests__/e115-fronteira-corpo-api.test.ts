@@ -124,7 +124,7 @@ describe("E115 — nenhum id de corpo entra sem prova de loja", () => {
         bloqueioId: bloqueioB.id,
         inicio: dataFutura(7).toISOString(),
       })
-      .expect(404);
+      .expect(422);
     expect(r.body.error).toBe("REFERENCIA_INVALIDA");
   });
 

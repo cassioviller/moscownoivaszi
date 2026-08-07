@@ -75,7 +75,7 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
     return;
   }
   if (!(await leadNaLoja(parsed.data.leadId, lojaId))) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
     return;
   }
   const [reserva] = await db.insert(reservasTable).values({
@@ -351,11 +351,11 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   // O vestido já foi validado acima; lead e reserva (ambos opcionais) precisam do
   // mesmo cuidado, senão o bloqueio referencia uma noiva/reserva de outra loja.
   if (dados.leadId && !(await leadNaLoja(dados.leadId, lojaId))) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
     return;
   }
   if (dados.reservaId && !(await reservaNaLoja(dados.reservaId, lojaId))) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
     return;
   }
 

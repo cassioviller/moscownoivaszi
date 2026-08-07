@@ -293,7 +293,7 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     parsed.data.bloqueioId ? bloqueioNaLoja(parsed.data.bloqueioId, lojaId) : true,
   ]);
   if (!okLead || !okCabine || !okVend || !okBloqueio) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine, vendedora ou bloqueio não são desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine, vendedora ou bloqueio não são desta loja" });
     return;
   }
 
@@ -362,7 +362,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     parsed.data.vendedoraId ? vendedoraNaLoja(parsed.data.vendedoraId, lojaId as string) : true,
   ]);
   if (!okCabine || !okVend) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "cabine ou vendedora não são desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "cabine ou vendedora não são desta loja" });
     return;
   }
 
@@ -632,7 +632,9 @@ router.post("/lojas/:lojaId/ausencias", async (req, res): Promise<void> => {
   // A FK prova que a pessoa existe; `usuarios_lojas` é quem diz que ela é
   // DESTA loja (família E91 — `usuarios` é tabela global).
   if (!(await vendedoraNaLoja(usuarioId, lojaId))) {
-    res.status(404).json({
+    // S41: era 404 — a régua do E91 reserva 404 para o recurso da URL; id
+    // inválido no CORPO é 422, como o guard do ajuste (:755) já respondia.
+    res.status(422).json({
       error: "REFERENCIA_INVALIDA",
       detalhe: "Esta pessoa não é da equipe desta loja.",
       campos: [{ campo: "usuarioId", motivo: "Pessoa não encontrada nesta loja" }],

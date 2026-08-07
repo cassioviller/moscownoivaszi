@@ -48,25 +48,25 @@ describe("Escopo de loja nas escritas (API)", () => {
     leadId, cabineId, vendedoraId, inicio: "2027-05-01T13:00:00.000Z",
   });
 
-  it("atendimento com lead de OUTRA loja é 404", async () => {
+  it("atendimento com lead de OUTRA loja é 422", async () => {
     await agenteA
       .post(`/api/lojas/${A.lojaId}/atendimentos`)
       .send(novoAtendimento(leadB, cabineA, A.vendedoraId))
-      .expect(404);
+      .expect(422);
   });
 
-  it("atendimento com cabine de OUTRA loja é 404", async () => {
+  it("atendimento com cabine de OUTRA loja é 422", async () => {
     await agenteA
       .post(`/api/lojas/${A.lojaId}/atendimentos`)
       .send(novoAtendimento(leadA, cabineB, A.vendedoraId))
-      .expect(404);
+      .expect(422);
   });
 
-  it("atendimento com vendedora de OUTRA loja é 404", async () => {
+  it("atendimento com vendedora de OUTRA loja é 422", async () => {
     await agenteA
       .post(`/api/lojas/${A.lojaId}/atendimentos`)
       .send(novoAtendimento(leadA, cabineA, B.vendedoraId))
-      .expect(404);
+      .expect(422);
   });
 
   it("atendimento com tudo da própria loja passa (201)", async () => {
@@ -76,11 +76,11 @@ describe("Escopo de loja nas escritas (API)", () => {
       .expect(201);
   });
 
-  it("reserva com lead de OUTRA loja é 404", async () => {
+  it("reserva com lead de OUTRA loja é 422", async () => {
     await agenteA
       .post(`/api/lojas/${A.lojaId}/reservas`)
       .send({ leadId: leadB, casamentoData: "2027-12-01T15:00:00.000Z" })
-      .expect(404);
+      .expect(422);
   });
 
   it("reserva com lead da própria loja passa (201)", async () => {

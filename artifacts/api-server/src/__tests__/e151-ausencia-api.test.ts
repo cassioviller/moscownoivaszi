@@ -137,7 +137,7 @@ describe("E151 — a agenda respeita a ausência da equipe", () => {
     const r = await agent
       .post(`/api/lojas/${f.lojaId}/ausencias`)
       .send({ usuarioId: outra.vendedoraId, inicio: diaDaqui(300), fim: diaDaqui(310) })
-      .expect(404);
+      .expect(422);
     expect(r.body.error).toBe("REFERENCIA_INVALIDA");
     await limparFixture(outra);
   });
