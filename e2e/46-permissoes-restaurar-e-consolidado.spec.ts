@@ -85,3 +85,39 @@ test.describe("Console superadmin: a rede numa tela (E76)", () => {
     expect(typeof minha.recebidoNoMes).toBe("number");
   });
 });
+
+test.describe("Perfis globais: criar pela tela (S-D36)", () => {
+  const nomePerfil = `E2E Perfil ${Date.now()}`;
+
+  test.afterAll(async ({ request }) => {
+    // O spec apaga o que criou (S-D45): o DELETE /admin/perfis existe e o
+    // perfil de teste nasce sem vínculo nenhum.
+    await request.post(`${API_URL}/api/auth/login`, {
+      data: { email: estado.adminEmail, senha: estado.senha },
+    });
+    const perfis = await request.get(`${API_URL}/api/admin/perfis`);
+    const criado = (await perfis.json()).find((p: { nome: string }) => p.nome === nomePerfil);
+    if (criado) await request.delete(`${API_URL}/api/admin/perfis/${criado.id}`);
+  });
+
+  test("o botão que faltava: o perfil nasce pela tela, sem acesso nenhum", async ({ page }) => {
+    // S-D36: a tela listava e editava, e não tinha por onde repor — o POST
+    // existia no servidor com zero usos no app. Decidido em 2026-08-07.
+    await page.goto("/admin/perfis");
+    await page.getByTestId("novo-perfil").click();
+    await page.getByLabel("Nome do perfil").fill(nomePerfil);
+    await page.getByRole("button", { name: "Criar perfil" }).click();
+
+    // O perfil aparece na lista de matrizes — editável, com o nome dado.
+    // Por ROLE: o toast de sucesso também carrega o nome (colisão do strict).
+    await expect(page.getByRole("heading", { name: nomePerfil })).toBeVisible();
+
+    // E nasce SEM acesso: o servidor confirma tudo desligado.
+    const resposta = await page.request.get(`${API_URL}/api/admin/perfis`);
+    const criado = (await resposta.json()).find((p: { nome: string }) => p.nome === nomePerfil);
+    expect(criado).toBeTruthy();
+    for (const acoes of Object.values(criado.acessosModulos as Record<string, { ver: boolean; criar: boolean; editar: boolean }>)) {
+      expect(acoes).toEqual({ ver: false, criar: false, editar: false });
+    }
+  });
+});
