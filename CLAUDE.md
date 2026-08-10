@@ -13,15 +13,20 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **O registro da última sessão** —
-   `docs/revisao/2026-08-07-sessao-zerando-o-codigo.md`, fechado em
-   2026-08-07. A seção **"Como retomar"** é o roteiro, e a primeira coisa que
-   ela diz é a que mais muda o dia: **o backlog de código ZEROU** — as sete
-   sobras de código e a dívida de spec fecharam em oito commits, e o que
-   resta são as 13 perguntas da folha. Quem abre a próxima sessão precisa de
-   RESPOSTAS, não de fila. (O registro da véspera,
-   `2026-08-06-sessao-faixa-b.md`, continua sendo onde as regras 28–31
-   nasceram.)
+2. **A trilha em curso** — `docs/revisao/2026-08-10-revisao-max/`, aberta em
+   2026-08-10. A primeira coisa que ela diz é a que mais muda o dia: **o
+   backlog de código voltou, e ele é NOVO.** A revisão `max` do aplicativo
+   inteiro (68 agentes, 5,58 M tokens) rodou sobre um repositório com ZERO
+   sobras de código e achou **15 defeitos** — **duas 🔴** (o `DELETE` de cabine
+   que apaga a agenda em cascata; o carnê que nasce duas vezes e dobra uma
+   venda de R$ 5.000,00) e seis 🟠. As 15 foram **conferidas âncora por âncora
+   antes de virarem trabalho** (regra 20) e as 15 são verdadeiras — o que é
+   notícia, e virou a regra 33. A tabela de Sobras do `EXECUCAO.md` é a fila.
+
+   O registro da sessão anterior — `2026-08-07-sessao-zerando-o-codigo.md` —
+   continua valendo para tudo que não seja a fila: ele é quem conta como o
+   backlog chegou a zero. (E `2026-08-06-sessao-faixa-b.md` continua sendo onde
+   as regras 28–31 nasceram.)
 
    O registro traz também o que a execução ensinou e virou regra (28–31 do
    METODO), e a régua de varredura que continua valendo: **enumere com
@@ -29,21 +34,22 @@ para o documento que manda.
    cópia de worktree órfão, e desde `c98341e` as **16 varreduras** do
    repositório enumeram pelo versionamento, com piso de população.
 
-   **Não há trilha nem plano em curso: o que resta é o BACKLOG DE SOBRAS das
-   três.** Os épicos das três estão fechados, e as tabelas de Sobras continuam
-   sendo a fonte da verdade de cada rastreador. **Conte-as, não deduza** — a
-   linha aberta é a que NÃO está riscada, e o fecho de 2026-08-07 achou sete
-   fechadas sem risco justamente por contar:
+   **A trilha em curso é a da revisão max; o resto é backlog de SOBRAS.** As
+   tabelas de Sobras continuam sendo a fonte da verdade de cada rastreador.
+   **Conte-as, não deduza** — a linha aberta é a que NÃO está riscada, e o fecho
+   de 2026-08-07 achou sete fechadas sem risco justamente por contar:
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
+   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 15 sobras abertas (2 🔴, 6 🟠, 7 🟡), S-M1…S-M15. É a fila do dia** |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
 
-   **São 2 sobras abertas e nenhuma 🟠** — S-A2 (as fotos do caderno) e
-   S-A27 (classificar as 496 peças com a dona): **as duas esperam gente, não
-   código**. É o fim de 2026-08-07: nove fechos de código, a dívida do S-A17
+   **São 17 sobras abertas: as 15 de código da revisão max, mais as 2 que
+   esperam gente** — S-A2 (as fotos do caderno) e S-A27 (classificar as 496
+   peças com a dona). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
+   como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
    viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no
    mesmo dia — e **o plano das cinco fases está EXECUTADO de
@@ -51,8 +57,10 @@ para o documento que manda.
    seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
    aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
    `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
-   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Não há NENHUMA linha de código aberta em rastreador nenhum — a primeira
-   vez desde a rodada 6. **A folha** (`docs/propostas/2026-08-06-folha-de-perguntas.md`) guarda as
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Naquele dia não havia
+   NENHUMA linha de código aberta em rastreador nenhum — a primeira vez desde a
+   rodada 6, e o estado durou três dias. **A folha**
+   (`docs/propostas/2026-08-06-folha-de-perguntas.md`) guarda as
    treze respostas com a data — o que era conversa virou decisão registrada.
 
    A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a

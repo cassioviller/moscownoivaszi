@@ -1,0 +1,90 @@
+# Revisão max de 2026-08-10 — execução
+
+**Base** `e624e4e` (`main`, limpo, em dia com o `origin`) · diagnóstico em
+[`RELATORIO.md`](./RELATORIO.md)
+
+A trilha não tem épicos: ela nasce **direto em sobras**. O diagnóstico já veio
+consolidado do workflow — 6 localizadores, 59 candidatos, 59 verificadores
+independentes, 15 defeitos relatados —, e o que falta é fechar cada um.
+
+## O que esta trilha é
+
+A primeira varredura de código **depois do zero**. Quando ela rodou, o backlog
+de código do repositório era ZERO: rodada 6, rodada 7 (design) e arqueologia do
+legado fechadas, e as duas sobras vivas — S-A2 e S-A27 — esperando gente, não
+código. Achado daqui é achado **novo**.
+
+## A conferência das 15 (regra 20)
+
+**As 15 âncoras foram relidas contra o código antes de virarem trabalho, e as
+15 são verdadeiras.** Nenhuma morta, nenhuma imprecisa no mecanismo — o que é
+notícia: na conferência de 2026-08-05, das 48 sobras conferidas **4 estavam
+mortas e 9 descreviam errado o defeito que apontavam** (regra 23).
+
+A diferença é a origem. Aquelas 48 nasceram de passagem, no meio de outro
+épico; estas 15 nasceram de um localizador com âncora obrigatória e passaram
+por um verificador adversarial cada. **O preço de conferir continua sendo o
+certo** — uma rodada de leitura sem commit de código —, mas a taxa de acerto de
+um achado depende de como ele nasceu, e isto aqui é a medida disso.
+
+Duas ganharam precisão na releitura, e ela está na linha de cada uma:
+
+- **S-M4** — o relatório diz "o saldo de partida nunca é testado". Certo, e o
+  mecanismo é mais estreito do que parece: `montarCurva` testa o negativo
+  **dentro do `map` sobre os dias com evento**. Zero eventos, zero testes; e com
+  eventos, uma entrada no primeiro dia que devolva o saldo ao positivo apaga o
+  alerta de uma loja que está no vermelho HOJE.
+- **S-M2** — `minimum: 0` recusa negativo, então a frase do comentário vizinho
+  ("uma saída negativa entraria no caixa como dinheiro voltando") **não é o
+  buraco**. O buraco é o R$ 0,00: a rota multi-conta quita conta com zero, e o
+  comentário da porta irmã (`openapi.yaml:6383`) afirma que esta já tinha o
+  piso de um centavo. A afirmação é falsa desde que foi escrita.
+
+## O que a leitura acrescentou ao diagnóstico
+
+**Três das quinze são a MESMA falta de guarda em portas diferentes**, e a
+contagem importa para a ordem: S-M1 (cabine), S-M8 (confecção) e S-M12
+(vestido do orçamento) são "o id entrou sem prova de que pode entrar" — a
+família do E91/E107, que o repositório já fechou dezenas de vezes. A quarta
+forma nova é a do S-M7: a prova é feita, mas **fora da transação que escreve**.
+
+## Sobras
+
+Regra 12: entram aqui no mesmo commit que as viu. Regra 21: saem riscadas, com
+o hash e uma linha do que se fez.
+
+**15 sobras: 0 fechadas.** Duas 🔴, seis 🟠, sete 🟡.
+
+| # | O quê | Peso | Origem |
+|---|---|---|---|
+| S-M1 | **O `DELETE` de cabine apaga a agenda inteira sem perguntar** (`routes/agenda.ts:243`). Cinco linhas: nenhuma checagem de existência (404 que todo irmão tem), nenhuma checagem de uso, nenhuma auditoria, nenhuma transação — e `atendimentos.cabine_id` é `ON DELETE CASCADE` (`schema/atendimentos.ts:82`). Apagar uma cabine leva junto a fila da costureira e o histórico de provas dela, irrecuperável e sem rastro de quem fez. O 409 que falta aqui existe em `vestidos.ts:850`, `comissao.ts:476` e `agenda.ts:796` | 🔴 | localizador de correção |
+| S-M2 | **A rota multi-conta quita conta com R$ 0,00** (`lib/api-spec/openapi.yaml:6399`): `PagamentoInput.valorPago` tem `minimum: 0`, e a porta irmã `PagarContaInput` tem `0.01` — com um comentário (`:6383`) que afirma "como a porta irmã `PagamentoInput` já tinha". Não tinha. O zod gerado é a única validação do servidor; o guard de um centavo existe só no navegador. Uma conta de R$ 3.200,00 vai a PAGA com saída de zero no caixa | 🟠 | localizador de correção |
+| S-M3 | **`POST /contratos` grava parcela sem `origem`, e o carnê pode nascer duas vezes** (`routes/contratos.ts:535-547`). A coluna default é `AVULSA` (`schema/financeiro.ts:28`), então a guarda `jaTemCarne` (`:1275`, que pergunta `p.origem === "PLANO"`) nunca dispara sobre as parcelas do fechamento: uma venda de **R$ 5.000,00** parcelada no contrato aceita um carnê inteiro por cima e fica com **R$ 10.000,00** em parcelas. E a entrada perde o `numero 0`, que significa ENTRADA em seis pontos do sistema (o comentário do S26, `:1317`, enumera os seis) | 🔴 | localizador de correção |
+| S-M4 | **O alerta de caixa não vê a loja que já está no vermelho** (`lib/financeiro-core/src/projecao.ts:44-52`). `diaNegativo` só é testado DENTRO do `map` sobre os dias COM evento — o saldo de partida não passa por teste nenhum. Loja **R$ 2.000,00 negativa hoje** e sem evento no horizonte: `diaNegativo: null`, cartão não aparece. Com evento, basta a primeira entrada devolver o saldo ao positivo para o alerta sumir igual | 🟠 | localizador de correção |
+| S-M5 | **O delimitador do CSV de extrato é adivinhado LINHA A LINHA** (`lib/financeiro-core/src/extrato.ts:112`): `linha.split(linha.includes(";") ? ";" : ",")`. Num arquivo de vírgulas, uma linha que traga `;` no histórico é fatiada errada e o lançamento some sem erro nenhum — a conciliação acusa divergência falsa e manda lançar de novo: **R$ 1.500,00 contados duas vezes**. O delimitador é do ARQUIVO, e se decide uma vez | 🟠 | localizador de correção |
+| S-M6 | **O docstring promete janela aberta e o código fecha** (`api-server/src/lib/estoque.ts:51-52` × `:67`). O texto diz "retirada sem devolução deixa a janela ABERTA, como em `janelasDoBloqueio`"; o código só deixa aberta quando **não há data de casamento** — havendo, o fim é `casamento + usoDiasDepois` mesmo com a peça ainda na mão da noiva. A metade do VESTIDO, do mesmo ciclo, acerta: as duas discordam sobre o mesmo dia | 🟡 | localizador de correção |
+| S-M7 | **A guarda de reserva exclusiva é lida fora da transação que escreve** (`routes/contratos.ts:325-337` × `:514`, `:562`). `presosPorContratoAtivo` sai do pool global, sem row lock, e o `INSERT` em `contrato_bloqueios` acontece páginas depois; a PK é `(contratoId, bloqueioId)` (`schema/contratos.ts:111`), que **permite o mesmo bloqueio em dois contratos**. Duas vendedoras no mesmo segundo prometem o mesmo vestido a duas noivas. O repositório já consertou esta forma no `DELETE /admin/lojas`, com `.for("update")` | 🟠 | localizador de correção |
+| S-M8 | **A mesma confecção vira duas peças do acervo** (`routes/vestidos.ts:128-146`). `confeccaoPodeVirarPeca` prova a loja e prova que o trabalho está pronto — e não pergunta se ele **já virou peça**. `origem_ajuste_id` não tem unique (`schema/vestidos.ts:77`), então o invariante "uma vez só" vive só no cliente: dois cliques no botão criam dois vestidos do mesmo trabalho | 🟡 | localizador de correção |
+| S-M9 | **A tela libera por `criar` e o servidor exige `editar`** (`pages/financeiro/pagar.tsx:621` × `routes/financeiro.ts:330`). O botão "Pagar" aparece para quem tem `criar`; a rota é `requireModulo("financeiro", "editar")`. A gerente que só tem `editar` não vê o botão que pode usar; a estagiária que só tem `criar` vê e leva 403. O localizador contou **mais 7 sítios** com o mesmo descasamento — é a família da S36, e a forma dela (varredura cruzando as duas declarações) é o conserto certo | 🟡 | localizador de correção |
+| S-M10 | **Apagar o teto de orçamento é ignorado em silêncio, com toast de sucesso** (`pages/noivas/[leadId]/interesses.tsx:161` × `routes/leads.ts:661-664`). Campo vazio vira `undefined`, some do JSON, e o `set: { ...insertData }` do `onConflictDoUpdate` preserva o valor antigo. Nem um `null` explícito resolveria pela tela: o contrato não o admite — o conserto é dos dois lados | 🟡 | localizador de correção |
+| S-M11 | **Limpar o campo para redigitar ZERA o estoque da peça** (`pages/vestidos/estoque.tsx:133-137`). `Math.trunc(Number(""))` é `0`, que é finito e não é negativo: passa pelos dois guards e salva quantidade zero. Depois disso todo orçamento com aquela peça alarma falta que não existe | 🟠 | localizador de correção |
+| S-M12 | **O item de orçamento não prova a loja do `vestidoId`** (`routes/orcamentos.ts:397-454`). O `itemEstoqueId` tem prova (`:417`) e o `ajusteId` tem prova dupla, de loja e de noiva (`:446`, com o comentário do E155 explicando por quê). O `vestidoId` não tem nenhuma. A venda vira beco sem saída: o item entra, e a reserva do E150 depois responde 422 apontando uma peça que aquela loja nunca poderá reservar | 🟡 | localizador de correção |
+| S-M13 | **`EXPEDIENTE_PADRAO` ficou em 19h quando o schema foi para 20h** (`lib/agenda-core/src/mover.ts:98` × `schema/loja.ts:48`). O docstring diz "espelha os defaults das colunas" e o S-A8 mudou o default para `20`; o espelho ficou em `19`. E ele não carrega `dias` nem `provaDuracao`. Loja recém-criada, antes da primeira linha de `regra_disponibilidade`, perde 19:00 e 19:30 da grade e trata a prova das 18:30 como se durasse 30 min. É a regra 30 pelo avesso: duas réguas com o mesmo nome, sem nada que prove a equivalência | 🟡 | localizador de correção |
+| S-M14 | **A busca por noiva não escapa `%` nem `_`** (`api-server/src/lib/busca-lead.ts:15`, e o irmão em `routes/leads.ts:105`). `` `%${busca}%` `` entra cru no `ilike`: buscar `%` devolve o cadastro inteiro, e colar "50% entrada" de um orçamento busca outra coisa sem dizer que buscou | 🟡 | localizador de correção |
+| S-M15 | **A régua do banco virgem escreve no banco de DEV e declara sucesso** (`scripts/banco-virgem.ts:161-162`). O `import` do `global-setup` acontece **uma linha antes** da troca da `DATABASE_URL`, e o pool nasce na importação: o setup roda contra o dev. O ramo S-D38, que é a única coisa que esta régua existe para exercitar, **nunca foi executado** — e ela é a quarta régua do repositório, a que o `CLAUDE.md` manda rodar antes de mexer em seed, schema ou `global-setup` | 🟠 | localizador de correção |
+
+## O que ficou fora, e não volta
+
+O relatório do workflow tinha teto: **18 achados de limpeza e 4 de correção
+menor** ficaram fora dos 15, "recuperáveis sem repetir a rodada" pelo
+`journal.jsonl` da transcrição.
+
+**Não são.** A transcrição foi conferida em 2026-08-10 e não existe mais —
+nem o `journal.jsonl`, nem o script, nem o diretório do run. Os 22 estão
+perdidos; recuperá-los custa repetir a rodada inteira (68 agentes, 5,58 M
+tokens, ~2 h).
+
+Isso vira régua, e ela está na crítica do método: **relatório de workflow que
+aponta para a própria transcrição não é registro — a transcrição é volátil e o
+repositório não é.** O que não estiver no `git` no dia em que a rodada termina
+não sobreviveu a ela.

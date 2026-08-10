@@ -461,6 +461,34 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     mesmo commit. **O objetivo de uma sonda de passivo nunca é zerar o número: é
     que nenhuma linha dele siga sem julgamento.**)*
 
+32. **Achado de agente só existe depois de estar no `git` — a transcrição é
+    volátil e o repositório não.** Relatório que aponta para a própria
+    transcrição ("está tudo no `journal.jsonl`, recuperável sem repetir a
+    rodada") não está registrando: está adiando o registro para um disco que
+    ninguém controla. O que a rodada apurou se escreve no repositório **no dia
+    em que ela termina**, inteiro, mesmo o que não coube no relatório.
+    *(2026-08-10: a revisão `max` do aplicativo inteiro — 68 agentes, 1.579
+    chamadas de ferramenta, 5,58 M tokens, 1h58 — escreveu os 15 achados
+    principais num `.md` e deixou **18 de limpeza e 4 de correção menor** só na
+    transcrição, com a frase "recuperáveis sem repetir a rodada". A sessão
+    seguinte foi buscá-los e **a transcrição inteira já não existia**: nem o
+    `journal.jsonl`, nem o script, nem o diretório do run. Os 15 sobreviveram
+    porque estavam escritos; os 22 custam a rodada de novo. **A régua de
+    sobrevivência é o commit, e a transcrição não é backup de nada.**)*
+
+33. **Achado que nasce com âncora obrigatória e verificador adversarial confere
+    quase todo — o que decide a taxa de acerto é COMO ele nasceu, não que ele
+    seja uma sobra.** A regra 20 continua valendo (confere antes de consertar),
+    e o preço dela agora tem duas medidas para comparar. *(As 48 sobras da
+    conferência de 2026-08-05 nasceram de passagem, no meio de outro épico:
+    **4 mortas e 9 com o mecanismo errado** — 27%. As 15 da revisão `max` de
+    2026-08-10 nasceram de um localizador que exigia `arquivo:linha` lido e
+    passaram por um verificador independente cada: **15 de 15 verdadeiras**, e
+    a releitura só apertou o mecanismo de duas (o alerta de caixa é mais
+    estreito do que o relatório dizia; o `minimum: 0` recusa negativo e o
+    buraco é o R$ 0,00). A conferência segue barata e segue obrigatória — o que
+    muda é a expectativa com que se entra nela.)*
+
 ---
 
 ## Histórico
