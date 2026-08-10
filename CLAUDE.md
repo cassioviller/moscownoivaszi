@@ -17,11 +17,16 @@ para o documento que manda.
    2026-08-10. A primeira coisa que ela diz é a que mais muda o dia: **o
    backlog de código voltou, e ele é NOVO.** A revisão `max` do aplicativo
    inteiro (68 agentes, 5,58 M tokens) rodou sobre um repositório com ZERO
-   sobras de código e achou **15 defeitos** — **duas 🔴** (o `DELETE` de cabine
-   que apaga a agenda em cascata; o carnê que nasce duas vezes e dobra uma
-   venda de R$ 5.000,00) e seis 🟠. As 15 foram **conferidas âncora por âncora
-   antes de virarem trabalho** (regra 20) e as 15 são verdadeiras — o que é
-   notícia, e virou a regra 33. A tabela de Sobras do `EXECUCAO.md` é a fila.
+   sobras de código e achou **15 defeitos**. As 15 foram **conferidas âncora
+   por âncora antes de virarem trabalho** (regra 20) e as 15 são verdadeiras —
+   o que é notícia, e virou a regra 33. **As duas 🔴 já fecharam no mesmo dia:**
+   o `DELETE` de cabine que apagava a agenda em cascata (S-M1, `3f21fa7`) e o
+   carnê que nascia rotulado `AVULSA` e podia nascer duas vezes (S-M3,
+   `ae4a8e7`, medido em 9 parcelas somando R$ 10.000,00 num contrato de
+   R$ 5.000,00). Restam **6 🟠 e 9 🟡**, e a tabela de Sobras do `EXECUCAO.md`
+   é a fila — as duas mais caras são a S-M5 (delimitador de CSV adivinhado
+   linha a linha, R$ 1.500,00 contados duas vezes) e a S-M15 (a régua do banco
+   virgem escreve no banco de dev e declara sucesso).
 
    O registro da sessão anterior — `2026-08-07-sessao-zerando-o-codigo.md` —
    continua valendo para tudo que não seja a fila: ele é quem conta como o
@@ -41,7 +46,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 15 sobras abertas (2 🔴, 6 🟠, 7 🟡), S-M1…S-M15. É a fila do dia** |
+   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 17 sobras, 2 fechadas. As duas 🔴 caíram (S-M1 `3f21fa7`, S-M3 `ae4a8e7`); restam 6 🟠 e 9 🟡. É a fila do dia** |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
