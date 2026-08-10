@@ -84,6 +84,14 @@ export const vestidosTable = pgTable("vestidos", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
   unq: unique().on(t.lojaId, t.codigo),
+  /**
+   * S-M8 — a MESMA confecção não vira duas peças do acervo. O invariante "uma
+   * vez só" do E156 vivia só no botão da tela: dois cliques (ou duas
+   * requisições na mesma janela) criavam dois vestidos do mesmo trabalho.
+   * NULL não colide com NULL em unique do Postgres, então toda peça comprada
+   * (a esmagadora maioria) segue fora da régua.
+   */
+  unqOrigemAjuste: unique().on(t.origemAjusteId),
 }));
 
 export const insertVestidoSchema = createInsertSchema(vestidosTable).omit({ createdAt: true, updatedAt: true });

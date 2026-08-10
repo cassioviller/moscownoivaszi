@@ -143,6 +143,17 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
       });
       return;
     }
+    // S-M8 — "uma vez só" vivia só no botão da tela. Este 409 é a resposta
+    // amigável; o unique `vestidos_origem_ajuste_id_unique` é o cinto do
+    // banco, que fecha a corrida entre duas requisições na mesma janela.
+    if (veredicto === "JA_VIROU_PECA") {
+      res.status(409).json({
+        error: "CONFECCAO_JA_VIROU_PECA",
+        detalhe: "Este trabalho já virou uma peça do acervo — a peça existe, não há o que criar de novo.",
+        campos: [{ campo: "origemAjusteId", motivo: "A confecção já tem peça no acervo" }],
+      });
+      return;
+    }
   }
 
   const vestidoId = randomUUID();

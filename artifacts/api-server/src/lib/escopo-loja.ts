@@ -159,7 +159,7 @@ export async function ajusteDaNoiva(
  *   de **CONFECÇÃO** (bainha não é peça nova) e já **FEITO** (a manga não existe
  *   até a costureira terminar).
  */
-export type VeredictoConfeccao = "OK" | "FORA_DA_LOJA" | "NAO_ESTA_PRONTA";
+export type VeredictoConfeccao = "OK" | "FORA_DA_LOJA" | "NAO_ESTA_PRONTA" | "JA_VIROU_PECA";
 
 export async function confeccaoPodeVirarPeca(
   ajusteId: string,
@@ -172,6 +172,16 @@ export async function confeccaoPodeVirarPeca(
     .limit(1);
   if (!a) return "FORA_DA_LOJA";
   if (a.tipo !== "CONFECCAO" || a.status !== "FEITO") return "NAO_ESTA_PRONTA";
+  // S-M8 — "uma vez só" vivia apenas no botão da tela: dois cliques criavam
+  // duas peças do mesmo trabalho. Este é o veredicto amigável; o cinto de
+  // verdade é o unique `vestidos_origem_ajuste_id_unique`, que fecha a
+  // corrida que esta leitura não fecha.
+  const [jaVirou] = await db
+    .select({ id: vestidosTable.id })
+    .from(vestidosTable)
+    .where(eq(vestidosTable.origemAjusteId, ajusteId))
+    .limit(1);
+  if (jaVirou) return "JA_VIROU_PECA";
   return "OK";
 }
 

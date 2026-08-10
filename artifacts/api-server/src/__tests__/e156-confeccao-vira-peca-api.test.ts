@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db, vestidosTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import {
   criarBloqueio,
   criarFixture,
@@ -127,6 +129,33 @@ describe("E156 — a confecção vira peça do acervo", () => {
 
     const lida = await agent.get(`/api/lojas/${f.lojaId}/vestidos/${r.body.id}`).expect(200);
     expect(lida.body.origemAjusteId).toBe(trabalho.id);
+  });
+
+  /**
+   * S-M8 — a MESMA confecção não vira duas peças. O invariante "uma vez só"
+   * vivia só no botão da tela: dois cliques criavam dois vestidos do mesmo
+   * trabalho. O 409 é a resposta amigável; o unique
+   * `vestidos_origem_ajuste_id_unique` é o cinto do banco para a corrida.
+   */
+  it("S-M8 — a segunda tentativa de virar peça é 409, e o acervo fica com UMA", async () => {
+    const trabalho = await confeccao({ status: "FEITO", custo: 300 });
+    await agent
+      .post(`/api/lojas/${f.lojaId}/vestidos`)
+      .send({ codigo: codigo(), nome: trabalho.descricao, precoBase: 1500, origemAjusteId: trabalho.id })
+      .expect(201);
+
+    // VERMELHO ANTES: 201 — a segunda peça nascia do mesmo trabalho.
+    const segunda = await agent
+      .post(`/api/lojas/${f.lojaId}/vestidos`)
+      .send({ codigo: codigo(), nome: trabalho.descricao, precoBase: 1500, origemAjusteId: trabalho.id })
+      .expect(409);
+    expect(segunda.body.error).toBe("CONFECCAO_JA_VIROU_PECA");
+
+    const noAcervo = await db
+      .select({ id: vestidosTable.id })
+      .from(vestidosTable)
+      .where(eq(vestidosTable.origemAjusteId, trabalho.id));
+    expect(noAcervo).toHaveLength(1);
   });
 
   it("a peça nasce sem reserva nenhuma — nada é reescrito para trás", async () => {
