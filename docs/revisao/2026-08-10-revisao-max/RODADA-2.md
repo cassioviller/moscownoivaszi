@@ -1,7 +1,18 @@
 # Segunda varredura do aplicativo inteiro — 2026-08-10, tarde
 
-**Base** `8b4dd28` (`main`, limpo, **publicado** — `origin/main` na mesma
-ponta) · primeira rodada em [`RELATORIO.md`](./RELATORIO.md)
+**Base** ~~`8b4dd28`~~ **`89b38c8`** (`main`, limpo; o `origin` ficou dois
+commits atrás — ver abaixo) · primeira rodada em [`RELATORIO.md`](./RELATORIO.md)
+
+**A base andou entre a segunda e a terceira tentativa, e o motivo é achado:**
+o `f0a17d0` (agente do Replit, fora do método) pôs `APP_DATABASE_URL` com
+precedência dentro de `@workspace/db` para o preview abrir o banco da loja —
+e a precedência capturava todo filho que redireciona por `DATABASE_URL`:
+medido, o filho pedia `/heliumdb` e o pool conectava em `/moscow_base`. É a
+S-M15 uma camada acima, e a senha do banco ficou em texto no `.replit`. O
+`89b38c8` conserta (a biblioteca volta a ler SÓ `DATABASE_URL`; o `run dev`
+deriva a URL de `APP_DATABASE_NAME`; o E2E fixa o nome vazio), com a régua do
+banco virgem passando INTEIRA sob `APP_DATABASE_NAME` exportada. **O ângulo 11
+passa a cobrir 16 commits** — os 14 consertos da manhã mais estes dois.
 
 Pedido literal: *"app inteiro ir anotando enquanto faz"*. Este arquivo é a
 metade "anotando", e ele existe **antes** da rodada terminar — é a regra 32
@@ -46,6 +57,7 @@ duplicata:
 | S-M6 janela do estoque fechando com a peça na rua | `b407710` |
 | S-M8 confecção virando duas peças | `f3a8b50` |
 | S-M16 os três deletes crus restantes | `c4ee0ad` |
+| Captura de `APP_DATABASE_URL` na biblioteca (defeito do `f0a17d0`) | `89b38c8` |
 
 E as quatro abertas (S-M9, S-M10, S-M17, S-M18) não são achado: são fila.
 Achado que as ENUMERA — "o nono sítio do criar×editar é este" — vale, e é
@@ -90,11 +102,14 @@ que ninguém consegue derrubar é o único que sobrevive.
       reconstruída e o journal do workflow morava nela. Nada dos onze ângulos
       chegou ao disco. A página fez exatamente o que a última frase dela
       prometia: foi daqui que se retomou.
-- [x] Rodada RELANÇADA — `wf_97ee70f8-68a`, mesma especificação, com a
-      mudança que a queda ensinou: **cada ângulo grava seus achados
-      verificados em `rodada-2-achados/NN-<angulo>.md` assim que o cético
-      dele termina**, em vez de esperar os onze. A próxima queda custa um
-      ângulo, não a rodada.
+- [x] ~~Rodada RELANÇADA — `wf_97ee70f8-68a`~~ **A sessão morreu de novo, e
+      desta vez a prova é a ausência**: `rodada-2-achados/` não existe no
+      disco — nenhum ângulo chegou a pingar. A mudança de gravar por ângulo
+      não foi testada por esse run; vale para o próximo.
+- [x] Rodada RELANÇADA (3ª) — base `89b38c8`, mesma especificação da 2ª:
+      onze ângulos, cético por achado, e **cada ângulo grava
+      `rodada-2-achados/NN-<angulo>.md` assim que a verificação dele
+      termina**. Handle registrado no commit seguinte ao lançamento.
 - [ ] Localizadores concluídos
 - [ ] Verificação concluída
 - [ ] Achados escritos em `rodada-2-achados/`, no git
