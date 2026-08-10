@@ -19,14 +19,17 @@ para o documento que manda.
    inteiro (68 agentes, 5,58 M tokens) rodou sobre um repositório com ZERO
    sobras de código e achou **15 defeitos**. As 15 foram **conferidas âncora
    por âncora antes de virarem trabalho** (regra 20) e as 15 são verdadeiras —
-   o que é notícia, e virou a regra 33. **As duas 🔴 já fecharam no mesmo dia:**
-   o `DELETE` de cabine que apagava a agenda em cascata (S-M1, `3f21fa7`) e o
-   carnê que nascia rotulado `AVULSA` e podia nascer duas vezes (S-M3,
-   `ae4a8e7`, medido em 9 parcelas somando R$ 10.000,00 num contrato de
-   R$ 5.000,00). Restam **6 🟠 e 9 🟡**, e a tabela de Sobras do `EXECUCAO.md`
-   é a fila — as duas mais caras são a S-M5 (delimitador de CSV adivinhado
-   linha a linha, R$ 1.500,00 contados duas vezes) e a S-M15 (a régua do banco
-   virgem escreve no banco de dev e declara sucesso).
+   o que é notícia, e virou a regra 33. **As duas 🔴 e as seis 🟠 fecharam no
+   MESMO dia**, cada uma com o vermelho medido antes: o `DELETE` de cabine em
+   cascata (S-M1 `3f21fa7`), o carnê que nascia `AVULSA` e dobrava a venda
+   (S-M3 `ae4a8e7`, medido: 9 parcelas somando R$ 10.000,00 num contrato de
+   R$ 5.000,00), o CSV que engolia linha com `;` (S-M5 `d9e4d59`), a quitação
+   com R$ 0,00 (S-M2 `5d062bd`), o campo limpo zerando o estoque (S-M11
+   `aa206ce`), a régua do banco virgem que escrevia no dev (S-M15 `050fa33`,
+   agora prova o alvo), o alerta cego para a loja já no vermelho (S-M4
+   `7d2a6cd`) e a corrida das duas noivas pelo mesmo vestido (S-M7 `75882f0`,
+   `FOR UPDATE` + reconferência, com corrida determinística em teste).
+   **Restam 10 sobras, todas 🟡** — a tabela do `EXECUCAO.md` é a fila.
 
    O registro da sessão anterior — `2026-08-07-sessao-zerando-o-codigo.md` —
    continua valendo para tudo que não seja a fila: ele é quem conta como o
@@ -46,7 +49,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 17 sobras, 2 fechadas. As duas 🔴 caíram (S-M1 `3f21fa7`, S-M3 `ae4a8e7`); restam 6 🟠 e 9 🟡. É a fila do dia** |
+   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 18 sobras, 8 fechadas NO MESMO DIA: as duas 🔴 e as seis 🟠 caíram. As 10 abertas são todas 🟡. É a fila do dia** |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
