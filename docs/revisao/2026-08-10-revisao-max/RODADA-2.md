@@ -85,13 +85,22 @@ que ninguém consegue derrubar é o único que sobrevive.
 
 ## Estado
 
-- [x] Rodada lançada — `wf_44b3f415-631`, 11 localizadores + verificação em
-      pipeline (cada ângulo verifica assim que termina, sem esperar os outros)
+- [x] ~~Rodada lançada — `wf_44b3f415-631`~~ **A sessão caiu com as três
+      caixas de baixo desmarcadas, e o run morreu com ela** — a home foi
+      reconstruída e o journal do workflow morava nela. Nada dos onze ângulos
+      chegou ao disco. A página fez exatamente o que a última frase dela
+      prometia: foi daqui que se retomou.
+- [x] Rodada RELANÇADA — `wf_97ee70f8-68a`, mesma especificação, com a
+      mudança que a queda ensinou: **cada ângulo grava seus achados
+      verificados em `rodada-2-achados/NN-<angulo>.md` assim que o cético
+      dele termina**, em vez de esperar os onze. A próxima queda custa um
+      ângulo, não a rodada.
 - [ ] Localizadores concluídos
 - [ ] Verificação concluída
-- [ ] Achados escritos AQUI, no git
+- [ ] Achados escritos em `rodada-2-achados/`, no git
 
 **Enquanto estas caixas não estiverem marcadas, o que existe é esta página.**
 Se a sessão cair, é daqui que se retoma — e não da transcrição, que a regra 32
 diz não ser backup de nada. O handle do run está acima e serve para retomar
-enquanto o disco o guardar; **a página não depende dele**.
+enquanto o disco o guardar; **a página não depende dele** — e agora os
+achados também não dependem: eles pingam no repositório ângulo a ângulo.
