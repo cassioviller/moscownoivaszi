@@ -101,8 +101,21 @@ export function projetarCaixa(
     else if (dia <= limite) eventos.push({ dia, entradasC: 0, saidasC: centavos(saldoAberto(c)) });
   }
 
+  const curva = montarCurva(centavos(opts.saldoInicial), eventos);
+  /**
+   * S-M4 — o saldo de PARTIDA também é saldo, e nunca era testado.
+   *
+   * `montarCurva` só olha o negativo DEPOIS de aplicar um evento (ela é pura
+   * sobre eventos e não tem dia para o ponto de partida). Loja R$ 2.000,00 no
+   * vermelho HOJE e sem evento no horizonte: `diaNegativo` ficava null e o
+   * cartão não aparecia; com eventos, bastava a primeira entrada devolver o
+   * saldo ao positivo para o alerta sumir igual. Quem conhece o `hoje` é esta
+   * função, então é aqui que o vermelho de partida ganha o dia dele — e
+   * `diaNegativo` segue sendo o PRIMEIRO dia negativo, que nesse caso é hoje.
+   */
+  if (centavos(opts.saldoInicial) < 0) curva.diaNegativo = hoje;
   return {
-    curva: montarCurva(centavos(opts.saldoInicial), eventos),
+    curva,
     emAtraso: { aReceber: reais(atrasoReceberC), aPagar: reais(atrasoPagarC) },
     horizonteDias: opts.horizonteDias,
   };

@@ -6,6 +6,7 @@ import { TriangleAlert, Info } from "lucide-react";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, diaMesAno } from "@/lib/formatos";
+import { hojeLocal } from "@/lib/financeiro/datas";
 
 /**
  * "O caixa fica negativo em DD/MM" (E46) — o veredito da projeção onde a dona
@@ -108,10 +109,16 @@ export function AlertaCaixa() {
 
   if (!data.diaNegativo) return null;
 
+  // S-M4: quando o primeiro dia negativo é HOJE (a loja já está no vermelho),
+  // "fica negativo em <data>" seria uma frase falsa sobre um fato presente.
+  const jaNegativo = data.diaNegativo <= hojeLocal();
+
   return (
     <Alert variant="destructive" data-testid="alerta-caixa">
       <TriangleAlert className="h-4 w-4" />
-      <AlertTitle>Caixa fica negativo em {diaMesAno(data.diaNegativo)}</AlertTitle>
+      <AlertTitle>
+        {jaNegativo ? "O caixa já está negativo" : `Caixa fica negativo em ${diaMesAno(data.diaNegativo)}`}
+      </AlertTitle>
       <AlertDescription className="space-y-1">
         <p>
           Pelo que está previsto para os próximos {data.horizonteDias} dias, partindo dos{" "}

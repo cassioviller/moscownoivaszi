@@ -85,6 +85,37 @@ describe("E46 — alerta de caixa", () => {
     expect(a.menorSaldo).toEqual({ dia: "2026-07-30", valor: -1_000 });
   });
 
+  /**
+   * S-M4 — o saldo de PARTIDA também é saldo. `montarCurva` só testava o
+   * negativo DEPOIS de aplicar um evento: loja no vermelho HOJE e sem evento
+   * no horizonte não acendia nada, e com eventos bastava a primeira entrada
+   * devolver o saldo ao positivo para o alerta sumir igual.
+   */
+  it("S-M4 — a loja já negativa HOJE acende o alerta, mesmo sem evento nenhum", () => {
+    const a = alertaDeCaixa([ancora(-2_000)], [], [], [], opts);
+
+    expect(a.ancorado).toBe(true);
+    expect(a.saldoHoje).toBe(-2_000);
+    // VERMELHO ANTES: null — R$ 2.000,00 no vermelho e o cartão não aparecia.
+    expect(a.diaNegativo).toBe(HOJE);
+    expect(a.menorSaldo).toEqual({ dia: null, valor: -2_000 });
+  });
+
+  it("S-M4 — a entrada que salva a curva não apaga o vermelho de hoje", () => {
+    const a = alertaDeCaixa(
+      [ancora(-2_000)],
+      [prevista("2026-07-23", 6_000)],
+      [prevista("2026-07-28", 1_000)],
+      [],
+      opts,
+    );
+
+    // A curva termina positiva (−2.000 → +4.000 → +3.000), mas o PRIMEIRO dia
+    // negativo é hoje — e é hoje que a dona precisa saber.
+    expect(a.diaNegativo).toBe(HOJE);
+    expect(a.menorSaldo).toEqual({ dia: null, valor: -2_000 });
+  });
+
   it("cala quando o previsto cobre o horizonte inteiro", () => {
     const a = alertaDeCaixa(
       [ancora(5_000)],
