@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable, vestidosTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
-import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
+import { eq, and, count, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
@@ -234,13 +234,60 @@ router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void>
   res.json(UpdateCabineResponse.parse(cabine));
 });
 
+/**
+ * S-M1 — a cabine era o sexto DELETE cru, e o E115 não o alcançou.
+ *
+ * Cinco linhas: 204 mesmo sem apagar nada, nenhuma pergunta sobre uso, nenhum
+ * rastro e nenhuma transação. E `atendimentos.cabine_id` é CASCADE
+ * (`schema/atendimentos.ts:82`), então apagar a cabine **leva a agenda dela
+ * inteira** — as provas marcadas, as concluídas que são a história da ficha da
+ * noiva, e a fila de costura que desce dos atendimentos por outro CASCADE. A
+ * mesma cascata que o E115 fechou em `DELETE /atendimentos`, um nível acima e
+ * sem nenhuma das guardas.
+ *
+ * A régua é a do `DELETE /vestidos` (S-A25): quem tem história não se apaga,
+ * se DESATIVA — `cabines.ativo` existe desde sempre e a tela de Cabines &
+ * horário já o edita. Contamos a agenda inteira, passada e futura: o que dói
+ * na cascata é justamente o passado, que não se remarca.
+ */
 router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = DeleteCabineParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json(erroDeValidacao(params.error));
     return;
   }
-  await db.delete(cabinesTable).where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)));
+  const { lojaId, cabineId } = params.data;
+  const [cabine] = await db.select({ id: cabinesTable.id, nome: cabinesTable.nome, ativo: cabinesTable.ativo })
+    .from(cabinesTable)
+    .where(and(eq(cabinesTable.id, cabineId), eq(cabinesTable.lojaId, lojaId)));
+  if (!cabine) {
+    res.status(404).json({ error: "CABINE_NAO_ENCONTRADA", detalhe: "Esta cabine não existe nesta loja." });
+    return;
+  }
+
+  const [agenda] = await db.select({ n: count() }).from(atendimentosTable)
+    .where(and(eq(atendimentosTable.cabineId, cabineId), eq(atendimentosTable.lojaId, lojaId)));
+  if (agenda!.n > 0) {
+    res.status(409).json({
+      error: "CABINE_COM_AGENDA",
+      detalhe: `Esta cabine tem ${agenda!.n} atendimento${agenda!.n === 1 ? "" : "s"} na agenda e não pode ser apagada — apagá-la levaria essa história junto. Desative-a se ela saiu de uso.`,
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "CABINE_REMOVIDA",
+      entidade: "cabine",
+      entidadeId: cabineId,
+      // Depois do DELETE não sobra linha nenhuma de onde reconstituir a cabine:
+      // o nome é o que alguém procura ao perguntar "cadê a Cabine 3?".
+      detalhe: { nome: cabine.nome, ativo: cabine.ativo },
+    });
+    await tx.delete(cabinesTable).where(and(eq(cabinesTable.id, cabineId), eq(cabinesTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 

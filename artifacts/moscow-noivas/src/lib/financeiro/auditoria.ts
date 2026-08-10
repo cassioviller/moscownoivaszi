@@ -47,6 +47,9 @@ export const ROTULO_ACAO: Record<string, string> = {
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
+  // S-M1: o sexto DELETE cru da família. Só chega aqui a cabine SEM agenda — a
+  // que tem é recusada com 409 —, e o detalhe guarda o nome dela.
+  CABINE_REMOVIDA: "Cabine removida",
   // E120: a venda que trocou de dona entre o orçamento e o contrato — é ela
   // que decide de quem é a comissão, por isso a linha existe e é filtrável.
   CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
@@ -86,6 +89,7 @@ export const ACOES_FILTRAVEIS = [
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
   "AVARIA_REMOVIDA",
+  "CABINE_REMOVIDA",
   "CONTRATO_VENDEDORA_DIVERGENTE",
   "REGISTRO_COBRANCA_DESFEITO",
 ] as const;

@@ -40,6 +40,12 @@ import {
  * apagar nada e levava a fila de costura junto. `DELETE /orcamentos/:id`
  * apagava um APROVADO com o hash do aceite dentro. E `DELETE /avarias/:id`
  * tinha guarda e não tinha trilha.
+ *
+ * **S-M1 (2026-08-10): eram SEIS.** A cabine ficou de fora da varredura do
+ * E115 e sobreviveu mais três semanas como delete cru — o único da família
+ * cuja cascata leva ATENDIMENTOS inteiros, e por baixo deles a fila de
+ * costura. O caso novo mora aqui, e não em arquivo próprio, porque é
+ * literalmente o sexto de cinco.
  */
 describe("E115 — nada some sem 404, contagem e rastro", () => {
   let f: Fixture;
@@ -181,6 +187,56 @@ describe("E115 — nada some sem 404, contagem e rastro", () => {
     expect((await trilha("ATENDIMENTO_REMOVIDO", agendado.id)).length).toBe(1);
 
     await agent.delete(`/api/lojas/${f.lojaId}/atendimentos/${agendado.id}`).expect(404);
+  });
+
+  it("S-M1 — cabine com agenda não se apaga; a vazia sai com trilha", async () => {
+    const lead = await criarLead(f);
+
+    async function cabine() {
+      const [c] = await db
+        .insert(cabinesTable)
+        .values({ id: randomUUID(), lojaId: f.lojaId, nome: `Cabine ${randomUUID().slice(0, 6)}` })
+        .returning();
+      return c;
+    }
+
+    // A cabine que a loja usa todo dia: uma prova AGENDADA e uma CONCLUÍDA. A
+    // concluída é a que dói — ela é a história da ficha da noiva e não se
+    // remarca. VERMELHO ANTES: 204, e as duas sumiam pelo CASCADE de
+    // `atendimentos.cabine_id`, sem 409, sem rastro e sem transação.
+    const emUso = await cabine();
+    // Os offsets são exclusivos deste `it`: `atendimentos` tem UNIQUE (loja,
+    // vendedora, inicio) e a fixture da loja é compartilhada pelo arquivo.
+    for (const [situacao, quando] of [["CONCLUIDO", -41], ["AGENDADO", 41]] as const) {
+      await db.insert(atendimentosTable).values({
+        id: randomUUID(),
+        lojaId: f.lojaId,
+        leadId: lead.id,
+        cabineId: emUso.id,
+        vendedoraId: f.vendedoraId,
+        inicio: dataFutura(quando),
+        situacao,
+        atendidoEm: situacao === "CONCLUIDO" ? dataFutura(quando) : null,
+      });
+    }
+    const r = await agent.delete(`/api/lojas/${f.lojaId}/cabines/${emUso.id}`).expect(409);
+    expect(r.body.error).toBe("CABINE_COM_AGENDA");
+    expect(r.body.detalhe).toContain("2 atendimentos");
+    // E o 409 não é conselho: a agenda continua lá.
+    expect(
+      (await db.select().from(atendimentosTable).where(eq(atendimentosTable.cabineId, emUso.id))).length,
+    ).toBe(2);
+
+    // A cabine criada por engano continua saindo — e agora deixa rastro.
+    // VERMELHO ANTES: trilha vazia.
+    const vazia = await cabine();
+    await agent.delete(`/api/lojas/${f.lojaId}/cabines/${vazia.id}`).expect(204);
+    const linhas = await trilha("CABINE_REMOVIDA", vazia.id);
+    expect(linhas.length).toBe(1);
+    expect((linhas[0]!.detalhe as { nome: string }).nome).toBe(vazia.nome);
+
+    // VERMELHO ANTES: 204 sobre o nada, e sobre cabine de OUTRA loja também.
+    await agent.delete(`/api/lojas/${f.lojaId}/cabines/${vazia.id}`).expect(404);
   });
 
   it("orçamento APROVADO não se apaga — o hash do aceite mora nele", async () => {

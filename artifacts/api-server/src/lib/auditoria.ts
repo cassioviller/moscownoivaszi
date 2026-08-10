@@ -72,6 +72,11 @@ export const ACOES_AUDITORIA = [
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
   "AVARIA_REMOVIDA",
+  // S-M1: o sexto DELETE cru, que o E115 não alcançou. A cabine é o único cuja
+  // cascata leva ATENDIMENTOS inteiros — a guarda nova recusa apagar cabine com
+  // agenda, e o rastro cobre a que não tem: depois do DELETE não sobra linha de
+  // onde reconstituir nem o nome dela.
+  "CABINE_REMOVIDA",
   // E120/S-D4: contrato nascido de orçamento com OUTRA vendedora no corpo. A
   // divergência é aceita (P1 — a venda pode legitimamente ser de outra pessoa)
   // mas é ela que decide de quem é a comissão, então deixa rastro: quem montou
@@ -136,6 +141,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
+  CABINE_REMOVIDA: "Cabine removida",
   CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
   USUARIO_EXCLUIDO: "Pessoa excluída do cadastro (ato global)",
@@ -187,6 +193,8 @@ export interface RegistroAuditoria {
     | "orcamento"
     | "avaria"
     | "conciliacao"
+    // S-M1 — a cabine, pelo mesmo motivo das cinco acima.
+    | "cabine"
     // E123 — o desfazer do registro de cobrança.
     | "registro_cobranca"
     // S3 — a loja como ENTIDADE, e não como escopo: é o que ela é quando o
