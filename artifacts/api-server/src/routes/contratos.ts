@@ -512,6 +512,43 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
 
   // Persistência atômica: contrato + parcelas + snapshot de itens.
   const result = await db.transaction(async (tx) => {
+    /**
+     * S-M7 — a guarda de reserva exclusiva, relida SOB TRANCA.
+     *
+     * `presosPorContratoAtivo` é lido lá em cima no pool global, fora desta
+     * transação — e em READ COMMITTED duas vendedoras no mesmo segundo liam
+     * as duas "livre" e a PK de `contrato_bloqueios` (contratoId, bloqueioId)
+     * aceitava os dois pares: o mesmo vestido prometido a duas noivas, o caso
+     * exato que o comentário do E107 descreve, reaberto pela janela entre a
+     * leitura e a escrita. A guarda de cima FICA — ela dá os quatro erros na
+     * ordem que os testes pregam, sem custo de transação para o caminho
+     * errado; o que muda é que ela deixou de ser a última palavra.
+     *
+     * A forma é a do DELETE /admin/lojas (S33): `FOR UPDATE` na linha-pai —
+     * o INSERT do vínculo do concorrente precisa de `FOR KEY SHARE` nela, que
+     * conflita — e a reconferência como statement NOVO, que em READ COMMITTED
+     * enxerga o que o vencedor commitou. A tranca vai em ordem ORDENADA:
+     * dois contratos prendendo as mesmas peças em ordens diferentes se
+     * serializariam num deadlock em vez de numa fila.
+     */
+    if (bloqueioIds.length > 0) {
+      for (const bloqueioId of [...bloqueioIds].sort()) {
+        await tx.select({ id: bloqueioVestidosTable.id })
+          .from(bloqueioVestidosTable)
+          .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+          .for("update");
+      }
+      const presosAgora = await tx
+        .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+        .from(contratoBloqueiosTable)
+        .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+        .where(and(
+          inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
+          eq(contratosTable.status, "ATIVO"),
+        ));
+      if (presosAgora.length > 0) return { corrida: true as const };
+    }
+
     const [contrato] = await tx.insert(contratosTable).values({
       id: randomUUID(),
       lojaId,
@@ -664,11 +701,22 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         .where(eq(leadsTable.id, lead.id));
     }
 
-    return contrato;
+    return { contrato };
   });
 
+  // S-M7: quem perde a corrida recebe o MESMO 409 da guarda lenta — para a
+  // vendedora não existe diferença entre perder por um segundo e por um dia.
+  if ("corrida" in result) {
+    res.status(409).json({
+      error: "RESERVA_JA_CONTRATADA",
+      detalhe: "Esta reserva de vestido já está presa por outro contrato ativo.",
+      campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva já é de outro contrato" }],
+    });
+    return;
+  }
+
   const fullContrato = await db.query.contratosTable.findFirst({
-    where: eq(contratosTable.id, result.id),
+    where: eq(contratosTable.id, result.contrato.id),
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
 
