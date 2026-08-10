@@ -45,7 +45,27 @@ describe("E154 — janela de uso do contrato", () => {
       { dataCasamento: meioDia("2026-09-19"), dataRetirada: meioDia("2026-09-18"), dataDevolucao: null },
       REGRA_DEFAULT,
     );
-    expect(j).toEqual({ inicio: "2026-09-16", fim: "2026-09-21" });
+    expect(j?.inicio).toBe("2026-09-16");
+    // Este teste pregava `fim: "2026-09-21"` de passagem — era a S-M6: o
+    // previsto fechando a janela de uma peça que ainda está na rua.
+    expect(j?.fim).toBeNull();
+  });
+
+  /**
+   * S-M6 — retirada sem devolução deixa a janela ABERTA mesmo COM casamento
+   * marcado. O docstring sempre prometeu ("como em `janelasDoBloqueio`") e o
+   * código fechava em `casamento + usoDiasDepois`: o saiote devolvido com
+   * atraso aparecia livre na contagem enquanto a metade do vestido, do mesmo
+   * contrato, seguia presa — as duas discordando sobre o mesmo dia.
+   */
+  it("S-M6 — saiu e não voltou, COM casamento marcado: a janela também fica aberta", () => {
+    const j = janelaDeUsoDoContrato(
+      { dataCasamento: meioDia("2026-09-19"), dataRetirada: meioDia("2026-09-16"), dataDevolucao: null },
+      REGRA_DEFAULT,
+    );
+    // VERMELHO ANTES: fim "2026-09-21" — e em 22/09 a peça contava como livre.
+    expect(j).toEqual({ inicio: "2026-09-16", fim: null });
+    expect(janelaCobre(j!, "2026-09-22")).toBe(true);
   });
 
   it("saiu e não voltou, sem casamento marcado: janela ABERTA — a peça está com a noiva", () => {

@@ -63,8 +63,16 @@ export function janelaDeUsoDoContrato(
   if (retirada && (inicio === null || retirada < inicio)) inicio = retirada;
   if (inicio === null) return null;
 
-  // Sem devolução real, o previsto manda; sem casamento, a janela é aberta.
-  const fimDoUso = devolucao ?? (casamento ? addDias(casamento, regra.usoDiasDepois) : null);
+  // S-M6 — retirada sem devolução deixa a janela ABERTA, como o docstring
+  // acima sempre prometeu e como `janelasDoBloqueio` faz na metade do vestido
+  // (`disponibilidade.ts:230`): a peça está com a noiva até alguém registrar a
+  // volta, e o previsto não pode fechá-la por conta própria. O código fechava
+  // em `casamento + usoDiasDepois` mesmo com a peça na rua — o saiote
+  // devolvido com atraso aparecia livre na contagem enquanto as duas metades
+  // do MESMO contrato discordavam sobre o mesmo dia. Sem retirada real, o
+  // previsto manda; sem casamento, a janela é aberta.
+  const fimDoUso =
+    devolucao ?? (retirada ? null : casamento ? addDias(casamento, regra.usoDiasDepois) : null);
   // S-A16: a lavagem do ESTOQUE estica o fim quando a loja a configurou —
   // devolvida em D, a peça só volta à arara em D + lavagem. Com 0 (o default
   // e o comportamento histórico), esta linha é identidade.
