@@ -92,10 +92,22 @@ function sobrepoe(iniA: number, fimA: number, iniB: number, fimB: number): boole
 
 /**
  * Expediente de quem ainda não configurou nada. Espelha os defaults das colunas
- * `atendimento_abertura_hora`/`atendimento_fechamento_hora` do schema — uma loja
- * sem linha em `regra_disponibilidade` precisa de agenda mesmo assim.
+ * de `regra_disponibilidade` do schema — uma loja sem linha lá precisa de
+ * agenda mesmo assim.
+ *
+ * S-M13 — o espelho ficou em 19h quando a S-A8 levou o schema para 20h, e não
+ * carregava `dias` nem `provaDuracao`: a loja recém-criada perdia 19:00 e
+ * 19:30 da grade, e a prova das 18:30 passava como se durasse 30 min. Um
+ * espelho sem prova é uma frase (regra 30) — a equivalência agora é pregada
+ * campo a campo contra o schema no teste do E147, junto com a do
+ * `HORARIO_PADRAO`, que é a outra cópia da mesma régua.
  */
-export const EXPEDIENTE_PADRAO: Expediente = { aberturaHora: 9, fechamentoHora: 19 };
+export const EXPEDIENTE_PADRAO: Expediente = {
+  aberturaHora: 9,
+  fechamentoHora: 20,
+  dias: [0, 1, 2, 3, 4, 5, 6],
+  provaDuracao: 2,
+};
 
 const instante = (v: Date | string): number => new Date(v).getTime();
 

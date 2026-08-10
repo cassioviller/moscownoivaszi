@@ -17,6 +17,7 @@ import { regraDisponibilidadeTable } from "@workspace/db";
 import { calcularComissao, validarFaixas, type FaixaCalc } from "../lib/comissao";
 import { normalizarAcessos, MODULOS, ACOES } from "../lib/permissoes";
 import { centavos } from "@workspace/financeiro-core";
+import { EXPEDIENTE_PADRAO } from "@workspace/agenda-core";
 
 /**
  * E147 — a configuração inicial, conferida no número.
@@ -233,6 +234,28 @@ describe("E147 — agenda e ambiente", () => {
     expect(defaultDe("atendimento_abertura_hora")).toBe(HORARIO_PADRAO.atendimentoAberturaHora);
     expect(defaultDe("atendimento_fechamento_hora")).toBe(HORARIO_PADRAO.atendimentoFechamentoHora);
     expect(defaultDe("dias_funcionamento")).toEqual([...HORARIO_PADRAO.diasFuncionamento]);
+  });
+
+  /**
+   * S-M13 — e a TERCEIRA cópia da mesma régua também tem de bater. O
+   * `EXPEDIENTE_PADRAO` do agenda-core é o fallback da loja sem linha em
+   * `regra_disponibilidade`, e o docstring dele afirma espelhar o schema desde
+   * o começo — mas ele ficou em 19h quando a S-A8 levou o default para 20h, e
+   * não carregava dias nem duração de prova: a loja recém-criada perdia 19:00
+   * e 19:30 da grade, e a prova das 18:30 passava como se durasse 30 min. O
+   * mesmo drift da mesma frase, um arquivo adiante.
+   */
+  it("S-M13 — o EXPEDIENTE_PADRAO do agenda-core é o mesmo default do schema", () => {
+    const doSchema = getTableConfig(regraDisponibilidadeTable);
+    const defaultDe = (coluna: string) =>
+      doSchema.columns.find((c) => c.name === coluna)?.default;
+
+    // VERMELHO ANTES: fechamentoHora 19 contra default 20, dias e
+    // provaDuracao ausentes.
+    expect(EXPEDIENTE_PADRAO.aberturaHora).toBe(defaultDe("atendimento_abertura_hora"));
+    expect(EXPEDIENTE_PADRAO.fechamentoHora).toBe(defaultDe("atendimento_fechamento_hora"));
+    expect(EXPEDIENTE_PADRAO.dias).toEqual(defaultDe("dias_funcionamento"));
+    expect(EXPEDIENTE_PADRAO.provaDuracao).toBe(defaultDe("prova_duracao"));
   });
 
   it("sem env, a configuração é a do desenvolvimento de sempre", () => {
