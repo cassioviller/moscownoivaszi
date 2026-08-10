@@ -158,11 +158,34 @@ async function main(): Promise<void> {
     // state apontando para um banco que já foi apagado.
     const arquivoEstado = path.join(RAIZ, "e2e/.state.json");
     const estadoAntes = existsSync(arquivoEstado) ? readFileSync(arquivoEstado) : null;
-    const globalSetup = (await import(path.join(RAIZ, "e2e/global-setup"))).default as () => Promise<void>;
+    /**
+     * S-M15 — a troca da env vem ANTES do import, e a ordem é o defeito que
+     * esta régua teve: `@workspace/db` abre o pool em `DATABASE_URL` no
+     * momento do import (o comentário do passo anterior já sabia), e o import
+     * do `global-setup` é quem o importa. Com o import primeiro, o pool nascia
+     * no banco de DEV: o setup rodava lá — onde o admin já existe e nada
+     * dispara o ramo S-D38 —, terminava sem erro, e a régua declarava sucesso
+     * sobre um banco que nunca tocou. O único passo que justifica o script era
+     * o único que não acontecia.
+     */
     process.env.DATABASE_URL = URL_VIRGEM;
+    const globalSetup = (await import(path.join(RAIZ, "e2e/global-setup"))).default as () => Promise<void>;
     try {
       await globalSetup();
       afirmar("o setup do E2E terminou sem erro", true, "");
+      // E a prova do ALVO, que sobrevive a qualquer refactor de import: as
+      // fixtures de id fixo do setup têm de estar NESTE banco. Se um import
+      // futuro renascer o pool cedo demais, o setup escreve no dev, o
+      // descartável fica vazio, e esta linha reprova em vez de deixar a régua
+      // mentir verde.
+      const fixtures = Number(
+        consultar("select count(*) from vestidos where id = 'e2e-vestido-1'")[0]?.[0] ?? "0",
+      );
+      afirmar(
+        "o setup escreveu no banco descartável, não no de dev (S-M15)",
+        fixtures === 1,
+        "o e2e-vestido-1 não está no banco descartável — o pool do setup nasceu apontando para outro banco",
+      );
     } catch (e) {
       const causa = (e as { cause?: { code?: string; constraint?: string } }).cause;
       afirmar(
