@@ -140,7 +140,7 @@ function InteresseForm({
   };
   const retrato = (v: typeof inicial) =>
     JSON.stringify([Object.entries(v.selecoes).sort(), v.algoAMais, v.naoQuerUsar, v.tetoOrcamento]);
-  useConfirmarSaida(
+  const { liberarSaida } = useConfirmarSaida(
     !salvou && retrato({ selecoes, algoAMais, naoQuerUsar, tetoOrcamento }) !== retrato(inicial),
   );
 
@@ -186,7 +186,11 @@ function InteresseForm({
         queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey(activeLojaId!) }),
       ]);
       toast({ title: "Interesses salvos" });
+      // `setSalvou` só vale no próximo render, e o `navigate` é agora: sem
+      // `liberarSaida`, o bloqueio lê o valor velho e cancela a navegação do
+      // próprio salvamento. Foi assim que o E2E caiu em `05-leads`.
       setSalvou(true);
+      liberarSaida();
       navigate(`/loja/${lojaId}/noivas/${leadId}`);
     } catch (err) {
       toast({

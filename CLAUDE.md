@@ -13,12 +13,98 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **O rastreador da rodada em curso** — hoje
-   `docs/revisao/2026-07-25-rodada-6/EXECUCAO.md`. Ele traz o estado de cada
-   épico, o diário das sessões e a tabela de **Sobras**. A seção "Como retomar"
-   é o roteiro.
+2. **A trilha em curso** — `docs/revisao/2026-08-10-revisao-max/`, aberta em
+   2026-08-10. A primeira coisa que ela diz é a que mais muda o dia: **o
+   backlog de código voltou, e ele é NOVO.** A revisão `max` do aplicativo
+   inteiro (68 agentes, 5,58 M tokens) rodou sobre um repositório com ZERO
+   sobras de código e achou **15 defeitos**. As 15 foram **conferidas âncora
+   por âncora antes de virarem trabalho** (regra 20) e as 15 são verdadeiras —
+   o que é notícia, e virou a regra 33. **Catorze das dezoito fecharam no
+   MESMO dia**, cada uma com o vermelho medido antes — as duas 🔴, as seis 🟠
+   e seis 🟡. As mais graves: o `DELETE` de cabine em cascata (S-M1
+   `3f21fa7`), o carnê que nascia `AVULSA` e dobrava a venda (S-M3 `ae4a8e7`,
+   medido: 9 parcelas somando R$ 10.000,00 num contrato de R$ 5.000,00), a
+   corrida das duas noivas pelo mesmo vestido (S-M7 `75882f0`, `FOR UPDATE` +
+   reconferência, corrida determinística em teste) e a régua do banco virgem
+   que escrevia no dev e declarava sucesso (S-M15 `050fa33` — agora ela prova
+   o alvo). A S-M4 ainda derrubou o spec 32 do E2E ao expor que a loja da
+   suíte estava GENUINAMENTE negativa — a fixture vivia no ponto cego que a
+   sobra fechou (`fc8729d`). **Restam 4, todas 🟡**: S-M9 (varredura
+   criar×editar, forma da S36), S-M18 (varredura check-then-write, forma da
+   S-M7), S-M10 (campo vazio = apague, toca contrato e tela) e S-M17 (espera
+   dados de banco real, não código). A tabela do `EXECUCAO.md` é a fila.
 
-Se a rodada mudar, é aqui que o ponteiro muda.
+   O registro da sessão anterior — `2026-08-07-sessao-zerando-o-codigo.md` —
+   continua valendo para tudo que não seja a fila: ele é quem conta como o
+   backlog chegou a zero. (E `2026-08-06-sessao-faixa-b.md` continua sendo onde
+   as regras 28–31 nasceram.)
+
+   O registro traz também o que a execução ensinou e virou regra (28–31 do
+   METODO), e a régua de varredura que continua valendo: **enumere com
+   `git ls-files`, não com `find`/`grep -r`** — 65% do que o disco devolvia era
+   cópia de worktree órfão, e desde `c98341e` as **16 varreduras** do
+   repositório enumeram pelo versionamento, com piso de população.
+
+   **A trilha em curso é a da revisão max; o resto é backlog de SOBRAS.** As
+   tabelas de Sobras continuam sendo a fonte da verdade de cada rastreador.
+   **Conte-as, não deduza** — a linha aberta é a que NÃO está riscada, e o fecho
+   de 2026-08-07 achou sete fechadas sem risco justamente por contar:
+
+   | Trilha | Rastreador | Estado |
+   |---|---|---|
+   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 18 sobras, 14 fechadas NO MESMO DIA. Restam 4 🟡: S-M9 e S-M18 (varreduras), S-M10 (campo vazio = apague), S-M17 (espera dados, não código). É a fila do dia** |
+   | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
+   | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
+   | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
+
+   **São 17 sobras abertas: as 15 de código da revisão max, mais as 2 que
+   esperam gente** — S-A2 (as fotos do caderno) e S-A27 (classificar as 496
+   peças com a dona). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
+   como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
+   paga, a folha respondida (doze por decisão escrita) e as duas decisões que
+   viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no
+   mesmo dia — e **o plano das cinco fases está EXECUTADO de
+   ponta a ponta**: fase 0 e 1 no dia 06 (`49c5cdb`), fase 2 em seis épicos
+   seriais (`60adc7c` → `f72628c`), fase 3 em quatro agentes de faixa B
+   aplicados em série (B3 `cbe79f6`, B4 `cc9720f`, B1 `c98341e`, B2
+   `f4cb527`), fase 4 nos sete épicos (S32 `f901275`, S33 `24e9054`, S35
+   `cafe56c`, S10+S-A17 `8b9c574`, S30+S21 `d8ef73f`). Naquele dia não havia
+   NENHUMA linha de código aberta em rastreador nenhum — a primeira vez desde a
+   rodada 6, e o estado durou três dias. **A folha**
+   (`docs/propostas/2026-08-06-folha-de-perguntas.md`) guarda as
+   treze respostas com a data — o que era conversa virou decisão registrada.
+
+   A frase abaixo é a da conferência, e continua valendo pelo mesmo motivo: a
+   **conferência de 2026-08-05** (`docs/revisao/2026-08-05-conferencia-de-sobras.md`)
+   passou sete agentes de leitura pura sobre 48 linhas e achou três defeitos que
+   quatro rodadas de revisão não tinham achado — os três na fronteira entre dois
+   arquivos, que é o que a regra 22 diz não se pegar lendo nenhum dos dois. **As
+   três fecharam no mesmo dia:** S37 (`85d5108`), S-D29 (`042d1b5`) e S-A25
+   (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
+   é que agora é verdade.
+
+   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-10 o
+   `origin/main` foi de `e624e4e` para `f88eff2` — **31 commits** (a revisão
+   max inteira), fast-forward puro, com autorização da dona no mesmo dia. O
+   costume vem de 2026-08-07, quando o remoto destravou de 322 commits e o
+   custo de deixá-lo para trás ficou medido: **todo worktree de agente nasce
+   em `origin/main`**, e cada agente atrasado gastava o primeiro gesto se
+   reposicionando (regra 29). Confira com
+   `git rev-list --count origin/main..main` antes de assumir que ainda está em
+   dia — esta linha envelhece a cada commit, e já envelheceu quatro vezes.
+
+   Hoje a régua é **API 1105 · frontend 534 · E2E 165 · typecheck verde em 5
+   projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
+   `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
+   uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
+   exercita o caminho da primeira execução — banco descartável, seed,
+   `global-setup` — e é a única que enxerga defeito de instalação nova. **Rode-a
+   antes de mexer em seed, schema ou `global-setup`**; leva ~40 s.
+
+Se a trilha mudar, é aqui que o ponteiro muda. **Foi a S-A5 da arqueologia que
+mandou este ponteiro estar certo** — ele passou uma rodada inteira apontando
+para a anterior, e quem abrisse a sessão leria o estado errado como se fosse o
+de hoje.
 
 ## As regras que mais mordem no dia a dia
 

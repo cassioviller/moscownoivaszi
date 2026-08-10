@@ -13,7 +13,7 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { diaParaISO } from "@/lib/formatos";
 import { NoivaForm, type NoivaFormValues } from "../noiva-form";
-import { isoParaDia } from "../helpers";
+import { diaDeNegocio } from "@/lib/financeiro/datas";
 import { podeNoModulo } from "@/lib/permissoes";
 import { converteu } from "@/lib/funil";
 import { mensagemApi } from "@/lib/erro-api";
@@ -110,7 +110,7 @@ export default function EditarNoiva() {
             noivoNome: lead.noivoNome ?? "",
             whatsapp: lead.whatsapp ?? "",
             cerimonialista: lead.cerimonialista ?? "",
-            casamentoData: lead.casamentoData ? isoParaDia(lead.casamentoData) : "",
+            casamentoData: lead.casamentoData ? diaDeNegocio(lead.casamentoData) : "",
             casamentoHorario: lead.casamentoHorario ?? "",
             casamentoLocal: lead.casamentoLocal ?? "",
             origem: lead.origem,

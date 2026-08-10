@@ -24,8 +24,6 @@ import {
   resumoCaixa,
   tendenciaCaixa,
   horizonteAberto,
-  entradasDoIntervalo,
-  saidasDoIntervalo,
   entradasPorMeio,
   dreDoIntervalo,
   STATUS_ABERTO,
@@ -63,6 +61,7 @@ import {
   ExportarFolhaQueryParams,
   ExportarContasPagarQueryParams,
   ExportarParcelasQueryParams,
+  ExportarFluxoQueryParams,
   EnviarContabilidadeBody,
   EnviarContabilidadeResponse,
   GetFluxoCaixaQueryParams,
@@ -72,6 +71,7 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { usuarioNaLoja } from "../lib/escopo-loja";
+import { ultimoContatoPorLead } from "../lib/ultimo-contato";
 // C10/E104: `addDias`/`inicioDoDia` são régua de DATA DE NEGÓCIO e moram no
 // financeiro-core. Vinham do módulo de disponibilidade de VESTIDOS, que é outro
 // assunto — a duplicação sobreviveu porque as duas cópias estavam certas.
@@ -84,7 +84,9 @@ import {
   type ItemContabil,
 } from "../lib/folha";
 import { montarContasDaCompetencia, TIPOS_RECORRENCIA } from "../lib/recorrencias";
-import { montarCsv } from "../lib/csv";
+import { montarCsv, responderCsv } from "../lib/csv";
+import { intervaloValidado } from "../lib/intervalo";
+import { movimentosDoFluxo, linhasCsvFluxo } from "../lib/fluxo";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -112,19 +114,16 @@ router.use("/lojas/:lojaId/contas-pagar", requireModulo("financeiro"));
 // `de`/`ate` recortam por vencimento (dia local, inclusivo nas duas pontas),
 // no mesmo padrão do GET /pagamentos. O join contrato→lead existe para a
 // cobrança saber quem cobrar sem rebuscar todos os contratos — o `.parse`
-// reduz o contrato inteiro ao `{leadId, lead}` do schema.
+// reduz o contrato inteiro ao `{leadId, lead}` do schema, e o lead ao recorte
+// `ParcelaLead` (S-D37): nome, WhatsApp e o último contato. O agregado
+// `ultimoContatoPorLead` (S-D13) é o que deixa a marca de "cobrada hoje" da
+// fila de mensagens sobreviver ao F5 — a tela compara o instante contra o dia
+// no fuso da loja.
 router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ListParcelasQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate, status, recebidasDe } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const q = intervaloValidado(res, ListParcelasQueryParams.safeParse(req.query));
+  if (!q) return;
+  const { de, ate, status, recebidasDe } = q;
 
   const parcelas = await db.query.parcelasTable.findMany({
     where: and(
@@ -141,7 +140,21 @@ router.get("/lojas/:lojaId/financeiro/parcelas", async (req, res): Promise<void>
     with: { contrato: { with: { lead: true } } },
     orderBy: parcelasTable.vencimento,
   });
-  res.json(ListParcelasResponse.parse(parcelas));
+  const contatos = await ultimoContatoPorLead(
+    [...new Set(parcelas.map((p) => p.contrato?.leadId).filter((id): id is string => !!id))],
+  );
+  const comContato = parcelas.map((p) =>
+    p.contrato?.lead
+      ? {
+          ...p,
+          contrato: {
+            ...p.contrato,
+            lead: { ...p.contrato.lead, ultimoContatoEm: contatos.get(p.contrato.leadId) ?? null },
+          },
+        }
+      : p,
+  );
+  res.json(ListParcelasResponse.parse(comContato));
 });
 
 router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {
@@ -177,16 +190,9 @@ router.post("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<
 // torna a saída estornável e a fatia rateada que de fato saiu do caixa.
 router.get("/lojas/:lojaId/financeiro/contas-pagar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ListContasPagarQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate, status } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const q = intervaloValidado(res, ListContasPagarQueryParams.safeParse(req.query));
+  if (!q) return;
+  const { de, ate, status } = q;
 
   const contas = await db.query.contasPagarTable.findMany({
     where: and(
@@ -440,16 +446,13 @@ router.delete("/lojas/:lojaId/contas-pagar/:contaId", async (req, res): Promise<
 // início do dia seguinte (exclusivo) para pegar o dia inteiro.
 router.get("/lojas/:lojaId/financeiro/pagamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ListPagamentosQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Filtro inválido (de/ate esperam YYYY-MM-DD)" });
-    return;
-  }
-  const { de, ate, colaboradorId } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  // O corpo do parse recusado é o histórico DESTA rota — preservado à letra.
+  const q = intervaloValidado(res, ListPagamentosQueryParams.safeParse(req.query), {
+    error: "FILTRO_INVALIDO",
+    detalhe: "Filtro inválido: de/ate esperam YYYY-MM-DD.",
+  });
+  if (!q) return;
+  const { de, ate, colaboradorId } = q;
 
   const pagamentos = await db.query.pagamentosTable.findMany({
     where: and(
@@ -745,12 +748,7 @@ router.get("/lojas/:lojaId/financeiro/auditoria/exportar", async (req, res): Pro
   }
 
   const sufixo = parsed.data.de && parsed.data.ate ? `-${parsed.data.de}-a-${parsed.data.ate}` : "";
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="auditoria${sufixo}.csv"`);
-  // BOM: sem ele o Excel lê UTF-8 como latin-1 e "comissão" vira "comissÃ£o".
-  res.send("﻿" + montarCsv(csv));
+  responderCsv(res, `auditoria${sufixo}`, montarCsv(csv));
 });
 
 // ───────────────────────── Recorrências (E48) ─────────────────────────
@@ -939,40 +937,9 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
   ]);
 
   const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
-  const entradas = entradasDoIntervalo(parcelasRecebidas, intervalo);
-
-  const descricaoParcela = (p: (typeof parcelasRecebidas)[number]): string =>
-    p.descricao || (p.numero === 0 ? "Entrada/sinal" : `Parcela ${p.numero}`);
-
-  const movimentos = [
-    ...entradas.map((p) => ({
-      id: `parcela-${p.id}`,
-      tipo: "ENTRADA" as const,
-      data: p.recebidoEm!,
-      valor: p.valorRecebido ?? 0,
-      descricao: descricaoParcela(p),
-      rotulo: p.contrato?.lead?.noivaNome ?? null,
-      contratoId: p.contratoId,
-    })),
-    ...saidasDoIntervalo(pagamentos, intervalo).map((pg) => {
-      const contas = (pg.itens ?? [])
-        .map((i) => i.contaPagar)
-        .filter((c): c is NonNullable<typeof c> => !!c);
-      return {
-        id: `pagamento-${pg.id}`,
-        tipo: "SAIDA" as const,
-        data: pg.data,
-        valor: pg.valorPago,
-        descricao: contas.length > 0 ? contas.map((c) => c.descricao).join(" · ") : "Pagamento",
-        rotulo:
-          pg.colaborador?.nome ??
-          contas.find((c) => c.fornecedor)?.fornecedor ??
-          contas.find((c) => c.categoria)?.categoria ??
-          null,
-        contratoId: null,
-      };
-    }),
-  ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  // S21: a montagem morava inline aqui; foi para lib/fluxo.ts para o export
+  // CSV derivar da MESMA linha do tempo em vez de copiá-la.
+  const movimentos = movimentosDoFluxo(parcelasRecebidas, pagamentos, intervalo);
 
   res.json(
     GetFluxoCaixaResponse.parse({
@@ -988,6 +955,56 @@ router.get("/lojas/:lojaId/financeiro/fluxo", async (req, res): Promise<void> =>
       horizonte: horizonteAberto(parcelasAbertas, contasAbertas),
       movimentos,
     }),
+  );
+});
+
+/**
+ * S21/F34 — o pacote da contabilidade, derivado do fluxo. Os quatro exports
+ * recortam por réguas diferentes (parcelas por VENCIMENTO, folha por data de
+ * pagamento); juntá-los daria regime misto. Este sai dos MESMOS motores da
+ * rota do fluxo (`movimentosDoFluxo` + `resumoCaixa`), com as MESMAS duas
+ * consultas recortadas ao intervalo — entradas e saídas pela data REAL, no dia
+ * local da loja — e por isso fecha com a tela e com o DRE por construção.
+ *
+ * SÓ LÊ, como os outros exports: um GET tem de ser seguro para
+ * refresh/prefetch. `ini`/`fim` são os params da tela do fluxo (a URL dela é a
+ * fonte do intervalo), e ausente/invertido resolve como lá: `resolverIntervalo`
+ * cai no mês corrente e troca pontas trocadas.
+ */
+router.get("/lojas/:lojaId/financeiro/fluxo/exportar", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const q = intervaloValidado(res, ExportarFluxoQueryParams.safeParse(req.query), {
+    error: "FILTRO_INVALIDO",
+  });
+  if (!q) return;
+  const intervalo = resolverIntervalo(q.ini ?? null, q.fim ?? null);
+
+  const [parcelasRecebidas, pagamentos] = await Promise.all([
+    db.query.parcelasTable.findMany({
+      where: and(
+        eq(parcelasTable.lojaId, lojaId),
+        isNotNull(parcelasTable.recebidoEm),
+        gte(parcelasTable.recebidoEm, inicioDoDia(intervalo.iniYMD)),
+        lt(parcelasTable.recebidoEm, inicioDoDia(addDias(intervalo.fimYMD, 1))),
+      ),
+      with: { contrato: { with: { lead: true } } },
+    }),
+    db.query.pagamentosTable.findMany({
+      where: and(
+        eq(pagamentosTable.lojaId, lojaId),
+        gte(pagamentosTable.data, inicioDoDia(intervalo.iniYMD)),
+        lt(pagamentosTable.data, inicioDoDia(addDias(intervalo.fimYMD, 1))),
+      ),
+      with: { colaborador: true, itens: { with: { contaPagar: true } } },
+    }),
+  ]);
+
+  const movimentos = movimentosDoFluxo(parcelasRecebidas, pagamentos, intervalo);
+  const resumo = resumoCaixa(parcelasRecebidas, pagamentos, intervalo);
+  responderCsv(
+    res,
+    `fluxo-${intervalo.iniYMD}-a-${intervalo.fimYMD}`,
+    montarCsv(linhasCsvFluxo(movimentos, resumo)),
   );
 });
 
@@ -1249,29 +1266,19 @@ async function itensContabeis(lojaId: string, de: string, ate: string): Promise<
  */
 router.get("/lojas/:lojaId/financeiro/folha/exportar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ExportarFolhaQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  // Sem intervalo, o mês corrente — o período que a contabilidade fecha.
-  // `hojeLocal()` é a régua (importada acima); o `-3h` cravado à mão era a
-  // mesma conta escrita pela segunda vez no arquivo.
-  const hoje = hojeLocal();
-  const de = parsed.data.de ?? primeiroDiaDoMes(hoje);
-  const ate = parsed.data.ate ?? hoje;
-  if (de > ate) {
+  const q = intervaloValidado(res, ExportarFolhaQueryParams.safeParse(req.query));
+  if (!q) return;
+  // S35: a janela-padrão (sem intervalo, o mês corrente) estava escrita inline
+  // aqui, ao lado da `janelaExportacao` que já dizia a mesma coisa — e que as
+  // outras duas exportações usam. Agora é ela nas três.
+  const janela = janelaExportacao(q.de, q.ate);
+  if (!janela) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
   }
 
-  const csv = montarCsvContabilidade(await itensContabeis(lojaId, de, ate));
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="contabilidade-${de}-a-${ate}.csv"`);
-  // BOM: sem ele o Excel lê UTF-8 como latin-1 e "Salário" vira "SalÃ¡rio".
-  res.send("﻿" + csv);
+  const csv = montarCsvContabilidade(await itensContabeis(lojaId, janela.de, janela.ate));
+  responderCsv(res, `contabilidade-${janela.de}-a-${janela.ate}`, csv);
 });
 
 /**
@@ -1289,12 +1296,9 @@ function janelaExportacao(de?: string, ate?: string): { de: string; ate: string 
 // da folha: um GET tem de ser seguro para refresh/prefetch.
 router.get("/lojas/:lojaId/financeiro/contas-pagar/exportar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ExportarContasPagarQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const janela = janelaExportacao(parsed.data.de, parsed.data.ate);
+  const q = intervaloValidado(res, ExportarContasPagarQueryParams.safeParse(req.query));
+  if (!q) return;
+  const janela = janelaExportacao(q.de, q.ate);
   if (!janela) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -1324,23 +1328,16 @@ router.get("/lojas/:lojaId/financeiro/contas-pagar/exportar", async (req, res): 
       c.status,
     ]);
   }
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="contas-pagar-${janela.de}-a-${janela.ate}.csv"`);
-  res.send("﻿" + montarCsv(linhas));
+  responderCsv(res, `contas-pagar-${janela.de}-a-${janela.ate}`, montarCsv(linhas));
 });
 
 // CSV das parcelas (a receber) por vencimento, com a noiva na linha — o
 // mapa da inadimplência que a contadora importa sem redigitar.
 router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = ExportarParcelasQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const janela = janelaExportacao(parsed.data.de, parsed.data.ate);
+  const q = intervaloValidado(res, ExportarParcelasQueryParams.safeParse(req.query));
+  if (!q) return;
+  const janela = janelaExportacao(q.de, q.ate);
   if (!janela) {
     res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
     return;
@@ -1370,11 +1367,7 @@ router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Prom
       p.formaRecebimento ?? "",
     ]);
   }
-  res
-    .status(200)
-    .type("text/csv; charset=utf-8")
-    .setHeader("Content-Disposition", `attachment; filename="parcelas-${janela.de}-a-${janela.ate}.csv"`);
-  res.send("﻿" + montarCsv(linhas));
+  responderCsv(res, `parcelas-${janela.de}-a-${janela.ate}`, montarCsv(linhas));
 });
 
 /**
@@ -1387,16 +1380,10 @@ router.get("/lojas/:lojaId/financeiro/parcelas/exportar", async (req, res): Prom
  */
 router.post("/lojas/:lojaId/financeiro/contabilidade/enviar", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = EnviarContabilidadeBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate } = parsed.data;
-  if (de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  // Aqui `de`/`ate` são OBRIGATÓRIOS no corpo; o helper compara igual.
+  const q = intervaloValidado(res, EnviarContabilidadeBody.safeParse(req.body));
+  if (!q) return;
+  const { de, ate } = q;
 
   /**
    * F34/E103 — carimba os DOIS lados, e deixa rastro.

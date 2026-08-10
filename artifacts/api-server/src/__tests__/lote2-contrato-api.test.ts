@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * Teste de contrato: garante que TODO path+método documentado no spec
@@ -65,7 +66,8 @@ function extractSpecEndpoints(): Set<string> {
 
 function extractServerEndpoints(): Set<string> {
   const endpoints = new Set<string>();
-  const files = readdirSync(ROUTES_DIR).filter((f) => f.endsWith(".ts"));
+  // A enumeração sai do versionamento, não do disco (S-D30).
+  const files = arquivosVersionados(ROUTES_DIR, ["."]).filter((f) => f.endsWith(".ts"));
   // \s* depois do parêntese: rota com middleware por linha (E78) quebra a
   // string para a linha seguinte, e o path não pode escapar do fiscal por isso.
   const routeRegex = /router\.(get|post|put|patch|delete)\(\s*"([^"]+)"/g;
@@ -87,8 +89,11 @@ describe("contrato API: spec OpenAPI vs rotas Express", () => {
   const serverEndpoints = extractServerEndpoints();
 
   it("extrai endpoints do spec e do servidor", () => {
-    expect(specEndpoints.size).toBeGreaterThan(0);
-    expect(serverEndpoints.size).toBeGreaterThan(0);
+    // Conjunto vazio aprova tudo em silêncio (S-D31): com zero endpoints, os
+    // dois asserts de cobertura passam por vacuidade. O piso é o medido em
+    // 2026-08-07 — 194 endpoints de cada lado — com folga para baixo.
+    expect(specEndpoints.size).toBeGreaterThan(150);
+    expect(serverEndpoints.size).toBeGreaterThan(150);
   });
 
   it("todo path+método do spec existe no servidor", () => {

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 import { db, perfisTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { POST_QUE_MUTA, POST_QUE_MUTA_POR_CAMINHO } from "../lib/permissoes";
@@ -136,6 +137,20 @@ describe("E101 — a ação vem do que a rota faz, não do sufixo", () => {
 describe("nenhum POST de ação escapa da classificação (B5)", () => {
   const raiz = join(__dirname, "..", "routes");
 
+  /** A enumeração sai do versionamento, não do disco (S-D30). */
+  function arquivosDeRotas(): string[] {
+    return arquivosVersionados(raiz, ["."]).filter((f) => f.endsWith(".ts"));
+  }
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 20 arquivos `.ts` versionados em `src/routes/` — com folga
+   * para baixo.
+   */
+  it("a varredura olha as rotas de verdade, não um conjunto vazio", () => {
+    expect(arquivosDeRotas().length).toBeGreaterThan(15);
+  });
+
   /** Sub-coleções: POST aqui CRIA um recurso filho. */
   const SUBCOLECOES = new Set([
     "itens", "opcoes", "checklist", "cobrancas", "avarias", "parcelas", "portal",
@@ -144,7 +159,7 @@ describe("nenhum POST de ação escapa da classificação (B5)", () => {
   it("todo POST em /:id/<verbo> é sub-coleção ou declara a ação", () => {
     const naoClassificados: string[] = [];
 
-    for (const arquivo of readdirSync(raiz).filter((f) => f.endsWith(".ts"))) {
+    for (const arquivo of arquivosDeRotas()) {
       const conteudo = readFileSync(join(raiz, arquivo), "utf8");
       const re = /router\.post\(\s*"([^"]+)"\s*(,\s*requireModulo\([^)]*\))?/g;
       let m: RegExpExecArray | null;
@@ -206,7 +221,7 @@ describe("nenhum POST de ação escapa da classificação (B5)", () => {
   it("todo POST <literal>/<segmento> é coleção, criação perdoada ou classificado", () => {
     const naoClassificados: string[] = [];
 
-    for (const arquivo of readdirSync(raiz).filter((f) => f.endsWith(".ts"))) {
+    for (const arquivo of arquivosDeRotas()) {
       const conteudo = readFileSync(join(raiz, arquivo), "utf8");
       const re = /router\.post\(\s*"([^"]+)"\s*(,\s*requireModulo\([^)]*\))?/g;
       let m: RegExpExecArray | null;

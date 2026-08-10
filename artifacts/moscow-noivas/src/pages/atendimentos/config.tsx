@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { useForm, Controller } from "react-hook-form";
 import { Link, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,12 @@ import {
   useGetDisponibilidade,
   getGetDisponibilidadeQueryKey,
   useSetDisponibilidade,
+  useListEquipe,
+  getListEquipeQueryKey,
+  useListAusencias,
+  getListAusenciasQueryKey,
+  useCreateAusencia,
+  useDeleteAusencia,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +27,35 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { diaMesAno } from "@/lib/formatos";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { mensagemApi } from "@/lib/erro-api";
+import { minutosDaProva, opcoesDeDuracaoDaProva, slotsDaProva } from "@/lib/duracao-da-prova";
 
 /**
  * Cabines & horário de atendimento (porte da /atendimentos/config do
- * feat/orcamentos). O horário vive na regra de disponibilidade da loja
- * (atendimentoAberturaHora/FechamentoHora); salvar preserva os demais campos.
+ * feat/orcamentos). O horário e a duração da prova vivem na regra de
+ * disponibilidade da loja (atendimentoAberturaHora/FechamentoHora e
+ * provaDuracao — S-A10: este era o único campo do bloco sem contrapartida
+ * editável, com o "Editar" de Configurações apontando para cá); salvar
+ * preserva os demais campos da regra.
  */
 
 // Índice = dia da semana (0=domingo … 6=sábado), como no diasFuncionamento (E38).
@@ -54,6 +83,72 @@ export default function ConfigAtendimentos() {
 
   const [nomeCabine, setNomeCabine] = useState("");
 
+  // E151 — as ausências da equipe, e o formulário que as cria.
+  const equipe = useListEquipe(activeLojaId!, {
+    query: { ...CACHE_ESTAVEL, queryKey: getListEquipeQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const ausencias = useListAusencias(activeLojaId!, {}, {
+    query: { queryKey: getListAusenciasQueryKey(activeLojaId!, {}), enabled: !!activeLojaId },
+  });
+  const createAusencia = useCreateAusencia();
+  const deleteAusencia = useDeleteAusencia();
+  const [ausenciaUsuario, setAusenciaUsuario] = useState("");
+  const [ausenciaInicio, setAusenciaInicio] = useState("");
+  const [ausenciaFim, setAusenciaFim] = useState("");
+  const [ausenciaMotivo, setAusenciaMotivo] = useState("");
+
+  const invalidarAusencias = () =>
+    queryClient.invalidateQueries({ queryKey: getListAusenciasQueryKey(activeLojaId!, {}) });
+
+  const adicionarAusencia = async () => {
+    // A régua do período mora no servidor (422 PERIODO_INVERTIDO); aqui só se
+    // evita a ida à rede quando a tela já sabe que está invertido.
+    if (ausenciaFim < ausenciaInicio) {
+      toast({
+        title: "Período invertido",
+        description: "O último dia é anterior ao primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await createAusencia.mutateAsync({
+        lojaId: activeLojaId!,
+        data: {
+          usuarioId: ausenciaUsuario,
+          inicio: ausenciaInicio,
+          fim: ausenciaFim,
+          ...(ausenciaMotivo.trim() ? { motivo: ausenciaMotivo.trim() } : {}),
+        },
+      });
+      await invalidarAusencias();
+      setAusenciaInicio("");
+      setAusenciaFim("");
+      setAusenciaMotivo("");
+      toast({ title: "Ausência marcada" });
+    } catch (err) {
+      toast({
+        title: "Não deu para marcar a ausência",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removerAusencia = async (ausenciaId: string) => {
+    try {
+      await deleteAusencia.mutateAsync({ lojaId: activeLojaId!, ausenciaId });
+      await invalidarAusencias();
+      toast({ title: "Ausência removida" });
+    } catch (err) {
+      toast({
+        title: "Não deu para remover",
+        description: mensagemApi(err, "Tente novamente."),
+        variant: "destructive",
+      });
+    }
+  };
+
   const regra = disponibilidade.data;
 
   /**
@@ -72,14 +167,29 @@ export default function ConfigAtendimentos() {
    * Era a última tela do app com o padrão do effect — as outras 11 já usavam
    * `react-hook-form`.
    */
-  const form = useForm<{ abertura: string; fechamento: string; dias: number[] }>({
-    defaultValues: { abertura: "", fechamento: "", dias: [] },
+  const form = useForm<{
+    abertura: string;
+    fechamento: string;
+    dias: number[];
+    duracaoProvaMin: string;
+    lavagemEstoqueDias: string;
+  }>({
+    defaultValues: { abertura: "", fechamento: "", dias: [], duracaoProvaMin: "", lavagemEstoqueDias: "" },
     values: regra
       ? {
           abertura: String(regra.atendimentoAberturaHora),
           fechamento: String(regra.atendimentoFechamentoHora),
-          // Dias em que a loja abre (E38): 0=domingo … 6=sábado.
-          dias: regra.diasFuncionamento ?? [1, 2, 3, 4, 5, 6],
+          // Dias em que a loja abre (E38): 0=domingo … 6=sábado. O fallback
+          // acompanha o default do schema (S-A8: era `[1..6]` aqui e no
+          // servidor, e os dois tinham de mudar juntos — a mesma premissa
+          // escrita em três lugares é a mesma que pode divergir em três).
+          dias: regra.diasFuncionamento ?? [0, 1, 2, 3, 4, 5, 6],
+          // S-A10: a dona fala em MINUTOS; o banco conta em slots de 30 min
+          // (S-A7, `2` = 1h). A conversão é a régua de `lib/duracao-da-prova`.
+          duracaoProvaMin: String(minutosDaProva(regra.provaDuracao)),
+          // S-A16: a lavagem da peça de ESTOQUE, separada da do vestido —
+          // decidida configurável em 2026-08-07; 0 = sem lavagem na conta.
+          lavagemEstoqueDias: String(regra.estoqueLavagemDiasDepois ?? 0),
         }
       : undefined,
     resetOptions: { keepDirtyValues: true },
@@ -87,12 +197,32 @@ export default function ConfigAtendimentos() {
 
   // E133/B7: o sujo desta tela tem DUAS fontes — o form do horário (que dá
   // reset ao salvar) e o nome de cabine digitado no input solto.
-  useConfirmarSaida(form.formState.isDirty || nomeCabine.trim() !== "");
+  useConfirmarSaida(sujoParaConfirmar(form.formState, nomeCabine.trim() !== ""));
 
   const salvarHorario = async () => {
-    const { abertura, fechamento, dias } = form.getValues();
+    const { abertura, fechamento, dias, duracaoProvaMin, lavagemEstoqueDias } = form.getValues();
     const a = Number(abertura);
     const f = Number(fechamento);
+    const lavagemEstoque = Number(lavagemEstoqueDias);
+    if (!Number.isInteger(lavagemEstoque) || lavagemEstoque < 0) {
+      toast({
+        title: "Lavagem do estoque inválida",
+        description: "Informe os dias em número inteiro — 0 desliga a lavagem da conta.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // O select só oferece múltiplos de 30, então isto não dispara por gesto —
+    // é a guarda contra um estado que não veio dele (a rota aceita 0, S-A7).
+    const duracaoProva = slotsDaProva(Number(duracaoProvaMin));
+    if (!Number.isInteger(duracaoProva) || duracaoProva < 1) {
+      toast({
+        title: "Duração da prova inválida",
+        description: "Escolha uma das durações da lista.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!Number.isInteger(a) || !Number.isInteger(f) || a < 0 || f > 24 || a >= f) {
       toast({
         title: "Horário inválido",
@@ -115,10 +245,15 @@ export default function ConfigAtendimentos() {
         lojaId: activeLojaId!,
         data: {
           provaDiasAntes: regra?.provaDiasAntes,
-          provaDuracao: regra?.provaDuracao,
+          // S-A10: o único campo do bloco de disponibilidade que não tinha
+          // contrapartida editável — e o "Editar" de Configurações sempre
+          // apontou para cá. A rota conta em SLOTS; a tela, em minutos.
+          provaDuracao: duracaoProva,
           usoDiasAntes: regra?.usoDiasAntes,
           usoDiasDepois: regra?.usoDiasDepois,
           lavagemDiasDepois: regra?.lavagemDiasDepois,
+          // S-A16: o campo novo da tela — os demais seguem preservados acima.
+          estoqueLavagemDiasDepois: lavagemEstoque,
           atendimentoAberturaHora: a,
           atendimentoFechamentoHora: f,
           diasFuncionamento: [...dias].sort((x, y) => x - y),
@@ -126,7 +261,7 @@ export default function ConfigAtendimentos() {
       });
       // Salvou: o que estava sujo virou o valor do servidor. Sem este reset o
       // `keepDirtyValues` continuaria protegendo campos que já não divergem.
-      form.reset({ abertura, fechamento, dias });
+      form.reset({ abertura, fechamento, dias, duracaoProvaMin, lavagemEstoqueDias });
       await queryClient.invalidateQueries({
         queryKey: getGetDisponibilidadeQueryKey(activeLojaId!),
       });
@@ -247,6 +382,56 @@ export default function ConfigAtendimentos() {
                   )}
                 />
               </div>
+              <div className="space-y-1.5">
+                {/* S-A10 — a única linha do bloco de disponibilidade que não
+                    tinha onde ser editada; o "Editar" de Configurações sempre
+                    apontou para esta tela. Em MINUTOS (S-A7): o banco conta em
+                    slots de 30 min e "2" na tela seria uma prova de 2 minutos
+                    para quem lê. As opções vêm da régua de
+                    `lib/duracao-da-prova`, com o valor vigente sempre listado. */}
+                <Label htmlFor="duracao-prova">Duração da prova</Label>
+                <Controller
+                  control={form.control}
+                  name="duracaoProvaMin"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="duracao-prova" className="w-40" data-testid="duracao-prova">
+                        <SelectValue placeholder="Escolher duração" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {opcoesDeDuracaoDaProva(Number(field.value) || 60).map((min) => (
+                          <SelectItem key={min} value={String(min)}>
+                            {min} min
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quanto tempo cada prova ocupa na agenda — as cabines ficam reservadas por esse
+                  período.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {/* S-A16 — decidido em 2026-08-07: a lavagem da peça de ESTOQUE
+                    (saiote, véu, bolero) é da loja, separada da semana do
+                    vestido. 0 = a peça volta à arara no dia da devolução, que
+                    é como o sistema sempre contou. */}
+                <Label htmlFor="lavagem-estoque">Lavagem do estoque (dias)</Label>
+                <Input
+                  id="lavagem-estoque"
+                  type="number"
+                  min={0}
+                  className="w-24"
+                  data-testid="lavagem-estoque"
+                  {...form.register("lavagemEstoqueDias")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Dias que a peça de estoque fica na lavagem depois de devolvida, antes de contar
+                  como disponível de novo. Zero desliga a lavagem da conta.
+                </p>
+              </div>
               <Button
                 variant="outline"
                 onClick={salvarHorario}
@@ -260,7 +445,7 @@ export default function ConfigAtendimentos() {
               {regra
                 ? `${regra.atendimentoAberturaHora}h às ${regra.atendimentoFechamentoHora}h · ${
                     regra.diasFuncionamento?.map((d) => DIAS_ROTULO[d]).join(", ") ?? "—"
-                  }`
+                  } · prova de ${minutosDaProva(regra.provaDuracao)} min`
                 : "Carregando…"}
             </p>
           )}
@@ -328,6 +513,141 @@ export default function ConfigAtendimentos() {
                 disabled={createCabine.isPending || !nomeCabine.trim()}
               >
                 {createCabine.isPending ? "Adicionando…" : "Adicionar"}
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* E151 — quem falta, e quando.
+          Mora aqui, e não em Equipe, porque o gate é o mesmo da API (`agenda`):
+          quem marca o dia é quem sabe quem falta. Em Equipe (módulo `admin`) a
+          pessoa que cuida da agenda não alcançaria a tela. */}
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-base">Ausências da equipe</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Férias, folga, viagem. Nos dias marcados a agenda recusa novo
+            atendimento com essa pessoa — o que já estava marcado não é alterado.
+          </p>
+
+          {ausencias.isLoading ? (
+            <div className="animate-pulse space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-10 bg-muted rounded-md" />
+              ))}
+            </div>
+          ) : (ausencias.data?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">Ninguém marcado como ausente.</p>
+          ) : (
+            <ul className="divide-y rounded-lg border" data-testid="lista-ausencias">
+              {ausencias.data?.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">{a.usuarioNome ?? "Equipe"}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {diaMesAno(a.inicio)} a {diaMesAno(a.fim)}
+                      {a.motivo ? ` · ${a.motivo}` : ""}
+                    </span>
+                  </span>
+                  {podeEditar && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deleteAusencia.isPending}
+                          aria-label={`Remover ausência de ${a.usuarioNome ?? "equipe"}`}
+                        >
+                          Remover
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Remover a ausência de {a.usuarioNome ?? "quem falta"}?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esses dias voltam a aceitar agendamento com essa pessoa. O que já
+                            estava marcado não muda — a ausência nunca o tocou.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => removerAusencia(a.id)}>
+                            Remover
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {podeEditar && (
+            <form
+              className="flex flex-wrap items-end gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                adicionarAusencia();
+              }}
+            >
+              <div className="space-y-1">
+                <Label htmlFor="ausencia-pessoa">Quem</Label>
+                <Select value={ausenciaUsuario} onValueChange={setAusenciaUsuario}>
+                  <SelectTrigger id="ausencia-pessoa" className="w-48">
+                    <SelectValue placeholder="Escolher pessoa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(equipe.data ?? []).map((m) => (
+                      <SelectItem key={m.usuarioId} value={m.usuarioId}>
+                        {m.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ausencia-inicio">Do dia</Label>
+                <Input
+                  id="ausencia-inicio"
+                  type="date"
+                  value={ausenciaInicio}
+                  onChange={(e) => setAusenciaInicio(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1">
+                {/* "Até o dia" e não "até": o último dia CONTA, e a frase é a
+                    única coisa que diz isso a quem digita. */}
+                <Label htmlFor="ausencia-fim">Até o dia (inclusive)</Label>
+                <Input
+                  id="ausencia-fim"
+                  type="date"
+                  value={ausenciaFim}
+                  onChange={(e) => setAusenciaFim(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1 flex-1 min-w-40">
+                <Label htmlFor="ausencia-motivo">Motivo</Label>
+                <Input
+                  id="ausencia-motivo"
+                  value={ausenciaMotivo}
+                  onChange={(e) => setAusenciaMotivo(e.target.value)}
+                  placeholder="Férias"
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={createAusencia.isPending || !ausenciaUsuario || !ausenciaInicio || !ausenciaFim}
+              >
+                {createAusencia.isPending ? "Marcando…" : "Marcar ausência"}
               </Button>
             </form>
           )}

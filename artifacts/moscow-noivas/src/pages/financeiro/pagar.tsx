@@ -24,6 +24,7 @@
  */
 import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { podeNoModulo } from "@/lib/permissoes";
 import {
   useListContasPagar,
   getListContasPagarQueryKey,
@@ -116,7 +117,15 @@ type FiltroPagar = (typeof FILTROS)[number]["chave"];
 
 
 export default function Pagar() {
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // S40 — a tela de dinheiro SAINDO espelha o guard do servidor. O prefixo
+  // exige `financeiro` (financeiro.ts:111-112) e a ação vem do método HTTP
+  // (auth.ts:125): lançar conta, registrar pagamento e ESTORNAR são POST
+  // (criar); remover conta é DELETE (editar). O servidor já recusava por
+  // trás; a tela oferecia os quatro botões a quem ia levar 403 depois do
+  // clique — o molde é o de receber.tsx:91.
+  const podeCriar = podeNoModulo(acessosModulos, "financeiro", "criar");
+  const podeEditar = podeNoModulo(acessosModulos, "financeiro", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const caminho = useCaminhoDaLoja();
@@ -415,9 +424,11 @@ export default function Pagar() {
           <Button variant="outline" asChild>
             <Link to={caminho("/financeiro/folha")}>Folha do mês</Link>
           </Button>
-          <Button variant="outline" onClick={() => setNovaOpen(true)}>
-            Lançar despesa
-          </Button>
+          {podeCriar && (
+            <Button variant="outline" onClick={() => setNovaOpen(true)}>
+              Lançar despesa
+            </Button>
+          )}
           {/* Download nativo do CSV da janela em vista — a contadora importa
               sem redigitar. <a> em vez de fetch: o navegador cuida do arquivo. */}
           <Button variant="outline" asChild>
@@ -536,7 +547,9 @@ export default function Pagar() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            {selecionaveis.length > 0 && (
+            {/* A seleção só existe para PAGAR: sem o gate, os checkboxes
+                seriam peso morto apontando para um botão que não aparece. */}
+            {podeCriar && selecionaveis.length > 0 && (
               <div className="flex items-center gap-3 border-b px-4 py-2">
                 <Checkbox
                   id="todas"
@@ -559,7 +572,7 @@ export default function Pagar() {
                   <div key={c.id} className="flex flex-col gap-2 px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        {c.status === "PREVISTA" && (
+                        {podeCriar && c.status === "PREVISTA" && (
                           <Checkbox
                             className="mt-1"
                             aria-label={`Selecionar ${c.descricao}`}
@@ -593,45 +606,53 @@ export default function Pagar() {
                       </div>
                     </div>
 
-                    {c.status === "PREVISTA" && (
+                    {c.status === "PREVISTA" && (podeCriar || podeEditar) && (
                       <div className="flex justify-end gap-2 border-t pt-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={removerConta.isPending}
-                          onClick={() => setContaRemover(c)}
-                        >
-                          Remover
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => abrirPagar([c.id])}>
-                          Pagar
-                        </Button>
+                        {podeEditar && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={removerConta.isPending}
+                            onClick={() => setContaRemover(c)}
+                          >
+                            Remover
+                          </Button>
+                        )}
+                        {podeCriar && (
+                          <Button size="sm" variant="outline" onClick={() => abrirPagar([c.id])}>
+                            Pagar
+                          </Button>
+                        )}
                       </div>
                     )}
-                    {c.status === "PAGA" && pagamento && (
+                    {/* O "Saída conjunta" fica para quem só vê: é a única
+                        linha que explica por que N contas dividem um valor. */}
+                    {c.status === "PAGA" && pagamento && (podeCriar || pagamento.contas > 1) && (
                       <div className="flex items-center justify-end gap-3 border-t pt-2">
                         {pagamento.contas > 1 && (
                           <span className="text-xs text-muted-foreground">
                             Saída conjunta de {pagamento.contas} contas
                           </span>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={estornarPagamento.isPending}
-                          onClick={() =>
-                            setPagamentoEstornar({
-                              pagamentoId: pagamento.id,
-                              contas: pagamento.contas,
-                              descricao: c.descricao,
-                              // A fatia rateada DESTA conta — numa saída
-                              // conjunta o total não desce por linha.
-                              valorDaLinha: pagamento.valor ?? c.valorPrevisto,
-                            })
-                          }
-                        >
-                          Estornar pagamento
-                        </Button>
+                        {podeCriar && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={estornarPagamento.isPending}
+                            onClick={() =>
+                              setPagamentoEstornar({
+                                pagamentoId: pagamento.id,
+                                contas: pagamento.contas,
+                                descricao: c.descricao,
+                                // A fatia rateada DESTA conta — numa saída
+                                // conjunta o total não desce por linha.
+                                valorDaLinha: pagamento.valor ?? c.valorPrevisto,
+                              })
+                            }
+                          >
+                            Estornar pagamento
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>

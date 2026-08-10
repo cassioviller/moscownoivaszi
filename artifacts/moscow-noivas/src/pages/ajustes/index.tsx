@@ -1,25 +1,22 @@
 import { useMemo } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useListAjustes,
   getListAjustesQueryKey,
-  getListAtendimentosQueryKey,
-  useUpdateAjuste,
-  useUpdateChecklistItem,
   type Ajuste,
 } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
 import { diasAteCasamento } from "../noivas/helpers";
-import { naSemana, prazoDias } from "@/lib/ajustes-da-semana";
-import { diaMesAbrevAno } from "@/lib/formatos";
+import { naSemana, prazoDias, rotuloCasamento, rotuloProva } from "@/lib/ajustes-da-semana";
+import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
+import { brl, diaMesAbrevAno } from "@/lib/formatos";
+import { Badge } from "@/components/ui/badge";
 import { podeNoModulo } from "@/lib/permissoes";
-import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
+import { useAcoesDeAjuste } from "./acoes";
 
 /**
  * Ajustes — a fila da costureira (E14). O prazo que manda é a PRÓXIMA PROVA:
@@ -33,25 +30,12 @@ import { Erro } from "@/components/estado";
 // E132: a régua do prazo saiu para `lib/ajustes-da-semana` — o cartão do
 // painel conta o MESMO conjunto que esta fila mostra, por construção.
 
-function rotuloProva(dias: number): string {
-  if (dias < 0) return "prova atrasada";
-  if (dias === 0) return "prova hoje";
-  if (dias === 1) return "prova amanhã";
-  return `prova em ${dias} dias`;
-}
-
-function rotuloCasamento(dias: number): string {
-  if (dias < 0) return "casamento passou";
-  if (dias === 0) return "casamento hoje";
-  if (dias === 1) return "casamento amanhã";
-  return `casamento em ${dias} dias`;
-}
+// S-A17: `rotuloProva`/`rotuloCasamento` moravam aqui e foram para
+// `lib/ajustes-da-semana` — a ficha do trabalho diz o prazo com as mesmas palavras.
 
 export default function Ajustes() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Semana é o recorte padrão — a fila responde "o que costuro agora", não
@@ -72,9 +56,13 @@ export default function Ajustes() {
       enabled: !!activeLojaId,
     },
   });
-  const updateAjuste = useUpdateAjuste();
-  const updateChecklist = useUpdateChecklistItem();
+  // S-A17: as ações (concluir/reabrir, marcar peça) são as mesmas da ficha do
+  // trabalho — moram em `./acoes`, com a invalidação dupla que se esquece.
+  const { mudarStatus, marcarPeca, mudandoStatus, marcandoPeca } = useAcoesDeAjuste();
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
+  // E156: o gesto abre o CADASTRO de vestido — quem não cadastra acervo não vê
+  // um botão que a próxima tela recusaria.
+  const podeCadastrarPeca = podeNoModulo(acessosModulos, "vestidos", "criar");
 
   const { pendentes, foraDaSemana } = useMemo(() => {
     const alvo = recorte === "feitos" ? "FEITO" : "PENDENTE";
@@ -92,45 +80,6 @@ export default function Ajustes() {
     const semana = lista.filter(naSemana);
     return { pendentes: semana, foraDaSemana: lista.length - semana.length };
   }, [ajustes, recorte]);
-
-  const invalidar = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: getListAjustesQueryKey(activeLojaId!) }),
-      // Ajustes também aninham dentro dos atendimentos → invalida as duas listas.
-      queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
-    ]);
-
-  /** F24: o mesmo botão nos dois sentidos — concluir e reabrir. */
-  const mudarStatus = async (ajusteId: string, status: "FEITO" | "PENDENTE") => {
-    try {
-      await updateAjuste.mutateAsync({ lojaId: activeLojaId!, ajusteId, data: { status } });
-      await invalidar();
-      toast({ title: status === "FEITO" ? "Ajuste concluído" : "Ajuste reaberto" });
-    } catch (err) {
-      toast({
-        title: status === "FEITO" ? "Não deu para concluir o ajuste" : "Não deu para reabrir o ajuste",
-        description: mensagemApi(err, "Tente novamente."),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const marcarPeca = async (itemId: string, feito: boolean) => {
-    try {
-      await updateChecklist.mutateAsync({
-        lojaId: activeLojaId!,
-        itemId,
-        data: { feito },
-      });
-      await invalidar();
-    } catch (err) {
-      toast({
-        title: "Não deu para marcar a peça",
-        description: mensagemApi(err, "Tente novamente."),
-        variant: "destructive",
-      });
-    }
-  };
 
   const trocarRecorte = (novo: "semana" | "todos" | "feitos") => {
     const proximo = new URLSearchParams(searchParams);
@@ -218,7 +167,34 @@ export default function Ajustes() {
               return (
                 <li key={a.id} className="flex items-start gap-4 px-4 py-3">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm">{a.descricao}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-sm">
+                      {/* E155: as duas naturezas dividem a fila, e é por isso
+                          que o rótulo precisa existir — a costureira precisa
+                          saber se corta ou se conserta antes de pegar a peça.
+                          O AJUSTE é o caso comum e segue sem selo. */}
+                      {a.tipo === "CONFECCAO" && (
+                        <Badge variant="secondary" className="text-xs">Confecção</Badge>
+                      )}
+                      {/* S-A17: a descrição leva à ficha DESTE trabalho — numa
+                          fila longa, achar de novo era busca a olho. */}
+                      <Link to={`/loja/${lojaId}/ajustes/${a.id}`} className="hover:underline">
+                        {a.descricao}
+                      </Link>
+                      {a.custo != null && (
+                        <span className="text-xs text-muted-foreground">custo {brl(a.custo)}</span>
+                      )}
+                      {/* E156: uma vez no acervo, a linha mostra a PEÇA e não o
+                          gesto — é o que impede a mesma confecção de virar duas
+                          peças, cada uma com um código. */}
+                      {a.pecaDoAcervo && (
+                        <Link
+                          to={`/loja/${lojaId}/vestidos/${a.pecaDoAcervo.id}`}
+                          className="text-xs text-muted-foreground hover:underline"
+                        >
+                          no acervo · {a.pecaDoAcervo.codigo}
+                        </Link>
+                      )}
+                    </span>
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       {a.atendimento?.leadId ? (
                         <Link
@@ -271,7 +247,7 @@ export default function Ajustes() {
                             <Checkbox
                               id={`peca-${item.id}`}
                               checked={item.feito}
-                              disabled={!podeEditar || updateChecklist.isPending}
+                              disabled={!podeEditar || marcandoPeca}
                               onCheckedChange={(v) => marcarPeca(item.id, v === true)}
                               aria-label={item.descricao}
                             />
@@ -292,6 +268,17 @@ export default function Ajustes() {
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {/* E156 — a confecção vira peça do acervo (P4), e é GESTO:
+                        nada vira sozinho quando o casamento passa. Quem decide
+                        se aquela manga entra no acervo é quem vai alugá-la de
+                        novo — mesma doutrina do E100/F37 e do E151. */}
+                    {podeCadastrarPeca && podeVirarPecaDoAcervo(a) && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/loja/${lojaId}/vestidos/novo?confeccao=${a.id}`}>
+                          Virou peça do acervo
+                        </Link>
+                      </Button>
+                    )}
                     {a.atendimento?.bloqueioId && (
                       <Button variant="ghost" size="sm" asChild>
                         <Link to={`/loja/${lojaId}/reservas/${a.atendimento.bloqueioId}`}>
@@ -303,7 +290,7 @@ export default function Ajustes() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={updateAjuste.isPending}
+                        disabled={mudandoStatus}
                         onClick={() => mudarStatus(a.id, recorte === "feitos" ? "PENDENTE" : "FEITO")}
                       >
                         {recorte === "feitos" ? "Reabrir" : "Marcar feito"}

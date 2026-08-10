@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CreateContratoBody, CreateLeadBody } from "@workspace/api-zod";
 import { erroDeValidacao } from "../lib/erros";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * E96/B13 — o 400 de validação para de falar inglês e passa a dizer ONDE.
@@ -63,25 +64,36 @@ describe("erroDeValidacao — código estável e motivo em português", () => {
 describe("nenhuma rota devolve o texto cru do Zod (B13)", () => {
   const raiz = join(__dirname, "..");
 
-  function arquivosTs(dir: string): string[] {
-    return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-      const caminho = join(dir, e.name);
-      if (e.isDirectory()) return e.name === "__tests__" ? [] : arquivosTs(caminho);
-      return e.name.endsWith(".ts") ? [caminho] : [];
-    });
+  /**
+   * A enumeração sai do versionamento, não do disco (S-D30). `__tests__` fica
+   * de fora como antes: teste CITA a grafia errada para prová-la.
+   */
+  function arquivosTs(): string[] {
+    return arquivosVersionados(raiz, ["."]).filter(
+      (r) => r.endsWith(".ts") && !r.split("/").includes("__tests__"),
+    );
   }
 
   it("`error: <x>.error.message` não existe em rota nem middleware nenhum", () => {
     const ofensores: string[] = [];
-    for (const arquivo of arquivosTs(raiz)) {
-      const conteudo = readFileSync(arquivo, "utf8");
+    for (const relativo of arquivosTs()) {
+      const conteudo = readFileSync(join(raiz, relativo), "utf8");
       conteudo.split("\n").forEach((linha, i) => {
         // Só a forma que RESPONDE com o texto do Zod; comentário e log ficam.
         if (/error:\s*\w+\.error\.message/.test(linha) && !linha.trimStart().startsWith("*")) {
-          ofensores.push(`${arquivo.replace(raiz, "src")}:${i + 1}`);
+          ofensores.push(`src/${relativo}:${i + 1}`);
         }
       });
     }
     expect(ofensores).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 51 arquivos `.ts` versionados em `src/`, fora `__tests__` —
+   * com folga para baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(arquivosTs().length).toBeGreaterThan(40);
   });
 });

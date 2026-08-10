@@ -34,7 +34,7 @@ import {
   msgOrcamentoVencendo,
 } from "@/lib/whatsapp";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
-import { hojeLocal, addDias } from "@/lib/financeiro/datas";
+import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
 import { urlsDePortalPorLead, leadsComPortalVencido } from "@/lib/portal";
 import {
   aContatarNaJanela,
@@ -45,6 +45,7 @@ import {
   comRegistroDaCobranca,
   semMarcaDeCobranca,
   particionaPorCobranca,
+  marcasPersistentesDeCobranca,
   type MarcasCobranca,
 } from "@/lib/mensagens-do-dia";
 import { brl, instanteDiaHora, instanteDiaMes } from "@/lib/formatos";
@@ -238,11 +239,19 @@ export default function MensagensDoDia() {
     return [...aging.noivas].sort((a, b) => b.diasMaisAntigo - a.diasMaisAntigo);
   }, [parcelas.data]);
 
-  // E123/B3 — a fila em duas: quem falta e quem já saiu nesta sessão de tela.
-  const filaCobranca = useMemo(
-    () => particionaPorCobranca(inadimplentes, marcas),
-    [inadimplentes, marcas],
-  );
+  /**
+   * E123/B3 + S-D13 — a fila em duas: quem falta e quem já saiu. A marca vem
+   * de DUAS fontes fundidas: o `ultimoContatoEm` que a parcela embute (o que
+   * sobreviveu ao F5 — desta sessão, de ontem à noite por outra pessoa, tanto
+   * faz: se caiu no dia de hoje da loja, já foi procurada) e a marca desta
+   * sessão de tela, que chega por cima porque é a única que carrega o
+   * `registroId` do desfazer. Depois do desfazer, a invalidação recarrega as
+   * parcelas e a metade persistente se corrige sozinha.
+   */
+  const filaCobranca = useMemo(() => {
+    const persistentes = marcasPersistentesDeCobranca(inadimplentes, hojeLocal(), diaLocal);
+    return particionaPorCobranca(inadimplentes, new Map([...persistentes, ...marcas]));
+  }, [inadimplentes, marcas]);
 
   // Orçamentos ENVIADOS com validade nas próximas 72h (ainda não vencidos).
   const orcamentosVencendo = useMemo(

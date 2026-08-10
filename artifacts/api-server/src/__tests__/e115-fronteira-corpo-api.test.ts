@@ -6,9 +6,7 @@ import {
   atributosTable,
   cabinesTable,
   db,
-  leadInteresseAtributosTable,
 } from "@workspace/db";
-import { inArray } from "drizzle-orm";
 import {
   criarBloqueio,
   criarFixture,
@@ -87,19 +85,9 @@ describe("E115 — nenhum id de corpo entra sem prova de loja", () => {
   });
 
   afterAll(async () => {
-    // `lead_interesse_atributos.atributo_id` NÃO tem cascade: a cascata da
-    // loja tenta apagar o atributo antes das linhas do interesse e leva 23503.
-    // Mina latente do schema — anotada como sobra do E115; aqui, limpa-se na
-    // ordem certa.
-    const atributos = await db
-      .select({ id: atributosTable.id })
-      .from(atributosTable)
-      .where(inArray(atributosTable.lojaId, [a.lojaId, b.lojaId]));
-    if (atributos.length > 0) {
-      await db
-        .delete(leadInteresseAtributosTable)
-        .where(inArray(leadInteresseAtributosTable.atributoId, atributos.map((x) => x.id)));
-    }
+    // O contorno que morava aqui saiu com a S31 (`4ea4fe2`… ver o hash no
+    // rastreador): as 4 FKs do vocabulário passaram a CASCADE e a cascata da
+    // loja leva o atributo e as linhas do interesse na mesma operação.
     await limparFixture(a);
     await limparFixture(b);
     await fecharPool();
@@ -136,7 +124,7 @@ describe("E115 — nenhum id de corpo entra sem prova de loja", () => {
         bloqueioId: bloqueioB.id,
         inicio: dataFutura(7).toISOString(),
       })
-      .expect(404);
+      .expect(422);
     expect(r.body.error).toBe("REFERENCIA_INVALIDA");
   });
 

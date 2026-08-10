@@ -1,4 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router";
+import {
+  RouterProvider,
+  createBrowserRouter,
+  createRoutesFromElements,
+  Outlet,
+  Route,
+  Navigate,
+  useLocation,
+  useParams,
+  useRouteError,
+} from "react-router";
 import { lazy, Suspense, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
@@ -8,6 +18,7 @@ import { PISO_DE_FRESCOR } from "@/lib/cache";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { Erro } from "@/components/estado";
 import { useAuth } from "@/hooks/use-auth";
 
 import { AppLayout } from "@/components/layout/app-layout";
@@ -41,6 +52,7 @@ const MensagensDoDia = lazy(() => import("@/pages/mensagens"));
 const NovoAtendimento = lazy(() => import("@/pages/atendimentos/novo"));
 const ConfigAtendimentos = lazy(() => import("@/pages/atendimentos/config"));
 const Ajustes = lazy(() => import("@/pages/ajustes"));
+const AjusteDetalhe = lazy(() => import("@/pages/ajustes/[ajusteId]"));
 const Provas = lazy(() => import("@/pages/provas"));
 const Reservas = lazy(() => import("@/pages/reservas"));
 const ReservaDetalhe = lazy(() => import("@/pages/reservas/[bloqueioId]"));
@@ -48,6 +60,7 @@ const Vestidos = lazy(() => import("@/pages/vestidos"));
 const VestidoDetail = lazy(() => import("@/pages/vestidos/[id]"));
 const NovoVestido = lazy(() => import("@/pages/vestidos/novo"));
 const UtilizacaoVestidos = lazy(() => import("@/pages/vestidos/utilizacao"));
+const EstoqueVestidos = lazy(() => import("@/pages/vestidos/estoque"));
 const EditarVestido = lazy(() => import("@/pages/vestidos/[id]/editar"));
 const Orcamentos = lazy(() => import("@/pages/orcamentos"));
 const OrcamentoDetail = lazy(() => import("@/pages/orcamentos/[id]"));
@@ -165,6 +178,182 @@ function RedirectLeadParaNoiva() {
   return <Navigate to={`${destino}${location.search}`} replace />;
 }
 
+/**
+ * A tela de erro do roteador — e ela nasce porque a migração a tornou
+ * obrigatória.
+ *
+ * O `<BrowserRouter>` não capturava erro de render: um `throw` numa tela subia
+ * até o topo e a árvore inteira desmontava (tela branca em produção, overlay do
+ * Replit em dev). O data router captura, e **traz uma tela padrão própria** —
+ * medido montando um elemento que estoura em `createMemoryRouter`:
+ *
+ *     <h2>Unexpected Application Error!</h2>
+ *     <h3>estourei no render</h3>
+ *     <pre>Error: estourei no render …a pilha inteira…</pre>
+ *
+ * Em inglês, com a mensagem do `Error` e a pilha na cara de quem vende. É
+ * exatamente a classe que o E92 matou no `mensagemApi` ("HTTP 404 Not Found" no
+ * toast do login) e que o `<Erro>` do E99 nasceu consertando — não dá para
+ * reintroduzi-la de graça só porque o roteador mudou. O texto do erro vai para
+ * o console, que é onde quem dá suporte olha; a tela recebe frase de gente.
+ */
+function ErroDeRota() {
+  const erro = useRouteError();
+  console.error("Erro de rota:", erro);
+  return (
+    <div className="flex min-h-screen items-center justify-center p-8">
+      <div className="w-full max-w-lg">
+        <Erro titulo="Esta tela quebrou" onTentarNovamente={() => window.location.reload()} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * O limite EXTERNO cobre as rotas públicas (portal da noiva, orçamento,
+ * lookbook) e o /selecionar-loja, que vivem fora do AppLayout. As rotas logadas
+ * suspendem no limite de dentro dele, que é mais próximo e preserva a sidebar.
+ *
+ * Ele era um `<Suspense>` dentro do `<BrowserRouter>` e agora é uma rota-layout
+ * SEM path — a única coisa que a migração da S13 mexeu na árvore. Rota sem path
+ * não participa do casamento de URL: as 59 rotas abaixo continuam casando
+ * exatamente as mesmas URLs, e o limite continua acima de todas elas.
+ */
+function LimiteExterno() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center p-8">
+          <div className="bg-muted h-10 w-48 animate-pulse rounded" aria-busy="true" aria-label="Carregando" />
+        </div>
+      }
+    >
+      <Outlet />
+    </Suspense>
+  );
+}
+
+/**
+ * S13 — o roteador vira data router para que `useBlocker` exista.
+ *
+ * A sobra dizia "migrar o roteador toca todas as rotas do app", e por isso o
+ * E97 entregou meio conserto: `useConfirmarSaida` cobria fechar/recarregar a
+ * aba e deixava passar em silêncio o clique na sidebar com o formulário sujo —
+ * em **8 telas**, não nas 3 que o épico contou.
+ *
+ * O tamanho estava errado por uma ordem de grandeza. `createRoutesFromElements`
+ * aceita a árvore JSX como ela está: **nenhum dos 59 `<Route>` mudou**, não há
+ * `loader` nem `action` nenhum (a razão pela qual não há nada para migrar), e os
+ * três providers já viviam FORA do roteador, que é onde o `RouterProvider` os
+ * quer. O que mudou: o import, o `<Suspense>` que virou `LimiteExterno`, e
+ * `<BrowserRouter><Routes>` que virou `<RouterProvider>`.
+ *
+ * Exportado porque é a árvore que o `App.rotas.test.tsx` conta — sem
+ * ele, uma rota perdida na migração só apareceria no E2E.
+ */
+export const rotas = createRoutesFromElements(
+  <Route element={<LimiteExterno />} errorElement={<ErroDeRota />}>
+    <Route path="/login" element={<Login />} />
+    {/* Pública como o login: a convidada ainda não tem sessão. */}
+    <Route path="/convite/:token" element={<Convite />} />
+    {/* Pública: a noiva abre o orçamento pelo link, sem conta (E13). */}
+    <Route path="/orcamento/:token" element={<OrcamentoPublico />} />
+    {/* Pública: o lookbook dos vestidos provados, sem conta (E21). */}
+    <Route path="/lookbook/:token" element={<LookbookPublico />} />
+    {/* Pública: o portal da noiva — um link para tudo dela (E78). */}
+    <Route path="/noiva/:token" element={<NoivaPortal />} />
+    {/* E57: fora do AppLayout de propósito — quem precisa trocar a
+        senha não deve ver a sidebar nem alcançar nenhum módulo. */}
+    <Route
+      path="/trocar-senha"
+      element={
+        <RequireAuth>
+          <TrocarSenha />
+        </RequireAuth>
+      }
+    />
+    <Route
+      path="/selecionar-loja"
+      element={
+        <RequireAuth>
+          <SelecionarLoja />
+        </RequireAuth>
+      }
+    />
+    <Route path="/loja/:lojaId" element={<AppLayout />}>
+      <Route index element={<Navigate to="dashboard" replace />} />
+      <Route path="dashboard" element={<Dashboard />} />
+      {/* E31: /leads foi unificado em /noivas — redireciona. */}
+      <Route path="leads" element={<RedirectLeadParaNoiva />} />
+      <Route path="leads/:id" element={<RedirectLeadParaNoiva />} />
+      <Route path="noivas" element={<Noivas />} />
+      <Route path="noivas/nova" element={<NovaNoiva />} />
+      <Route path="noivas/conversao" element={<ConversaoLeads />} />
+      <Route path="noivas/:leadId" element={<NoivaDetalhe />} />
+      <Route path="noivas/:leadId/editar" element={<EditarNoiva />} />
+      <Route path="noivas/:leadId/interesses" element={<InteressesNoiva />} />
+      <Route path="agenda" element={<Agenda />} />
+      <Route path="agenda/semana" element={<AgendaSemana />} />
+      <Route path="mensagens" element={<MensagensDoDia />} />
+      <Route path="atendimentos" element={<Atendimentos />} />
+      <Route path="atendimentos/novo" element={<NovoAtendimento />} />
+      <Route path="atendimentos/config" element={<ConfigAtendimentos />} />
+      <Route path="ajustes" element={<Ajustes />} />
+      {/* S-A17: a ficha de UM trabalho — o item do orçamento e a peça do
+          acervo apontam para ela, não mais para a fila inteira. */}
+      <Route path="ajustes/:ajusteId" element={<AjusteDetalhe />} />
+      <Route path="provas" element={<Provas />} />
+      <Route path="reservas" element={<Reservas />} />
+      <Route path="reservas/:bloqueioId" element={<ReservaDetalhe />} />
+      <Route path="vestidos" element={<Vestidos />} />
+      <Route path="vestidos/novo" element={<NovoVestido />} />
+      <Route path="vestidos/utilizacao" element={<UtilizacaoVestidos />} />
+      {/* E154: antes de `vestidos/:id`, senão "estoque" vira um id. */}
+      <Route path="vestidos/estoque" element={<EstoqueVestidos />} />
+      <Route path="vestidos/:id" element={<VestidoDetail />} />
+      <Route path="vestidos/:id/editar" element={<EditarVestido />} />
+      <Route path="orcamentos" element={<Orcamentos />} />
+      <Route path="orcamentos/:id" element={<OrcamentoDetail />} />
+      <Route path="contratos" element={<Contratos />} />
+      <Route path="contratos/:id" element={<ContratoDetail />} />
+      <Route path="catalogo" element={<Catalogo />} />
+      <Route path="catalogo/novo" element={<NovoAtributo />} />
+      <Route path="catalogo/:atributoId/editar" element={<EditarAtributo />} />
+      {/* O fluxo de caixa É o hub do financeiro: as demais telas são o
+          recorte (dre/projecao) ou a ação (receber/pagar/cobranca). */}
+      <Route path="financeiro" element={<FluxoCaixa />} />
+      <Route path="financeiro/dre" element={<DRE />} />
+      <Route path="financeiro/projecao" element={<Projecao />} />
+      <Route path="financeiro/cobranca" element={<Cobranca />} />
+      <Route path="financeiro/receber" element={<Receber />} />
+      <Route path="financeiro/pagar" element={<Pagar />} />
+      {/* A folha é um recorte de contas a pagar (as SALARIO de uma
+          competência) + o fechamento com a contabilidade. */}
+      <Route path="financeiro/folha" element={<Folha />} />
+      <Route path="financeiro/auditoria" element={<Auditoria />} />
+      <Route path="financeiro/conciliacao" element={<Conciliacao />} />
+      <Route path="comissoes" element={<Comissoes />} />
+      <Route path="minha-comissao" element={<MinhaComissao />} />
+      <Route path="equipe" element={<Equipe />} />
+      <Route path="permissoes" element={<Permissoes />} />
+      <Route path="configuracoes" element={<Configuracoes />} />
+      <Route path="*" element={<NotFound />} />
+    </Route>
+    {/* Console superadmin: fora do AppLayout de loja; traz o próprio shell/gate. */}
+    <Route path="/admin" element={<AdminConsole />} />
+    <Route path="/admin/perfis" element={<AdminPerfis />} />
+    <Route path="*" element={<LegacyRedirect />} />
+  </Route>,
+);
+
+/**
+ * `basename` vazio (BASE_URL = "/") cai no default "/" do próprio roteador — a
+ * mesma conta que o `<BrowserRouter>` fazia.
+ */
+const roteador = createBrowserRouter(rotas, {
+  basename: import.meta.env.BASE_URL.replace(/\/$/, ""),
+});
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -172,107 +361,7 @@ function App() {
           "system" respeita a preferência do SO até o usuário escolher. */}
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          {/* O limite EXTERNO cobre as rotas públicas (portal da noiva, orçamento,
-              lookbook) e o /selecionar-loja, que vivem fora do AppLayout. As rotas
-              logadas suspendem no limite de dentro dele, que é mais próximo e
-              preserva a sidebar. */}
-          <Suspense
-            fallback={
-              <div className="flex min-h-screen items-center justify-center p-8">
-                <div className="bg-muted h-10 w-48 animate-pulse rounded" aria-busy="true" aria-label="Carregando" />
-              </div>
-            }
-          >
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            {/* Pública como o login: a convidada ainda não tem sessão. */}
-            <Route path="/convite/:token" element={<Convite />} />
-            {/* Pública: a noiva abre o orçamento pelo link, sem conta (E13). */}
-            <Route path="/orcamento/:token" element={<OrcamentoPublico />} />
-            {/* Pública: o lookbook dos vestidos provados, sem conta (E21). */}
-            <Route path="/lookbook/:token" element={<LookbookPublico />} />
-            {/* Pública: o portal da noiva — um link para tudo dela (E78). */}
-            <Route path="/noiva/:token" element={<NoivaPortal />} />
-            {/* E57: fora do AppLayout de propósito — quem precisa trocar a
-                senha não deve ver a sidebar nem alcançar nenhum módulo. */}
-            <Route
-              path="/trocar-senha"
-              element={
-                <RequireAuth>
-                  <TrocarSenha />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/selecionar-loja"
-              element={
-                <RequireAuth>
-                  <SelecionarLoja />
-                </RequireAuth>
-              }
-            />
-            <Route path="/loja/:lojaId" element={<AppLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              {/* E31: /leads foi unificado em /noivas — redireciona. */}
-              <Route path="leads" element={<RedirectLeadParaNoiva />} />
-              <Route path="leads/:id" element={<RedirectLeadParaNoiva />} />
-              <Route path="noivas" element={<Noivas />} />
-              <Route path="noivas/nova" element={<NovaNoiva />} />
-              <Route path="noivas/conversao" element={<ConversaoLeads />} />
-              <Route path="noivas/:leadId" element={<NoivaDetalhe />} />
-              <Route path="noivas/:leadId/editar" element={<EditarNoiva />} />
-              <Route path="noivas/:leadId/interesses" element={<InteressesNoiva />} />
-              <Route path="agenda" element={<Agenda />} />
-              <Route path="agenda/semana" element={<AgendaSemana />} />
-              <Route path="mensagens" element={<MensagensDoDia />} />
-              <Route path="atendimentos" element={<Atendimentos />} />
-              <Route path="atendimentos/novo" element={<NovoAtendimento />} />
-              <Route path="atendimentos/config" element={<ConfigAtendimentos />} />
-              <Route path="ajustes" element={<Ajustes />} />
-              <Route path="provas" element={<Provas />} />
-              <Route path="reservas" element={<Reservas />} />
-              <Route path="reservas/:bloqueioId" element={<ReservaDetalhe />} />
-              <Route path="vestidos" element={<Vestidos />} />
-              <Route path="vestidos/novo" element={<NovoVestido />} />
-              <Route path="vestidos/utilizacao" element={<UtilizacaoVestidos />} />
-              <Route path="vestidos/:id" element={<VestidoDetail />} />
-              <Route path="vestidos/:id/editar" element={<EditarVestido />} />
-              <Route path="orcamentos" element={<Orcamentos />} />
-              <Route path="orcamentos/:id" element={<OrcamentoDetail />} />
-              <Route path="contratos" element={<Contratos />} />
-              <Route path="contratos/:id" element={<ContratoDetail />} />
-              <Route path="catalogo" element={<Catalogo />} />
-              <Route path="catalogo/novo" element={<NovoAtributo />} />
-              <Route path="catalogo/:atributoId/editar" element={<EditarAtributo />} />
-              {/* O fluxo de caixa É o hub do financeiro: as demais telas são o
-                  recorte (dre/projecao) ou a ação (receber/pagar/cobranca). */}
-              <Route path="financeiro" element={<FluxoCaixa />} />
-              <Route path="financeiro/dre" element={<DRE />} />
-              <Route path="financeiro/projecao" element={<Projecao />} />
-              <Route path="financeiro/cobranca" element={<Cobranca />} />
-              <Route path="financeiro/receber" element={<Receber />} />
-              <Route path="financeiro/pagar" element={<Pagar />} />
-              {/* A folha é um recorte de contas a pagar (as SALARIO de uma
-                  competência) + o fechamento com a contabilidade. */}
-              <Route path="financeiro/folha" element={<Folha />} />
-              <Route path="financeiro/auditoria" element={<Auditoria />} />
-              <Route path="financeiro/conciliacao" element={<Conciliacao />} />
-              <Route path="comissoes" element={<Comissoes />} />
-              <Route path="minha-comissao" element={<MinhaComissao />} />
-              <Route path="equipe" element={<Equipe />} />
-              <Route path="permissoes" element={<Permissoes />} />
-              <Route path="configuracoes" element={<Configuracoes />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-            {/* Console superadmin: fora do AppLayout de loja; traz o próprio shell/gate. */}
-            <Route path="/admin" element={<AdminConsole />} />
-            <Route path="/admin/perfis" element={<AdminPerfis />} />
-            <Route path="*" element={<LegacyRedirect />} />
-          </Routes>
-          </Suspense>
-        </BrowserRouter>
+        <RouterProvider router={roteador} />
         <Toaster />
       </TooltipProvider>
       </ThemeProvider>

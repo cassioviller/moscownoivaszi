@@ -1,0 +1,1 @@
+ALTER TABLE "audit_log" ALTER COLUMN "loja_id" DROP NOT NULL;

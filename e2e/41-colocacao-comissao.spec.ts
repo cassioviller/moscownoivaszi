@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { eq } from "drizzle-orm";
-import { db, contratosTable } from "../lib/db/src/index";
+import { inArray } from "drizzle-orm";
+import { db, contratosTable, leadsTable } from "../lib/db/src/index";
 import { lerEstado, sessaoViaAPI, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -19,6 +19,7 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
   const stamp = Date.now();
   const competencia = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 7);
   const contratos: string[] = [];
+  const leads: string[] = [];
 
   test.beforeAll(async ({ playwright }) => {
     const api = await playwright.request.newContext();
@@ -52,8 +53,10 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
       const lead = await api.post(`${API_URL}/api/lojas/${estado.lojaId}/leads`, {
         data: { noivaNome: `E2E Colocacao ${stamp}-${valorTotal}`, origem: "LOJA" },
       });
+      const leadId = (await lead.json()).id as string;
+      leads.push(leadId);
       const contrato = await api.post(`${API_URL}/api/lojas/${estado.lojaId}/contratos`, {
-        data: { leadId: (await lead.json()).id, vendedoraId, valorTotal },
+        data: { leadId, vendedoraId, valorTotal },
       });
       expect(contrato.status(), await contrato.text()).toBe(201);
       contratos.push((await contrato.json()).id);
@@ -62,10 +65,16 @@ test.describe("Colocação no extrato pessoal (E55)", () => {
   });
 
   test.afterAll(async () => {
-    // Cancelar tira as vendas do ranking e da varredura de pendências (E53) —
-    // a loja do e2e não pode acumular estado dos specs.
-    for (const id of contratos) {
-      await db.update(contratosTable).set({ status: "CANCELADO" }).where(eq(contratosTable.id, id));
+    // S-D45: cancelar tirava as vendas do ranking (E53) mas deixava as
+    // linhas — 300 contratos e 300 leads acumulados de 21/07 a 07/08, +2 por
+    // passada. A forma é a da S-D25 nas cabines: o spec apaga o que criou.
+    // Contratos antes dos leads porque `contratos.lead_id` é RESTRICT; o
+    // spec não cria parcela nem item, então não há mais nada pendurado.
+    if (contratos.length > 0) {
+      await db.delete(contratosTable).where(inArray(contratosTable.id, contratos));
+    }
+    if (leads.length > 0) {
+      await db.delete(leadsTable).where(inArray(leadsTable.id, leads));
     }
   });
 

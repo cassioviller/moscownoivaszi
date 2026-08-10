@@ -1,8 +1,8 @@
 import { test, expect, request as pwRequest, type Page } from "@playwright/test";
 import path from "node:path";
-import { eq, inArray } from "drizzle-orm";
-import { db, leadsTable, atendimentosTable, cabinesTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
+import { inArray } from "drizzle-orm";
+import { db, leadsTable, atendimentosTable } from "../lib/db/src/index";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -89,7 +89,7 @@ test.describe("Provas pedem o recorte (E87)", () => {
       await db.delete(atendimentosTable).where(inArray(atendimentosTable.leadId, leadIds));
       await db.delete(leadsTable).where(inArray(leadsTable.id, leadIds));
     }
-    if (cabineId) await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
+    await apagarCabineCriada(cabineId);
   });
 
   test("o toggle futuras/passadas conta a verdade e só pede a janela", async ({ page }) => {

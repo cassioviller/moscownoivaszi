@@ -13,13 +13,10 @@
  *    desce em cada parcela desde o E3/E98).
  */
 
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
+// S35: a normaliza\u00e7\u00e3o (NFD + sem diacr\u00edticos + min\u00fasculas + trim) \u00e9 a r\u00e9gua
+// \u00fanica de `@/lib/formatos` \u2014 estava copiada aqui, no seletor de loja e no
+// acervo de vestidos.
+import { normalizar } from "@/lib/formatos";
 
 /** True se o nome contém a busca, ignorando caixa e acentos. Busca vazia não casa. */
 export function casaComBusca(nome: string | null | undefined, busca: string): boolean {

@@ -33,10 +33,16 @@ test.describe("Alerta de caixa (E46)", () => {
   test.beforeAll(async ({ request }) => {
     await autenticar(request);
 
-    // Âncora baixa + uma despesa que a supera dentro do horizonte = furo certo,
-    // independentemente do que as outras suítes tenham deixado no caixa.
+    // Âncora FOLGADA + uma despesa que a supera dentro do horizonte = furo
+    // certo no FUTURO, independentemente do que as outras suítes tenham
+    // deixado no caixa. Era R$ 1.000 — e a S-M4 provou que não dominava: os
+    // pagamentos de hoje das outras suítes acumulam DEPOIS da âncora (medido
+    // -R$ 1.211,05 num dia de nove runs), o saldo de partida ficava negativo,
+    // e o alerta novo — correto — dizia "já está negativo" onde este spec
+    // espera o furo futuro. Antes da S-M4 o spec passava POR CIMA de uma loja
+    // genuinamente no vermelho, que é o ponto cego exato que ela fechou.
     const saldo = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/financeiro/saldos-referencia`, {
-      data: { dataReferencia: negocio(0), valor: 1_000 },
+      data: { dataReferencia: negocio(0), valor: 100_000 },
     });
     expect(saldo.status(), await saldo.text()).toBe(200);
 

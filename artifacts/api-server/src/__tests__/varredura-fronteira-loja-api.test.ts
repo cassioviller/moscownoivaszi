@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 import {
   criarFixture,
   fecharPool,
@@ -39,7 +40,8 @@ const RAIZ_ROTAS = join(import.meta.dirname, "..", "routes");
  */
 function recursosDeLoja(): string[] {
   const achados = new Set<string>();
-  for (const arquivo of readdirSync(RAIZ_ROTAS).filter((f) => f.endsWith(".ts"))) {
+  // A enumeração sai do versionamento, não do disco (S-D30).
+  for (const arquivo of arquivosVersionados(RAIZ_ROTAS, ["."]).filter((f) => f.endsWith(".ts"))) {
     const conteudo = readFileSync(join(RAIZ_ROTAS, arquivo), "utf8");
     // Comentários fora: eles CITAM caminhos para explicar decisões, e uma
     // varredura que lê documentação inventa recurso que não existe.
@@ -79,7 +81,8 @@ describe("varredura — a loja da URL é conferida em TODA rota de loja", () => 
 
   it("a lista de recursos sai do código e não está vazia", () => {
     const recursos = recursosDeLoja();
-    expect(recursos.length).toBeGreaterThan(10);
+    // Piso (S-D31): 25 recursos medidos em 2026-08-07, com folga para baixo.
+    expect(recursos.length).toBeGreaterThan(20);
     // Âncoras: se o extrator quebrar, ele devolve lista vazia ou lixo, e um
     // `toBeGreaterThan` sozinho não acusaria.
     expect(recursos).toContain("leads");
@@ -101,7 +104,7 @@ describe("varredura — a loja da URL é conferida em TODA rota de loja", () => 
   it("e o 403 vem da FRONTEIRA, não de permissão — a loja de casa responde", async () => {
     const r = await agenteA.get(`/api/lojas/${B.lojaId}/leads`);
     expect(r.status).toBe(403);
-    expect(r.body.error).toBe("Acesso negado a esta loja");
+    expect(r.body.error).toBe("LOJA_DIVERGE_DA_SESSAO");
     await agenteA.get(`/api/lojas/${A.lojaId}/leads`).expect(200);
   });
 });

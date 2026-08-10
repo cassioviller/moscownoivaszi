@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable } from "@workspace/db";
+import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable, vestidosTable, orcamentoItensTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
-import { eq, and, max, inArray, gte, lt, lte } from "drizzle-orm";
+import { eq, and, count, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
@@ -32,18 +32,26 @@ import {
   SetDisponibilidadeBody,
   SetDisponibilidadeResponse,
   RegistrarContatoAtendimentoResponse,
-  DesfazerContatoAtendimentoResponse
+  DesfazerContatoAtendimentoResponse,
+  ListAusenciasResponse,
+  ListAusenciasQueryParams,
+  CreateAusenciaBody,
+  CreateAusenciaResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import {
   recusaDeMover,
+  ausenciaQueCobre,
+  diaLocalYMD,
   DETALHE_RECUSA,
   EXPEDIENTE_PADRAO,
+  SLOT_MINUTOS,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
 import { addDias, inicioDoDia } from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
+import { intervaloValidado } from "../lib/intervalo";
 
 const router: IRouter = Router();
 
@@ -61,7 +69,7 @@ async function recusaDeMoverAtendimento(
   lojaId: string,
   existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date; tipo: "ATENDIMENTO" | "PROVA" },
   mudanca: { cabineId?: string; vendedoraId?: string; inicio?: Date },
-): Promise<MotivoRecusa | null> {
+): Promise<{ motivo: MotivoRecusa; detalhe: string } | null> {
   const regra = await db.query.regraDisponibilidadeTable.findFirst({
     where: eq(regraDisponibilidadeTable.lojaId, lojaId),
   });
@@ -90,7 +98,12 @@ async function recusaDeMoverAtendimento(
   // exato — busca-se uma JANELA em torno do destino (± a duração máxima de prova)
   // e o `recusaDeMover` decide a sobreposição de intervalo. A janela é curta:
   // longe do desperdício de carregar o dia inteiro.
-  const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * 30 * 60_000;
+  //
+  // S-A7: o passo é SLOT_MINUTOS, do agenda-core — a MESMA fonte que rege a
+  // grade e o `recusaDeMover`. O `30` vivia cravado aqui como literal: mudar a
+  // constante corrigia a grade e não corrigia esta busca, e as duas divergiam
+  // em silêncio.
+  const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * SLOT_MINUTOS * 60_000;
   const destinoMs = new Date(destino.inicio).getTime();
   const concorrentes = await db
     .select({
@@ -107,7 +120,48 @@ async function recusaDeMoverAtendimento(
       lte(atendimentosTable.inicio, new Date(destinoMs + janelaMs)),
     ));
 
-  return recusaDeMover(movida, destino, concorrentes, expediente);
+  /**
+   * E151 — as ausências que tocam o DIA do destino.
+   *
+   * Recorte pelo dia e não pela loja inteira: férias antigas não interessam a
+   * um agendamento de amanhã, e a tabela cresce com o tempo. O `usuarioNome`
+   * vem junto porque a frase da recusa precisa dele — sem ele a vendedora
+   * leria "a vendedora está ausente" sem saber qual nem até quando.
+   */
+  const diaDestino = diaLocalYMD(destino.inicio);
+  const ausencias = await db
+    .select({
+      usuarioId: ausenciasTable.usuarioId,
+      inicio: ausenciasTable.inicio,
+      fim: ausenciasTable.fim,
+      motivo: ausenciasTable.motivo,
+      nome: usuariosTable.nome,
+    })
+    .from(ausenciasTable)
+    .innerJoin(usuariosTable, eq(usuariosTable.id, ausenciasTable.usuarioId))
+    .where(and(
+      eq(ausenciasTable.lojaId, lojaId),
+      lte(ausenciasTable.inicio, diaDestino),
+      gte(ausenciasTable.fim, diaDestino),
+    ));
+
+  const motivo = recusaDeMover(movida, destino, concorrentes, expediente, ausencias);
+  if (!motivo) return null;
+  if (motivo !== "VENDEDORA_AUSENTE") return { motivo, detalhe: DETALHE_RECUSA[motivo] };
+
+  // A frase nomeia a pessoa e o período — é o que a vendedora precisa para
+  // decidir o que fazer (remarcar? outra vendedora?) sem sair da tela.
+  const ausente = ausenciaQueCobre(ausencias, movida.vendedoraId, destino.inicio) as
+    | { inicio: string; fim: string; motivo: string | null; nome: string }
+    | null;
+  const ddmm = (ymd: string) => ymd.slice(8, 10) + "/" + ymd.slice(5, 7);
+  return {
+    motivo,
+    detalhe: ausente
+      ? `${ausente.nome} está ausente de ${ddmm(ausente.inicio)} a ${ddmm(ausente.fim)}` +
+        (ausente.motivo ? ` (${ausente.motivo})` : "") + "."
+      : DETALHE_RECUSA[motivo],
+  };
 }
 
 // Joins padrão dos atendimentos: as telas de fila/agenda/provas precisam de
@@ -133,6 +187,8 @@ router.use("/lojas/:lojaId/cabines", requireModulo("agenda"));
 router.use("/lojas/:lojaId/atendimentos", requireModulo("agenda"));
 router.use("/lojas/:lojaId/ajustes", requireModulo("agenda"));
 router.use("/lojas/:lojaId/disponibilidade", requireModulo("agenda"));
+// E151: a ausência é da agenda — quem marca o dia é quem sabe quem falta.
+router.use("/lojas/:lojaId/ausencias", requireModulo("agenda"));
 
 // Cabines
 router.get("/lojas/:lojaId/cabines", async (req, res): Promise<void> => {
@@ -178,13 +234,60 @@ router.patch("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void>
   res.json(UpdateCabineResponse.parse(cabine));
 });
 
+/**
+ * S-M1 — a cabine era o sexto DELETE cru, e o E115 não o alcançou.
+ *
+ * Cinco linhas: 204 mesmo sem apagar nada, nenhuma pergunta sobre uso, nenhum
+ * rastro e nenhuma transação. E `atendimentos.cabine_id` é CASCADE
+ * (`schema/atendimentos.ts:82`), então apagar a cabine **leva a agenda dela
+ * inteira** — as provas marcadas, as concluídas que são a história da ficha da
+ * noiva, e a fila de costura que desce dos atendimentos por outro CASCADE. A
+ * mesma cascata que o E115 fechou em `DELETE /atendimentos`, um nível acima e
+ * sem nenhuma das guardas.
+ *
+ * A régua é a do `DELETE /vestidos` (S-A25): quem tem história não se apaga,
+ * se DESATIVA — `cabines.ativo` existe desde sempre e a tela de Cabines &
+ * horário já o edita. Contamos a agenda inteira, passada e futura: o que dói
+ * na cascata é justamente o passado, que não se remarca.
+ */
 router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void> => {
   const params = DeleteCabineParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json(erroDeValidacao(params.error));
     return;
   }
-  await db.delete(cabinesTable).where(and(eq(cabinesTable.id, params.data.cabineId), eq(cabinesTable.lojaId, params.data.lojaId)));
+  const { lojaId, cabineId } = params.data;
+  const [cabine] = await db.select({ id: cabinesTable.id, nome: cabinesTable.nome, ativo: cabinesTable.ativo })
+    .from(cabinesTable)
+    .where(and(eq(cabinesTable.id, cabineId), eq(cabinesTable.lojaId, lojaId)));
+  if (!cabine) {
+    res.status(404).json({ error: "CABINE_NAO_ENCONTRADA", detalhe: "Esta cabine não existe nesta loja." });
+    return;
+  }
+
+  const [agenda] = await db.select({ n: count() }).from(atendimentosTable)
+    .where(and(eq(atendimentosTable.cabineId, cabineId), eq(atendimentosTable.lojaId, lojaId)));
+  if (agenda!.n > 0) {
+    res.status(409).json({
+      error: "CABINE_COM_AGENDA",
+      detalhe: `Esta cabine tem ${agenda!.n} atendimento${agenda!.n === 1 ? "" : "s"} na agenda e não pode ser apagada — apagá-la levaria essa história junto. Desative-a se ela saiu de uso.`,
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "CABINE_REMOVIDA",
+      entidade: "cabine",
+      entidadeId: cabineId,
+      // Depois do DELETE não sobra linha nenhuma de onde reconstituir a cabine:
+      // o nome é o que alguém procura ao perguntar "cadê a Cabine 3?".
+      detalhe: { nome: cabine.nome, ativo: cabine.ativo },
+    });
+    await tx.delete(cabinesTable).where(and(eq(cabinesTable.id, cabineId), eq(cabinesTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
@@ -195,18 +298,14 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   // a tela de provas pede só PROVA; ninguém baixa a agenda inteira para filtrar.
   // E83: janela de/ate sobre `inicio` (dia local, inclusivo) — o poll do sino
   // e as telas do dia pedem a janela, não a história.
-  const query = ListAtendimentosQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ error: "FILTRO_INVALIDO" });
-    return;
-  }
+  // O parse recusado responde o corpo histórico DESTA rota (só o código).
+  const query = intervaloValidado(res, ListAtendimentosQueryParams.safeParse(req.query), {
+    error: "FILTRO_INVALIDO",
+  });
+  if (!query) return;
   // E125: recorte por noiva — a ficha pergunta pela próxima prova DELA e não
   // tem por que baixar a agenda da loja inteira (a classe do E62).
-  const { leadId, bloqueioId, tipo, de, ate } = query.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const { leadId, bloqueioId, tipo, de, ate } = query;
   const atendimentos = await db.query.atendimentosTable.findMany({
     where: and(
       eq(atendimentosTable.lojaId, lojaId),
@@ -241,7 +340,7 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     parsed.data.bloqueioId ? bloqueioNaLoja(parsed.data.bloqueioId, lojaId) : true,
   ]);
   if (!okLead || !okCabine || !okVend || !okBloqueio) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine, vendedora ou bloqueio não são desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead, cabine, vendedora ou bloqueio não são desta loja" });
     return;
   }
 
@@ -263,7 +362,7 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     {},
   );
   if (recusa) {
-    res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
+    res.status(422).json({ error: recusa.motivo, detalhe: recusa.detalhe });
     return;
   }
 
@@ -310,7 +409,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     parsed.data.vendedoraId ? vendedoraNaLoja(parsed.data.vendedoraId, lojaId as string) : true,
   ]);
   if (!okCabine || !okVend) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "cabine ou vendedora não são desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "cabine ou vendedora não são desta loja" });
     return;
   }
 
@@ -318,7 +417,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
   if (parsed.data.inicio !== undefined || parsed.data.cabineId !== undefined) {
     const recusa = await recusaDeMoverAtendimento(lojaId as string, existente, parsed.data);
     if (recusa) {
-      res.status(422).json({ error: recusa, detalhe: DETALHE_RECUSA[recusa] });
+      res.status(422).json({ error: recusa.motivo, detalhe: recusa.detalhe });
       return;
     }
   }
@@ -509,6 +608,112 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, 
   res.json(DesfazerContatoAtendimentoResponse.parse(full));
 });
 
+/**
+ * Ausências (E151) — os dias em que alguém da equipe não atende.
+ *
+ * No papel é a primeira coisa que a página do caderno declara: 7 das 14
+ * páginas anunciam quem está fora (*"Volta da Marilza 15 dias"*), e nas
+ * semanas de férias a agenda esvazia. No sistema não existia nada — a agenda
+ * sabia de cabine e de vendedora, e oferecia alegremente o dia inteiro de
+ * quem estava viajando.
+ */
+router.get("/lojas/:lojaId/ausencias", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const query = ListAusenciasQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json(erroDeValidacao(query.error));
+    return;
+  }
+  // `?desde=` é o recorte que a agenda usa: férias de 2024 não interessam a
+  // quem marca amanhã, e a tabela só cresce.
+  const filtros = [eq(ausenciasTable.lojaId, lojaId)];
+  if (query.data.desde) filtros.push(gte(ausenciasTable.fim, query.data.desde));
+
+  const linhas = await db
+    .select({
+      id: ausenciasTable.id,
+      lojaId: ausenciasTable.lojaId,
+      usuarioId: ausenciasTable.usuarioId,
+      inicio: ausenciasTable.inicio,
+      fim: ausenciasTable.fim,
+      motivo: ausenciasTable.motivo,
+      usuarioNome: usuariosTable.nome,
+    })
+    .from(ausenciasTable)
+    .innerJoin(usuariosTable, eq(usuariosTable.id, ausenciasTable.usuarioId))
+    .where(and(...filtros))
+    .orderBy(ausenciasTable.inicio);
+
+  res.json(ListAusenciasResponse.parse(linhas));
+});
+
+router.post("/lojas/:lojaId/ausencias", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = CreateAusenciaBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const { usuarioId, inicio, fim, motivo } = parsed.data;
+
+  const dia = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dia.test(inicio) || !dia.test(fim)) {
+    res.status(400).json({
+      error: "DATA_INVALIDA",
+      detalhe: "Informe os dias no formato AAAA-MM-DD.",
+      campos: [{ campo: "inicio", motivo: "Formato esperado: AAAA-MM-DD" }],
+    });
+    return;
+  }
+  // Período invertido é erro de digitação, e passaria em silêncio: a ausência
+  // existiria no banco sem cobrir dia nenhum, e ninguém entenderia por que a
+  // agenda continua oferecendo a vendedora que está de férias.
+  if (fim < inicio) {
+    res.status(422).json({
+      error: "PERIODO_INVERTIDO",
+      detalhe: "O último dia da ausência é anterior ao primeiro.",
+      campos: [{ campo: "fim", motivo: "O fim precisa ser igual ou depois do início" }],
+    });
+    return;
+  }
+  // A FK prova que a pessoa existe; `usuarios_lojas` é quem diz que ela é
+  // DESTA loja (família E91 — `usuarios` é tabela global).
+  if (!(await vendedoraNaLoja(usuarioId, lojaId))) {
+    // S41: era 404 — a régua do E91 reserva 404 para o recurso da URL; id
+    // inválido no CORPO é 422, como o guard do ajuste (:755) já respondia.
+    res.status(422).json({
+      error: "REFERENCIA_INVALIDA",
+      detalhe: "Esta pessoa não é da equipe desta loja.",
+      campos: [{ campo: "usuarioId", motivo: "Pessoa não encontrada nesta loja" }],
+    });
+    return;
+  }
+
+  const [ausencia] = await db.insert(ausenciasTable).values({
+    id: randomUUID(),
+    lojaId,
+    usuarioId,
+    inicio,
+    fim,
+    motivo: motivo ?? null,
+  }).returning();
+
+  const [usuario] = await db.select({ nome: usuariosTable.nome })
+    .from(usuariosTable).where(eq(usuariosTable.id, usuarioId));
+
+  res.status(201).json(CreateAusenciaResponse.parse({ ...ausencia, usuarioNome: usuario?.nome ?? null }));
+});
+
+router.delete("/lojas/:lojaId/ausencias/:ausenciaId", async (req, res): Promise<void> => {
+  const { lojaId, ausenciaId } = req.params as { lojaId: string; ausenciaId: string };
+  // Ausência apagada volta a liberar o dia — e é o caminho de quem digitou
+  // errado ou de quem voltou antes. Não há histórico a preservar aqui: o que
+  // ficou agendado no período nunca foi tocado (a ausência só impede o novo).
+  await db.delete(ausenciasTable)
+    .where(and(eq(ausenciasTable.id, ausenciaId), eq(ausenciasTable.lojaId, lojaId)));
+  res.status(204).send();
+});
+
 // Ajustes
 // Contexto relacional da fila da costureira: ajuste → atendimento →
 // bloqueio → {noiva, vestido, casamentoData} + checklist ordenado.
@@ -545,6 +750,28 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
         ))
     : [];
 
+  // E156 — a confecção que já virou peça do acervo. A proveniência mora em
+  // `vestidos.origem_ajuste_id` (a peça é o que sobrevive), então a fila lê pelo
+  // lado de lá: uma query pelas peças que citam os trabalhos em cena. É o que
+  // troca o gesto "virou peça do acervo" pelo link para a peça — sem isto, a
+  // fila ofereceria o mesmo gesto para sempre, no mesmo trabalho já concluído.
+  const confeccaoIds = ajustes.filter((a) => a.tipo === "CONFECCAO").map((a) => a.id);
+  const pecas = confeccaoIds.length
+    ? await db
+        .select({
+          id: vestidosTable.id,
+          codigo: vestidosTable.codigo,
+          nome: vestidosTable.nome,
+          origemAjusteId: vestidosTable.origemAjusteId,
+        })
+        .from(vestidosTable)
+        .where(and(
+          eq(vestidosTable.lojaId, lojaId),
+          inArray(vestidosTable.origemAjusteId, confeccaoIds),
+        ))
+    : [];
+  const pecaPorAjuste = new Map(pecas.map(({ origemAjusteId, ...peca }) => [origemAjusteId!, peca]));
+
   const comPrazo = ajustes.map((a) => {
     const bloqueioId = a.atendimento?.bloqueioId;
     const aposEsta = a.atendimento?.inicio;
@@ -553,7 +780,7 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
           .filter((p) => p.bloqueioId === bloqueioId && p.inicio > aposEsta)
           .reduce<Date | null>((min, p) => (min === null || p.inicio < min ? p.inicio : min), null)
       : null;
-    return { ...a, proximaProva: proxima };
+    return { ...a, proximaProva: proxima, pecaDoAcervo: pecaPorAjuste.get(a.id) ?? null };
   });
 
   res.json(ListAjustesResponse.parse(comPrazo));
@@ -613,9 +840,43 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
   res.json(UpdateAjusteResponse.parse(fullAjuste));
 });
 
+/**
+ * S-M16 — era um dos três deletes crus que sobraram fora da régua do E115.
+ * O checklist desce por cascade (ele não existe fora do ajuste) e a peça que
+ * a confecção virou fica (`origem_ajuste_id` set null — decisão escrita do
+ * E156: perde-se a proveniência, não o acervo). O que NÃO pode sair calado é
+ * o trabalho JÁ COBRADO: o item de orçamento que o cobra (E155) ficaria com
+ * `ajuste_id` nulo em silêncio, e a noiva leria uma cobrança apontando um
+ * trabalho que ninguém mais costura.
+ */
 router.delete("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void> => {
-  const { lojaId, ajusteId } = req.params;
-  await db.delete(ajustesTable).where(and(eq(ajustesTable.id, ajusteId as string), eq(ajustesTable.lojaId, lojaId as string)));
+  const { lojaId, ajusteId } = req.params as { lojaId: string; ajusteId: string };
+  const [ajuste] = await db.select().from(ajustesTable)
+    .where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)));
+  if (!ajuste) {
+    res.status(404).json({ error: "AJUSTE_NAO_ENCONTRADO", detalhe: "Este ajuste não existe nesta loja." });
+    return;
+  }
+  const [cobrancas] = await db.select({ n: count() }).from(orcamentoItensTable)
+    .where(eq(orcamentoItensTable.ajusteId, ajusteId));
+  if (cobrancas!.n > 0) {
+    res.status(409).json({
+      error: "AJUSTE_COBRADO",
+      detalhe: "Este trabalho já foi cobrado num orçamento — remova o item de lá antes, ou o valor cobrado ficaria apontando o nada.",
+    });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "AJUSTE_REMOVIDO",
+      entidade: "ajuste",
+      entidadeId: ajusteId,
+      detalhe: { descricao: ajuste.descricao, tipo: ajuste.tipo, status: ajuste.status, custo: ajuste.custo },
+    });
+    await tx.delete(ajustesTable).where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 

@@ -17,8 +17,9 @@ import {
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { Erro } from "@/components/estado";
+import { Erro, Vazio } from "@/components/estado";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
+import { SEM_PERFIS_TITULO, SEM_PERFIS_DESCRICAO } from "@/lib/perfis-do-sistema";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { mensagemApi } from "@/lib/erro-api";
@@ -134,7 +135,12 @@ export default function Permissoes() {
           ))}
         </div>
       ) : perfis?.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nenhum perfil encontrado.</p>
+        // S-D9 — o vazio entra na régua do E99 e passa a dizer POR QUE. A
+        // lista é do sistema (`GET /admin/perfis` não filtra loja), então
+        // vazia aqui não é "esta loja não tem": é uma base sem configuração
+        // inicial. Sem `acao` de propósito — o raciocínio está em
+        // `lib/perfis-do-sistema.ts`.
+        <Vazio titulo={SEM_PERFIS_TITULO} descricao={SEM_PERFIS_DESCRICAO} />
       ) : (
         <div className="space-y-6">
           {perfis?.map((perfil) => {

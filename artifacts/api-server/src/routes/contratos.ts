@@ -39,10 +39,12 @@ import {
 import {
   ancoraDeNegocio,
   brutoEmCentavos,
+  centavos,
   diaDeNegocio,
   estaAberta,
   liquidoEmCentavos,
   montarPlanoParcelas,
+  reais,
   STATUS_ABERTO,
 } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
@@ -78,9 +80,6 @@ router.use("/lojas/:lojaId/contratos", requireModulo("leads"));
  */
 router.use("/lojas/:lojaId/parcelas", requireModulo("leads"));
 
-/** Dinheiro soma em CENTAVOS inteiros — reais é float e não fecha na soma. */
-const cent = (reais: number) => Math.round(reais * 100);
-const reais = (centavos: number) => centavos / 100;
 
 // O líquido do orçamento é `liquidoEmCentavos`, do financeiro-core. Ele morava
 // aqui, e o comentário desta função afirmava que a conta era feita "EXATAMENTE
@@ -90,7 +89,7 @@ const reais = (centavos: number) => centavos / 100;
 
 type ItemSnapshot = Pick<
   InsertContratoItem,
-  "tipo" | "vestidoId" | "descricao" | "valorUnitario" | "quantidade"
+  "tipo" | "vestidoId" | "itemEstoqueId" | "descricao" | "valorUnitario" | "quantidade"
 >;
 
 /** True se o contrato existe, é da loja e está ATIVO. */
@@ -250,6 +249,10 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     itensSnapshot = itens.map((it) => ({
       tipo: it.tipo,
       vestidoId: it.vestidoId,
+      // E154: sem este campo no snapshot, o contrato fecha e a peça de estoque
+      // some da conta — o comprometimento do dia é derivado DAQUI, e um saiote
+      // vendido que não aparece na soma é pior que aviso nenhum.
+      itemEstoqueId: it.itemEstoqueId,
       descricao: it.descricao,
       valorUnitario: it.valorUnitario,
       quantidade: it.quantidade,
@@ -264,7 +267,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     descontoValor = orcamento.descontoValor;
     const brutoC = brutoEmCentavos(itens);
     const liquidoC = liquidoEmCentavos(brutoC, orcamento.descontoTipo, orcamento.descontoValor);
-    if (liquidoC !== cent(contratoData.valorTotal)) {
+    if (liquidoC !== centavos(contratoData.valorTotal)) {
       res.status(422).json({
         error: "VALOR_TOTAL_NAO_BATE",
         detalhe: `Itens menos desconto (${reais(liquidoC)}) difere do valor total (${contratoData.valorTotal})`,
@@ -282,8 +285,8 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // float e comparar com tolerância (o que estava aqui) aceita um plano com um
   // centavo de folga e recusa um plano válido por erro de ponto flutuante.
   if (parcelasInput && parcelasInput.length > 0) {
-    const somaC = parcelasInput.reduce((acc, p) => acc + cent(p.valorPrevisto), 0);
-    if (somaC !== cent(contratoData.valorTotal)) {
+    const somaC = parcelasInput.reduce((acc, p) => acc + centavos(p.valorPrevisto), 0);
+    if (somaC !== centavos(contratoData.valorTotal)) {
       res.status(422).json({
         error: "PARCELAS_NAO_BATEM",
         detalhe: `Soma das parcelas (${reais(somaC)}) difere do valor total (${contratoData.valorTotal})`,
@@ -301,12 +304,39 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       ...(contratoData.bloqueioVestidoIds ?? []),
     ]),
   ];
+  // E150: os vestidos efetivamente reservados por este contrato, colhidos na
+  // mesma passada que já os valida — a guarda de "peça vendida sem reserva"
+  // logo abaixo compara contra esta lista.
+  const vestidosReservados = new Set<string>();
+  // S41: eram DOIS SELECTs por bloqueio dentro do laço — o irmão N+1 do PATCH
+  // que a S35 consolidou (`:712`). Os bloqueios vêm de uma vez e os vínculos
+  // ativos também; o LAÇO continua, porque a precedência dos quatro erros é
+  // por bloqueio na ordem da lista, e é ela que os testes pregam. Só o
+  // `verificarDisponibilidade` segue por candidato: o motor de conflito é por
+  // peça e período, e consolidá-lo mudaria contagem em caminho de erro.
+  const bloqueiosEncontrados = bloqueioIds.length > 0
+    ? await db.select().from(bloqueioVestidosTable)
+        .where(and(
+          inArray(bloqueioVestidosTable.id, bloqueioIds),
+          eq(bloqueioVestidosTable.lojaId, lojaId),
+        ))
+    : [];
+  const bloqueioPorId = new Map(bloqueiosEncontrados.map((b) => [b.id, b]));
+  const presosPorContratoAtivo = new Set(
+    (bloqueioIds.length > 0
+      ? await db
+          .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+          .from(contratoBloqueiosTable)
+          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+          .where(and(
+            inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
+            eq(contratosTable.status, "ATIVO"),
+          ))
+      : []
+    ).map((p) => p.bloqueioId),
+  );
   for (const bloqueioId of bloqueioIds) {
-    const [bloqueio] = await db.select().from(bloqueioVestidosTable)
-      .where(and(
-        eq(bloqueioVestidosTable.id, bloqueioId),
-        eq(bloqueioVestidosTable.lojaId, lojaId),
-      ));
+    const bloqueio = bloqueioPorId.get(bloqueioId);
     if (!bloqueio) {
       // S-D8/E122: era `{ error: "Bloqueio not found" }` — inglês, sem código
       // nem detalhe, no clique que fecha a venda. A régua da casa é
@@ -364,15 +394,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * de no máximo um contrato ATIVO. Contrato cancelado não conta — ele
      * libera a peça (soft-cancel do bloqueio) e a reserva volta ao mercado.
      */
-    const [presoPor] = await db
-      .select({ contratoId: contratoBloqueiosTable.contratoId })
-      .from(contratoBloqueiosTable)
-      .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
-      .where(and(
-        eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
-        eq(contratosTable.status, "ATIVO"),
-      ));
-    if (presoPor) {
+    if (presosPorContratoAtivo.has(bloqueioId)) {
       res.status(409).json({
         error: "RESERVA_JA_CONTRATADA",
         detalhe: "Esta reserva de vestido já está presa por outro contrato ativo.",
@@ -412,24 +434,121 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
       return;
     }
+    vestidosReservados.add(bloqueio.vestidoId);
+  }
+
+  /**
+   * E150 — o contrato não vende peça que não reservou.
+   *
+   * Até aqui, `itensSnapshot` (o que foi VENDIDO) e `bloqueioIds` (o que foi
+   * fisicamente RESERVADO) chegavam de fontes independentes: os itens vêm do
+   * orçamento, a lista de bloqueios vem do corpo da requisição. Nada obrigava
+   * as duas a falarem da mesma peça — e o schema declara a descrição em texto
+   * como registro autoritativo (`contratos.ts:66-69`), então um item apontando
+   * `vestidoId` sem reserva correspondente fechava com 201 e deixava a peça
+   * livre para a próxima noiva do mesmo sábado.
+   *
+   * O caderno do ateliê mostra o caso real: `Bolero Ricca Sposa` sai em duas
+   * semanas distintas, para noivas diferentes. É peça, e peça se reserva.
+   *
+   * Só VESTIDO e ACESSORIO entram na regra: SERVICO e AJUSTE não são peça
+   * física e não têm `vestidoId`. E a guarda só morde quando o item JÁ aponta
+   * uma peça — item de descrição livre segue passando, porque exigir reserva
+   * de algo que não está no acervo seria travar a venda por uma frase.
+   *
+   * A tela não é afetada: `orcamentos/[id].tsx:638-641` já manda todas as
+   * reservas da noiva não desmarcadas. Quem passa a ser recusado é o contrato
+   * montado fora dela — que é onde o defeito vivia.
+   */
+  const pecasVendidas = itensSnapshot.filter(
+    (it) => (it.tipo === "VESTIDO" || it.tipo === "ACESSORIO") && it.vestidoId,
+  );
+  if (pecasVendidas.length > 0) {
+    const semReserva = pecasVendidas.filter((it) => !vestidosReservados.has(it.vestidoId!));
+    if (semReserva.length > 0) {
+      res.status(422).json({
+        error: "ITEM_SEM_RESERVA",
+        detalhe:
+          "O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana.",
+        campos: semReserva.map((it) => ({
+          campo: "itens",
+          motivo: `«${it.descricao}» não tem reserva neste contrato`,
+        })),
+      });
+      return;
+    }
   }
 
   // E120/S-D4 — a venda trocou de dona em relação ao orçamento. Os nomes são
   // lidos antes da transação (leitura pura) para a linha da trilha dizer
   // quem→quem sem garimpo de id; a ESCRITA do rastro fica dentro dela.
-  const vendedoraDivergente =
-    vendedoraDoOrcamentoId !== null && vendedoraDoOrcamentoId !== contratoData.vendedoraId;
+  /**
+   * S-D29 — o rastro do E120 tinha porta dos fundos, e ela era a porta larga.
+   *
+   * `vendedoraDoOrcamentoId` só é lido dentro do `if (contratoData.orcamentoId)`
+   * lá em cima, e `orcamentoId` NÃO é obrigatório no `ContratoInput`. Resultado:
+   * contrato SEM orçamento atribuía a venda — e a comissão que ela soma por
+   * `contratos.vendedora_id` — a qualquer colega da loja com zero linhas de
+   * trilha. O E120 fechou a porta da frente e a S-D4 foi registrada como se
+   * fechasse as duas.
+   *
+   * A referência é a melhor que existir: quando há orçamento, quem o MONTOU
+   * (é a dona anterior da venda, e continua sendo a comparação mais forte);
+   * sem orçamento, quem está CRIANDO o contrato, que é a única outra pessoa
+   * que o sistema sabe ligar a este ato. Nos dois casos a pergunta é a mesma —
+   * a venda está sendo posta no nome de outra pessoa?
+   */
+  const referenciaVendedoraId = vendedoraDoOrcamentoId ?? req.usuario!.id;
+  const referenciaOrigem = vendedoraDoOrcamentoId ? "ORCAMENTO" : "SESSAO";
+  const vendedoraDivergente = referenciaVendedoraId !== contratoData.vendedoraId;
   let nomesDivergencia: Record<string, string> = {};
   if (vendedoraDivergente) {
     const pessoas = await db
       .select({ id: usuariosTable.id, nome: usuariosTable.nome })
       .from(usuariosTable)
-      .where(inArray(usuariosTable.id, [vendedoraDoOrcamentoId!, contratoData.vendedoraId]));
+      .where(inArray(usuariosTable.id, [referenciaVendedoraId, contratoData.vendedoraId]));
     nomesDivergencia = Object.fromEntries(pessoas.map((p) => [p.id, p.nome]));
   }
 
   // Persistência atômica: contrato + parcelas + snapshot de itens.
   const result = await db.transaction(async (tx) => {
+    /**
+     * S-M7 — a guarda de reserva exclusiva, relida SOB TRANCA.
+     *
+     * `presosPorContratoAtivo` é lido lá em cima no pool global, fora desta
+     * transação — e em READ COMMITTED duas vendedoras no mesmo segundo liam
+     * as duas "livre" e a PK de `contrato_bloqueios` (contratoId, bloqueioId)
+     * aceitava os dois pares: o mesmo vestido prometido a duas noivas, o caso
+     * exato que o comentário do E107 descreve, reaberto pela janela entre a
+     * leitura e a escrita. A guarda de cima FICA — ela dá os quatro erros na
+     * ordem que os testes pregam, sem custo de transação para o caminho
+     * errado; o que muda é que ela deixou de ser a última palavra.
+     *
+     * A forma é a do DELETE /admin/lojas (S33): `FOR UPDATE` na linha-pai —
+     * o INSERT do vínculo do concorrente precisa de `FOR KEY SHARE` nela, que
+     * conflita — e a reconferência como statement NOVO, que em READ COMMITTED
+     * enxerga o que o vencedor commitou. A tranca vai em ordem ORDENADA:
+     * dois contratos prendendo as mesmas peças em ordens diferentes se
+     * serializariam num deadlock em vez de numa fila.
+     */
+    if (bloqueioIds.length > 0) {
+      for (const bloqueioId of [...bloqueioIds].sort()) {
+        await tx.select({ id: bloqueioVestidosTable.id })
+          .from(bloqueioVestidosTable)
+          .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+          .for("update");
+      }
+      const presosAgora = await tx
+        .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
+        .from(contratoBloqueiosTable)
+        .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+        .where(and(
+          inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
+          eq(contratosTable.status, "ATIVO"),
+        ));
+      if (presosAgora.length > 0) return { corrida: true as const };
+    }
+
     const [contrato] = await tx.insert(contratosTable).values({
       id: randomUUID(),
       lojaId,
@@ -457,6 +576,25 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
           lojaId,
           contratoId: contrato.id,
           numero: p.numero,
+          /**
+           * S-M3 — estas parcelas SÃO o carnê, e nasciam rotuladas `AVULSA`.
+           *
+           * O campo não era passado e a coluna default é `AVULSA`
+           * (`schema/financeiro.ts:28`), que é o rótulo certo para "linha
+           * inserida por quem não pensou no assunto" — só que aqui alguém
+           * pensou: a guarda do `:287` exige que a soma bata com o `valorTotal`
+           * EXATO, o que é a definição do carnê, e a tela manda o próprio
+           * `montarPlanoParcelas` (`orcamentos/[id].tsx:672`), entrada em
+           * `numero 0` inclusive.
+           *
+           * O estrago é no `jaTemCarne` do `gerar-plano` (`:1275`), que
+           * pergunta `origem === "PLANO"`: ele nunca via este carnê, então
+           * aceitava montar OUTRO por cima. Uma venda de R$ 5.000,00 ficava com
+           * R$ 10.000,00 em parcelas, e o deslocamento do S26 — feito para tirar
+           * um reparo avulso da frente — empurrava a entrada verdadeira para
+           * fora do `numero 0`, que significa ENTRADA em seis pontos do sistema.
+           */
+          origem: "PLANO" as const,
           descricao: p.descricao ?? `Parcela ${p.numero}`,
           valorPrevisto: p.valorPrevisto,
           vencimento: p.vencimento,
@@ -515,18 +653,45 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         entidade: "contrato",
         entidadeId: contrato.id,
         detalhe: {
-          orcamentoId: contratoData.orcamentoId,
-          vendedoraDoOrcamentoId,
+          orcamentoId: contratoData.orcamentoId ?? null,
+          // S-D29: a linha diz CONTRA O QUE se comparou. Sem isso, quem lê a
+          // trilha não sabe se "de Ana para Bia" quer dizer que Ana montou o
+          // orçamento ou que Ana registrou o contrato — são atos diferentes.
+          referenciaOrigem,
+          vendedoraDaReferenciaId: referenciaVendedoraId,
           vendedoraDoContratoId: contratoData.vendedoraId,
           valorTotal: contratoData.valorTotal,
-          descricao: `Orçamento de ${nomesDivergencia[vendedoraDoOrcamentoId!] ?? vendedoraDoOrcamentoId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`,
+          descricao:
+            referenciaOrigem === "ORCAMENTO"
+              ? `Orçamento de ${nomesDivergencia[referenciaVendedoraId] ?? referenciaVendedoraId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`
+              : `Registrado por ${nomesDivergencia[referenciaVendedoraId] ?? referenciaVendedoraId} · contrato em nome de ${nomesDivergencia[contratoData.vendedoraId] ?? contratoData.vendedoraId}`,
         },
       });
     }
 
-    // Fechar contrato avança o funil do lead (nunca regride).
+    /**
+     * Fechar contrato avança o funil do lead (nunca regride) — e carimba a
+     * data, que é coisa diferente (S16).
+     *
+     * O carimbo morava DENTRO do `if (etapaNova !== lead.etapa)`, então ele era
+     * efeito do avanço e não do contrato. Quem já estava adiante no funil não
+     * avançava — `avancarEtapaLead` devolve a mesma etapa — e ficava sem
+     * carimbo para sempre. O funil aceita pular (`transicaoLeadValida` só exige
+     * `iPara > iDe`), então "a noiva já está EM_PROVAS quando o contrato é
+     * registrado" é um caminho normal, não um estado corrompido. E `PERDIDO`
+     * cai no mesmo buraco por outra porta: `avancarEtapaLead` não mexe em quem
+     * está fora do funil.
+     *
+     * A outra porta é o PATCH de `/leads`: o `carimboEtapa` de `leads.ts:45`
+     * só carimba quando a etapa é `CONTRATO_FECHADO` exatamente. As duas
+     * conspiravam — nenhuma das duas cobria pular a etapa.
+     *
+     * Quem lê a coluna é o `comContrato` de `/leads/sazonalidade`
+     * (`leads.ts:451`), que filtra por `is not null`: a noiva sem carimbo não
+     * é contada como "já fechou" na curva que diz quando falta vestido.
+     */
     const etapaNova = avancarEtapaLead(lead.etapa, "CONTRATO_FECHADO");
-    if (etapaNova !== lead.etapa) {
+    if (etapaNova !== lead.etapa || !lead.contratoFechadoEm) {
       await tx.update(leadsTable)
         .set({
           etapa: etapaNova,
@@ -536,11 +701,22 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         .where(eq(leadsTable.id, lead.id));
     }
 
-    return contrato;
+    return { contrato };
   });
 
+  // S-M7: quem perde a corrida recebe o MESMO 409 da guarda lenta — para a
+  // vendedora não existe diferença entre perder por um segundo e por um dia.
+  if ("corrida" in result) {
+    res.status(409).json({
+      error: "RESERVA_JA_CONTRATADA",
+      detalhe: "Esta reserva de vestido já está presa por outro contrato ativo.",
+      campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva já é de outro contrato" }],
+    });
+    return;
+  }
+
   const fullContrato = await db.query.contratosTable.findFirst({
-    where: eq(contratosTable.id, result.id),
+    where: eq(contratosTable.id, result.contrato.id),
     with: { lead: true, vendedora: true, parcelas: true, itens: true }
   });
 
@@ -615,14 +791,18 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
       .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
       .from(contratoBloqueiosTable)
       .where(eq(contratoBloqueiosTable.contratoId, contratoId as string));
-    for (const { bloqueioId } of vinculos) {
-      const [bloqueio] = await db.select().from(bloqueioVestidosTable)
-        .where(and(
-          eq(bloqueioVestidosTable.id, bloqueioId),
-          eq(bloqueioVestidosTable.lojaId, lojaId as string),
-          isNull(bloqueioVestidosTable.canceladoEm),
-        ));
-      if (!bloqueio) continue;
+    // S35: era um SELECT por vínculo dentro do laço — um contrato com N
+    // reservas custava 1+N consultas para conferir a data. Agora é 1+1: os
+    // bloqueios vivos vêm de uma vez (`inArray`) e a conferência é em memória.
+    const bloqueios = vinculos.length > 0
+      ? await db.select().from(bloqueioVestidosTable)
+          .where(and(
+            inArray(bloqueioVestidosTable.id, vinculos.map((v) => v.bloqueioId)),
+            eq(bloqueioVestidosTable.lojaId, lojaId as string),
+            isNull(bloqueioVestidosTable.canceladoEm),
+          ))
+      : [];
+    for (const bloqueio of bloqueios) {
       if (
         bloqueio.casamentoData &&
         diaLocal(parsed.data.dataCasamento) !== diaLocal(bloqueio.casamentoData)
@@ -681,12 +861,12 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
   const comRecebimento = parcelasAntes.filter((p) => (p.valorRecebido ?? 0) > 0);
   const idsComRecebimento = comRecebimento.map((p) => p.id);
   const totalRecebidoAntes = reais(
-    comRecebimento.reduce((s, p) => s + cent(p.valorRecebido ?? 0), 0),
+    comRecebimento.reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0),
   );
   const abertasAntes = parcelasAntes.filter((p) => estaAberta(p));
   const totalAbertoAntes = reais(
     abertasAntes.reduce(
-      (s, p) => s + Math.max(0, cent(p.valorPrevisto) - cent(p.valorRecebido ?? 0)),
+      (s, p) => s + Math.max(0, centavos(p.valorPrevisto) - centavos(p.valorRecebido ?? 0)),
       0,
     ),
   );
@@ -860,9 +1040,9 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
    * cobrável, em vez de sumir do "a receber" (marcada PAGA faltando dinheiro)
    * ou de ficar 100% aberta (o que entrou não apareceria no caixa).
    */
-  const jaRecebidoC = cent(existente.valorRecebido ?? 0);
-  const entrandoC = cent(parsed.data.valorRecebido);
-  const saldoC = cent(existente.valorPrevisto) - jaRecebidoC;
+  const jaRecebidoC = centavos(existente.valorRecebido ?? 0);
+  const entrandoC = centavos(parsed.data.valorRecebido);
+  const saldoC = centavos(existente.valorPrevisto) - jaRecebidoC;
 
   // Receber mais que o saldo é recusado, e não clampado: o caso comum é dígito
   // a mais, e aceitar inflaria o caixa REALIZADO com dinheiro que não entrou —
@@ -877,7 +1057,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
   }
 
   const totalRecebidoC = jaRecebidoC + entrandoC;
-  const quitada = totalRecebidoC >= cent(existente.valorPrevisto);
+  const quitada = totalRecebidoC >= centavos(existente.valorPrevisto);
 
   const parcela = await db.transaction(async (tx) => {
     /**
@@ -932,7 +1112,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
         // trilha não diz se quitou.
         valorRecebido: parsed.data.valorRecebido,
         totalRecebido: reais(totalRecebidoC),
-        saldoRestante: reais(cent(existente.valorPrevisto) - totalRecebidoC),
+        saldoRestante: reais(centavos(existente.valorPrevisto) - totalRecebidoC),
         formaRecebimento: parsed.data.formaRecebimento ?? null,
       },
     });
@@ -1150,13 +1330,23 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
     return;
   }
-  if (contrato.parcelas.length > 0) {
-    res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui parcelas" });
+  /**
+   * S26 — a pergunta é "já tem CARNÊ?", e era "já tem parcela?".
+   *
+   * `parcelas.length > 0` trancava o contrato em 409 para sempre quando a loja
+   * fazia a coisa na ordem do balcão: a peça volta avariada, cobra-se o
+   * conserto, e só então se monta o parcelamento. Uma venda inteira parcelada
+   * fora do sistema por causa de um reparo de R$ 350 — e sem caminho de volta,
+   * porque a parcela do reparo não se apaga (ela é a cobrança).
+   */
+  const jaTemCarne = contrato.parcelas.some((p) => p.origem === "PLANO");
+  if (jaTemCarne) {
+    res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui carnê" });
     return;
   }
 
-  const totalCentavos = cent(Number(contrato.valorTotal));
-  const entradaCentavos = cent(parsed.data.entrada ?? 0);
+  const totalCentavos = centavos(Number(contrato.valorTotal));
+  const entradaCentavos = centavos(parsed.data.entrada ?? 0);
   if (entradaCentavos > totalCentavos) {
     res.status(422).json({ error: "ENTRADA_MAIOR", detalhe: "Entrada maior que o valor total do contrato" });
     return;
@@ -1182,13 +1372,47 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     lojaId,
     contratoId: contrato.id,
     numero: p.numero,
+    origem: "PLANO" as const,
     descricao: p.descricao,
     valorPrevisto: reais(p.valorCentavos),
     vencimento: ancoraDeNegocio(p.vencimento),
   }));
 
-  // createMany atômico: sem plano parcial.
-  const criadas = await db.insert(parcelasTable).values(linhas).returning();
+  /**
+   * S26 — o carnê nasce em 0..N, e quem já estava lá se desloca para depois.
+   *
+   * A direção não é escolha de estilo: **`numero === 0` significa ENTRADA** em
+   * seis pontos do sistema (as três telas de parcela, o portal da noiva, a
+   * conciliação e o PDF do contrato). Deslocar o carnê para caber depois do
+   * reparo tiraria a entrada do slot 0 e quebraria a régua nos seis de uma vez;
+   * deslocar o reparo não quebra nada — o que a noiva lê é a `descricao`
+   * ("Reparo de avaria — …"), e o `numero` é ordenação.
+   *
+   * O deslocamento é em DOIS passos, com um estágio negativo no meio, porque a
+   * UNIQUE (contrato, numero) não deixa passar por cima: mover 1 → 5 direto
+   * funcionaria hoje, mas com três avulsas e um carnê curto os intervalos se
+   * cruzam. Negativo não colide com nada, e a transação inteira desfaz se algo
+   * falhar no meio.
+   */
+  const maiorDoPlano = plano.reduce((m, p) => Math.max(m, p.numero), 0);
+  const paraDeslocar = [...contrato.parcelas].sort((a, b) => a.numero - b.numero);
+
+  const criadas = await db.transaction(async (tx) => {
+    for (const p of paraDeslocar) {
+      await tx.update(parcelasTable)
+        .set({ numero: -(p.numero + 1) })
+        .where(eq(parcelasTable.id, p.id));
+    }
+    // createMany atômico: sem plano parcial.
+    const doPlano = await tx.insert(parcelasTable).values(linhas).returning();
+    for (const [i, p] of paraDeslocar.entries()) {
+      await tx.update(parcelasTable)
+        .set({ numero: maiorDoPlano + 1 + i })
+        .where(eq(parcelasTable.id, p.id));
+    }
+    return doPlano;
+  });
+
   criadas.sort((a, b) => a.numero - b.numero);
   res.status(201).json(GerarPlanoParcelasResponse.parse(criadas));
 });

@@ -33,14 +33,14 @@ describe("saúde e formato de erros", () => {
       .post("/api/auth/login")
       .send({ email: f.vendedoraEmail, senha: "senha-errada" });
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Credenciais inválidas" });
+    expect(res.body).toEqual({ error: "CREDENCIAIS_INVALIDAS" });
   });
 
   it("rota /api inexistente responde 404 JSON (não HTML)", async () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const res = await agent.get("/api/rota-que-nao-existe");
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: "Rota não encontrada" });
+    expect(res.body).toEqual({ error: "ROTA_NAO_ENCONTRADA" });
   });
 });
 
@@ -64,7 +64,7 @@ describe("autorização por perfil (regressão C1)", () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const res = await agent.get("/api/admin/lojas");
     expect(res.status).toBe(403);
-    expect(res.body).toEqual({ error: "Acesso negado (SuperAdmin only)" });
+    expect(res.body).toEqual({ error: "ACESSO_NEGADO_SUPERADMIN" });
   });
 
   it("superadmin acessa rotas /admin", async () => {

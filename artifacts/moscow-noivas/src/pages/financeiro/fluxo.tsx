@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   useGetFluxoCaixa,
   getGetFluxoCaixaQueryKey,
+  getExportarFluxoUrl,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,10 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { ErroListagem } from "./helpers";
 import { AlertaCaixa } from "@/components/alerta-caixa";
-import { brl, capitalizar } from "@/lib/formatos";
+import { brl, capitalizar, diaMesAbrevAno, instanteDiaMesAbrev } from "@/lib/formatos";
 import { rotuloForma } from "@/lib/financeiro/forma";
 import { RecebimentosPorFormaLista } from "@/components/recebimentos-por-forma";
-import { baixarCsv, linhasFluxo } from "@/lib/financeiro/exportar";
 import { resolverIntervalo, competenciaAtual, rotuloCompetencia } from "@/lib/financeiro/datas";
 
 /**
@@ -31,28 +31,6 @@ import { resolverIntervalo, competenciaAtual, rotuloCompetencia } from "@/lib/fi
  * MESMOS motores do núcleo (E25) sobre linhas já filtradas por data. Esta tela
  * só resolve o intervalo, busca e desenha.
  */
-
-/**
- * Instantes (recebidoEm, pagamento.data) só têm dia dentro de um fuso: ler em
- * UTC joga todo movimento do fim da noite para o dia seguinte (ver datas.ts).
- */
-const instanteFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  timeZone: "America/Sao_Paulo",
-});
-
-/** Dias de negócio (YYYY-MM-DD) já são o dia: meio-dia UTC não escorrega. */
-const diaFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function rotuloDia(dia: string): string {
-  return diaFmt.format(new Date(`${dia}T12:00:00.000Z`));
-}
 
 
 export default function FluxoCaixa() {
@@ -135,7 +113,7 @@ export default function FluxoCaixa() {
   const carregando = fluxoQ.isPending;
   const erro = fluxoQ.isError;
   const saldoNegativo = resumo.saldo < 0;
-  const periodoFmt = `${rotuloDia(intervalo.iniYMD)} – ${rotuloDia(intervalo.fimYMD)}`;
+  const periodoFmt = `${diaMesAbrevAno(intervalo.iniYMD)} – ${diaMesAbrevAno(intervalo.fimYMD)}`;
 
   return (
     <div className="space-y-6">
@@ -204,20 +182,23 @@ export default function FluxoCaixa() {
             onChange={(e) => definirDia("fim", e.target.value)}
           />
         </div>
-        {/* E22: o CSV nasce da MESMA linha do tempo da tela (movimentos). */}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={carregando || erro || linhaDoTempo.length === 0}
-          onClick={() =>
-            baixarCsv(
-              `fluxo-${intervalo.iniYMD}-a-${intervalo.fimYMD}.csv`,
-              linhasFluxo(linhaDoTempo),
-            )
-          }
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Exportar CSV
+        {/* S21/F34: o CSV é o pacote da contabilidade e vem do SERVIDOR
+            (GET …/fluxo/exportar), que monta a MESMA linha do tempo desta tela
+            (lib/fluxo.ts) com os totais no rodapé. O gerador do cliente (E22)
+            aposentou-se aqui: dois geradores do mesmo arquivo é coincidência
+            mantida à mão. Mesma grafia dos exports vizinhos (receber, pagar,
+            auditoria). */}
+        <Button variant="outline" size="sm" asChild>
+          <a
+            href={getExportarFluxoUrl(activeLojaId!, {
+              ini: intervalo.iniYMD,
+              fim: intervalo.fimYMD,
+            })}
+            download
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar CSV
+          </a>
         </Button>
       </div>
 
@@ -372,7 +353,7 @@ export default function FluxoCaixa() {
                       <li key={m.id} className="flex items-baseline justify-between gap-3 py-3">
                         <div className="flex min-w-0 items-baseline gap-3">
                           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                            {instanteFmt.format(new Date(m.data))}
+                            {instanteDiaMesAbrev(m.data)}
                           </span>
                           <div className="flex min-w-0 flex-col">
                             {m.href ? (

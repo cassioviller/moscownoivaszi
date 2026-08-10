@@ -11,6 +11,8 @@ export type OrcamentoItemInputTipo = typeof OrcamentoItemInputTipo[keyof typeof 
 
 export const OrcamentoItemInputTipo = {
   VESTIDO: 'VESTIDO',
+  ACESSORIO: 'ACESSORIO',
+  ESTOQUE: 'ESTOQUE',
   SERVICO: 'SERVICO',
   AJUSTE: 'AJUSTE',
 } as const;

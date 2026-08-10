@@ -6,8 +6,9 @@
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --filter \"!@workspace/mockup-sandbox\" --if-present run build",
     "typecheck:libs": "tsc --build",
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "playwright test",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --filter \"!@workspace/mockup-sandbox\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:e2e && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --filter \"./lib/api-spec\" --filter \"!@workspace/mockup-sandbox\" --if-present run typecheck"
   },
   "private": true,
   "dependencies": {
@@ -15,6 +16,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@types/node": "catalog:",
+    "drizzle-orm": "catalog:",
     "prettier": "^3.8.4",
     "typescript": "~5.9.3",
     "@workspace/api-client-react": "workspace:*"

@@ -31,6 +31,9 @@ export interface RegraJanelas {
   usoDiasAntes: number;
   usoDiasDepois: number;
   lavagemDiasDepois: number;
+  /** S-A16: a lavagem da peça de ESTOQUE, separada da do vestido — quem a lê é
+   *  `estoque.ts`; 0 = estoque sem lavagem na conta (o comportamento antigo). */
+  estoqueLavagemDiasDepois: number;
 }
 
 /** Defaults do schema — loja sem regra cadastrada nunca falha. */
@@ -39,6 +42,7 @@ export const REGRA_DEFAULT: RegraJanelas = {
   usoDiasAntes: 3,
   usoDiasDepois: 2,
   lavagemDiasDepois: 7,
+  estoqueLavagemDiasDepois: 0,
 };
 
 export type ClasseJanela = "FISICA" | "PROVA";
@@ -73,6 +77,7 @@ export type BloqueioJanelasInput = Pick<
   | "provaDataReal"
   | "retiradaDataReal"
   | "devolucaoDataReal"
+  | "lavagemConcluidaEm"
   | "inicio"
   | "fim"
 >;
@@ -159,6 +164,8 @@ export function addDias(dia: string, n: number): string {
  * - devolucaoDataReal → USO termina nela; LAVAGEM = [dev+1, dev+lavagem].
  * - retiradaDataReal sem devolucaoDataReal → FISICA ABERTA [inicioUso, null];
  *   motivo ATRASO_DEVOLUCAO se hojeDia > fim previsto, senão USO.
+ * - lavagemConcluidaEm (E152) → LAVAGEM termina nela; anterior ao início da
+ *   lavagem = não houve lavagem, e a janela não existe.
  *
  * MANUTENCAO: janela única [dia(inicio), dia(fim)|null] FISICA (inicio
  * obrigatório — a rota valida com 400; aqui, sem inicio → sem janelas).
@@ -241,14 +248,36 @@ export function janelasDoBloqueio(
     bloqueioId: b.id,
   });
 
+  /**
+   * E152 — a lavagem termina quando a peça VOLTA, não quando a soma diz.
+   *
+   * `lavagemConcluidaEm` encurta a janela exatamente como `devolucaoDataReal`
+   * encurta o USO, e é a última assimetria do ciclo: retirada e devolução
+   * tinham data real, a lavagem não tinha nenhuma — a peça voltava da
+   * lavanderia na quarta e continuava presa até domingo.
+   *
+   * Quando a volta é anterior ao início da lavagem, não há janela nenhuma a
+   * criar: é o caso de "não houve lavagem" (a peça saiu e voltou limpa, ou a
+   * dona lavou na hora). Criar uma janela invertida seria pior que nenhuma.
+   *
+   * Colapsar janela só REDUZ ocupação, nunca cria conflito — a mesma razão que
+   * o código já dá para a prova (`routes/agenda.ts`) —, então não há
+   * revalidação a fazer em cima disto.
+   */
   if (regra.lavagemDiasDepois > 0) {
-    janelas.push({
-      inicio: addDias(fimUso, 1),
-      fim: addDias(fimUso, regra.lavagemDiasDepois),
-      motivo: "LAVAGEM",
-      classe: "FISICA",
-      bloqueioId: b.id,
-    });
+    const inicioLavagem = addDias(fimUso, 1);
+    const fimPrevisto = addDias(fimUso, regra.lavagemDiasDepois);
+    const voltou = b.lavagemConcluidaEm ? diaLocal(b.lavagemConcluidaEm) : null;
+    const fimLavagem = voltou && voltou < fimPrevisto ? voltou : fimPrevisto;
+    if (!voltou || inicioLavagem <= fimLavagem) {
+      janelas.push({
+        inicio: inicioLavagem,
+        fim: fimLavagem,
+        motivo: "LAVAGEM",
+        classe: "FISICA",
+        bloqueioId: b.id,
+      });
+    }
   }
 
   return janelas;
@@ -327,6 +356,7 @@ export function proximaDataLivre(params: {
       provaDataReal: null,
       retiradaDataReal: null,
       devolucaoDataReal: null,
+      lavagemConcluidaEm: null,
       inicio: null,
       fim: null,
     };
@@ -349,6 +379,7 @@ export async function buscarRegra(
       usoDiasAntes: regraDisponibilidadeTable.usoDiasAntes,
       usoDiasDepois: regraDisponibilidadeTable.usoDiasDepois,
       lavagemDiasDepois: regraDisponibilidadeTable.lavagemDiasDepois,
+      estoqueLavagemDiasDepois: regraDisponibilidadeTable.estoqueLavagemDiasDepois,
     })
     .from(regraDisponibilidadeTable)
     .where(eq(regraDisponibilidadeTable.lojaId, lojaId));

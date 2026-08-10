@@ -68,6 +68,8 @@ import { mensagemApi } from "@/lib/erro-api";
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
 // defeito que o épico existe para fechar.
 import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { planoDaDigitacao } from "@/lib/financeiro/plano";
+import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 
@@ -170,6 +172,28 @@ export default function ContratoDetail() {
   const totalPlanoCentavos = useMemo(
     () => somaCentavos(parcelas.filter((p) => p.status !== "CANCELADA"), (p) => p.valorPrevisto),
     [parcelas],
+  );
+
+  /**
+   * S10 — o carnê à vista ANTES de gerar, como a tela de orçamento (F16/E95).
+   *
+   * Esta tela gerava o plano às cegas: três campos, um botão, e o carnê só
+   * aparecia depois de gravado. A prévia é a MESMA função e o MESMO componente
+   * da tela irmã — `planoDaDigitacao` valida o que está digitado e monta as
+   * linhas com o `montarPlanoParcelas` do core, que é exatamente o que o
+   * `gerar-plano` executa no servidor (routes/contratos.ts), inclusive o
+   * default da entrada vencer hoje.
+   */
+  const previaDoPlano = useMemo(
+    () =>
+      planoDaDigitacao({
+        totalCentavos: contrato ? centavos(contrato.valorTotal) : 0,
+        entradaDigitada: entrada,
+        numParcelasDigitado: numParcelas,
+        primeiroVencimento,
+        vencimentoEntrada: hojeLocal(),
+      }),
+    [contrato, entrada, numParcelas, primeiroVencimento],
   );
   const planoDivergente =
     parcelas.length > 0 && contrato != null && totalPlanoCentavos !== centavos(contrato.valorTotal);
@@ -641,6 +665,11 @@ export default function ContratoDetail() {
                   As parcelas vencem todo mês no mesmo dia. Se o dia não existir no mês (31 em
                   fevereiro), a parcela cai no último dia dele. A entrada, se houver, vence hoje.
                 </p>
+
+                {/* S10: o mesmo carnê que o servidor vai gravar, linha a linha,
+                    enquanto se digita — como no "Gerar contrato" da tela irmã. */}
+                <PreviaDoCarne erro={previaDoPlano.erro} linhas={previaDoPlano.linhas} />
+
                 <Button type="submit" disabled={gerarPlano.isPending}>
                   {gerarPlano.isPending ? "Gerando…" : "Gerar plano"}
                 </Button>

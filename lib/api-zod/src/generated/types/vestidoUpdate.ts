@@ -6,15 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { VestidoAtributo } from './vestidoAtributo';
+import type { VestidoUpdateStatus } from './vestidoUpdateStatus';
 
 export interface VestidoUpdate {
   codigo?: string;
   nome?: string;
   precoBase?: number;
+  /** @nullable */
+  precoRealuguel?: number | null;
   tamanho?: string;
   cor?: string;
   categoria?: string;
-  status?: string;
+  status?: VestidoUpdateStatus;
   observacoes?: string;
   atributos?: VestidoAtributo[];
 }

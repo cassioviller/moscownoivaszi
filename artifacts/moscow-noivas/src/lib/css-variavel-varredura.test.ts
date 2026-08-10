@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * S19/E104 — a grafia de variável CSS que o Tailwind v4 descarta em silêncio.
@@ -41,17 +42,14 @@ const GRAFIA_MORTA = /-\[--[a-z0-9-]+\]/;
 
 const RAIZ = join(import.meta.dirname, "..");
 
-/** Todo `.ts`/`.tsx` de `src/`, menos os próprios testes. */
-function fontes(dir: string, achados: string[] = []): string[] {
-  for (const nome of readdirSync(dir)) {
-    const caminho = join(dir, nome);
-    if (statSync(caminho).isDirectory()) {
-      fontes(caminho, achados);
-    } else if (/\.tsx?$/.test(nome) && !/\.test\.tsx?$/.test(nome)) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * Todo `.ts`/`.tsx` de `src/`, menos os próprios testes. A enumeração sai do
+ * versionamento, não do disco (S-D30). Caminhos relativos a `src/`.
+ */
+function fontes(): string[] {
+  return arquivosVersionados(RAIZ, ["."]).filter(
+    (r) => /\.tsx?$/.test(r) && !/\.test\.tsx?$/.test(r),
+  );
 }
 
 /**
@@ -68,16 +66,25 @@ function semComentarios(codigo: string): string {
 describe("nenhum arquivo de src/ usa a grafia `-[--var]`, que o Tailwind v4 descarta", () => {
   it("varre src/ INTEIRO, e não só components/ui", () => {
     const culpados: string[] = [];
-    for (const arquivo of fontes(RAIZ)) {
-      const linhas = semComentarios(readFileSync(arquivo, "utf8")).split("\n");
+    for (const relativo of fontes()) {
+      const linhas = semComentarios(readFileSync(join(RAIZ, relativo), "utf8")).split("\n");
       linhas.forEach((linha, i) => {
         if (GRAFIA_MORTA.test(linha)) {
-          culpados.push(`${arquivo.replace(RAIZ, "src")}:${i + 1}`);
+          culpados.push(`src/${relativo}:${i + 1}`);
         }
       });
     }
     // O `ui/` era onde a sobra mandava varrer, e o pior caso estava fora dele.
     expect(culpados).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 166 arquivos `.ts`/`.tsx` versionados em `src/`, fora os
+   * testes — com folga para baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(fontes().length).toBeGreaterThan(140);
   });
 
   /**

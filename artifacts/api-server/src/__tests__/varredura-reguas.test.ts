@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * As assinaturas mecânicas das classes de defeito que a revisão do E111 achou —
@@ -30,21 +31,27 @@ const PASTAS_FONTE = [
   "lib/agenda-core/src",
 ];
 
+/**
+ * Os arquivos-fonte VERSIONADOS, em caminho relativo à raiz.
+ *
+ * A enumeração saía do `readdirSync`, que lê o disco, com uma lista de
+ * diretórios a pular mantida à mão (`generated`, `node_modules`). `git
+ * ls-files` deriva do `.gitignore` a exclusão do que não é código nosso —
+ * `node_modules`, `dist`, `coverage`, `build` —, que é onde a decisão já mora.
+ * Régua da S38. Medido em 2026-08-06: os dois caminhos devolvem **os mesmos 237
+ * arquivos**; a troca não muda a conta, tira a dependência de uma lista mantida
+ * à mão. O `generated/` segue excluído à mão porque ele É versionado (334
+ * arquivos em `lib/api-zod` e `lib/api-client-react`) e mesmo assim não é
+ * código escrito por gente: cobrar régua de saída de codegen é cobrar do
+ * gerador.
+ */
 function arquivosFonte(): string[] {
-  const achados: string[] = [];
-  const anda = (dir: string) => {
-    for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-      const caminho = join(dir, entrada.name);
-      if (entrada.isDirectory()) {
-        if (entrada.name === "generated" || entrada.name === "node_modules") continue;
-        anda(caminho);
-      } else if (/\.tsx?$/.test(entrada.name) && !entrada.name.includes(".test.")) {
-        achados.push(caminho);
-      }
-    }
-  };
-  for (const pasta of PASTAS_FONTE) anda(join(RAIZ, pasta));
-  return achados;
+  return arquivosVersionados(RAIZ, PASTAS_FONTE).filter(
+    (relativo) =>
+      /\.tsx?$/.test(relativo) &&
+      !relativo.includes(".test.") &&
+      !relativo.split("/").includes("generated"),
+  );
 }
 
 /** Comentários fora: eles CITAM o código errado para explicar o conserto. */
@@ -52,12 +59,17 @@ function semComentarios(fonte: string): string {
   return fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
+/** Quantas vezes a assinatura aparece no arquivo, comentários fora. */
+function contar(assinatura: RegExp, relativo: string): number {
+  const fonte = semComentarios(readFileSync(join(RAIZ, relativo), "utf8"));
+  return (fonte.match(new RegExp(assinatura.source, "g")) ?? []).length;
+}
+
 function varrer(assinatura: RegExp, perdoados: readonly string[]): string[] {
   const ofensores: string[] = [];
-  for (const arquivo of arquivosFonte()) {
-    const relativo = relative(RAIZ, arquivo);
+  for (const relativo of arquivosFonte()) {
     if (perdoados.includes(relativo)) continue;
-    const fonte = semComentarios(readFileSync(arquivo, "utf8"));
+    const fonte = semComentarios(readFileSync(join(RAIZ, relativo), "utf8"));
     const re = new RegExp(assinatura.source, "g");
     let m: RegExpExecArray | null;
     while ((m = re.exec(fonte)) !== null) {
@@ -132,6 +144,26 @@ describe("varredura — dinheiro do teclado passa por parseValor", () => {
   });
 });
 
+// ───────────── 3. router montado sem path — mora em OUTRO arquivo ─────────────
+
+/**
+ * O item 3 nunca esteve neste arquivo, e o buraco na numeração era a pergunta
+ * da S-D33. A resposta está no histórico: este arquivo nasceu em `fc2182a` já
+ * pulando do 2 para o 4, e a numeração segue a tabela do adendo do E111
+ * (`docs/revisao/2026-07-25-rodada-6/execucao/E111.md`, "Adendo — a varredura
+ * mecânica das quatro assinaturas"), que lista as quatro classes nesta ordem:
+ * 1. `setHours`/`setMonth` sobre `new Date()` · 2. `Number(…replace(` ·
+ * 3. `router.use(fn)` sem path · 4. `new Intl.` fora da régua.
+ *
+ * A terceira não virou grep porque grep não a prova: `router.use(fn)` sem path
+ * era "seguras hoje" no veredito do E111, e o que decide se um router novo
+ * nasce aberto é o COMPORTAMENTO — o 403 da fronteira em cada recurso. Ela
+ * virou a sonda `varredura-fronteira-loja-api.test.ts`, criada no MESMO commit
+ * `fc2182a`, que extrai os recursos de `routes/*.ts` e chama cada um com a
+ * sessão da outra loja. A numeração fica com o buraco de propósito: ela existe
+ * para casar a sonda com o diagnóstico, e renumerar apagaria o casamento.
+ */
+
 // ─────────────── 4. formatador declarado fora dos arquivos-régua ───────────────
 
 /**
@@ -145,6 +177,31 @@ describe("varredura — dinheiro do teclado passa por parseValor", () => {
  * próxima consolidação, e o E92 já tinha deixado parte delas de propósito
  * (eram 36, foram a 17). O que esta sonda garante é que o número não cresça em
  * SILÊNCIO: arquivo novo declarando formatador reprova, e alguém decide.
+ *
+ * ## Os quatro recortes de "quantos formatadores Intl o sistema tem" (S-D32)
+ *
+ * Quatro números circularam como "os formatadores do sistema" — 15, 17, 25,
+ * 36, 46 — e nenhum dizia seu recorte; foi assim que a S30 nasceu dizendo
+ * quinze. Cada número abaixo foi remedido em 2026-08-07 DEPOIS da consolidação
+ * da S30 (o valor antes dela entre parênteses), com a assinatura desta seção
+ * (`new Intl.DateTimeFormat(` ou `new Intl.NumberFormat(`), comentários fora,
+ * enumerando por `git ls-files`:
+ *
+ * - **5 — o passivo herdado** (era 17): a soma das contagens de `HERDADOS`
+ *   (5 arquivos). É o número que o teste "o total do passivo é 5" congela, e o
+ *   único que esta sonda DEFENDE.
+ * - **26 — os arquivos-régua** (era 19): a soma nos 7 arquivos de `REGUAS`,
+ *   com `formatos.ts` sozinho em 17 — os 7 que a S30 promoveu nasceram lá.
+ *   Formatador aqui é o produto, não dívida.
+ * - **31 — o código de aplicação** (era 36): 5 + 26, sobre os arquivos de
+ *   `arquivosFonte()` (as cinco `PASTAS_FONTE`, `.ts`/`.tsx`, sem `.test.`,
+ *   sem `generated/`). Zero fora das duas listas — é o que o primeiro caso
+ *   desta seção prova. A diferença de 5 é o que a S30 APAGOU: cinco cópias
+ *   opção a opção de funções que a régua já tinha.
+ * - **40 — contando testes e E2E** (era 45): as mesmas cinco pastas COM os
+ *   `.test.` + `e2e/` + `scripts/`, sem `generated/`. Os 9 além da aplicação:
+ *   4 em testes de `moscow-noivas/src/lib` e 5 no E2E (4 specs +
+ *   `global-setup.ts`).
  */
 describe("varredura — formatador novo fora da régua exige decisão", () => {
   const ASSINATURA = /new Intl\.(?:DateTimeFormat|NumberFormat)\(/;
@@ -160,29 +217,66 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
     "artifacts/api-server/src/lib/disponibilidade.ts",
   ];
 
-  /** O passivo herdado. Cada linha é dívida reconhecida, não permissão. */
-  const HERDADOS = [
-    "artifacts/moscow-noivas/src/lib/financeiro/cobranca.ts",
-    "artifacts/moscow-noivas/src/lib/whatsapp.ts",
-    "artifacts/moscow-noivas/src/pages/financeiro/fluxo.tsx",
-    "artifacts/moscow-noivas/src/pages/financeiro/projecao.tsx",
-    "artifacts/moscow-noivas/src/pages/minha-comissao/index.tsx",
-    "artifacts/moscow-noivas/src/pages/noiva-portal.tsx",
-    "artifacts/moscow-noivas/src/pages/noivas/conversao.tsx",
-    "artifacts/moscow-noivas/src/pages/noivas/helpers.ts",
-    "artifacts/moscow-noivas/src/pages/reservas/helpers.ts",
-  ];
+  /**
+   * O passivo herdado, arquivo por arquivo, com **quantos** formatadores cada
+   * um declara. Cada linha é dívida reconhecida, não permissão.
+   *
+   * **Era uma lista de nomes, e a lista não é o número.** A sonda só perguntava
+   * se cada herdado ainda declarava *pelo menos um* formatador
+   * (`ASSINATURA.test(fonte)`), então `reservas/helpers.ts` podia ir de 6 para
+   * 60 com a suíte verde — o passivo cresce dentro dos arquivos que já estão
+   * perdoados, que é justamente onde é mais fácil crescer. Foi o que a
+   * conferência de 2026-08-05 mediu ao conferir a S30: *"trava a lista de
+   * arquivos, não a contagem"*.
+   *
+   * **S30 (2026-08-07) julgou os 17 um a um e o passivo caiu para 5.** O que
+   * desceu: **5 eram cópia opção a opção de função que `formatos.ts` já
+   * oferecia** e sumiram (o `formatadorContato` de cobranca = `instanteCurto`;
+   * o `horaFmt` do whatsapp = `instanteHora`; o `diaFmt` do fluxo =
+   * `diaMesAbrevAno`; o `quandoFmt` de minha-comissao = `instanteDia`; o
+   * `mesAnoFmt` de reservas = `mesAnoLongo`), e **7 eram opção-sets gerais com
+   * 2+ usos ou par de fuso de régua existente** e viraram funções públicas em
+   * `formatos.ts` (`diaMesAbrev`, `diaMesLongo`, `diaMesAnoLongo`, `mesAbrev`,
+   * `instanteDiaMesAbrev`, `instanteMesAno`, `instanteMesAbrev`). Os 5 que
+   * ficam têm, cada um, o comentário do porquê no próprio arquivo — três
+   * carregam o dia da SEMANA, que régua nenhuma traz, e dois são voz de uma
+   * única tela.
+   *
+   * Consolidou um? A conta cai, o teste fica vermelho, e o vermelho é o
+   * lembrete de baixar a dívida aqui.
+   */
+  const HERDADOS: Record<string, number> = {
+    "artifacts/moscow-noivas/src/lib/whatsapp.ts": 1,
+    "artifacts/moscow-noivas/src/pages/noiva-portal.tsx": 1,
+    "artifacts/moscow-noivas/src/pages/noivas/conversao.tsx": 1,
+    "artifacts/moscow-noivas/src/pages/noivas/helpers.ts": 1,
+    "artifacts/moscow-noivas/src/pages/reservas/helpers.ts": 1,
+  };
 
   it("nenhum arquivo NOVO declara formatador fora da régua", () => {
-    expect(varrer(ASSINATURA, [...REGUAS, ...HERDADOS])).toEqual([]);
+    expect(varrer(ASSINATURA, [...REGUAS, ...Object.keys(HERDADOS)])).toEqual([]);
   });
 
-  it("e o passivo não cresce às escondidas — a lista é o número", () => {
-    // Se um herdado for consolidado, esta conta cai e a linha sai da lista
-    // acima: o teste vermelho é o lembrete de apagar a dívida da planilha.
-    const aindaDeclaram = HERDADOS.filter((f) =>
-      new RegExp(ASSINATURA.source).test(semComentarios(readFileSync(join(RAIZ, f), "utf8"))),
-    );
-    expect(aindaDeclaram).toEqual(HERDADOS);
+  it("e o passivo não cresce às escondidas — a CONTAGEM é o número", () => {
+    const hoje: Record<string, number> = {};
+    for (const arquivo of Object.keys(HERDADOS)) hoje[arquivo] = contar(ASSINATURA, arquivo);
+    expect(hoje).toEqual(HERDADOS);
+  });
+
+  it("e o total do passivo é 5 — a S30 julgou os 17 de `fc2182a` um a um", () => {
+    const total = Object.keys(HERDADOS).reduce((s, f) => s + contar(ASSINATURA, f), 0);
+    expect(total).toBe(5);
+  });
+
+  /**
+   * A varredura enumera pelo versionamento, e conjunto vazio aprova tudo em
+   * silêncio. O piso é o número remedido em 2026-08-07 — 235 arquivos-fonte
+   * versionados nas cinco pastas; o 237 de 2026-08-06 envelheceu porque cinco
+   * fontes saíram (quatro `ui/` órfãos e o `use-mobile.tsx`) e duas entraram
+   * desde a medida, e a cópia de `arquivos-versionados.ts` que a S-D30 pôs em
+   * `moscow-noivas/src/lib` faz 236 no commit dela — com folga para baixo.
+   */
+  it("a varredura olha para os arquivos, e não para um conjunto vazio", () => {
+    expect(arquivosFonte().length).toBeGreaterThan(200);
   });
 });

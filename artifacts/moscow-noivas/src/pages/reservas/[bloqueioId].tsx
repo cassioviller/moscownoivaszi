@@ -43,13 +43,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaMesAbrevAno, diaParaISO } from "@/lib/formatos";
+import { brl, diaMesAbrevAno, diaMesAnoLongo, diaParaISO } from "@/lib/formatos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
-import { isoParaDia } from "../noivas/helpers";
-import { ROTULO_SITUACAO, dataHoraFmt, dataLongaUTCFmt } from "./helpers";
+import { diaDeNegocio } from "@/lib/financeiro/datas";
+import { ROTULO_SITUACAO, dataHoraFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
@@ -226,9 +233,12 @@ export default function ReservaDetalhe() {
 
   // Formularios locais: data da retirada/devolução, novo ajuste por prova,
   // novo item de checklist por ajuste, ajuste aguardando confirmação de remoção.
-  const casamentoYmd = reserva?.casamentoData ? isoParaDia(reserva.casamentoData) : "";
+  const casamentoYmd = reserva?.casamentoData ? diaDeNegocio(reserva.casamentoData) : "";
   const [dataMovimentacao, setDataMovimentacao] = useState<string | null>(null);
   const [novoAjuste, setNovoAjuste] = useState<Record<string, string>>({});
+  // E155: por atendimento, porque cada prova tem seu formulário na tela.
+  const [novoAjusteTipo, setNovoAjusteTipo] = useState<Record<string, "AJUSTE" | "CONFECCAO">>({});
+  const [novoAjusteCusto, setNovoAjusteCusto] = useState<Record<string, string>>({});
   const [novoItem, setNovoItem] = useState<Record<string, string>>({});
   const [ajusteParaRemover, setAjusteParaRemover] = useState<Ajuste | null>(null);
 
@@ -260,7 +270,7 @@ export default function ReservaDetalhe() {
     }
   };
 
-  const registrarMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal") =>
+  const registrarMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal" | "lavagemConcluidaEm") =>
     comToast(
       async () => {
         await updateBloqueio.mutateAsync({
@@ -287,7 +297,7 @@ export default function ReservaDetalhe() {
 
   // E61: a data registrada errada tem conserto — null explícito desfaz, e a
   // disponibilidade do vestido volta a valer a régua anterior.
-  const desfazerMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal") =>
+  const desfazerMovimentacao = (campo: "retiradaDataReal" | "devolucaoDataReal" | "lavagemConcluidaEm") =>
     comToast(
       async () => {
         await updateBloqueio.mutateAsync({
@@ -333,23 +343,44 @@ export default function ReservaDetalhe() {
     );
   };
 
+  /**
+   * E155 — a fila da costureira guarda as duas naturezas de trabalho de agulha,
+   * e quem registra escolhe qual: AJUSTE altera peça existente, CONFECÇÃO é
+   * peça nova feita para a noiva (a manga do caderno de 10–16/08). O prazo, o
+   * status e o checklist são os mesmos — por isso é a mesma fila.
+   */
   const adicionarAjuste = (atendimentoId: string) => {
     const descricao = (novoAjuste[atendimentoId] ?? "").trim();
     if (!descricao) {
-      toast({ title: "Descreva o ajuste.", variant: "destructive" });
+      toast({ title: "Descreva o trabalho.", variant: "destructive" });
+      return;
+    }
+    const tipo = novoAjusteTipo[atendimentoId] ?? "AJUSTE";
+    // Custo é da CONFECÇÃO (material e mão de obra) e opcional mesmo nela — no
+    // dia da conversa quase nunca se sabe quanto vai custar.
+    const custoDigitado = (novoAjusteCusto[atendimentoId] ?? "").trim();
+    const custo = custoDigitado ? parseValor(custoDigitado) : null;
+    if (custoDigitado && (custo === null || !Number.isFinite(custo) || custo < 0)) {
+      toast({ title: "Custo inválido", variant: "destructive" });
       return;
     }
     return comToast(
       async () => {
         await createAjuste.mutateAsync({
           lojaId: activeLojaId!,
-          data: { atendimentoId, descricao },
+          data: {
+            atendimentoId,
+            descricao,
+            tipo,
+            ...(tipo === "CONFECCAO" && custo !== null ? { custo } : {}),
+          },
         });
         await invalidarAjustes();
         setNovoAjuste((s) => ({ ...s, [atendimentoId]: "" }));
+        setNovoAjusteCusto((s) => ({ ...s, [atendimentoId]: "" }));
       },
-      "Ajuste adicionado",
-      "Não deu para adicionar o ajuste",
+      tipo === "CONFECCAO" ? "Confecção adicionada" : "Ajuste adicionado",
+      "Não deu para adicionar o trabalho",
     );
   };
 
@@ -456,9 +487,9 @@ export default function ReservaDetalhe() {
         <section className="space-y-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Indisponível</h2>
           <p className="text-sm">
-            {reserva.ocupacaoInicio && <>De {dataLongaUTCFmt.format(new Date(reserva.ocupacaoInicio))} </>}
+            {reserva.ocupacaoInicio && <>De {diaMesAnoLongo(reserva.ocupacaoInicio)} </>}
             {reserva.ocupacaoFim
-              ? <>a {dataLongaUTCFmt.format(new Date(reserva.ocupacaoFim))}.</>
+              ? <>a {diaMesAnoLongo(reserva.ocupacaoFim)}.</>
               : <>(em aberto, peça ainda fora).</>}
           </p>
         </section>
@@ -469,23 +500,81 @@ export default function ReservaDetalhe() {
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Movimentação</h2>
         {reserva.devolucaoDataReal ? (
           <Card>
-            <CardContent className="pt-6 space-y-1">
-              <p className="text-sm">
-                Devolvido em {dataLongaUTCFmt.format(new Date(reserva.devolucaoDataReal))}.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                A jornada desta noiva está encerrada.
-              </p>
-              {podeMovimentar && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={updateBloqueio.isPending}
-                  onClick={() => desfazerMovimentacao("devolucaoDataReal")}
-                  data-testid="desfazer-devolucao"
-                >
-                  Desfazer devolução
-                </Button>
+            <CardContent className="pt-6 space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm">
+                  Devolvido em {diaMesAnoLongo(reserva.devolucaoDataReal)}.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  A jornada desta noiva está encerrada.
+                </p>
+                {podeMovimentar && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={updateBloqueio.isPending}
+                    onClick={() => desfazerMovimentacao("devolucaoDataReal")}
+                    data-testid="desfazer-devolucao"
+                  >
+                    Desfazer devolução
+                  </Button>
+                )}
+              </div>
+
+              {/* E152 — a lavagem era a única etapa do ciclo sem data real: a
+                  peça voltava da lavanderia na quarta e continuava presa até
+                  domingo, pendurada na arara. A régua de uma semana está certa
+                  (é lavanderia externa); o que faltava era poder dizer que ela
+                  chegou. Só reduz ocupação — nunca cria conflito. */}
+              {reserva.lavagemConcluidaEm ? (
+                <div className="space-y-1 border-t pt-3">
+                  <p className="text-sm" data-testid="lavagem-concluida">
+                    Voltou da lavanderia em{" "}
+                    {diaMesAnoLongo(reserva.lavagemConcluidaEm)} — o vestido
+                    está livre a partir do dia seguinte.
+                  </p>
+                  {podeMovimentar && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={updateBloqueio.isPending}
+                      onClick={() => desfazerMovimentacao("lavagemConcluidaEm")}
+                      data-testid="desfazer-lavagem"
+                    >
+                      Desfazer volta da lavanderia
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Sem esta data, o vestido fica reservado à lavagem pelo prazo da loja,
+                    mesmo que já esteja de volta.
+                  </p>
+                  {podeMovimentar && (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Voltou da lavanderia em
+                        </span>
+                        <Input
+                          type="date"
+                          value={dataMovimentacaoAtual}
+                          onChange={(e) => setDataMovimentacao(e.target.value)}
+                          className="w-44"
+                          aria-label="Voltou da lavanderia em"
+                        />
+                      </label>
+                      <Button
+                        disabled={!dataMovimentacaoAtual || updateBloqueio.isPending}
+                        onClick={() => registrarMovimentacao("lavagemConcluidaEm")}
+                        data-testid="registrar-lavagem"
+                      >
+                        Registrar volta
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -493,7 +582,7 @@ export default function ReservaDetalhe() {
           <Card>
             <CardContent className="pt-6 space-y-3">
               <p className="text-sm">
-                Retirado em {dataLongaUTCFmt.format(new Date(reserva.retiradaDataReal))} — com a
+                Retirado em {diaMesAnoLongo(reserva.retiradaDataReal)} — com a
                 noiva.
               </p>
               <p className="text-xs text-muted-foreground">
@@ -903,14 +992,46 @@ export default function ReservaDetalhe() {
                             adicionarAjuste(p.id);
                           }}
                         >
+                          <Select
+                            value={novoAjusteTipo[p.id] ?? "AJUSTE"}
+                            onValueChange={(v) =>
+                              setNovoAjusteTipo((s) => ({ ...s, [p.id]: v as "AJUSTE" | "CONFECCAO" }))
+                            }
+                          >
+                            <SelectTrigger className="w-32" aria-label="Tipo do trabalho">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AJUSTE">Ajuste</SelectItem>
+                              <SelectItem value="CONFECCAO">Confecção</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Input
                             value={novoAjuste[p.id] ?? ""}
                             onChange={(e) =>
                               setNovoAjuste((s) => ({ ...s, [p.id]: e.target.value }))
                             }
-                            placeholder="Novo ajuste (ex.: bainha 3cm)…"
-                            aria-label="Novo ajuste"
+                            placeholder={
+                              (novoAjusteTipo[p.id] ?? "AJUSTE") === "CONFECCAO"
+                                ? "Peça a confeccionar (ex.: manga renda c/ saia lisa)…"
+                                : "Novo ajuste (ex.: bainha 3cm)…"
+                            }
+                            aria-label="Novo trabalho da costureira"
                           />
+                          {/* Custo é da confecção — material e mão de obra, que
+                              ajuste comum não tem. Fica opcional mesmo nela. */}
+                          {(novoAjusteTipo[p.id] ?? "AJUSTE") === "CONFECCAO" && (
+                            <Input
+                              value={novoAjusteCusto[p.id] ?? ""}
+                              onChange={(e) =>
+                                setNovoAjusteCusto((s) => ({ ...s, [p.id]: e.target.value }))
+                              }
+                              placeholder="Custo (R$)"
+                              inputMode="decimal"
+                              className="w-32"
+                              aria-label="Custo da confecção"
+                            />
+                          )}
                           <Button
                             type="submit"
                             variant="outline"

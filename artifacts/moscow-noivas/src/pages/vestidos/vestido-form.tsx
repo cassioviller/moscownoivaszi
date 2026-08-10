@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useConfirmarSaida } from "@/hooks/use-confirmar-saida";
+import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-saida";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Atributo, VestidoAtributo } from "@workspace/api-client-react";
@@ -33,8 +33,18 @@ export const vestidoFormSchema = z.object({
     else if (Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 4.200,50)" });
     else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
   }),
+  /**
+   * E157 — o preço da peça que já saiu antes. VAZIO é o caso comum e
+   * significa "não tem preço de segunda saída": o orçamento segue com o preço
+   * de tabela. Só a bobagem digitada é recusada.
+   */
+  precoRealuguel: z.string().optional().superRefine((texto, ctx) => {
+    if (!texto?.trim()) return;
+    const v = parseValor(texto);
+    if (v === null || Number.isNaN(v)) ctx.addIssue({ code: "custom", message: "Informe um preço válido (ex.: 3.500,00)" });
+    else if (v < 0) ctx.addIssue({ code: "custom", message: "Preço deve ser positivo" });
+  }),
   tamanho: z.string().optional(),
-  cor: z.string().optional(),
   categoria: z.string().optional(),
   observacoes: z.string().optional(),
 });
@@ -42,7 +52,11 @@ export const vestidoFormSchema = z.object({
 type VestidoFormCampos = z.infer<typeof vestidoFormSchema>;
 
 /** O que as páginas recebem no submit — o preço JÁ convertido para número. */
-export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase"> & { precoBase: number };
+export type VestidoFormValues = Omit<VestidoFormCampos, "precoBase" | "precoRealuguel"> & {
+  precoBase: number;
+  /** null = a peça não tem preço de segunda saída (E157). */
+  precoRealuguel: number | null;
+};
 
 /**
  * Form completo de vestido (páginas Novo/Editar) — portado da tela do
@@ -72,8 +86,9 @@ export function VestidoForm({
       nome: defaults?.nome ?? "",
       // Exibição pt-BR: o valor salvo volta com vírgula, como se digita.
       precoBase: defaults?.precoBase != null ? String(defaults.precoBase).replace(".", ",") : "",
+      precoRealuguel:
+        defaults?.precoRealuguel != null ? String(defaults.precoRealuguel).replace(".", ",") : "",
       tamanho: defaults?.tamanho ?? "",
-      cor: defaults?.cor ?? "",
       categoria: defaults?.categoria ?? "",
       observacoes: defaults?.observacoes ?? "",
     },
@@ -85,16 +100,24 @@ export function VestidoForm({
   const selecoesMudaram =
     JSON.stringify(Object.entries(selecoes).sort()) !==
     JSON.stringify(Object.entries(selecoesIniciais ?? {}).sort());
-  useConfirmarSaida(
-    (form.formState.isDirty || selecoesMudaram) && !form.formState.isSubmitSuccessful,
-  );
+  useConfirmarSaida(sujoParaConfirmar(form.formState, selecoesMudaram));
 
   async function handleSubmit(values: VestidoFormCampos) {
     const atributos: VestidoAtributo[] = Object.entries(selecoes)
       .filter(([, opcaoId]) => !!opcaoId)
       .map(([atributoId, opcaoId]) => ({ atributoId, opcaoId }));
     // O schema já garantiu que o parse não é null nem NaN.
-    await onSubmit({ ...values, precoBase: parseValor(values.precoBase) as number }, atributos);
+    // E157: vazio vira null — "esta peça não tem preço de segunda saída" —, e
+    // o servidor entende null como "apague o que havia".
+    const realuguel = values.precoRealuguel?.trim() ? parseValor(values.precoRealuguel) : null;
+    await onSubmit(
+      {
+        ...values,
+        precoBase: parseValor(values.precoBase) as number,
+        precoRealuguel: realuguel as number | null,
+      },
+      atributos,
+    );
   }
 
   return (
@@ -128,6 +151,27 @@ export function VestidoForm({
             )}
           />
         </div>
+        {/* E157 — o ateliê precifica pela VEZ em que a peça sai: o caderno
+            anota "1º Aluguel", "2º Aluguel", "Realuguel". Vazio é o caso
+            comum, e mantém o preço de tabela em toda saída. */}
+        <FormField
+          control={form.control}
+          name="precoRealuguel"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Preço de realuguel (R$)</FormLabel>
+              <FormControl>
+                <Input
+                  inputMode="decimal"
+                  placeholder="vazio = mesmo preço em toda saída"
+                  data-testid="input-preco-realuguel"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="nome"
@@ -167,7 +211,7 @@ export function VestidoForm({
         )}
 
         <p className="pt-2 text-sm font-medium text-muted-foreground">Opcional</p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="tamanho"
@@ -181,27 +225,23 @@ export function VestidoForm({
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="cor"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cor</FormLabel>
-                <FormControl>
-                  <Input placeholder="Branco" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* E149: o campo de COR saiu daqui e virou atributo do catálogo, logo
+              acima em "Características". Como texto livre ele não sustentava a
+              busca — "Verde", "verde" e "VERDE" viravam três entradas no filtro
+              do acervo, cada uma com um pedaço dos vestidos —, e é por cor que
+              a segunda linha de negócio do ateliê é procurada: 38 compromissos
+              de festa e dama nas 15 páginas de agenda, em 15 cores. Como
+              atributo, ela também passa a aparecer na ficha de interesses da
+              noiva (`lead_interesse_atributos`), que é o gesto que o papel
+              registra. `vestidos.cor` fica como legado LIDO, nunca escrito. */}
           <FormField
             control={form.control}
             name="categoria"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Categoria</FormLabel>
+                <FormLabel>Coleção</FormLabel>
                 <FormControl>
-                  <Input placeholder="Princesa" {...field} />
+                  <Input placeholder="Coleção 2026" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

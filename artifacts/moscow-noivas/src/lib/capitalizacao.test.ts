@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * E21/E99 — sentence case nos títulos, e o teste que impede a volta.
@@ -35,14 +36,12 @@ const PROPRIOS = new Set([
   "DRE",
 ]);
 
-function arquivosTsx(dir: string): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const caminho = join(dir, entrada.name);
-    if (entrada.isDirectory()) achados.push(...arquivosTsx(caminho));
-    else if (entrada.name.endsWith(".tsx")) achados.push(caminho);
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function arquivosTsx(): string[] {
+  return arquivosVersionados(RAIZ, ["."]).filter((r) => r.endsWith(".tsx"));
 }
 
 /** `<CardTitle …>Texto literal</CardTitle>` — só os que não interpolam. */
@@ -75,14 +74,23 @@ describe("E21 — títulos em sentence case", () => {
 
   it("nenhum <CardTitle> do app está em Title Case", () => {
     const ofensores: string[] = [];
-    for (const arquivo of arquivosTsx(RAIZ)) {
-      for (const titulo of titulosLiterais(readFileSync(arquivo, "utf8"))) {
+    for (const relativo of arquivosTsx()) {
+      for (const titulo of titulosLiterais(readFileSync(join(RAIZ, relativo), "utf8"))) {
         const palavras = palavrasEmTitleCase(titulo);
         if (palavras.length > 0) {
-          ofensores.push(`${arquivo.replace(RAIZ, "src")}: "${titulo}" → ${palavras.join(", ")}`);
+          ofensores.push(`src/${relativo}: "${titulo}" → ${palavras.join(", ")}`);
         }
       }
     }
     expect(ofensores).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 120 arquivos `.tsx` versionados em `src/` — com folga para
+   * baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(arquivosTsx().length).toBeGreaterThan(100);
   });
 });

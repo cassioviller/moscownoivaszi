@@ -19,9 +19,10 @@ export async function hashSenha(senha: string): Promise<string> {
   return bcrypt.hash(senha, 12);
 }
 
-export async function compararSenha(senha: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(senha, hash);
-}
+// S35: havia aqui uma `compararSenha` exportada sem NENHUM chamador — o login
+// e a troca de senha usam `compararSenhaConstante` (abaixo) desde o E57, e a
+// variante sem tempo constante sobrando é exatamente a que alguém importaria
+// por engano num fluxo novo. Saiu.
 
 // Hash de sacrifício, criado uma vez sob demanda. Serve para gastar o mesmo
 // tempo de um bcrypt.compare real quando o e-mail NÃO existe.

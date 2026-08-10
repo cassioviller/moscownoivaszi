@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { montarPlanoParcelas, ratearRestante } from "./plano";
+import { montarPlanoParcelas, planoDaDigitacao, ratearRestante } from "./plano";
 import { centavos } from "./dinheiro";
 
 /**
@@ -68,5 +68,72 @@ describe("o plano da tela é o plano do servidor", () => {
 
   it("o rateio exportado é o mesmo do servidor", () => {
     expect(ratearRestante(10000, 3)).toEqual([3333, 3333, 3334]);
+  });
+});
+
+/**
+ * S10 — a validação da digitação saiu do `useMemo` da tela de orçamento para
+ * as DUAS telas (orçamento e contrato) chamarem a mesma. Ela nunca teve teste
+ * próprio enquanto era inline; agora que é a régua de duas prévias, tem.
+ */
+describe("planoDaDigitacao — a prévia a partir do que está no formulário", () => {
+  const base = {
+    totalCentavos: 948055,
+    entradaDigitada: "2.000,00",
+    numParcelasDigitado: "6",
+    primeiroVencimento: "2026-08-10",
+    vencimentoEntrada: "2026-08-06",
+  };
+
+  it("caminho feliz: R$ 9.480,55 com entrada de R$ 2.000,00 em 6x — a mesma conta do servidor", () => {
+    const { erro, linhas } = planoDaDigitacao(base);
+    expect(erro).toBeNull();
+    expect(linhas).toEqual(
+      montarPlanoParcelas({
+        totalCentavos: 948055,
+        entradaCentavos: 200000,
+        numParcelas: 6,
+        primeiroVencimento: "2026-08-10",
+        vencimentoEntrada: "2026-08-06",
+      }),
+    );
+    expect(linhas![0]).toMatchObject({ numero: 0, valorCentavos: 200000, vencimento: "2026-08-06" });
+  });
+
+  it("sem a data da 1ª parcela não há erro nem prévia — é formulário pela metade", () => {
+    expect(planoDaDigitacao({ ...base, primeiroVencimento: "" })).toEqual({ erro: null, linhas: null });
+  });
+
+  it("cada digitação inválida tem a sua frase, e nenhuma estoura", () => {
+    expect(planoDaDigitacao({ ...base, totalCentavos: 0 }).erro).toBe(
+      "Adicione itens antes de gerar o contrato.",
+    );
+    expect(planoDaDigitacao({ ...base, entradaDigitada: "abc" }).erro).toBe(
+      "Entrada inválida — use apenas números.",
+    );
+    expect(planoDaDigitacao({ ...base, entradaDigitada: "-10" }).erro).toBe(
+      "A entrada não pode ser negativa.",
+    );
+    expect(planoDaDigitacao({ ...base, entradaDigitada: "10.000,00" }).erro).toBe(
+      "A entrada não pode superar o total.",
+    );
+    expect(planoDaDigitacao({ ...base, numParcelasDigitado: "0" }).erro).toBe(
+      "Informe o número de parcelas.",
+    );
+  });
+
+  it("entrada vazia é zero, e entrada igual ao total dispensa parcelas", () => {
+    const semEntrada = planoDaDigitacao({ ...base, entradaDigitada: "" });
+    expect(semEntrada.erro).toBeNull();
+    expect(semEntrada.linhas!.find((l) => l.numero === 0)).toBeUndefined();
+
+    const aVista = planoDaDigitacao({
+      ...base,
+      entradaDigitada: "9.480,55",
+      numParcelasDigitado: "0",
+    });
+    expect(aVista.erro).toBeNull();
+    expect(aVista.linhas).toHaveLength(1);
+    expect(aVista.linhas![0].valorCentavos).toBe(948055);
   });
 });

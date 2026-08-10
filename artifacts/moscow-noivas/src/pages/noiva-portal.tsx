@@ -35,6 +35,7 @@ import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 const ERROS: Record<string, string> = {
   LINK_EXPIRADO: "Este link expirou. Peça um novo para a sua vendedora.",
   LINK_INVALIDO: "Link inválido — confira se ele veio inteiro do WhatsApp.",
+  MUITAS_TENTATIVAS: "Muitas tentativas em pouco tempo. Espere alguns minutos e abra o link de novo.",
 };
 
 const ROTULO_PARCELA: Record<string, string> = {
@@ -44,6 +45,10 @@ const ROTULO_PARCELA: Record<string, string> = {
   CANCELADA: "Cancelada",
 };
 
+// S30: fica — "segunda-feira, 28 de julho de 2026 às 14:30" é a cerimônia
+// completa (dia da semana + data por extenso + hora) que só o portal da noiva
+// fala; nenhuma função de `formatos.ts` traz o weekday, e um uso só não paga
+// uma régua nova.
 const dataHoraFmt = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "full",
   timeStyle: "short",

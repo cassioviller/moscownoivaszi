@@ -1,0 +1,32 @@
+{
+  // S-D23 — a suíte E2E passa a ter typecheck de verdade.
+  //
+  // Nenhum tsconfig incluía `e2e/`: o `tsconfig.json` da raiz tem `files: []` e
+  // só referencia `lib/`, e o `--filter "./artifacts/**"` do script da raiz não
+  // alcança um diretório que não é pacote. A sobra prometia uma régua interina,
+  // `playwright test --list`, e ELA NÃO EXISTE: o Playwright 1.61.1 transpila
+  // com Babel (`playwright/lib/transform/babelBundle.js`), que APAGA os tipos em
+  // vez de conferi-los. `--list` prova que os 60 specs fazem parse e carregam, e
+  // nada sobre tipos — `page.click(42)` sai verde por lá.
+  //
+  // Medido ao ligar isto pela primeira vez: **63 arquivos de `e2e/` entram no
+  // programa e dão 0 erro de tipo**. O número que a sobra dizia desconhecido é
+  // zero — e a régua morde: `page.click(42)` enxertado no `01-auth.spec.ts` sai
+  // `error TS2345: Argument of type 'number' is not assignable to parameter of
+  // type 'string'`.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // `incremental` vem ligado do base e escreveria um `.tsbuildinfo` dentro de
+    // `e2e/`, no meio dos specs.
+    "incremental": false,
+    // Os specs vivem em Node: `node:path`, `node:crypto`, `process`,
+    // `__dirname`. O `types: []` do base os deixaria todos sem definição.
+    "types": ["node"],
+    // `page.evaluate(() => document.…)` roda no navegador, e o corpo do callback
+    // é typecheckado aqui. Sem `dom`, cada `document`/`window` de dentro de um
+    // `evaluate` vira erro.
+    "lib": ["es2022", "dom"]
+  },
+  "include": ["."]
+}

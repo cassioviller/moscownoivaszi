@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Erro } from "@/components/estado";
 import { useToast } from "@/hooks/use-toast";
 import { DatabaseBackup, Loader2 } from "lucide-react";
-import { instanteCurto } from "@/lib/formatos";
+import { haQuanto, instanteCurto } from "@/lib/formatos";
 
 /**
  * Status de backup do sistema (E30) — a resposta do SRE à pergunta que não
@@ -22,19 +22,10 @@ import { instanteCurto } from "@/lib/formatos";
  */
 
 
-/** "há 5 min", "há 3 h", "há 12 dias" — ou null para cair na data absoluta. */
-function haQuanto(instante: string): string | null {
-  const ms = Date.now() - new Date(instante).getTime();
-  if (ms < 0) return null;
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return "agora há pouco";
-  if (min < 60) return `há ${min} min`;
-  const horas = Math.floor(min / 60);
-  if (horas < 24) return `há ${horas} h`;
-  const dias = Math.floor(horas / 24);
-  if (dias <= 90) return `há ${dias} dia${dias === 1 ? "" : "s"}`;
-  return null;
-}
+// S35: o "há quanto" mora em `@/lib/formatos` (estava copiado em três
+// páginas). O teto de 90 dias desta tela — backup é raro, o relativo ainda
+// informa depois de meses — vai como parâmetro na chamada.
+const TETO_RELATIVO_DIAS = 90;
 
 function dataLonga(iso: string): string {
   return instanteCurto(iso).replace(", ", " às ");
@@ -165,7 +156,7 @@ export function BackupSistema() {
                   <p className="text-sm text-muted-foreground">{s.texto}</p>
                   <p className="text-2xl font-serif leading-tight">
                     {ultimo
-                      ? `Último backup ${haQuanto(ultimo.iniciadoEm) ?? "em " + dataLonga(ultimo.iniciadoEm)}`
+                      ? `Último backup ${haQuanto(ultimo.iniciadoEm, TETO_RELATIVO_DIAS) ?? "em " + dataLonga(ultimo.iniciadoEm)}`
                       : "Nunca rodou"}
                   </p>
                   {ultimo && (

@@ -49,6 +49,14 @@ export const avariasTable = pgTable(
   },
   (t) => ({
     bloqueioIdx: index("avarias_bloqueio_id_idx").on(t.bloqueioId),
+    /**
+     * S-A20 — existia nos bancos e não aqui. O script do E97
+     * (`docs/migracoes/2026-07-27-e97-avaria-parcela.sql:42`) o criou junto com
+     * a coluna; o schema nunca o declarou, e todo banco nascido de `push` ou
+     * `migrate` ficou sem ele. É por `parcela_id` que se pergunta se este
+     * reparo já foi cobrado.
+     */
+    parcelaIdx: index("avarias_parcela_id_idx").on(t.parcelaId),
   }),
 );
 

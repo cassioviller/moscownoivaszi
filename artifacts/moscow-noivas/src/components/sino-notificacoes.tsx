@@ -115,7 +115,12 @@ export function SinoNotificacoes() {
     if (diaNegativo) {
       lista.push({
         id: `CAIXA:${diaNegativo}`,
-        titulo: `O caixa fica negativo em ${instanteDiaMes(`${diaNegativo}T12:00:00-03:00`)}`,
+        // S-M4: primeiro dia negativo HOJE = a loja já está no vermelho, e
+        // "fica negativo em" mentiria sobre um fato presente.
+        titulo:
+          diaNegativo <= hojeLocal()
+            ? "O caixa já está negativo"
+            : `O caixa fica negativo em ${instanteDiaMes(`${diaNegativo}T12:00:00-03:00`)}`,
         detalhe: "Pela projeção com o que há para receber e pagar.",
         href: `${base}/financeiro/projecao`,
         urgente: true,

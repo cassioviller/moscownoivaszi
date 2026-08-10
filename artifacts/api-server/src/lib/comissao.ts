@@ -18,6 +18,8 @@
  * caso não há comissão nem bônus, e o excedente é problema de quem chama.
  */
 
+import { diaLocal } from "@workspace/financeiro-core";
+
 export type FaixaCalc = {
   /** Centavos. Borda inferior INCLUSIVA. */
   minAcumulado: number;
@@ -184,8 +186,10 @@ export function projetarCompetencia(
   const { inicio, fim } = limitesCompetencia(competencia);
   const MS_DIA = 86_400_000;
   const diasNoMes = Math.round((fim.getTime() - inicio.getTime()) / MS_DIA);
-  // Dia do mês no fuso da loja: o mesmo deslocamento de `competenciaDe`.
-  const diasDecorridos = new Date(agora.getTime() - 3 * 60 * 60 * 1000).getUTCDate();
+  // Dia do mês no fuso da loja, pela régua única (`diaLocal`, financeiro-core).
+  // S35: era `new Date(agora - 3h).getUTCDate()` à mão — a equivalência com a
+  // régua está provada em s35-datas-equivalencia-unit.test.ts.
+  const diasDecorridos = Number(diaLocal(agora).slice(8, 10));
 
   if (diasDecorridos < MIN_DIAS_PROJECAO) return null;
 
@@ -198,7 +202,8 @@ export function projetarCompetencia(
 
 // ── Competência (America/Sao_Paulo, offset fixo -03:00 — sem DST desde 2019) ──
 // Este módulo é puro de propósito (unit sem banco), então não importa o
-// inicioDoDia de disponibilidade.ts, que arrasta os tipos de db junto.
+// inicioDoDia de disponibilidade.ts, que arrasta os tipos de db junto. As
+// réguas de dia/competência vêm do financeiro-core, que é puro igual (S35).
 
 /** Início (inclusivo) e fim (exclusivo) da competência "YYYY-MM". */
 export function limitesCompetencia(competencia: string): { inicio: Date; fim: Date } {
@@ -212,15 +217,15 @@ export function limitesCompetencia(competencia: string): { inicio: Date; fim: Da
   };
 }
 
-export function competenciaValida(competencia: string): boolean {
-  if (!/^\d{4}-\d{2}$/.test(competencia)) return false;
-  const mes = Number(competencia.slice(5, 7));
-  return mes >= 1 && mes <= 12;
-}
+// S35: a cópia local (`\d{4}-\d{2}` + mês 1..12) aceitava exatamente o mesmo
+// conjunto que a régua do core — duas grafias, uma regra. A do core fica.
+export { competenciaValida } from "@workspace/financeiro-core";
 
 /** A competência de um instante, no fuso da loja. */
 export function competenciaDe(instante: Date): string {
-  return new Date(instante.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 7);
+  // S35: era `new Date(instante - 3h).toISOString().slice(0, 7)` à mão —
+  // mesma conta, agora pela régua única (prova no teste de equivalência).
+  return diaLocal(instante).slice(0, 7);
 }
 
 /** As `meses` competências ANTERIORES a `competenciaAtual`, da mais antiga à mais recente. */

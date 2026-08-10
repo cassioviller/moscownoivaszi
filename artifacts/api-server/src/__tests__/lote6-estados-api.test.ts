@@ -28,6 +28,12 @@ describe("Lote 6 — máquina de estados (API)", () => {
     return lead.etapa;
   }
 
+  async function carimboDoLead(id: string): Promise<Date | null> {
+    const [lead] = await db.select({ carimbo: leadsTable.contratoFechadoEm })
+      .from(leadsTable).where(eq(leadsTable.id, id));
+    return lead.carimbo;
+  }
+
   it("abrir orçamento avança o lead para ORCAMENTO_ABERTO, aprovar não regride e é idempotente", async () => {
     const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
     const lead = await criarLead(f); // NOVO
@@ -59,6 +65,35 @@ describe("Lote 6 — máquina de estados (API)", () => {
       .send({ leadId: lead.id, vendedoraId: f.vendedoraId, valorTotal: 1000 })
       .expect(201);
     expect(await etapaDoLead(lead.id)).toBe("CONTRATO_FECHADO");
+  });
+
+  /**
+   * S16 — o carimbo é efeito do CONTRATO, não do avanço da etapa.
+   *
+   * O funil aceita pular (`transicaoLeadValida` só exige `iPara > iDe`), e a
+   * noiva que já está EM_PROVAS quando o contrato é registrado não avança etapa
+   * nenhuma: `avancarEtapaLead` devolve a mesma, o `if` não entra, e
+   * `contrato_fechado_em` fica `null` para sempre. Quem lê isso é o
+   * `comContrato` de `/leads/sazonalidade`, que filtra por `is not null`.
+   */
+  it("fechar contrato carimba a data mesmo quando a etapa não avança (S16)", async () => {
+    const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const lead = await criarLead(f); // NOVO
+
+    await agent
+      .patch(`/api/lojas/${f.lojaId}/leads/${lead.id}`)
+      .send({ etapa: "EM_PROVAS" })
+      .expect(200);
+    expect(await carimboDoLead(lead.id)).toBeNull();
+
+    await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send({ leadId: lead.id, vendedoraId: f.vendedoraId, valorTotal: 1000 })
+      .expect(201);
+
+    // A etapa NÃO regride — quem já está em provas continua em provas.
+    expect(await etapaDoLead(lead.id)).toBe("EM_PROVAS");
+    expect(await carimboDoLead(lead.id)).toBeInstanceOf(Date);
   });
 
   it("reserva só transita por caminhos válidos", async () => {

@@ -1,0 +1,465 @@
+{
+  "_sobre": "Transcrição integral das 29 fotos do sistema em papel do ateliê, feita em 2026-08-10 para CADASTRAR o legado no sistema. Complementa o INVENTARIO.md, que cataloga as fotos sem transcrevê-las linha a linha.",
+  "_limites": [
+    "É caligrafia: todo nome é leitura, não fato. Onde a leitura é duvidosa, o campo 'duvida' diz o que se leu de outro jeito.",
+    "Nome parecido NÃO é o mesmo modelo (Arnalda ≠ Arnica). O sufixo G/P é TAMANHO e o número (Arnica 2, Shelly 2) é UNIDADE — por isso cada grafia distinta vira uma PEÇA distinta, e nada é fundido por semelhança.",
+    "O caderno registra a SEMANA de saída, nunca o dia do casamento. O campo 'sabadoDaSemana' é CENÁRIO DECLARADO, não fato do papel.",
+    "Falta o verso da semana 21–27/09 ('ATRÁS') e faltam as semanas de 28/09 a 11/10 (sobra S-A2).",
+    "Um único número monetário em 29 fotos: 7.600 ao lado de 'Realuguel' (20–26/07). Pode ser valor ou código. NENHUM preço de peça consta no papel."
+  ],
+  "_codigoDeCores": {
+    "verde": "prova de noiva, com ordinal (1ªPR, 2ªPR)",
+    "laranja": "prova de festa/dama, indexada por COR",
+    "rosa": "a lista da semana, copiada na segunda-feira",
+    "azul": "tarefa ou recado"
+  },
+
+  "caderno": [
+    {
+      "semana": "2026-06-22/2026-06-28", "sabadoDaSemana": "2026-06-27",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.54 (3).jpeg",
+      "nota": "topo: 'Férias Marilza / Gabi'",
+      "linhas": [
+        { "n": 1, "noiva": "Larissa", "peca": "Avra G", "estado": "ok" },
+        { "n": 2, "noiva": "Mariane", "peca": "Tamara", "estado": "ok" },
+        { "n": 3, "noiva": "Joyce", "peca": "Hassenuá", "estado": "ok" },
+        { "n": 4, "noiva": "Ijatara", "peca": "Perolyne", "estado": "ok", "duvida": "noiva pode ser 'Ijatana' ou 'Ijeana'" }
+      ]
+    },
+    {
+      "semana": "2026-06-29/2026-07-05", "sabadoDaSemana": "2026-07-04",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.54 (4).jpeg",
+      "nota": "topo: 'Férias Marilza'",
+      "linhas": [
+        { "n": 1, "noiva": "Kyellen", "peca": "Sollyane", "estado": "cancelada", "observacao": "riscada — 'trocou data'" },
+        { "n": 2, "noiva": "Karandra", "peca": "Taiane", "estado": "ok", "observacao": "substituiu 'Thelma', que foi riscada" },
+        { "n": 3, "noiva": "Karen", "peca": "Nixi", "estado": "ok", "observacao": "o nome da noiva está riscado no caderno; a agenda de 29/06 confirma 'KAREN / Nixi'" }
+      ]
+    },
+    {
+      "semana": "2026-07-06/2026-07-12", "sabadoDaSemana": "2026-07-11",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.54 (5).jpeg",
+      "linhas": [
+        { "n": 1, "noiva": "Bruna", "peca": "Shirley", "estado": "ok" },
+        { "n": 2, "noiva": "Mariane", "peca": "Thelma", "estado": "ok" },
+        { "n": 3, "noiva": "Monique", "peca": "Aura", "estado": "ok" },
+        { "n": 4, "noiva": "Taina", "peca": "Ally", "estado": "ok", "observacao": "(mini maleta, frente única)" },
+        { "n": 5, "noiva": "Bruna", "peca": "Thayone", "estado": "ok", "observacao": "peça anterior riscada" }
+      ]
+    },
+    {
+      "semana": "2026-07-13/2026-07-19", "sabadoDaSemana": "2026-07-18",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.55.jpeg",
+      "nota": "topo: 'Yeni → 16 a 25'",
+      "linhas": [
+        { "n": 1, "noiva": "Gabriela", "peca": "Dayfini", "estado": "ok" },
+        { "n": 2, "noiva": null, "peca": null, "estado": "cancelada", "observacao": "linha inteira rasurada — '(cancelada)'" },
+        { "n": 3, "noiva": "Ana", "peca": "Monalisa", "estado": "ok", "observacao": "peça anterior riscada; a agenda de 13/07 traz 'Ana / Sensi'" },
+        { "n": 4, "noiva": "Tamires", "peca": "Vesnas", "estado": "ok" },
+        { "n": 5, "noiva": "Gabriela", "peca": "Manga renda c/ saia lisa", "estado": "ok", "tipo": "confeccao", "observacao": "'(Mesma noiva Dayfini)' — peça componente com número de ordem próprio" },
+        { "n": 6, "noiva": "Danielle", "peca": "Rica Sposa", "pecaExtra": "Bolero Rica Sposa", "estado": "ok" },
+        { "n": 7, "noiva": "Camile", "peca": "Malina", "estado": "ok" },
+        { "n": 8, "noiva": null, "peca": null, "estado": "rasurada" }
+      ]
+    },
+    {
+      "semana": "2026-07-20/2026-07-26", "sabadoDaSemana": "2026-07-25",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.55 (1).jpeg",
+      "nota": "topo: 'férias Yeni'",
+      "linhas": [
+        { "n": 1, "noiva": "Jaine", "peca": "Gwendolin G", "estado": "ok", "observacao": "substituiu 'Sensa', riscada" },
+        { "n": 2, "noiva": "Mirela", "peca": "Fencyella", "estado": "ok", "observacao": "'Realuguel. 7.600' — o ÚNICO número monetário das 29 fotos, e não dá para decidir se é valor ou código" },
+        { "n": 3, "noiva": "Raysa", "peca": "Selima", "estado": "ok", "duvida": "a agenda de 20/07 grafa 'Selina'" },
+        { "n": 4, "noiva": "Nathália", "peca": "Aurone", "estado": "ok" },
+        { "n": 5, "noiva": "Larissa", "peca": "Korte", "estado": "cancelada", "observacao": "linha inteira riscada; a numeração foi reusada" },
+        { "n": 5, "noiva": "Karolina", "peca": "Blary", "estado": "ok" }
+      ]
+    },
+    {
+      "semana": "2026-07-27/2026-08-02", "sabadoDaSemana": "2026-08-01",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.55 (2).jpeg",
+      "nota": "topo: 'Férias Ida / férias Marina'",
+      "linhas": [
+        { "n": 1, "noiva": "Thayanne", "peca": "Arnica G", "estado": "cancelada", "observacao": "linha inteira riscada; a numeração reiniciou depois dela" },
+        { "n": 1, "noiva": "Samara", "peca": "Gabriela", "estado": "ok", "observacao": "substituiu 'Italina', riscada" },
+        { "n": 2, "noiva": "Letícia", "peca": "Agiella", "estado": "ok", "duvida": "a agenda grafa 'Aguiella' e 'Aggiella'" },
+        { "n": 3, "noiva": "Emyly", "peca": "Kamila P", "estado": "ok" }
+      ]
+    },
+    {
+      "semana": "2026-08-03/2026-08-09", "sabadoDaSemana": "2026-08-08",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.55 (3).jpeg",
+      "nota": "topo: 'férias 15/A'. A semana mais fraca das 14 — uma peça só.",
+      "linhas": [
+        { "n": 1, "noiva": "Juciene", "peca": "Shelly G", "estado": "ok", "duvida": "a agenda de 03/08 traz 'Shellyane / Luciene'" }
+      ]
+    },
+    {
+      "semana": "2026-08-10/2026-08-16", "sabadoDaSemana": "2026-08-15",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.55 (4).jpeg",
+      "nota": "topo: 'Férias Marina'",
+      "linhas": [
+        { "n": 1, "noiva": "Estefani", "peca": "Telmah", "pecaExtra": "Urra Pérola", "estado": "ok" },
+        { "n": 2, "noiva": "Nicoly", "peca": "Ariane", "estado": "ok", "observacao": "substituiu 'Bernise', riscada" },
+        { "n": 3, "noiva": "Thamiris", "peca": "Luma", "estado": "ok", "observacao": "'trocou data'" },
+        { "n": 4, "noiva": "Letícia", "peca": "Bernarda", "estado": "ok" },
+        { "n": 5, "noiva": "Gabriela", "peca": "Siam", "pecaExtra": "Mantilha Chem", "estado": "ok", "tipo": "confeccao", "observacao": "'+ Manga será confeccionada' — é a evidência que fundou a S-A4/E155" },
+        { "n": 6, "noiva": "Ana Paula", "peca": "Shelly P", "estado": "ok" },
+        { "n": 7, "noiva": "Laís", "peca": "Aura", "estado": "ok" },
+        { "n": 8, "noiva": "Jaiane", "peca": "Taiane", "estado": "ok", "observacao": "(todo rendo Chantilly)" },
+        { "n": 9, "noiva": "Danielle", "peca": "Kamila G", "estado": "ok" },
+        { "n": 10, "noiva": null, "peca": null, "estado": "rasurada" }
+      ]
+    },
+    {
+      "semana": "2026-08-17/2026-08-23", "sabadoDaSemana": "2026-08-22",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.55 (5).jpeg",
+      "linhas": [
+        { "n": 1, "noiva": "Bianca", "peca": "Arnalda", "estado": "ok" },
+        { "n": 2, "noiva": "Bruna", "peca": "Cristal", "estado": "ok" },
+        { "n": 3, "noiva": "Pamela", "peca": "Beruta", "estado": "ok" },
+        { "n": 4, "noiva": "Amanda", "peca": "Ferula", "estado": "ok", "observacao": "'(v)'" },
+        { "n": 5, "noiva": "Gabrieli", "peca": "Nova Sposa", "estado": "ok", "observacao": "peça anterior apagada a corretivo" },
+        { "n": 6, "noiva": "Giovana", "peca": "Selmah G", "estado": "ok" },
+        { "n": 7, "noiva": "Larissa", "peca": "Shally", "estado": "ok", "duvida": "pode ser 'Shelly' — a agenda de 17/08 grafa 'Shelly'" },
+        { "n": 8, "noiva": "Beatriz", "peca": "Angela", "estado": "ok" },
+        { "n": 9, "noiva": "Letícia", "peca": "Arina", "estado": "ok", "duvida": "a margem está apagada; a agenda de 17/08 traz 'Arina / Larissa'" },
+        { "n": 10, "noiva": "Julia", "peca": "Kamelia", "estado": "ok" },
+        { "n": 11, "noiva": "Cristiana", "peca": "Crosby", "estado": "ok", "duvida": "noiva pode ser 'Djidiana'" },
+        { "n": 12, "noiva": "Aline", "peca": "Arnalda G", "estado": "ok", "observacao": "'c/ manga bufante'" },
+        { "n": 13, "noiva": "Fernanda", "peca": "Lucretia", "estado": "ok" },
+        { "n": 14, "noiva": "Vanessa", "peca": "Kamila P", "estado": "ok" },
+        { "n": 15, "noiva": null, "peca": "Marta", "estado": "ok", "observacao": "coluna da direita, sem noiva na margem" },
+        { "n": 16, "noiva": null, "peca": "Aggiela", "estado": "ok", "observacao": "coluna da direita, sem noiva na margem" }
+      ]
+    },
+    {
+      "semana": "2026-08-24/2026-08-30", "sabadoDaSemana": "2026-08-29",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.56.jpeg",
+      "linhas": [
+        { "n": 1, "noiva": "Amanda", "peca": "Tamara", "estado": "ok", "duvida": "margem rasurada" },
+        { "n": 2, "noiva": "Jéssica", "peca": "Perolyne", "estado": "ok", "duvida": "margem rasurada" },
+        { "n": 3, "noiva": "Evelyn", "peca": "Arnica", "estado": "ok" },
+        { "n": 4, "noiva": "Nayara", "peca": "Laricela", "estado": "ok" },
+        { "n": 5, "noiva": "Amanda", "peca": "Milla Nova", "estado": "ok", "observacao": "(+ aplicações)" },
+        { "n": 6, "noiva": "Maria Eduarda", "peca": "Thelmah", "estado": "ok" },
+        { "n": 7, "noiva": "Laura", "peca": "Janna", "estado": "ok" },
+        { "n": 8, "noiva": "Letícia", "peca": "Finnella", "estado": "ok" },
+        { "n": 9, "noiva": "Maria Eduarda", "peca": "Constância", "estado": "ok" },
+        { "n": 10, "noiva": "Mabeli", "peca": "Shellyane P", "estado": "ok" },
+        { "n": 11, "noiva": "Sabrina", "peca": "Avronny", "estado": "ok", "observacao": "'d Trançoche' — leitura incerta", "duvida": "pode ser 'Avrony'" },
+        { "n": 12, "noiva": "Gabi", "peca": "Blary", "estado": "ok", "observacao": "'2ª' — segunda saída da peça" }
+      ]
+    },
+    {
+      "semana": "2026-08-31/2026-09-06", "sabadoDaSemana": "2026-09-05",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.56 (1).jpeg",
+      "nota": "19 linhas — a segunda semana mais cheia",
+      "linhas": [
+        { "n": 1, "noiva": null, "peca": null, "estado": "apagada" },
+        { "n": 2, "noiva": "Maria Luiza", "peca": "Yoko", "estado": "ok", "observacao": "'(parece com Riana)' · '1º Aluguel'" },
+        { "n": 3, "noiva": "Maria Eduarda", "peca": "Lukinha", "estado": "ok" },
+        { "n": 4, "noiva": "Mariana", "peca": "Boemia", "estado": "ok", "observacao": "'(Boho chick)'" },
+        { "n": 5, "noiva": "Sarah", "peca": "Ayshel", "estado": "ok" },
+        { "n": 6, "noiva": "Laura", "peca": "Chloe", "estado": "ok" },
+        { "n": 7, "noiva": "Alana", "peca": "Anastazia", "estado": "ok" },
+        { "n": 8, "noiva": "Amanda", "peca": "Shelly 2", "estado": "ok", "observacao": "o '2' é UNIDADE da peça, não ordinal de saída" },
+        { "n": 9, "noiva": "Natalle", "peca": "Avramy", "estado": "ok" },
+        { "n": 10, "noiva": "Thainá", "peca": "Kira", "estado": "ok" },
+        { "n": 11, "noiva": "Maria Eduarda", "peca": "Sereia corrente c/ pérolas", "estado": "ok", "observacao": "'(Yamanella)'" },
+        { "n": 12, "noiva": "Laís", "peca": "Kalina", "pecaExtra": "Saiote 2 aros + crinol", "estado": "ok", "observacao": "o saiote e o crinol são peça de ESTOQUE (E154), não do acervo" },
+        { "n": 13, "noiva": "Paula", "peca": "Lilya", "pecaExtra": "NSA", "estado": "ok" },
+        { "n": 14, "noiva": "Larissa", "peca": "Selmah G", "estado": "ok" },
+        { "n": 15, "noiva": "Milena", "peca": "Estrelia", "estado": "ok" },
+        { "n": 16, "noiva": null, "peca": "Ferula", "estado": "ok" },
+        { "n": 17, "noiva": "Karina", "peca": "Kauany", "estado": "ok", "observacao": "'vai pedir outro'" },
+        { "n": 18, "noiva": null, "peca": "Kamila P", "estado": "ok", "observacao": "'corpo renda'" },
+        { "n": 19, "noiva": null, "peca": "Flowers", "estado": "ok" }
+      ]
+    },
+    {
+      "semana": "2026-09-07/2026-09-13", "sabadoDaSemana": "2026-09-12",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.56 (2).jpeg",
+      "nota": "21 linhas — a semana do feriado de 7 de setembro, e o PICO das 14 semanas",
+      "linhas": [
+        { "n": 1, "noiva": "Isabela", "peca": "Melestina", "estado": "ok" },
+        { "n": 2, "noiva": "Gabriela", "peca": "Virgínia", "estado": "ok" },
+        { "n": 3, "noiva": "Vitória", "peca": "Klosella", "pecaExtra": "Solussaia + Manga", "estado": "ok" },
+        { "n": 4, "noiva": "Rayane", "peca": "Nixia", "estado": "ok", "observacao": "'(2º Aluguel)'" },
+        { "n": 5, "noiva": "Laíza", "peca": "Bernarda", "pecaExtra": "Bolero Ricca Sposa", "estado": "ok" },
+        { "n": 6, "noiva": "Isabela", "peca": "Shellyane", "estado": "ok" },
+        { "n": 7, "noiva": "Larissa", "peca": "Adelita", "estado": "ok", "observacao": "'Novo que chegou' · '1º Aluguel'" },
+        { "n": 8, "noiva": "Victoria", "peca": "Leslie", "estado": "ok" },
+        { "n": 9, "noiva": "Lara", "peca": "Gwendalin G", "estado": "ok" },
+        { "n": 10, "noiva": "Fabiana", "peca": "Berenice", "estado": "ok" },
+        { "n": 11, "noiva": "Giovana", "peca": "Kauany", "estado": "ok" },
+        { "n": 12, "noiva": "Maria Eduarda", "peca": "Boscalina", "estado": "ok" },
+        { "n": 13, "noiva": "Letícia", "peca": "Kallany P", "estado": "ok" },
+        { "n": 14, "noiva": "Maria Paula", "peca": "Chantell", "estado": "ok" },
+        { "n": 15, "noiva": "Nathaly", "peca": "Wendy", "estado": "ok", "duvida": "margem quase ilegível" },
+        { "n": 16, "noiva": null, "peca": "Ferula", "estado": "ok", "observacao": "grafada com '?' no papel" },
+        { "n": 17, "noiva": "Thaluty", "peca": null, "estado": "cancelada", "observacao": "riscada — 'cancelou'" },
+        { "n": 18, "noiva": "Carla", "peca": "Monalisa", "estado": "ok", "duvida": "margem pode ser 'Carlos'" },
+        { "n": 19, "noiva": "Audrey", "peca": "Avramy", "estado": "ok" },
+        { "n": 20, "noiva": null, "peca": "Italina", "estado": "ok" },
+        { "n": 21, "noiva": "Renata", "peca": "Friliz", "estado": "ok", "observacao": "'(c/ cape de pontas)'" }
+      ]
+    },
+    {
+      "semana": "2026-09-14/2026-09-20", "sabadoDaSemana": "2026-09-19",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.56 (3).jpeg",
+      "linhas": [
+        { "n": 1, "noiva": "Maria Fernanda", "peca": "Adelita", "estado": "ok", "observacao": "'Realuguel' — segunda saída da MESMA peça que saiu em 07–13/09" },
+        { "n": 2, "noiva": "Gabi", "peca": "Avra G", "estado": "ok" },
+        { "n": 3, "noiva": "Shaina", "peca": "Nivea", "estado": "ok", "observacao": "peça anterior apagada a corretivo" },
+        { "n": 4, "noiva": "Thainá", "peca": "Gabriella", "estado": "ok" },
+        { "n": 5, "noiva": "Luana", "peca": "Masha", "estado": "ok" },
+        { "n": 6, "noiva": "Letícia", "peca": "Shellyane P", "estado": "ok", "observacao": "'Thelmah (trocou)' — a peça anterior foi riscada" },
+        { "n": 7, "noiva": null, "peca": "Aglaia", "estado": "ok", "observacao": "margem rasurada" },
+        { "n": 8, "noiva": "Silvia", "peca": "Arnalda", "estado": "ok", "observacao": "'20.09'" },
+        { "n": 9, "noiva": "Anduzza", "peca": "Almania", "estado": "ok" },
+        { "n": 10, "noiva": "Sarah", "peca": "Arnalda P", "estado": "ok", "observacao": "'(P) 19'" },
+        { "n": 11, "noiva": "Lena", "peca": "2 em 1", "estado": "ok", "observacao": "'(decote quadrado)' · '(Weetella)'" },
+        { "n": 12, "noiva": "Bianca", "peca": "Milla Nova", "estado": "ok" },
+        { "n": 13, "noiva": "Ana Eliza", "peca": "Ricca Sposa", "estado": "ok" },
+        { "n": 14, "noiva": "Larissa", "peca": "Konte", "estado": "ok", "observacao": "'audio 29.09'" },
+        { "n": 15, "noiva": null, "peca": "Andreia", "estado": "ok" }
+      ]
+    },
+    {
+      "semana": "2026-09-21/2026-09-27", "sabadoDaSemana": "2026-09-26",
+      "foto": "WhatsApp Image 2026-07-24 at 09.20.56 (4).jpeg",
+      "nota": "termina com 'ATRÁS →' — o verso NÃO foi fotografado (sobra S-A2). Esta lista é piso, não total.",
+      "linhas": [
+        { "n": 1, "noiva": "Kauany", "peca": "Arnica 2 G", "estado": "ok", "observacao": "'(Busto grande) Original'" },
+        { "n": 2, "noiva": null, "peca": null, "estado": "apagada" },
+        { "n": 3, "noiva": "Gabriela", "peca": "Tamara", "pecaExtra": "Bolero 2026", "estado": "ok" },
+        { "n": 4, "noiva": "Larissa", "peca": "Arina", "estado": "ok" },
+        { "n": 5, "noiva": "Stephanie", "peca": "Bella", "estado": "ok", "observacao": "'(sereia manga)'" },
+        { "n": 6, "noiva": "Mariana", "peca": "Nixia", "estado": "ok" },
+        { "n": 7, "noiva": "Natacha", "peca": "Malybu", "estado": "ok" },
+        { "n": 8, "noiva": "Vitória", "peca": "Ariane", "estado": "ok" },
+        { "n": 9, "noiva": "Daniele", "peca": "Kira", "estado": "ok" },
+        { "n": 10, "noiva": "Deise", "peca": "Chloe", "estado": "ok", "observacao": "'se sabe que tá 15 dias'" },
+        { "n": 11, "noiva": "Larissa", "peca": "Konte", "estado": "ok" },
+        { "n": 12, "noiva": "Pricila", "peca": "Andreia", "estado": "ok", "observacao": "'1º aluguel'" }
+      ]
+    }
+  ],
+
+  "agenda": [
+    { "data": "2026-06-29", "foto": "WhatsApp Image 2026-07-24 at 09.20.48.jpeg", "itens": [
+      { "hora": null, "noiva": "Kyellem", "peca": "Sollyane", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Karandra", "peca": "Thelma", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Karen", "peca": "Nixi", "cor": "rosa", "tipo": "LISTA" } ] },
+    { "data": "2026-06-30", "itens": [
+      { "hora": "10:30", "noiva": "Gabi", "descricao": "Festa Fúcsia", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "11:30", "noiva": "Karandra", "peca": "Thavare", "ordinal": "2ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Aduaira", "descricao": "Terracota + Telza Marsala", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "16:00", "noiva": "Danielle", "peca": "Ricca Sposa", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-07-01", "itens": [
+      { "hora": "10:30", "noiva": "Tamires", "peca": "Vesna", "ordinal": "1ªPR", "tipo": "PROVA", "observacao": "'18/07/26'" },
+      { "hora": "18:00", "noiva": "Ana", "peca": "Monalisa", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-07-02", "itens": [
+      { "hora": "10:30", "noiva": "Nathalia", "peca": "Avrony", "ordinal": "1ªPR", "tipo": "PROVA" } ] },
+    { "data": "2026-07-03", "itens": [
+      { "hora": "15:00", "noiva": "Ana", "peca": "Monalisa", "ordinal": "2ªPR", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Rayssa", "peca": "Selina", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-07-04", "itens": [
+      { "hora": "13:30", "noiva": "Larissa", "descricao": "Verde", "ordinal": "PR", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": null, "descricao": "Retorno Gabi; trocou 09.07 para 23.08", "tipo": "RECADO" } ] },
+    { "data": "2026-07-06", "foto": "WhatsApp Image 2026-07-24 at 09.20.48 (1).jpeg", "itens": [
+      { "hora": null, "noiva": "Bruna", "peca": "Shirley", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Mariane", "peca": "Thelma", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Monique", "peca": "Aura", "cor": "rosa", "tipo": "LISTA" } ] },
+    { "data": "2026-07-07", "itens": [
+      { "hora": "10:30", "noiva": "Jaine", "peca": "Gwendolin G", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "11:30", "noiva": "Mirela", "peca": "Fencyella", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "16:00", "noiva": "Jaine", "peca": "Gwendolin G", "ordinal": "3ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:00", "noiva": "Aline", "descricao": "Conceição", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:30", "noiva": "Vitória", "descricao": "Rosa Rut", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-07-08", "itens": [
+      { "hora": "10:30", "noiva": "Paulo", "descricao": "Terracota", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "11:00", "noiva": "Fernanda", "descricao": "Champagne", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Karolina", "peca": "Blary", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "15:00", "noiva": "Mariane", "peca": "Thelma", "ordinal": "2ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "16:00", "noiva": "Mirela", "peca": "Fencyella", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "18:30", "noiva": "Priscila", "descricao": "Marsala", "ordinal": "PR", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-07-10", "itens": [
+      { "hora": "10:30", "noiva": "Elizabete", "descricao": "Champagne", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Rayssa", "peca": "Selina", "ordinal": "1ªPR", "estado": "cancelada", "observacao": "riscada em X" } ] },
+    { "data": "2026-07-13", "foto": "WhatsApp Image 2026-07-24 at 09.20.48 (2).jpeg", "itens": [
+      { "hora": null, "noiva": "Ivan", "peca": "Milena", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Ana", "peca": "Sensi", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Tamires", "peca": "Vesnas", "cor": "rosa", "tipo": "LISTA" } ] },
+    { "data": "2026-07-14", "itens": [
+      { "hora": "10:30", "noiva": "Emmily", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Samara", "peca": "Gabriela", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Rafael", "descricao": "Dama", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-07-15", "itens": [
+      { "hora": "10:30", "noiva": "Letícia", "peca": "Aggiella", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-07-16", "itens": [
+      { "hora": "18:30", "noiva": "Letícia", "descricao": "Prova ou troca", "tipo": "PROVA" } ] },
+    { "data": "2026-07-18", "itens": [
+      { "hora": "10:30", "noiva": "Mirela", "descricao": "Dama", "ordinal": "PR", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-07-19", "itens": [
+      { "hora": "14:00", "noiva": "Maria Luísa", "peca": "Yoko", "cor": "verde", "tipo": "PROVA", "observacao": "DOMINGO — a evidência que fundou a S-A8" },
+      { "hora": "18:00", "noiva": "Ana Paula", "peca": "Shelly", "ordinal": "1ªPR", "tipo": "PROVA", "observacao": "DOMINGO" } ] },
+    { "data": "2026-07-20", "foto": "WhatsApp Image 2026-07-24 at 09.20.48 (3).jpeg", "itens": [
+      { "hora": null, "noiva": "Jaine", "peca": "Sensa", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Mirela", "peca": "Fencyella", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Rayssa", "peca": "Selina", "cor": "rosa", "tipo": "LISTA" } ] },
+    { "data": "2026-07-21", "itens": [
+      { "hora": "10:30", "noiva": "Luciene", "peca": "Shellyane G", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "10:00", "noiva": "Mariana", "peca": "Bella", "ordinal": "1ªPR", "cor": "verde", "tipo": "ATENDIMENTO", "observacao": "'conversar sobre confecção de manga' · 'Boemia 06.09'" } ] },
+    { "data": "2026-07-23", "itens": [
+      { "hora": "10:30", "noiva": "Mariana", "descricao": "BOHO", "tipo": "ATENDIMENTO", "observacao": "'conversar sobre confecção de manga'" } ] },
+    { "data": "2026-07-27", "foto": "WhatsApp Image 2026-07-24 at 09.20.49.jpeg", "itens": [
+      { "hora": null, "noiva": "Samara", "peca": "Italina", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Samara", "peca": "Arnica G", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Letícia", "peca": "Aguiella", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Emyly", "peca": "Kamila P", "tipo": "LISTA" } ] },
+    { "data": "2026-07-28", "itens": [
+      { "hora": "14:00", "noiva": "Danielle", "peca": "Kamila G", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "15:00", "noiva": "Nicolly", "peca": "Ariane", "cor": "verde", "tipo": "PROVA", "observacao": "'Bernise' riscada, 'ARIANE' escrita por cima" },
+      { "hora": "16:00", "noiva": "Laís", "peca": "Aura", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:30", "noiva": "Taiane", "peca": "Taiane", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-07-29", "itens": [
+      { "hora": "10:30", "noiva": "Gabi", "peca": "Siam", "ordinal": "1ªPR", "tipo": "PROVA" },
+      { "hora": "15:00", "noiva": "Estefani", "peca": "Telmah", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:00", "noiva": "Giovanna", "peca": "Selmah", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-07-31", "itens": [
+      { "hora": "17:30", "noiva": "Laura", "peca": "Janna", "ordinal": "1ªPR", "tipo": "PROVA" } ] },
+    { "data": "2026-08-01", "itens": [
+      { "hora": "18:00", "noiva": "Larissa", "peca": "Shelly", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-08-03", "foto": "WhatsApp Image 2026-07-24 at 09.20.52.jpeg", "itens": [
+      { "hora": null, "descricao": "SEPARAR MANTILHA E ACESSÓRIO — NOIVA MARIA 05/09/26 → ISABELA", "cor": "laranja", "tipo": "RECADO" },
+      { "hora": null, "noiva": "Luciene", "peca": "Shellyane", "tipo": "LISTA" } ] },
+    { "data": "2026-08-04", "itens": [
+      { "hora": "10:30", "noiva": "Julio", "peca": "Kamila", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "11:30", "noiva": "Bruna", "peca": "Aguello", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Bruna", "peca": "Cristal", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "16:00", "noiva": "Aline", "peca": "Arnalda", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "18:30", "noiva": "Ana Clara", "descricao": "Marsala", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "19:30", "noiva": "Amanda", "descricao": "Marsala", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-08-05", "itens": [
+      { "hora": "10:30", "noiva": "Vanessa", "peca": "Kamila P", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "10:30", "noiva": "Giovana", "peca": "Crisby", "tipo": "PROVA", "observacao": "'4113' — etiqueta de 4 dígitos da linha festa" },
+      { "hora": "17:00", "noiva": "Larissa", "peca": "Arina", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-08-06", "itens": [
+      { "hora": "16:30", "noiva": "Amanda", "peca": "Ferula", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:30", "noiva": "Giovanna", "peca": "Selmah G", "ordinal": "1ªPR", "tipo": "PROVA" } ] },
+    { "data": "2026-08-07", "itens": [
+      { "hora": "18:30", "noiva": "Gabi", "peca": "Nova Sposa", "ordinal": "PR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Paterson", "descricao": "DAMA Isabela", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-08-09", "itens": [
+      { "hora": "14:00", "noiva": "Evelyn", "peca": "Arnica", "ordinal": "1ªPR", "tipo": "PROVA", "observacao": "DOMINGO" } ] },
+    { "data": "2026-08-10", "foto": "WhatsApp Image 2026-07-24 at 09.20.53.jpeg", "itens": [
+      { "hora": null, "noiva": "Estefani", "peca": "Telma", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Nicole", "peca": "Ariane", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Thamiris", "peca": "Luma", "cor": "rosa", "tipo": "LISTA", "observacao": "'trocou data'" },
+      { "hora": null, "noiva": "Letícia", "peca": "Bernarda", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Gabriela", "peca": "Siam", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Ana Paula", "peca": "Shelly P", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Laís", "peca": "Avra", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Taiane", "peca": "Taiane", "cor": "rosa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Danielle", "peca": "Kamila G", "cor": "rosa", "tipo": "LISTA" } ] },
+    { "data": "2026-08-11", "itens": [
+      { "hora": "10:30", "noiva": "Letícia", "peca": "Finella", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Bruna", "peca": "Cristal", "ordinal": "2ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:30", "noiva": "Ana", "descricao": "Dama", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-08-12", "itens": [
+      { "hora": "10:30", "noiva": "Andrelia", "descricao": "Azul", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "10:30", "noiva": "Samanta", "peca": "Tamara", "ordinal": "1ªPR", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Beatriz", "peca": "Angela", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "15:00", "noiva": "Mabeli", "peca": "Shellyane", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "16:00", "noiva": "Elizangela", "descricao": "Verde", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Maria", "peca": "Constance", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-08-13", "itens": [
+      { "hora": "18:30", "noiva": "Sabrina", "peca": "Avrony", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA", "observacao": "'30.08'" } ] },
+    { "data": "2026-08-14", "itens": [
+      { "hora": "16:00", "noiva": "Letícia", "peca": "Perolyne", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Nayara", "peca": "Laricela", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-08-15", "itens": [
+      { "hora": "14:00", "noiva": "Amanda", "peca": "Milla Nova", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-08-16", "itens": [
+      { "hora": "18:00", "noiva": "Gabrielly", "peca": "Blary", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA", "observacao": "DOMINGO" } ] },
+    { "data": "2026-08-17", "foto": "WhatsApp Image 2026-07-24 at 09.20.53 (1).jpeg", "itens": [
+      { "hora": null, "noiva": "Bianca", "peca": "Arnalda", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Bruna", "peca": "Cristal", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Pamela", "peca": "Beruta", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Amanda", "peca": "Ferula", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Gabrieli", "peca": "Nova Sposa", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Giovanne", "peca": "Selmah", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Larissa", "peca": "Shelly", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Beatriz", "peca": "Angela", "tipo": "LISTA" },
+      { "hora": null, "noiva": "Larissa", "peca": "Arina", "tipo": "LISTA", "duvida": "a margem grafa 'Bruna' e o caderno traz outra noiva" } ] },
+    { "data": "2026-08-20", "itens": [
+      { "hora": "06:30", "noiva": "Milena", "descricao": "PROVA VERDE", "cor": "laranja", "tipo": "PROVA", "observacao": "o compromisso mais cedo das 15 páginas" },
+      { "hora": "16:00", "noiva": "Ana Carolina", "peca": "Kamila P", "ordinal": "1ª", "tipo": "PROVA", "observacao": "'+ SILVIA DOURADO'" } ] },
+    { "data": "2026-08-21", "itens": [
+      { "hora": "15:00", "noiva": "Jessica", "peca": "Flowers", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "17:30", "noiva": "Ana Carolina", "peca": "Kamila P", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA", "observacao": "'9517'" } ] },
+    { "data": "2026-08-25", "foto": "WhatsApp Image 2026-07-24 at 09.20.53 (2).jpeg", "itens": [
+      { "hora": "10:30", "noiva": "Renata", "peca": "Feliz", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "11:30", "noiva": "Letícia", "peca": "Kailany", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA", "observacao": "'29'" },
+      { "hora": "14:00", "noiva": "Isabela", "peca": "Shellyane", "ordinal": "1ª", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Victoria", "peca": "Leslie", "ordinal": "1ªPR", "tipo": "PROVA" } ] },
+    { "data": "2026-08-26", "itens": [
+      { "hora": "16:00", "noiva": "Larissa", "peca": "Konte", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "16:30", "noiva": "Erica", "descricao": "PINK", "cor": "laranja", "tipo": "PROVA", "observacao": "'4551'" } ] },
+    { "data": "2026-08-27", "itens": [
+      { "hora": "16:00", "noiva": "Maria Ap. Silva", "descricao": "Fúcsia + Marcia Laranja", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-08-28", "itens": [
+      { "hora": "10:30", "noiva": "Giovana", "descricao": "PROVA TERRACOTA", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "14:30", "noiva": "Sandra", "descricao": "PROVA MARSALA", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-08-29", "itens": [
+      { "hora": "10:00", "noiva": "Maria", "descricao": "Prova Verde", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-08-31", "foto": "WhatsApp Image 2026-07-24 at 09.20.53 (3).jpeg", "itens": [
+      { "hora": "10:30", "noiva": "Letícia", "peca": "Kailany", "ordinal": "2ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "10:30", "noiva": "Jessica", "descricao": "azul serenity", "cor": "laranja", "tipo": "PROVA", "observacao": "'+ Jéssica Letícia'" } ] },
+    { "data": "2026-09-01", "itens": [
+      { "hora": "14:00", "noiva": "Rozimalda", "descricao": "dama Amarela", "cor": "laranja", "tipo": "PROVA", "observacao": "'6503'" },
+      { "hora": "16:00", "noiva": "Andressa", "descricao": "Rosé + Patrícia", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "19:00", "noiva": "Andressa", "peca": "Almania", "ordinal": "1ªPR", "tipo": "PROVA" } ] },
+    { "data": "2026-09-02", "itens": [
+      { "hora": "10:30", "noiva": "Valerie", "peca": "Andreia", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "10:30", "noiva": "Isabela", "descricao": "Prova Dama", "tipo": "PROVA" } ] },
+    { "data": "2026-09-03", "itens": [
+      { "hora": "11:00", "noiva": "Roseli", "descricao": "PROVA VERDE", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "14:30", "noiva": "Nathalia", "descricao": "PROVA AZUL", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Marcia Aparecida", "descricao": "Retirada Mantilha + acessório", "cor": "azul", "tipo": "RETIRADA" } ] },
+    { "data": "2026-09-04", "itens": [
+      { "hora": "11:00", "noiva": "Patrícia", "descricao": "PINK", "cor": "laranja", "tipo": "PROVA", "observacao": "'2611'" },
+      { "hora": "16:00", "noiva": "Larissa", "peca": "Konte", "ordinal": "2ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-09-05", "itens": [
+      { "hora": "10:30", "noiva": "Aline", "descricao": "troca / nota", "tipo": "ATENDIMENTO", "duvida": "leitura incerta" } ] },
+    { "data": "2026-09-08", "foto": "WhatsApp Image 2026-07-24 at 09.20.53 (4).jpeg", "itens": [
+      { "hora": "10:30", "noiva": "Maria", "descricao": "PROVA DAMA", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Daiane", "peca": "Chloe", "ordinal": "1ªPR", "tipo": "PROVA", "observacao": "'+ Angela Marsala'" },
+      { "hora": "18:00", "noiva": "Adriana", "descricao": "Prova Rosé", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-09-09", "itens": [
+      { "hora": "14:00", "noiva": "Daiane", "peca": "Chloe", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA", "observacao": "'+ Angela Marsala'" } ] },
+    { "data": "2026-09-11", "itens": [
+      { "hora": "10:30", "noiva": "Lucélia", "descricao": "ROSÊ", "cor": "laranja", "tipo": "PROVA", "observacao": "'9959'" } ] },
+    { "data": "2026-09-13", "itens": [
+      { "hora": "18:00", "noiva": "Larissa", "peca": "Konte", "ordinal": "1ªPR", "tipo": "PROVA", "observacao": "DOMINGO · 'vest. Konte'" } ] },
+    { "data": "2026-09-15", "foto": "WhatsApp Image 2026-07-24 at 09.20.53 (5).jpeg", "itens": [
+      { "hora": "10:30", "noiva": "Yasmin", "descricao": "PROVA VERMELHO", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "14:00", "noiva": "Maria", "peca": "Nixi", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" },
+      { "hora": "15:00", "noiva": "Ana Paula", "descricao": "PROVA TERRACOTA", "cor": "laranja", "tipo": "PROVA" },
+      { "hora": "18:00", "noiva": "Rafaela", "ordinal": "1ªPR", "cor": "verde", "tipo": "PROVA" } ] },
+    { "data": "2026-09-16", "itens": [
+      { "hora": "14:00", "noiva": "Danielle", "peca": "Shellyane", "ordinal": "1ªPR", "tipo": "PROVA" } ] },
+    { "data": "2026-09-23", "foto": "WhatsApp Image 2026-07-24 at 09.20.54.jpeg", "itens": [
+      { "hora": "16:00", "noiva": "Lucinara", "descricao": "VERDE", "cor": "laranja", "tipo": "PROVA", "observacao": "'0827'" } ] },
+    { "data": "2026-10-13", "foto": "WhatsApp Image 2026-07-24 at 09.20.54 (1).jpeg", "itens": [
+      { "hora": "16:00", "noiva": "Gibelio", "descricao": "Verde O.", "tipo": "PROVA", "duvida": "enquadramento parcial da foto; o dia exato dentro de 12–18/10 é leitura" },
+      { "hora": "16:00", "descricao": "vestido saiu + nota", "tipo": "RECADO" } ] },
+    { "data": "2026-10-21", "foto": "WhatsApp Image 2026-07-24 at 09.20.54 (2).jpeg", "itens": [
+      { "hora": "10:30", "noiva": "Laura", "peca": "Nixi", "ordinal": "1ªPR", "tipo": "PROVA" },
+      { "hora": "17:00", "noiva": "Shirley", "descricao": "ROXO", "ordinal": "3ªPR", "cor": "laranja", "tipo": "PROVA" } ] },
+    { "data": "2026-10-23", "itens": [
+      { "hora": "18:30", "noiva": "Camila", "descricao": "Laranja", "cor": "laranja", "tipo": "PROVA" } ] }
+  ]
+}

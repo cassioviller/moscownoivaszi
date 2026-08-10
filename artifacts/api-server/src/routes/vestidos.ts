@@ -8,8 +8,11 @@ import {
   bloqueioVestidosTable,
   contratosTable,
   contratoItensTable,
+  itensEstoqueTable,
+  orcamentoItensTable,
+  avariasTable,
 } from "@workspace/db";
-import { eq, and, gte, lt, isNull, isNotNull, count, sql } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, isNotNull, inArray, count, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   ListVestidosResponse,
@@ -25,9 +28,18 @@ import {
   CheckDisponibilidadeVestidosResponse,
   GetProximaJanelaVestidoResponse,
   GetUtilizacaoVestidosQueryParams,
-  GetUtilizacaoVestidosResponse
+  GetUtilizacaoVestidosResponse,
+  ListItensEstoqueResponse,
+  CreateItemEstoqueBody,
+  CreateItemEstoqueResponse,
+  UpdateItemEstoqueBody,
+  UpdateItemEstoqueResponse,
+  GetComprometimentoEstoqueQueryParams,
+  GetComprometimentoEstoqueResponse,
+  VestidoStatus
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { registrarAuditoria } from "../lib/auditoria";
 import { randomUUID } from "node:crypto";
 import {
   buscarRegra,
@@ -44,14 +56,20 @@ import {
   type ConflitoDetalhe,
   type Janela,
 } from "../lib/disponibilidade";
+import { comprometidoNoDia } from "../lib/estoque";
 import { identificarImagem } from "../lib/imagem";
-import { atributosDaLoja, vestidoNaLoja } from "../lib/escopo-loja";
+import { atributosDaLoja, vestidoNaLoja, confeccaoPodeVirarPeca } from "../lib/escopo-loja";
 import { erroDeValidacao } from "../lib/erros";
+import { intervaloValidado } from "../lib/intervalo";
 
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
 router.use("/lojas/:lojaId/vestidos", requireModulo("vestidos"));
+// E154: o gate é montado por PREFIXO, e `itens-estoque` não é `vestidos` — sem
+// esta linha o estoque ficava só com a sessão, aberto a quem não tem o módulo
+// do acervo. Quem cuida das peças cuida das duas naturezas.
+router.use("/lojas/:lojaId/itens-estoque", requireModulo("vestidos"));
 
 // Fotos nas respostas de vestido: só a META (nunca bytes — `fotos: true`
 // arrastava o bytea inteiro do banco para o zod descartar). `updatedAt` sai
@@ -103,6 +121,42 @@ router.post("/lojas/:lojaId/vestidos", async (req, res): Promise<void> => {
     });
     return;
   }
+
+  // E156 — a peça que nasce de uma CONFECÇÃO da fila da costureira (P4).
+  // O gesto é da loja e o preço é digitado; o que o servidor prova é que o
+  // trabalho citado é desta loja e que ele já existe como peça — a manga não
+  // vira acervo enquanto a costureira não termina.
+  if (vestidoData.origemAjusteId) {
+    const veredicto = await confeccaoPodeVirarPeca(vestidoData.origemAjusteId, lojaId);
+    if (veredicto === "FORA_DA_LOJA") {
+      res.status(422).json({
+        error: "REFERENCIA_INVALIDA",
+        detalhe: "Este trabalho da fila não é desta loja",
+        campos: [{ campo: "origemAjusteId", motivo: "Trabalho de outra loja" }],
+      });
+      return;
+    }
+    if (veredicto === "NAO_ESTA_PRONTA") {
+      res.status(422).json({
+        error: "CONFECCAO_INVALIDA",
+        detalhe: "Só uma confecção já concluída vira peça do acervo",
+        campos: [{ campo: "origemAjusteId", motivo: "Não é confecção, ou ainda não está pronta" }],
+      });
+      return;
+    }
+    // S-M8 — "uma vez só" vivia só no botão da tela. Este 409 é a resposta
+    // amigável; o unique `vestidos_origem_ajuste_id_unique` é o cinto do
+    // banco, que fecha a corrida entre duas requisições na mesma janela.
+    if (veredicto === "JA_VIROU_PECA") {
+      res.status(409).json({
+        error: "CONFECCAO_JA_VIROU_PECA",
+        detalhe: "Este trabalho já virou uma peça do acervo — a peça existe, não há o que criar de novo.",
+        campos: [{ campo: "origemAjusteId", motivo: "A confecção já tem peça no acervo" }],
+      });
+      return;
+    }
+  }
+
   const vestidoId = randomUUID();
 
   const insertData = { ...vestidoData };
@@ -157,7 +211,10 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   const lojaId = req.params.lojaId as string;
   const parsedQuery = CheckDisponibilidadeVestidosQueryParams.safeParse(req.query);
   if (!parsedQuery.success) {
-    res.status(400).json({ error: "Parâmetro 'data' inválido (esperado YYYY-MM-DD)" });
+    res.status(400).json({
+      error: "FILTRO_INVALIDO",
+      detalhe: "Parâmetro 'data' inválido: esperado YYYY-MM-DD.",
+    });
     return;
   }
   const { data } = parsedQuery.data;
@@ -184,6 +241,7 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: null,
     fim: null,
   };
@@ -204,7 +262,9 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
   }
 
   const itens = vestidos.map((vestido) => {
-    if (vestido.status !== "ativo") {
+    // S-A26: a régua de estado é o enum do contrato (`VestidoStatus`), não uma
+    // grafia solta — e a borda do PATCH agora recusa qualquer valor fora dele.
+    if (vestido.status !== VestidoStatus.ativo) {
       return {
         vestidoId: vestido.id,
         disponivel: false,
@@ -244,16 +304,9 @@ router.get("/lojas/:lojaId/vestidos/disponibilidade", async (req, res): Promise<
 // Três agregações no banco (nunca as linhas) + costura em memória.
 router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
-  const parsed = GetUtilizacaoVestidosQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "de/ate esperam AAAA-MM-DD" });
-    return;
-  }
-  const { de, ate } = parsed.data;
-  if (de && ate && de > ate) {
-    res.status(400).json({ error: "INTERVALO_INVALIDO", detalhe: "'de' não pode ser depois de 'ate'" });
-    return;
-  }
+  const q = intervaloValidado(res, GetUtilizacaoVestidosQueryParams.safeParse(req.query));
+  if (!q) return;
+  const { de, ate } = q;
   const inicio = de ? inicioDoDia(de) : null;
   const fim = ate ? inicioDoDia(addDias(ate, 1)) : null;
   // Vale para qualquer coluna de instante (inicio, casamentoData, fechadoEm).
@@ -273,6 +326,9 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         nome: vestidosTable.nome,
         status: vestidosTable.status,
         precoBase: vestidosTable.precoBase,
+        // E157: desce junto com a contagem — quem lê a utilização é quem
+        // decide se a peça já se pagou e quanto cobrar da próxima saída.
+        precoRealuguel: vestidosTable.precoRealuguel,
       })
       .from(vestidosTable)
       .where(eq(vestidosTable.lojaId, lojaId))
@@ -299,14 +355,18 @@ router.get("/lojas/:lojaId/vestidos/utilizacao", async (req, res): Promise<void>
         ...recorte(bloqueioVestidosTable.casamentoData),
       ))
       .groupBy(bloqueioVestidosTable.vestidoId),
-    // Itens VESTIDO de contratos ATIVOS fechados no período — e a receita.
+    // Itens de PEÇA de contratos ATIVOS fechados no período — e a receita.
+    // E150: ACESSORIO entra aqui junto com VESTIDO. As duas são peça do acervo,
+    // com código e reserva próprios, e a utilização é por PEÇA — deixar o
+    // acessório de fora faria o bolero circular sem nunca aparecer no giro nem
+    // na receita da peça que o gerou.
     db
       .select({ vestidoId: contratoItensTable.vestidoId, qtd: count(), receita: receitaSql })
       .from(contratoItensTable)
       .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
       .where(and(
         eq(contratoItensTable.lojaId, lojaId),
-        eq(contratoItensTable.tipo, "VESTIDO"),
+        inArray(contratoItensTable.tipo, ["VESTIDO", "ACESSORIO"]),
         isNotNull(contratoItensTable.vestidoId),
         eq(contratosTable.status, "ATIVO"),
         ...recorte(contratosTable.fechadoEm),
@@ -344,7 +404,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/proxima-janela", async (req, res)
   }
 
   const hojeDia = diaLocal(new Date());
-  if (vestido.status !== "ativo") {
+  if (vestido.status !== VestidoStatus.ativo) {
     res.json(GetProximaJanelaVestidoResponse.parse({
       proximaData: null,
       aPartirDe: hojeDia,
@@ -461,9 +521,69 @@ router.patch("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<voi
   res.json(UpdateVestidoResponse.parse(comFotosMeta(vestido)));
 });
 
+/**
+ * S-A25 — apagar peça do acervo era cinco linhas sem guarda nenhuma, e a
+ * cascata do banco é mais funda do que parece ao ler esta rota.
+ *
+ * `bloqueio_vestidos.vestido_id` é CASCADE, e dele descem outras três: os
+ * `atendimentos` (a prova marcada da noiva), as `avarias` (o reparo COBRADO) e
+ * os `contrato_bloqueios`. Um DELETE aqui levava a reserva, a prova e a
+ * cobrança junto, em silêncio e com 204. Medido no banco de dev: 334 peças têm
+ * bloqueio, com 14 atendimentos e 124 avarias pendurados neles — **R$
+ * 43.400,00 em reparos que sumiriam com as peças**. E `contrato_itens` /
+ * `orcamento_itens` são `set null` (S-A14): a peça vendida vira descrição
+ * livre, e a guarda do E150 deixa de valer para aquele contrato.
+ *
+ * A régua é a mesma que o E91 fixou para gente e que a migração da S-A13
+ * respeitou para o acervo: **o que tem história não se apaga**. O 409 sai antes
+ * de o banco decidir por nós — e diz QUEM depende, no molde do `PERFIL_EM_USO`
+ * do `admin.ts`, porque "há registros dependendo deste" não dá próximo passo a
+ * ninguém.
+ */
 router.delete("/lojas/:lojaId/vestidos/:vestidoId", async (req, res): Promise<void> => {
   const { lojaId, vestidoId } = req.params;
-  await db.delete(vestidosTable).where(and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)));
+
+  const [alvo] = await db.select({ id: vestidosTable.id }).from(vestidosTable)
+    .where(and(eq(vestidosTable.id, vestidoId as string), eq(vestidosTable.lojaId, lojaId as string)));
+  if (!alvo) {
+    res.status(404).json({ error: "VESTIDO_NAO_ENCONTRADO", detalhe: "Esta peça não existe nesta loja." });
+    return;
+  }
+
+  const [[emContrato], [emOrcamento], [bloqueios], [provas], [avarias]] = await Promise.all([
+    db.select({ n: count() }).from(contratoItensTable)
+      .where(eq(contratoItensTable.vestidoId, alvo.id)),
+    db.select({ n: count() }).from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.vestidoId, alvo.id)),
+    db.select({ n: count() }).from(bloqueioVestidosTable)
+      .where(eq(bloqueioVestidosTable.vestidoId, alvo.id)),
+    // Prova e avaria descem do bloqueio, não do vestido — quem lê a rota não
+    // vê que elas estão em jogo, e são as duas que doem.
+    db.select({ n: count() }).from(atendimentosTable)
+      .innerJoin(bloqueioVestidosTable, eq(atendimentosTable.bloqueioId, bloqueioVestidosTable.id))
+      .where(eq(bloqueioVestidosTable.vestidoId, alvo.id)),
+    db.select({ n: count() }).from(avariasTable)
+      .innerJoin(bloqueioVestidosTable, eq(avariasTable.bloqueioId, bloqueioVestidosTable.id))
+      .where(eq(bloqueioVestidosTable.vestidoId, alvo.id)),
+  ]);
+
+  const historia = [
+    emContrato!.n > 0 ? `${emContrato!.n} item(ns) de contrato` : null,
+    emOrcamento!.n > 0 ? `${emOrcamento!.n} item(ns) de orçamento` : null,
+    bloqueios!.n > 0 ? `${bloqueios!.n} reserva(s)` : null,
+    provas!.n > 0 ? `${provas!.n} atendimento(s)` : null,
+    avarias!.n > 0 ? `${avarias!.n} avaria(s)` : null,
+  ].filter(Boolean);
+
+  if (historia.length > 0) {
+    res.status(409).json({
+      error: "VESTIDO_COM_HISTORIA",
+      detalhe: `Esta peça tem ${historia.join(", ")} e não pode ser apagada — apagá-la levaria essa história junto. Marque-a como indisponível se ela saiu do acervo.`,
+    });
+    return;
+  }
+
+  await db.delete(vestidosTable).where(and(eq(vestidosTable.id, alvo.id), eq(vestidosTable.lojaId, lojaId as string)));
   res.status(204).send();
 });
 
@@ -476,7 +596,7 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
   const { lojaId, vestidoId, ordem: ordemStr } = req.params;
   const ordem = parseInt(Array.isArray(ordemStr) ? ordemStr[0] : (ordemStr as string));
   if (Number.isNaN(ordem)) {
-    res.status(400).json({ error: "Ordem inválida" });
+    res.status(400).json({ error: "ORDEM_INVALIDA", detalhe: "Ordem de foto inválida." });
     return;
   }
   const query = GetVestidoFotoQueryParams.safeParse(req.query);
@@ -601,6 +721,183 @@ router.delete("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res
     return;
   }
   await db.delete(vestidoFotosTable).where(and(eq(vestidoFotosTable.vestidoId, vestidoId as string), eq(vestidoFotosTable.ordem, ordem)));
+  res.status(204).send();
+});
+
+// ── Itens de ESTOQUE (E154) ──────────────────────────────────────────────────
+//
+// A peça que se CONTA, ao lado da peça que se RESERVA. Saiote, crinol, anágua:
+// existem dez iguais, e reservar "o nº 7" não significa nada porque ninguém vai
+// atrás daquele. Ficam fora de `vestidos` para não encher de anágua a lista que
+// a vendedora abre com a noiva na cabine.
+//
+// Gate: o mesmo módulo `vestidos` do acervo — quem cuida das peças cuida das
+// duas naturezas.
+
+router.get("/lojas/:lojaId/itens-estoque", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const itens = await db.select().from(itensEstoqueTable)
+    .where(eq(itensEstoqueTable.lojaId, lojaId))
+    .orderBy(itensEstoqueTable.nome);
+  res.json(ListItensEstoqueResponse.parse(itens));
+});
+
+router.post("/lojas/:lojaId/itens-estoque", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const parsed = CreateItemEstoqueBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const [item] = await db.insert(itensEstoqueTable).values({
+    id: randomUUID(),
+    lojaId,
+    ...parsed.data,
+  }).returning();
+  res.status(201).json(CreateItemEstoqueResponse.parse(item));
+});
+
+/**
+ * Quantas unidades de cada item saem no dia — a conta que faz o aviso.
+ *
+ * Vem dos contratos ATIVOS cuja janela de USO cobre o dia, somando a
+ * `quantidade` dos itens de estoque do snapshot. Nunca de um contador gravado:
+ * o estoque diz quantas a loja TEM, e o comprometimento é sempre derivado.
+ *
+ * Contrato CANCELADO não conta (a peça voltou ao mercado), e contrato sem
+ * nenhuma data não conta em dia nenhum — `janelaDeUsoDoContrato` explica por
+ * quê.
+ *
+ * `disponivel` pode vir NEGATIVO, e é o ponto do épico: a tela avisa e deixa
+ * fechar. Recusar uma venda de R$ 4.000 por causa de uma anágua seria um
+ * defeito, não uma proteção — saiote é substituível, o bolero que a noiva
+ * escolheu pela foto não é (e por isso ele é peça do acervo, e bloqueia).
+ */
+router.get("/lojas/:lojaId/itens-estoque/comprometimento", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const params = GetComprometimentoEstoqueQueryParams.safeParse(req.query);
+  if (!params.success) {
+    res.status(400).json(erroDeValidacao(params.error));
+    return;
+  }
+  const dia = params.data.data;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+    res.status(400).json({
+      error: "DATA_INVALIDA",
+      detalhe: "Informe o dia no formato AAAA-MM-DD.",
+      campos: [{ campo: "data", motivo: "Formato esperado: AAAA-MM-DD" }],
+    });
+    return;
+  }
+
+  const [itens, linhas, regra] = await Promise.all([
+    db.select().from(itensEstoqueTable)
+      .where(and(eq(itensEstoqueTable.lojaId, lojaId), eq(itensEstoqueTable.ativo, true)))
+      .orderBy(itensEstoqueTable.nome),
+    db.select({
+      itemEstoqueId: contratoItensTable.itemEstoqueId,
+      quantidade: contratoItensTable.quantidade,
+      dataCasamento: contratosTable.dataCasamento,
+      dataRetirada: contratosTable.dataRetirada,
+      dataDevolucao: contratosTable.dataDevolucao,
+    })
+      .from(contratoItensTable)
+      .innerJoin(contratosTable, eq(contratosTable.id, contratoItensTable.contratoId))
+      .where(and(
+        eq(contratoItensTable.lojaId, lojaId),
+        eq(contratosTable.status, "ATIVO"),
+        isNotNull(contratoItensTable.itemEstoqueId),
+      )),
+    buscarRegra(lojaId),
+  ]);
+
+  const comprometido = comprometidoNoDia(
+    linhas.map((l) => ({ ...l, itemEstoqueId: l.itemEstoqueId! })),
+    dia,
+    regra,
+  );
+
+  res.json(GetComprometimentoEstoqueResponse.parse({
+    data: dia,
+    itens: itens.map((it) => {
+      const comprometida = comprometido.get(it.id) ?? 0;
+      return {
+        itemEstoqueId: it.id,
+        nome: it.nome,
+        tamanho: it.tamanho,
+        quantidade: it.quantidade,
+        comprometida,
+        disponivel: it.quantidade - comprometida,
+      };
+    }),
+  }));
+});
+
+router.patch("/lojas/:lojaId/itens-estoque/:itemEstoqueId", async (req, res): Promise<void> => {
+  const { lojaId, itemEstoqueId } = req.params as { lojaId: string; itemEstoqueId: string };
+  const parsed = UpdateItemEstoqueBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+  const [item] = await db.update(itensEstoqueTable)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)))
+    .returning();
+  if (!item) {
+    res.status(404).json({
+      error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
+      detalhe: "Este item de estoque não existe nesta loja.",
+    });
+    return;
+  }
+  res.json(UpdateItemEstoqueResponse.parse(item));
+});
+
+/**
+ * S-M16 — era um dos três deletes crus que sobraram fora da régua do E115
+ * ("nada some sem 404, contagem e rastro"). O item some do cadastro; os itens
+ * de contrato/orçamento que o citam ficam com `item_estoque_id` nulo (set
+ * null) e a descrição em texto preservada — decisão ESCRITA, o mesmo
+ * tratamento da peça vendida (S-A14). O que faltava era o resto: 204 sobre o
+ * nada virou 404, e o rastro guarda o nome e quantos itens o citavam, porque
+ * depois do DELETE não sobra linha de onde reconstituir nada disso.
+ */
+router.delete("/lojas/:lojaId/itens-estoque/:itemEstoqueId", async (req, res): Promise<void> => {
+  const { lojaId, itemEstoqueId } = req.params as { lojaId: string; itemEstoqueId: string };
+  const [item] = await db.select().from(itensEstoqueTable)
+    .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)));
+  if (!item) {
+    res.status(404).json({
+      error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
+      detalhe: "Este item de estoque não existe nesta loja.",
+    });
+    return;
+  }
+  const [[emContratos], [emOrcamentos]] = await Promise.all([
+    db.select({ n: count() }).from(contratoItensTable)
+      .where(eq(contratoItensTable.itemEstoqueId, itemEstoqueId)),
+    db.select({ n: count() }).from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.itemEstoqueId, itemEstoqueId)),
+  ]);
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "ITEM_ESTOQUE_REMOVIDO",
+      entidade: "item_estoque",
+      entidadeId: itemEstoqueId,
+      detalhe: {
+        nome: item.nome,
+        tamanho: item.tamanho,
+        quantidade: item.quantidade,
+        itensDeContrato: emContratos!.n,
+        itensDeOrcamento: emOrcamentos!.n,
+      },
+    });
+    await tx.delete(itensEstoqueTable)
+      .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 

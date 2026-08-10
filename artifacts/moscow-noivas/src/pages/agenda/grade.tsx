@@ -50,6 +50,7 @@ import {
   recusaDeMover,
   DETALHE_RECUSA,
   type Expediente,
+  type Ausencia,
 } from "@/lib/agenda";
 import { mensagemApi } from "@/lib/erro-api";
 
@@ -82,6 +83,7 @@ export function GradeDoDia({
   atendimentos,
   cabines,
   expediente,
+  ausencias,
   podeEditar,
   nomePorLead,
 }: {
@@ -92,6 +94,8 @@ export function GradeDoDia({
   atendimentos: Atendimento[];
   cabines: Cabine[];
   expediente: Expediente;
+  /** E151 — sem elas a grade aceitaria o card no dia de férias da vendedora. */
+  ausencias: Ausencia[];
   podeEditar: boolean;
   nomePorLead: Map<string, string>;
 }) {
@@ -280,6 +284,7 @@ export function GradeDoDia({
                   arrastando={arrastando}
                   atendimentosDoDia={atendimentos}
                   expediente={expediente}
+                  ausencias={ausencias}
                   podeEditar={podeEditar}
                   nomePorLead={nomePorLead}
                   onReagendar={abrirReagendar}
@@ -385,6 +390,7 @@ function Celula({
   arrastando,
   atendimentosDoDia,
   expediente,
+  ausencias,
   podeEditar,
   nomePorLead,
   onReagendar,
@@ -398,6 +404,7 @@ function Celula({
   arrastando: Atendimento | null;
   atendimentosDoDia: Atendimento[];
   expediente: Expediente;
+  ausencias: Ausencia[];
   podeEditar: boolean;
   nomePorLead: Map<string, string>;
   onReagendar: (a: Atendimento) => void;
@@ -410,6 +417,7 @@ function Celula({
         { cabineId, inicio: instanteDoSlot(diaYMD, slot) },
         atendimentosDoDia,
         expediente,
+        ausencias,
       )
     : null;
   const aceita = !recusa;

@@ -72,6 +72,19 @@ export const ACOES_AUDITORIA = [
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
   "AVARIA_REMOVIDA",
+  // S-M1: o sexto DELETE cru, que o E115 não alcançou. A cabine é o único cuja
+  // cascata leva ATENDIMENTOS inteiros — a guarda nova recusa apagar cabine com
+  // agenda, e o rastro cobre a que não tem: depois do DELETE não sobra linha de
+  // onde reconstituir nem o nome dela.
+  "CABINE_REMOVIDA",
+  // S-M16: os três que a conferência da S-M1 achou fora da régua do E115. O
+  // item de estoque leva o nome e quantos itens o citavam (o set null é
+  // decisão escrita — S-A14); o ajuste cobrado é recusado antes (409), então
+  // o rastro só cobre o que saiu limpo; a regra de comissão é regra de
+  // dinheiro, e sumia sem uma linha dizendo quem a levou.
+  "ITEM_ESTOQUE_REMOVIDO",
+  "AJUSTE_REMOVIDO",
+  "COMISSAO_REGRA_REMOVIDA",
   // E120/S-D4: contrato nascido de orçamento com OUTRA vendedora no corpo. A
   // divergência é aceita (P1 — a venda pode legitimamente ser de outra pessoa)
   // mas é ela que decide de quem é a comissão, então deixa rastro: quem montou
@@ -83,6 +96,13 @@ export const ACOES_AUDITORIA = [
   // único lugar que lembra o que o registro dizia, então o detalhe carrega
   // canal, observação e o instante do contato desfeito.
   "REGISTRO_COBRANCA_DESFEITO",
+  // S3: os dois atos GLOBAIS de superadmin, os únicos que não pertencem a loja
+  // nenhuma — e por isso os únicos que gravam `loja_id` nulo. Eram um
+  // `req.log.warn`: greppável enquanto o log existir, invisível para quem abre
+  // o sistema. O detalhe carrega o NOME do que sumiu, porque depois do DELETE
+  // não sobra linha para consultar.
+  "USUARIO_EXCLUIDO",
+  "LOJA_EXCLUIDA",
 ] as const;
 export type AcaoAuditoria = (typeof ACOES_AUDITORIA)[number];
 
@@ -129,8 +149,14 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",
   AVARIA_REMOVIDA: "Avaria removida",
-  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com vendedora diferente do orçamento",
+  CABINE_REMOVIDA: "Cabine removida",
+  ITEM_ESTOQUE_REMOVIDO: "Item de estoque removido",
+  AJUSTE_REMOVIDO: "Trabalho de costura removido da fila",
+  COMISSAO_REGRA_REMOVIDA: "Regra de comissão removida",
+  CONTRATO_VENDEDORA_DIVERGENTE: "Contrato com a venda em nome de outra pessoa",
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
+  USUARIO_EXCLUIDO: "Pessoa excluída do cadastro (ato global)",
+  LOJA_EXCLUIDA: "Loja excluída (ato global)",
 };
 
 const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -151,7 +177,13 @@ export function quandoLocalSP(instante: Date): string {
 }
 
 export interface RegistroAuditoria {
-  lojaId: string;
+  /**
+   * S3 — **`null` é o ato GLOBAL**, o que não pertence a loja nenhuma: apagar
+   * uma pessoa (tabela global) ou apagar uma loja. No segundo caso o nulo é o
+   * que faz o registro existir: com o id da loja, o CASCADE o apagaria junto
+   * com ela.
+   */
+  lojaId: string | null;
   /** Autor da sessão (req.usuario) — id + nome desnormalizado. */
   usuario: { id: string; nome: string };
   acao: AcaoAuditoria;
@@ -172,8 +204,17 @@ export interface RegistroAuditoria {
     | "orcamento"
     | "avaria"
     | "conciliacao"
+    // S-M1 — a cabine, pelo mesmo motivo das cinco acima.
+    | "cabine"
+    // S-M16 — os três deletes que a conferência da S-M1 achou crus.
+    | "item_estoque"
+    | "ajuste"
+    | "comissao_regra"
     // E123 — o desfazer do registro de cobrança.
-    | "registro_cobranca";
+    | "registro_cobranca"
+    // S3 — a loja como ENTIDADE, e não como escopo: é o que ela é quando o
+    // que aconteceu foi ela ter sido apagada.
+    | "loja";
   entidadeId: string;
   detalhe?: Record<string, unknown>;
 }

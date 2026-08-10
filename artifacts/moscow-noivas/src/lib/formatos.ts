@@ -60,6 +60,12 @@ export function statusContratoLabel(status: string): string {
  */
 const TIPO_ITEM_LABELS: Record<string, string> = {
   VESTIDO: "Vestido",
+  // O fallback devolve o enum CRU, e estes dois rótulos aparecem no portal da
+  // noiva e no orçamento público: sem eles, ela lê "ACESSORIO" e "ESTOQUE" em
+  // caixa alta, sem acento, no documento que decide a compra. O ACESSORIO é do
+  // E150 e passou batido — a lista só ganhou o tipo, não o rótulo.
+  ACESSORIO: "Acessório",
+  ESTOQUE: "Estoque",
   SERVICO: "Serviço",
   AJUSTE: "Ajuste",
 };
@@ -253,6 +259,57 @@ export function mesAnoLongo(valor: Date | string): string {
   return mesAnoLongoFmt.format(comoData(valor));
 }
 
+const diaMesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "short",
+});
+/**
+ * "28 de jul." — listas densas em que o ano é o do contexto (projeção de
+ * caixa). É `diaMesAbrevAno` sem o ano; para instantes, use o par
+ * `instanteDiaMesAbrev`.
+ */
+export function diaMesAbrev(valor: Date | string): string {
+  return diaMesAbrevFmt.format(comoData(valor));
+}
+
+const diaMesLongoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "long",
+});
+/** "28 de julho" — frases correntes ("o caixa fica negativo em 28 de julho"). */
+export function diaMesLongo(valor: Date | string): string {
+  return diaMesLongoFmt.format(comoData(valor));
+}
+
+const diaMesAnoLongoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+});
+/**
+ * "12 de setembro de 2026" — a data de negócio por extenso (ocupação, retirada,
+ * devolução na ficha da reserva). É o par UTC de `instanteLongo`, que fala do
+ * relógio da loja; o dia 2-digit ("02 de maio") vem das telas que já a usavam.
+ */
+export function diaMesAnoLongo(valor: Date | string): string {
+  return diaMesAnoLongoFmt.format(comoData(valor));
+}
+
+const mesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  month: "short",
+});
+/**
+ * "set" — o selo de mês dos cartões de data de negócio (casamentos, na lista
+ * de reservas). Sem o ponto do ICU, como o par `instanteMesAbrev`.
+ */
+export function mesAbrev(valor: Date | string): string {
+  return mesAbrevFmt.format(comoData(valor)).replace(".", "");
+}
+
 const instanteDiaFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: FUSO_LOJA,
   day: "2-digit",
@@ -281,4 +338,85 @@ const instanteDiaHoraFmt = new Intl.DateTimeFormat("pt-BR", {
 /** "28/07, 21:30" — a fila de mensagens e a agenda do dia. */
 export function instanteDiaHora(valor: Date | string): string {
   return instanteDiaHoraFmt.format(comoData(valor));
+}
+
+const instanteDiaMesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  day: "2-digit",
+  month: "short",
+});
+/**
+ * "28 de jul." para um INSTANTE — a linha do tempo do fluxo de caixa.
+ *
+ * Par de `diaMesAbrev` (abaixo), separado de propósito como `instanteDia` é de
+ * `diaMesAno`: mesmo desenho, fusos diferentes. Um recebimento das 22h de
+ * 28/07 é dia 28 no relógio da loja; lido em UTC viraria 29.
+ */
+export function instanteDiaMesAbrev(valor: Date | string): string {
+  return instanteDiaMesAbrevFmt.format(comoData(valor));
+}
+
+const instanteMesAnoFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  month: "long",
+  year: "numeric",
+});
+/**
+ * "setembro de 2026" para um INSTANTE — o cabeçalho de mês da lista de provas.
+ * Par de `mesAnoLongo`: a prova é um momento, e o mês dela é o da loja.
+ */
+export function instanteMesAno(valor: Date | string): string {
+  return instanteMesAnoFmt.format(comoData(valor));
+}
+
+const instanteMesAbrevFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: FUSO_LOJA,
+  month: "short",
+});
+/**
+ * "set" para um INSTANTE — o selo de mês dos cartões de data (provas).
+ * Sem o ponto do ICU: o selo é um carimbo visual, não uma frase.
+ */
+export function instanteMesAbrev(valor: Date | string): string {
+  return instanteMesAbrevFmt.format(comoData(valor)).replace(".", "");
+}
+
+/**
+ * "há 5 min" / "há 3 h" / "há 12 dias" / "agora há pouco" — o tempo relativo
+ * dos cards, ou null para o chamador cair na data absoluta.
+ *
+ * S35: esta função existia em TRÊS páginas (portal da noiva, backup,
+ * atividade da equipe), cada uma com um teto diferente para desistir do
+ * relativo — 90 dias no backup, 60 na atividade, nenhum no portal. Nada
+ * documentava a divergência, então ela vira PARÂMETRO e cada tela declara o
+ * seu teto onde chama. Instante no futuro (relógio adiantado) devolve null em
+ * vez de inventar um "há -3 min".
+ */
+export function haQuanto(instante: string, tetoDias?: number): string | null {
+  const ms = Date.now() - new Date(instante).getTime();
+  if (ms < 0) return null;
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "agora há pouco";
+  if (min < 60) return `há ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return `há ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  if (tetoDias !== undefined && dias > tetoDias) return null;
+  return `há ${dias} dia${dias === 1 ? "" : "s"}`;
+}
+
+/**
+ * Normaliza texto para busca insensível a caixa e acento ("joao" acha "João").
+ *
+ * S35: a mesma conta (NFD + tirar diacríticos + minúsculas) estava escrita em
+ * três lugares — busca do financeiro, seletor de loja e acervo de vestidos —
+ * com variações que não mudavam o resultado (ordem das etapas, `trim`). Uma
+ * régua; o `trim` fica porque busca digitada chega com espaço nas pontas.
+ */
+export function normalizar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }

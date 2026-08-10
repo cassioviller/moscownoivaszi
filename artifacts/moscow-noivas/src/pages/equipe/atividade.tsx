@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Erro } from "@/components/estado";
 import { ROTULO_ACAO, resumoDetalhe } from "../financeiro/auditoria";
-import { instanteCurto } from "@/lib/formatos";
+import { haQuanto, instanteCurto } from "@/lib/formatos";
 
 /**
  * Log de atividade da equipe (E18) — o card da dona na tela de Equipe: quando
@@ -18,19 +18,9 @@ import { instanteCurto } from "@/lib/formatos";
  */
 
 
-/** "há 5 min", "há 3 h", "há 12 dias" — ou null para cair na data absoluta. */
-function haQuanto(instante: string): string | null {
-  const ms = Date.now() - new Date(instante).getTime();
-  if (ms < 0) return null;
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return "agora há pouco";
-  if (min < 60) return `há ${min} min`;
-  const horas = Math.floor(min / 60);
-  if (horas < 24) return `há ${horas} h`;
-  const dias = Math.floor(horas / 24);
-  if (dias <= 60) return `há ${dias} dia${dias === 1 ? "" : "s"}`;
-  return null;
-}
+// S35: o "há quanto" mora em `@/lib/formatos`. O teto desta tela é 60 dias —
+// último acesso mais velho que isso já não é "atividade", é data absoluta.
+const TETO_RELATIVO_DIAS = 60;
 
 export function AtividadeEquipe() {
   const { activeLojaId } = useAuth();
@@ -83,7 +73,7 @@ export function AtividadeEquipe() {
                   <div className="shrink-0 text-right text-xs text-muted-foreground">
                     <p>
                       {m.ultimoAcesso
-                        ? (haQuanto(m.ultimoAcesso) ??
+                        ? (haQuanto(m.ultimoAcesso, TETO_RELATIVO_DIAS) ??
                           instanteCurto(m.ultimoAcesso).replace(", ", " às "))
                         : "nunca entrou"}
                     </p>

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { eq, and, like } from "drizzle-orm";
-import { db, leadsTable, contratosTable, parcelasTable } from "../lib/db/src/index";
+import { db, leadsTable, contratosTable, parcelasTable, vestidosTable } from "../lib/db/src/index";
 import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
@@ -18,6 +18,7 @@ test.describe("Avaria vira parcela (E71)", () => {
   const stamp = Date.now();
   const descricaoAvaria = `Barrado rasgado E2E ${stamp}`;
   let leadId: string;
+  let vestidoId: string;
   let bloqueioId: string;
   let contratoId: string;
 
@@ -37,9 +38,10 @@ test.describe("Avaria vira parcela (E71)", () => {
       data: { nome: `Vestido Avaria ${stamp}`, codigo: `AVA-${stamp}`, precoBase: 5000 },
     });
     expect(vestido.status(), await vestido.text()).toBe(201);
+    vestidoId = (await vestido.json()).id;
     const bloqueio = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/bloqueios`, {
       data: {
-        vestidoId: (await vestido.json()).id,
+        vestidoId,
         leadId,
         tipo: "RESERVA_CASAMENTO",
         casamentoData: "2027-11-20T12:00:00-03:00",
@@ -81,6 +83,17 @@ test.describe("Avaria vira parcela (E71)", () => {
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
       await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));
     }
+    // S25/S-D22: o vestido sai ANTES do lead, e é o que estanca o vazamento.
+    // O CASCADE de `bloqueio_vestidos.vestido_id` leva o bloqueio, e o de
+    // `avarias.bloqueio_id` leva a avaria — os três numa linha só. Apagar o
+    // lead primeiro é o que produzia a reserva ÓRFÃ da S27: o FK do lead é
+    // `set null`, e a reserva ficava sem dona em vez de sair.
+    //
+    // `DELETE /vestidos/:id` NÃO serve aqui, e de propósito: a S-A25 deu guarda
+    // à rota (`2912526`) e ela responde 409 VESTIDO_COM_HISTORIA — com razão,
+    // porque esta peça TEM história. A fixture apaga pelo banco o que ela mesma
+    // criou; a rota protege o acervo de quem vende.
+    if (vestidoId) await db.delete(vestidosTable).where(eq(vestidosTable.id, vestidoId));
     if (leadId) await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
   });
 

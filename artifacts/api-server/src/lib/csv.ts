@@ -34,3 +34,26 @@ export function escaparCsv(campo: string): string {
 export function montarCsv(linhas: readonly (readonly string[])[]): string {
   return linhas.map((l) => l.map(escaparCsv).join(",")).join("\r\n") + "\r\n";
 }
+
+/** O que `responderCsv` precisa de um `Response` — estrutural de propósito,
+ * para o teste de unidade provar o envelope sem subir Express. */
+export type RespostaCsv = {
+  status(code: number): RespostaCsv;
+  type(tipo: string): RespostaCsv;
+  setHeader(nome: string, valor: string): unknown;
+  send(corpo: string): unknown;
+};
+
+/**
+ * O envelope HTTP de todo CSV que sai do sistema (S35 — estava copiado em
+ * quatro rotas): 200, `text/csv; charset=utf-8`, attachment com o nome dado, e
+ * o BOM — sem ele o Excel lê UTF-8 como latin-1 e "comissão" vira "comissÃ£o".
+ * `nomeArquivo` vai SEM a extensão; o `.csv` é daqui.
+ */
+export function responderCsv(res: RespostaCsv, nomeArquivo: string, csv: string): void {
+  res
+    .status(200)
+    .type("text/csv; charset=utf-8")
+    .setHeader("Content-Disposition", `attachment; filename="${nomeArquivo}.csv"`);
+  res.send("\ufeff" + csv);
+}

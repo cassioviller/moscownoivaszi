@@ -25,6 +25,7 @@ import { mensagemApi } from "@/lib/erro-api";
 const ERROS: Record<string, string> = {
   CONVITE_EXPIRADO: "Este convite expirou. Peça um novo link para a administração da loja.",
   CONVITE_UTILIZADO: "Este convite já foi usado. Se foi você, entre pelo login.",
+  MUITAS_TENTATIVAS: "Muitas tentativas em pouco tempo. Espere alguns minutos e abra o link de novo.",
 };
 
 export default function Convite() {

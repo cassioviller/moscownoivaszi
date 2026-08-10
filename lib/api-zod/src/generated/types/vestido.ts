@@ -7,6 +7,7 @@
  */
 import type { VestidoAtributo } from './vestidoAtributo';
 import type { VestidoFotoMeta } from './vestidoFotoMeta';
+import type { VestidoStatus } from './vestidoStatus';
 
 export interface Vestido {
   id: string;
@@ -15,12 +16,16 @@ export interface Vestido {
   nome: string;
   precoBase: number;
   /** @nullable */
+  precoRealuguel?: number | null;
+  /** @nullable */
+  origemAjusteId?: string | null;
+  /** @nullable */
   tamanho?: string | null;
   /** @nullable */
   cor?: string | null;
   /** @nullable */
   categoria?: string | null;
-  status: string;
+  status: VestidoStatus;
   /** @nullable */
   observacoes?: string | null;
   createdAt: Date;

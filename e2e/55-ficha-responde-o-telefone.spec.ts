@@ -7,9 +7,8 @@ import {
   parcelasTable,
   contratosTable,
   atendimentosTable,
-  cabinesTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -132,7 +131,7 @@ test.describe("E125 — a ficha responde o telefone", () => {
     const leads = [leadId, leadNovaId].filter(Boolean);
     if (leads.length > 0)
       await db.delete(atendimentosTable).where(inArray(atendimentosTable.leadId, leads));
-    if (cabineId) await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
+    await apagarCabineCriada(cabineId);
     if (contratoId) {
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));
       await db.delete(contratosTable).where(eq(contratosTable.id, contratoId));

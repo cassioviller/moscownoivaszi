@@ -38,6 +38,22 @@ export const bloqueioTipoEnum = pgEnum("bloqueio_tipo", [
 
 export const ajusteStatusEnum = pgEnum("ajuste_status", ["PENDENTE", "FEITO"]);
 
+/**
+ * E155 — o que a costureira tem na mão é de duas naturezas.
+ *
+ * **AJUSTE** é peça existente que se altera: bainha, cintura, alça. **CONFECÇÃO**
+ * é peça NOVA, feita para aquela noiva — no caderno de 10–16/08,
+ * `Siam + Manga será confeccionada + Mantilha`, e na agenda dois compromissos
+ * de 10:30 marcados só para conversar sobre ela (21/07 e 24/07).
+ *
+ * Elas dividem a mesma fila de propósito: prazo (a próxima prova), status,
+ * checklist e a tela que ordena pelo aperto já existem e são os mesmos. Uma
+ * tabela `producoes` duplicaria a fila e criaria uma segunda tela para a mesma
+ * pessoa. O que muda é o rótulo, e que confecção tem CUSTO — material e mão de
+ * obra, que ajuste comum não tem.
+ */
+export const ajusteTipoEnum = pgEnum("ajuste_tipo", ["AJUSTE", "CONFECCAO"]);
+
 export const reservaStatusEnum = pgEnum("reserva_status", [
   "EM_MONTAGEM",
   "CONFIRMADA",
@@ -70,8 +86,32 @@ export const orcamentoStatusEnum = pgEnum("orcamento_status", [
   "RECUSADO",
 ]);
 
+/**
+ * E150: **ACESSORIO** entra ao lado de VESTIDO, e a razão é física.
+ *
+ * O caderno do ateliê numera a peça componente como item do acervo, com ordem
+ * própria — na semana de 13–19/07 a mesma noiva ocupa duas linhas, e quem
+ * escreveu anotou "(Mesma noiva Dayfini)" ao lado da segunda para explicar a
+ * repetição. São 11 conjuntos em 14 semanas (`Bernarda + Bolero Ricca Sposa`,
+ * `Kalina + Saiote 2 aros + crinol`, `Tamara + Bolero 2026`…), e o mesmo
+ * `Bolero Ricca Sposa` sai em duas semanas distintas para noivas diferentes:
+ * é peça que circula, não adjetivo.
+ *
+ * Sem um tipo próprio, o bolero virava `SERVICO` ou `VESTIDO` com `vestidoId`
+ * nulo — e a descrição em texto passava a ser o registro autoritativo, o que
+ * significa **nenhuma reserva e nenhum conflito possível**: dois contratos do
+ * mesmo sábado podiam vender o mesmo bolero.
+ *
+ * ACESSORIO se comporta como VESTIDO onde importa: aponta `vestidoId` e o
+ * fechamento exige que a peça esteja reservada (`routes/contratos.ts`).
+ */
 export const orcamentoItemTipoEnum = pgEnum("orcamento_item_tipo", [
   "VESTIDO",
+  "ACESSORIO",
+  // E154: peça de ESTOQUE — conta-se, não se reserva. Aponta
+  // `itemEstoqueId`, nunca `vestidoId`, e por isso a guarda do E150 não a
+  // cobra: não há peça única a prender.
+  "ESTOQUE",
   "SERVICO",
   "AJUSTE",
 ]);
@@ -104,6 +144,26 @@ export const parcelaStatusEnum = pgEnum("parcela_status", [
   "PAGA",
   "CANCELADA",
 ]);
+
+/**
+ * S26 — de onde a parcela veio, que é o que ninguém sabia responder.
+ *
+ * O guard do `gerar-plano` perguntava *"este contrato já tem carnê?"* e olhava
+ * `parcelas.length > 0` — QUALQUER parcela. Cobrado um reparo de avaria antes
+ * de montar o parcelamento, o contrato ficava em `409 JA_TEM_PLANO` **para
+ * sempre**, e a venda inteira era parcelada fora do sistema.
+ *
+ * A pergunta não era dedutível do dado: carnê, taxa avulsa e reparo eram todas
+ * "uma parcela com um número". `PLANO` é o carnê (a série que
+ * `montarPlanoParcelas` emite, e que existe **uma vez** por contrato); `AVARIA`
+ * é o reparo cobrado, que já tem coluna própria do outro lado
+ * (`avarias.parcela_id`); `AVULSA` é o resto — taxa, acerto, o que a loja
+ * lançar à mão.
+ *
+ * O default é `AVULSA` de propósito: é o que uma linha inserida por quem não
+ * conhece esta régua deve ser, e é a única das três que não tem consequência.
+ */
+export const parcelaOrigemEnum = pgEnum("parcela_origem", ["PLANO", "AVULSA", "AVARIA"]);
 
 export const contaPagarTipoEnum = pgEnum("conta_pagar_tipo", [
   "DESPESA",

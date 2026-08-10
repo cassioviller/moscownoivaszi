@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   brl,
   capitalizar,
   diaMesAno,
+  haQuanto,
+  normalizar,
   perdidaMotivoLabel,
   statusContratoLabel,
   statusOrcamentoLabel,
@@ -125,5 +127,59 @@ describe("capitalizar", () => {
   it("não estraga o que já está certo, nem quebra com string vazia", () => {
     expect(capitalizar("Julho de 2026")).toBe("Julho de 2026");
     expect(capitalizar("")).toBe("");
+  });
+});
+
+/**
+ * S35 — `haQuanto` existia em três páginas (portal da noiva, backup,
+ * atividade da equipe) com tetos divergentes (nenhum/90/60 dias) e nada
+ * documentando a diferença. Uma função, teto por parâmetro; estes testes
+ * pregam o vocabulário e os dois tetos que as telas declaram.
+ */
+describe("haQuanto", () => {
+  afterEach(() => vi.useRealTimers());
+
+  function agoraEm(iso: string) {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(iso));
+  }
+
+  it("fala em min, h e dias conforme a distância", () => {
+    agoraEm("2026-08-06T12:00:00Z");
+    expect(haQuanto("2026-08-06T11:59:40Z")).toBe("agora há pouco");
+    expect(haQuanto("2026-08-06T11:55:00Z")).toBe("há 5 min");
+    expect(haQuanto("2026-08-06T09:00:00Z")).toBe("há 3 h");
+    expect(haQuanto("2026-08-05T11:00:00Z")).toBe("há 1 dia");
+    expect(haQuanto("2026-07-25T12:00:00Z")).toBe("há 12 dias");
+  });
+
+  it("teto em dias: dentro fala relativo, fora devolve null (data absoluta)", () => {
+    agoraEm("2026-08-06T12:00:00Z");
+    // Os tetos em uso: 90 (backup) e 60 (atividade da equipe).
+    expect(haQuanto("2026-05-10T12:00:00Z", 90)).toBe("há 88 dias");
+    expect(haQuanto("2026-05-10T12:00:00Z", 60)).toBeNull();
+    // Sem teto (portal da noiva): relativo para sempre.
+    expect(haQuanto("2025-01-01T12:00:00Z")).toBe("há 582 dias");
+  });
+
+  it("instante no futuro (relógio adiantado) devolve null, não 'há -3 min'", () => {
+    agoraEm("2026-08-06T12:00:00Z");
+    expect(haQuanto("2026-08-06T12:03:00Z")).toBeNull();
+  });
+});
+
+/**
+ * S35 — `normalizar` estava copiada em três telas (busca do financeiro,
+ * seletor de loja, acervo de vestidos) com variações sem efeito no resultado.
+ */
+describe("normalizar", () => {
+  it("derruba caixa e acento: 'joao' acha 'João'", () => {
+    expect(normalizar("João")).toBe("joao");
+    expect(normalizar("Vestido Princesa Ção")).toBe("vestido princesa cao");
+    expect(normalizar("ÀÁÂÃÄàáâãä ÉÊéê ÍíÓÔÕóôõ ÚÜúü Çç")).toBe("aaaaaaaaaa eeee iioooooo uuuu cc");
+  });
+
+  it("tira espaço das pontas, preserva o do meio", () => {
+    expect(normalizar("  Moscow Noivas  ")).toBe("moscow noivas");
   });
 });

@@ -1,7 +1,8 @@
-import { pgTable, text, boolean, timestamp, integer, decimal, primaryKey, customType, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, integer, decimal, primaryKey, customType, unique, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
+import { ajustesTable } from "./atendimentos";
 import { atributoTipoEnum } from "./common/enums";
 
 // Drizzle doesn't have a built-in Bytes type for Postgres, using customType
@@ -42,6 +43,38 @@ export const vestidosTable = pgTable("vestidos", {
   codigo: text("codigo").notNull(),
   nome: text("nome").notNull(),
   precoBase: decimal("preco_base", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  /**
+   * E157 — o preço da peça que já saiu antes.
+   *
+   * O ateliê precifica pela VEZ em que a peça sai: o caderno registra a
+   * contagem 7 vezes em 14 semanas — `1º Aluguel` (YOKO, Adelita, Andreia),
+   * `2º Aluguel` (Nixia), `2º` (BLARY), `Realuguel` (Fencyella, Adelita) — e o
+   * sistema tinha um preço só.
+   *
+   * **Nulo é o caso comum e significa "não tem preço de segunda saída"**: o
+   * orçamento segue com o `precoBase`, que é o comportamento de sempre. Por
+   * isso a coluna nasce sem migração de dados nenhuma.
+   *
+   * A contagem que decide qual preço vale NÃO mora aqui: ela é derivada dos
+   * contratos (`GET /vestidos/utilizacao`), como toda contagem deste repo.
+   */
+  precoRealuguel: decimal("preco_realuguel", { precision: 10, scale: 2, mode: "number" }),
+  /**
+   * E156 — de onde esta peça veio, quando ela não veio do fornecedor.
+   *
+   * A confecção sob medida entra na fila da costureira (E155) e, depois do
+   * casamento, **vira peça do acervo** (P4). A proveniência mora aqui, e não em
+   * `ajustes.vestidoId`, porque a direção importa: **a peça do acervo é o que
+   * sobrevive**, o trabalho da costureira é de onde ela veio. Apontar ao
+   * contrário faria a fila carregar um campo que só interessa depois que ela
+   * terminou.
+   *
+   * `set null` pela mesma razão: apagar o trabalho da fila não pode apagar a
+   * peça que já está alugável — perde-se a proveniência, não o acervo.
+   *
+   * Nulo é o caso de toda peça comprada, que é a esmagadora maioria.
+   */
+  origemAjusteId: text("origem_ajuste_id").references((): AnyPgColumn => ajustesTable.id, { onDelete: "set null" }),
   tamanho: text("tamanho"),
   cor: text("cor"),
   categoria: text("categoria"),
@@ -51,6 +84,14 @@ export const vestidosTable = pgTable("vestidos", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
   unq: unique().on(t.lojaId, t.codigo),
+  /**
+   * S-M8 — a MESMA confecção não vira duas peças do acervo. O invariante "uma
+   * vez só" do E156 vivia só no botão da tela: dois cliques (ou duas
+   * requisições na mesma janela) criavam dois vestidos do mesmo trabalho.
+   * NULL não colide com NULL em unique do Postgres, então toda peça comprada
+   * (a esmagadora maioria) segue fora da régua.
+   */
+  unqOrigemAjuste: unique().on(t.origemAjusteId),
 }));
 
 export const insertVestidoSchema = createInsertSchema(vestidosTable).omit({ createdAt: true, updatedAt: true });
@@ -81,8 +122,13 @@ export type VestidoFoto = typeof vestidoFotosTable.$inferSelect;
 
 export const vestidoAtributosTable = pgTable("vestido_atributos", {
   vestidoId: text("vestido_id").notNull().references(() => vestidosTable.id, { onDelete: "cascade" }),
-  atributoId: text("atributo_id").notNull().references(() => atributosTable.id),
-  opcaoId: text("opcao_id").notNull().references(() => atributoOpcoesTable.id),
+  // S31 — vocabulário é CONFIGURAÇÃO, e configuração cascateia (régua do E91).
+  // Apagar a palavra apaga a CLASSIFICAÇÃO, não a peça nem a noiva: o que a
+  // noiva escreveu com as próprias palavras mora em `lead_interesses` e fica.
+  // **Não troque por RESTRICT**: a guarda contra apagar sem querer é de
+  // APLICAÇÃO e vive em `routes/catalogo.ts` (409 ATRIBUTO_EM_USO / OPCAO_EM_USO).
+  atributoId: text("atributo_id").notNull().references(() => atributosTable.id, { onDelete: "cascade" }),
+  opcaoId: text("opcao_id").notNull().references(() => atributoOpcoesTable.id, { onDelete: "cascade" }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.vestidoId, t.atributoId] }),
 }));
@@ -90,3 +136,66 @@ export const vestidoAtributosTable = pgTable("vestido_atributos", {
 export const insertVestidoAtributoSchema = createInsertSchema(vestidoAtributosTable);
 export type InsertVestidoAtributo = z.infer<typeof insertVestidoAtributoSchema>;
 export type VestidoAtributo = typeof vestidoAtributosTable.$inferSelect;
+
+/**
+ * E154 — o acessório de ESTOQUE, que se conta em vez de se reservar.
+ *
+ * O caderno do ateliê chama de "segunda peça" coisas que não têm nada em
+ * comum. O que as distingue não é o que são: é **como se decide se estão
+ * disponíveis**.
+ *
+ *  · `Bolero Ricca Sposa`, `Mantilha Chan` — existe UMA. Decide-se POR PEÇA, e
+ *    por isso moram em `vestidos`, com código e reserva próprios (E150).
+ *  · `Saiote 2 aros`, `crinol` — existem DEZ, iguais. Decide-se POR CONTAGEM.
+ *
+ * Reservar "o saiote nº 7" não significa nada, porque ninguém vai atrás
+ * daquele; e cadastrá-los um a um encheria de anágua a mesma lista que a
+ * vendedora abre com a noiva na cabine. Daí a tabela separada: o que muda é o
+ * mecanismo de disponibilidade, não o carinho com a peça.
+ *
+ * `quantidade` é quantas a loja tem. O comprometimento por data é derivado dos
+ * contratos ativos — nunca gravado aqui —, para não existirem duas verdades
+ * sobre o mesmo número.
+ */
+export const itensEstoqueTable = pgTable("itens_estoque", {
+  id: text("id").primaryKey(),
+  lojaId: text("loja_id").notNull().references(() => lojasTable.id, { onDelete: "cascade" }),
+  nome: text("nome").notNull(),
+  /** Só quando faz diferença para quem separa a peça (P/M/G de saiote). */
+  tamanho: text("tamanho"),
+  quantidade: integer("quantidade").notNull().default(0),
+  /** Nulo = vai junto com o vestido, sem cobrar à parte. */
+  preco: decimal("preco", { precision: 10, scale: 2, mode: "number" }),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => ({
+  /**
+   * S-A20 — o nome é EXPLÍCITO, e é o que os bancos de verdade têm.
+   *
+   * O script do E154 (`docs/migracoes/2026-08-04-e154-itens-de-estoque.sql:37`)
+   * batizou a constraint de `itens_estoque_loja_nome_tamanho_unq`; sem nome
+   * aqui, o drizzle gera `itens_estoque_loja_id_nome_tamanho_unique`, não
+   * encontra a dele, tenta CRIAR a duplicata e pergunta se pode truncar a
+   * tabela — prompt, sem TTY, `push` morto. Ficou assim de 2026-08-04 a
+   * 2026-08-05, e o caminho documentado no `replit.md` deixou de existir para
+   * todo banco provisionado pelos scripts, que é todo banco que já existia.
+   *
+   * A direção do conserto é esta e não a inversa porque **nenhum banco consumiu
+   * o `migrate`** (`__drizzle_migrations` não existe — conferido no E115 e de
+   * novo aqui): adotar o nome do script custa zero DDL em banco real; renomear
+   * nos bancos custaria um script em cada um, para ganhar só consistência de
+   * nomenclatura.
+   */
+  unq: unique("itens_estoque_loja_nome_tamanho_unq").on(t.lojaId, t.nome, t.tamanho),
+  /**
+   * S-A20 — o índice existia nos bancos e não no schema: o script do E154 o
+   * criou, o drizzle nunca soube dele, e todo banco novo nascia SEM ele. Toda
+   * query de estoque abre por `loja_id`.
+   */
+  lojaIdx: index("itens_estoque_loja_idx").on(t.lojaId),
+}));
+
+export const insertItemEstoqueSchema = createInsertSchema(itensEstoqueTable).omit({ createdAt: true, updatedAt: true });
+export type InsertItemEstoque = z.infer<typeof insertItemEstoqueSchema>;
+export type ItemEstoque = typeof itensEstoqueTable.$inferSelect;

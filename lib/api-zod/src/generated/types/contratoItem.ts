@@ -14,6 +14,8 @@ export interface ContratoItem {
   tipo: ContratoItemTipo;
   /** @nullable */
   vestidoId?: string | null;
+  /** @nullable */
+  itemEstoqueId?: string | null;
   descricao: string;
   valorUnitario: number;
   quantidade: number;

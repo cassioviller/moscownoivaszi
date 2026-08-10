@@ -7,16 +7,22 @@
  */
 import type { AjusteAtendimento } from './ajusteAtendimento';
 import type { AjusteChecklistItem } from './ajusteChecklistItem';
+import type { AjustePecaDoAcervo } from './ajustePecaDoAcervo';
 import type { AjusteStatus } from './ajusteStatus';
+import type { AjusteTipo } from './ajusteTipo';
 
 export interface Ajuste {
   id: string;
   lojaId: string;
   atendimentoId: string;
   descricao: string;
+  tipo?: AjusteTipo;
+  /** @nullable */
+  custo?: number | null;
   status: AjusteStatus;
   checklist?: AjusteChecklistItem[];
   atendimento?: AjusteAtendimento;
   /** @nullable */
   proximaProva?: Date | null;
+  pecaDoAcervo?: AjustePecaDoAcervo | null;
 }

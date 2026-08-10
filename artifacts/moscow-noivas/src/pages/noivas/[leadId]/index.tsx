@@ -60,8 +60,8 @@ import {
   diasAteCasamento,
   rotuloContagem,
   casamentoUrgente,
-  whatsappDigits,
 } from "../helpers";
+import { linkWhatsApp } from "@/lib/whatsapp";
 
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -250,7 +250,14 @@ export default function NoivaDetalhe() {
   const dias = lead.casamentoData ? diasAteCasamento(lead.casamentoData) : null;
   const mostrarContagem = dias !== null && dias >= 0;
   const urgente = dias !== null && casamentoUrgente(dias);
-  const digits = whatsappDigits(lead.whatsapp);
+  // S37: a ficha montava `wa.me/${digitos}` com uma régua PRÓPRIA, que aceitava
+  // qualquer quantidade de dígitos e nunca prefixava o DDI. As 3 noivas com
+  // WhatsApp no banco de dev têm 10–11 dígitos e nenhuma tem 55: o botão daqui
+  // mandava para `wa.me/11988887777`, que o WhatsApp lê como DDI 1 (EUA),
+  // enquanto /mensagens montava o link certo para o MESMO campo. A régua é uma
+  // só, e é a de `lib/whatsapp.ts` — número implausível vira null e o link não
+  // é renderizado, que é o comportamento que a tela já sabia tratar.
+  const linkZap = linkWhatsApp(lead.whatsapp, "");
 
   // F5/E98: o que falta, em uma frase — em vez de ler oito cards para descobrir.
   const contratoAtivo = contratosDaNoiva.find((c) => c.status === "ATIVO") ?? null;
@@ -459,9 +466,9 @@ export default function NoivaDetalhe() {
                   <span className="block text-xs uppercase tracking-wider text-muted-foreground">
                     WhatsApp
                   </span>
-                  {digits ? (
+                  {linkZap ? (
                     <a
-                      href={`https://wa.me/${digits}`}
+                      href={linkZap}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm underline underline-offset-4 hover:text-primary"

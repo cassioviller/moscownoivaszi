@@ -1,0 +1,1 @@
+ALTER TABLE "vestidos" ADD CONSTRAINT "vestidos_origem_ajuste_id_unique" UNIQUE("origem_ajuste_id");

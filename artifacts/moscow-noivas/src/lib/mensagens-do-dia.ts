@@ -163,6 +163,37 @@ export function semMarcaDeCobranca(marcas: MarcasCobranca, leadId: string): Marc
 }
 
 /**
+ * S-D13 — a metade PERSISTENTE da marca de cobrada, derivada do banco.
+ *
+ * A marca de sessão (acima) morre no F5 com os registros ainda gravados: a
+ * recepcionista recarregava a tela e a fila voltava a pedir a cobrança que ela
+ * acabou de fazer — e o segundo clique gravava o segundo registro do dia. O
+ * `ultimoContatoEm` que a parcela passou a embutir responde isso: se o último
+ * contato caiu no dia de HOJE no fuso da loja, a noiva já foi procurada hoje,
+ * por esta sessão ou por qualquer outra.
+ *
+ * A comparação é contra o DIA DE NEGÓCIO, não "houve contato": um contato de
+ * anteontem não pode tirar a linha da fila de hoje — era o segundo erro que a
+ * sobra apontava no diagnóstico original.
+ *
+ * A marca derivada não tem `registroId` de propósito: o desfazer só existe
+ * para o registro que ESTA sessão criou (é a resposta do POST); o de ontem ou
+ * o de outra pessoa se desfaz pelo histórico da noiva, com nome e hora.
+ */
+export function marcasPersistentesDeCobranca(
+  noivas: readonly { leadId?: string | null; ultimoContatoEm?: string | null }[],
+  hoje: string,
+  diaDoInstante: (instante: string) => string,
+): MarcasCobranca {
+  const marcas = new Map<string, MarcaCobranca>();
+  for (const n of noivas) {
+    if (!n.leadId || !n.ultimoContatoEm) continue;
+    if (diaDoInstante(n.ultimoContatoEm) === hoje) marcas.set(n.leadId, { quando: n.ultimoContatoEm });
+  }
+  return marcas;
+}
+
+/**
  * A fila em duas: quem falta cobrar e quem já saiu — na MESMA ordem da fila
  * (piores primeiro), para a recepcionista interrompida achar onde parou.
  * Noiva sem `leadId` não é marcável (o registro é por noiva) e fica na fila.

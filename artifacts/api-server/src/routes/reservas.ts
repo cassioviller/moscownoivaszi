@@ -75,7 +75,7 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
     return;
   }
   if (!(await leadNaLoja(parsed.data.leadId, lojaId))) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
     return;
   }
   const [reserva] = await db.insert(reservasTable).values({
@@ -159,6 +159,7 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
           provaDataReal: bloqueio.provaDataReal,
           retiradaDataReal: bloqueio.retiradaDataReal,
           devolucaoDataReal: bloqueio.devolucaoDataReal,
+          lavagemConcluidaEm: bloqueio.lavagemConcluidaEm,
           inicio: bloqueio.inicio,
           fim: bloqueio.fim,
         };
@@ -350,20 +351,26 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   // O vestido já foi validado acima; lead e reserva (ambos opcionais) precisam do
   // mesmo cuidado, senão o bloqueio referencia uma noiva/reserva de outra loja.
   if (dados.leadId && !(await leadNaLoja(dados.leadId, lojaId))) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "lead não é desta loja" });
     return;
   }
   if (dados.reservaId && !(await reservaNaLoja(dados.reservaId, lojaId))) {
-    res.status(404).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
+    res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
     return;
   }
 
   if (dados.tipo === "RESERVA_CASAMENTO" && !dados.casamentoData) {
-    res.status(400).json({ error: "casamentoData é obrigatória para bloqueio RESERVA_CASAMENTO" });
+    res.status(400).json({
+      error: "RESERVA_SEM_DATA_DE_CASAMENTO",
+      detalhe: "Reserva de casamento precisa da data do casamento.",
+    });
     return;
   }
   if (dados.tipo === "MANUTENCAO" && !dados.inicio) {
-    res.status(400).json({ error: "inicio é obrigatório para bloqueio MANUTENCAO" });
+    res.status(400).json({
+      error: "MANUTENCAO_SEM_INICIO",
+      detalhe: "Manutenção precisa da data de início.",
+    });
     return;
   }
 
@@ -375,6 +382,7 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     provaDataReal: null,
     retiradaDataReal: null,
     devolucaoDataReal: null,
+    lavagemConcluidaEm: null,
     inicio: dados.inicio ?? null,
     fim: dados.fim ?? null,
   };
@@ -436,13 +444,36 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
       dados.retiradaDataReal === undefined ? existente.retiradaDataReal : dados.retiradaDataReal,
     devolucaoDataReal:
       dados.devolucaoDataReal === undefined ? existente.devolucaoDataReal : dados.devolucaoDataReal,
+    // E152: a última data real do ciclo, com a mesma régua de null-desfaz.
+    lavagemConcluidaEm:
+      dados.lavagemConcluidaEm === undefined ? existente.lavagemConcluidaEm : dados.lavagemConcluidaEm,
     inicio: dados.inicio ?? existente.inicio,
     fim: dados.fim ?? existente.fim,
   };
 
   // Devolução sem retirada é uma história impossível de contar.
   if (candidato.devolucaoDataReal && !candidato.retiradaDataReal) {
-    res.status(400).json({ error: "Não dá para desfazer a retirada com a devolução registrada" });
+    res.status(400).json({
+      error: "DEVOLUCAO_SEM_RETIRADA",
+      detalhe: "Não dá para desfazer a retirada com a devolução já registrada.",
+    });
+    return;
+  }
+  /**
+   * E152 — e a lavagem sem devolução é a mesma história, um passo à frente: a
+   * peça não pode ter voltado da lavanderia sem ter voltado da noiva.
+   *
+   * Morde nos dois sentidos, e o segundo é o que importa: desfazer a devolução
+   * com a lavagem registrada deixaria uma data real órfã, apontando um fato
+   * que o próprio sistema passou a negar.
+   */
+  if (candidato.lavagemConcluidaEm && !candidato.devolucaoDataReal) {
+    res.status(400).json({
+      error: "LAVAGEM_SEM_DEVOLUCAO",
+      detalhe:
+        "A peça não pode ter voltado da lavanderia sem ter sido devolvida — desfaça a volta da lavanderia primeiro.",
+      campos: [{ campo: "devolucaoDataReal", motivo: "Há volta da lavanderia registrada" }],
+    });
     return;
   }
 
@@ -450,6 +481,7 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     dados.provaDataReal !== undefined ||
     dados.retiradaDataReal !== undefined ||
     dados.devolucaoDataReal !== undefined ||
+    dados.lavagemConcluidaEm !== undefined ||
     dados.inicio !== undefined ||
     dados.fim !== undefined;
 
@@ -478,6 +510,7 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
       provaDataReal: dados.provaDataReal,
       retiradaDataReal: dados.retiradaDataReal,
       devolucaoDataReal: dados.devolucaoDataReal,
+      lavagemConcluidaEm: dados.lavagemConcluidaEm,
       inicio: dados.inicio,
       fim: dados.fim,
       observacao: dados.observacao,
@@ -789,6 +822,8 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       lojaId: lojaId as string,
       contratoId: parsed.data.contratoId,
       numero: Number(maior) + 1,
+      // S26: o reparo NÃO é carnê — é o que permite ao contrato ainda gerar o dele.
+      origem: "AVARIA",
       descricao: `Reparo de avaria — ${avaria.descricao}`.slice(0, 200),
       valorPrevisto: avaria.custoReparo!,
       // Dia de negócio, não instante: `new Date()` das 21h à meia-noite jogava

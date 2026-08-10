@@ -20,8 +20,9 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm --filter @workspace/db run push` — aplica o schema no banco (dev)
 - **Configurar um ateliê do zero** (E147): `cd artifacts/api-server &&
   ./node_modules/.bin/tsx src/scripts/seed.ts`. Cria só o que NÃO é trabalho da
-  loja — 4 perfis, a dona, 3 cabines, horário, 7 atributos de catálogo (41
-  opções), a escada de comissão e 4 recorrências —, é **idempotente e nunca
+  loja — 4 perfis, a dona, 3 cabines, horário, 9 atributos de catálogo (66
+  opções, com **Tipo de peça** e **Cor** desde o E149), a escada de comissão e
+  4 recorrências —, é **idempotente e nunca
   sobrescreve** (ids derivados da loja + `onConflictDoNothing`), e imprime o que
   criou e o que já existia. Depois dele, o único primeiro passo pendente é
   "cadastrar os primeiros vestidos". A mesma configuração roda sozinha na
@@ -32,6 +33,41 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `SEED_EXEMPLOS_FINANCEIROS=false` (sem escada nem recorrências).
   **Ele não cadastra noiva, vestido, contrato nem parcela** — isso é trabalho da
   loja, e entra pela tela.
+  **O expediente padrão é o DESTE ateliê, e não uma premissa** (S-A8): abre os
+  **sete dias** e fecha às **20h**. Os dois números vieram do papel — 7
+  compromissos em 5 domingos, e 6 provas às 18:30 que o fechamento anterior
+  (19h, com prova de 60 min) recusava. Domingo aberto é a resposta da dona
+  (*"com hora marcada"*) traduzida na única alavanca que o sistema tem: ele sabe
+  abrir ou recusar o dia, não sabe dizer "só sob demanda". **O default do schema
+  e o `HORARIO_PADRAO` do seed são comparados campo a campo por teste** — a
+  mesma régua morava em três lugares e podia divergir em três.
+  **O resumo que ele imprime sai do DADO** (S-D41): a linha do horário era a
+  frase `"seg–sáb, 9h–19h"` cravada no script, e as duas metades estavam erradas
+  desde a S-A8. Hoje ela é `descreverHorario` sobre a linha gravada, e as
+  contagens dizem o **total e, entre parênteses, o que aquela execução criou**
+  (`Cabines 122 (+3)`) — antes era um `+` na frente do total, e criar 3 numa loja
+  com 122 imprimia `+ Cabines 122` (S-A12).
+- **A régua do banco VIRGEM** (S-D43): `cd artifacts/api-server &&
+  ./node_modules/.bin/tsx ../../scripts/banco-virgem.ts`. Cria um banco
+  descartável, aplica o schema com `push`, roda o seed, **confere que o resumo
+  impresso descreve o que o banco guarda**, sobe o `global-setup` do E2E inteiro,
+  roda o seed de novo para provar a idempotência, e apaga o banco — inclusive se
+  algum passo estourar. Leva ~40 s. **Rode-a antes de publicar e depois de mexer
+  no seed, no schema ou no `global-setup`.** As três suítes rodam contra o banco
+  de `DATABASE_URL`, que existe desde antes do E147: o caminho da PRIMEIRA
+  execução — o único que um ateliê novo percorre — não é exercitado por nenhuma
+  delas, e foi ali que a S-D38 viveu (o setup morria com 23505
+  `regra_disponibilidade_loja_id_unique` antes do primeiro spec). Ela guarda e
+  devolve o `e2e/.state.json`, então pode rodar no meio de outra coisa. Sobrepor
+  o nome do banco: `BANCO_VIRGEM=...`.
+- **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
+  `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
+  ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —
+  27 rotas × claro/escuro/390px, locale **pt-BR fixada**, e o manifest de saída
+  declara o ambiente inteiro (navegador, timezone, viewport, tema, data). As
+  env obrigatórias falham alto: o destino das 81 capturas da rodada 7 nasceu
+  `undefined/` por env ausente, e o script se perdeu com o scratchpad — este é
+  versionado. Detalhes: `scripts/README.md`.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.
@@ -259,6 +295,68 @@ rode o codegen.
   reservas de vestido (com motor de disponibilidade), catálogo e acervo.
   Avarias da devolução viram parcela cobrável (E71); LGPD interna com
   consentimento carimbado e expurgo que preserva números (E77).
+- **As duas naturezas de peça (E150, E154)** — o que decide se uma peça está
+  disponível não é o que ela é, é como se pergunta. A peça ÚNICA (vestido,
+  bolero, mantilha) mora no acervo, tem código e **se reserva**: o contrato que
+  a vende sem reserva no mesmo contrato leva 422 (E150). A peça de ESTOQUE
+  (saiote, crinol, anágua) mora em `itens_estoque`, tem `quantidade` e **se
+  conta**: `GET /lojas/:id/itens-estoque/comprometimento?data=` soma o que os
+  contratos ATIVOS comprometeram no dia (janela de uso, a mesma régua do
+  vestido) e a tela de orçamento **avisa sem bloquear** — *"3 × Saiote 2 aros
+  para 19/09/2026 — a loja tem 2"* e deixa fechar. Saiote é substituível;
+  recusar uma venda de R$ 4.000 por causa de uma anágua seria um defeito, não
+  uma proteção. A dona conta a arara em **Vestidos → Estoque**.
+- **A peça é precificada pela VEZ em que sai (E157)** — `vestidos` ganha
+  `precoRealuguel` (**nulo = não tem preço de segunda saída**, e o orçamento
+  segue com o `precoBase` — o comportamento de sempre). A contagem que decide
+  qual preço vale **já existia**: `GET /vestidos/utilizacao` sem recorte
+  `de`/`ate` conta a vida inteira da peça. Ao escolher uma peça já alugada, o
+  item de orçamento **sugere** o preço de realuguel e diz por quê ("3ª saída
+  desta peça"); o campo segue editável, porque preço é conversa. O papel
+  registra a contagem 7 vezes em 14 semanas.
+- **O ciclo da peça tem três datas reais (E152)** — retirada, devolução e agora
+  **`lavagemConcluidaEm`**: a lavagem era a única etapa calculada só por soma, e
+  a peça voltava da lavanderia na quarta presa até domingo. A régua de 7 dias
+  continua valendo (é lavanderia externa); o que existe é o caminho de dizer que
+  ela chegou — em **Reserva → Movimentação**, depois da devolução. Encurtar a
+  janela só REDUZ ocupação, nunca cria conflito, e a peça não volta da
+  lavanderia sem ter voltado da noiva (400 `LAVAGEM_SEM_DEVOLUCAO` nos dois
+  sentidos). **O que ele NÃO resolve, e é decisão da dona, não limitação a
+  consertar** (P6, 2026-08-05): a mesma peça alugada de novo em **7 dias** segue
+  recusada, e não pela lavagem — é a janela de PROVA de 11 dias da segunda noiva
+  que invade o USO da primeira (medido: `PROVA[02-24..03-06]` × `USO[02-28..
+  03-05]`). O ateliê trata o caso como exceção fora do sistema; o caderno o
+  mostra uma vez em 14 semanas. E **toda reserva guarda ao menos um dia de
+  prova** (P7): nem no realuguel se dispensa conferir a peça antes de ela sair.
+- **A ausência da equipe (E151)** — `ausencias` (loja, pessoa, `inicio`/`fim`
+  em DIAS locais **inclusivos**, motivo) é o primeiro fato de indisponibilidade
+  de GENTE que o sistema guarda. A recusa mora na mesma régua que já recusa dia
+  fechado (`agenda-core/mover.ts`, motivo `VENDEDORA_AUSENTE`), então a grade e
+  o formulário de agendamento **apagam o dia antes do clique** e o servidor
+  recusa com uma frase que diz quem e até quando. **Ela só impede o novo**: o
+  que já estava agendado não é cancelado nem remarcado. Cadastro em
+  **Cabines & horário**, gate `agenda`.
+- **A peça sob medida (E155)** — a terceira natureza, e a única que ainda não
+  existe quando é vendida: `ajustes` guarda `tipo` (`AJUSTE` | `CONFECCAO`) e
+  `custo`, então a **fila da costureira é uma só** — prazo (a próxima prova),
+  status e checklist já eram os mesmos. O item de orçamento `AJUSTE` aponta a
+  confecção (`ajuste_id`), e a prova é da NOIVA, não só da loja: cobrar o
+  trabalho que a costureira faz para outra dá 404. Registrar em **Reserva →
+  prova**; a fila mostra o selo *Confecção* e o custo. **Em aberto:** depois do
+  casamento a peça confeccionada vira item do acervo? **Respondido no E156.**
+- **A confecção vira peça do acervo (E156)** — `vestidos.origemAjusteId` guarda
+  de onde a peça veio quando ela não veio do fornecedor. É **gesto, não
+  gatilho**: na fila da costureira, no trabalho `CONFECCAO` já `FEITO`, o botão
+  *"Virou peça do acervo"* abre o cadastro de vestido com nome e observação
+  preenchidos — e o **preço é digitado**, porque `ajustes.custo` é o que a
+  costureira cobrou e `precoBase` é o que a noiva paga. A peça nasce **ativa e
+  sem reserva nenhuma**; o contrato antigo segue apontando a confecção pelo
+  `ajusteId` do item, e nada é reescrito para trás. Feita uma vez, a linha da
+  fila mostra *"no acervo · CÓDIGO"* no lugar do botão — a mesma confecção não
+  vira duas peças. O servidor recusa com 422 o que a tela já não oferece:
+  trabalho de outra loja (`REFERENCIA_INVALIDA`), ajuste comum ou confecção
+  ainda pendente (`CONFECCAO_INVALIDA`). Apagar o trabalho da fila **não** apaga
+  a peça: perde-se a proveniência, não o acervo.
 - **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
   `portal_tokens`, 30 dias **de inatividade**): proposta com aceite (E74),
   lookbook, próximas provas e extrato de parcelas só-leitura, com "falta pagar"
@@ -310,6 +408,40 @@ rode o codegen.
 
 ## Gotchas
 
+- **O `Test` do supertest é LAZY: a request só sai no `.then()`.** `agent.delete(...)`
+  devolve um *thenable* que ainda não falou com o servidor — guardar a variável
+  não dispara nada. Num teste comum isso é invisível (o `await` vem na linha
+  seguinte); num teste de CONCORRÊNCIA é a diferença entre provar e não provar.
+  O teste da corrida da S33 (`s33-corrida-delete-loja-api.test.ts`) precisa da
+  rota pendurada numa tranca do Postgres ENQUANTO outra conexão commita: a
+  primeira versão guardava o `Test` numa variável, dormia 300 ms e commitava —
+  com a request ainda no papel. Ela passava verde inclusive contra o código
+  SEM o conserto. `Promise.resolve(agent.delete(...))` assimila o thenable e
+  dispara agora; com isso o vermelho apareceu, literal: `expected 204 to be 409`.
+- **Em `e2e/`, `await import(...)` não sobrevive à transpilação do Playwright.**
+  O import dinâmico chega ao `.ts` cru como ESM e estoura
+  `ReferenceError: exports is not defined in ES module scope`; o import
+  ESTÁTICO passa pelo transform normalmente. Medido no épico da S-D25: a régua
+  de limpeza nasceu com `await import("../lib/db/src/index")` — para não abrir o
+  Pool do banco nos ~50 specs que não o tocam — e derrubou **7 specs**. A
+  cautela era desnecessária por medida: todo spec que usa o banco já o importava
+  estático. **E o estrago do crash não fica no run:** os sete `afterAll`
+  morreram no meio da limpeza, e o rastro que ficou derrubou OUTRO spec no run
+  seguinte (o gotcha logo abaixo).
+- **O banco do E2E PERSISTE entre execuções: rastro de spec vira vermelho em
+  outro arquivo, um run depois — e se lê como flake.** As três suítes rodam
+  contra o `DATABASE_URL` de sempre; um `afterAll` que não roda (ou que morre no
+  meio) não perde nada hoje, perde amanhã. Medido na sessão de 2026-08-06/07: o
+  `afterAll` do `55-ficha-responde-o-telefone` morreu antes de apagar o contrato
+  que ele cria, e no run SEGUINTE o `37-projecao-comissao` reprovou com
+  `expected 1550 to be 4340` — o contrato vazado de R$ 8.400 (com 3 parcelas de
+  840 recebidas no dia) deu projeção de comissão a uma SEGUNDA vendedora, e o
+  spec pega a primeira linha com projeção. Não há retry no `playwright.config`
+  (`retries: 0`, de propósito): **vermelho é achado**, e quando ele não bate com
+  o que você mexeu, procure o rastro do run anterior antes de suspeitar do
+  próprio código. A limpeza segue a ordem dos FKs — parcelas → contratos →
+  leads → cabines.
+
 - **Import morto num módulo ANSIOSO custa caro desde o E104/D8.** Enquanto o app
   era um chunk só, um `import` sem uso não pesava nada — o E99 mediu a poda de 24
   primitivos e o bundle não mudou um byte, porque tudo já era tree-shaken. Com o
@@ -327,12 +459,28 @@ rode o codegen.
   confirma com "Changes applied", sem prompt. Esse DDL fica versionado em
   `docs/migracoes/`: um banco NOVO nasce certo do schema, mas um banco que já
   existe só chega lá por esse script — e `push` não sabe fazê-lo sozinho.
-- **`drizzle-kit generate` tem o MESMO defeito sem-TTY, e mais um** (E115): com
-  snapshot anterior ele pergunta "criada ou renomeada?" e morre sem terminal; e
-  o `drizzle.config.ts` com caminho ABSOLUTO o quebra de um segundo jeito
-  (`ENOENT .//home/...`). O que funciona: a CLI com caminhos relativos, de
-  dentro de `lib/db` — `npx drizzle-kit generate --dialect postgresql --schema
-  ./src/schema/index.ts --out ./migrations`. **A baseline é regenerável
+- **O que os scripts de `docs/migracoes/` criam tem de existir no schema
+  drizzle, com o MESMO NOME** (S-A20). O drizzle nunca lê aqueles scripts: são
+  duas descrições do mesmo banco, e quando divergem, um banco novo e um banco
+  antigo deixam de ser o mesmo banco. Divergiram em quatro pontos, e só um
+  gritou — o E154 batizou a unique de `itens_estoque_loja_nome_tamanho_unq` e o
+  drizzle gera `itens_estoque_loja_id_nome_tamanho_unique`, então o `push`
+  tentava criar a duplicata e morria num prompt sem TTY. Os outros três eram
+  índices (`itens_estoque_loja_idx`, `avarias_parcela_id_idx`,
+  `atendimentos_loja_contato_idx`) que existiam nos bancos antigos e em nenhum
+  banco novo: ninguém tropeça num índice que falta. **A varredura de
+  `e115-migracao-snapshot-unit.test.ts` agora reprova nome novo que o snapshot
+  não conheça** — e a pergunta, quando ela reprovar, é qual das duas pontas está
+  certa, nunca como calá-la. Nome divergente conserta-se do lado do SCHEMA
+  enquanto nenhum banco consumir o `migrate` (`__drizzle_migrations` não existe),
+  porque assim o conserto custa zero DDL em banco de verdade.
+- **`drizzle-kit generate` tem o MESMO defeito sem-TTY** (E115): com snapshot
+  anterior ele pergunta "criada ou renomeada?" e morre sem terminal. O segundo
+  defeito — `out` ABSOLUTO no `drizzle.config.ts`, que o kit relia como
+  `.//home/...` e matava com ENOENT — **foi consertado no E154**: `out` é
+  relativo (`"./migrations"`) e `pnpm --filter @workspace/db run generate`
+  funciona direto. A saída é incremental: o E154 gerou
+  `0001_tired_power_man.sql`. **A baseline é regenerável
   enquanto nenhum banco consumir o `migrate`** (o dev usa `push` e não tem
   `__drizzle_migrations` — conferido no E115), e
   `e115-migracao-snapshot-unit.test.ts` reprova schema com coluna fora do

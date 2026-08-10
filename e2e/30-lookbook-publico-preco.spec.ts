@@ -63,7 +63,8 @@ test.describe("Lookbook público — preço e características (E44)", () => {
     // O banco do e2e persiste: sem limpar, cada run soma vestido, atributo e
     // link público ao acervo. Lookbook primeiro (os itens dele cascateiam),
     // depois o vestido (leva o vínculo de atributo junto), por fim opção e
-    // atributo — que o vínculo referencia sem cascade.
+    // atributo. (Até a S31 o vínculo o referenciava sem cascade e a ordem era
+    // obrigatória; hoje o banco cascateia, e a ordem fica por clareza.)
     if (lookbookId) await db.delete(lookbooksTable).where(eq(lookbooksTable.id, lookbookId));
     if (vestidoId) await db.delete(vestidosTable).where(eq(vestidosTable.id, vestidoId));
     if (opcaoId) await db.delete(atributoOpcoesTable).where(eq(atributoOpcoesTable.id, opcaoId));

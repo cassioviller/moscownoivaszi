@@ -3,7 +3,7 @@
  * Nasceu no financeiro (cobrança) e virou módulo neutro quando a agenda
  * passou a confirmar atendimento por aqui também (E8).
  */
-import { brl } from "./formatos";
+import { brl, instanteHora } from "./formatos";
 
 /**
  * Deep-link wa.me. Prefixa o DDI 55 só se o número for nacional (10–11
@@ -23,16 +23,14 @@ export function linkWhatsApp(whatsapp: string | null | undefined, mensagem: stri
 
 // `inicio` do atendimento é um INSTANTE; a mensagem fala a hora da loja, não
 // a do navegador — fuso fixo para o dia não escorregar em telefone viajando.
+// S30: este fica — "segunda-feira, 28/07" com o dia da semana por extenso é
+// voz de mensagem de WhatsApp, e nenhuma função de `formatos.ts` traz o
+// weekday; a hora ao lado dele sai da régua (`instanteHora`).
 const diaFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
   weekday: "long",
   day: "2-digit",
   month: "2-digit",
-});
-const horaFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  hour: "2-digit",
-  minute: "2-digit",
 });
 
 export type ConfirmacaoAtendimento = {
@@ -133,7 +131,7 @@ export function msgDaNoivaParaAtelier(noivaNome?: string | null): string {
 
 /** Mensagem de confirmação do atendimento/prova — criação e véspera usam a mesma. */
 export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
-  const quando = `${diaFmt.format(new Date(p.inicio))} às ${horaFmt.format(new Date(p.inicio))}`;
+  const quando = `${diaFmt.format(new Date(p.inicio))} às ${instanteHora(p.inicio)}`;
   const compromisso = p.tipo === "PROVA" ? "sua prova" : "seu atendimento";
   const onde = p.lojaNome ? ` na ${p.lojaNome}` : "";
   const linhas = [

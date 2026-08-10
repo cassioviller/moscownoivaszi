@@ -21,3 +21,8 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+APP_DATABASE_URL = "postgresql://postgres:password@helium/moscow_base?sslmode=disable"

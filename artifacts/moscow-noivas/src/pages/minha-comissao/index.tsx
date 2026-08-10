@@ -16,16 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
-import { brl } from "@/lib/formatos";
+import { brl, instanteDia } from "@/lib/formatos";
 import { competenciaAtual, rotuloCompetencia, ultimasCompetencias } from "@/lib/financeiro/datas";
 import { capitalizar } from "@/lib/formatos";
-
-const quandoFmt = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
 
 /**
  * Minha comissão (E11): o extrato da PRÓPRIA pessoa logada — quanto vendeu,
@@ -224,7 +217,7 @@ export default function MinhaComissao() {
                             ? ` · ${f.percentualAplicado}%`
                             : ""}
                           {!!f.valorBonus && ` · bônus ${brl(f.valorBonus)}`}
-                          {` · fechado em ${quandoFmt.format(new Date(f.fechadoEm))}`}
+                          {` · fechado em ${instanteDia(f.fechadoEm)}`}
                         </p>
                       </div>
                       <span className="shrink-0 font-serif text-xl tabular-nums">

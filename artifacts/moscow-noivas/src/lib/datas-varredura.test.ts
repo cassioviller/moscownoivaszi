@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * D15/E99 — a varredura que impede o fuso implícito de voltar.
@@ -25,16 +26,16 @@ const PERDOADOS = [
   "components/ui/calendar.tsx",
 ];
 
-function arquivosFonte(dir: string): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const caminho = join(dir, entrada.name);
-    if (entrada.isDirectory()) achados.push(...arquivosFonte(caminho));
-    else if (/\.tsx?$/.test(entrada.name) && !entrada.name.includes(".test.")) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30): `readdirSync` lia
+ * qualquer arquivo que estivesse em `src/` fora do git — um `tmp/copia.ts`
+ * ignorado reprovava a varredura por código que não é do repositório.
+ * Caminhos relativos a `src/`.
+ */
+function arquivosFonte(): string[] {
+  return arquivosVersionados(RAIZ, ["."]).filter(
+    (relativo) => /\.tsx?$/.test(relativo) && !relativo.includes(".test."),
+  );
 }
 
 /**
@@ -116,13 +117,21 @@ describe("D15 — nenhuma data sai no relógio de quem abre", () => {
 
   it("nenhum arquivo do app formata data sem dizer o fuso", () => {
     const ofensores: string[] = [];
-    for (const arquivo of arquivosFonte(RAIZ)) {
-      const relativo = arquivo.replace(`${RAIZ}/`, "");
+    for (const relativo of arquivosFonte()) {
       if (PERDOADOS.includes(relativo)) continue;
-      for (const trecho of semFusoExplicito(readFileSync(arquivo, "utf8"))) {
+      for (const trecho of semFusoExplicito(readFileSync(join(RAIZ, relativo), "utf8"))) {
         ofensores.push(`${relativo}: ${trecho}`);
       }
     }
     expect(ofensores).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 166 arquivos `.ts`/`.tsx` versionados em `src/`, fora os
+   * testes — com folga para baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(arquivosFonte().length).toBeGreaterThan(140);
   });
 });

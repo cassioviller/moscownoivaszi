@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * E6/E8 (E99) — a escala de dinheiro, defendida onde ela mora.
@@ -26,14 +27,12 @@ function corpoDaClasse(nome: string): string {
   return m?.[1] ?? "";
 }
 
-function arquivosTsx(dir: string): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const caminho = join(dir, entrada.name);
-    if (entrada.isDirectory()) achados.push(...arquivosTsx(caminho));
-    else if (entrada.name.endsWith(".tsx")) achados.push(caminho);
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function arquivosTsx(): string[] {
+  return arquivosVersionados(RAIZ, ["."]).filter((r) => r.endsWith(".tsx"));
 }
 
 describe("E6 — os três degraus existem, e nenhum esquece o tabular-nums", () => {
@@ -63,17 +62,26 @@ describe("E134/E11 — dinheiro não é type=number", () => {
      * lição S-D7); contadores e horas não têm step de centavos e passam.
      */
     const ofensores: string[] = [];
-    for (const arquivo of arquivosTsx(RAIZ)) {
-      const linhas = readFileSync(arquivo, "utf8").split("\n");
+    for (const relativo of arquivosTsx()) {
+      const linhas = readFileSync(join(RAIZ, relativo), "utf8").split("\n");
       for (let i = 0; i < linhas.length; i++) {
         const janela = linhas.slice(i, i + 3).join("\n");
         if (janela.includes('type="number"') && janela.includes('step="0.01"')) {
-          ofensores.push(`${arquivo.replace(`${RAIZ}/`, "")}:${i + 1}`);
+          ofensores.push(`${relativo}:${i + 1}`);
           break;
         }
       }
     }
     expect(ofensores).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 120 arquivos `.tsx` versionados em `src/` — com folga para
+   * baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(arquivosTsx().length).toBeGreaterThan(100);
   });
 });
 
@@ -96,12 +104,12 @@ describe("E8 — o rosa da marca não é cor de dinheiro", () => {
      */
     const rosaComoTexto = /(?<!hover:)text-primary(?!-foreground)/;
     const ofensores: string[] = [];
-    for (const arquivo of arquivosTsx(RAIZ)) {
-      const linhas = readFileSync(arquivo, "utf8").split("\n");
+    for (const relativo of arquivosTsx()) {
+      const linhas = readFileSync(join(RAIZ, relativo), "utf8").split("\n");
       for (let i = 0; i < linhas.length; i++) {
         const janela = linhas.slice(Math.max(0, i - 2), i + 1).join("\n");
         if (linhas[i].includes("brl(") && rosaComoTexto.test(janela)) {
-          ofensores.push(`${arquivo.replace(`${RAIZ}/`, "")}:${i + 1}: ${linhas[i].trim().slice(0, 90)}`);
+          ofensores.push(`${relativo}:${i + 1}: ${linhas[i].trim().slice(0, 90)}`);
         }
       }
     }

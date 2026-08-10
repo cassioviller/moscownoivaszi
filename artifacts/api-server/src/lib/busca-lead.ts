@@ -11,8 +11,21 @@ import { and, eq, ilike, or, sql } from "drizzle-orm";
  * Devolve os ids de lead que casam, para recortar contratos e orçamentos por
  * `inArray` — uma condição só, escrita uma vez, para as duas listas do acervo.
  */
+/**
+ * S-M14 — o que a pessoa digitou vira LITERAL dentro do LIKE.
+ *
+ * `%${busca}%` cru deixava `%` e `_` valendo como curinga: buscar `%`
+ * devolvia o cadastro inteiro, e colar "50% entrada" de um orçamento buscava
+ * outra coisa sem dizer que buscou. O escape é o do Postgres (`\`), e a
+ * própria contrabarra entra primeiro — senão `\%` digitado escaparia o
+ * escape. Régua única para as DUAS buscas de noiva (esta e a do listLeads).
+ */
+export function padraoDeBusca(busca: string): string {
+  return `%${busca.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
 export function leadsQueCasam(lojaId: string, busca: string) {
-  const padrao = `%${busca}%`;
+  const padrao = padraoDeBusca(busca);
   const porCampo = [ilike(leadsTable.noivaNome, padrao), ilike(leadsTable.noivoNome, padrao)];
   const soDigitos = busca.replace(/\D/g, "");
   if (soDigitos.length >= 4) {

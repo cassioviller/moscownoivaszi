@@ -5,7 +5,11 @@
  */
 import { diaDeNegocio, diasEntre, hojeLocal } from "@/lib/financeiro/datas";
 
-/** Formata a data do casamento por extenso ("sábado, 12 de setembro de 2026"). */
+/**
+ * Formata a data do casamento por extenso ("sábado, 12 de setembro de 2026").
+ * S30: fica — o dia da SEMANA é a informação que decide um casamento, e nenhuma
+ * função de `formatos.ts` o traz; um uso só (a ficha da noiva) não paga régua.
+ */
 export const dataLongaFmt = new Intl.DateTimeFormat("pt-BR", {
   weekday: "long",
   day: "2-digit",
@@ -49,16 +53,16 @@ export function casamentoUrgente(dias: number): boolean {
   return dias >= 0 && dias <= 14;
 }
 
-/** ISO → "YYYY-MM-DD" para inputs type=date (dia UTC = dia de negócio). */
-export function isoParaDia(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10);
-}
+// S35: `isoParaDia` morava aqui com o corpo LITERALMENTE igual ao de
+// `diaDeNegocio` do financeiro-core (`new Date(x).toISOString().slice(0, 10)`)
+// — os dois sítios que a usavam (editar noiva, ficha da reserva) agora chamam
+// a régua via `@/lib/financeiro/datas`.
 
-/** Só os dígitos do WhatsApp, para montar o link wa.me. Vazio → null. */
-export function whatsappDigits(whatsapp: string | null | undefined): string | null {
-  const digits = (whatsapp ?? "").replace(/\D/g, "");
-  return digits.length > 0 ? digits : null;
-}
+// S37: `whatsappDigits` morava aqui e era a TERCEIRA régua de telefone do
+// sistema — devolvia qualquer quantidade de dígitos, sem DDI e sem faixa, e a
+// ficha da noiva montava `wa.me/` com ela. Quem monta deep-link é
+// `lib/whatsapp.ts`, e agora é só ele: a varredura de `whatsapp-uma-regua`
+// reprova qualquer arquivo que volte a escrever `https://wa.me/` fora de lá.
 
 // O gate de permissão vive em `@/lib/permissoes` — `podeNoModulo(acessos,
 // modulo, acao)`. `podeLeads` e a cópia local de `moduloLiberado` saíram daqui:

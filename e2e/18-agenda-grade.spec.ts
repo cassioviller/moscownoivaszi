@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, arrastar } from "./helpers";
+import { db, atendimentosTable } from "../lib/db/src/index";
+import { lerEstado, API_URL, arrastar, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -91,7 +91,7 @@ test.describe("Agenda — grade do dia", () => {
     }
     // A "Cabine E2E Grade" é reusável entre runs: só sai se ESTE run a criou.
     if (cabineCriadaNesteRun) {
-      await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineDoisId));
+      await apagarCabineCriada(cabineDoisId);
     }
   });
 
@@ -99,9 +99,11 @@ test.describe("Agenda — grade do dia", () => {
     await page.goto(`/agenda?dia=${DIA}`);
 
     await expect(page.getByTestId("grade-agenda")).toBeVisible();
-    // Expediente padrão 9h–19h, malha de 30 min.
+    // Expediente que a FIXTURE fixa (S-D42): 9h–20h, malha de 30 min — o 20 é
+    // a decisão da S-A8, e o 19:30 abaixo é o último slot que ele produz.
     await expect(page.getByTestId(`celula-agenda-${estado.cabineId}-09:00`)).toBeVisible();
-    await expect(page.getByTestId(`celula-agenda-${estado.cabineId}-18:30`)).toBeVisible();
+    await expect(page.getByTestId(`celula-agenda-${estado.cabineId}-19:30`)).toBeVisible();
+    await expect(page.getByTestId(`celula-agenda-${estado.cabineId}-20:00`)).toHaveCount(0);
     // O atendimento das 10h está na célula das 10h.
     await expect(
       page.getByTestId(`celula-agenda-${estado.cabineId}-10:00`).getByTestId(`card-agenda-${atendimentoId}`),

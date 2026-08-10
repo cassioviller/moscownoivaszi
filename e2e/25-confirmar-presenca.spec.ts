@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { lerEstado, API_URL, criarAtendimentoLivre } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
 
 const estado = lerEstado();
 
@@ -13,6 +13,7 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
  */
 test.describe("Procurar para confirmar (E39, revisto pelo E97)", () => {
   let atendimentoId: string;
+  let cabineId: string;
   let ymd: string;
 
   test.beforeAll(async ({ request }) => {
@@ -32,11 +33,12 @@ test.describe("Procurar para confirmar (E39, revisto pelo E97)", () => {
       data: { nome: `e25-${Date.now()}` },
     });
     expect(cab.status(), await cab.text()).toBe(201);
+    cabineId = ((await cab.json()) as { id: string }).id;
 
     ymd = new Date().toISOString().slice(0, 10);
     const criado = await criarAtendimentoLivre(request, estado.lojaId, {
       leadId: estado.leadId,
-      cabineId: ((await cab.json()) as { id: string }).id,
+      cabineId,
       vendedoraId: vendedoras[0]!.usuarioId,
       ymd,
     });
@@ -47,6 +49,9 @@ test.describe("Procurar para confirmar (E39, revisto pelo E97)", () => {
     // Sem isto, cada execução deixava um atendimento de hoje para as
     // seguintes colidirem — a família da S18/S25.
     await request.delete(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos/${atendimentoId}`);
+    // S-D25: o comentário do beforeAll prometia "o spec apaga o que criou" e a
+    // cabine ficava — eram 66 `e25-` acumuladas.
+    await apagarCabineCriada(cabineId);
   });
 
   test("procurar tira a noiva da fila do dia", async ({ page }) => {

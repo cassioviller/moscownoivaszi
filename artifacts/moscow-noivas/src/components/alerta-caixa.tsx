@@ -3,8 +3,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useGetAlertaCaixa, getGetAlertaCaixaQueryKey } from "@workspace/api-client-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { TriangleAlert, Info } from "lucide-react";
+import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { brl, diaMesAno } from "@/lib/formatos";
+import { hojeLocal } from "@/lib/financeiro/datas";
 
 /**
  * "O caixa fica negativo em DD/MM" (E46) — o veredito da projeção onde a dona
@@ -25,19 +27,65 @@ import { brl, diaMesAno } from "@/lib/formatos";
  *
  * O gate espelha o do servidor (a rota é do módulo financeiro): não OFERECE o
  * que a API negaria — mas quem manda é a API.
+ *
+ * **S-D35 — o silêncio continua silêncio, mas o LUGAR dele é reservado
+ * enquanto a consulta conta.** Este era o TERCEIRO cartão que nascia de
+ * repente no topo do painel, ACIMA dos dois que `3c463bb` já tinha ancorado
+ * com esqueleto (`dashboard.tsx`, `AvisoCarregando`): quando o alerta existe,
+ * ele empurrava a página inteira para baixo depois da pintura. A forma é a
+ * MESMA dos irmãos — a frase fixa, repetida invisível, faz a caixa do
+ * esqueleto bater com a do cartão em qualquer largura — e a decisão de estado
+ * é a mesma régua (`lib/estado-consulta`): consulta desligada por permissão
+ * não prende a tela, e erro segue calado, como o docblock acima decide.
  */
+
+// A frase FIXA do aviso de âncora — usada no cartão e, invisível, no esqueleto
+// que reserva o lugar dele (o mesmo truque do `AvisoCarregando` da S-D10). É
+// um fragmento, e não string, para o `<strong>` valer nos dois lugares: com
+// a MESMA marcação, a quebra de linha do esqueleto é a do cartão.
+const FRASE_SEM_ANCORA = (
+  <>
+    Enquanto ninguém confere o saldo do caixa, a curva não tem de onde partir e o aviso de caixa
+    negativo <strong>não aparece</strong> — mesmo que ele exista.
+  </>
+);
+
 export function AlertaCaixa() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
   const podeVer = podeNoModulo(acessosModulos, "financeiro", "ver");
 
-  const { data } = useGetAlertaCaixa(activeLojaId!, {
+  const consulta = useGetAlertaCaixa(activeLojaId!, {
     query: {
       queryKey: getGetAlertaCaixaQueryKey(activeLojaId!),
       enabled: !!activeLojaId && podeVer,
     },
   });
+  const { data } = consulta;
 
+  // S-D35: enquanto conta, o lugar fica reservado — a estrutura do esqueleto
+  // repete a do cartão (título de uma linha + a frase fixa, invisível, e a
+  // linha do link), então a troca esqueleto → cartão não move um pixel. O
+  // `pl-7` espelha o recuo que o ícone (`[&>svg~*]:pl-7`) dá ao cartão real.
+  if (estadoDasConsultas(consulta) === "carregando") {
+    return (
+      <Alert className="animate-pulse" aria-busy="true" aria-label="Conferindo a projeção do caixa">
+        <div className="pl-7">
+          <div className="mb-1 h-4 w-56 max-w-full rounded bg-muted" />
+          <div className="space-y-1 text-sm">
+            <p className="invisible" aria-hidden="true">
+              {FRASE_SEM_ANCORA}
+            </p>
+            <span className="invisible inline-block font-medium" aria-hidden="true">
+              Conferir o saldo →
+            </span>
+          </div>
+        </div>
+      </Alert>
+    );
+  }
+
+  // Erro e consulta desligada seguem a disciplina do docblock: nada na tela.
   if (!data) return null;
 
   // F30: sem âncora, o alarme está DESLIGADO — e dizer isso é o conserto.
@@ -47,10 +95,7 @@ export function AlertaCaixa() {
         <Info className="h-4 w-4" />
         <AlertTitle>A projeção está sem nível</AlertTitle>
         <AlertDescription className="space-y-1">
-          <p>
-            Enquanto ninguém confere o saldo do caixa, a curva não tem de onde partir e o aviso de
-            caixa negativo <strong>não aparece</strong> — mesmo que ele exista.
-          </p>
+          <p>{FRASE_SEM_ANCORA}</p>
           <Link
             to={`/loja/${lojaId}/financeiro/projecao`}
             className="inline-block font-medium underline underline-offset-4"
@@ -64,10 +109,16 @@ export function AlertaCaixa() {
 
   if (!data.diaNegativo) return null;
 
+  // S-M4: quando o primeiro dia negativo é HOJE (a loja já está no vermelho),
+  // "fica negativo em <data>" seria uma frase falsa sobre um fato presente.
+  const jaNegativo = data.diaNegativo <= hojeLocal();
+
   return (
     <Alert variant="destructive" data-testid="alerta-caixa">
       <TriangleAlert className="h-4 w-4" />
-      <AlertTitle>Caixa fica negativo em {diaMesAno(data.diaNegativo)}</AlertTitle>
+      <AlertTitle>
+        {jaNegativo ? "O caixa já está negativo" : `Caixa fica negativo em ${diaMesAno(data.diaNegativo)}`}
+      </AlertTitle>
       <AlertDescription className="space-y-1">
         <p>
           Pelo que está previsto para os próximos {data.horizonteDias} dias, partindo dos{" "}

@@ -25,6 +25,8 @@ export interface BloqueioVestido {
   /** @nullable */
   devolucaoDataReal?: Date | null;
   /** @nullable */
+  lavagemConcluidaEm?: Date | null;
+  /** @nullable */
   inicio?: Date | null;
   /** @nullable */
   fim?: Date | null;

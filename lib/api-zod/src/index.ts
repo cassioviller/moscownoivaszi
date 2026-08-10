@@ -14,6 +14,7 @@ export {
   GetVestidoFotoParams,
   ExportarContasPagarParams,
   ExportarParcelasParams,
+  ExportarFluxoParams,
   ListLeadsParams,
   GetMinhaComissaoParams,
   GetUtilizacaoVestidosParams,
@@ -32,4 +33,6 @@ export {
   ListAtendimentosParams,
   ConfirmarProvaPortalParams,
   PedirRemarcacaoPortalParams,
+  GetComprometimentoEstoqueParams,
+  ListAusenciasParams,
 } from "./generated/api";

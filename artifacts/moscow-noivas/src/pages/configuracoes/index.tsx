@@ -10,18 +10,24 @@ import { tipoAtributoLabel } from "@/lib/formatos";
 import { Erro } from "@/components/estado";
 import { podeNoModulo, resumoAcessos } from "@/lib/permissoes";
 import { CaptacaoExterna } from "./captacao";
+import { DadosDaLoja } from "./dados-da-loja";
 import { PrivacidadeLgpd } from "./privacidade";
 import { BackupSistema } from "./backup";
 import { TourAcessoDialog } from "@/components/tour-acesso";
 import { Button } from "@/components/ui/button";
 import { CACHE_ESTAVEL } from "@/lib/cache";
+import { diasDeProva, temJanelaDeProva } from "@/lib/janela-de-prova";
+import { minutosDaProva } from "@/lib/duracao-da-prova";
 
 /**
  * F40/E98 — "Configurações" era a única tela do sistema que não configura nada.
  *
  * Ela mostra o que está valendo — atributos, regras, cabines — e não dizia onde
- * mudar. Quem via "Duração Prova: 60 min" e queria 90 tinha de saber, de cabeça,
- * que isso mora em "Cabines & horário", dentro de Atendimentos.
+ * mudar. Quem via "Duração da prova: 60 min" e queria 90 seguia o "Editar" até
+ * "Cabines & horário" (S-A10: este cabeçalho afirmava que a duração já morava
+ * lá quando lá não havia campo nenhum — era a única linha do bloco de
+ * disponibilidade sem contrapartida editável, e só um PATCH direto na API a
+ * mudava; agora o campo existe na tela para onde o link sempre apontou).
  *
  * O `aria-label` diz O QUE se edita: três links "Editar" na mesma tela são
  * indistinguíveis para quem navega por leitor de tela.
@@ -43,6 +49,8 @@ export default function Configuracoes() {
   const [aba, setAba] = useState<"loja" | "admin">("loja");
   // O endpoint do token é gateado por admin no backend — mesma régua aqui.
   const podeCaptacao = podeNoModulo(acessosModulos, "admin", "ver");
+  // S17: o card de dados da loja SALVA, então o gate é o da escrita.
+  const podeEditarLoja = podeNoModulo(acessosModulos, "admin", "editar");
   // Tour do acesso (E24): reabrível a qualquer momento.
   const [tourAberto, setTourAberto] = useState(false);
   
@@ -103,7 +111,9 @@ export default function Configuracoes() {
             role="tab"
             aria-selected={aba === chave}
             onClick={() => setAba(chave)}
-            className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            // S-D18: o mesmo piso de 44px da aba de /atendimentos — a caixa
+            // natural é de 38px, e no desktop o `md:min-h-9` (36px) não morde.
+            className={`-mb-px flex min-h-11 items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors md:min-h-9 ${
               aba === chave
                 ? "border-primary text-foreground"
                 : "text-muted-foreground hover:text-foreground border-transparent"
@@ -181,7 +191,14 @@ export default function Configuracoes() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Duração da prova</span>
-                      <span className="font-medium">{disponibilidade.provaDuracao} min</span>
+                      {/* E148: `provaDuracao` é contado em SLOTS de 30 min, não em
+                          minutos — `agenda.ts:93` faz `provaDuracao * 30 * 60_000`, e o
+                          E2E 26 registra "o seed usa 2 = 1h". A tela mostrava o número
+                          cru: "2 min" para uma prova de uma hora, na única tela que
+                          existe para explicar a régua. S-A10: a conta inline virou a
+                          régua de `lib/duracao-da-prova`, a mesma que o campo editável
+                          de "Cabines & horário" usa na volta. */}
+                      <span className="font-medium">{minutosDaProva(disponibilidade.provaDuracao)} min</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Uso (dias antes)</span>
@@ -190,6 +207,36 @@ export default function Configuracoes() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Devolução (dias depois)</span>
                       <span className="font-medium">{disponibilidade.usoDiasDepois} dias</span>
+                    </div>
+                    {/* S-A16 — decidida configurável em 2026-08-07: a lavagem
+                        da peça de estoque, separada da semana do vestido. */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Lavagem do estoque</span>
+                      <span className="font-medium">
+                        {disponibilidade.estoqueLavagemDiasDepois > 0
+                          ? `${disponibilidade.estoqueLavagemDiasDepois} dia${disponibilidade.estoqueLavagemDiasDepois === 1 ? "" : "s"}`
+                          : "sem lavagem na conta"}
+                      </span>
+                    </div>
+                    {/* S-A23: os dois números acima não são independentes — a
+                        janela de prova é a diferença entre eles, e ela some
+                        inteira quando "provas" não passa de "uso". Some em
+                        SILÊNCIO, que era o defeito: a reserva nascia sem
+                        período de prova e ninguém era avisado. A dona decidiu
+                        que a configuração não se recusa; o que ela faz agora é
+                        aparecer. */}
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-muted-foreground">Período de prova</span>
+                      {temJanelaDeProva(disponibilidade) ? (
+                        <span className="font-medium">
+                          {diasDeProva(disponibilidade)} dia
+                          {diasDeProva(disponibilidade) === 1 ? "" : "s"} por reserva
+                        </span>
+                      ) : (
+                        <span className="font-medium text-aviso">
+                          nenhum — as reservas nascem sem prova
+                        </span>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -220,6 +267,12 @@ export default function Configuracoes() {
                 )}
               </CardContent>
             </Card>
+
+            {/* S17 — os dados da loja, que só existiam no console de
+                superadmin. O gate é `admin.editar` e não `admin.ver`: o card é
+                um formulário inteiro, e mostrá-lo a quem não pode salvar é
+                oferecer um botão que a API vai recusar. */}
+            {podeEditarLoja && <DadosDaLoja />}
 
             {/* Captação externa (E19) — só para quem gere a loja. */}
             {podeCaptacao && <CaptacaoExterna />}

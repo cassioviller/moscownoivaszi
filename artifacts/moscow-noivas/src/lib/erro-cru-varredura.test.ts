@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { arquivosVersionados } from "./arquivos-versionados";
 
 /**
  * C4+F1/E122 — a varredura que impede o erro cru e o título técnico de voltarem.
@@ -28,28 +29,24 @@ import { join, relative } from "node:path";
 
 const RAIZ = join(import.meta.dirname, "..");
 
-function arquivosFonte(dir: string): string[] {
-  const achados: string[] = [];
-  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
-    const caminho = join(dir, entrada.name);
-    if (entrada.isDirectory()) achados.push(...arquivosFonte(caminho));
-    else if (/\.tsx?$/.test(entrada.name) && !entrada.name.includes(".test.")) {
-      achados.push(caminho);
-    }
-  }
-  return achados;
+/**
+ * A enumeração sai do versionamento, não do disco (S-D30). Caminhos relativos
+ * a `src/`.
+ */
+function arquivosFonte(): string[] {
+  return arquivosVersionados(RAIZ, ["pages", "components"]).filter(
+    (r) => /\.tsx?$/.test(r) && !r.includes(".test."),
+  );
 }
 
 function fontes(): Array<{ arquivo: string; fonte: string }> {
-  return [...arquivosFonte(join(RAIZ, "pages")), ...arquivosFonte(join(RAIZ, "components"))].map(
-    (arquivo) => ({
-      arquivo: relative(RAIZ, arquivo),
-      fonte: readFileSync(arquivo, "utf-8")
-        // Comentários citam o código errado para explicar o conserto.
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/(^|[^:])\/\/.*$/gm, "$1"),
-    }),
-  );
+  return arquivosFonte().map((arquivo) => ({
+    arquivo,
+    fonte: readFileSync(join(RAIZ, arquivo), "utf-8")
+      // Comentários citam o código errado para explicar o conserto.
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1"),
+  }));
 }
 
 describe("varredura: o erro que a pessoa lê", () => {
@@ -78,5 +75,14 @@ describe("varredura: o erro que a pessoa lê", () => {
       'título de falha com o rótulo técnico "Erro …" — o título canônico da casa é ' +
         '"Não deu para <verbo>" (F1/E122)',
     ).toEqual([]);
+  });
+
+  /**
+   * Conjunto vazio aprova tudo em silêncio (S-D31). O piso é o medido em
+   * 2026-08-07 — 116 arquivos `.ts`/`.tsx` versionados em `pages/` e
+   * `components/`, fora os testes — com folga para baixo.
+   */
+  it("a varredura olha os arquivos de verdade, não um conjunto vazio", () => {
+    expect(arquivosFonte().length).toBeGreaterThan(100);
   });
 });

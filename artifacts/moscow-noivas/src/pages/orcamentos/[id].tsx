@@ -18,6 +18,14 @@ import {
   getGetLeadQueryKey,
   useListVestidos,
   getListVestidosQueryKey,
+  useGetUtilizacaoVestidos,
+  getGetUtilizacaoVestidosQueryKey,
+  useListItensEstoque,
+  getListItensEstoqueQueryKey,
+  useGetComprometimentoEstoque,
+  getGetComprometimentoEstoqueQueryKey,
+  useListAjustes,
+  getListAjustesQueryKey,
   useListBloqueios,
   getListBloqueiosQueryKey,
   useListEquipe,
@@ -64,11 +72,15 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Pencil, AlertCircle, ScrollText, Send, Undo2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto, diaMesAno } from "@/lib/formatos";
+import { brl, diaParaISO, statusOrcamentoLabel, instanteDia, instanteCurto } from "@/lib/formatos";
 import { aplicarErroDoServidor, mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
+import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
+import { confeccoesDaNoiva as confeccoesDoOrcamento } from "@/lib/confeccoes-da-noiva";
+import { precoDaSaida } from "@/lib/preco-da-saida";
 import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
-import { montarPlanoParcelas, type ParcelaPlanejada } from "@/lib/financeiro/plano";
+import { planoDaDigitacao } from "@/lib/financeiro/plano";
+import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
 
 // E95: não existe aritmética de dinheiro neste arquivo. O `round2` que morava
@@ -98,14 +110,28 @@ const MENSAGENS_ERRO: Record<string, string> = {
 };
 
 const novoItemSchema = z.object({
-  tipo: z.enum(["VESTIDO", "SERVICO", "AJUSTE"]),
+  // E150: ACESSORIO é peça do acervo como o vestido — aponta `vestidoId` e o
+  // fechamento exige reserva. Serviço e ajuste não são peça e seguem sem.
+  // E154: ESTOQUE é a peça que se CONTA (saiote, crinol, anágua) — aponta
+  // `itemEstoqueId`, e o que a protege é um aviso, não uma trava.
+  tipo: z.enum(["VESTIDO", "ACESSORIO", "ESTOQUE", "SERVICO", "AJUSTE"]),
   // vestidoId liga o item ao catálogo (E35): ao escolher um vestido, descrição
   // e valor vêm dele. Vazio = item avulso (serviço/ajuste ou vestido sem ficha).
   vestidoId: z.string().optional(),
+  // itemEstoqueId é o outro jeito de apontar peça, e nunca convive com o de
+  // cima — o servidor recusa os dois juntos com ITEM_APONTA_DUAS_PECAS.
+  itemEstoqueId: z.string().optional(),
+  // E155: o item AJUSTE que cobra uma confecção aponta o trabalho na fila da
+  // costureira, para o que foi cobrado e o que alguém costura serem a mesma
+  // coisa. Só para AJUSTE, e só de trabalhos DESTA noiva.
+  ajusteId: z.string().optional(),
   descricao: z.string().min(1, "Descrição obrigatória"),
   valorUnitario: z.string().min(1, "Valor obrigatório"),
   quantidade: z.string(),
 });
+
+/** Os dois tipos que apontam peça do ACERVO — os que o E150 cobra reserva. */
+const ehPecaDoAcervo = (tipo: string) => tipo === "VESTIDO" || tipo === "ACESSORIO";
 type NovoItemValues = z.infer<typeof novoItemSchema>;
 
 const editarItemSchema = z.object({
@@ -131,67 +157,8 @@ type GerarContratoValues = z.infer<typeof gerarContratoSchema>;
 
 const FORMAS = ["PIX", "CARTAO_CREDITO", "CARTAO_DEBITO", "DINHEIRO", "BOLETO", "TRANSFERENCIA", "OUTRO"] as const;
 
-// E115: era `format(ancoraDeNegocio(dia), "dd/MM/yyyy")` — o date-fns desenha
-// no relógio do NAVEGADOR, e a âncora de meio-dia SP vira véspera para quem
-// abre de um fuso a leste de UTC+9. A régua dos dias de negócio é `diaMesAno`.
-const diaCurto = (dia: string) => diaMesAno(dia);
-
-/**
- * F16 — o carnê que vai ser criado, à vista, antes de criar.
- *
- * A noiva pergunta "quanto fica por mês?" e a vendedora dividia de cabeça: o
- * plano só aparecia DEPOIS do contrato gerado, numa outra tela. E como a tela
- * montava as parcelas com uma conta própria, o que ela teria mostrado nem era
- * o que o servidor gravaria.
- *
- * As linhas aqui são o MESMO array que o `POST /contratos` recebe — não há
- * segunda conta entre o que a noiva vê e o que vai para o banco.
- */
-function PreviaDoCarne({ erro, linhas }: { erro: string | null; linhas: ParcelaPlanejada[] | null }) {
-  if (erro) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{erro}</AlertDescription>
-      </Alert>
-    );
-  }
-  if (!linhas || linhas.length === 0) return null;
-
-  const entrada = linhas.find((l) => l.numero === 0);
-  const parcelas = linhas.filter((l) => l.numero > 0);
-  const primeira = parcelas[0];
-  const ultima = parcelas[parcelas.length - 1];
-  // A última só difere das irmãs quando a divisão não é exata — e é por isso
-  // que ela merece ser dita: é o centavo que a noiva confere no carnê.
-  const ultimaDifere = !!primeira && !!ultima && ultima.valorCentavos !== primeira.valorCentavos;
-
-  return (
-    <div className="bg-muted/40 space-y-2 rounded-md border p-3">
-      <p className="text-sm font-medium">
-        {entrada ? `Entrada de ${brl(reais(entrada.valorCentavos))} em ${diaCurto(entrada.vencimento)}` : null}
-        {entrada && parcelas.length > 0 ? " · " : null}
-        {parcelas.length > 0 ? (
-          <>
-            {parcelas.length}× de {brl(reais(primeira.valorCentavos))}
-            {ultimaDifere ? ` (a última de ${brl(reais(ultima.valorCentavos))})` : null}
-            {parcelas.length > 1 ? `, de ${diaCurto(primeira.vencimento)} a ${diaCurto(ultima.vencimento)}` : ` em ${diaCurto(primeira.vencimento)}`}
-          </>
-        ) : null}
-      </p>
-      <ul className="max-h-40 space-y-0.5 overflow-y-auto text-sm">
-        {linhas.map((l) => (
-          <li key={l.numero} className="flex justify-between gap-4">
-            <span className="text-muted-foreground">{l.descricao}</span>
-            <span className="tabular-nums">
-              {brl(reais(l.valorCentavos))} · {diaCurto(l.vencimento)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+// F16 — a prévia do carnê (e o `diaCurto`/E115 que morava aqui) vive em
+// `components/previa-do-carne` desde a S10: a tela de contrato mostra a mesma.
 
 export default function OrcamentoDetail() {
   const { activeLojaId, acessosModulos } = useAuth();
@@ -229,6 +196,46 @@ export default function OrcamentoDetail() {
   const vestidoPorId = useMemo(
     () => new Map((vestidos.data ?? []).map((v) => [v.id, v])),
     [vestidos.data],
+  );
+  /**
+   * E157 — quantas vezes cada peça JÁ saiu.
+   *
+   * A contagem vem de `GET /vestidos/utilizacao` sem recorte de data, e por
+   * isso é da vida inteira (`routes/vestidos.ts:274-277`) — que é o que "2º
+   * Aluguel" significa no caderno. `contratos` conta itens de peça em
+   * contratos ATIVOS: é o passado, não a venda que está sendo montada.
+   */
+  const utilizacao = useGetUtilizacaoVestidos(activeLojaId!, {}, {
+    query: { queryKey: getGetUtilizacaoVestidosQueryKey(activeLojaId!, {}), enabled: !!activeLojaId },
+  });
+  const locacoesPorVestido = useMemo(
+    () => new Map((utilizacao.data ?? []).map((u) => [u.vestidoId, u.contratos])),
+    [utilizacao.data],
+  );
+
+  // E154: o estoque para o seletor de item — saiote, crinol, anágua. Lista
+  // curta e separada do acervo de propósito: são as peças que a vendedora NÃO
+  // abre com a noiva na cabine, e misturá-las encheria a outra de anágua.
+  const itensEstoque = useListItensEstoque(activeLojaId!, {
+    query: { queryKey: getListItensEstoqueQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const itemEstoquePorId = useMemo(
+    () => new Map((itensEstoque.data ?? []).map((i) => [i.id, i])),
+    [itensEstoque.data],
+  );
+  /**
+   * E155 — as confecções DESTA noiva, para o item que as cobra.
+   *
+   * A fila desce inteira (é a mesma query da tela de ajustes, e o cache é
+   * compartilhado); o recorte roda em memória porque a rota não tem filtro por
+   * lead, e mora em `lib/confeccoes-da-noiva` com as duas razões escritas.
+   */
+  const ajustes = useListAjustes(activeLojaId!, {
+    query: { queryKey: getListAjustesQueryKey(activeLojaId!), enabled: !!activeLojaId },
+  });
+  const confeccoesDaNoiva = useMemo(
+    () => confeccoesDoOrcamento(ajustes.data ?? [], orcamento?.leadId),
+    [ajustes.data, orcamento?.leadId],
   );
   // O GetOrcamento não expõe o contrato gerado; perguntamos à lista de
   // contratos COM o recorte ?orcamentoId= (E144/S-D16 — sem ele, esta tela
@@ -303,14 +310,62 @@ export default function OrcamentoDetail() {
   // Teto de orçamento da noiva (E33): o número que ela deu em Interesses e que
   // até agora ninguém confrontava. Se o líquido passa, a tela avisa ANTES do
   // envio — a conversa difícil na hora de ajustar, não depois do "achei caro".
+  // A comparação é em CENTAVOS INTEIROS, como o excedente logo abaixo — a
+  // versão em float (`totais.liquido > teto`) discordava desta por um centavo
+  // no limiar: com líquido de R$ 950,47 (95047c) e teto gravado como 950.466,
+  // o float dizia "acima" (950.47 > 950.466) e o excedente saía R$ 0,00
+  // (95047 − Math.round(95046,6) = 0) — aviso ligado apontando excedente zero.
+  // Em centavos, 95047 > 95047 é falso e o aviso não acende.
   const teto = leadCompleto.data?.interesse?.tetoOrcamento ?? null;
-  const acimaDoTeto = teto != null && teto > 0 && totais.liquido > teto;
-  const excedenteTeto = acimaDoTeto ? reais(totais.liquidoC - centavos(teto)) : 0;
+  const tetoC = teto != null && teto > 0 ? centavos(teto) : null;
+  const acimaDoTeto = tetoC != null && totais.liquidoC > tetoC;
+  const excedenteTeto = acimaDoTeto ? reais(totais.liquidoC - tetoC!) : 0;
+
+  /**
+   * E154 — quantas peças de estoque saem no dia do casamento desta noiva.
+   *
+   * A pergunta só existe se houver item de estoque no orçamento E dia para
+   * contar: sem data de casamento não há conta, e um aviso sobre "algum dia"
+   * não ajudaria ninguém.
+   *
+   * Depois que o contrato existe, ele já entra na soma do servidor — somar de
+   * novo o que este orçamento pede contaria a mesma peça duas vezes, e o aviso
+   * apareceria sozinho, sem que nada tivesse mudado.
+   */
+  const diaDoCasamento = lead?.casamentoData?.slice(0, 10) ?? null;
+  const temItemDeEstoque = (orcamento?.itens ?? []).some(
+    (i) => i.tipo === "ESTOQUE" && i.itemEstoqueId,
+  );
+  const paramsComprometimento = { data: diaDoCasamento ?? "" };
+  const comprometimentoQ = useGetComprometimentoEstoque(activeLojaId!, paramsComprometimento, {
+    query: {
+      queryKey: getGetComprometimentoEstoqueQueryKey(activeLojaId!, paramsComprometimento),
+      enabled:
+        !!activeLojaId && !!diaDoCasamento && temItemDeEstoque && !contratoExistente,
+    },
+  });
+  const avisosEstoque = useMemo(
+    () =>
+      avisosDeEstoque({
+        itens: orcamento?.itens ?? [],
+        comprometimento: comprometimentoQ.data?.itens ?? [],
+        dia: contratoExistente ? null : diaDoCasamento,
+      }),
+    [orcamento?.itens, comprometimentoQ.data, diaDoCasamento, contratoExistente],
+  );
 
   const itemForm = useForm<NovoItemValues>({
     resolver: zodResolver(novoItemSchema),
-    defaultValues: { tipo: "VESTIDO", vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" },
+    defaultValues: { tipo: "VESTIDO", vestidoId: "", itemEstoqueId: "", ajusteId: "", descricao: "", valorUnitario: "", quantidade: "1" },
   });
+
+  /** E157 — a explicação do preço que a régua sugeriu para a peça escolhida. */
+  const vestidoEscolhidoId = itemForm.watch("vestidoId");
+  const precoSugerido = useMemo(() => {
+    const ves = vestidoEscolhidoId ? vestidoPorId.get(vestidoEscolhidoId) : null;
+    if (!ves) return null;
+    return precoDaSaida(ves, locacoesPorVestido.get(ves.id) ?? 0);
+  }, [vestidoEscolhidoId, vestidoPorId, locacoesPorVestido]);
 
   const editarItemForm = useForm<EditarItemValues>({
     resolver: zodResolver(editarItemSchema),
@@ -329,44 +384,22 @@ export default function OrcamentoDetail() {
   const entradaDigitada = contratoForm.watch("entrada");
   const numParcelasDigitado = contratoForm.watch("numParcelas");
   const primeiroVencimento = contratoForm.watch("primeiroVencimento");
-  const plano = useMemo((): { erro: string | null; linhas: ParcelaPlanejada[] | null } => {
-    const totalC = totais.liquidoC;
-    if (totalC <= 0) return { erro: "Adicione itens antes de gerar o contrato.", linhas: null };
-
-    const entrada = parseValor(entradaDigitada ?? "");
-    if (entrada !== null && !Number.isFinite(entrada)) {
-      return { erro: "Entrada inválida — use apenas números.", linhas: null };
-    }
-    const entradaC = entrada === null ? 0 : centavos(entrada);
-    if (entradaC < 0) return { erro: "A entrada não pode ser negativa.", linhas: null };
-    if (entradaC > totalC) return { erro: "A entrada não pode superar o total.", linhas: null };
-
-    const numParcelas = Math.trunc(Number(numParcelasDigitado) || 0);
-    if (totalC - entradaC > 0 && numParcelas < 1) {
-      return { erro: "Informe o número de parcelas.", linhas: null };
-    }
-    // Sem a data ainda não há carnê a mostrar — e isso não é erro, é formulário
-    // pela metade: o toast só aparece se ela tentar enviar assim.
-    if (!primeiroVencimento) return { erro: null, linhas: null };
-
-    try {
-      return {
-        erro: null,
-        linhas: montarPlanoParcelas({
-          totalCentavos: totalC,
-          entradaCentavos: entradaC,
-          numParcelas,
-          primeiroVencimento,
-          // C6: o dia de HOJE no fuso da loja, não o instante. `new Date()`
-          // das 21h à meia-noite carimbava a entrada no dia seguinte — e no
-          // dia 31, no mês e na competência seguintes.
-          vencimentoEntrada: hojeLocal(),
-        }),
-      };
-    } catch {
-      return { erro: "Não consegui montar o carnê com esses valores.", linhas: null };
-    }
-  }, [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento]);
+  // S10: a validação da digitação (e as frases dela) mora em `planoDaDigitacao`
+  // — a tela de contrato chama a MESMA para a prévia do gerar-plano.
+  const plano = useMemo(
+    () =>
+      planoDaDigitacao({
+        totalCentavos: totais.liquidoC,
+        entradaDigitada: entradaDigitada ?? "",
+        numParcelasDigitado: numParcelasDigitado ?? "",
+        primeiroVencimento: primeiroVencimento ?? "",
+        // C6: o dia de HOJE no fuso da loja, não o instante. `new Date()`
+        // das 21h à meia-noite carimbava a entrada no dia seguinte — e no
+        // dia 31, no mês e na competência seguintes.
+        vencimentoEntrada: hojeLocal(),
+      }),
+    [totais.liquidoC, entradaDigitada, numParcelasDigitado, primeiroVencimento],
+  );
 
   // Desconto (aplicado via PATCH; estado local só para os inputs).
   const [descontoTipo, setDescontoTipo] = useState<string>("");
@@ -450,7 +483,14 @@ export default function OrcamentoDetail() {
     // bobagem" (NaN).
     const valorUnitario = parseValor(values.valorUnitario);
     const quantidade = Number(values.quantidade) || 1;
-    if (valorUnitario === null || !Number.isFinite(valorUnitario) || valorUnitario <= 0) {
+    // E154: zero é valor LEGÍTIMO para peça de estoque — o saiote costuma ir
+    // junto com o vestido, sem cobrar à parte, e ainda assim precisa entrar no
+    // contrato para ser contado no dia. Para os outros tipos, zero segue erro.
+    const valorInvalido =
+      valorUnitario === null ||
+      !Number.isFinite(valorUnitario) ||
+      (values.tipo === "ESTOQUE" ? valorUnitario < 0 : valorUnitario <= 0);
+    if (valorInvalido) {
       toast({ title: "Valor unitário inválido", variant: "destructive" });
       return;
     }
@@ -461,14 +501,25 @@ export default function OrcamentoDetail() {
         data: {
           tipo: values.tipo,
           descricao: values.descricao,
-          valorUnitario,
+          valorUnitario: valorUnitario!,
           quantidade,
-          // vestidoId só faz sentido em item de vestido; serviço/ajuste vão sem.
-          ...(values.tipo === "VESTIDO" && values.vestidoId ? { vestidoId: values.vestidoId } : {}),
+          // E150: vestidoId vale para PEÇA — vestido e acessório. Serviço e
+          // ajuste vão sem, e é por isso que a guarda do servidor não os cobra.
+          ...(ehPecaDoAcervo(values.tipo) && values.vestidoId
+            ? { vestidoId: values.vestidoId }
+            : {}),
+          // E154: o outro jeito de apontar peça, e nunca os dois.
+          ...(values.tipo === "ESTOQUE" && values.itemEstoqueId
+            ? { itemEstoqueId: values.itemEstoqueId }
+            : {}),
+          // E155: e o terceiro — o trabalho da costureira que este item cobra.
+          ...(values.tipo === "AJUSTE" && values.ajusteId
+            ? { ajusteId: values.ajusteId }
+            : {}),
         },
       });
       await invalidar();
-      itemForm.reset({ tipo: values.tipo, vestidoId: "", descricao: "", valorUnitario: "", quantidade: "1" });
+      itemForm.reset({ tipo: values.tipo, vestidoId: "", itemEstoqueId: "", ajusteId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
       toast({ title: "Não deu para adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
@@ -842,6 +893,19 @@ export default function OrcamentoDetail() {
                           {vestidoPorId.get(item.vestidoId)?.codigo ?? "no catálogo"}
                         </Link>
                       )}
+                      {/* E155: este item cobra um trabalho que está na fila —
+                          sem a marca, o vínculo existiria só no banco.
+                          S-A17: o link leva ao TRABALHO, não mais à fila
+                          inteira — numa fila longa era busca a olho. */}
+                      {item.ajusteId && (
+                        <Link
+                          to={`/loja/${activeLojaId}/ajustes/${item.ajusteId}`}
+                          className="ml-2 text-xs font-normal text-muted-foreground underline underline-offset-2 hover:text-primary"
+                          data-testid="link-item-confeccao"
+                        >
+                          na fila da costureira
+                        </Link>
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">Qtd: {item.quantidade} x {brl(item.valorUnitario)}</p>
                   </div>
@@ -896,6 +960,22 @@ export default function OrcamentoDetail() {
             </p>
           )}
 
+          {/* E154 — avisa, não bloqueia. O saiote é substituível: se faltar um,
+              usa-se outro parecido, e recusar a venda por causa de uma anágua
+              seria um defeito, não uma proteção. O bolero que a noiva escolheu
+              pela foto não é substituível — e por isso ele é peça do acervo, e
+              a reserva dele o contrato exige (E150). */}
+          {avisosEstoque.length > 0 && (
+            <div className="space-y-1" data-testid="aviso-estoque">
+              {avisosEstoque.map((aviso) => (
+                <p key={aviso} className="flex items-center justify-end gap-1.5 text-sm text-aviso">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {aviso}
+                </p>
+              ))}
+            </div>
+          )}
+
           {editavel && (
             <>
               <Form {...itemForm}>
@@ -910,8 +990,13 @@ export default function OrcamentoDetail() {
                           value={field.value}
                           onValueChange={(v) => {
                             field.onChange(v);
-                            // Trocar de tipo desfaz o vínculo com o catálogo.
-                            if (v !== "VESTIDO") itemForm.setValue("vestidoId", "");
+                            // Trocar de tipo desfaz o vínculo com o catálogo —
+                            // e com o estoque, que é o outro jeito de apontar
+                            // peça. Deixar um dos dois para trás mandaria um
+                            // item apontando as duas coisas (422 do servidor).
+                            if (!ehPecaDoAcervo(v)) itemForm.setValue("vestidoId", "");
+                            if (v !== "ESTOQUE") itemForm.setValue("itemEstoqueId", "");
+                            if (v !== "AJUSTE") itemForm.setValue("ajusteId", "");
                           }}
                         >
                           <FormControl>
@@ -921,6 +1006,8 @@ export default function OrcamentoDetail() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="VESTIDO">Vestido</SelectItem>
+                            <SelectItem value="ACESSORIO">Acessório</SelectItem>
+                            <SelectItem value="ESTOQUE">Estoque</SelectItem>
                             <SelectItem value="SERVICO">Serviço</SelectItem>
                             <SelectItem value="AJUSTE">Ajuste</SelectItem>
                           </SelectContent>
@@ -929,9 +1016,85 @@ export default function OrcamentoDetail() {
                       </FormItem>
                     )}
                   />
+                  {/* E155: o item que COBRA uma confecção aponta o trabalho na
+                      fila. Só as confecções DESTA noiva entram na lista — o
+                      ajuste comum não se cobra à parte, e trabalho de outra
+                      noiva o servidor recusa (404). Vazio quando não há
+                      nenhuma: o seletor não aparece. */}
+                  {itemForm.watch("tipo") === "AJUSTE" && confeccoesDaNoiva.length > 0 && (
+                    <div className="w-56 space-y-2">
+                      <label className="text-sm font-medium">Da fila da costureira</label>
+                      <Select
+                        value={itemForm.watch("ajusteId") || "AVULSO"}
+                        onValueChange={(v) => {
+                          if (v === "AVULSO") {
+                            itemForm.setValue("ajusteId", "");
+                            return;
+                          }
+                          itemForm.setValue("ajusteId", v);
+                          const conf = confeccoesDaNoiva.find((c) => c.id === v);
+                          if (conf) {
+                            itemForm.setValue("descricao", conf.descricao);
+                            // O custo é o que a COSTUREIRA cobra; entra como
+                            // sugestão do que cobrar da noiva, não como regra.
+                            if (conf.custo != null) itemForm.setValue("valorUnitario", String(conf.custo));
+                          }
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-confeccao">
+                          <SelectValue placeholder="Escolher confecção" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AVULSO">— avulso (digitar) —</SelectItem>
+                          {confeccoesDaNoiva.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.descricao}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {/* E154: o seletor do estoque, irmão do de catálogo. A lista
+                      é curta (o que a loja conta, não o que ela veste) e o
+                      preço nulo vira zero — "vai junto, sem cobrar à parte". */}
+                  {itemForm.watch("tipo") === "ESTOQUE" && (
+                    <div className="w-56 space-y-2">
+                      <label className="text-sm font-medium">Do estoque</label>
+                      <Select
+                        value={itemForm.watch("itemEstoqueId") || "AVULSO"}
+                        onValueChange={(v) => {
+                          if (v === "AVULSO") {
+                            itemForm.setValue("itemEstoqueId", "");
+                            return;
+                          }
+                          itemForm.setValue("itemEstoqueId", v);
+                          const item = itemEstoquePorId.get(v);
+                          if (item) {
+                            itemForm.setValue("descricao", nomeDoItemEstoque(item));
+                            itemForm.setValue("valorUnitario", String(item.preco ?? 0));
+                          }
+                        }}
+                      >
+                        <SelectTrigger data-testid="select-item-estoque">
+                          <SelectValue placeholder="Escolher peça de estoque" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="AVULSO">— avulso (digitar) —</SelectItem>
+                          {(itensEstoque.data ?? [])
+                            .filter((i) => i.ativo)
+                            .map((i) => (
+                              <SelectItem key={i.id} value={i.id}>
+                                {nomeDoItemEstoque(i)} · {i.quantidade} na loja
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {/* Seletor do catálogo (E35): escolher um vestido preenche
                       descrição e valor e vincula o item ao estoque. */}
-                  {itemForm.watch("tipo") === "VESTIDO" && (
+                  {ehPecaDoAcervo(itemForm.watch("tipo")) && (
                     <div className="w-56 space-y-2">
                       <label className="text-sm font-medium">Do catálogo</label>
                       <Select
@@ -945,7 +1108,13 @@ export default function OrcamentoDetail() {
                           const ves = vestidoPorId.get(v);
                           if (ves) {
                             itemForm.setValue("descricao", ves.nome);
-                            itemForm.setValue("valorUnitario", String(ves.precoBase));
+                            // E157: a peça que já saiu antes sugere o preço de
+                            // realuguel. Sugere — o campo continua editável, e
+                            // a frase ao lado diz de que saída se trata.
+                            itemForm.setValue(
+                              "valorUnitario",
+                              String(precoDaSaida(ves, locacoesPorVestido.get(v) ?? 0).valor),
+                            );
                           }
                         }}
                       >
@@ -982,11 +1151,18 @@ export default function OrcamentoDetail() {
                     control={itemForm.control}
                     name="valorUnitario"
                     render={({ field }) => (
-                      <FormItem className="w-32">
+                      <FormItem className="w-40">
                         <FormLabel>Valor (R$)</FormLabel>
                         <FormControl>
                           <Input inputMode="decimal" placeholder="5.000,00" {...field} />
                         </FormControl>
+                        {/* E157: a régua SUGERE e explica; o campo segue
+                            editável, porque preço é conversa. */}
+                        {precoSugerido?.ehRealuguel && (
+                          <p className="text-xs text-muted-foreground" data-testid="motivo-preco">
+                            {precoSugerido.motivo}
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

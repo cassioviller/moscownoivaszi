@@ -216,8 +216,10 @@ export default function EditarVestido() {
           codigo: values.codigo,
           nome: values.nome,
           precoBase: values.precoBase,
+          // E157: null EXPLÍCITO apaga o preço de realuguel — a peça volta a
+          // ser cobrada pelo preço de tabela em toda saída.
+          precoRealuguel: values.precoRealuguel,
           tamanho: values.tamanho || undefined,
-          cor: values.cor || undefined,
           categoria: values.categoria || undefined,
           observacoes: values.observacoes || undefined,
           atributos,
@@ -307,8 +309,8 @@ export default function EditarVestido() {
                   codigo: vestido.codigo,
                   nome: vestido.nome,
                   precoBase: vestido.precoBase,
+                  precoRealuguel: vestido.precoRealuguel ?? null,
                   tamanho: vestido.tamanho ?? "",
-                  cor: vestido.cor ?? "",
                   categoria: vestido.categoria ?? "",
                   observacoes: vestido.observacoes ?? "",
                 }}

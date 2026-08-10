@@ -14,9 +14,13 @@ const toggleVariants = cva(
           "border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground",
       },
       size: {
-        default: "h-9 px-2 min-w-9",
-        sm: "h-8 px-1.5 min-w-8",
-        lg: "h-10 px-2.5 min-w-10",
+        // S-D47 — a grafia do E137 (button.tsx): 44px é o piso do alvo abaixo
+        // de `md`, e acima o desenho denso volta. O quarto primitivo com `h-9`
+        // cru, em uso real na troca lista/funil de noivas/index.tsx. O
+        // toggle-group herda estas variantes — uma grafia cobre os dois.
+        default: "min-h-11 md:min-h-9 px-2 min-w-11 md:min-w-9",
+        sm: "min-h-11 md:min-h-8 px-1.5 min-w-11 md:min-w-8",
+        lg: "min-h-11 md:min-h-10 px-2.5 min-w-11 md:min-w-10",
       },
     },
     defaultVariants: {

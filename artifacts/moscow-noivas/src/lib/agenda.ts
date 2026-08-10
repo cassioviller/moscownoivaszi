@@ -17,6 +17,8 @@ export {
   chaveCelula,
   lerChaveCelula,
   recusaDeMover,
+  ausenciaQueCobre,
+  type Ausencia,
   type Expediente,
   type Marcacao,
   type MotivoRecusa,

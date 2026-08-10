@@ -5,7 +5,7 @@ import { lojasTable } from "./loja";
 import { leadsTable } from "./leads";
 import { orcamentosTable } from "./orcamentos";
 import { bloqueioVestidosTable } from "./atendimentos";
-import { vestidosTable } from "./vestidos";
+import { vestidosTable, itensEstoqueTable } from "./vestidos";
 import { usuariosTable } from "./usuarios";
 import { contratoStatusEnum, formaPagamentoEnum, orcamentoItemTipoEnum, descontoTipoEnum } from "./common/enums";
 
@@ -73,6 +73,9 @@ export const contratoItensTable = pgTable("contrato_itens", {
   contratoId: text("contrato_id").notNull().references(() => contratosTable.id, { onDelete: "cascade" }),
   tipo: orcamentoItemTipoEnum("tipo").notNull(),
   vestidoId: text("vestido_id").references(() => vestidosTable.id, { onDelete: "set null" }),
+  // E154: item de ESTOQUE aponta aqui em vez de `vestidoId` — são os dois
+  // jeitos de um item apontar uma peça, e nunca os dois ao mesmo tempo.
+  itemEstoqueId: text("item_estoque_id").references(() => itensEstoqueTable.id, { onDelete: "set null" }),
   descricao: text("descricao").notNull(),
   valorUnitario: decimal("valor_unitario", { precision: 10, scale: 2, mode: "number" }).notNull(),
   quantidade: integer("quantidade").notNull().default(1),

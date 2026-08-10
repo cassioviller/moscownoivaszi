@@ -31,7 +31,7 @@ import { ErroListagem, invalidarCaixa } from "./helpers";
 import { useCaminhoDaLoja } from "@/hooks/use-caminho-da-loja";
 import { mensagemApi } from "@/lib/erro-api";
 import { podeNoModulo } from "@/lib/permissoes";
-import { brl, diaParaISO } from "@/lib/formatos";
+import { brl, diaParaISO, diaMesAbrev, diaMesLongo } from "@/lib/formatos";
 import { diaLocal, hojeLocal } from "@/lib/financeiro/datas";
 import {
   projetarCaixa,
@@ -40,14 +40,6 @@ import {
   type LinhaCurva,
 } from "@/lib/financeiro/projecao";
 import { ancoraAtiva, saldoDeHoje, validarConferencia } from "@/lib/financeiro/saldo";
-
-const diaFmt = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
-const diaLongo = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", timeZone: "UTC" });
-
-/** Formata um dia YYYY-MM-DD sem deixar o fuso empurrar a data. */
-function formatarDia(dia: string, fmt: Intl.DateTimeFormat): string {
-  return fmt.format(new Date(`${dia}T12:00:00Z`));
-}
 
 
 
@@ -154,7 +146,7 @@ export default function Projecao() {
       ]);
       toast({
         title: "Saldo conferido",
-        description: `${brl(conferencia.valor)} no início de ${formatarDia(diaConferido, diaLongo)}.`,
+        description: `${brl(conferencia.valor)} no início de ${diaMesLongo(diaConferido)}.`,
       });
       setConferirOpen(false);
       setValorConferido("");
@@ -272,7 +264,7 @@ export default function Projecao() {
                       precisa saber de quando vem a certeza. */}
                   <p className="text-xs text-muted-foreground">
                     saldo de hoje — conferido em{" "}
-                    {formatarDia(saldo.ancoraDia, diaFmt)}
+                    {diaMesAbrev(saldo.ancoraDia)}
                     {saldo.movimentoDesdeAncora !== 0 && (
                       <>
                         {" "}
@@ -334,7 +326,7 @@ export default function Projecao() {
                   <>
                     Caixa fica{" "}
                     <span className="font-semibold text-destructive">
-                      negativo em {formatarDia(curva.diaNegativo, diaLongo)}
+                      negativo em {diaMesLongo(curva.diaNegativo)}
                     </span>
                     .
                   </>
@@ -344,9 +336,9 @@ export default function Projecao() {
                 Menor saldo:{" "}
                 <span className="font-semibold tabular-nums">{brl(curva.menorSaldo.valor)}</span>
                 {curva.menorSaldo.dia ? (
-                  <> em {formatarDia(curva.menorSaldo.dia, diaFmt)}</>
+                  <> em {diaMesAbrev(curva.menorSaldo.dia)}</>
                 ) : (
-                  <> (hoje, {formatarDia(hojeLocal(), diaFmt)})</>
+                  <> (hoje, {diaMesAbrev(hojeLocal())})</>
                 )}
                 .
               </p>
@@ -441,7 +433,7 @@ function CurvaLista({
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm">
-                  {formatarDia(l.dia, diaFmt)}
+                  {diaMesAbrev(l.dia)}
                   {ehPrimeiroNegativo && (
                     <span className="ml-2 text-[11px] uppercase tracking-widest text-destructive">
                       1º dia negativo

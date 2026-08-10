@@ -1,5 +1,21 @@
 {
   "dir": "/home/runner/workspace/undefined",
+  "ambiente": {
+    "escritoEm": "2026-08-07, pela S-D2 — o que se SABE das 81 capturas de 2026-07-30; o script que as gerou se perdeu (S-D1), e o que não se prova fica dito desconhecido",
+    "navegador": "desconhecido (provável Chromium do Playwright do repo, não provado)",
+    "locale": "en-US — provada pelos próprios PNGs: 'July 2026' em financeiro-folha--390.png, 'mm/dd/yyyy' em financeiro-auditoria--390.png",
+    "timezone": "desconhecida",
+    "viewports": {
+      "claro": "1280×800 (recuperado dos PNGs; rotas que rolam saem até 1280×958 — página inteira)",
+      "escuro": "1280×800",
+      "390": "390×844 (rotas que rolam saem até 390×1025)"
+    },
+    "temas": { "claro": "claro", "escuro": "escuro", "390": "claro" },
+    "capturaDePaginaInteira": true,
+    "data": "2026-07-30 02:17–02:21 (mtime dos PNGs)",
+    "fonteDoSistema": "desconhecida",
+    "densidadeDePixel": "desconhecida"
+  },
   "capturadas": {
     "/loja/84e539bd-9199-4551-8ae5-7619868f62d3/dashboard": [
       "dashboard--claro.png",

@@ -9,10 +9,15 @@ import {
   configuracaoDoAmbiente,
   LOJA_PADRAO,
   DONA_PADRAO,
+  descreverDias,
+  descreverHorario,
 } from "../lib/configuracao-inicial";
+import { getTableConfig } from "drizzle-orm/pg-core";
+import { regraDisponibilidadeTable } from "@workspace/db";
 import { calcularComissao, validarFaixas, type FaixaCalc } from "../lib/comissao";
 import { normalizarAcessos, MODULOS, ACOES } from "../lib/permissoes";
 import { centavos } from "@workspace/financeiro-core";
+import { EXPEDIENTE_PADRAO } from "@workspace/agenda-core";
 
 /**
  * E147 — a configuração inicial, conferida no número.
@@ -128,11 +133,42 @@ describe("E147 — os perfis padrão", () => {
 });
 
 describe("E147 — o catálogo do acervo", () => {
-  it("sete atributos, e nenhum repete tamanho ou cor (que são colunas de vestidos)", () => {
-    expect(CATALOGO_PADRAO).toHaveLength(7);
+  /**
+   * E149 reabriu esta decisão — e ela era testada, que é como deve ser.
+   *
+   * O E147 manteve `cor` fora do catálogo com um argumento correto ("dois
+   * campos para o mesmo fato um dia discordariam"), mas decidiu sem a evidência
+   * que a arqueologia do legado trouxe: nas 15 páginas de agenda do ateliê há
+   * 38 compromissos de festa e dama indexados por COR, em 15 cores. Como texto
+   * livre a coluna não sustentava a busca ("Verde"/"verde"/"VERDE" viravam três
+   * filtros), e só atributo aparece na ficha de interesses da noiva.
+   *
+   * O argumento do E147 segue valendo e é o que este teste passa a pregar:
+   * `vestidos.cor` virou legado LIDO, nunca escrito — um campo, não dois.
+   *
+   * `tamanho` continua fora, pelo motivo original: é da peça física.
+   */
+  it("nove atributos — cor entrou no E149, tamanho continua sendo coluna da peça", () => {
+    expect(CATALOGO_PADRAO).toHaveLength(9);
     const nomes = CATALOGO_PADRAO.map((a) => a.nome.toLowerCase());
     expect(nomes).not.toContain("tamanho");
-    expect(nomes).not.toContain("cor");
+    expect(nomes).toContain("cor");
+    expect(nomes).toContain("tipo de peça");
+  });
+
+  it("a cor cobre as 15 do papel do ateliê, e o tipo de peça abre lugar para o acessório", () => {
+    const cor = CATALOGO_PADRAO.find((a) => a.chave === "cor");
+    // As lidas na agenda: verde, terracota, marsala, vermelho, azul, azul
+    // serenity, pink, rosa, rosê, champagne, fúcsia, laranja, amarelo, dourado,
+    // roxo — mais os brancos do acervo de noiva, que o papel não nomeia.
+    for (const doPapel of ["Verde", "Terracota", "Marsala", "Rosê", "Fúcsia", "Azul serenity"]) {
+      expect(cor?.opcoes, `cor do papel ausente: ${doPapel}`).toContain(doPapel);
+    }
+    const tipo = CATALOGO_PADRAO.find((a) => a.chave === "tipo-de-peca");
+    // "Acessório" é o que dá lugar ao bolero e à mantilha (E150).
+    expect(tipo?.opcoes).toEqual(
+      expect.arrayContaining(["Noiva", "Festa", "Dama", "Acessório"]),
+    );
   });
 
   it("todo atributo tem chave única, rótulo único e ao menos duas opções", () => {
@@ -154,17 +190,72 @@ describe("E147 — o catálogo do acervo", () => {
     }
   });
 
-  it("41 opções no total — o vocabulário com que a noiva descreve o vestido", () => {
+  it("66 opções no total — o vocabulário com que a noiva descreve o vestido", () => {
+    // 41 no E147; +19 de Cor e +6 de Tipo de peça no E149.
     const total = CATALOGO_PADRAO.reduce((s, a) => s + a.opcoes.length, 0);
-    expect(total).toBe(41);
+    expect(total).toBe(66);
   });
 });
 
 describe("E147 — agenda e ambiente", () => {
-  it("três cabines e um horário que abre seg–sáb", () => {
+  /**
+   * S-A8 — o horário padrão é o DESTE ateliê, medido no papel dele, e não uma
+   * premissa sobre "todo ateliê de noiva". Os dois números que mudaram têm
+   * evidência contada:
+   *
+   * · **domingo aberto** — 7 compromissos em 5 domingos (19/07, 02/08, 09/08,
+   *   16/08, 13/09), às 14h e às 18h. A dona: domingo é com hora marcada.
+   * · **fecha às 20h** — 6 provas às 18:30 no papel; com prova de 60 min e
+   *   fechamento às 19h, a última que cabia começava às 18:00.
+   */
+  it("três cabines, e o horário que o papel do ateliê mostra", () => {
     expect(CABINES_PADRAO).toHaveLength(3);
-    expect(HORARIO_PADRAO.diasFuncionamento).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(HORARIO_PADRAO.diasFuncionamento).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(HORARIO_PADRAO.atendimentoFechamentoHora).toBe(20);
     expect(HORARIO_PADRAO.atendimentoAberturaHora).toBeLessThan(HORARIO_PADRAO.atendimentoFechamentoHora);
+  });
+
+  /**
+   * S-A8 — a mesma régua escrita em dois lugares tem de bater. O comentário do
+   * `HORARIO_PADRAO` afirma que ele é "os defaults do schema escritos por
+   * extenso"; sem esta asserção, a afirmação era só uma frase, e uma loja criada
+   * SEM estes campos nasceria com um horário diferente da que passa pelo seed.
+   */
+  it("o horário padrão é o mesmo default do schema, campo a campo", () => {
+    const doSchema = getTableConfig(regraDisponibilidadeTable);
+    const defaultDe = (coluna: string) =>
+      doSchema.columns.find((c) => c.name === coluna)?.default;
+
+    expect(defaultDe("prova_dias_antes")).toBe(HORARIO_PADRAO.provaDiasAntes);
+    expect(defaultDe("prova_duracao")).toBe(HORARIO_PADRAO.provaDuracao);
+    expect(defaultDe("uso_dias_antes")).toBe(HORARIO_PADRAO.usoDiasAntes);
+    expect(defaultDe("uso_dias_depois")).toBe(HORARIO_PADRAO.usoDiasDepois);
+    expect(defaultDe("lavagem_dias_depois")).toBe(HORARIO_PADRAO.lavagemDiasDepois);
+    expect(defaultDe("atendimento_abertura_hora")).toBe(HORARIO_PADRAO.atendimentoAberturaHora);
+    expect(defaultDe("atendimento_fechamento_hora")).toBe(HORARIO_PADRAO.atendimentoFechamentoHora);
+    expect(defaultDe("dias_funcionamento")).toEqual([...HORARIO_PADRAO.diasFuncionamento]);
+  });
+
+  /**
+   * S-M13 — e a TERCEIRA cópia da mesma régua também tem de bater. O
+   * `EXPEDIENTE_PADRAO` do agenda-core é o fallback da loja sem linha em
+   * `regra_disponibilidade`, e o docstring dele afirma espelhar o schema desde
+   * o começo — mas ele ficou em 19h quando a S-A8 levou o default para 20h, e
+   * não carregava dias nem duração de prova: a loja recém-criada perdia 19:00
+   * e 19:30 da grade, e a prova das 18:30 passava como se durasse 30 min. O
+   * mesmo drift da mesma frase, um arquivo adiante.
+   */
+  it("S-M13 — o EXPEDIENTE_PADRAO do agenda-core é o mesmo default do schema", () => {
+    const doSchema = getTableConfig(regraDisponibilidadeTable);
+    const defaultDe = (coluna: string) =>
+      doSchema.columns.find((c) => c.name === coluna)?.default;
+
+    // VERMELHO ANTES: fechamentoHora 19 contra default 20, dias e
+    // provaDuracao ausentes.
+    expect(EXPEDIENTE_PADRAO.aberturaHora).toBe(defaultDe("atendimento_abertura_hora"));
+    expect(EXPEDIENTE_PADRAO.fechamentoHora).toBe(defaultDe("atendimento_fechamento_hora"));
+    expect(EXPEDIENTE_PADRAO.dias).toEqual(defaultDe("dias_funcionamento"));
+    expect(EXPEDIENTE_PADRAO.provaDuracao).toBe(defaultDe("prova_duracao"));
   });
 
   it("sem env, a configuração é a do desenvolvimento de sempre", () => {
@@ -191,5 +282,48 @@ describe("E147 — agenda e ambiente", () => {
   it("variável vazia não apaga o default — string em branco é engano, não escolha", () => {
     const c = configuracaoDoAmbiente({ SEED_LOJA_NOME: "   " });
     expect(c.loja.nome).toBe(LOJA_PADRAO.nome);
+  });
+});
+
+/**
+ * S-D41 — o resumo do seed descreve o que ele GRAVOU.
+ *
+ * A frase era `"seg–sáb, 9h–19h"`, cravada em `scripts/seed.ts`, e as duas
+ * metades estavam erradas desde a S-A8: a loja abre domingo e fecha às 20h. A
+ * linha é a única prova que o script dá de que o ateliê ficou configurado do
+ * jeito da dona — e ela dizia que domingo estava fechado quando o sistema ia
+ * abrir. O caso que casa a descrição com o DEFAULT é o que impede a frase de
+ * envelhecer de novo sozinha.
+ */
+describe("S-D41 — o horário se descreve a partir do dado", () => {
+  it("o default de hoje é 'todos os dias, 9h–20h' — e é o que a S-A8 decidiu", () => {
+    expect(descreverHorario(HORARIO_PADRAO)).toBe("todos os dias, 9h–20h");
+  });
+
+  it("a frase antiga do seed descrevia OUTRO horário", () => {
+    // Se um dia o default voltar a ser seg–sáb 9h–19h, esta linha reprova e
+    // alguém relê a S-A8 antes de mexer.
+    expect(descreverHorario(HORARIO_PADRAO)).not.toBe("seg–sáb, 9h–19h");
+  });
+
+  it("junta bloco corrido, separa dia solto e nomeia os extremos", () => {
+    expect(descreverDias([1, 2, 3, 4, 5, 6])).toBe("seg–sáb");
+    expect(descreverDias([1, 2, 3, 4, 5])).toBe("seg–sex");
+    // A ordem de entrada não importa: [1..5, 0] ordena para dom–sex, que é UM
+    // bloco corrido. O assert aqui nasceu errado — pedia "dom, seg–sex" — e o
+    // código estava certo. A semana começa no domingo (0), e é ele que fecha o
+    // bloco pela esquerda.
+    expect(descreverDias([1, 2, 3, 4, 5, 0])).toBe("dom–sex");
+    // O buraco no meio é o que separa: sem segunda, sobram dois blocos.
+    expect(descreverDias([0, 2, 3, 4, 5, 6])).toBe("dom, ter–sáb");
+    expect(descreverDias([2, 4])).toBe("ter, qui");
+    expect(descreverDias([0, 1])).toBe("dom, seg");
+    expect(descreverDias([])).toBe("nenhum dia");
+  });
+
+  it("dia repetido e dia fora da semana não entram na frase", () => {
+    expect(descreverDias([3, 3, 3])).toBe("qua");
+    expect(descreverDias([0, 1, 2, 3, 4, 5, 6, 7])).toBe("todos os dias");
+    expect(descreverDias([-1, 2])).toBe("ter");
   });
 });

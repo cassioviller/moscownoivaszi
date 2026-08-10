@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable } from "@workspace/db";
+import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable, bloqueioVestidosTable } from "@workspace/db";
 import { eq, and, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
 import { atributosDaLoja } from "../lib/escopo-loja";
+import { padraoDeBusca } from "../lib/busca-lead";
 import {
   ListLeadsResponse,
   ListLeadsQueryParams,
@@ -29,6 +30,7 @@ import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
+import { ultimoContatoPorLead } from "../lib/ultimo-contato";
 import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
 import { addDias, addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
@@ -45,28 +47,6 @@ function carimboEtapa(
   if (etapa === "CONTRATO_FECHADO" && !atual.contratoFechadoEm) return { contratoFechadoEm: agora };
   if (etapa === "PERDIDO" && !atual.perdidaEm) return { perdidaEm: agora };
   return {};
-}
-
-/**
- * Último contato de cada lead (E27): `max(contatoData)` de registros_cobranca.
- * É uma query agregada à parte, não uma subquery correlacionada dentro do
- * relational builder — ali o drizzle aliasa a tabela e a correlação com
- * `leads.id` sai errada em silêncio. Um SELECT a mais, limitado à página.
- *
- * Alimenta o "parada há N dias sem contato" do funil; sem isto o kanban faria
- * uma consulta de cobranças por card.
- */
-async function ultimoContatoPorLead(leadIds: string[]): Promise<Map<string, Date>> {
-  if (leadIds.length === 0) return new Map();
-  const linhas = await db
-    .select({
-      leadId: registrosCobrancaTable.leadId,
-      ultimo: sql<Date>`max(${registrosCobrancaTable.contatoData})`,
-    })
-    .from(registrosCobrancaTable)
-    .where(inArray(registrosCobrancaTable.leadId, leadIds))
-    .groupBy(registrosCobrancaTable.leadId);
-  return new Map(linhas.map((l) => [l.leadId, l.ultimo]));
 }
 
 router.use(requireSessaoComLoja);
@@ -122,7 +102,8 @@ router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   if (etapa) condicoes.push(eq(leadsTable.etapa, etapa));
   const busca = q?.trim();
   if (busca) {
-    const padrao = `%${busca}%`;
+    // S-M14: o digitado é literal — `%` e `_` escapados pela régua única.
+    const padrao = padraoDeBusca(busca);
     const porCampo = [ilike(leadsTable.noivaNome, padrao), ilike(leadsTable.noivoNome, padrao)];
     // Dígitos casam contra o whatsapp SEM máscara: "11988" encontra
     // "(11) 98888-7777" — mesma expressão do índice trigram dos extras.
@@ -596,11 +577,24 @@ router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> =>
     return;
   }
 
-  const [[c1], [c2], [c3]] = await Promise.all([
+  const [[c1], [c2], [c3], [c4]] = await Promise.all([
     db.select({ n: count() }).from(contratosTable).where(eq(contratosTable.leadId, lead.id)),
     db.select({ n: count() }).from(orcamentosTable).where(eq(orcamentosTable.leadId, lead.id)),
     db.select({ n: count() }).from(atendimentosTable).where(eq(atendimentosTable.leadId, lead.id)),
+    // S27 — a quarta contagem que faltava. `bloqueio_vestidos.lead_id` é
+    // `set null`: sem esta guarda a noiva saía com 204, o vestido continuava
+    // ocupado e o ÚNICO ponteiro para a dona era apagado, contra a promessa do
+    // docblock desta rota. Conta TODAS as linhas, inclusive as canceladas — o
+    // `set null` dispara nelas do mesmo jeito, e com o CHECK isso vira 23514.
+    db.select({ n: count() }).from(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.leadId, lead.id)),
   ]);
+  if (c4.n > 0) {
+    res.status(409).json({
+      error: "LEAD_COM_RESERVA",
+      detalhe: `Esta noiva tem ${c4.n} reserva(s) de vestido — excluir deixaria a peça ocupada sem dona. Cancele as reservas primeiro.`,
+    });
+    return;
+  }
   if (c1.n > 0) {
     res.status(409).json({
       error: "LEAD_COM_CONTRATO",

@@ -43,7 +43,10 @@ import type {
   AtributoOpcaoInput,
   AtributoOpcaoUpdate,
   AtributoUpdate,
+  AuditoriaGlobal,
   AuditoriaItem,
+  Ausencia,
+  AusenciaInput,
   AutorAuditoria,
   Avaria,
   AvariaInput,
@@ -70,6 +73,7 @@ import type {
   ComissaoRegra,
   ComissaoRegraInput,
   ComissaoRegraUpdate,
+  ComprometimentoEstoque,
   ConfirmarProvaPortal200,
   ConfirmarProvaPortalParams,
   ContaPagar,
@@ -83,6 +87,7 @@ import type {
   ConviteInput,
   ConvitePublico,
   CreateParcelaAvulsaBody,
+  DadosDaLojaInput,
   DashboardSummary,
   DisponibilidadeVestidos,
   EnviarContabilidadeInput,
@@ -91,6 +96,7 @@ import type {
   ExportarAuditoriaParams,
   ExportarContasPagarParams,
   ExportarDadosLead200,
+  ExportarFluxoParams,
   ExportarFolhaParams,
   ExportarParcelasParams,
   ExpurgarLeadsPerdidos200,
@@ -99,6 +105,7 @@ import type {
   FolhaInput,
   GerarComissaoFechamentoInput,
   GerarPlanoInput,
+  GetComprometimentoEstoqueParams,
   GetConsolidado200Item,
   GetConversaoLeadsParams,
   GetConviteInfoParams,
@@ -119,6 +126,9 @@ import type {
   GetUtilizacaoVestidosParams,
   GetVestidoFotoParams,
   HealthStatus,
+  ItemEstoque,
+  ItemEstoqueInput,
+  ItemEstoqueUpdate,
   Lead,
   LeadInput,
   LeadInteresse,
@@ -128,6 +138,7 @@ import type {
   LinkOrcamentoPublico,
   ListAtendimentosParams,
   ListAuditoriaParams,
+  ListAusenciasParams,
   ListBloqueiosParams,
   ListComissaoFechamentosParams,
   ListContasPagarParams,
@@ -646,6 +657,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getSelecionarLojaMutationOptions(options));
     }
+
+export const getListAuditoriaGlobalUrl = () => {
+
+
+
+
+  return `/api/admin/auditoria-global`
+}
+
+/**
+ * As linhas com `lojaId` nulo — apagar uma pessoa (tabela global) ou apagar uma loja. Elas não aparecem em `/lojas/{lojaId}/financeiro/auditoria`, que filtra por loja, e sem esta porta o rastro seria gravado e nunca lido. É o único lugar onde "quem apagou aquela loja?" tem resposta.
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+export const listAuditoriaGlobal = async ( options?: RequestInit): Promise<AuditoriaGlobal[]> => {
+
+  return customFetch<AuditoriaGlobal[]>(getListAuditoriaGlobalUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuditoriaGlobalQueryKey = () => {
+    return [
+    `/api/admin/auditoria-global`
+    ] as const;
+    }
+
+
+export const getListAuditoriaGlobalQueryOptions = <TData = Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuditoriaGlobalQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditoriaGlobal>>> = ({ signal }) => listAuditoriaGlobal({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAuditoriaGlobalQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditoriaGlobal>>>
+export type ListAuditoriaGlobalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary A trilha do que não pertence a loja nenhuma (S3)
+ */
+
+export function useListAuditoriaGlobal<TData = Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAuditoriaGlobal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAuditoriaGlobalQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListLojasUrl = () => {
 
@@ -1961,6 +2050,78 @@ export function useDownloadBackup<TData = Awaited<ReturnType<typeof downloadBack
 
 
 
+
+export const getUpdateDadosDaLojaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/dados`
+}
+
+/**
+ * `endereco` e `telefone` só tinham formulário no console de SUPERADMIN, e trocar o telefone virava chamado. Os dois alimentam o rodapé do portal da noiva, a linha "Endereço:" da confirmação de atendimento e o botão de WhatsApp do portal. Gate: módulo `admin`, ação `editar`.
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const updateDadosDaLoja = async (lojaId: string,
+    dadosDaLojaInput: DadosDaLojaInput, options?: RequestInit): Promise<Loja> => {
+
+  return customFetch<Loja>(getUpdateDadosDaLojaUrl(lojaId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dadosDaLojaInput)
+  }
+);}
+
+
+
+
+export const getUpdateDadosDaLojaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext> => {
+
+const mutationKey = ['updateDadosDaLoja'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDadosDaLoja>>, {lojaId: string;data: BodyType<DadosDaLojaInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  updateDadosDaLoja(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDadosDaLojaMutationResult = NonNullable<Awaited<ReturnType<typeof updateDadosDaLoja>>>
+    export type UpdateDadosDaLojaMutationBody = BodyType<DadosDaLojaInput>
+    export type UpdateDadosDaLojaMutationError = ErrorType<void>
+
+    /**
+ * @summary A dona edita os dados da própria loja (S17)
+ */
+export const useUpdateDadosDaLoja = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDadosDaLoja>>, TError,{lojaId: string;data: BodyType<DadosDaLojaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDadosDaLoja>>,
+        TError,
+        {lojaId: string;data: BodyType<DadosDaLojaInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateDadosDaLojaMutationOptions(options));
+    }
 
 export const getListEquipeUrl = (lojaId: string,) => {
 
@@ -5859,6 +6020,572 @@ export const useDesfazerRegistroCobranca = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDesfazerRegistroCobrancaMutationOptions(options));
+    }
+
+export const getListItensEstoqueUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/itens-estoque`
+}
+
+export const listItensEstoque = async (lojaId: string, options?: RequestInit): Promise<ItemEstoque[]> => {
+
+  return customFetch<ItemEstoque[]>(getListItensEstoqueUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListItensEstoqueQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/itens-estoque`
+    ] as const;
+    }
+
+
+export const getListItensEstoqueQueryOptions = <TData = Awaited<ReturnType<typeof listItensEstoque>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listItensEstoque>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListItensEstoqueQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listItensEstoque>>> = ({ signal }) => listItensEstoque(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listItensEstoque>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListItensEstoqueQueryResult = NonNullable<Awaited<ReturnType<typeof listItensEstoque>>>
+export type ListItensEstoqueQueryError = ErrorType<unknown>
+
+
+
+export function useListItensEstoque<TData = Awaited<ReturnType<typeof listItensEstoque>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listItensEstoque>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListItensEstoqueQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateItemEstoqueUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/itens-estoque`
+}
+
+export const createItemEstoque = async (lojaId: string,
+    itemEstoqueInput: ItemEstoqueInput, options?: RequestInit): Promise<ItemEstoque> => {
+
+  return customFetch<ItemEstoque>(getCreateItemEstoqueUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(itemEstoqueInput)
+  }
+);}
+
+
+
+
+export const getCreateItemEstoqueMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItemEstoque>>, TError,{lojaId: string;data: BodyType<ItemEstoqueInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createItemEstoque>>, TError,{lojaId: string;data: BodyType<ItemEstoqueInput>}, TContext> => {
+
+const mutationKey = ['createItemEstoque'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createItemEstoque>>, {lojaId: string;data: BodyType<ItemEstoqueInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  createItemEstoque(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateItemEstoqueMutationResult = NonNullable<Awaited<ReturnType<typeof createItemEstoque>>>
+    export type CreateItemEstoqueMutationBody = BodyType<ItemEstoqueInput>
+    export type CreateItemEstoqueMutationError = ErrorType<unknown>
+
+    export const useCreateItemEstoque = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createItemEstoque>>, TError,{lojaId: string;data: BodyType<ItemEstoqueInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createItemEstoque>>,
+        TError,
+        {lojaId: string;data: BodyType<ItemEstoqueInput>},
+        TContext
+      > => {
+      return useMutation(getCreateItemEstoqueMutationOptions(options));
+    }
+
+export const getGetComprometimentoEstoqueUrl = (lojaId: string,
+    params: GetComprometimentoEstoqueParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/itens-estoque/comprometimento?${stringifiedParams}` : `/api/lojas/${lojaId}/itens-estoque/comprometimento`
+}
+
+export const getComprometimentoEstoque = async (lojaId: string,
+    params: GetComprometimentoEstoqueParams, options?: RequestInit): Promise<ComprometimentoEstoque> => {
+
+  return customFetch<ComprometimentoEstoque>(getGetComprometimentoEstoqueUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetComprometimentoEstoqueQueryKey = (lojaId: string,
+    params?: GetComprometimentoEstoqueParams,) => {
+    return [
+    `/api/lojas/${lojaId}/itens-estoque/comprometimento`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetComprometimentoEstoqueQueryOptions = <TData = Awaited<ReturnType<typeof getComprometimentoEstoque>>, TError = ErrorType<unknown>>(lojaId: string,
+    params: GetComprometimentoEstoqueParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getComprometimentoEstoque>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetComprometimentoEstoqueQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getComprometimentoEstoque>>> = ({ signal }) => getComprometimentoEstoque(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getComprometimentoEstoque>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetComprometimentoEstoqueQueryResult = NonNullable<Awaited<ReturnType<typeof getComprometimentoEstoque>>>
+export type GetComprometimentoEstoqueQueryError = ErrorType<unknown>
+
+
+
+export function useGetComprometimentoEstoque<TData = Awaited<ReturnType<typeof getComprometimentoEstoque>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params: GetComprometimentoEstoqueParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getComprometimentoEstoque>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetComprometimentoEstoqueQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateItemEstoqueUrl = (lojaId: string,
+    itemEstoqueId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/itens-estoque/${itemEstoqueId}`
+}
+
+export const updateItemEstoque = async (lojaId: string,
+    itemEstoqueId: string,
+    itemEstoqueUpdate: ItemEstoqueUpdate, options?: RequestInit): Promise<ItemEstoque> => {
+
+  return customFetch<ItemEstoque>(getUpdateItemEstoqueUrl(lojaId,itemEstoqueId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(itemEstoqueUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateItemEstoqueMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItemEstoque>>, TError,{lojaId: string;itemEstoqueId: string;data: BodyType<ItemEstoqueUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateItemEstoque>>, TError,{lojaId: string;itemEstoqueId: string;data: BodyType<ItemEstoqueUpdate>}, TContext> => {
+
+const mutationKey = ['updateItemEstoque'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateItemEstoque>>, {lojaId: string;itemEstoqueId: string;data: BodyType<ItemEstoqueUpdate>}> = (props) => {
+          const {lojaId,itemEstoqueId,data} = props ?? {};
+
+          return  updateItemEstoque(lojaId,itemEstoqueId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateItemEstoqueMutationResult = NonNullable<Awaited<ReturnType<typeof updateItemEstoque>>>
+    export type UpdateItemEstoqueMutationBody = BodyType<ItemEstoqueUpdate>
+    export type UpdateItemEstoqueMutationError = ErrorType<unknown>
+
+    export const useUpdateItemEstoque = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateItemEstoque>>, TError,{lojaId: string;itemEstoqueId: string;data: BodyType<ItemEstoqueUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateItemEstoque>>,
+        TError,
+        {lojaId: string;itemEstoqueId: string;data: BodyType<ItemEstoqueUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateItemEstoqueMutationOptions(options));
+    }
+
+export const getDeleteItemEstoqueUrl = (lojaId: string,
+    itemEstoqueId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/itens-estoque/${itemEstoqueId}`
+}
+
+export const deleteItemEstoque = async (lojaId: string,
+    itemEstoqueId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteItemEstoqueUrl(lojaId,itemEstoqueId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteItemEstoqueMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteItemEstoque>>, TError,{lojaId: string;itemEstoqueId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteItemEstoque>>, TError,{lojaId: string;itemEstoqueId: string}, TContext> => {
+
+const mutationKey = ['deleteItemEstoque'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteItemEstoque>>, {lojaId: string;itemEstoqueId: string}> = (props) => {
+          const {lojaId,itemEstoqueId} = props ?? {};
+
+          return  deleteItemEstoque(lojaId,itemEstoqueId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteItemEstoqueMutationResult = NonNullable<Awaited<ReturnType<typeof deleteItemEstoque>>>
+
+    export type DeleteItemEstoqueMutationError = ErrorType<unknown>
+
+    export const useDeleteItemEstoque = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteItemEstoque>>, TError,{lojaId: string;itemEstoqueId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteItemEstoque>>,
+        TError,
+        {lojaId: string;itemEstoqueId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteItemEstoqueMutationOptions(options));
+    }
+
+export const getListAusenciasUrl = (lojaId: string,
+    params?: ListAusenciasParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/ausencias?${stringifiedParams}` : `/api/lojas/${lojaId}/ausencias`
+}
+
+export const listAusencias = async (lojaId: string,
+    params?: ListAusenciasParams, options?: RequestInit): Promise<Ausencia[]> => {
+
+  return customFetch<Ausencia[]>(getListAusenciasUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAusenciasQueryKey = (lojaId: string,
+    params?: ListAusenciasParams,) => {
+    return [
+    `/api/lojas/${lojaId}/ausencias`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAusenciasQueryOptions = <TData = Awaited<ReturnType<typeof listAusencias>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListAusenciasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAusencias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAusenciasQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAusencias>>> = ({ signal }) => listAusencias(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAusencias>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAusenciasQueryResult = NonNullable<Awaited<ReturnType<typeof listAusencias>>>
+export type ListAusenciasQueryError = ErrorType<unknown>
+
+
+
+export function useListAusencias<TData = Awaited<ReturnType<typeof listAusencias>>, TError = ErrorType<unknown>>(
+ lojaId: string,
+    params?: ListAusenciasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAusencias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAusenciasQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAusenciaUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/ausencias`
+}
+
+export const createAusencia = async (lojaId: string,
+    ausenciaInput: AusenciaInput, options?: RequestInit): Promise<Ausencia> => {
+
+  return customFetch<Ausencia>(getCreateAusenciaUrl(lojaId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(ausenciaInput)
+  }
+);}
+
+
+
+
+export const getCreateAusenciaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAusencia>>, TError,{lojaId: string;data: BodyType<AusenciaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAusencia>>, TError,{lojaId: string;data: BodyType<AusenciaInput>}, TContext> => {
+
+const mutationKey = ['createAusencia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAusencia>>, {lojaId: string;data: BodyType<AusenciaInput>}> = (props) => {
+          const {lojaId,data} = props ?? {};
+
+          return  createAusencia(lojaId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAusenciaMutationResult = NonNullable<Awaited<ReturnType<typeof createAusencia>>>
+    export type CreateAusenciaMutationBody = BodyType<AusenciaInput>
+    export type CreateAusenciaMutationError = ErrorType<unknown>
+
+    export const useCreateAusencia = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAusencia>>, TError,{lojaId: string;data: BodyType<AusenciaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAusencia>>,
+        TError,
+        {lojaId: string;data: BodyType<AusenciaInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAusenciaMutationOptions(options));
+    }
+
+export const getDeleteAusenciaUrl = (lojaId: string,
+    ausenciaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/ausencias/${ausenciaId}`
+}
+
+export const deleteAusencia = async (lojaId: string,
+    ausenciaId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAusenciaUrl(lojaId,ausenciaId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAusenciaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAusencia>>, TError,{lojaId: string;ausenciaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAusencia>>, TError,{lojaId: string;ausenciaId: string}, TContext> => {
+
+const mutationKey = ['deleteAusencia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAusencia>>, {lojaId: string;ausenciaId: string}> = (props) => {
+          const {lojaId,ausenciaId} = props ?? {};
+
+          return  deleteAusencia(lojaId,ausenciaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAusenciaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAusencia>>>
+
+    export type DeleteAusenciaMutationError = ErrorType<unknown>
+
+    export const useDeleteAusencia = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAusencia>>, TError,{lojaId: string;ausenciaId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAusencia>>,
+        TError,
+        {lojaId: string;ausenciaId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteAusenciaMutationOptions(options));
     }
 
 export const getListCabinesUrl = (lojaId: string,) => {
@@ -10843,6 +11570,96 @@ export function useGetFluxoCaixa<TData = Awaited<ReturnType<typeof getFluxoCaixa
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFluxoCaixaQueryOptions(lojaId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportarFluxoUrl = (lojaId: string,
+    params?: ExportarFluxoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/financeiro/fluxo/exportar?${stringifiedParams}` : `/api/lojas/${lojaId}/financeiro/fluxo/exportar`
+}
+
+/**
+ * S21/F34: o "UM pacote" que os quatro exports não podiam ser — eles recortam por réguas diferentes (parcelas por vencimento, folha por data de pagamento) e juntá-los dá regime misto. Este deriva dos MESMOS motores de GET …/financeiro/fluxo: entradas e saídas pela data REAL do movimento, no fuso da loja, com os totais do resumo no rodapé — fecha com a tela do fluxo e com o DRE por construção. SÓ LÊ: um GET precisa ser seguro para refresh/prefetch; carimbar continua sendo o POST …/contabilidade/enviar.
+ * @summary CSV dos movimentos do período — o pacote da contabilidade, na régua do fluxo
+ */
+export const exportarFluxo = async (lojaId: string,
+    params?: ExportarFluxoParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportarFluxoUrl(lojaId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportarFluxoQueryKey = (lojaId: string,
+    params?: ExportarFluxoParams,) => {
+    return [
+    `/api/lojas/${lojaId}/financeiro/fluxo/exportar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportarFluxoQueryOptions = <TData = Awaited<ReturnType<typeof exportarFluxo>>, TError = ErrorType<void>>(lojaId: string,
+    params?: ExportarFluxoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarFluxo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportarFluxoQueryKey(lojaId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportarFluxo>>> = ({ signal }) => exportarFluxo(lojaId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportarFluxo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportarFluxoQueryResult = NonNullable<Awaited<ReturnType<typeof exportarFluxo>>>
+export type ExportarFluxoQueryError = ErrorType<void>
+
+
+/**
+ * @summary CSV dos movimentos do período — o pacote da contabilidade, na régua do fluxo
+ */
+
+export function useExportarFluxo<TData = Awaited<ReturnType<typeof exportarFluxo>>, TError = ErrorType<void>>(
+ lojaId: string,
+    params?: ExportarFluxoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportarFluxo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportarFluxoQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -120,9 +120,30 @@ export const CABINES_PADRAO = ["Cabine 1", "Cabine 2", "Cabine 3"] as const;
  * São os defaults do schema escritos por extenso, e escrever por extenso é o
  * ponto: sem uma linha em `regra_disponibilidade` a loja não tem horário
  * nenhum — `primeirosPassos` chama isso de `temHorario: false` e a agenda não
- * sabe onde encaixar um atendimento.
+ * sabe onde encaixar um atendimento. **Os dois lados têm de bater**: o schema é
+ * quem manda em linha criada sem estes campos (`lib/db/src/schema/loja.ts:29`).
  *
- * `diasFuncionamento` é seg–sáb (domingo fechado, como todo ateliê de noiva).
+ * **S-A8 — de onde vieram estes números, e por que dois deles mudaram.**
+ *
+ * Este bloco carregava uma afirmação sobre o mundo: *"domingo fechado, como
+ * todo ateliê de noiva"*. O ateliê que usa este sistema **refuta a frase 7
+ * vezes em 15 páginas de agenda** — provas em 19/07, 02/08, 09/08, 16/08 e
+ * 13/09, às 14h e às 18h. E o fechamento às 19h, com prova de 60 min, fazia a
+ * última prova possível começar às 18:00, enquanto o papel registra **6 provas
+ * às 18:30** (mais 12 às 18:00, que cabiam raspando).
+ *
+ * Nenhum dos dois era bug: os dois são configuráveis, e a loja os corrige numa
+ * linha da tela. O defeito era a ORIGEM — o default não tinha sido tirado de
+ * ateliê nenhum, e toda instalação nova nascia recusando o horário mais usado
+ * do fim do dia. Perguntamos, e a dona respondeu: **atende até as 20h**, e
+ * **domingo é com hora marcada** — não é expediente de rotina, mas ela atende
+ * quando a noiva pede. O sistema não sabe dizer essa diferença (só sabe abrir
+ * ou recusar o dia), e entre perder a venda e oferecer um dia a mais na grade,
+ * abrir é o que não custa nada desfazer.
+ *
+ * O resto continua sendo default de fábrica, e é honesto que seja: `provaDuracao`
+ * está em SLOTS de 30 min (2 = 60 min), e a régua de dias — prova 14, uso 3+2,
+ * lavagem 7 — foi confirmada pela dona em P1 (*"uma semana, lavagem externa"*).
  */
 export const HORARIO_PADRAO = {
   provaDiasAntes: 14,
@@ -130,10 +151,53 @@ export const HORARIO_PADRAO = {
   usoDiasAntes: 3,
   usoDiasDepois: 2,
   lavagemDiasDepois: 7,
+  // S-A16: a lavagem do ESTOQUE nasce em 0 — configurável por loja, e zero é
+  // o comportamento que sempre valeu (estoque sem lavagem na conta). A da
+  // linha acima é a do VESTIDO, confirmada pela dona em P1.
+  estoqueLavagemDiasDepois: 0,
   atendimentoAberturaHora: 9,
-  atendimentoFechamentoHora: 19,
-  diasFuncionamento: [1, 2, 3, 4, 5, 6],
+  atendimentoFechamentoHora: 20,
+  diasFuncionamento: [0, 1, 2, 3, 4, 5, 6],
 } as const;
+
+/** 0 = domingo … 6 = sábado, como em `diasFuncionamento` (E38). */
+const DIAS_ROTULO = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/**
+ * "todos os dias" · "seg–sáb" · "seg–sex, dom" — os dias que a loja abre, na
+ * forma que a dona lê.
+ *
+ * S-D41: o resumo do seed trazia a frase `"seg–sáb, 9h–19h"` CRAVADA, e as duas
+ * metades dela estavam erradas desde a S-A8 — a loja abre domingo e fecha às
+ * 20h. A frase é a única prova que o script dá de que o ateliê ficou configurado
+ * do jeito da dona, e ela dizia que domingo estava fechado quando o sistema ia
+ * abrir. Descrição que não sai do DADO volta a mentir na próxima vez que o dado
+ * mudar; esta sai.
+ */
+export function descreverDias(dias: readonly number[]): string {
+  const unicos = [...new Set(dias)].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b);
+  if (unicos.length === 0) return "nenhum dia";
+  if (unicos.length === 7) return "todos os dias";
+
+  const blocos: number[][] = [];
+  for (const d of unicos) {
+    const ultimo = blocos[blocos.length - 1];
+    if (ultimo && d === ultimo[ultimo.length - 1]! + 1) ultimo.push(d);
+    else blocos.push([d]);
+  }
+  return blocos
+    .map((b) => (b.length >= 3 ? `${DIAS_ROTULO[b[0]!]}–${DIAS_ROTULO[b[b.length - 1]!]}` : b.map((d) => DIAS_ROTULO[d]).join(", ")))
+    .join(", ");
+}
+
+/** "todos os dias, 9h–20h" — o horário como ele está gravado. */
+export function descreverHorario(h: {
+  diasFuncionamento: readonly number[];
+  atendimentoAberturaHora: number;
+  atendimentoFechamentoHora: number;
+}): string {
+  return `${descreverDias(h.diasFuncionamento)}, ${h.atendimentoAberturaHora}h–${h.atendimentoFechamentoHora}h`;
+}
 
 // ── O catálogo: o vocabulário do acervo ───────────────────────────────────────
 
@@ -145,7 +209,7 @@ export type AtributoPadrao = {
 };
 
 /**
- * Sete atributos, 41 opções — o vocabulário com que uma noiva descreve o
+ * Nove atributos, 66 opções — o vocabulário com que uma noiva descreve o
  * vestido que ela quer, e a vendedora descreve o que tem na arara.
  *
  * Ele serve aos DOIS lados da mesma pergunta, e é por isso que vale a pena
@@ -153,14 +217,49 @@ export type AtributoPadrao = {
  * (`vestido_atributos`) e os interesses da noiva (`lead_interesse_atributos`),
  * e é o que vira filtro na lista do acervo e no lookbook.
  *
- * O que NÃO está aqui, de propósito: **tamanho e cor são colunas de
- * `vestidos`** e já filtram sozinhos — repeti-los como atributo daria dois
- * campos para o mesmo fato, e um dia eles discordariam. `categoria` fica livre
- * para a loja usar como coleção ("Coleção 2026", "Outlet"); a silhueta, que é a
- * pergunta que a noiva realmente faz, é atributo — porque só atributo aparece
- * na ficha de interesses.
+ * **Tamanho** não está aqui, e continua não estando: é da PEÇA física, muda de
+ * unidade para unidade, e nada no papel do ateliê o usa para buscar.
+ *
+ * **Cor estava fora e voltou (E149).** O E147 a deixou de fora com um
+ * argumento correto — "dois campos para o mesmo fato um dia discordariam" —,
+ * mas decidiu sem a evidência que a arqueologia do legado trouxe depois: nas
+ * 15 páginas de agenda do ateliê há **38 compromissos de festa e dama
+ * indexados por COR**, em 15 cores distintas, e a noiva de festa não pede
+ * "Arnalda", pede verde. Como coluna de texto livre, `cor` não sustentava
+ * isso: o cadastro era `<Input placeholder="Branco">` e o filtro comparava com
+ * `!==`, então "Verde", "verde" e "VERDE" viravam três entradas no dropdown,
+ * cada uma filtrando um pedaço do acervo. O argumento do E147 continua de pé e
+ * é a razão de `vestidos.cor` virar **legado lido, nunca escrito** — um campo
+ * só, não dois. E o ganho que o E147 não tinha como pesar: atributo aparece em
+ * `lead_interesse_atributos`, então a noiva passa a poder **pedir a cor** na
+ * ficha de interesses, que é exatamente o gesto que o papel registra 38 vezes.
+ *
+ * **`categoria` continua livre**, como o E147 quis — mas a linha de negócio
+ * (noiva, festa, dama) virou o atributo **Tipo de peça**, e não ela. Medido no
+ * banco de dev: dos 863 vestidos, 4 têm `categoria` preenchida, e as quatro
+ * dizem "Princesa" ou "Sereia" — que são opções de **Silhueta**. A coluna
+ * livre não virou coleção: virou depósito do atributo que já existia ao lado.
  */
 export const CATALOGO_PADRAO: AtributoPadrao[] = [
+  {
+    // E149: a linha de negócio do ateliê. O papel trata noiva e festa como dois
+    // acervos — nome de modelo de um lado, cor e etiqueta de 4 dígitos do outro
+    // —, e "Acessório" é o que dá lugar ao bolero e à mantilha (E150).
+    chave: "tipo-de-peca",
+    nome: "Tipo de peça",
+    opcoes: ["Noiva", "Festa", "Dama", "Madrinha", "Debutante", "Acessório"],
+  },
+  {
+    // E149: as 15 cores lidas nas 15 páginas de agenda do ateliê, mais os
+    // brancos que o acervo de noiva usa e que o papel não precisa nomear.
+    chave: "cor",
+    nome: "Cor",
+    opcoes: [
+      "Branco", "Off-white", "Marfim", "Nude", "Champagne", "Dourado",
+      "Rosê", "Rosa", "Pink", "Fúcsia", "Vermelho", "Marsala", "Terracota",
+      "Laranja", "Amarelo", "Verde", "Azul", "Azul serenity", "Roxo",
+    ],
+  },
   {
     chave: "silhueta",
     nome: "Silhueta",
@@ -585,6 +684,8 @@ export async function aplicarConfiguracaoInicial(opts: OpcoesConfiguracao): Prom
 export async function contarConfiguracao(lojaId: string): Promise<{
   cabines: number;
   temHorario: boolean;
+  /** O horário como está gravado — para quem precisa DESCREVÊ-lo, não só saber que existe (S-D41). */
+  horario: { diasFuncionamento: number[]; atendimentoAberturaHora: number; atendimentoFechamentoHora: number } | null;
   atributos: number;
   opcoes: number;
   vestidos: number;
@@ -593,7 +694,12 @@ export async function contarConfiguracao(lojaId: string): Promise<{
 }> {
   const [cabines, horario, atributos, escadas, recorrencias, vestidos] = await Promise.all([
     db.select({ id: cabinesTable.id }).from(cabinesTable).where(eq(cabinesTable.lojaId, lojaId)),
-    db.select({ id: regraDisponibilidadeTable.id }).from(regraDisponibilidadeTable).where(eq(regraDisponibilidadeTable.lojaId, lojaId)),
+    db.select({
+      id: regraDisponibilidadeTable.id,
+      diasFuncionamento: regraDisponibilidadeTable.diasFuncionamento,
+      atendimentoAberturaHora: regraDisponibilidadeTable.atendimentoAberturaHora,
+      atendimentoFechamentoHora: regraDisponibilidadeTable.atendimentoFechamentoHora,
+    }).from(regraDisponibilidadeTable).where(eq(regraDisponibilidadeTable.lojaId, lojaId)),
     db.select({ id: atributosTable.id }).from(atributosTable).where(eq(atributosTable.lojaId, lojaId)),
     db.select({ id: comissaoRegrasTable.id }).from(comissaoRegrasTable).where(eq(comissaoRegrasTable.lojaId, lojaId)),
     db.select({ id: recorrenciasTable.id }).from(recorrenciasTable).where(eq(recorrenciasTable.lojaId, lojaId)),
@@ -612,6 +718,13 @@ export async function contarConfiguracao(lojaId: string): Promise<{
   return {
     cabines: cabines.length,
     temHorario: horario.length > 0,
+    horario: horario[0]
+      ? {
+          diasFuncionamento: horario[0].diasFuncionamento,
+          atendimentoAberturaHora: horario[0].atendimentoAberturaHora,
+          atendimentoFechamentoHora: horario[0].atendimentoFechamentoHora,
+        }
+      : null,
     atributos: atributos.length,
     opcoes,
     vestidos: vestidos.length,
