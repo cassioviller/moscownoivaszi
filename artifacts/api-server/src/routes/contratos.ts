@@ -539,6 +539,25 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
           lojaId,
           contratoId: contrato.id,
           numero: p.numero,
+          /**
+           * S-M3 — estas parcelas SÃO o carnê, e nasciam rotuladas `AVULSA`.
+           *
+           * O campo não era passado e a coluna default é `AVULSA`
+           * (`schema/financeiro.ts:28`), que é o rótulo certo para "linha
+           * inserida por quem não pensou no assunto" — só que aqui alguém
+           * pensou: a guarda do `:287` exige que a soma bata com o `valorTotal`
+           * EXATO, o que é a definição do carnê, e a tela manda o próprio
+           * `montarPlanoParcelas` (`orcamentos/[id].tsx:672`), entrada em
+           * `numero 0` inclusive.
+           *
+           * O estrago é no `jaTemCarne` do `gerar-plano` (`:1275`), que
+           * pergunta `origem === "PLANO"`: ele nunca via este carnê, então
+           * aceitava montar OUTRO por cima. Uma venda de R$ 5.000,00 ficava com
+           * R$ 10.000,00 em parcelas, e o deslocamento do S26 — feito para tirar
+           * um reparo avulso da frente — empurrava a entrada verdadeira para
+           * fora do `numero 0`, que significa ENTRADA em seis pontos do sistema.
+           */
+          origem: "PLANO" as const,
           descricao: p.descricao ?? `Parcela ${p.numero}`,
           valorPrevisto: p.valorPrevisto,
           vencimento: p.vencimento,

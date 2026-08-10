@@ -131,6 +131,53 @@ describe("S26 — o carnê nasce mesmo depois de o reparo ter sido cobrado", () 
     expect(r.body.error).toBe("JA_TEM_PLANO");
   });
 
+  /**
+   * S-M3 — e o carnê que entra pela PORTA DA FRENTE não era carnê nenhum.
+   *
+   * Os quatro casos acima montam o plano pelo `gerar-plano`. A tela de fechar
+   * venda não usa essa porta: ela manda o carnê inteiro dentro do
+   * `POST /contratos` (`orcamentos/[id].tsx:672`, as linhas do próprio
+   * `montarPlanoParcelas`). Essas parcelas nasciam com o default da coluna —
+   * `AVULSA` —, e o `jaTemCarne` só reconhece `PLANO`: o contrato fechado com
+   * carnê aceitava montar OUTRO por cima, e a soma dobrava.
+   */
+  it("S-M3 — o carnê do fechamento também é carnê: gerar outro é 409", async () => {
+    const lead = await criarLead(f);
+    const r = await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send({
+        leadId: lead.id,
+        vendedoraId: f.superAdminId,
+        valorTotal: 5000,
+        // O que a tela manda: entrada em `numero 0` mais três parcelas, somando
+        // o total exato (é a guarda de `:287` que obriga).
+        parcelas: [
+          { numero: 0, descricao: "Entrada", valorPrevisto: 2000, vencimento: dataFutura(1).toISOString() },
+          { numero: 1, descricao: "Parcela 1/3", valorPrevisto: 1000, vencimento: dataFutura(31).toISOString() },
+          { numero: 2, descricao: "Parcela 2/3", valorPrevisto: 1000, vencimento: dataFutura(61).toISOString() },
+          { numero: 3, descricao: "Parcela 3/3", valorPrevisto: 1000, vencimento: dataFutura(91).toISOString() },
+        ],
+      })
+      .expect(201);
+    const contratoId = r.body.id as string;
+
+    // VERMELHO ANTES: as quatro nasciam `AVULSA`.
+    const nascidas = await parcelasDe(contratoId);
+    expect(nascidas).toHaveLength(4);
+    expect(nascidas.every((p) => p.origem === "PLANO")).toBe(true);
+
+    // VERMELHO ANTES: 201 — a venda de R$ 5.000,00 ficava com R$ 10.000,00 em
+    // parcelas, e a entrada verdadeira era empurrada para fora do `numero 0`
+    // pelo deslocamento do S26.
+    const segundo = await gerarPlano(contratoId, 1000, 4).expect(409);
+    expect(segundo.body.error).toBe("JA_TEM_PLANO");
+
+    const depois = await parcelasDe(contratoId);
+    expect(depois).toHaveLength(4);
+    expect(depois.reduce((acc, p) => acc + p.valorPrevisto, 0)).toBe(5000);
+    expect(depois.find((p) => p.numero === 0)!.descricao).toBe("Entrada");
+  });
+
   it("a parcela AVULSA é da mesma família, e também não tranca o carnê", async () => {
     const lead = await criarLead(f);
     const contrato = await criarContrato(f, {
