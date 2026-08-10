@@ -60,13 +60,38 @@ schema, 16 dos núcleos puros (financeiro, agenda, funil), 3 de `scripts/`.
 Réguas na abertura: **API 1105 · frontend 534 · E2E 165 · typecheck verde em
 5 projetos**, mais a régua do banco virgem (8 ✓).
 
+## Os onze ângulos
+
+Sete de correção, três de limpeza (os que produziram os 22 perdidos), e um que
+revisa o código de hoje — porque conserto novo é código não revisado.
+
+| # | Ângulo | O que ele procura |
+|---|---|---|
+| 1 | dinheiro | float onde devia ser centavo, sinal trocado, desconto na base errada, total da tela ≠ total do servidor |
+| 2 | fuso-data | `new Date("YYYY-MM-DD")`, instante comparado como dia, borda de janela, a mesma janela calculada de dois jeitos |
+| 3 | transacao | **enumera a S-M18**: guarda lida no pool e escrita na transação sem relock; escrita multi-tabela solta; 23505 vazando |
+| 4 | permissao | **enumera a S-M9**: `requireModulo` da rota × `podeNoModulo` da tela, ação por ação; e id que entra sem prova de loja (E91) |
+| 5 | contrato-tela-servidor | a regra 22 pura: openapi × rota × tela, três declarações cruzadas |
+| 6 | estados | transição permitida por uma porta e proibida por outra; estado terminal que aceita escrita; invariante que só existe em comentário |
+| 7 | duplicacao | a regra 26: a mesma régua em N grafias — e qual das cópias DIVERGE |
+| 8 | passivo | export sem importador, coluna que ninguém lê, e **comentário que mente sobre o código de hoje** |
+| 9 | eficiencia | N+1, payload gordo, índice que falta, cache invalidado demais ou de menos |
+| 10 | reguas-e-testes | teste vacuoso, teste que prega o defeito, `skip` escondendo vermelho, fixture que acopla ordem |
+| 11 | consertos-de-hoje | os 14 commits de hoje, com olho adversarial: guarda nova recusando caso legítimo, tranca nova arriscando deadlock, 23505 cru do unique novo |
+
+Cada achado passa por um **cético independente**, instruído a REFUTAR — a
+procurar a guarda que já existe noutra camada, e a refutar na dúvida. Achado
+que ninguém consegue derrubar é o único que sobrevive.
+
 ## Estado
 
-- [ ] Rodada lançada
+- [x] Rodada lançada — `wf_44b3f415-631`, 11 localizadores + verificação em
+      pipeline (cada ângulo verifica assim que termina, sem esperar os outros)
 - [ ] Localizadores concluídos
 - [ ] Verificação concluída
 - [ ] Achados escritos AQUI, no git
 
 **Enquanto estas caixas não estiverem marcadas, o que existe é esta página.**
 Se a sessão cair, é daqui que se retoma — e não da transcrição, que a regra 32
-diz não ser backup de nada.
+diz não ser backup de nada. O handle do run está acima e serve para retomar
+enquanto o disco o guardar; **a página não depende dele**.
