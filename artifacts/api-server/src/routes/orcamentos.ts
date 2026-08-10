@@ -19,7 +19,7 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva } from "../lib/escopo-loja";
+import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva, vestidoNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
@@ -419,6 +419,20 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
       error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
       detalhe: "Este item de estoque não existe nesta loja.",
       campos: [{ campo: "itemEstoqueId", motivo: "Item de estoque não encontrado nesta loja" }],
+    });
+    return;
+  }
+  // S-M12 — dos três ids que o item pode apontar, o `vestidoId` era o único
+  // sem prova de loja: o `itemEstoqueId` tem a de cima, o `ajusteId` tem a
+  // dupla do E155 logo abaixo, e a peça do acervo entrava só com a FK. O item
+  // com a peça da loja B passava, e a venda virava beco sem saída: a reserva
+  // do E150 responde 422 apontando uma peça que ESTA loja nunca poderá
+  // reservar.
+  if (vestidoId && !(await vestidoNaLoja(vestidoId, lojaId))) {
+    res.status(404).json({
+      error: "VESTIDO_NAO_ENCONTRADO",
+      detalhe: "Esta peça não existe nesta loja.",
+      campos: [{ campo: "vestidoId", motivo: "Peça não encontrada nesta loja" }],
     });
     return;
   }

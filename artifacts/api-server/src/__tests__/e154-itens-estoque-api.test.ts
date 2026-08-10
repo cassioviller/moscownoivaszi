@@ -275,6 +275,36 @@ describe("E154 — o comprometimento do dia", () => {
     await limparFixture(outra);
   });
 
+  /**
+   * S-M12 — dos três ids do item, o `vestidoId` era o único sem prova de
+   * loja: o `itemEstoqueId` tem a do teste acima, o `ajusteId` tem a dupla do
+   * E155, e a peça do acervo entrava só com a FK. O item com a peça da loja B
+   * passava, e a venda virava beco sem saída — a reserva do E150 responde 422
+   * apontando uma peça que ESTA loja nunca poderá reservar.
+   */
+  it("S-M12 — peça do acervo de outra loja também não entra no orçamento desta", async () => {
+    const outra = await criarFixture();
+    const vestidoAlheio = await criarVestido(outra);
+
+    const lead = await criarLead(f);
+    const orcamento = await criarOrcamento(f, { leadId: lead.id, status: "RASCUNHO" });
+    // VERMELHO ANTES: 201 — a FK provava que a peça existe, não de quem é.
+    const r = await agent
+      .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/itens`)
+      .send({ tipo: "VESTIDO", vestidoId: vestidoAlheio.id, descricao: "Vestido", valorUnitario: 4200 })
+      .expect(404);
+    expect(r.body.error).toBe("VESTIDO_NAO_ENCONTRADO");
+
+    // A peça DESTA loja continua entrando.
+    const daCasa = await criarVestido(f);
+    await agent
+      .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/itens`)
+      .send({ tipo: "VESTIDO", vestidoId: daCasa.id, descricao: "Vestido", valorUnitario: 4200 })
+      .expect(201);
+
+    await limparFixture(outra);
+  });
+
   it("dia mal formado é recusado antes de virar conta", async () => {
     await agent
       .get(`/api/lojas/${f.lojaId}/itens-estoque/comprometimento`)
