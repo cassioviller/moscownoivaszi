@@ -3,6 +3,28 @@
 **Base** `e624e4e` (`main`, limpo, em dia com o `origin`) · diagnóstico em
 [`RELATORIO.md`](./RELATORIO.md)
 
+**Fim do dia 2026-08-10: 14 das 18 fechadas em 14 commits de código, cada um
+com o vermelho medido antes.** Réguas: API 1089 → **1105** · frontend 530 →
+**534** · E2E **165** · typecheck verde em 5 projetos — e a régua do banco
+virgem rodada duas vezes (S-M15, que a consertou; S-M8, que mexeu no schema).
+O E2E completo rodou antes de CADA commit de código, e pegou um defeito real:
+o spec 32 vivia no ponto cego da S-M4 (`fc8729d`).
+
+## Como retomar
+
+As quatro abertas estão na tabela abaixo, todas 🟡. As três de código são
+trabalho de varredura ou de contrato, não conserto pontual:
+
+1. **S-M9** — o descasamento criar×editar em 8 telas. NÃO conserte os 8 à
+   mão: a forma é a da S36 (varredura cruzando `requireModulo` da rota ×
+   `podeNoModulo` da tela), que fica de guarda para o nono.
+2. **S-M18** — a varredura check-then-write (a forma da S-M7). O padrão de
+   conserto já existe em dois sítios: S33 e S-M7.
+3. **S-M10** — campo vazio querendo dizer "apague": exige decidir o contrato
+   (`null` explícito no PATCH de interesses) e tocar as duas pontas.
+4. **S-M17** — espera dados de um banco de instalação real. Gente, não
+   código.
+
 A trilha não tem épicos: ela nasce **direto em sobras**. O diagnóstico já veio
 consolidado do workflow — 6 localizadores, 59 candidatos, 59 verificadores
 independentes, 15 defeitos relatados —, e o que falta é fechar cada um.
