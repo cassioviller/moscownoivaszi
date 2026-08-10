@@ -50,7 +50,11 @@ export default defineConfig({
       // E2E_SUITE=1: a suíte inteira loga ~100× do mesmo IP em minutos — o
       // rate limit de login (20/5min) derrubava os ÚLTIMOS specs da ordem
       // alfabética (41–43) com 429, só na suíte completa. Mesmo skip do vitest.
-      command: `PORT=${API_PORT} E2E_SUITE=1 pnpm --filter @workspace/api-server run dev`,
+      // APP_DATABASE_NAME vazio DE PROPÓSITO: o `run dev` deriva DATABASE_URL
+      // dele quando presente (é como o preview aponta para o banco da LOJA), e
+      // o userenv do workspace o define para todo shell — sem o vazio, a suíte
+      // E2E inteira rodaria no banco da loja em vez do de DATABASE_URL.
+      command: `PORT=${API_PORT} E2E_SUITE=1 APP_DATABASE_NAME= pnpm --filter @workspace/api-server run dev`,
       url: `http://localhost:${API_PORT}/api/healthz`,
       reuseExistingServer: true,
       timeout: 120_000,

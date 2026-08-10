@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "export NODE_ENV=development; if [ -n \"$APP_DATABASE_NAME\" ]; then export DATABASE_URL=\"$(node -p 'const u=new URL(process.env.DATABASE_URL); u.pathname=\"/\"+process.env.APP_DATABASE_NAME; u.toString()')\"; fi; pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test": "vitest run",

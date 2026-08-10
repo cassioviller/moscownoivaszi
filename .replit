@@ -24,5 +24,9 @@ channel = "stable-25_05"
 
 [userenv]
 
+# O NOME do banco que o app do preview usa; a URL é derivada de DATABASE_URL
+# pelo `run dev` do api-server (mesma instância, credencial fora do git).
+# Testes, seeds e réguas continuam mandando em DATABASE_URL — o E2E fixa
+# APP_DATABASE_NAME= vazio no playwright.config.ts para não ser capturado.
 [userenv.shared]
-APP_DATABASE_URL = "postgresql://postgres:password@helium/moscow_base?sslmode=disable"
+APP_DATABASE_NAME = "moscow_base"

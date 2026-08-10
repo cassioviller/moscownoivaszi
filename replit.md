@@ -74,6 +74,19 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   A tela baixa o dump (E59) e cada backup bom poda os dumps além dos 10 mais
   recentes e as sessões expiradas — o registro fica, o arquivo sai do disco.
 - Env obrigatória: `DATABASE_URL` (Postgres)
+- **O preview roda no banco da LOJA por `APP_DATABASE_NAME`** (2026-08-10): o
+  workspace tem DOIS bancos na mesma instância — `heliumdb` (dev, fixtures das
+  suítes) e `moscow_base` (o ateliê de verdade, legado do papel carregado). O
+  `run dev` do api-server deriva `DATABASE_URL` trocando só o nome quando
+  `APP_DATABASE_NAME` está no ambiente (o `[userenv.shared]` do `.replit` o
+  define), então o preview abre a loja sem tocar na env global. **A biblioteca
+  `@workspace/db` lê SÓ `DATABASE_URL`** — um segundo nome com precedência
+  (f0a17d0) capturava banco-virgem, seed e suítes, que redirecionam filhos
+  trocando `DATABASE_URL`; medido: o filho pedia `/heliumdb` e o pool conectava
+  em `/moscow_base`. O E2E fixa `APP_DATABASE_NAME=` vazio no
+  `playwright.config.ts` e segue no banco de `DATABASE_URL`. Login da loja:
+  `dona@moscownoivas.com.br` (banco `moscow_base`); o de dev continua
+  `admin@moscownoivas.com` (banco `heliumdb`).
 - **Para MEDIR o bundle do frontend**, o build do Vite exige duas variáveis e
   falha antes de compilar sem elas (o `vite.config.ts` lança de propósito):
   `PORT=5173 BASE_PATH=/ pnpm --filter @workspace/moscow-noivas run build`.
