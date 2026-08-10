@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avisosDeEstoque, nomeDoItemEstoque } from "./estoque-aviso";
+import { avisosDeEstoque, nomeDoItemEstoque, quantidadeContada } from "./estoque-aviso";
 
 /**
  * E154 — a frase que a vendedora lê quando o saiote não dá para todo mundo.
@@ -103,5 +103,33 @@ describe("E154 — o aviso de estoque", () => {
       dia: null,
     });
     expect(avisos).toEqual([]);
+  });
+});
+
+/**
+ * S-M11 — `Number("")` é 0: limpar o campo para redigitar passava pelo guard
+ * da tela e ZERAVA o estoque da peça. O vazio é campo pela metade, não zero;
+ * o zero DIGITADO continua valendo, porque contar a arara e achar nenhum é
+ * uma contagem.
+ */
+describe("S-M11 — quantidadeContada", () => {
+  it("o campo limpo NÃO é zero — era ele que zerava o estoque", () => {
+    // VERMELHO ANTES: 0 — e a peça saía da arara sem ninguém digitar nada.
+    expect(quantidadeContada("")).toBeNull();
+    expect(quantidadeContada("   ")).toBeNull();
+  });
+
+  it("o zero digitado vale — a loja contou e não tem nenhum", () => {
+    expect(quantidadeContada("0")).toBe(0);
+  });
+
+  it("número são passa inteiro; fração trunca como a tela sempre truncou", () => {
+    expect(quantidadeContada("7")).toBe(7);
+    expect(quantidadeContada("3.9")).toBe(3);
+  });
+
+  it("negativo e não-número são recusados", () => {
+    expect(quantidadeContada("-1")).toBeNull();
+    expect(quantidadeContada("abc")).toBeNull();
   });
 });

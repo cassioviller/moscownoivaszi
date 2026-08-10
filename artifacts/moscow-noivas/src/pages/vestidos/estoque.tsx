@@ -42,7 +42,7 @@ import { podeNoModulo } from "@/lib/permissoes";
 import { brl } from "@/lib/formatos";
 import { mensagemApi } from "@/lib/erro-api";
 import { parseValor } from "@/lib/financeiro/dinheiro";
-import { nomeDoItemEstoque } from "@/lib/estoque-aviso";
+import { nomeDoItemEstoque, quantidadeContada } from "@/lib/estoque-aviso";
 
 /**
  * E154 — a arara que se conta.
@@ -130,8 +130,10 @@ export default function EstoqueVestidos() {
   };
 
   const salvarQuantidade = async (itemEstoqueId: string, valor: string) => {
-    const quantidade = Math.trunc(Number(valor));
-    if (!Number.isFinite(quantidade) || quantidade < 0) {
+    // S-M11: `Number("")` é 0 — limpar o campo para redigitar zerava o
+    // estoque. A régua mora em `quantidadeContada`, com o vazio recusado.
+    const quantidade = quantidadeContada(valor);
+    if (quantidade === null) {
       toast({ title: "Quantidade inválida", variant: "destructive" });
       return;
     }

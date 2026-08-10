@@ -38,6 +38,22 @@ export function nomeDoItemEstoque(item: { nome: string; tamanho?: string | null 
 }
 
 /**
+ * S-M11 — a contagem digitada na arara, ou `null` se não dá para salvar.
+ *
+ * A tela validava com `Math.trunc(Number(valor))` seguido de `< 0`, e
+ * `Number("")` é `0`: limpar o campo para redigitar passava pelos dois guards
+ * e ZERAVA o estoque da peça — depois disso todo orçamento com ela alarmava
+ * falta que não existe. O vazio não é zero: é campo pela metade. O ZERO
+ * digitado continua valendo — a loja contou a arara e não tem nenhum.
+ */
+export function quantidadeContada(valor: string): number | null {
+  if (valor.trim() === "") return null;
+  const n = Math.trunc(Number(valor));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+/**
  * As frases de aviso para o dia — uma por item de estoque que estoura.
  *
  * `dia` nulo (noiva sem data de casamento) devolve lista vazia: sem dia não há
