@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, leadsTable, leadInteressesTable, leadInteresseAtributosTable, registrosCobrancaTable, usuariosTable, atendimentosTable, contratosTable, orcamentosTable, bloqueioVestidosTable } from "@workspace/db";
 import { eq, and, desc, or, ilike, sql, count, inArray, gte, lt } from "drizzle-orm";
 import { atributosDaLoja } from "../lib/escopo-loja";
+import { padraoDeBusca } from "../lib/busca-lead";
 import {
   ListLeadsResponse,
   ListLeadsQueryParams,
@@ -101,7 +102,8 @@ router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   if (etapa) condicoes.push(eq(leadsTable.etapa, etapa));
   const busca = q?.trim();
   if (busca) {
-    const padrao = `%${busca}%`;
+    // S-M14: o digitado é literal — `%` e `_` escapados pela régua única.
+    const padrao = padraoDeBusca(busca);
     const porCampo = [ilike(leadsTable.noivaNome, padrao), ilike(leadsTable.noivoNome, padrao)];
     // Dígitos casam contra o whatsapp SEM máscara: "11988" encontra
     // "(11) 98888-7777" — mesma expressão do índice trigram dos extras.

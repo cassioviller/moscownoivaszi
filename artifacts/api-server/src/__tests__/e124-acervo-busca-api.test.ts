@@ -144,6 +144,38 @@ describe("E124 — busca, página e recentes-primeiro no acervo", () => {
     expect(criadosEm).toEqual(ordenadoDesc);
   });
 
+  /**
+   * S-M14 — o que se digita é LITERAL, nas duas buscas que compartilham a
+   * régua (`padraoDeBusca`): a de leads e a do acervo. `%${busca}%` cru
+   * deixava `%` e `_` valendo como curinga do LIKE — buscar `%` devolvia o
+   * cadastro inteiro, e colar "50% entrada" de um orçamento buscava outra
+   * coisa sem dizer que buscou.
+   */
+  it("S-M14 — buscar `%` não devolve o cadastro inteiro, nas duas buscas", async () => {
+    // VERMELHO ANTES: as duas noivas da fixture voltavam — o `%` era curinga.
+    const leads = await agent
+      .get(`/api/lojas/${f.lojaId}/leads?q=${encodeURIComponent("%")}`)
+      .expect(200);
+    expect(leads.body.itens ?? leads.body).toHaveLength(0);
+
+    const contratos = await agent
+      .get(`/api/lojas/${f.lojaId}/contratos?q=${encodeURIComponent("%")}`)
+      .expect(200);
+    expect(contratos.body.itens).toHaveLength(0);
+
+    // E o `_` também é literal: "Marian_" não pode casar "Mariana".
+    const sublinhado = await agent
+      .get(`/api/lojas/${f.lojaId}/leads?q=${encodeURIComponent("Marian_")}`)
+      .expect(200);
+    expect(sublinhado.body.itens ?? sublinhado.body).toHaveLength(0);
+
+    // A busca de verdade continua achando.
+    const porNome = await agent
+      .get(`/api/lojas/${f.lojaId}/leads?q=mariana busca`)
+      .expect(200);
+    expect((porNome.body.itens ?? porNome.body).map((l: { id: string }) => l.id)).toContain(mariana.id);
+  });
+
   // ÚLTIMO do describe de propósito: cria noiva, orçamentos e contrato
   // próprios, e os testes acima pregam contagens (total de ATIVOs, orçamentos
   // por noiva) que não podem ver estes registros.
