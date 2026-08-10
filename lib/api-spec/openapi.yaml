@@ -6380,8 +6380,10 @@ components:
       required: [data, valorPago]
       properties:
         data: { type: string, format: date-time }
-        # Piso de um centavo (E115), como a porta irmã PagamentoInput já tinha:
-        # uma saída negativa entraria no caixa como dinheiro voltando.
+        # Piso de um centavo (E115): uma saída negativa entraria no caixa como
+        # dinheiro voltando. (O comentário original dizia "como a porta irmã
+        # PagamentoInput já tinha" — não tinha: ela ficou em `minimum: 0` até a
+        # S-M2, quitando conta com R$ 0,00.)
         valorPago: { type: number, minimum: 0.01 }
         forma: { type: string }
         observacoes: { type: string }
@@ -6396,7 +6398,12 @@ components:
           type: array
           minItems: 1
           items: { type: string }
-        valorPago: { type: number, minimum: 0 }
+        # S-M2 — o MESMO piso da porta irmã PagarContaInput, de verdade agora:
+        # `minimum: 0` aceitava quitar uma conta de R$ 3.200,00 com saída de
+        # ZERO no caixa. O zod gerado daqui é a única validação do servidor; o
+        # guard de um centavo existia só no navegador. Omitir continua valendo
+        # (a saída vale a soma das contas) — o piso só morde valor presente.
+        valorPago: { type: number, minimum: 0.01 }
         forma: { type: string }
         observacoes: { type: string }
     PagamentoItem:

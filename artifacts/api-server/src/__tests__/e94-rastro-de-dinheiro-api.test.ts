@@ -301,6 +301,43 @@ describe("E94 — dinheiro que muda sem deixar rastro", () => {
       expect(registrados.every((l) => l.entidade === "pagamento")).toBe(true);
     });
 
+    /**
+     * S-M2 — e as duas portas têm o MESMO piso de um centavo.
+     *
+     * A single tinha `minimum: 0.01` desde o E115, com um comentário no spec
+     * afirmando que a multi "já tinha". Não tinha: `minimum: 0` — e o zod
+     * gerado é a ÚNICA validação do servidor, o guard de um centavo vivia só
+     * no navegador. Uma conta de R$ 3.200,00 ia a PAGA com saída de ZERO no
+     * caixa para quem batesse na rota direto.
+     */
+    it("S-M2 — quitar com R$ 0,00 é recusado nas duas portas, e a conta segue PREVISTA", async () => {
+      const pelaMulti = await despesa("Costureira externa", 3_200);
+
+      // VERMELHO ANTES: 201, conta PAGA, pagamento de R$ 0,00 no caixa.
+      await agent
+        .post(`/api/lojas/${f.lojaId}/financeiro/pagamentos`)
+        .send({ contaIds: [pelaMulti], data: new Date().toISOString(), valorPago: 0, forma: "PIX" })
+        .expect(400);
+      const [conta] = await db
+        .select()
+        .from(contasPagarTable)
+        .where(eq(contasPagarTable.id, pelaMulti));
+      expect(conta.status).toBe("PREVISTA");
+
+      // A porta irmã já recusava — é o espelho que o comentário do spec
+      // prometia e agora existe dos dois lados.
+      await agent
+        .post(`/api/lojas/${f.lojaId}/contas-pagar/${pelaMulti}/pagar`)
+        .send({ data: new Date().toISOString(), valorPago: 0, forma: "PIX" })
+        .expect(400);
+
+      // E omitir o valor continua valendo: a saída vale a soma das contas.
+      await agent
+        .post(`/api/lojas/${f.lojaId}/financeiro/pagamentos`)
+        .send({ contaIds: [pelaMulti], data: new Date().toISOString(), forma: "PIX" })
+        .expect(201);
+    });
+
     it("a saída da porta single tem a mesma forma da multi: item, rateio e valor", async () => {
       const contaId = await despesa("Aluguel", 3_500);
 

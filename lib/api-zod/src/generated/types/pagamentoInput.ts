@@ -10,7 +10,7 @@ export interface PagamentoInput {
   data: Date;
   /** @minItems 1 */
   contaIds: string[];
-  /** @minimum 0 */
+  /** @minimum 0.01 */
   valorPago?: number;
   forma?: string;
   observacoes?: string;

@@ -6828,7 +6828,7 @@ export const CreatePagamentoParams = zod.object({
 })
 
 
-export const createPagamentoBodyValorPagoMin = 0;
+export const createPagamentoBodyValorPagoMin = 0.01;
 
 
 
