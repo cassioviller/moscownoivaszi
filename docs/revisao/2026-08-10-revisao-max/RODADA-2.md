@@ -106,10 +106,10 @@ que ninguém consegue derrubar é o único que sobrevive.
       desta vez a prova é a ausência**: `rodada-2-achados/` não existe no
       disco — nenhum ângulo chegou a pingar. A mudança de gravar por ângulo
       não foi testada por esse run; vale para o próximo.
-- [x] Rodada RELANÇADA (3ª) — base `89b38c8`, mesma especificação da 2ª:
-      onze ângulos, cético por achado, e **cada ângulo grava
-      `rodada-2-achados/NN-<angulo>.md` assim que a verificação dele
-      termina**. Handle registrado no commit seguinte ao lançamento.
+- [x] Rodada RELANÇADA (3ª) — **`wf_4d6ca4ce-f18`**, base `89b38c8`, mesma
+      especificação da 2ª: onze ângulos, cético por achado, e **cada ângulo
+      grava `rodada-2-achados/NN-<angulo>.md` assim que a verificação dele
+      termina** — o escritor grava, o fecho commita.
 - [ ] Localizadores concluídos
 - [ ] Verificação concluída
 - [ ] Achados escritos em `rodada-2-achados/`, no git
