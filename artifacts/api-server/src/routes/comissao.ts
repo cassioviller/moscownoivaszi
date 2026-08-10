@@ -10,7 +10,7 @@ import {
   usuariosTable,
   usuariosLojasTable,
 } from "@workspace/db";
-import { eq, and, gte, lt, lte, inArray, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, count, gte, lt, lte, inArray, isNull, isNotNull, desc } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/pg-core";
 import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
 import { registrarAuditoria } from "../lib/auditoria";
@@ -473,12 +473,36 @@ router.patch("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promis
   res.json(UpdateComissaoRegraResponse.parse(regra));
 });
 
+/**
+ * S-M16 — era um dos três deletes crus que sobraram fora da régua do E115.
+ * As faixas caem por cascade — elas não existem fora da regra —, e o
+ * fechamento já feito não é tocado (ele congela os valores na hora do fecho).
+ * O que faltava: 404 em vez de 204 sobre o nada, e o rastro — a escada de
+ * comissão de uma vendedora é regra de DINHEIRO, e sumia sem uma linha
+ * dizendo quem a levou.
+ */
 router.delete("/lojas/:lojaId/comissao/regras/:regraId", async (req, res): Promise<void> => {
   const { lojaId, regraId } = req.params as { lojaId: string; regraId: string };
-  // As faixas caem por cascade — elas não existem fora da regra.
-  await db
-    .delete(comissaoRegrasTable)
+  const [regra] = await db.select().from(comissaoRegrasTable)
     .where(and(eq(comissaoRegrasTable.id, regraId), eq(comissaoRegrasTable.lojaId, lojaId)));
+  if (!regra) {
+    res.status(404).json({ error: "REGRA_NAO_ENCONTRADA", detalhe: "Esta regra de comissão não existe nesta loja." });
+    return;
+  }
+  const [faixas] = await db.select({ n: count() }).from(comissaoFaixasTable)
+    .where(eq(comissaoFaixasTable.regraId, regraId));
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "COMISSAO_REGRA_REMOVIDA",
+      entidade: "comissao_regra",
+      entidadeId: regraId,
+      detalhe: { vendedoraId: regra.vendedoraId, faixas: faixas!.n },
+    });
+    await tx.delete(comissaoRegrasTable)
+      .where(and(eq(comissaoRegrasTable.id, regraId), eq(comissaoRegrasTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 

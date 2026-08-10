@@ -39,6 +39,7 @@ import {
   VestidoStatus
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
+import { registrarAuditoria } from "../lib/auditoria";
 import { randomUUID } from "node:crypto";
 import {
   buscarRegra,
@@ -853,13 +854,50 @@ router.patch("/lojas/:lojaId/itens-estoque/:itemEstoqueId", async (req, res): Pr
   res.json(UpdateItemEstoqueResponse.parse(item));
 });
 
+/**
+ * S-M16 — era um dos três deletes crus que sobraram fora da régua do E115
+ * ("nada some sem 404, contagem e rastro"). O item some do cadastro; os itens
+ * de contrato/orçamento que o citam ficam com `item_estoque_id` nulo (set
+ * null) e a descrição em texto preservada — decisão ESCRITA, o mesmo
+ * tratamento da peça vendida (S-A14). O que faltava era o resto: 204 sobre o
+ * nada virou 404, e o rastro guarda o nome e quantos itens o citavam, porque
+ * depois do DELETE não sobra linha de onde reconstituir nada disso.
+ */
 router.delete("/lojas/:lojaId/itens-estoque/:itemEstoqueId", async (req, res): Promise<void> => {
   const { lojaId, itemEstoqueId } = req.params as { lojaId: string; itemEstoqueId: string };
-  // O item some do cadastro; os itens de contrato que o citam ficam com
-  // `item_estoque_id` nulo (set null) e a descrição em texto preservada — o que
-  // foi vendido continua contado, que é o mesmo tratamento do vestido.
-  await db.delete(itensEstoqueTable)
+  const [item] = await db.select().from(itensEstoqueTable)
     .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)));
+  if (!item) {
+    res.status(404).json({
+      error: "ITEM_ESTOQUE_NAO_ENCONTRADO",
+      detalhe: "Este item de estoque não existe nesta loja.",
+    });
+    return;
+  }
+  const [[emContratos], [emOrcamentos]] = await Promise.all([
+    db.select({ n: count() }).from(contratoItensTable)
+      .where(eq(contratoItensTable.itemEstoqueId, itemEstoqueId)),
+    db.select({ n: count() }).from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.itemEstoqueId, itemEstoqueId)),
+  ]);
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "ITEM_ESTOQUE_REMOVIDO",
+      entidade: "item_estoque",
+      entidadeId: itemEstoqueId,
+      detalhe: {
+        nome: item.nome,
+        tamanho: item.tamanho,
+        quantidade: item.quantidade,
+        itensDeContrato: emContratos!.n,
+        itensDeOrcamento: emOrcamentos!.n,
+      },
+    });
+    await tx.delete(itensEstoqueTable)
+      .where(and(eq(itensEstoqueTable.id, itemEstoqueId), eq(itensEstoqueTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 

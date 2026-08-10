@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable, vestidosTable } from "@workspace/db";
+import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable, vestidosTable, orcamentoItensTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, count, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
@@ -840,9 +840,43 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
   res.json(UpdateAjusteResponse.parse(fullAjuste));
 });
 
+/**
+ * S-M16 — era um dos três deletes crus que sobraram fora da régua do E115.
+ * O checklist desce por cascade (ele não existe fora do ajuste) e a peça que
+ * a confecção virou fica (`origem_ajuste_id` set null — decisão escrita do
+ * E156: perde-se a proveniência, não o acervo). O que NÃO pode sair calado é
+ * o trabalho JÁ COBRADO: o item de orçamento que o cobra (E155) ficaria com
+ * `ajuste_id` nulo em silêncio, e a noiva leria uma cobrança apontando um
+ * trabalho que ninguém mais costura.
+ */
 router.delete("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void> => {
-  const { lojaId, ajusteId } = req.params;
-  await db.delete(ajustesTable).where(and(eq(ajustesTable.id, ajusteId as string), eq(ajustesTable.lojaId, lojaId as string)));
+  const { lojaId, ajusteId } = req.params as { lojaId: string; ajusteId: string };
+  const [ajuste] = await db.select().from(ajustesTable)
+    .where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)));
+  if (!ajuste) {
+    res.status(404).json({ error: "AJUSTE_NAO_ENCONTRADO", detalhe: "Este ajuste não existe nesta loja." });
+    return;
+  }
+  const [cobrancas] = await db.select({ n: count() }).from(orcamentoItensTable)
+    .where(eq(orcamentoItensTable.ajusteId, ajusteId));
+  if (cobrancas!.n > 0) {
+    res.status(409).json({
+      error: "AJUSTE_COBRADO",
+      detalhe: "Este trabalho já foi cobrado num orçamento — remova o item de lá antes, ou o valor cobrado ficaria apontando o nada.",
+    });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await registrarAuditoria(tx, {
+      lojaId,
+      usuario: req.usuario!,
+      acao: "AJUSTE_REMOVIDO",
+      entidade: "ajuste",
+      entidadeId: ajusteId,
+      detalhe: { descricao: ajuste.descricao, tipo: ajuste.tipo, status: ajuste.status, custo: ajuste.custo },
+    });
+    await tx.delete(ajustesTable).where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)));
+  });
   res.status(204).send();
 });
 
