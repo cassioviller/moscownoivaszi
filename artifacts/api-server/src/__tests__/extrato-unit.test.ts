@@ -63,6 +63,42 @@ describe("parseExtrato (E70)", () => {
     expect(t.some((x) => x.descricao.includes("Total"))).toBe(false);
   });
 
+  /**
+   * S-M5 — o delimitador é do ARQUIVO, não da linha. A regra antiga decidia
+   * linha a linha (`linha.includes(";") ? ";" : ","`): num arquivo de
+   * vírgulas, a única linha com `;` no histórico era fatiada pelo `;`, a
+   * célula de data deixava de existir e o lançamento sumia SEM ERRO — a
+   * conciliação punha o R$ 1.500,00 verdadeiro em `soSistema` e mandava
+   * lançar de novo: contado duas vezes.
+   */
+  it("S-M5 — um `;` no histórico de um arquivo de vírgulas não engole a linha", () => {
+    const csvDeVirgulas = [
+      "Data,Descrição,Valor,Saldo",
+      "2026-07-14,PAGAMENTO ALUGUEL,-2300.00,11500.00",
+      // A linha que o parser antigo perdia: o `;` vem do próprio banco.
+      "2026-07-15,TED JOAO; REF PEDIDO 50,1500.00,13000.00",
+      "2026-07-16,PIX RECEBIDO ANA,800.00,13800.00",
+    ].join("\n");
+
+    const t = parseExtratoCSV(csvDeVirgulas);
+    // VERMELHO ANTES: 2 — a linha do meio sumia sem erro.
+    expect(t).toHaveLength(3);
+    expect(t[1]).toEqual({
+      data: "2026-07-15",
+      descricao: "TED JOAO; REF PEDIDO 50",
+      valor: 1500,
+    });
+  });
+
+  it("S-M5 — o arquivo de `;` continua inteiro, linha por linha", () => {
+    // O CSV brasileiro clássico, com vírgula DECIMAL dentro das quantias: lido
+    // por vírgula ele racha as quantias e não produz quase nada — é a contagem
+    // que decide o delimitador, e ela tem de escolher o `;`.
+    const t = parseExtratoCSV(CSV);
+    expect(t).toHaveLength(2);
+    expect(t[0]).toEqual({ data: "2026-07-15", descricao: "PIX RECEBIDO MARIA", valor: 1500 });
+  });
+
   it("detecta o formato e recusa lixo com mensagem", () => {
     expect(parseExtrato(OFX)).toMatchObject({ ok: true, formato: "ofx" });
     expect(parseExtrato(CSV)).toMatchObject({ ok: true, formato: "csv" });

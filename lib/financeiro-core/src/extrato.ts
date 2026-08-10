@@ -104,12 +104,25 @@ function valorDeCSV(cru: string): { valor: number; monetario: boolean } | null {
  *
  * As demais numéricas (o saldo acumulado, o documento) são descartadas: não
  * são o movimento e também não são descrição.
+ *
+ * **S-M5 — o delimitador é do ARQUIVO, e se decide uma vez.** A regra antiga
+ * (`linha.includes(";") ? ";" : ","`) decidia linha a linha: num arquivo de
+ * vírgulas, a linha `15/07/2026,TED JOAO; REF 50,1.500.00` era fatiada pelo
+ * `;`, a célula de data deixava de existir e o lançamento SUMIA sem erro — a
+ * conciliação então punha o recebimento verdadeiro em `soSistema` e mandava
+ * lançar de novo: R$ 1.500,00 contados duas vezes. Aqui o texto inteiro é
+ * lido com cada candidato e fica o que produz mais transações; no empate
+ * ganha o `;`, que é o padrão de banco brasileiro (a vírgula é o decimal — um
+ * arquivo DE vírgulas com valores de vírgula decimal nem existe). O arquivo
+ * de `;` lido por `,` racha as quantias no decimal e não produz quase nada,
+ * então a disputa não é apertada: é a contagem dizendo qual régua é a do
+ * arquivo.
  */
-export function parseExtratoCSV(texto: string): TransacaoExtrato[] {
+function parseCSVComDelimitador(texto: string, delimitador: ";" | ","): TransacaoExtrato[] {
   const transacoes: TransacaoExtrato[] = [];
   for (const linha of texto.split(/\r?\n/)) {
     if (!linha.trim()) continue;
-    const celulas = linha.split(linha.includes(";") ? ";" : ",");
+    const celulas = linha.split(delimitador);
     let data: string | null = null;
     let monetario: number | null = null;
     let qualquerNumero: number | null = null;
@@ -136,6 +149,12 @@ export function parseExtratoCSV(texto: string): TransacaoExtrato[] {
     }
   }
   return transacoes;
+}
+
+export function parseExtratoCSV(texto: string): TransacaoExtrato[] {
+  const porPontoEVirgula = parseCSVComDelimitador(texto, ";");
+  const porVirgula = parseCSVComDelimitador(texto, ",");
+  return porPontoEVirgula.length >= porVirgula.length ? porPontoEVirgula : porVirgula;
 }
 
 export function parseExtrato(texto: string): ExtratoParseado {
