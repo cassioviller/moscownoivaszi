@@ -19,7 +19,7 @@ projetos**.
 | ~~**E161**~~ | ~~agenda: o eixo da vendedora, e o PATCH que pulava a recusa~~ | A | ✅ `747ae5e` · [relatório](execucao/E161.md) |
 | ~~**E162**~~ | ~~o aceite ganha um caminho até o contrato (**o épico-bandeira**)~~ | B | ✅ `b39d292` · [relatório](execucao/E162.md) |
 | ~~**E163**~~ | ~~as guardas que se desligam no nulo~~ | B | ✅ `d37fa3a` · [relatório](execucao/E163.md) |
-| ~~**E164**~~ | ~~o escopo da noiva: loja E dona, em toda porta~~ | C | ✅ `HASH_E164` · [relatório](execucao/E164.md) — encolhido pelo E161 (G2/A05.3 fecharam lá) |
+| ~~**E164**~~ | ~~o escopo da noiva: loja E dona, em toda porta~~ | C | ✅ `0eeb297` · [relatório](execucao/E164.md) — encolhido pelo E161 (G2/A05.3 fecharam lá) |
 | E165 | o PDF fala a verdade e cabe na página | C | ⏳ próximo |
 | E166 | o link público cumpre o que promete | C | ⏳ |
 | E167 | a avaria fecha | C | ⏳ |
