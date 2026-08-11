@@ -94,7 +94,7 @@ para o documento que manda.
    é que agora é verdade.
 
    **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-11 o
-   `origin/main` foi de `f88eff2` para a ponta da rodada 2 — **23 commits**
+   `origin/main` foi de `8b4dd28` para a ponta da rodada 2 — **23 commits**
    (a segunda varredura, a consolidação e os 10 épicos executados),
    fast-forward puro, com autorização da dona no mesmo dia. Antes disso,
    2026-08-10 publicou os 31 da revisão max. O costume vem de 2026-08-07,
