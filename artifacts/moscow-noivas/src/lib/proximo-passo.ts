@@ -37,6 +37,15 @@ export type EntradaProximoPasso = {
    * antigo).
    */
   temVisitaFutura?: boolean;
+  /**
+   * S-O12 — há orçamento que a noiva ACEITOU e ainda não virou contrato?
+   *
+   * A etapa não responde isso: ela para em ORCAMENTO_ABERTO depois do aceite,
+   * porque não existe etapa "ACEITO" no funil (S-O10, decisão de produto
+   * adiada). Sem este campo a faixa mandava ENVIAR a proposta que a noiva já
+   * tinha aceitado. Ausente = não se sabe, e vale o comportamento antigo.
+   */
+  temAceiteSemContrato?: boolean;
 };
 
 /**
@@ -107,12 +116,27 @@ export function proximoPasso(e: EntradaProximoPasso): ProximoPasso | null {
             rotuloAcao: "Criar orçamento",
           };
     case "ORCAMENTO_ABERTO":
-      return {
-        titulo: "Enviar a proposta para ela",
-        detalhe: "Orçamento aberto que não chega à noiva não vira contrato.",
-        href: `/noivas/${e.leadId}`,
-        rotuloAcao: "Ver orçamentos",
-      };
+      /**
+       * S-O12 — o aceite dela muda o passo, e a etapa não sabe disso.
+       *
+       * O funil para em ORCAMENTO_ABERTO depois do aceite (não há etapa
+       * "ACEITO" — S-O10), então a faixa mandava "Enviar a proposta" para quem
+       * já tinha dito SIM: o passo cumprido de volta, no lugar do que falta. E
+       * o que falta é o contrato — é ele que tira o vestido do mercado.
+       */
+      return e.temAceiteSemContrato
+        ? {
+            titulo: "Fechar o contrato",
+            detalhe: "Ela já disse sim — o vestido só fica dela quando o contrato fechar.",
+            href: `/noivas/${e.leadId}`,
+            rotuloAcao: "Ver orçamentos",
+          }
+        : {
+            titulo: "Enviar a proposta para ela",
+            detalhe: "Orçamento aberto que não chega à noiva não vira contrato.",
+            href: `/noivas/${e.leadId}`,
+            rotuloAcao: "Ver orçamentos",
+          };
     default:
       // CONTRATO_FECHADO sem contrato ativo, EM_PROVAS, RETIRADO, DEVOLVIDO,
       // CASAMENTO_REALIZADO: ou já foi tratado acima, ou a jornada acabou.

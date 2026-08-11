@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -99,6 +99,25 @@ export default function NoivaDetalhe() {
       enabled: !!activeLojaId && !!leadId,
     },
   });
+
+  /**
+   * S-O38 — o hash traz para o card certo, e é o que faz os botões "Lookbook"
+   * da barra de atendimento e da fila cumprirem o que prometem.
+   *
+   * Eles apontavam a rota `/noivas/:leadId/lookbook`, que **nunca existiu** — o
+   * lookbook é um card desta ficha. Os dois caíam no catch-all e a vendedora
+   * lia "Não encontramos esta página" com a noiva do lado. Agora eles vêm para
+   * cá com `#lookbook`, e a ficha rola até o card.
+   *
+   * O efeito espera o `lead` porque os cards só existem depois dele — rolar
+   * antes acharia a tela de carregamento. O mesmo gesto do
+   * `reservas/[bloqueioId]`, que já rolava até a avaria pelo id.
+   */
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash || !lead) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [hash, lead]);
   // E62: o recorte por noiva acontece no banco (`?leadId=`) — o perfil parou
   // de baixar os orçamentos e contratos da loja inteira para filtrar aqui.
   const orcamentos = useListOrcamentos(activeLojaId!, { leadId: leadId! }, {
@@ -279,6 +298,8 @@ export default function NoivaDetalhe() {
         temContratoAtivo: !!contratoAtivo,
         contratoAtivoId: contratoAtivo?.id,
         temOrcamento: orcamentosDaNoiva.length > 0,
+        // S-O12: o aceite dela já está nesta lista — faltava chegar à régua.
+        temAceiteSemContrato: !contratoAtivo && orcamentosDaNoiva.some((o) => !!o.aceitoEm),
         ...(podeVerAgenda && !agenda.isError ? { temVisitaFutura: visita !== null } : {}),
       });
 

@@ -73,4 +73,40 @@ describe("proximoPasso — a ficha diz o que falta, em vez de oito cards vazios"
     );
     expect(proximoPasso({ ...base, etapa: "INTERESSES_PREENCHIDOS" })!.rotuloAcao).toBe("Agendar");
   });
+
+  /**
+   * S-O12 — a faixa mandava ENVIAR uma proposta que a noiva já tinha aceitado.
+   *
+   * A etapa para em ORCAMENTO_ABERTO depois do aceite, porque não existe etapa
+   * "ACEITO" no funil (decisão de produto adiada, S-O10). A régua lia só a
+   * etapa, então a ficha dizia "Enviar a proposta para ela — orçamento aberto
+   * que não chega à noiva não vira contrato" para uma noiva que já disse SIM.
+   *
+   * O erro tinha custo: a faixa é o lugar onde a vendedora confia para saber o
+   * que falta, e ela mandava refazer o passo cumprido em vez de fechar o
+   * contrato — que é a hora em que o vestido passa a ser da noiva. A fila
+   * "Aceites esperando contrato" já respondia certo; a ficha não.
+   */
+  it("S-O12 · com o aceite dela na mão, o passo é o CONTRATO — não reenviar a proposta", () => {
+    const p = proximoPasso({ ...base, etapa: "ORCAMENTO_ABERTO", temOrcamento: true, temAceiteSemContrato: true })!;
+    expect(p.titulo).toBe("Fechar o contrato");
+    expect(p.detalhe).toContain("já disse sim");
+    expect(p.rotuloAcao).toBe("Ver orçamentos");
+  });
+
+  it("S-O12 · sem aceite, a faixa continua mandando enviar", () => {
+    const p = proximoPasso({ ...base, etapa: "ORCAMENTO_ABERTO", temOrcamento: true })!;
+    expect(p.titulo).toBe("Enviar a proposta para ela");
+  });
+
+  it("S-O12 · com contrato ativo o dinheiro manda, aceite ou não", () => {
+    const p = proximoPasso({
+      ...base,
+      etapa: "ORCAMENTO_ABERTO",
+      temAceiteSemContrato: true,
+      temContratoAtivo: true,
+      contratoAtivoId: "C1",
+    })!;
+    expect(p.titulo).toBe("Acompanhar o pagamento");
+  });
 });

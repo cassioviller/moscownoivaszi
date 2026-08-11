@@ -135,7 +135,14 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
   }
 
   return (
-    <Card>
+    /**
+     * S-O38: o `id` é o endereço do card. Os botões "Lookbook" da barra de
+     * atendimento e da fila apontavam uma ROTA `/noivas/:leadId/lookbook` que
+     * nunca existiu — o lookbook mora aqui, dentro da ficha. Agora eles trazem
+     * para cá pelo hash, e o `scroll-mt` deixa o título visível abaixo da barra
+     * fixa em vez de encostá-lo no topo.
+     */
+    <Card id="lookbook" className="scroll-mt-24">
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-3">
           Lookbook

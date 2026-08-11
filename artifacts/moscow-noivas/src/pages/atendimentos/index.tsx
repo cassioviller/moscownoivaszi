@@ -392,8 +392,11 @@ export default function Atendimentos() {
                 <Button asChild variant="ghost" size="sm">
                   <Link to={`/loja/${lojaId}/noivas/${a.leadId}/interesses`}>Interesses</Link>
                 </Button>
+                {/* S-O38: o lookbook é um CARD da ficha — o `/lookbook` que
+                    estava aqui nunca foi rota, e levava a "Não encontramos
+                    esta página" no meio do atendimento. */}
                 <Button asChild variant="ghost" size="sm">
-                  <Link to={`/loja/${lojaId}/noivas/${a.leadId}/lookbook`}>Lookbook</Link>
+                  <Link to={`/loja/${lojaId}/noivas/${a.leadId}#lookbook`}>Lookbook</Link>
                 </Button>
               </>
             )}

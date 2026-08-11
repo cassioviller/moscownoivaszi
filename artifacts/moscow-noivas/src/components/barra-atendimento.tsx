@@ -75,8 +75,11 @@ export function BarraAtendimento() {
         <Button asChild variant="ghost" size="sm">
           <Link to={naLoja(`/noivas/${emCurso.leadId}/interesses`)}>Interesses</Link>
         </Button>
+        {/* S-O38: o lookbook é um CARD da ficha, não uma tela — este botão
+            apontava `/noivas/:leadId/lookbook`, rota que nunca existiu, e caía
+            em "Não encontramos esta página" com a noiva do lado. */}
         <Button asChild variant="ghost" size="sm">
-          <Link to={naLoja(`/noivas/${emCurso.leadId}/lookbook`)}>Lookbook</Link>
+          <Link to={naLoja(`/noivas/${emCurso.leadId}#lookbook`)}>Lookbook</Link>
         </Button>
         {/* "Concluir" leva à FILA e não conclui daqui, de propósito: concluir
             exige escolher o desfecho (RESERVOU / VAI_PENSAR / NAO_SERVIU), que é
