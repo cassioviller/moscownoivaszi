@@ -284,9 +284,22 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
 
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
   const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
+  const mexeNoDesconto =
+    parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined;
   // B11/E95: a marca de ENVIADO e a versão congelada nascem juntas ou não
   // nascem — ver `criarVersaoEnviada`.
+  //
+  // S-M22 (rodada 2, achado 3#6): a guarda de APROVADO acima leu no POOL, e o
+  // aceite é um CAS por link público, SEM sessão — a noiva aceitando no mesmo
+  // segundo do PATCH mudava o líquido de um orçamento JÁ aceito. `FOR UPDATE`
+  // + reconferência dentro da transação: o CAS do aceite atualiza esta mesma
+  // linha, a tranca serializa os dois.
   const orcamento = await db.transaction(async (tx) => {
+    const [agora] = await tx.select({ status: orcamentosTable.status }).from(orcamentosTable)
+      .where(eq(orcamentosTable.id, orcamentoId as string))
+      .for("update");
+    if (!agora) return null;
+    if (agora.status === "APROVADO" && mexeNoDesconto) return { corrida: true as const };
     const [atualizado] = await tx.update(orcamentosTable)
       .set({
         ...parsed.data,
@@ -301,6 +314,13 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     }
     return atualizado;
   });
+  if (orcamento && "corrida" in orcamento) {
+    res.status(422).json({
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
   if (!orcamento) {
     res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
@@ -345,7 +365,22 @@ router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promis
     });
     return;
   }
-  await db.transaction(async (tx) => {
+  // S-M22 (rodada 2, achado 3#6): a guarda de APROVADO leu no POOL e o aceite
+  // chega por link público, sem sessão — a noiva aceitando na janela via o
+  // comprovante (versão + hash, em cascata) ser destruído com a tela dela
+  // dizendo "aceito às 14h02". `FOR UPDATE` + reconferência do status e do
+  // contrato dentro da transação.
+  const resultado = await db.transaction(async (tx) => {
+    const [agora] = await tx.select({ status: orcamentosTable.status }).from(orcamentosTable)
+      .where(eq(orcamentosTable.id, orcamentoId))
+      .for("update");
+    if (!agora) return { corrida: "sumiu" as const };
+    if (agora.status === "APROVADO") return { corrida: "aprovado" as const };
+    const [contratoAgora] = await tx
+      .select({ id: contratosTable.id })
+      .from(contratosTable)
+      .where(eq(contratosTable.orcamentoId, orcamentoId));
+    if (contratoAgora) return { corrida: "contrato" as const };
     await registrarAuditoria(tx, {
       lojaId,
       usuario: req.usuario!,
@@ -355,7 +390,24 @@ router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promis
       detalhe: { leadId: orcamento.leadId, status: orcamento.status },
     });
     await tx.delete(orcamentosTable).where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    if (resultado.corrida === "sumiu") {
+      res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
+    } else if (resultado.corrida === "aprovado") {
+      res.status(409).json({
+        error: "ORCAMENTO_APROVADO",
+        detalhe: "O aceite da noiva (versão e hash) mora neste orçamento — ele não se apaga.",
+      });
+    } else {
+      res.status(409).json({
+        error: "ORCAMENTO_COM_CONTRATO",
+        detalhe: "Este orçamento virou contrato — apagá-lo deixaria o contrato sem origem.",
+      });
+    }
+    return;
+  }
   res.status(204).send();
 });
 

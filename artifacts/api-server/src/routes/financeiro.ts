@@ -421,24 +421,47 @@ router.delete("/lojas/:lojaId/contas-pagar/:contaId", async (req, res): Promise<
    * DELETE a linha não existe mais para ser consultada, então o que não estiver
    * aqui está perdido.
    */
+  /**
+   * S-M22 (rodada 2, achado 3#1): as guardas acima leram no POOL — entre a
+   * leitura e o delete cabe um POST /pagar inteiro, e o pagar concorrente
+   * commitando na janela deixava uma saída de R$ 500,00 no caixa cuja conta
+   * (e o pagamento_item, pela cascata) este DELETE levava embora. A forma é a
+   * da S-M7: `FOR UPDATE` na linha e a reconferência como statement novo,
+   * dentro da transação — o `quitarContas` atualiza esta mesma linha, então a
+   * tranca serializa os dois.
+   */
   const usuario = req.usuario!;
-  await db.transaction(async (tx) => {
-    await tx.delete(contasPagarTable).where(eq(contasPagarTable.id, conta.id));
+  const resultado = await db.transaction(async (tx) => {
+    const [atual] = await tx.select().from(contasPagarTable)
+      .where(and(eq(contasPagarTable.id, conta.id), eq(contasPagarTable.lojaId, lojaId)))
+      .for("update");
+    if (!atual) return { corrida: "sumiu" as const };
+    if (atual.status === "PAGA") return { corrida: "paga" as const };
     await registrarAuditoria(tx, {
       lojaId,
       usuario,
       acao: "CONTA_PAGAR_REMOVIDA",
       entidade: "conta_pagar",
-      entidadeId: conta.id,
+      entidadeId: atual.id,
       detalhe: {
-        descricao: conta.descricao,
-        valorPrevisto: conta.valorPrevisto,
-        vencimento: conta.vencimento.toISOString(),
-        tipo: conta.tipo,
-        colaboradorId: conta.colaboradorId,
+        descricao: atual.descricao,
+        valorPrevisto: atual.valorPrevisto,
+        vencimento: atual.vencimento.toISOString(),
+        tipo: atual.tipo,
+        colaboradorId: atual.colaboradorId,
       },
     });
+    await tx.delete(contasPagarTable).where(eq(contasPagarTable.id, atual.id));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    if (resultado.corrida === "sumiu") {
+      res.status(404).json({ error: "CONTA_NAO_ENCONTRADA", detalhe: "Esta conta não existe nesta loja." });
+    } else {
+      res.status(409).json({ error: "CONTA_JA_PAGA", detalhe: "Estorne o pagamento antes de remover a conta" });
+    }
+    return;
+  }
   res.status(204).end();
 });
 

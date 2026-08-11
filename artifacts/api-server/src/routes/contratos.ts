@@ -1244,23 +1244,38 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
   // mesmo motivo: some com uma obrigação, não move caixa realizado (a parcela
   // paga é recusada acima), e depois do DELETE não há linha para consultar.
   // O que não estiver no detalhe está perdido.
-  await db.transaction(async (tx) => {
+  //
+  // S-M22 (rodada 2, achado 3#2): a guarda de PREVISTA leu no POOL — entre
+  // ela e o delete cabe o POST /receber inteiro, e o recebimento concorrente
+  // era deletado junto: R$ 500,00 na gaveta, caixa dizendo que nunca
+  // entraram. `FOR UPDATE` + reconferência, o idioma do estorno duas rotas
+  // acima — o CAS do receber atualiza esta mesma linha, a tranca serializa.
+  const resultado = await db.transaction(async (tx) => {
+    const [atual] = await tx.select().from(parcelasTable)
+      .where(eq(parcelasTable.id, existente.id))
+      .for("update");
+    if (!atual || atual.status !== "PREVISTA") return { corrida: true as const };
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
       usuario: req.usuario!,
       acao: "PARCELA_REMOVIDA",
       entidade: "parcela",
-      entidadeId: existente.id,
+      entidadeId: atual.id,
       detalhe: {
-        contratoId: existente.contratoId,
-        numero: existente.numero,
-        descricao: existente.descricao,
-        valorPrevisto: existente.valorPrevisto,
-        vencimento: existente.vencimento,
+        contratoId: atual.contratoId,
+        numero: atual.numero,
+        descricao: atual.descricao,
+        valorPrevisto: atual.valorPrevisto,
+        vencimento: atual.vencimento,
       },
     });
-    await tx.delete(parcelasTable).where(eq(parcelasTable.id, existente.id));
+    await tx.delete(parcelasTable).where(eq(parcelasTable.id, atual.id));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    res.status(422).json({ error: "PARCELA_NAO_PREVISTA", detalhe: "Só parcelas previstas podem ser removidas" });
+    return;
+  }
   res.status(204).send();
 });
 

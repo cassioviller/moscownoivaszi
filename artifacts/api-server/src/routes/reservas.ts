@@ -262,7 +262,34 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
     return;
   }
 
-  await db.transaction(async (tx) => {
+  /**
+   * S-M22 (rodada 2, achado 3#7): as três contagens acima rodaram no POOL —
+   * entre elas e o delete cabe um POST inteiro (avaria com foto-prova, prova
+   * agendada, contrato prendendo o bloqueio), e o filho nascido na janela
+   * caía pela cascata que a guarda existe para impedir. `FOR UPDATE` na
+   * linha-pai + recontagem como statement novo, a forma da S33.
+   */
+  const resultado = await db.transaction(async (tx) => {
+    await tx.select({ id: reservasTable.id }).from(reservasTable)
+      .where(eq(reservasTable.id, reservaId))
+      .for("update");
+    if (bloqueioIds.length) {
+      const [avariasAgora, vinculosAgora, atendimentosAgora] = await Promise.all([
+        tx.select({ id: avariasTable.id }).from(avariasTable)
+          .where(inArray(avariasTable.bloqueioId, bloqueioIds)),
+        tx.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
+          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+          .where(and(
+            inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
+            eq(contratosTable.status, "ATIVO"),
+          )),
+        tx.select({ id: atendimentosTable.id }).from(atendimentosTable)
+          .where(inArray(atendimentosTable.bloqueioId, bloqueioIds)),
+      ]);
+      if (avariasAgora.length + vinculosAgora.length + atendimentosAgora.length > 0) {
+        return { corrida: true as const };
+      }
+    }
     // ANTES do delete: depois dele não há linha de onde reconstituir.
     await registrarAuditoria(tx, {
       lojaId,
@@ -273,7 +300,16 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
       detalhe: { leadId: reserva.leadId, casamentoData: reserva.casamentoData, bloqueios: bloqueioIds.length },
     });
     await tx.delete(reservasTable).where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    res.status(409).json({
+      error: "RESERVA_COM_HISTORICO",
+      detalhe:
+        "Esta reserva acabou de ganhar história (avaria, prova ou contrato) — recarregue e confira antes de remover.",
+    });
+    return;
+  }
   res.status(204).send();
 });
 
@@ -387,34 +423,51 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     fim: dados.fim ?? null,
   };
 
-  const resultado = await verificarDisponibilidade({
-    lojaId,
-    vestidoId: dados.vestidoId,
-    candidato,
-    hoje: new Date(),
+  /**
+   * S-M22 (rodada 2, achado 3#4): a verificação rodava no POOL e o INSERT
+   * solto — dois bloqueios do MESMO vestido criados no mesmo segundo não se
+   * enxergavam, e o EXCLUDE do banco só compara envelopes FÍSICOS: o par
+   * PROVA×FÍSICA que `conflitos()` acusa (prova da noiva A dentro do uso da
+   * noiva B) commitava sem 23P01 nenhum. `FOR UPDATE` na linha do VESTIDO
+   * serializa os criadores concorrentes; a verificação relê pelo executor da
+   * transação e enxerga o que o vencedor commitou.
+   */
+  const criado = await db.transaction(async (tx) => {
+    await tx.select({ id: vestidosTable.id }).from(vestidosTable)
+      .where(eq(vestidosTable.id, dados.vestidoId))
+      .for("update");
+    const resultado = await verificarDisponibilidade({
+      lojaId,
+      vestidoId: dados.vestidoId,
+      candidato,
+      hoje: new Date(),
+      executor: tx,
+    });
+    if (!resultado.disponivel) return { conflitos: resultado.conflitos };
+
+    const ocupacao = ocupacaoFisica(candidato, resultado.regra);
+
+    const [bloqueio] = await tx.insert(bloqueioVestidosTable).values({
+      id,
+      lojaId,
+      vestidoId: dados.vestidoId,
+      leadId: dados.leadId ?? null,
+      tipo: dados.tipo,
+      casamentoData: dados.casamentoData ?? null,
+      inicio: dados.inicio ?? null,
+      fim: dados.fim ?? null,
+      observacao: dados.observacao ?? null,
+      reservaId: dados.reservaId ?? null,
+      ocupacaoInicio: ocupacao?.inicio ?? null,
+      ocupacaoFim: ocupacao?.fim ?? null,
+    }).returning();
+    return { bloqueio: bloqueio! };
   });
-  if (!resultado.disponivel) {
-    res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
+  if ("conflitos" in criado) {
+    res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: criado.conflitos });
     return;
   }
-
-  const ocupacao = ocupacaoFisica(candidato, resultado.regra);
-
-  const [bloqueio] = await db.insert(bloqueioVestidosTable).values({
-    id,
-    lojaId,
-    vestidoId: dados.vestidoId,
-    leadId: dados.leadId ?? null,
-    tipo: dados.tipo,
-    casamentoData: dados.casamentoData ?? null,
-    inicio: dados.inicio ?? null,
-    fim: dados.fim ?? null,
-    observacao: dados.observacao ?? null,
-    reservaId: dados.reservaId ?? null,
-    ocupacaoInicio: ocupacao?.inicio ?? null,
-    ocupacaoFim: ocupacao?.fim ?? null,
-  }).returning();
-  res.status(201).json(CreateBloqueioResponse.parse(bloqueio));
+  res.status(201).json(CreateBloqueioResponse.parse(criado.bloqueio));
 });
 
 router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {
@@ -485,42 +538,53 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     dados.inicio !== undefined ||
     dados.fim !== undefined;
 
-  let regra;
-  if (mudouJanelas) {
-    const resultado = await verificarDisponibilidade({
-      lojaId,
-      vestidoId: existente.vestidoId,
-      candidato,
-      ignorarBloqueioId: existente.id,
-      hoje: new Date(),
-    });
-    if (!resultado.disponivel) {
-      res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
-      return;
+  // S-M22 (rodada 2, achado 3#4): mesma janela do POST — verificação no pool,
+  // escrita solta. A tranca vai na linha do VESTIDO, a mesma dos criadores
+  // concorrentes, e a verificação relê pelo executor da transação.
+  const atualizado = await db.transaction(async (tx) => {
+    let regra;
+    if (mudouJanelas) {
+      await tx.select({ id: vestidosTable.id }).from(vestidosTable)
+        .where(eq(vestidosTable.id, existente.vestidoId))
+        .for("update");
+      const resultado = await verificarDisponibilidade({
+        lojaId,
+        vestidoId: existente.vestidoId,
+        candidato,
+        ignorarBloqueioId: existente.id,
+        hoje: new Date(),
+        executor: tx,
+      });
+      if (!resultado.disponivel) return { conflitos: resultado.conflitos };
+      regra = resultado.regra;
+    } else {
+      regra = await buscarRegra(lojaId, tx);
     }
-    regra = resultado.regra;
-  } else {
-    regra = await buscarRegra(lojaId);
+
+    const ocupacao = ocupacaoFisica(candidato, regra);
+
+    const [bloqueio] = await tx.update(bloqueioVestidosTable)
+      .set({
+        provaDataReal: dados.provaDataReal,
+        retiradaDataReal: dados.retiradaDataReal,
+        devolucaoDataReal: dados.devolucaoDataReal,
+        lavagemConcluidaEm: dados.lavagemConcluidaEm,
+        inicio: dados.inicio,
+        fim: dados.fim,
+        observacao: dados.observacao,
+        ocupacaoInicio: ocupacao?.inicio ?? null,
+        ocupacaoFim: ocupacao?.fim ?? null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
+      .returning();
+    return { bloqueio: bloqueio! };
+  });
+  if ("conflitos" in atualizado) {
+    res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: atualizado.conflitos });
+    return;
   }
-
-  const ocupacao = ocupacaoFisica(candidato, regra);
-
-  const [bloqueio] = await db.update(bloqueioVestidosTable)
-    .set({
-      provaDataReal: dados.provaDataReal,
-      retiradaDataReal: dados.retiradaDataReal,
-      devolucaoDataReal: dados.devolucaoDataReal,
-      lavagemConcluidaEm: dados.lavagemConcluidaEm,
-      inicio: dados.inicio,
-      fim: dados.fim,
-      observacao: dados.observacao,
-      ocupacaoInicio: ocupacao?.inicio ?? null,
-      ocupacaoFim: ocupacao?.fim ?? null,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
-    .returning();
-  res.json(UpdateBloqueioResponse.parse(bloqueio));
+  res.json(UpdateBloqueioResponse.parse(atualizado.bloqueio));
 });
 
 /**
@@ -571,7 +635,30 @@ router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<
     return;
   }
 
-  await db.transaction(async (tx) => {
+  // S-M22 (rodada 2, achado 3#7): a recontagem entra na transação, sob a
+  // tranca da linha-pai — o filho que nasceu entre a contagem do pool e o
+  // delete não cai mais na cascata em silêncio.
+  const resultado = await db.transaction(async (tx) => {
+    await tx.select({ id: bloqueioVestidosTable.id }).from(bloqueioVestidosTable)
+      .where(eq(bloqueioVestidosTable.id, bloqueioId))
+      .for("update");
+    const [avariasAgora, vinculosAgora, legadoAgora, atendimentosAgora] = await Promise.all([
+      tx.select({ id: avariasTable.id }).from(avariasTable)
+        .where(eq(avariasTable.bloqueioId, bloqueioId)),
+      tx.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
+        .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+        .where(and(
+          eq(contratoBloqueiosTable.bloqueioId, bloqueioId),
+          eq(contratosTable.status, "ATIVO"),
+        )),
+      tx.select({ id: contratosTable.id }).from(contratosTable)
+        .where(and(eq(contratosTable.bloqueioVestidoId, bloqueioId), eq(contratosTable.status, "ATIVO"))),
+      tx.select({ id: atendimentosTable.id }).from(atendimentosTable)
+        .where(eq(atendimentosTable.bloqueioId, bloqueioId)),
+    ]);
+    if (avariasAgora.length + vinculosAgora.length + legadoAgora.length + atendimentosAgora.length > 0) {
+      return { corrida: true as const };
+    }
     await registrarAuditoria(tx, {
       lojaId,
       usuario: req.usuario!,
@@ -581,7 +668,16 @@ router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<
       detalhe: { vestidoId: bloqueio.vestidoId, leadId: bloqueio.leadId, tipo: bloqueio.tipo },
     });
     await tx.delete(bloqueioVestidosTable).where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    res.status(409).json({
+      error: "BLOQUEIO_COM_HISTORICO",
+      detalhe:
+        "Este bloqueio acabou de ganhar história (avaria, prova ou contrato) — recarregue e confira antes de apagá-lo.",
+    });
+    return;
+  }
   res.status(204).send();
 });
 

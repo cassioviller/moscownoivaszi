@@ -988,7 +988,24 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
 
   const estornos = fechamento.estornoContratoIds ?? [];
 
-  await db.transaction(async (tx) => {
+  const resultado = await db.transaction(async (tx) => {
+    /**
+     * S-M22 (rodada 2, achado 3#3): a guarda de COMISSAO_JA_PAGA acima leu no
+     * POOL — entre ela e o delete cabe o POST de pagamento que quita a conta
+     * da comissão. Sem a reconferência sob tranca, o pagamento concorrente
+     * commitava e o reabrir apagava a conta: saída de R$ 800,00 sem
+     * contrapartida, e o próximo fechamento gerava conta NOVA — a loja pagava
+     * R$ 1.600,00 por R$ 800,00 devidos. `FOR UPDATE` na conta serializa com
+     * o `quitarContas`, que atualiza esta mesma linha.
+     */
+    if (fechamento.contaPagarId) {
+      const [conta] = await tx
+        .select({ status: contasPagarTable.status })
+        .from(contasPagarTable)
+        .where(eq(contasPagarTable.id, fechamento.contaPagarId))
+        .for("update");
+      if (conta?.status === "PAGA") return { corrida: true as const };
+    }
     // A ordem importa: o fechamento sai primeiro porque `conta_pagar_id` é
     // UNIQUE e referencia a conta — apagar a conta antes deixaria a FK
     // (ON DELETE SET NULL) mexendo numa linha que já vai embora.
@@ -1030,7 +1047,15 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
         estornosReabertos: estornos.length,
       },
     });
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    res.status(409).json({
+      error: "COMISSAO_JA_PAGA",
+      detalhe: "A comissão já foi paga — estorne o pagamento antes de reabrir o fechamento.",
+    });
+    return;
+  }
 
   res.json(ReabrirComissaoFechamentoResponse.parse({
     fechamentoId,

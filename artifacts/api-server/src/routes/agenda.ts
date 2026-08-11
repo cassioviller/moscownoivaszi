@@ -48,7 +48,7 @@ import {
   SLOT_MINUTOS,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
-import { addDias, inicioDoDia } from "../lib/disponibilidade";
+import { addDias, inicioDoDia, type DbExecutor } from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 import { intervaloValidado } from "../lib/intervalo";
@@ -69,10 +69,17 @@ async function recusaDeMoverAtendimento(
   lojaId: string,
   existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date; tipo: "ATENDIMENTO" | "PROVA" },
   mudanca: { cabineId?: string; vendedoraId?: string; inicio?: Date },
+  // S-M22: dentro da transação de POST/PATCH, o executor é a própria tx — a
+  // busca de concorrentes enxerga o que o vencedor da corrida commitou. A nota
+  // do docbloco ("quem segura é a UNIQUE") valia até o E40: a UNIQUE é do
+  // instante EXATO, e o conflito virou de INTERVALO — sob concorrência a
+  // pré-checagem era a única guarda, e rodava no pool.
+  executor: DbExecutor = db,
 ): Promise<{ motivo: MotivoRecusa; detalhe: string } | null> {
-  const regra = await db.query.regraDisponibilidadeTable.findFirst({
-    where: eq(regraDisponibilidadeTable.lojaId, lojaId),
-  });
+  const [regra] = await executor
+    .select()
+    .from(regraDisponibilidadeTable)
+    .where(eq(regraDisponibilidadeTable.lojaId, lojaId));
   const expediente = regra
     ? {
         aberturaHora: regra.atendimentoAberturaHora,
@@ -105,7 +112,7 @@ async function recusaDeMoverAtendimento(
   // em silêncio.
   const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * SLOT_MINUTOS * 60_000;
   const destinoMs = new Date(destino.inicio).getTime();
-  const concorrentes = await db
+  const concorrentes = await executor
     .select({
       id: atendimentosTable.id,
       cabineId: atendimentosTable.cabineId,
@@ -129,7 +136,7 @@ async function recusaDeMoverAtendimento(
    * leria "a vendedora está ausente" sem saber qual nem até quando.
    */
   const diaDestino = diaLocalYMD(destino.inicio);
-  const ausencias = await db
+  const ausencias = await executor
     .select({
       usuarioId: ausenciasTable.usuarioId,
       inicio: ausenciasTable.inicio,
@@ -275,7 +282,22 @@ router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void
     return;
   }
 
-  await db.transaction(async (tx) => {
+  /**
+   * S-M22 (rodada 2, achado 11#1): a guarda da S-M1 nasceu com a contagem no
+   * POOL — o POST /atendimentos que commitasse na janela era cascateado em
+   * silêncio, o exato estrago que fez a S-M1 ser 🔴. `FOR UPDATE` na linha da
+   * cabine (o INSERT de atendimento toma `FOR KEY SHARE` nela — conflita) e a
+   * recontagem como statement novo. O delete confere linhas afetadas: dois
+   * DELETEs simultâneos gravavam DUAS auditorias para uma remoção.
+   */
+  const resultado = await db.transaction(async (tx) => {
+    const [trancada] = await tx.select({ id: cabinesTable.id }).from(cabinesTable)
+      .where(and(eq(cabinesTable.id, cabineId), eq(cabinesTable.lojaId, lojaId)))
+      .for("update");
+    if (!trancada) return { corrida: "sumiu" as const };
+    const [agendaAgora] = await tx.select({ n: count() }).from(atendimentosTable)
+      .where(and(eq(atendimentosTable.cabineId, cabineId), eq(atendimentosTable.lojaId, lojaId)));
+    if (agendaAgora!.n > 0) return { corrida: "agenda" as const };
     await registrarAuditoria(tx, {
       lojaId,
       usuario: req.usuario!,
@@ -287,7 +309,19 @@ router.delete("/lojas/:lojaId/cabines/:cabineId", async (req, res): Promise<void
       detalhe: { nome: cabine.nome, ativo: cabine.ativo },
     });
     await tx.delete(cabinesTable).where(and(eq(cabinesTable.id, cabineId), eq(cabinesTable.lojaId, lojaId)));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    if (resultado.corrida === "sumiu") {
+      res.status(404).json({ error: "CABINE_NAO_ENCONTRADA", detalhe: "Esta cabine não existe nesta loja." });
+    } else {
+      res.status(409).json({
+        error: "CABINE_COM_AGENDA",
+        detalhe: "Esta cabine acabou de ganhar um atendimento — recarregue a agenda antes de apagá-la.",
+      });
+    }
+    return;
+  }
   res.status(204).send();
 });
 
@@ -350,30 +384,43 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   // levava 422 CABINE_OCUPADA; e o POST às 22h criava um atendimento sem
   // célula na grade — nascia invisível. A régua é a MESMA função do PATCH,
   // com o atendimento novo no papel de "movido para onde quer nascer".
-  const recusa = await recusaDeMoverAtendimento(
-    lojaId,
-    {
-      id: "novo",
-      cabineId: parsed.data.cabineId,
-      vendedoraId: parsed.data.vendedoraId,
-      inicio: parsed.data.inicio,
-      tipo: parsed.data.tipo ?? "ATENDIMENTO",
-    },
-    {},
-  );
-  if (recusa) {
-    res.status(422).json({ error: recusa.motivo, detalhe: recusa.detalhe });
+  // S-M22 (rodada 2, achado 3#5): a pré-checagem rodava no POOL e o INSERT
+  // solto — a prova das 17h30 e o atendimento das 18h00 na MESMA cabine,
+  // postados no mesmo segundo, têm `inicio` diferentes (a UNIQUE não casa) e
+  // nenhum via o outro: os dois respondiam 201. `FOR UPDATE` na linha da
+  // CABINE serializa os criadores; a recusa relê pela tx e enxerga o que o
+  // vencedor commitou.
+  const criado = await db.transaction(async (tx) => {
+    await tx.select({ id: cabinesTable.id }).from(cabinesTable)
+      .where(eq(cabinesTable.id, parsed.data.cabineId))
+      .for("update");
+    const recusa = await recusaDeMoverAtendimento(
+      lojaId,
+      {
+        id: "novo",
+        cabineId: parsed.data.cabineId,
+        vendedoraId: parsed.data.vendedoraId,
+        inicio: parsed.data.inicio,
+        tipo: parsed.data.tipo ?? "ATENDIMENTO",
+      },
+      {},
+      tx,
+    );
+    if (recusa) return { recusa } as const;
+    const [atendimento] = await tx.insert(atendimentosTable).values({
+      id: randomUUID(),
+      lojaId,
+      ...parsed.data,
+    }).returning();
+    return { atendimento: atendimento! };
+  });
+  if ("recusa" in criado && criado.recusa) {
+    res.status(422).json({ error: criado.recusa.motivo, detalhe: criado.recusa.detalhe });
     return;
   }
 
-  const [atendimento] = await db.insert(atendimentosTable).values({
-    id: randomUUID(),
-    lojaId,
-    ...parsed.data,
-  }).returning();
-  
   const fullAtendimento = await db.query.atendimentosTable.findFirst({
-    where: eq(atendimentosTable.id, atendimento.id),
+    where: eq(atendimentosTable.id, criado.atendimento.id),
     with: ATENDIMENTO_WITH,
   });
 
@@ -413,14 +460,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     return;
   }
 
-  // Só vale checar movimento quando algo do movimento mudou.
-  if (parsed.data.inicio !== undefined || parsed.data.cabineId !== undefined) {
-    const recusa = await recusaDeMoverAtendimento(lojaId as string, existente, parsed.data);
-    if (recusa) {
-      res.status(422).json({ error: recusa.motivo, detalhe: recusa.detalhe });
-      return;
-    }
-  }
+  const mudouMovimento = parsed.data.inicio !== undefined || parsed.data.cabineId !== undefined;
 
   // E36: carimbar o início REAL na primeira entrada em EM_ATENDIMENTO. A coluna
   // `atendidoEm` existia e ninguém a escrevia; é do relógio do servidor, não do
@@ -456,34 +496,57 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
         ? { desfecho: null }
         : {};
 
-  const [atendimento] = await db.update(atendimentosTable)
-    .set({ ...parsed.data, ...carimbo, ...limpeza, updatedAt: new Date() })
-    .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))
-    .returning();
-    
-  if (!atendimento) {
+  /**
+   * S-M22 (rodada 2, achados 3#5 e 3#8): tudo numa transação só. A recusa de
+   * movimento relê sob a tranca da CABINE de destino (a mesma corrida do
+   * POST), e o carimbo de `provaDataReal` no bloqueio — que era um segundo
+   * UPDATE independente no pool — deixa de poder se separar da conclusão da
+   * prova: ou os dois commitam, ou nenhum.
+   */
+  const atualizado = await db.transaction(async (tx) => {
+    if (mudouMovimento) {
+      await tx.select({ id: cabinesTable.id }).from(cabinesTable)
+        .where(eq(cabinesTable.id, parsed.data.cabineId ?? existente.cabineId))
+        .for("update");
+      const recusa = await recusaDeMoverAtendimento(lojaId as string, existente, parsed.data, tx);
+      if (recusa) return { recusa } as const;
+    }
+
+    const [atendimento] = await tx.update(atendimentosTable)
+      .set({ ...parsed.data, ...carimbo, ...limpeza, updatedAt: new Date() })
+      .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))
+      .returning();
+
+    if (!atendimento) return { sumiu: true as const };
+
+    // E37: concluir uma PROVA carimba a data real no bloqueio, fechando o loop
+    // agenda↔disponibilidade — a janela de prova (disponibilidade.ts) colapsa
+    // para o dia em que a prova de fato aconteceu. Antes só a edição manual da
+    // reserva fazia isso; a conclusão do atendimento é a fonte da verdade.
+    // Usa o início real (E36); cai no horário marcado se a prova foi concluída
+    // sem passar por "iniciar". Colapsar a janela só reduz ocupação — nunca cria
+    // conflito, então não precisa revalidar disponibilidade.
+    if (parsed.data.situacao === "CONCLUIDO" && existente.tipo === "PROVA" && existente.bloqueioId) {
+      await tx.update(bloqueioVestidosTable)
+        .set({ provaDataReal: atendimento.atendidoEm ?? atendimento.inicio, updatedAt: new Date() })
+        .where(and(
+          eq(bloqueioVestidosTable.id, existente.bloqueioId),
+          eq(bloqueioVestidosTable.lojaId, lojaId as string),
+        ));
+    }
+    return { atendimento };
+  });
+  if ("recusa" in atualizado && atualizado.recusa) {
+    res.status(422).json({ error: atualizado.recusa.motivo, detalhe: atualizado.recusa.detalhe });
+    return;
+  }
+  if ("sumiu" in atualizado) {
     res.status(404).json({ error: "ATENDIMENTO_NAO_ENCONTRADO", detalhe: "Este atendimento não existe nesta loja." });
     return;
   }
 
-  // E37: concluir uma PROVA carimba a data real no bloqueio, fechando o loop
-  // agenda↔disponibilidade — a janela de prova (disponibilidade.ts) colapsa
-  // para o dia em que a prova de fato aconteceu. Antes só a edição manual da
-  // reserva fazia isso; a conclusão do atendimento é a fonte da verdade.
-  // Usa o início real (E36); cai no horário marcado se a prova foi concluída
-  // sem passar por "iniciar". Colapsar a janela só reduz ocupação — nunca cria
-  // conflito, então não precisa revalidar disponibilidade.
-  if (parsed.data.situacao === "CONCLUIDO" && existente.tipo === "PROVA" && existente.bloqueioId) {
-    await db.update(bloqueioVestidosTable)
-      .set({ provaDataReal: atendimento.atendidoEm ?? atendimento.inicio, updatedAt: new Date() })
-      .where(and(
-        eq(bloqueioVestidosTable.id, existente.bloqueioId),
-        eq(bloqueioVestidosTable.lojaId, lojaId as string),
-      ));
-  }
-
   const fullAtendimento = await db.query.atendimentosTable.findFirst({
-    where: eq(atendimentosTable.id, atendimento.id),
+    where: eq(atendimentosTable.id, atualizado.atendimento.id),
     with: ATENDIMENTO_WITH,
   });
 
@@ -866,7 +929,17 @@ router.delete("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void
     });
     return;
   }
-  await db.transaction(async (tx) => {
+  // S-M22 (rodada 2, achado 11#2): a contagem de cobranças rodava no POOL — o
+  // item de orçamento que cobrasse este ajuste na janela ficava órfão (a FK é
+  // set null DE PROPÓSITO, E155), o exato estado que o 409 diz impedir.
+  // `FOR UPDATE` na linha do ajuste + recontagem dentro da transação.
+  const resultado = await db.transaction(async (tx) => {
+    await tx.select({ id: ajustesTable.id }).from(ajustesTable)
+      .where(eq(ajustesTable.id, ajusteId))
+      .for("update");
+    const [cobrancasAgora] = await tx.select({ n: count() }).from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.ajusteId, ajusteId));
+    if (cobrancasAgora!.n > 0) return { corrida: true as const };
     await registrarAuditoria(tx, {
       lojaId,
       usuario: req.usuario!,
@@ -876,7 +949,15 @@ router.delete("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void
       detalhe: { descricao: ajuste.descricao, tipo: ajuste.tipo, status: ajuste.status, custo: ajuste.custo },
     });
     await tx.delete(ajustesTable).where(and(eq(ajustesTable.id, ajusteId), eq(ajustesTable.lojaId, lojaId)));
+    return { ok: true as const };
   });
+  if ("corrida" in resultado) {
+    res.status(409).json({
+      error: "AJUSTE_COBRADO",
+      detalhe: "Este trabalho acabou de ser cobrado num orçamento — remova o item de lá antes.",
+    });
+    return;
+  }
   res.status(204).send();
 });
 
