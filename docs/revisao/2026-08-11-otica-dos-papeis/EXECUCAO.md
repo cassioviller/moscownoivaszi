@@ -16,7 +16,7 @@ projetos**.
 | ~~**E158**~~ | ~~`contratos.ts`: toda guarda relê sob a tranca, e o duplicado morre no banco~~ | A | ✅ `09d65d8` · [relatório](execucao/E158.md) |
 | ~~**E159**~~ | ~~`reservas.ts`: as quatro portas sem tranca, e o estado terminal em todas~~ | A | ✅ `6eb4fda` · [relatório](execucao/E159.md) |
 | ~~**E160**~~ | ~~orçamento e aceite: o CAS entra na tranca, e o que a noiva viu é o que se grava~~ | A | ✅ `b2f57ab` · [relatório](execucao/E160.md) |
-| ~~**E161**~~ | ~~agenda: o eixo da vendedora, e o PATCH que pulava a recusa~~ | A | ✅ `HASH_E161` · [relatório](execucao/E161.md) |
+| ~~**E161**~~ | ~~agenda: o eixo da vendedora, e o PATCH que pulava a recusa~~ | A | ✅ `747ae5e` · [relatório](execucao/E161.md) |
 | E162 | o aceite ganha um caminho até o contrato (**o épico-bandeira**) | B | ⏳ próximo |
 | E163 | as guardas que se desligam no nulo | B | ⏳ |
 | E164 | o escopo da noiva: loja E dona, em toda porta | C | ⏳ |
