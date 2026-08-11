@@ -1122,34 +1122,105 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
 router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
-  const orcamento = await db.query.orcamentosTable.findFirst({
-    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+
+  const token = gerarTokenConvite();
+  const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
+
+  /**
+   * B11/E95: o link, a marca de ENVIADO e a versão congelada, na mesma
+   * transação. Esta rota é a mais exposta ao buraco: ela ENTREGA o link no
+   * mesmo instante, então uma falha entre as duas escritas mandava a noiva
+   * direto para o ramo de fallback do portal.
+   *
+   * **S-O31 (achada pela varredura do E171, dentro do próprio E166): a linha é
+   * a TRANCA, e tudo que decide é relido aqui dentro.** As três perguntas
+   * (existe nesta loja? está RECUSADO? tem item?) e as duas decisões (marcar
+   * ENVIADO, congelar versão) liam o POOL, antes de qualquer tranca. Dois
+   * cliques em "gerar link" no mesmo instante — o duplo-clique da vendedora, ou
+   * a rede lenta que a faz clicar de novo — liam os dois `RASCUNHO`, e as duas
+   * transações congelavam: o UPDATE serializa as escritas, mas não desfaz a
+   * decisão tomada com o valor velho. **Medido: duas versões da MESMA
+   * proposta**, e é a versão congelada que a noiva vê pelo número e que o gate
+   * do E115 confere contra o contrato.
+   *
+   * É o mesmo desfecho do C8 pela outra ponta: pergunta feita UMA vez, sob a
+   * tranca, e esta rota só traduz para HTTP.
+   */
+  const desfecho = await db.transaction(async (tx) => {
+    const [sobTranca] = await tx
+      .select({ status: orcamentosTable.status, validade: orcamentosTable.validade })
+      .from(orcamentosTable)
+      .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)))
+      .for("update");
+    if (!sobTranca) return { erro: "SUMIU" } as const;
+    if (sobTranca.status === "RECUSADO") return { erro: "RECUSADO" } as const;
+
+    /**
+     * O1 (E166) — o link congelava um orçamento VAZIO, e era a ação primária
+     * da tela de um orçamento novo.
+     *
+     * A versão 1 nascia com `totalLiquido: 0` e hash do conteúdo vazio; a
+     * página da noiva imprimia **Total R$ 0,00** com o botão "Aceitar" aceso.
+     * Ela aceitava, o orçamento ia para APROVADO — terminal — e a vendedora
+     * não conseguia mais lançar o vestido de R$ 5.000,00: 422 no item, 422 no
+     * contrato. Uma venda inteira sem contrato possível, e o aceite gravado
+     * era de zero. A versão nunca mais congela vazia — e a pergunta mora sob a
+     * tranca, que é a mesma que as portas de item tomam (`sobPaiTrancado`),
+     * então "tinha item quando eu perguntei" não envelhece entre a guarda e o
+     * congelamento.
+     */
+    const [temItem] = await tx.select({ id: orcamentoItensTable.id })
+      .from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.orcamentoId, orcamentoId))
+      .limit(1);
+    if (!temItem) return { erro: "VAZIO" } as const;
+
+    /**
+     * D3 (E166, decisão da dona) — o link regenerado de uma proposta VENCIDA
+     * re-abre a validade EXPLICITAMENTE, em vez de por acidente.
+     *
+     * O aceite passou a barrar proposta vencida (C6): sem isto, regenerar o
+     * link entregaria à noiva uma página que só sabe dizer "venceu". Reenviar
+     * É reabrir a negociação: a validade recomeça (30 dias, a régua da casa) e
+     * uma versão NOVA congela com ela — a noiva aceita o que está vendo, prazo
+     * incluído, e a aba velha esbarra na guarda de versão do E160.
+     *
+     * Relida sob a tranca, ela também para de dobrar: o segundo clique lê a
+     * validade JÁ reaberta pelo primeiro, não a vencida.
+     */
+    const validadeVencida = !!sobTranca.validade && sobTranca.validade < new Date();
+    const validadeNova = validadeVencida
+      ? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS))
+      : null;
+
+    await tx.update(orcamentosTable)
+      .set({
+        publicoToken: token,
+        publicoExpiraEm: expiraEm,
+        ...(sobTranca.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
+        ...(validadeNova ? { validade: validadeNova } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(orcamentosTable.id, orcamentoId));
+
+    // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
+    // D3: reabrir uma proposta vencida também congela — a validade nova entra
+    // no snapshot que ela vai ler.
+    if (sobTranca.status === "RASCUNHO" || validadeNova) {
+      await criarVersaoEnviada(tx, lojaId, orcamentoId);
+    }
+    return { erro: null } as const;
   });
-  if (!orcamento) {
+
+  if (desfecho.erro === "SUMIU") {
     res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
     return;
   }
-  if (orcamento.status === "RECUSADO") {
+  if (desfecho.erro === "RECUSADO") {
     res.status(422).json({ error: "ORCAMENTO_RECUSADO", detalhe: "Orçamento recusado não gera link" });
     return;
   }
-
-  /**
-   * O1 (E166) — o link congelava um orçamento VAZIO, e era a ação primária da
-   * tela de um orçamento novo.
-   *
-   * A versão 1 nascia com `totalLiquido: 0` e hash do conteúdo vazio; a
-   * página da noiva imprimia **Total R$ 0,00** com o botão "Aceitar" aceso.
-   * Ela aceitava, o orçamento ia para APROVADO — terminal — e a vendedora não
-   * conseguia mais lançar o vestido de R$ 5.000,00: 422 no item, 422 no
-   * contrato. Uma venda inteira sem contrato possível, e o aceite gravado era
-   * de zero. A versão nunca mais congela vazia.
-   */
-  const [temItem] = await db.select({ id: orcamentoItensTable.id })
-    .from(orcamentoItensTable)
-    .where(eq(orcamentoItensTable.orcamentoId, orcamentoId))
-    .limit(1);
-  if (!temItem) {
+  if (desfecho.erro === "VAZIO") {
     res.status(422).json({
       error: "ORCAMENTO_VAZIO",
       detalhe: "A proposta não tem nenhum item — lance o vestido antes de mandar o link para a noiva.",
@@ -1157,46 +1228,6 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads"
     });
     return;
   }
-
-  /**
-   * D3 (E166, decisão da dona) — o link regenerado de uma proposta VENCIDA
-   * re-abre a validade EXPLICITAMENTE, em vez de por acidente.
-   *
-   * O aceite passou a barrar proposta vencida (C6): sem isto, regenerar o link
-   * entregaria à noiva uma página que só sabe dizer "venceu". Reenviar É
-   * reabrir a negociação: a validade recomeça (30 dias, a régua da casa) e uma
-   * versão NOVA congela com ela — a noiva aceita o que está vendo, prazo
-   * incluído, e a aba velha esbarra na guarda de versão do E160.
-   */
-  const validadeVencida = !!orcamento.validade && orcamento.validade < new Date();
-  const validadeNova = validadeVencida
-    ? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS))
-    : null;
-
-  const token = gerarTokenConvite();
-  const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
-  // B11/E95: o link, a marca de ENVIADO e a versão congelada, na mesma
-  // transação. Esta rota é a mais exposta ao buraco: ela ENTREGA o link no
-  // mesmo instante, então uma falha entre as duas escritas mandava a noiva
-  // direto para o ramo de fallback do portal.
-  await db.transaction(async (tx) => {
-    await tx.update(orcamentosTable)
-      .set({
-        publicoToken: token,
-        publicoExpiraEm: expiraEm,
-        ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
-        ...(validadeNova ? { validade: validadeNova } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(orcamentosTable.id, orcamento.id));
-
-    // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
-    // D3: reabrir uma proposta vencida também congela — a validade nova entra
-    // no snapshot que ela vai ler.
-    if (orcamento.status === "RASCUNHO" || validadeNova) {
-      await criarVersaoEnviada(tx, lojaId, orcamentoId);
-    }
-  });
 
   res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });

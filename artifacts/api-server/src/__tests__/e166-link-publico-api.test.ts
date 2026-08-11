@@ -149,4 +149,43 @@ describe("E166 — o link público cumpre o que promete", () => {
     expect(pagina.status).toBe(200);
     expect(pagina.body.observacoes).toBe("Entrada de R$ 1.500,00 e 7x de R$ 500,00");
   });
+
+  // ─────────── S-O31 — a porta do link entra na tranca ───────────────────────
+
+  /**
+   * S-O31 (achada pela varredura do E171, DENTRO do E166) — o `POST /link`
+   * decidia congelar a versão pelo `status` lido no POOL, fora da transação.
+   *
+   * A decisão `if (orcamento.status === "RASCUNHO")` usava um valor lido antes
+   * de qualquer tranca. Dois cliques em "gerar link" no mesmo instante — o
+   * duplo-clique da vendedora, ou a rede lenta que faz ela clicar de novo —
+   * leem os DOIS `RASCUNHO`, e as duas transações congelam versão: o UPDATE
+   * serializa as escritas, mas não desfaz a decisão já tomada com o valor
+   * velho. Resultado: **duas versões congeladas da MESMA proposta**, e é a
+   * versão congelada que a noiva vê pelo número e que o gate do E115 confere
+   * contra o contrato.
+   *
+   * O conserto é o padrão que este arquivo já usa em toda porta de item
+   * (`sobPaiTrancado`, C4/E158): trancar a linha e **reler o que decide**
+   * dentro da transação.
+   */
+  it("S-O31 · dois cliques em 'gerar link' congelam UMA versão, não duas", async () => {
+    const lead = await criarLead(f);
+    const orcamento = await criarOrcamento(f, { leadId: lead.id, status: "RASCUNHO" });
+    await criarOrcamentoItem(f, { orcamentoId: orcamento.id, valorUnitario: 5000 });
+
+    // O duplo-clique: as duas chamadas partem juntas, sem esperar a primeira.
+    const [a, b] = await Promise.all([
+      agent.post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/link`),
+      agent.post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/link`),
+    ]);
+    // As duas respondem 200: regenerar link É idempotente por contrato (o
+    // token novo mata o anterior). O que não pode dobrar é a VERSÃO.
+    expect([a.status, b.status]).toEqual([200, 200]);
+
+    const versoes = await db.select().from(orcamentoVersoesTable)
+      .where(eq(orcamentoVersoesTable.orcamentoId, orcamento.id));
+    expect(versoes).toHaveLength(1);
+    expect(versoes[0].numero).toBe(1);
+  });
 });

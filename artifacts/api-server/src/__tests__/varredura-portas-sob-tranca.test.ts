@@ -85,14 +85,22 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * como reconciliado sem ter sido abatido, ou o contrário. É a mesma família das
  * Faixas A/B, na única tabela quente que os quatro épicos não abriram.
  *
- * ### `orcamentos.ts:1114` — 1 porta (S-O40, 🟠)
+ * ### ~~`orcamentos.ts:1114`~~ — FECHADA, e esta varredura foi quem cobrou
  *
- * `POST /orcamentos/:id/link` lê o orçamento no POOL (`:1095-1097`) e decide
- * pelo `status === "RASCUNHO"` lido lá fora: dentro da transação ele grava o
- * token E chama `criarVersaoEnviada`. Dois cliques em "gerar link" no mesmo
- * segundo leem os dois RASCUNHO e congelam DUAS versões da mesma proposta — e a
- * versão congelada é o que o gate do E115 confere contra o contrato. É
- * check-then-write de manual, na porta que entrega o link à noiva.
+ * A S-O31 (🟠) era o `POST /orcamentos/:id/link` lendo o orçamento no POOL e
+ * decidindo pelo `status === "RASCUNHO"` lido lá fora, enquanto a transação
+ * gravava o token E chamava `criarVersaoEnviada`. **Medido: dois cliques
+ * simultâneos congelavam DUAS versões da mesma proposta** — `expected [ … ] to
+ * have a length of 1 but got 2` —, e a versão congelada é o que o gate do E115
+ * confere contra o contrato. Fechada movendo as três perguntas e as duas
+ * decisões para DENTRO da transação, sob `FOR UPDATE`, como as portas de item
+ * já faziam via `sobPaiTrancado`.
+ *
+ * **O fecho passou por aqui antes de ser aceito:** baixar a porta fez a
+ * contagem de `orcamentos.ts` cair de 2 para 1 e o total de 6 para 5, e os dois
+ * casos abaixo ficaram VERMELHOS (`expected 5 to be 6`). É o comportamento que
+ * esta tabela existe para ter — a dívida trava a CONTAGEM, não a lista de
+ * nomes, que foi o defeito que a conferência de 2026-08-05 achou na S30.
  *
  * ### As 2 de nascimento — julgadas e absolvidas, não perdoadas
  *
@@ -105,10 +113,12 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  */
 const SEM_DISCIPLINA: Record<string, number> = {
   "artifacts/api-server/src/routes/comissao.ts": 3,
-  "artifacts/api-server/src/routes/orcamentos.ts": 2,
+  // Era 2; a S-O31 (`POST /link`) fechou e a contagem caiu — o vermelho desta
+  // linha foi o que cobrou a baixa. Resta o nascimento de `POST /orcamentos`.
+  "artifacts/api-server/src/routes/orcamentos.ts": 1,
   "artifacts/api-server/src/routes/reservas.ts": 1,
 };
-const TOTAL_SEM_DISCIPLINA = 6;
+const TOTAL_SEM_DISCIPLINA = 5;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
