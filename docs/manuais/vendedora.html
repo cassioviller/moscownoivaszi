@@ -1,0 +1,583 @@
+<title>Manual da Vendedora — Moscow Noivas</title>
+<style>
+  /* ── Tokens: papel e tinta. O caderno que este sistema substituiu. ────────
+     Claro é o padrão; o escuro redefine SÓ os tokens, nas duas guardas
+     (preferência do sistema e escolha explícita). Nenhuma cor nasce dentro de
+     um bloco de tema. */
+  :root {
+    --papel:      #faf9f6;
+    --folha:      #ffffff;
+    --tinta:      #1b1f2a;
+    --tinta-fraca:#5c6170;
+    --caneta:     #2e4e8f;
+    --caneta-suave:#eef1f8;
+    --carmim:     #a32f3f;
+    --carmim-suave:#fbeff0;
+    --linha:      #e3e1db;
+    --linha-forte:#c9c6bd;
+    --chip-borda: #cfd3dd;
+    --chip-fundo: #f2f3f7;
+    --sombra:     0 1px 2px rgba(27,31,42,.05), 0 8px 24px -16px rgba(27,31,42,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:      #15171c;
+      --folha:      #1d2027;
+      --tinta:      #e7e5e0;
+      --tinta-fraca:#9ba1ae;
+      --caneta:     #8fadea;
+      --caneta-suave:#1e2634;
+      --carmim:     #e58a97;
+      --carmim-suave:#2b1d20;
+      --linha:      #2b2f38;
+      --linha-forte:#3d424e;
+      --chip-borda: #3a4050;
+      --chip-fundo: #232833;
+      --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:      #15171c;
+    --folha:      #1d2027;
+    --tinta:      #e7e5e0;
+    --tinta-fraca:#9ba1ae;
+    --caneta:     #8fadea;
+    --caneta-suave:#1e2634;
+    --carmim:     #e58a97;
+    --carmim-suave:#2b1d20;
+    --linha:      #2b2f38;
+    --linha-forte:#3d424e;
+    --chip-borda: #3a4050;
+    --chip-fundo: #232833;
+    --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .pagina {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+  @media (min-width: 1020px) {
+    .pagina { grid-template-columns: 232px minmax(0, 1fr); gap: 56px; padding-right: 40px; }
+  }
+
+  /* ── Cabeçalho ─────────────────────────────────────────────────────────── */
+  .capa { grid-column: 1 / -1; padding: 56px 0 36px; border-bottom: 2px solid var(--linha-forte); }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--caneta); font-weight: 600; margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(34px, 6vw, 50px);
+    line-height: 1.08; margin: 0 0 14px; font-weight: 700;
+    letter-spacing: -.015em; text-wrap: balance;
+  }
+  .subtitulo {
+    font-size: clamp(18px, 2.6vw, 21px); color: var(--tinta-fraca);
+    margin: 0 0 26px; max-width: 34em; text-wrap: balance;
+  }
+  .contexto {
+    display: flex; flex-wrap: wrap; gap: 10px 26px;
+    font-size: 14px; color: var(--tinta-fraca);
+    padding-top: 20px; border-top: 1px solid var(--linha);
+  }
+  .contexto b { color: var(--tinta); font-weight: 600; }
+
+  /* ── Índice ────────────────────────────────────────────────────────────── */
+  .indice { padding: 28px 0 0; }
+  @media (min-width: 1020px) {
+    .indice { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 40px 0; }
+  }
+  .indice h2 {
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tinta-fraca); margin: 0 0 12px; font-weight: 600;
+  }
+  .indice ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .indice a {
+    display: block; padding: 5px 10px; margin-left: -10px;
+    color: var(--tinta-fraca); text-decoration: none; font-size: 14.5px;
+    border-radius: 5px; border-left: 2px solid transparent;
+  }
+  .indice a:hover { color: var(--caneta); background: var(--caneta-suave); }
+  .indice a:focus-visible { outline: 2px solid var(--caneta); outline-offset: 1px; }
+  .indice .num {
+    font-variant-numeric: tabular-nums; color: var(--linha-forte);
+    margin-right: 8px; font-size: 12.5px;
+  }
+
+  /* ── Corpo ─────────────────────────────────────────────────────────────── */
+  main { padding-top: 8px; min-width: 0; }
+  section { padding: 40px 0; border-bottom: 1px solid var(--linha); max-width: 68ch; }
+  section:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(25px, 3.6vw, 31px); line-height: 1.2;
+    margin: 0 0 8px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .passo {
+    font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--caneta); background: var(--caneta-suave);
+    border-radius: 999px; padding: 3px 11px; flex: none;
+    font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  h3 {
+    font-size: 17.5px; font-weight: 650; margin: 30px 0 8px;
+    letter-spacing: -.005em; text-wrap: balance;
+  }
+  .resumo { color: var(--tinta-fraca); margin: 0 0 22px; font-size: 16.5px; }
+  p { margin: 0 0 15px; }
+  ul { margin: 0 0 15px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--caneta); }
+  strong { font-weight: 650; }
+
+  /* ── A citação da interface parece interface ───────────────────────────
+     Nome de botão vira chip; fala do sistema vira bloco com barra. É a
+     distinção que a vendedora precisa fazer no meio de um atendimento:
+     "isto é o que o manual diz" contra "isto é o que está na tela". */
+  .btn {
+    display: inline-block; font-size: 14.5px; font-weight: 550;
+    background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+    border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+    line-height: 1.5; color: var(--tinta);
+  }
+  .fala {
+    border-left: 3px solid var(--caneta); background: var(--caneta-suave);
+    padding: 13px 18px; margin: 0 0 16px; border-radius: 0 7px 7px 0;
+    font-size: 16px; color: var(--tinta);
+  }
+  .fala.aviso { border-left-color: var(--carmim); background: var(--carmim-suave); }
+  .fala p { margin: 0; }
+  .fala p + p { margin-top: 9px; }
+  .fala .rotulo {
+    display: block; font-size: 11px; letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 600; color: var(--caneta); margin-bottom: 5px;
+  }
+  .fala.aviso .rotulo { color: var(--carmim); }
+
+  /* ── Tabelas ───────────────────────────────────────────────────────────── */
+  .rolagem { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--linha); border-radius: 9px; background: var(--folha); }
+  table { border-collapse: collapse; width: 100%; font-size: 15.5px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th {
+    font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--tinta-fraca); font-weight: 600; background: var(--chip-fundo);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.prazo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+
+  /* ── O caminho, em uma olhada ──────────────────────────────────────────── */
+  .trilha {
+    display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
+  }
+  .trilha span {
+    font-size: 14.5px; font-weight: 550; padding: 5px 11px;
+    border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+  }
+  .trilha span.fim { background: var(--caneta); border-color: var(--caneta); color: var(--folha); }
+  :root[data-theme="dark"] .trilha span.fim,
+  .trilha span.fim { color: var(--papel); }
+  .trilha i { color: var(--linha-forte); font-style: normal; font-size: 15px; }
+
+  /* ── Menu: o que ela vê / não vê ───────────────────────────────────────── */
+  .colunas { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 0 0 18px; }
+  @media (min-width: 620px) { .colunas { grid-template-columns: 1fr 1fr; } }
+  .caixa {
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 17px 19px; box-shadow: var(--sombra);
+  }
+  .caixa h4 {
+    margin: 0 0 11px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 650;
+  }
+  .caixa.ve h4 { color: var(--caneta); }
+  .caixa.naove h4 { color: var(--tinta-fraca); }
+  .caixa ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
+  .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
+
+  /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
+  .nota {
+    font-size: 15px; color: var(--tinta-fraca);
+    border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 22px;
+  }
+  .nota b { color: var(--tinta); }
+
+  footer {
+    grid-column: 1 / -1; padding: 34px 0 0; margin-top: 8px;
+    border-top: 2px solid var(--linha-forte);
+    font-size: 14px; color: var(--tinta-fraca); max-width: 68ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; border-radius: 3px; }
+</style>
+
+<div class="pagina">
+
+  <header class="capa">
+    <p class="eyebrow">Moscow Noivas · Manual de uso</p>
+    <h1>Manual da Vendedora</h1>
+    <p class="subtitulo">Do primeiro contato ao contrato assinado — na ordem em que o seu dia acontece.</p>
+    <div class="contexto">
+      <span>Perfil: <b>Vendedora</b></span>
+      <span>Abre: <b>noivas, agenda e acervo</b></span>
+      <span>Atualizado em <b>11/08/2026</b></span>
+    </div>
+  </header>
+
+  <nav class="indice" aria-label="Índice">
+    <h2>Neste manual</h2>
+    <ol>
+      <li><a href="#ve"><span class="num">—</span>O que você vê</a></li>
+      <li><a href="#caminho"><span class="num">—</span>O caminho inteiro</a></li>
+      <li><a href="#chega"><span class="num">1</span>A noiva chega</a></li>
+      <li><a href="#ficha"><span class="num">2</span>A ficha da noiva</a></li>
+      <li><a href="#interesses"><span class="num">3</span>Interesses</a></li>
+      <li><a href="#lookbook"><span class="num">4</span>O lookbook</a></li>
+      <li><a href="#prova"><span class="num">5</span>Marcar a prova</a></li>
+      <li><a href="#orcamento"><span class="num">6</span>O orçamento</a></li>
+      <li><a href="#link"><span class="num">7</span>Mandar para a noiva</a></li>
+      <li><a href="#aprovar"><span class="num">8</span>Aprovar, e a volta</a></li>
+      <li><a href="#contrato"><span class="num">9</span>O contrato</a></li>
+      <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
+      <li><a href="#filas"><span class="num">—</span>As filas do seu dia</a></li>
+      <li><a href="#prazos"><span class="num">—</span>Os prazos</a></li>
+      <li><a href="#defeitos"><span class="num">—</span>Não é defeito seu</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="ve">
+      <h2>O que você vê, e o que não vê</h2>
+      <p class="resumo">Seu perfil abre três áreas: as noivas — com orçamentos e contratos —, a agenda e o acervo de vestidos.</p>
+      <div class="colunas">
+        <div class="caixa ve">
+          <h4>No seu menu</h4>
+          <ul>
+            <li>Seu dia</li><li>Noivas</li><li>Agenda</li><li>Atendimentos</li>
+            <li>Mensagens de hoje</li><li>Provas</li><li>Ajustes</li><li>Reservas</li>
+            <li>Vestidos</li><li>Catálogo</li><li>Orçamentos</li><li>Contratos</li>
+            <li>Minha comissão</li><li>Configurações</li>
+          </ul>
+        </div>
+        <div class="caixa naove">
+          <h4>Não aparece, e é de propósito</h4>
+          <ul>
+            <li>Financeiro</li><li>Folha do mês</li><li>Comissões</li>
+            <li>Equipe</li><li>Permissões</li>
+          </ul>
+        </div>
+      </div>
+      <p><strong><span class="btn">Minha comissão</span> é exceção, e é sua.</strong> Ela aparece mesmo você não tendo o módulo de comissões, porque é o <strong>seu próprio extrato</strong> — o que você ganhou, não o da loja.</p>
+      <div class="fala">
+        <span class="rotulo">Se algum botão responder</span>
+        <p>“Seu acesso não permite isso — peça à gerente.”</p>
+        <p>É disso que se trata: aquela ação é de outro perfil.</p>
+      </div>
+    </section>
+
+    <section id="caminho">
+      <h2>O caminho inteiro, em uma olhada</h2>
+      <div class="trilha">
+        <span>Noiva nova</span><i>→</i>
+        <span>Interesses</span><i>→</i>
+        <span>Lookbook</span><i>→</i>
+        <span>Prova</span><i>→</i>
+        <span>Orçamento</span><i>→</i>
+        <span>Link</span><i>→</i>
+        <span>Aceite</span><i>→</i>
+        <span>Reserva</span><i>→</i>
+        <span class="fim">Contrato</span>
+      </div>
+      <p>Você não precisa seguir essa ordem à risca. Mas é essa a ordem que o sistema espera, e é ela que faz a faixa <strong>“próximo passo”</strong> da ficha saber o que sugerir.</p>
+    </section>
+
+    <section id="chega">
+      <h2><span class="passo">1</span>A noiva chega</h2>
+      <p class="resumo">Menu → Noivas → <span class="btn">Adicionar noiva</span></p>
+      <p>Dois campos são obrigatórios, e só dois: <strong>“Nome da noiva”</strong> e <strong>“Origem”</strong> — de onde ela veio: Loja, WhatsApp, Site ou Instagram. Tudo o mais é opcional e pode esperar: nome do noivo, WhatsApp, cerimonialista, data e horário do casamento, local.</p>
+      <p><strong>A Origem nasce vazia de propósito.</strong> O sistema não escolhe por você porque esse campo vira relatório: é ele que responde <em>de onde vêm as noivas que fecham</em>. Um palpite estraga esse número para sempre.</p>
+      <div class="fala">
+        <span class="rotulo">Depois do contrato, a Origem trava</span>
+        <p>“A noiva já fechou contrato — o relatório de conversão já contou esta origem, e mudá-la agora reescreveria um número lido.”</p>
+      </div>
+      <p>Salvou, o sistema abre a ficha dela direto.</p>
+    </section>
+
+    <section id="ficha">
+      <h2><span class="passo">2</span>A ficha da noiva</h2>
+      <p class="resumo">É a tela para onde você volta o tempo todo. Ela não tem abas — tem uma faixa no topo e oito blocos abaixo.</p>
+
+      <h3>A faixa “próximo passo”</h3>
+      <p>Aparece só quando há o que fazer, e diz a frase da situação dela com o botão junto.</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>A faixa diz</th><th>O que ela está pedindo</th></tr></thead>
+          <tbody>
+            <tr><td>“Agendar o primeiro atendimento”</td><td>Ela entrou e não tem horário marcado</td></tr>
+            <tr><td>“Registrar os interesses dela”</td><td>Você ainda não anotou o que ela procura</td></tr>
+            <tr><td>“Montar o orçamento”</td><td>Já sabe o que ela quer — falta a proposta</td></tr>
+            <tr><td>“Enviar a proposta para ela”</td><td>Orçamento aberto que não chegou à noiva</td></tr>
+            <tr><td>“Fechar o orçamento”</td><td>A proposta está com ela</td></tr>
+            <tr><td>“Acompanhar o pagamento”</td><td>Contrato fechado</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Os oito blocos</h3>
+      <p><strong>O casamento</strong> — data, horário, local, e a contagem regressiva, que fica <strong>vermelha quando faltam 14 dias ou menos</strong> · <strong>Contato</strong> · <strong>Histórico de contato</strong> · <strong>Orçamentos</strong> · <strong>Contratos</strong> · <strong>Portal da noiva</strong> · <strong>Lookbook</strong> · <strong>Interesses</strong>.</p>
+
+      <h3>Se ela não fechar</h3>
+      <p>No menu do topo, <span class="btn">Marcar como perdida</span>. O sistema <strong>exige o motivo</strong> — sem ele o diálogo não fecha. Não é burocracia: é o motivo que faz o relatório responder por que as noivas não fecham.</p>
+      <p class="nota">Ela sai do funil ativo, mas <b>o cadastro e o histórico ficam</b>, e há <span class="btn">Reativar</span> se ela voltar.</p>
+    </section>
+
+    <section id="interesses">
+      <h2><span class="passo">3</span>Interesses — o que ela procura</h2>
+      <p class="resumo">Ficha → bloco Interesses → <span class="btn">Preencher interesses</span></p>
+      <p>Além dos atributos do catálogo, três campos livres: <strong>“Algo a mais”</strong>, <strong>“Não quer usar”</strong> e <strong>“Teto de orçamento (R$)”</strong>.</p>
+      <p>O teto vale a pena preencher: quando o orçamento passar dele, a tela avisa — <em>“R$ X acima do teto de R$ Y que a noiva definiu”</em>. É um aviso, não uma trava.</p>
+      <p class="nota"><b>Para apagar o teto, limpe o campo e salve.</b> Isso passou a funcionar de verdade agora; antes o campo voltava calado com o valor antigo.</p>
+    </section>
+
+    <section id="lookbook">
+      <h2><span class="passo">4</span>O lookbook</h2>
+      <p class="resumo">Os vestidos que ela quer rever em casa. Fica na ficha, não em tela própria.</p>
+      <p>Bloco Lookbook → <span class="btn">Montar lookbook</span>. Você marca os vestidos, e o botão <span class="btn">Criar e copiar link (N)</span> já <strong>copia o link</strong> — é só colar no WhatsApp dela.</p>
+      <p>O link <strong>vale 30 dias</strong>. Se precisar cortar antes, use a lixeira: <em>“A seleção de N vestido(s) para de abrir para a noiva na hora.”</em></p>
+    </section>
+
+    <section id="prova">
+      <h2><span class="passo">5</span>Marcar a prova</h2>
+      <p class="resumo">Ficha → <span class="btn">Agendar atendimento</span>, ou Menu → Atendimentos.</p>
+      <p>Escolha o <strong>Tipo</strong>: “Atendimento” ou <strong>“Prova”</strong>.</p>
+      <p><strong>Prova exige a reserva do vestido.</strong> É a regra que impede duas noivas de provarem a mesma peça no mesmo sábado. Se a noiva ainda não tem reserva, <strong>você cria ali mesmo</strong>, sem sair da tela: escolha o vestido, confirme a data do casamento e clique <span class="btn">Criar reserva</span>.</p>
+
+      <h3>O horário é uma grade de botões, não um campo</h3>
+      <p>Você escolhe cabine, vendedora e data — e o sistema <strong>acende só os horários que existem</strong>. O horário apagado tem o motivo escrito nele; passe o mouse para ler:</p>
+      <div class="fala">
+        <span class="rotulo">Os cinco motivos</span>
+        <p>“a loja não abre nesse dia da semana”<br>
+           “o horário está fora do expediente da loja”<br>
+           “a vendedora está ausente nesse dia”<br>
+           “já há atendimento nessa cabine nesse horário”<br>
+           “a vendedora já tem atendimento nesse horário”</p>
+      </div>
+      <p>Quando alguém está de férias, o recado traz o nome e o período: <em>“Maria está ausente de 12/08 a 20/08 — escolha outro dia ou outra pessoa.”</em></p>
+      <p class="nota">Agendou, o sistema pergunta <b>“Quer já mandar a confirmação para a noiva?”</b> com um botão de WhatsApp — só quando ela tem número cadastrado.</p>
+    </section>
+
+    <section id="orcamento">
+      <h2><span class="passo">6</span>O orçamento</h2>
+      <p class="resumo">Ficha → bloco Orçamentos → <span class="btn">Novo orçamento</span></p>
+
+      <h3>Lançar os itens</h3>
+      <p>Escolha o <strong>Tipo</strong> do item: Vestido, Acessório, Estoque, Serviço ou Ajuste. Escolhendo do catálogo, <strong>descrição e preço vêm sozinhos</strong>. Todos os tipos têm a opção <span class="btn">— avulso (digitar) —</span> para o que não está cadastrado.</p>
+      <p>Preencha <strong>“Descrição”</strong>, <strong>“Valor (R$)”</strong>, <strong>“Qtd”</strong>, e clique <span class="btn">Adicionar</span>.</p>
+      <div class="fala aviso">
+        <span class="rotulo">Digite a quantidade só com números</span>
+        <p>“3un” não é aceito — a tela responde <strong>“Quantidade inválida — use 1 ou mais”</strong>. Antes isso virava 1 em silêncio, e três véus de R$ 800,00 entravam como um só.</p>
+      </div>
+
+      <h3>O desconto</h3>
+      <p>Escolha <strong>“Percentual (%)”</strong> ou <strong>“Valor (R$)”</strong>, digite e clique <span class="btn">Aplicar desconto</span>.</p>
+      <div class="fala aviso">
+        <span class="rotulo">Confira o seletor antes de aplicar</span>
+        <p>Digitar 20 com o seletor em “Valor (R$)” tira <strong>R$ 20,00</strong>; com o seletor em “Percentual (%)” tira <strong>20%</strong> — em R$ 5.000,00, mil reais.</p>
+        <p>Errou, tem volta: o botão <span class="btn">Remover desconto</span>, em vermelho, aparece sempre que existe desconto aplicado.</p>
+      </div>
+      <p>Desconto em reais maior que os itens é recusado com a conta na frase — <em>“Desconto de R$ 6.000,00 é maior que os itens do orçamento (R$ 5.000,00) — o total sairia zerado”</em>.</p>
+
+      <h3>A validade</h3>
+      <p>Campo <strong>“Proposta vale até”</strong> → <span class="btn">Salvar validade</span>. Uma proposta nova nasce valendo <strong>30 dias</strong>.</p>
+    </section>
+
+    <section id="link">
+      <h2><span class="passo">7</span>Mandar para a noiva</h2>
+      <p class="resumo">O botão colorido da tela do orçamento: <span class="btn">Link para a noiva</span>. Depois de gerado, ele vira <span class="btn">Copiar link da noiva</span>.</p>
+      <p><strong>Gerar o link também marca o orçamento como enviado</strong> — compartilhar é enviar.</p>
+
+      <h3>Duas coisas que valem saber de cor</h3>
+      <div class="fala aviso">
+        <span class="rotulo">O link morre em 7 dias; a proposta vale 30</span>
+        <p>São prazos diferentes de propósito: o link é a chave, a validade é o preço. Quando o botão voltar a dizer <span class="btn">Link para a noiva</span> em vez de “Copiar link da noiva”, é porque o link expirou — <strong>clique nele de novo</strong> e mande o novo endereço.</p>
+      </div>
+      <p><strong>A proposta não sai vazia.</strong> Sem nenhum item, o sistema responde <em>“A proposta não tem nenhum item — lance o vestido antes de mandar o link para a noiva.”</em> Isso protege uma venda inteira: uma proposta de R$ 0,00 aceita pela noiva travava o orçamento em aprovado e impedia lançar o vestido depois.</p>
+
+      <h3>O que a noiva vê</h3>
+      <p>O nome dela e o da loja, os itens, o desconto, o total, a validade — e o botão de aceitar. Ao aceitar, a página vira comprovante: <em>“Você aceitou esta proposta em …”</em>.</p>
+      <p>Você acompanha pela própria tela do orçamento: o subtítulo diz <em>“aberto pela noiva em …”</em> ou <em>“link enviado, ainda não aberto”</em>, e o chip diz <strong>“Aceito pela noiva”</strong> ou <strong>“Sem aceite da noiva”</strong>.</p>
+
+      <h3>Se a proposta venceu</h3>
+      <div class="fala">
+        <span class="rotulo">A noiva lê</span>
+        <p>“Esta proposta venceu em 10/07/2026 — peça uma atualização à sua vendedora para aceitar.”</p>
+      </div>
+      <p><strong>O remédio é clicar em <span class="btn">Link para a noiva</span> outra vez.</strong> Reenviar reabre a validade por mais 30 dias e congela a proposta nova — e é isso que ela vai aceitar.</p>
+    </section>
+
+    <section id="aprovar">
+      <h2><span class="passo">8</span>Aprovar, e a porta de volta</h2>
+      <p class="resumo">Com o aceite dela, o orçamento pode ser aprovado — e aprovado ele deixa de ser editável.</p>
+      <div class="fala aviso">
+        <span class="rotulo">Aprovar sem o aceite dela é possível, e a tela avisa</span>
+        <p>“A noiva ainda não aceitou pelo link. Ao aprovar agora, o botão de aceite some do portal dela — você fica sem a prova digital de que ela concordou com este valor.”</p>
+        <p>Prefira esperar o aceite.</p>
+      </div>
+      <p><strong>A porta de volta é <span class="btn">Desfazer aceite</span></strong>, no menu, em vermelho — só enquanto não há contrato. O orçamento volta a rascunho para você trocar a peça ou o valor, e <strong>a noiva aceita de novo</strong> pelo link. Use quando a peça aceita ficou indisponível.</p>
+      <p class="nota">Depois que o contrato nasce, essa porta fecha: <em>“Este orçamento já virou contrato — o aceite é a origem dele e não se desfaz.”</em></p>
+    </section>
+
+    <section id="contrato">
+      <h2><span class="passo">9</span>O contrato</h2>
+      <p class="resumo">Com o orçamento aprovado, o botão colorido vira <span class="btn">Gerar contrato</span>. Ele abre um diálogo, e o contrato nasce ali.</p>
+
+      <h3>Primeiro: as peças precisam estar reservadas</h3>
+      <p>O bloco <strong>“Peças do acervo — a reserva é o que segura a peça”</strong> aparece sempre. Peça sem reserva vem em vermelho:</p>
+      <div class="fala aviso">
+        <p>“«Vestido Sereia» ainda não tem reserva — pode sair para outra noiva”</p>
+      </div>
+      <p><strong>Reserve ali mesmo</strong>, no botão <span class="btn">Reservar agora</span> ao lado. Você consegue fazer isso mesmo sem o módulo de acervo — a venda é de quem vende.</p>
+
+      <h3>Depois: os dados e o carnê</h3>
+      <p><strong>“Vendedora da venda”</strong> — se for diferente da do orçamento, o sistema avisa que a comissão vai para quem está selecionada, e registra a troca · <strong>“CPF da noiva”</strong> · <strong>“Forma de pagamento”</strong> · <strong>“Data do casamento”</strong> · <strong>“Entrada (R$)”</strong> · <strong>“Nº de parcelas”</strong> · <strong>“1ª parcela vence em”</strong>.</p>
+      <p><strong>A prévia do carnê aparece enquanto você digita</strong>, e é exatamente o que vai ser gravado. As parcelas vencem todo mês no mesmo dia; se o dia não existir no mês — 31 em fevereiro —, cai no último dia do mês. A entrada, se houver, vence hoje.</p>
+
+      <h3>A tela do contrato</h3>
+      <p>Traz <strong>“Valor total”</strong>, <strong>“Falta receber”</strong>, a forma de pagamento, o CPF, o vestido e os itens. Abaixo, o plano de pagamento, parcela por parcela, com o estado de cada uma: Prevista, Paga, Parcial, Atrasada, Cancelada.</p>
+      <p class="nota">Você pode <span class="btn">Baixar PDF</span> a qualquer momento — inclusive de contrato cancelado, e nesse caso <b>o papel sai com a tarja de cancelado</b>. É de propósito: esse é justamente o documento que prova o cancelamento.</p>
+    </section>
+
+    <section id="nao">
+      <h2>Quando o sistema diz não</h2>
+      <p class="resumo">Cada recado abaixo é literal — é o que aparece na tela.</p>
+
+      <h3>No orçamento</h3>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que fazer</th></tr></thead>
+          <tbody>
+            <tr><td>“A proposta não tem nenhum item — lance o vestido antes de mandar o link para a noiva.”</td><td>Lance ao menos um item</td></tr>
+            <tr><td>“Orçamento aprovado não muda mais — crie um novo orçamento para renegociar”</td><td>Aprovado é congelado. Renegociar = orçamento novo</td></tr>
+            <tr><td>“O que a noiva recusou é registro — crie um novo orçamento em vez de reescrever o não.”</td><td>Idem, para recusado</td></tr>
+            <tr><td>“Este orçamento mudou de estado enquanto você decidia — recarregue a tela.”</td><td>Alguém mexeu junto. Recarregue</td></tr>
+            <tr><td>“Desconto inválido”</td><td>Confira o seletor: 20% não é R$ 20,00</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>No contrato</h3>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que fazer</th></tr></thead>
+          <tbody>
+            <tr><td>“O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana.”</td><td>Use <span class="btn">Reservar agora</span> no próprio diálogo</td></tr>
+            <tr><td>“A data do casamento no contrato (10/05/2027) não bate com a da reserva do vestido (17/05/2027).”</td><td>Ajuste a data ou a reserva</td></tr>
+            <tr><td>“Os itens mudaram depois do envio que a noiva aceitou — o contrato tem de nascer do que ela viu.”</td><td>Refaça os itens como estavam, ou mande proposta nova para novo aceite</td></tr>
+            <tr><td>“Uma janela de manutenção não segura a peça para a noiva — crie uma reserva de casamento.”</td><td>Aquele bloqueio é de manutenção, não reserva</td></tr>
+            <tr><td>“Este lead já possui um contrato ativo”</td><td>A noiva já tem contrato vivo</td></tr>
+            <tr><td>“A soma das parcelas não fecha com o total.”</td><td>Revise entrada e número de parcelas</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Na agenda</h3>
+      <p>Os cinco motivos de horário indisponível estão no passo 5. Além deles: <em>“Uma prova precisa da reserva do vestido que vai ser provado.”</em> e <em>“Um atendimento concluído é a história da ficha da noiva — ele não se apaga.”</em></p>
+
+      <h3>Genéricos</h3>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que significa</th></tr></thead>
+          <tbody>
+            <tr><td>“Sua sessão expirou. Entre de novo.”</td><td>O login dura 8 horas</td></tr>
+            <tr><td>“Seu acesso não permite isso — peça à gerente.”</td><td>É de outro perfil</td></tr>
+            <tr><td>“Não consegui falar com o sistema. Tente de novo em um instante.”</td><td>O sistema não respondeu. <strong>Não é erro seu, e não perdeu o que foi salvo antes</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="filas">
+      <h2>As filas que organizam seu dia</h2>
+
+      <h3>Mensagens de hoje</h3>
+      <p>Responde: <strong>com quem eu preciso falar hoje, e por quê.</strong> Quatro blocos são seus:</p>
+      <ul>
+        <li><strong>“Pediram para remarcar”</strong> — avisaram pelo portal que não podem vir. <strong>O horário continua preso</strong> até alguém remarcar ou cancelar</li>
+        <li><strong>“Procurar para confirmar — próximas 48h”</strong> — abrir o WhatsApp registra que <strong>você procurou</strong> e tira a linha da fila. Quem confirma é a noiva, pelo portal</li>
+        <li><strong>“Aceites esperando contrato”</strong> — <em>“A noiva já disse sim — o vestido só fica dela quando o contrato fechar.”</em> Cada linha traz o valor, há quantos dias, e quantas peças estão sem reserva, com o botão <span class="btn">Gerar contrato</span></li>
+        <li><strong>“Orçamentos vencendo — próximas 72h”</strong> — o lembrete antes de a validade passar em silêncio</li>
+      </ul>
+      <p class="nota">O bloco de valores em aberto é do financeiro e não aparece para você.</p>
+
+      <h3>O funil</h3>
+      <p>Noivas → vista de funil. Onze colunas, do “Novo” ao “Devolvido”. Arraste o card, ou use o menu dele.</p>
+      <p>O card <strong>acende quando a noiva está parada</strong>: amarelo depois de <strong>7 dias</strong> sem contato, vermelho depois de <strong>14</strong>. Só as etapas de negociação envelhecem — quem já fechou contrato não fica amarela por não receber mensagem.</p>
+
+      <h3>Provas e Reservas</h3>
+      <p><strong>Provas</strong> lista quem vem provar, da mais próxima à mais distante. <strong>Reservas</strong> responde quem casa com qual vestido. <strong>Nenhuma das duas cria nada:</strong> a prova nasce na Agenda, e a reserva nasce no diálogo do contrato, no formulário da prova ou na ficha do vestido.</p>
+    </section>
+
+    <section id="prazos">
+      <h2>Os prazos, em um lugar só</h2>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
+          <tbody>
+            <tr><td>Validade da proposta</td><td class="prazo">30 dias</td></tr>
+            <tr><td>Link da proposta</td><td class="prazo">7 dias</td></tr>
+            <tr><td>Portal da noiva</td><td class="prazo">30 dias, renovados a cada abertura dela</td></tr>
+            <tr><td>Lookbook</td><td class="prazo">30 dias</td></tr>
+            <tr><td>Sua sessão (login)</td><td class="prazo">8 horas</td></tr>
+            <tr><td>Casamento “urgente” (vermelho)</td><td class="prazo">14 dias ou menos</td></tr>
+            <tr><td>Prova “iminente” (vermelho)</td><td class="prazo">7 dias ou menos</td></tr>
+            <tr><td>Noiva “parada”</td><td class="prazo">7 dias amarelo · 14 vermelho</td></tr>
+            <tr><td>Confirmação de presença</td><td class="prazo">próximas 48 horas</td></tr>
+            <tr><td>Aviso de orçamento vencendo</td><td class="prazo">próximas 72 horas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="defeitos">
+      <h2>Duas coisas que você vai notar, e não são defeito seu</h2>
+      <div class="fala aviso">
+        <span class="rotulo">O botão “Lookbook” da barra de atendimento não abre</span>
+        <p>Na barra “Atendendo…” do topo e na linha do atendimento em curso, o botão “Lookbook” leva a uma página que responde “Não encontramos esta página”. <strong>O lookbook funciona</strong> — ele fica no bloco Lookbook da ficha da noiva. Já está anotado para conserto.</p>
+      </div>
+      <div class="fala aviso">
+        <span class="rotulo">A faixa “próximo passo” pode dizer “Enviar a proposta” com a proposta já aceita</span>
+        <p>Não existe etapa “Aceito” no funil — foi decisão adiada. Quem responde certo sobre aceites é a fila <strong>“Aceites esperando contrato”</strong>.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Este manual descreve o sistema como ele está em <strong>11/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+  </footer>
+
+</div>

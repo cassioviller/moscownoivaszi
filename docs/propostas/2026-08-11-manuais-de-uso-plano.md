@@ -1,7 +1,7 @@
 # Plano — os manuais de uso, por papel
 
 **Aberto em 2026-08-11**, depois de a trilha da ótica dos papéis fechar os 14
-épicos. Decisões da dona já tomadas: **cobre o sistema inteiro** (não só o que
+épicos. Decisões do Renato já tomadas: **cobre o sistema inteiro** (não só o que
 mudou), **vive como página web navegável com a fonte versionada no repo**, e é
 **um manual por papel**.
 
@@ -26,7 +26,7 @@ O que existe e serve de matéria-prima:
 ## A tensão que o plano precisa resolver ANTES de escrever
 
 **Os papéis da revisão não são os perfis do sistema.** A trilha inteira foi
-escrita pela ótica de *dona, vendedora, costureira, noiva*. Os perfis que o
+escrita pela ótica de *dona, vendedora, costureira, noiva* — e já ali o "dona" estava errado: **o proprietário é o Renato, homem**. Os perfis que o
 sistema semeia (`configuracao-inicial.ts:85-110`) são outros quatro:
 
 | Perfil semeado | leads | agenda | vestidos | financeiro | comissao | admin |
@@ -59,8 +59,8 @@ verdade em vez de fingir.
 
 ## Os cinco documentos
 
-### 1. Manual da Proprietária — *"a loja inteira, e o dinheiro"*
-**Perfil:** Proprietária (ou Admin). **Telas:** ~30 das 59.
+### 1. Manual do Proprietário (Renato) — *"a loja inteira, e o dinheiro"*
+**Perfil:** Proprietária no sistema — ver a nota de nome abaixo. **Telas:** ~30 das 59.
 O único que cobre `financeiro`, `comissao` e `admin`: contas a receber e a
 pagar, conciliação, DRE, fluxo de caixa, projeção, folha, comissões, auditoria,
 equipe e perfis, backup, dados da loja, privacidade. Cobre também tudo o que a
@@ -120,7 +120,7 @@ com o caminho público (que tinha ZERO).
 
 **d) Nenhuma captura de tela na primeira versão.** `scripts/capturar-telas.ts`
 existe e faz 27 rotas × claro/escuro/390px, mas imagem é a parte que apodrece
-mais rápido e mais silenciosamente. Texto primeiro; imagem depois, se a dona
+mais rápido e mais silenciosamente. Texto primeiro; imagem depois, se o Renato
 pedir, e gerada por script para poder ser refeita em lote.
 
 ## A ordem, em quatro entregas
@@ -133,7 +133,7 @@ tamanho.
 | **1** | **Vendedora** | É o caminho que a trilha mirou, o que mais gente percorre e o que mais mudou. Se só uma entrega acontecer, tem que ser esta. |
 | **2** | **Costureira** + **Guia da Noiva** | Os dois mais curtos, e os dois que hoje não têm NADA. Juntos são menos trabalho que o da vendedora. |
 | **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. |
-| **4** | **Proprietária** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. |
+| **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. |
 
 Junto da entrega 1 nasce a **varredura (a)** e o esqueleto compartilhado da
 página — o resto é conteúdo.
@@ -148,12 +148,12 @@ consertam neste plano** — vão para a tabela de Sobras, na regra 12:
   fechado que a concede é a Recepção, que traz `leads` ver+criar junto. Um
   perfil "Costureira" com `agenda` e nada mais é uma linha em `PERFIS_PADRAO`
   (`configuracao-inicial.ts:85`) — mas mexe em seed, então pede a régua do banco
-  virgem e uma decisão da dona sobre o que ela pode enxergar da agenda.
+  virgem e uma decisão do Renato sobre o que ela pode enxergar da agenda.
 - **A Vendedora fecha contrato porque `contratos.ts` pede `leads`.** Pode estar
   certo (é ela quem vende), mas é uma decisão que nunca foi escrita: quem lê os
   quatro perfis não descobre que "leads" inclui assinar contrato de
   R$ 5.000,00. O manual vai ter que declarar isso — e a declaração é o momento
-  de perguntar à dona se é mesmo o que ela quer.
+  de confirmar com o Renato se é mesmo o que ele quer.
 
 ## O que fica de fora, e por quê
 
@@ -164,13 +164,27 @@ consertam neste plano** — vão para a tabela de Sobras, na regra 12:
 - **Documentar a API** — o `openapi.yaml` já é isso, e ninguém neste público a
   consome.
 
-## O que eu preciso da dona antes da entrega 1
+## As decisões do Renato
 
-Duas perguntas, e as duas mudam o texto:
+**1. Os nomes dos perfis ficam** (2026-08-11) — "Vendedora", "Recepção",
+"Admin" seguem como estão, e o manual os grava assim.
 
-1. **Os nomes dos perfis mudam?** O manual vai gravar "Vendedora", "Recepção",
-   "Proprietária" em dezenas de lugares. Se a loja chama de outra coisa
-   ("consultora", "atendimento"), é melhor saber antes.
-2. **A costureira vai ganhar perfil próprio?** Se sim, o manual dela nasce
-   descrevendo o certo. Se não, ele nasce dizendo a verdade de hoje — que ela
-   entra como Recepção e enxerga a lista de noivas.
+**Com uma correção que o próprio pedido trouxe: o perfil "Proprietária" está no
+gênero errado.** O proprietário do ateliê é o **Renato, homem**. O nome está
+gravado em **`configuracao-inicial.ts:94`** e ecoa em quatro outros arquivos
+versionados (dois testes, o texto de ajuda de `perfis-do-sistema.ts` e o teste
+dele). Renomear é pequeno, e **não é cosmético para este trabalho**: a régua (a)
+deste plano diz que o manual não pode mentir, e um manual que escreve
+"Proprietário" enquanto a tela mostra "Proprietária" mente na primeira linha.
+
+Como mexe em **seed**, o conserto tem três partes e não cabe dentro da entrega
+1: a linha do `PERFIS_PADRAO`, os quatro ecos, e um **SQL em `docs/migracoes/`**
+para as instalações que já gravaram o nome antigo (o seed é idempotente — ele
+não renomeia o que já existe). Pede a régua do banco virgem. **Fica como
+pendência declarada, e o manual da vendedora não depende dela** — ele cita o
+perfil dela, não o do Renato.
+
+**2. Pendente — a costureira vai ganhar perfil próprio?** Se sim, o manual dela
+nasce descrevendo o certo. Se não, nasce dizendo a verdade de hoje: que ela
+entra como Recepção e enxerga a lista de noivas (S-O36). **Só morde a entrega
+2.**
