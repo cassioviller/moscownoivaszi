@@ -38,8 +38,26 @@ para o documento que manda.
    atropelaram), e **vermelho de worktree não é vermelho** — os três
    relataram o mesmo `backup-download-api.test.ts` reprovando, um deles como
    🟠, e no `main` ele passa: `res.download` recusa caminho com componente
-   oculto, e todo worktree vive sob `.claude/`. Resta a **Faixa D** (E170–E171,
-   as réguas).
+   oculto, e todo worktree vive sob `.claude/`.
+
+   **A Faixa D fechou junto, e com ela a trilha INTEIRA: os 14 épicos,
+   E158–E171, estão EXECUTADOS.** O E170 (`50a4043`) contou os cinco testes que
+   pregavam o defeito e achou **3 já fechados** pelos épicos que passaram pela
+   área — a assimetria é o achado: *as duas que sobraram são as duas que
+   ninguém tinha motivo de abrir*, e o defeito atrás de uma delas (a A05.5) não
+   estava em épico nenhum. Dele nasceu a **regra 34**. O E171 (`30a8377`)
+   enumerou **26 portas de escrita, não as 14 que o plano supunha** (as 14 eram
+   as ABERTAS), em 16 tranca · 4 CAS · 6 dívida declarada — e **achou 4 portas
+   abertas**, a mais grave dentro do E166 desta mesma sessão (S-O31 🟠: o
+   `POST /link` lê o status no pool e dois cliques congelam duas versões da
+   mesma proposta) — **fechada no mesmo dia** (`7763ee3`), com a varredura
+   cobrando a baixa da dívida de 6 para 5 antes de aceitar o fecho. As outras
+   três estão em `comissao.ts` (S-O32 🟡), **a única tabela quente que as
+   Faixas A e B não abriram**. A sessão está contada em
+   `docs/revisao/2026-08-11-sessao-faixas-c-e-d.md`, inclusive a terceira lição
+   do paralelo: **escrever em paralelo, medir em série** — duas suítes de API
+   simultâneas deadlockaram no banco compartilhado (13 s de CPU em 8 min de
+   relógio).
 
    A trilha anterior — `2026-08-10-revisao-max/` — está de pé como história:
    a revisão `max` do aplicativo inteiro (68 agentes, 5,58 M tokens) sobre um
@@ -81,7 +99,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EM CURSO — 149 achados em 14 épicos (E158–E171). Faixas A, B e **C executadas** (E158–E169); resta a D (E170–E171), mais as sobras S-O da tabela do `EXECUCAO.md`** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md`; conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -92,7 +110,9 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   em curso — **conte lá, são 23** (2026-08-11, depois da Faixa C). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
+   da ótica dos papéis — **conte lá, são 30** (2026-08-11, com as quatro faixas
+   fechadas e a S-O31 consertada). A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
+   termina em varredura: o E171 tornou contável o que ninguém contava. O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
    viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no

@@ -5,9 +5,9 @@
 `CODE-REVIEW.md` (90, dos reviews) e `achados/01..08-*.md` (59, dos ângulos).
 
 Suíte de partida: **API 1134 · frontend 536 · E2E 165 · typecheck verde em 5
-projetos**. Com a **Faixa C fechada** (E164–E169) a régua é **API 1219 ·
-frontend 584 · E2E 171** — e o E2E cobre, pela primeira vez, o **caminho
-público** (E166) e a **avaria sem noiva própria** (E167).
+projetos**. Com **as quatro faixas fechadas** a régua é **API 1238 · frontend
+589 · E2E 171 · typecheck verde em 5 projetos** — e o E2E cobre, pela primeira
+vez, o **caminho público** (E166) e a **avaria sem noiva própria** (E167).
 
 ## A fila
 
@@ -27,8 +27,8 @@ público** (E166) e a **avaria sem noiva própria** (E167).
 | ~~**E167**~~ | ~~a avaria fecha~~ | C | ✅ `8b12b0d` · [relatório](execucao/E167.md) — **o V14 do plano pedia um conserto impossível** (não existe `GET /reservas/:id`) |
 | ~~**E168**~~ | ~~a agenda diz a mesma coisa em todas as telas~~ | C | ✅ `4db042d` · [relatório](execucao/E168.md) — nove achados, **G8 são três cópias e não quatro** |
 | ~~**E169**~~ | ~~a tela do contrato e o dinheiro miúdo~~ | C | ✅ `fe8afdd` · [relatório](execucao/E169.md) — dez itens, inclusive a **S-M10** herdada da revisão max; fecha a S-O14 por decisão |
-| E170 | os testes que pregavam o defeito passam a pegá-lo | D | ⏳ próximo |
-| E171 | a varredura que conta as portas | D | ⏳ |
+| ~~**E170**~~ | ~~os testes que pregavam o defeito passam a pegá-lo~~ | D | ✅ `50a4043` · [relatório](execucao/E170.md) — **3 dos 5 já tinham fechado**; nasce a **regra 34** do METODO |
+| ~~**E171**~~ | ~~a varredura que conta as portas~~ | D | ✅ `30a8377` · [relatório](execucao/E171.md) — **26 portas, não 14**; achou 4 abertas, e a 🟠 estava **dentro do E166 desta mesma sessão** — fechada em `7763ee3`, com a própria varredura cobrando a baixa da dívida |
 
 A **Faixa A é serial** — os quatro mexem nas mesmas transações. A **Faixa C
 paraleliza**. O `/code-review ultra` roda sobre a branch de cada faixa antes do
@@ -84,6 +84,15 @@ commit** do épico que as viu.
 | S-O23 | A validação do G12 compara o par efetivo contra `expedienteDaRegra(null)` = `EXPEDIENTE_PADRAO`; o espelho dos defaults do schema é pregado pelo teste do E147, mas **nada liga o espelho a ESTA validação** — default de coluna mudado sem o espelho faz o PUT recusar (ou aceitar) a hora errada | 🔵 | E168 | aberta |
 | S-O24 | **`POST /orcamentos/:id/desfazer-aceite` exige DUAS ações**: declara `requireModulo("leads","editar")` (`routes/orcamentos.ts:438-440`) e o guard de prefixo (`:168`) deriva `criar` antes, porque `POST_QUE_MUTA` (`lib/permissoes.ts:102-103`) não tem o verbo. A gerente com `{ver, editar}` e sem `criar` leva 403 numa ação que é dela — a história do `receber` que o comentário daquele arquivo conta, com outro nome. Um verbo na regex fecha | 🟡 | E169 | aberta |
 | S-O25 | **O teto do desconto em VALOR (A07.3) não é reconferido quando ITENS SAEM.** Desconto de R$ 4.000,00 sobre R$ 5.000,00 em itens passa (e deve); remover o item de R$ 2.000,00 deixa bruto 300000c contra desconto 400000c e o líquido clampa em **R$ 0,00** de novo, pelo `DELETE /orcamentos/itens/:id` e pelo `PATCH` de item, que não perguntam nada sobre desconto. É a metade de baixo do A07.3, e não está em achado nenhum | 🟡 | E169 | aberta |
+| S-O27 | **A ficha e a fila do ajuste usam limiares diferentes de urgência, e o comentário diz que são o mesmo.** `ajustes-da-semana.ts:naSemana` = casamento ≤7 dias; `ajustes/[ajusteId].tsx:78` = casamento ≤14 dias, sob o comentário *"A mesma régua de urgência da fila"*. Casamento em 10 dias: vermelho na ficha, fora de "Esta semana" na fila. É a quarta grafia da régua (regra 26) | 🟡 | E170 | aberta |
+| S-O28 | **A confecção sem peça de acervo não tem onde nascer pela interface.** `reservas/[bloqueioId].tsx:377` é o único formulário de ajuste do repositório e vive dentro do bloco de provas de uma reserva; `POST /ajustes` (`agenda.ts:866`) a aceita sem bloqueio. O E170 fez o prazo dela aparecer na fila; ninguém consegue cadastrá-la sem passar pela API | 🟡 | E170 | aberta |
+| S-O29 | **A07.4 🟡 viva: nenhum teste afirma o que o `aceiteHash` NÃO cobre.** O hash prende valor, desconto e descrição, e **não a IDENTIDADE da peça** — o `vestidoId` fica de fora. `contratos.ts:458-459` já registra a mesma descrição saindo para noivas diferentes. Um teste que troque o `vestidoId` mantendo o conteúdo e prove que o contrato passa é a régua que falta | 🟡 | E170 | aberta |
+| S-O30 | **A A05.5 🟡 fechou no E170 e não tinha linha em rastreador nenhum** — ela só existia em `achados/05-costureira-provas-ajustes.md:277-337`. Fica registrada aqui para a contagem de achados fechados da trilha não sair um a menos | 🔵 | E170 | **fechada (E170)** |
+| ~~S-O31~~ | ~~O `POST /orcamentos/:id/link` decide congelar a versão pelo `status` lido no POOL: dois cliques em "gerar link" no mesmo segundo congelam **DUAS versões da mesma proposta** — e é a versão congelada que o gate do E115 confere contra o contrato~~ — **FECHADA em `7763ee3`**, no mesmo dia em que nasceu. As três perguntas (existe nesta loja? RECUSADO? tem item?) e as duas decisões (marcar ENVIADO, congelar) foram para DENTRO da transação, sob `FOR UPDATE` — o padrão que as portas de item já usavam via `sobPaiTrancado`. Vermelho medido: `expected [ … ] to have a length of 1 but got 2`. **A varredura do E171 cobrou o fecho duas vezes**: primeiro acusando a porta, depois ficando VERMELHA quando a dívida caiu de 6 para 5 (`expected 5 to be 6`) — é a contagem travada, não a lista de nomes | 🟠 | E171, E166 | **fechada** |
+| S-O32 | As três portas de `comissao.ts` que escrevem `contratos.comissao_estornada_em` **não trancam a linha do contrato**: `:1035` (reabrir fechamento — tranca a CONTA A PAGAR, não o contrato), `:1301` (fechar competência, sem tranca) e `:1407` (baixar estorno à mão, sem tranca). Reabrir × fechar no mesmo segundo decidem a mesma coluna em ordens diferentes: o estorno volta a PENDENTE e é recarimbado sem ter sido abatido. **`comissao.ts` não está em épico nenhum do plano** — é a única tabela quente que as Faixas A e B não abriram | 🟡 | E171 | aberta |
+| S-O33 | A varredura conta a tranca e **não a ORDEM** (`lead → contrato → parcelas → bloqueios ORDENADOS → vestidos ORDENADOS`, `contratos.ts:586-594` e `reservas.ts:62-71`). Deadlock é o modo de falha que a ordem existe para evitar, e uma porta nova na ordem inversa passa verde. Resolver exige saber qual LINHA cada `FOR UPDATE` segura, não só qual tabela | 🔵 | E171 | aberta |
+| S-O34 | `parcelas` não está entre as quatro tabelas quentes da D4, **e é a tabela onde o dinheiro mora** — o E158 já teve de trancá-la (`contratos.ts:1170-1174`). A quinta coluna da varredura é ela; o enumerador aceita a tabela nova em uma linha de `TABELAS_QUENTES` + `PAIS` + `COLUNAS_DE_ESTADO` | 🔵 | E171 | aberta |
+| S-O35 | Duas referências `arquivo:linha` **dentro do código** envelheceram: `reservas.ts:64` aponta a ordem das trancas em `contratos.ts:521-532` (mora em `:586-594`) e `contratos.ts:1068` aponta o DELETE de parcela em `:1300-1304` (mora em `:1711`). O `docs/` tem régua para isso; o comentário de código não tem | 🔵 | E171 | aberta |
 | S-O26 | `res.download` (`admin.ts:762`) **não trata erro**: o que vaza para o cliente é 500 com a stack do `send`, não uma mensagem. O `existsSync` acima cobre o caso comum, mas todo motivo restante de recusa do `send` (permissão, dotfile no caminho, corrida com a poda) sai como erro cru numa rota de administração | 🔵 | E167, E168, E169 (os três o viram) | aberta |
 
 ## O que herda das trilhas anteriores
