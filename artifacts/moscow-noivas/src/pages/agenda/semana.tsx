@@ -8,7 +8,7 @@ import {
   getListCabinesQueryKey,
   type Atendimento,
 } from "@workspace/api-client-react";
-import { addDays, format, isSameDay, startOfWeek } from "date-fns";
+import { addDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { instanteHora } from "@/lib/formatos";
 import { diaLocal } from "@/lib/financeiro/datas";
+import { ancoraDaSemana, colunasDaGrade, diasDaSemana } from "@/lib/agenda-telas";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -41,16 +42,32 @@ export default function AgendaSemana() {
   const { activeLojaId } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Âncora da semana na URL (segunda-feira) — compartilhável e sobrevive ao F5.
+  /**
+   * G11 (E168) — a semana nasce do dia da LOJA, como a tela do dia.
+   *
+   * Era `startOfWeek(new Date())`, e `new Date()` lido pelo date-fns é o
+   * relógio do NAVEGADOR — enquanto o recorte dos atendimentos, logo abaixo,
+   * já era pelo dia da loja desde o E115. As duas pontas da MESMA tela
+   * discordavam sobre que dia é hoje. **Medido:** navegador em UTC às 02:00 de
+   * segunda = 23:00 de domingo em São Paulo; `startOfWeek` responde a segunda
+   * que começa, `diaLocal` responde o domingo que não acabou, e o botão "Esta
+   * semana" leva à semana SEGUINTE — com a semana corrente inteira fora da
+   * busca. É a fronteira que sobrou da S-M25.
+   *
+   * A conta vive em `lib/agenda-telas.ts`, sobre a string "YYYY-MM-DD": é a
+   * única forma de o fuso do navegador não voltar pela porta dos fundos.
+   */
   const ancoraParam = searchParams.get("semana");
-  const segunda = useMemo(() => {
-    const base = ancoraParam ? new Date(`${ancoraParam}T12:00:00`) : new Date();
-    return startOfWeek(Number.isNaN(base.getTime()) ? new Date() : base, { weekStartsOn: 1 });
-  }, [ancoraParam]);
-  const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(segunda, i)), [segunda]);
+  const diasYMD = useMemo(
+    () => diasDaSemana(ancoraDaSemana(ancoraParam, new Date())),
+    [ancoraParam],
+  );
+  // Os `Date` das colunas são dias-calendário sintéticos (meio-dia, sem borda).
+  const dias = useMemo(() => diasYMD.map((d) => new Date(`${d}T12:00:00`)), [diasYMD]);
+  const segunda = dias[0]!;
 
   // E83: a visão pede a SEMANA visível, não a agenda inteira.
-  const janelaSemana = { de: diaISO(dias[0]), ate: diaISO(dias[6]) };
+  const janelaSemana = { de: diasYMD[0]!, ate: diasYMD[6]! };
   const atendimentos = useListAtendimentos(activeLojaId!, janelaSemana, {
     query: {
       queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaSemana),
@@ -67,15 +84,15 @@ export default function AgendaSemana() {
     // domingo à noite) sumia da grade para quem abre fora do fuso da loja. O
     // dia do atendimento é o dia da LOJA (`diaLocal`); as colunas da grade são
     // dias-calendário sintéticos, e a comparação certa é entre strings de dia.
-    const de = diaISO(dias[0]);
-    const ate = diaISO(dias[6]);
+    const de = diasYMD[0]!;
+    const ate = diasYMD[6]!;
     return (atendimentos.data ?? [])
       .filter((a) => {
         const dia = diaLocal(a.inicio);
         return dia >= de && dia <= ate;
       })
       .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-  }, [atendimentos.data, dias]);
+  }, [atendimentos.data, diasYMD]);
 
   const porCabineEDia = useMemo(() => {
     const mapa = new Map<string, Atendimento[]>();
@@ -100,8 +117,15 @@ export default function AgendaSemana() {
     setSearchParams(proximo, { replace: true });
   };
 
-  const hoje = new Date();
-  const cabinesAtivas = (cabines.data ?? []).filter((c) => c.ativo);
+  // G11: "hoje" é o dia da LOJA aqui também — a coluna destacada era a do
+  // navegador, e destacava sábado numa sexta-feira à noite vista de Tóquio.
+  const hojeYMD = diaLocal(new Date());
+  /**
+   * G6 (E168): a cabine desativada com agenda continua desenhada, marcada.
+   * Era `filter((c) => c.ativo)`, e o 409 do DELETE recomenda desativar —
+   * as provas da cabine sumiam da semana inteira sem ninguém apagá-las.
+   */
+  const linhas = colunasDaGrade(cabines.data ?? [], daSemana);
   const carregando = atendimentos.isLoading || cabines.isLoading;
 
   return (
@@ -153,7 +177,7 @@ export default function AgendaSemana() {
         </Alert>
       ) : carregando ? (
         <Skeleton className="h-96 rounded-lg" />
-      ) : cabinesAtivas.length === 0 ? (
+      ) : linhas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nenhuma cabine ativa — configure as cabines para ver a grade.
         </p>
@@ -169,10 +193,10 @@ export default function AgendaSemana() {
                 <TableHead className="w-28 py-2 pl-4 pr-2 text-xs font-normal text-muted-foreground">
                   Cabine
                 </TableHead>
-                {dias.map((dia) => {
-                  const ehHoje = isSameDay(dia, hoje);
+                {dias.map((dia, i) => {
+                  const ehHoje = diasYMD[i] === hojeYMD;
                   return (
-                    <TableHead key={diaISO(dia)} className="px-2 py-2 text-xs font-normal">
+                    <TableHead key={diasYMD[i]} className="px-2 py-2 text-xs font-normal">
                       <span className={ehHoje ? "font-semibold text-primary" : "text-muted-foreground"}>
                         {format(dia, "EEE dd/MM", { locale: ptBR })}
                       </span>
@@ -182,13 +206,20 @@ export default function AgendaSemana() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cabinesAtivas.map((cabine) => (
+              {linhas.map((cabine) => (
                 <TableRow key={cabine.id} className="border-b align-top last:border-0">
-                  <TableCell className="py-2 pl-4 pr-2 font-medium">{cabine.nome}</TableCell>
-                  {dias.map((dia) => {
-                    const celula = porCabineEDia.get(`${cabine.id}:${diaISO(dia)}`) ?? [];
+                  <TableCell className="py-2 pl-4 pr-2 font-medium">
+                    {cabine.nome}
+                    {cabine.inativa && (
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        desativada — a agenda dela continua aqui
+                      </span>
+                    )}
+                  </TableCell>
+                  {diasYMD.map((diaYMD) => {
+                    const celula = porCabineEDia.get(`${cabine.id}:${diaYMD}`) ?? [];
                     return (
-                      <TableCell key={diaISO(dia)} className={`px-2 py-2 ${isSameDay(dia, hoje) ? "bg-primary/5" : ""}`}>
+                      <TableCell key={diaYMD} className={`px-2 py-2 ${diaYMD === hojeYMD ? "bg-primary/5" : ""}`}>
                         {celula.length === 0 ? (
                           <span className="text-xs text-muted-foreground/50">—</span>
                         ) : (

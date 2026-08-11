@@ -52,6 +52,7 @@ import {
   type Expediente,
   type Ausencia,
 } from "@/lib/agenda";
+import { colunasDaGrade, opcoesDeReagendamento } from "@/lib/agenda-telas";
 import { mensagemApi } from "@/lib/erro-api";
 
 /**
@@ -116,6 +117,18 @@ export function GradeDoDia({
     [expediente.aberturaHora, expediente.fechamentoHora],
   );
 
+  /**
+   * G6 (E168) — a cabine desativada com agenda continua DESENHADA.
+   *
+   * Era `cabines.filter((c) => c.ativo)`, e o 409 do `DELETE /cabines`
+   * recomenda desativar (*"Desative-a se ela saiu de uso"*): as provas
+   * marcadas continuavam no banco, continuavam AGENDADO, as noivas continuavam
+   * recebendo a confirmação, e no dia **ninguém via que existiam** — a coluna
+   * delas não era desenhada. A desativada e VAZIA continua fora, que é o ponto
+   * de desativá-la.
+   */
+  const colunas = useMemo(() => colunasDaGrade(cabines, atendimentos), [cabines, atendimentos]);
+  /** Para onde se PODE mover: a cabine inativa recebe o que já está nela, não o novo. */
   const cabinesAtivas = useMemo(() => cabines.filter((c) => c.ativo), [cabines]);
 
   /**
@@ -129,13 +142,52 @@ export function GradeDoDia({
   const [reagHora, setReagHora] = useState("");
   const [reagCabineId, setReagCabineId] = useState("");
   function abrirReagendar(a: Atendimento) {
-    const { hora, minuto } = horaLocal(a.inicio);
-    setReagHora(`${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")}`);
+    // G15: o horário inicial cai na MALHA (14:17 → 14:00), que é o domínio das
+    // opções agora. Fora do expediente não há slot para pré-selecionar — e é o
+    // caso do órfão, que precisa mesmo escolher um horário novo.
+    setReagHora(slotDe(a.inicio, expediente.aberturaHora, expediente.fechamentoHora) ?? "");
     setReagCabineId(a.cabineId);
     setReagendando(a);
   }
+  /**
+   * G15 (E168) — o diálogo passa pela MESMA recusa que o arraste.
+   *
+   * Ele montava o PATCH direto do `<input type="time">` e do `<Select>`: nem
+   * `recusaDeMover`, nem célula apagada, nem `title` com o motivo. A doutrina
+   * do E27 — recusar ANTES do gesto — estava invertida **justamente para quem
+   * usa teclado e celular**, que é o público para o qual o diálogo nasceu
+   * (E136/E10). Aqui a régua volta: horário e cabine vêm com o veredito, o que
+   * está preso não é selecionável, e o botão não submete um destino recusado.
+   */
+  const opcoes = useMemo(
+    () =>
+      reagendando
+        ? opcoesDeReagendamento({
+            movida: reagendando,
+            diaYMD,
+            cabines: cabinesAtivas,
+            atendimentosDoDia: atendimentos,
+            expediente,
+            ausencias,
+            cabineEscolhida: reagCabineId,
+            horaEscolhida: reagHora,
+          })
+        : null,
+    [reagendando, diaYMD, cabinesAtivas, atendimentos, expediente, ausencias, reagCabineId, reagHora],
+  );
+
   async function onReagendarPorDialogo() {
     if (!reagendando || !reagHora || !reagCabineId) return;
+    // G15: o destino recusado não vira request — a mesma resposta que a grade
+    // dá apagando a célula, dita em palavras para quem não arrasta.
+    if (opcoes?.recusaDoPar) {
+      toast({
+        title: "Esse horário não está livre",
+        description: DETALHE_RECUSA[opcoes.recusaDoPar],
+        variant: "destructive",
+      });
+      return;
+    }
     const inicio = instanteDoSlot(diaYMD, reagHora);
     try {
       await updateAtendimento.mutateAsync({
@@ -229,7 +281,7 @@ export function GradeDoDia({
     }
   }
 
-  if (cabinesAtivas.length === 0) {
+  if (colunas.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
         Nenhuma cabine ativa — a grade do dia precisa de ao menos uma.
@@ -255,16 +307,25 @@ export function GradeDoDia({
         <div
           className="grid min-w-max"
           style={{
-            gridTemplateColumns: `4.5rem repeat(${cabinesAtivas.length}, minmax(10rem, 1fr))`,
+            gridTemplateColumns: `4.5rem repeat(${colunas.length}, minmax(10rem, 1fr))`,
           }}
         >
           <div className="sticky left-0 z-10 bg-background" />
-          {cabinesAtivas.map((cabine) => (
+          {colunas.map((cabine) => (
             <div
               key={cabine.id}
               className="border-b px-2 pb-2 text-center text-sm font-medium"
+              data-testid={`coluna-agenda-${cabine.id}`}
             >
               {cabine.nome}
+              {/* G6: a coluna que só existe porque tem gente marcada nela diz
+                  isso — senão a desativação vira uma cabine que ninguém sabe
+                  por que ainda aparece. */}
+              {cabine.inativa && (
+                <span className="block text-[10px] font-normal text-muted-foreground">
+                  desativada — a agenda dela continua aqui
+                </span>
+              )}
             </div>
           ))}
 
@@ -273,7 +334,7 @@ export function GradeDoDia({
               <div className="sticky left-0 z-10 border-t bg-background pr-2 pt-1 text-right text-xs tabular-nums text-muted-foreground">
                 {slot}
               </div>
-              {cabinesAtivas.map((cabine) => (
+              {colunas.map((cabine) => (
                 <Celula
                   key={`${cabine.id}:${slot}`}
                   cabineId={cabine.id}
@@ -285,7 +346,9 @@ export function GradeDoDia({
                   atendimentosDoDia={atendimentos}
                   expediente={expediente}
                   ausencias={ausencias}
-                  podeEditar={podeEditar}
+                  // G6: nada NOVO entra numa cabine desativada — ela desenha o
+                  // que já está lá para que a agenda não suma, e recusa o drop.
+                  podeEditar={podeEditar && !cabine.inativa}
                   nomePorLead={nomePorLead}
                   onReagendar={abrirReagendar}
                 />
@@ -343,14 +406,27 @@ export function GradeDoDia({
           <div className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="reag-hora">Horário (dia {diaYMD.slice(8, 10)}/{diaYMD.slice(5, 7)})</Label>
-              <Input
-                id="reag-hora"
-                type="time"
-                step={1800}
-                required
-                value={reagHora}
-                onChange={(e) => setReagHora(e.target.value)}
-              />
+              {/* G15: era um `<input type=time>` livre. Vira a malha do
+                  expediente com o veredito do núcleo em cada slot — o ocupado
+                  aparece dito, não descoberto no submit. */}
+              <Select value={reagHora} onValueChange={setReagHora}>
+                <SelectTrigger id="reag-hora">
+                  <SelectValue placeholder="Escolha o horário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(opcoes?.horarios ?? []).map((o) => (
+                    <SelectItem
+                      key={o.valor}
+                      value={o.valor}
+                      disabled={!!o.recusa}
+                      data-testid={`reag-hora-${o.valor}`}
+                    >
+                      {o.valor}
+                      {o.detalhe ? ` — ${o.detalhe}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label htmlFor="reag-cabine">Cabine</Label>
@@ -359,18 +435,34 @@ export function GradeDoDia({
                   <SelectValue placeholder="Escolha a cabine" />
                 </SelectTrigger>
                 <SelectContent>
-                  {cabinesAtivas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  {(opcoes?.cabines ?? []).map((o) => (
+                    <SelectItem
+                      key={o.valor.id}
+                      value={o.valor.id}
+                      disabled={!!o.recusa}
+                      data-testid={`reag-cabine-${o.valor.id}`}
+                    >
+                      {o.valor.nome}
+                      {o.detalhe ? ` — ${o.detalhe}` : ""}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            {opcoes?.recusaDoPar && (
+              <p className="text-destructive text-xs" data-testid="reag-recusa">
+                {DETALHE_RECUSA[opcoes.recusaDoPar]}
+              </p>
+            )}
           </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => setReagendando(null)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={updateAtendimento.isPending}>
+            <Button
+              type="submit"
+              disabled={updateAtendimento.isPending || !!opcoes?.recusaDoPar}
+            >
               {updateAtendimento.isPending ? "Reagendando…" : "Reagendar"}
             </Button>
           </DialogFooter>

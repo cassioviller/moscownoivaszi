@@ -69,9 +69,8 @@ import {
   slotsOferecidos,
   instanteDoSlot,
   ausenciaQueCobre,
+  expedienteDaRegra,
   DETALHE_RECUSA,
-  EXPEDIENTE_PADRAO,
-  type Expediente,
   type Marcacao,
 } from "@workspace/agenda-core";
 import { cn } from "@/lib/utils";
@@ -296,27 +295,27 @@ export default function NovoAtendimento() {
   // E64: a agenda OFERECE — a mesma régua do arraste da grade (agenda-core)
   // percorre a malha do dia e diz o que está livre, ANTES do submit. O input
   // de hora livre deixava o conflito estourar como erro da API depois.
-  const expediente = useMemo<Expediente>(
-    () =>
-      regra
-        ? {
-            aberturaHora: regra.atendimentoAberturaHora,
-            fechamentoHora: regra.atendimentoFechamentoHora,
-            dias: regra.diasFuncionamento ?? undefined,
-            provaDuracao: regra.provaDuracao,
-          }
-        : EXPEDIENTE_PADRAO,
-    [regra],
-  );
+  // G8 (E168): o montador é um só, no agenda-core — três telas o escreviam à
+  // mão e a da grade do dia esquecia `provaDuracao`.
+  const expediente = useMemo(() => expedienteDaRegra(regra), [regra]);
   const slotsDoDiaEscolhido = useMemo(() => {
     // Sem os dados do DIA a grade não abre: oferecer slot contra agenda ainda
     // não carregada mostraria "livre" o que está ocupado (por isso nada de
     // keepPreviousData aqui — o dia anterior não vale para o dia novo).
     if (!dataEscolhida || !cabineId || !vendedoraId || !atendimentosDia.data) return null;
-    // Concluído e falta não seguram a cabine — só o que ainda vai acontecer.
-    const ocupadas: Marcacao[] = atendimentosDia.data.filter(
-      (a) => a.situacao === "AGENDADO" || a.situacao === "EM_ATENDIMENTO",
-    );
+    /**
+     * G9 (E168) — a agenda do dia INTEIRA vai para o núcleo, e é ele quem sabe
+     * quem segura a cabine.
+     *
+     * Aqui vivia a única cópia da régua de `situacao`: um filtro que tirava
+     * CONCLUIDO e FALTOU antes da chamada. Ela estava certa no espírito e
+     * sozinha no mundo — o servidor buscava concorrentes sem olhar situação e a
+     * grade do dia entregava tudo. O slot da prova concluída aparecia
+     * habilitado nesta tela, o POST recusava com 422, e a grade ao lado apagava
+     * a mesma célula. Agora a régua mora em `seguraOIntervalo`, e o INSTANTE
+     * exato continua recusado — porque a UNIQUE do banco o recusa.
+     */
+    const ocupadas: Marcacao[] = atendimentosDia.data;
     // E151: as ausências entram na MESMA função que a rota consulta — sem
     // elas a tela ofereceria o dia inteiro de quem está de férias e o clique
     // levaria 422, que é o defeito que a doutrina do E27 existe para evitar.

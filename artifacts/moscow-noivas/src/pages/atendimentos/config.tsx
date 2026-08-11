@@ -18,6 +18,8 @@ import {
   getListAusenciasQueryKey,
   useCreateAusencia,
   useDeleteAusencia,
+  useListAtendimentos,
+  getListAtendimentosQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 import { podeNoModulo } from "@/lib/permissoes";
 import { CACHE_ESTAVEL } from "@/lib/cache";
 import { diaMesAno } from "@/lib/formatos";
+import { hojeLocal } from "@/lib/financeiro/datas";
+import { atendimentosNaCabine } from "@/lib/agenda-telas";
 import {
   Select,
   SelectContent,
@@ -76,6 +80,22 @@ export default function ConfigAtendimentos() {
   const createCabine = useCreateCabine();
   const updateCabine = useUpdateCabine();
   const setDisponibilidade = useSetDisponibilidade();
+
+  /**
+   * G6 (E168) — desativar uma cabine passa a DIZER quanta agenda fica nela.
+   *
+   * O 409 do `DELETE /cabines` recomenda desativar (*"Desative-a se ela saiu
+   * de uso"*) e conta os atendimentos; o Switch daqui fazia o mesmo estrago
+   * sem contar nada. A janela é do dia de hoje em diante: o que já aconteceu
+   * é história e não muda a decisão de quem está desativando.
+   */
+  const janelaFutura = { de: hojeLocal() };
+  const agendaFutura = useListAtendimentos(activeLojaId!, janelaFutura, {
+    query: {
+      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaFutura),
+      enabled: !!activeLojaId,
+    },
+  });
 
   // Cabines e disponibilidade são gateadas por `agenda` no backend — era
   // `config`, um módulo que o servidor não conhece: negava para todo mundo.
@@ -282,9 +302,18 @@ export default function ConfigAtendimentos() {
 
   const alternarCabine = async (cabineId: string, ativo: boolean) => {
     try {
+      // G6: contado ANTES do PATCH — o invalidate que vem depois derruba a
+      // lista, e o número que interessa é o do momento da decisão.
+      const ficam = ativo ? 0 : atendimentosNaCabine(agendaFutura.data ?? [], cabineId);
       await updateCabine.mutateAsync({ lojaId: activeLojaId!, cabineId, data: { ativo } });
       await queryClient.invalidateQueries({ queryKey: getListCabinesQueryKey(activeLojaId!) });
-      toast({ title: "Cabines atualizadas" });
+      toast({
+        title: ativo ? "Cabine reativada" : "Cabine desativada",
+        description:
+          ficam > 0
+            ? `${ficam} atendimento${ficam === 1 ? "" : "s"} continua${ficam === 1 ? "" : "m"} marcado${ficam === 1 ? "" : "s"} nela — a coluna segue na grade, marcada como desativada, até você remarcar.`
+            : undefined,
+      });
     } catch (err) {
       toast({
         title: "Não deu para atualizar cabine",

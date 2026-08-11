@@ -43,8 +43,8 @@ import {
   recusaDeMover,
   ausenciaQueCobre,
   diaLocalYMD,
+  expedienteDaRegra,
   DETALHE_RECUSA,
-  EXPEDIENTE_PADRAO,
   SLOT_MINUTOS,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
@@ -124,14 +124,9 @@ async function recusaDeMoverAtendimento(
     .select()
     .from(regraDisponibilidadeTable)
     .where(eq(regraDisponibilidadeTable.lojaId, lojaId));
-  const expediente = regra
-    ? {
-        aberturaHora: regra.atendimentoAberturaHora,
-        fechamentoHora: regra.atendimentoFechamentoHora,
-        dias: regra.diasFuncionamento,
-        provaDuracao: regra.provaDuracao,
-      }
-    : EXPEDIENTE_PADRAO;
+  // G8 (E168): o montador é um só — `expedienteDaRegra` do agenda-core. As três
+  // cópias à mão divergiam, e a da grade do dia esquecia `provaDuracao`.
+  const expediente = expedienteDaRegra(regra);
 
   const destino = {
     cabineId: mudanca.cabineId ?? existente.cabineId,
@@ -173,6 +168,10 @@ async function recusaDeMoverAtendimento(
       vendedoraId: atendimentosTable.vendedoraId,
       inicio: atendimentosTable.inicio,
       tipo: atendimentosTable.tipo,
+      // G9 (E168): a situação entra no SELECT porque a régua passou a
+      // consultá-la. Sem esta coluna o núcleo trataria tudo como vivo — o
+      // comportamento de antes — e a tela de agendar continuaria discordando.
+      situacao: atendimentosTable.situacao,
     })
     .from(atendimentosTable)
     .where(and(
@@ -611,6 +610,33 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
         : {};
 
   /**
+   * G10 (E168) — mudar a HORA torna a confirmação mentira, e ela cai.
+   *
+   * A noiva confirmou pelo portal às 14:00, a recepção arrastou o card para as
+   * 17:00, e a tela seguia contando *"1 confirmou pelo portal"* — sobre um
+   * horário que ela nunca viu. Ninguém a avisava, e ela chegava às 14:00. O
+   * mesmo com `remarcacaoPedidaEm`: quem pediu para remarcar continuava na
+   * tela de Mensagens **depois de ter sido remarcada**, para sempre.
+   *
+   * `contatadoEm` cai junto porque é o que devolve a noiva à fila — a régua de
+   * `mensagens-do-dia.ts:65` tira da fila quem tem qualquer um dos três, e
+   * zerar dois de três deixaria a linha invisível: procurada sobre um horário
+   * que não existe mais, e nunca mais oferecida.
+   *
+   * **O gatilho é o INSTANTE, e só ele.** `mudouMovimento` também é verdadeiro
+   * ao trocar cabine ou vendedora, e nenhum dos dois aparece na mensagem que a
+   * noiva recebeu (`msgConfirmacaoAtendimento` carrega tipo, início, nome e
+   * endereço da loja): apagar a confirmação porque a prova passou da Cabine 1
+   * para a 2 seria pedir à noiva que confirmasse de novo o mesmo horário.
+   */
+  const mudouOInstante =
+    parsed.data.inicio !== undefined &&
+    new Date(parsed.data.inicio).getTime() !== existente.inicio.getTime();
+  const reconfirmar: Partial<typeof atendimentosTable.$inferInsert> = mudouOInstante
+    ? { confirmadoEm: null, contatadoEm: null, remarcacaoPedidaEm: null }
+    : {};
+
+  /**
    * S-M22 (rodada 2, achados 3#5 e 3#8): tudo numa transação só. A recusa de
    * movimento relê sob a tranca da CABINE de destino (a mesma corrida do
    * POST), e o carimbo de `provaDataReal` no bloqueio — que era um segundo
@@ -631,7 +657,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     }
 
     const [atendimento] = await tx.update(atendimentosTable)
-      .set({ ...parsed.data, ...carimbo, ...limpeza, updatedAt: new Date() })
+      .set({ ...parsed.data, ...carimbo, ...limpeza, ...reconfirmar, updatedAt: new Date() })
       .where(and(eq(atendimentosTable.id, atendimentoId as string), eq(atendimentosTable.lojaId, lojaId as string)))
       .returning();
 
@@ -1249,6 +1275,69 @@ router.put("/lojas/:lojaId/disponibilidade/regras", async (req, res): Promise<vo
   const parsed = SetDisponibilidadeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+
+  /**
+   * G12 (E168) — a ordem e a faixa do expediente eram conferidas SÓ no
+   * formulário (`atendimentos/config.tsx:231`), e este PUT aceitava qualquer
+   * par.
+   *
+   * Com abertura 9 e fechamento 5, `slotsDoDia` devolve `[]` — o guarda é
+   * `if (!(fechamentoHora > aberturaHora)) return []` (`agenda-core/slots.ts:54`)
+   * — e a grade do dia nasce SEM NENHUMA linha; `dentroDoFuncionamento` recusa
+   * todo instante, então o POST responde 422 FORA_DO_HORARIO para as 24 horas
+   * do dia. **A loja inteira para de agendar e nenhuma tela diz por quê**: a
+   * grade fica vazia como um dia sem atendimento, e o erro do agendamento fala
+   * de "fora do expediente" sem dizer qual expediente.
+   *
+   * A conferência é sobre o valor EFETIVO, não sobre o corpo: este é um upsert
+   * parcial, e mandar só `atendimentoFechamentoHora: 5` sobre uma regra que
+   * abre às 9 produz exatamente o mesmo estado — por isso o par é montado
+   * contra a regra que já está gravada (ou contra os defaults do schema, via
+   * `EXPEDIENTE_PADRAO`, quando ainda não há linha).
+   */
+  const [atual] = await db
+    .select()
+    .from(regraDisponibilidadeTable)
+    .where(eq(regraDisponibilidadeTable.lojaId, lojaId));
+  const efetivo = expedienteDaRegra(atual);
+  const abertura = parsed.data.atendimentoAberturaHora ?? efetivo.aberturaHora;
+  const fechamento = parsed.data.atendimentoFechamentoHora ?? efetivo.fechamentoHora;
+  const foraDaFaixa =
+    !Number.isInteger(abertura) ||
+    !Number.isInteger(fechamento) ||
+    abertura < 0 ||
+    abertura > 23 ||
+    fechamento < 1 ||
+    fechamento > 24;
+  if (foraDaFaixa || abertura >= fechamento) {
+    res.status(422).json({
+      error: "HORARIO_INVALIDO",
+      detalhe: foraDaFaixa
+        ? `O horário de atendimento vai de 0h a 24h — ${abertura}h às ${fechamento}h está fora dessa faixa.`
+        : `A loja abriria às ${abertura}h e fecharia às ${fechamento}h: sem nenhum horário entre os dois, a agenda ficaria fechada o dia inteiro.`,
+      campos: [
+        {
+          campo: "atendimentoFechamentoHora",
+          motivo: "O fechamento tem de ser depois da abertura, dentro de 0h–24h",
+        },
+      ],
+    });
+    return;
+  }
+  /**
+   * G12 — e a semana sem NENHUM dia é a mesma parede pelo outro eixo: com
+   * `diasFuncionamento: []`, `recusaDeMover` devolve LOJA_FECHADA para os sete
+   * dias (`agenda-core/mover.ts:153`) e a loja não agenda nunca mais. O
+   * formulário já recusa (`config.tsx:239`); o servidor passa a recusar também.
+   */
+  if (parsed.data.diasFuncionamento && parsed.data.diasFuncionamento.length === 0) {
+    res.status(422).json({
+      error: "SEM_DIA_DE_FUNCIONAMENTO",
+      detalhe: "Sem nenhum dia aberto, a agenda fica fechada a semana inteira — escolha ao menos um.",
+      campos: [{ campo: "diasFuncionamento", motivo: "Escolha ao menos um dia da semana" }],
+    });
     return;
   }
 

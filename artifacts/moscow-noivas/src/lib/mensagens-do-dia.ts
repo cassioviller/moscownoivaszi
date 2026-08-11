@@ -62,13 +62,32 @@ export function aContatarNaJanela<T extends AtendimentoDaFila>(
 ): T[] {
   return atendimentos
     .filter((a) => {
-      if (a.situacao !== "AGENDADO" || a.contatadoEm || a.confirmadoEm || a.remarcacaoPedidaEm) {
-        return false;
-      }
+      if (!faltaProcurar(a)) return false;
       const t = new Date(a.inicio).getTime();
       return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
     })
     .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+}
+
+/**
+ * G14 (E168) — a régua "falta procurar", sem a janela: os TRÊS fatos, num
+ * lugar só.
+ *
+ * `aContatarNaJanela` é esta pergunta MAIS o recorte de 48h. A fila da agenda
+ * do dia (`agenda/index.tsx:216`) precisa da pergunta sem o recorte — ela
+ * mostra o dia que está na tela, que pode ser daqui a duas semanas — e por
+ * isso re-derivava a régua à mão: `!a.contatadoEm && !a.confirmadoEm`,
+ * **esquecendo `remarcacaoPedidaEm`**. A recepção mandava *"confirme sua
+ * presença hoje às 14h"* para quem tinha avisado às 9h que não podia vir.
+ *
+ * Extrair o predicado é o que faz as duas filas serem a mesma pergunta: quem
+ * acrescentar um quarto fato à família acrescenta aqui, e as duas telas o
+ * ganham juntas.
+ */
+export function faltaProcurar(a: AtendimentoDaFila): boolean {
+  return (
+    a.situacao === "AGENDADO" && !a.contatadoEm && !a.confirmadoEm && !a.remarcacaoPedidaEm
+  );
 }
 
 /**

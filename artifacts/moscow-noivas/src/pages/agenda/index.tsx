@@ -18,7 +18,8 @@ import {
   getGetDisponibilidadeQueryKey,
 } from "@workspace/api-client-react";
 import { GradeDoDia } from "./grade";
-import { EXPEDIENTE_PADRAO } from "@/lib/agenda";
+import { FilaFaltaProcurar } from "./fila-contato";
+import { expedienteDaRegra } from "@/lib/agenda";
 import { diaLocal } from "@/lib/financeiro/datas";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -29,7 +30,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plus, AlertCircle, MessageCircle } from "lucide-react";
 import { linkWhatsApp, msgConfirmacaoAtendimento } from "@/lib/whatsapp";
 import { CACHE_ESTAVEL } from "@/lib/cache";
-import { instanteHora } from "@/lib/formatos";
+import { useToast } from "@/hooks/use-toast";
+import { mensagemApi } from "@/lib/erro-api";
 
 const SITUACAO_LABELS: Record<string, string> = {
   AGENDADO: "Agendado",
@@ -41,6 +43,7 @@ const SITUACAO_LABELS: Record<string, string> = {
 export default function Agenda() {
   const { activeLojaId, acessosModulos, session } = useAuth();
   const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
@@ -68,6 +71,23 @@ export default function Agenda() {
     mutation: {
       onSuccess: () =>
         queryClient.invalidateQueries({ queryKey: getListAtendimentosQueryKey(activeLojaId!) }),
+      /**
+       * G13 (E168) — o carimbo falhava CALADO.
+       *
+       * O clique abre o wa.me numa aba nova e dispara o POST na atual: se ele
+       * volta 403 (ou cai a rede), a noiva foi procurada de verdade e o
+       * sistema não sabe. A linha fica na fila, e a próxima pessoa procura de
+       * novo — a noiva recebe a mesma mensagem duas vezes.
+       */
+      onError: (err) =>
+        toast({
+          title: "O WhatsApp abriu, mas o contato não foi registrado",
+          description: mensagemApi(err, "Tente registrar de novo pela fila do dia.", {
+            ACESSO_NEGADO_MODULO:
+              "Você não tem permissão para registrar contato na agenda — avise quem edita, senão a noiva será procurada de novo.",
+          }),
+          variant: "destructive",
+        }),
     },
   });
 
@@ -105,14 +125,14 @@ export default function Agenda() {
   const disponibilidade = useGetDisponibilidade(activeLojaId!, {
     query: { queryKey: getGetDisponibilidadeQueryKey(activeLojaId!), enabled: !!activeLojaId, retry: false },
   });
-  const expediente = disponibilidade.data
-    ? {
-        aberturaHora: disponibilidade.data.atendimentoAberturaHora,
-        fechamentoHora: disponibilidade.data.atendimentoFechamentoHora,
-        // E38: a grade também recusa o drop num dia fechado (LOJA_FECHADA).
-        dias: disponibilidade.data.diasFuncionamento,
-      }
-    : EXPEDIENTE_PADRAO;
+  /**
+   * G8 (E168) — esta montagem era a QUARTA cópia da mesma tradução, e a que
+   * esquecia `provaDuracao`: toda prova virava 1 slot, a célula das 14:30
+   * ficava acesa, aceitava o card, e o servidor devolvia 422 sobre um destino
+   * que esta tela tinha pintado como livre. **Só a loja CONFIGURADA errava** —
+   * a sem regra caía no `EXPEDIENTE_PADRAO`, que traz `provaDuracao: 2`.
+   */
+  const expediente = expedienteDaRegra(disponibilidade.data);
 
   // Atendimentos do dia escolhido, comparados no fuso da loja — `isSameDay` do
   // date-fns lê o fuso do navegador, que não é necessariamente o da loja.
@@ -204,79 +224,18 @@ export default function Agenda() {
 
                 {/* A confirmação por wa.me (E8) saiu do card, que na grade tem
                     largura de coluna: vira uma fila abaixo, só de quem ainda
-                    está AGENDADO — que é justamente quem precisa confirmar. */}
-                {doDia.some((a) => a.situacao === "AGENDADO") && (() => {
-                  const agendados = doDia.filter((a) => a.situacao === "AGENDADO");
-                  // E97/F6: a fila é de quem a loja ainda NÃO procurou. Antes
-                  // ela filtrava por `confirmadoEm`, que também era escrito pelo
-                  // clique daqui — então a linha sumia sem ninguém ter falado
-                  // com a noiva, e ficava indistinguível de quem confirmou pelo
-                  // portal. Quem já respondeu de verdade sai da fila também,
-                  // porque não há o que perguntar a ela.
-                  const faltaContatar = agendados.filter((a) => !a.contatadoEm && !a.confirmadoEm);
-                  const jaConfirmados = agendados.filter((a) => a.confirmadoEm).length;
-                  const soContatados = agendados.filter((a) => a.contatadoEm && !a.confirmadoEm).length;
-                  return (
-                    <div className="space-y-2 border-t pt-4">
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Falta procurar
-                      </p>
-                      {faltaContatar.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Todas as noivas do dia já foram procuradas.</p>
-                      ) : (
-                        faltaContatar.map((atendimento) => {
-                          const wa = waConfirmacao(atendimento);
-                          return (
-                            <div key={atendimento.id} className="flex items-center justify-between gap-3 text-sm" data-testid={`confirmar-linha-${atendimento.id}`}>
-                              <span className="min-w-0 truncate">
-                                <span className="tabular-nums text-muted-foreground">
-                                  {instanteHora(atendimento.inicio)}
-                                </span>{" "}
-                                {nomePorLead.get(atendimento.leadId) ?? "Noiva"}
-                              </span>
-                              {wa && (
-                                <Button
-                                  asChild
-                                  variant="outline"
-                                  size="sm"
-                                  data-testid={`confirmar-btn-${atendimento.id}`}
-                                >
-                                  {/* Abrir o wa.me (o <a> navega) E carimbar que
-                                      a LOJA procurou — não que a noiva
-                                      respondeu. O rótulo passou a dizer isso. */}
-                                  <a
-                                    href={wa}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={() =>
-                                      registrarContato.mutate({ lojaId: activeLojaId!, atendimentoId: atendimento.id })
-                                    }
-                                  >
-                                    <MessageCircle className="h-4 w-4 mr-1" />
-                                    Chamar no WhatsApp
-                                  </a>
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                      {/* Os dois números são fatos diferentes e passam a ser
-                          ditos como tais: uma fila que some não conta quem
-                          respondeu. */}
-                      {jaConfirmados > 0 && (
-                        <p className="text-positivo pt-1 text-xs font-medium">
-                          {jaConfirmados} confirmou pelo portal.
-                        </p>
-                      )}
-                      {soContatados > 0 && (
-                        <p className="text-muted-foreground pt-1 text-xs">
-                          {soContatados} procurada{soContatados === 1 ? "" : "s"}, ainda sem resposta.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
+                    está AGENDADO — que é justamente quem precisa confirmar.
+                    E168/G13+G14: a fila virou componente próprio, com a régua
+                    de `mensagens-do-dia` e o gate de `agenda.editar`. */}
+                <FilaFaltaProcurar
+                  atendimentos={doDia}
+                  nomePorLead={nomePorLead}
+                  linkWa={waConfirmacao}
+                  podeEditar={podeEditar}
+                  onProcurou={(atendimentoId) =>
+                    registrarContato.mutate({ lojaId: activeLojaId!, atendimentoId })
+                  }
+                />
               </>
             )}
           </CardContent>

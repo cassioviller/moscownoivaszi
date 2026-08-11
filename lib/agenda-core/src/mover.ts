@@ -63,7 +63,45 @@ export type Marcacao = {
   // Uma PROVA ocupa `provaDuracao` slots; qualquer outra, um só (E40). Ausente =
   // tratada como 1 slot, o comportamento de antes.
   tipo?: "ATENDIMENTO" | "PROVA";
+  /**
+   * G9 (E168) — a situação passa a ser matéria da RÉGUA, não de cada tela.
+   *
+   * Ausente = tratada como viva (o comportamento de antes), para a linha de
+   * banco sem `situacao` no SELECT não mudar de resposta em silêncio.
+   */
+  situacao?: string;
 };
+
+/**
+ * As situações em que o atendimento já ACABOU — a noiva foi embora, ou não veio.
+ *
+ * Espelha `atendimentoSituacaoEnum` (`schema/common/enums.ts`): AGENDADO e
+ * EM_ATENDIMENTO seguram a cabine, CONCLUIDO e FALTOU não.
+ */
+export const SITUACOES_ENCERRADAS: readonly string[] = ["CONCLUIDO", "FALTOU"];
+
+/**
+ * G9 (E168) — quem segura a cabine, dito UMA vez.
+ *
+ * A régua vivia em `atendimentos/novo.tsx:317`, em forma de filtro montado
+ * ANTES de chamar o núcleo (`situacao === "AGENDADO" || === "EM_ATENDIMENTO"`),
+ * e mais lugar nenhum a conhecia: a rota buscava concorrentes sem olhar
+ * situação e a grade do dia entregava o dia INTEIRO ao `recusaDeMover`. O
+ * resultado eram duas telas da mesma agenda dizendo coisas opostas sobre o
+ * mesmo horário — a de agendar oferecia o slot da prova concluída, a grade ao
+ * lado apagava a mesma célula, e o POST recusava com 422 sobre um destino que
+ * uma delas tinha pintado como livre.
+ *
+ * O que a régua diz agora é o fato físico: **a prova das 14:00 concluída não
+ * ocupa mais a cabine às 14:30** — a noiva já saiu. O INSTANTE exato continua
+ * preso, e não por gosto: as duas UNIQUE de `atendimentos`
+ * (`(cabine_id, inicio)` e `(loja_id, vendedora_id, inicio)`) recusam a linha
+ * de qualquer jeito, e oferecer na tela o que o banco não aceita é o defeito
+ * que a doutrina do E27 existe para impedir.
+ */
+export function seguraOIntervalo(m: Marcacao): boolean {
+  return !SITUACOES_ENCERRADAS.includes(m.situacao ?? "");
+}
 
 export type Expediente = {
   aberturaHora: number;
@@ -108,6 +146,45 @@ export const EXPEDIENTE_PADRAO: Expediente = {
   dias: [0, 1, 2, 3, 4, 5, 6],
   provaDuracao: 2,
 };
+
+/**
+ * A regra de disponibilidade como as duas pontas a enxergam: a linha do drizzle
+ * (`regra_disponibilidade`) e o corpo de `GET /disponibilidade/regras` têm
+ * exatamente estes nomes de campo — por isso o tipo é estrutural, como o resto
+ * deste módulo.
+ */
+export type RegraDeDisponibilidade = {
+  atendimentoAberturaHora: number;
+  atendimentoFechamentoHora: number;
+  diasFuncionamento?: number[] | null;
+  provaDuracao?: number | null;
+};
+
+/**
+ * G8 (E168) — o expediente é montado UMA vez, e a quarta cópia morre.
+ *
+ * A mesma tradução `regra → Expediente` estava escrita à mão em três lugares
+ * (`routes/agenda.ts:127`, `atendimentos/novo.tsx:299`, `agenda/index.tsx:108`)
+ * e **a terceira perdia o quarto campo**: a grade do dia montava abertura,
+ * fechamento e `dias`, e esquecia `provaDuracao`. Toda prova virava 1 slot — a
+ * célula das 14:30 ficava acesa, aceitava o card, e o servidor devolvia 422
+ * sobre um destino que a própria tela tinha pintado como livre.
+ *
+ * **A ironia está medida:** a loja SEM regra cai no `EXPEDIENTE_PADRAO`, que
+ * traz `provaDuracao: 2` — só a loja CONFIGURADA errava. É a mesma classe da
+ * regra 26 do método: quando o mesmo cuidado aparece escrito de N formas, ele
+ * não está sendo cumprido, está sendo lembrado, e o sítio que esquece é o que
+ * quebra.
+ */
+export function expedienteDaRegra(regra: RegraDeDisponibilidade | null | undefined): Expediente {
+  if (!regra) return EXPEDIENTE_PADRAO;
+  return {
+    aberturaHora: regra.atendimentoAberturaHora,
+    fechamentoHora: regra.atendimentoFechamentoHora,
+    dias: regra.diasFuncionamento ?? undefined,
+    provaDuracao: regra.provaDuracao ?? undefined,
+  };
+}
 
 const instante = (v: Date | string): number => new Date(v).getTime();
 
@@ -202,7 +279,12 @@ export function recusaDeMover(
     if (outra.id === movida.id) continue;
     const iniOutra = instante(outra.inicio);
     const fimOutra = iniOutra + duracaoMs(outra, expediente.provaDuracao);
-    if (!sobrepoe(iniMovida, fimMovida, iniOutra, fimOutra)) continue;
+    // G9: a marcação ENCERRADA não segura o intervalo — só o instante exato,
+    // que é o que as duas UNIQUE do banco recusam. Ver `seguraOIntervalo`.
+    const colide = seguraOIntervalo(outra)
+      ? sobrepoe(iniMovida, fimMovida, iniOutra, fimOutra)
+      : iniOutra === iniMovida;
+    if (!colide) continue;
     if (outra.cabineId === destino.cabineId) return "CABINE_OCUPADA";
     if (outra.vendedoraId === movida.vendedoraId) return "VENDEDORA_OCUPADA";
   }
