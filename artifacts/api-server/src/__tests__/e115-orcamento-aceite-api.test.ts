@@ -97,6 +97,77 @@ describe("E115 — o contrato nasce do que a noiva aceitou", () => {
       .expect(422);
   });
 
+  /**
+   * E170/A07.1 — as duas metades encadeadas, até a SAÍDA.
+   *
+   * Os dois testes acima provavam as duas metades do beco em orçamentos
+   * DIFERENTES e ninguém encadeava: o de `:55` deixava a venda parada no 422 e
+   * declarava vitória, o de `:76` provava as quatro paredes num orçamento novo.
+   * A suíte ficava verde sobre **R$ 5.000,00 aceitos, R$ 5.500,00 pedidos e
+   * R$ 0,00 contratáveis** — o defeito que o A07.1 mediu, escrito como se fosse
+   * a intenção.
+   *
+   * Este teste percorre o beco INTEIRO no mesmo orçamento e não para na parede:
+   * cobra a porta gerencial do E162 (`/desfazer-aceite`) e exige que os
+   * R$ 5.500,00 fechem contrato no fim. Sem a porta, ele fica vermelho — que é
+   * o estado em que a loja realmente estava.
+   */
+  it("A07.1 · o beco tem saída: divergiu, travou nas quatro portas, desfez o aceite e a venda fecha", async () => {
+    const { lead, orcamento, item, token } = await orcamentoEnviado(5000);
+
+    // A negociação mexe no preço depois do envio — o gesto mais comum que existe.
+    await agent
+      .patch(`/api/lojas/${f.lojaId}/orcamentos/itens/${item.id}`)
+      .send({ valorUnitario: 5500 })
+      .expect(200);
+    await aceitar(token).expect(200);
+
+    // Metade 1 — o contrato não sai por NENHUM valor: o hash é conferido antes.
+    for (const valorTotal of [5500, 5000]) {
+      const r = await agent
+        .post(`/api/lojas/${f.lojaId}/contratos`)
+        .send({ leadId: lead.id, vendedoraId: f.vendedoraId, valorTotal, orcamentoId: orcamento.id })
+        .expect(422);
+      expect(r.body.error).toBe("ORCAMENTO_DIVERGE_DO_ACEITE");
+    }
+
+    // Metade 2 — no MESMO orçamento, as quatro portas de conserto estão fechadas.
+    const voltarOItem = await agent
+      .patch(`/api/lojas/${f.lojaId}/orcamentos/itens/${item.id}`)
+      .send({ valorUnitario: 5000 })
+      .expect(422);
+    expect(voltarOItem.body.error).toBe("ORCAMENTO_APROVADO");
+    await agent
+      .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/itens`)
+      .send({ tipo: "SERVICO", descricao: "Abatimento", valorUnitario: 100, quantidade: 1 })
+      .expect(422);
+    await agent.delete(`/api/lojas/${f.lojaId}/orcamentos/itens/${item.id}`).expect(422);
+    await agent
+      .patch(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}`)
+      .send({ descontoTipo: "VALOR", descontoValor: 500 })
+      .expect(422);
+
+    // A SAÍDA (E162/A01.2) — é aqui que o teste velho não chegava.
+    const desfazer = await agent
+      .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/desfazer-aceite`)
+      .expect(200);
+    expect(desfazer.body.status).toBe("RASCUNHO");
+
+    // Relink congela a v2 de R$ 5.500,00, e a noiva aceita o que passa a ver.
+    const novoLink = await agent
+      .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/link`)
+      .expect(200);
+    await agent
+      .post(`/api/orcamentos/publico/aceite?token=${novoLink.body.token}&versao=2`)
+      .expect(200);
+
+    // Os R$ 5.500,00 fecham. A venda que o beco engolia volta ao sistema.
+    await agent
+      .post(`/api/lojas/${f.lojaId}/contratos`)
+      .send({ leadId: lead.id, vendedoraId: f.vendedoraId, valorTotal: 5500, orcamentoId: orcamento.id })
+      .expect(201);
+  });
+
   it("sem divergência, o aceite e o contrato falam do mesmo número", async () => {
     const { lead, orcamento, token } = await orcamentoEnviado(5000);
     await aceitar(token).expect(200);

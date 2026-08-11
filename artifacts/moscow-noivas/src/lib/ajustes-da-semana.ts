@@ -13,11 +13,36 @@ import { diasAteCasamento } from "@/pages/noivas/helpers";
 type AjusteComPrazo = {
   status?: string;
   proximaProva?: string | null;
-  atendimento?: { bloqueio?: { casamentoData?: string | null } | null } | null;
+  atendimento?: {
+    bloqueio?: { casamentoData?: string | Date | null } | null;
+    lead?: { casamentoData?: string | Date | null } | null;
+  } | null;
 };
 
+/**
+ * E170/A05.5 — o casamento que serve de prazo é o da NOIVA, e o do bloqueio é
+ * só onde ele costuma estar.
+ *
+ * A régua lia `bloqueio.casamentoData` e mais nada. A confecção é justamente o
+ * trabalho SEM peça de acervo (`schema/atendimentos.ts:156-157`): sem vestido
+ * não há reserva, sem reserva não há bloqueio — e o prazo virava `null`, a
+ * costureira lia "Sem prazo definido" e a noiva casava em 40 dias. O dado já
+ * viajava pela rede: `agenda.ts:1002` carrega `lead: true` e
+ * `AjusteAtendimento.lead` expõe `casamentoData`. Era descartado na chegada.
+ *
+ * Exportada porque a ficha do trabalho (`ajustes/[ajusteId].tsx`) calculava a
+ * mesma referência inline — duas grafias da mesma régua é como a regra 26 do
+ * METODO descreve o sítio que esquece.
+ */
+export function casamentoDeReferencia(a: AjusteComPrazo): string | null {
+  // O tipo gerado diz `Date` e a rede entrega ISO; a régua devolve uma grafia só.
+  const data = a.atendimento?.bloqueio?.casamentoData ?? a.atendimento?.lead?.casamentoData;
+  if (!data) return null;
+  return data instanceof Date ? data.toISOString() : data;
+}
+
 export function prazoDias(a: AjusteComPrazo): number | null {
-  const referencia = a.proximaProva ?? a.atendimento?.bloqueio?.casamentoData;
+  const referencia = a.proximaProva ?? casamentoDeReferencia(a);
   return referencia ? diasAteCasamento(referencia) : null;
 }
 

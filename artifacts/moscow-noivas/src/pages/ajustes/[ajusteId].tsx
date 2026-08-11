@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { NaoEncontrado, Erro } from "@/components/estado";
 import { diasAteCasamento } from "../noivas/helpers";
-import { rotuloCasamento, rotuloProva } from "@/lib/ajustes-da-semana";
+import { casamentoDeReferencia, rotuloCasamento, rotuloProva } from "@/lib/ajustes-da-semana";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -67,7 +67,10 @@ export default function AjusteDetalhe() {
   const confeccao = a.tipo === "CONFECCAO";
   const noivaNome = a.atendimento?.lead?.noivaNome;
   const bloqueio = a.atendimento?.bloqueio;
-  const casamento = bloqueio?.casamentoData;
+  // E170/A05.5 — a MESMA referência da fila: o casamento da noiva quando não há
+  // bloqueio. A ficha calculava só `bloqueio?.casamentoData` e dizia "Sem prazo
+  // definido" para toda confecção, enquanto a fila já a ordena pelo prazo.
+  const casamento = casamentoDeReferencia(a);
   const diasProva = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
   const diasCasamento = casamento ? diasAteCasamento(casamento) : null;
   // A mesma régua de urgência da fila: prova a ≤7 dias (ou atrasada); sem

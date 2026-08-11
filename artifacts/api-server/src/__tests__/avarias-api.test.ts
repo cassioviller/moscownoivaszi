@@ -21,7 +21,16 @@ import {
  * contrato — cobrável pela mesma régua de sempre.
  */
 
-// PNG 1×1 válido — os magic bytes importam, o conteúdo não.
+/**
+ * PNG 1×1 válido — os magic bytes importam, o conteúdo não.
+ *
+ * E170: estes 70 bytes mediam a BORDA e nunca o TAMANHO, e a suíte verde sobre
+ * eles escondia o V1 — o `express.json()` padrão barrava a foto de celular em
+ * 102.400 bytes de corpo enquanto cliente e servidor anunciavam 2 MiB. A régua
+ * de tamanho existe desde o E167 e mora em `e167-avaria-fecha-api.test.ts:66`
+ * (1,5 MB entram) e `:81` (acima de 2 MiB é 422 `FOTO_MUITO_GRANDE`, não um 413
+ * mudo). Quem mexer no limite mexe LÁ; este arquivo segue medindo a borda.
+ */
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   "base64",

@@ -489,6 +489,45 @@ Uma lente só se aposenta quando duas rodadas seguidas não acharem nada por ela
     buraco é o R$ 0,00). A conferência segue barata e segue obrigatória — o que
     muda é a expectativa com que se entra nela.)*
 
+34. **Teste que fixa um comportamento descoberto defeituoso é ACHADO, não
+    cobertura — a suíte verde sobre o caminho torto é pior que a suíte
+    vermelha, porque autoriza.** Vermelho é um pedido de conserto; verde sobre
+    o defeito é um atestado de que ali não há nada para consertar, e é o que a
+    próxima rodada lê antes de decidir onde olhar. Por isso o teste que prega
+    entra na tabela de Sobras como qualquer outro achado, e o conserto dele tem
+    uma régua própria: **quebre de propósito o código que o teste novo deveria
+    proteger e mostre o vermelho literal**. Teste que passa nas duas versões do
+    código não prega nada — e é exatamente a classe que esta regra existe para
+    matar. *(2026-08-11, ótica dos papéis: **cinco ocorrências medidas com
+    âncora**, e as cinco escondiam defeito que outra lente teve de achar,
+    porque a suíte já dizia que aquele caminho estava coberto. `e2e/52` era o
+    ÚNICO E2E de orçamento→contrato e o item dele não tinha `vestidoId` — a
+    guarda "peça vendida exige reserva" do E150 nunca rodava, e a jornada verde
+    autorizava o beco que a vendedora encontrava (fechada no E162, `b39d292`).
+    `e115-portal-agenda-api.test.ts:119` criava `tipo: "PROVA"` sem
+    `bloqueioId` e provava as quatro recusas do reagendar POR CIMA de uma prova
+    sem vestido, enquanto um comentário de tela afirmava que o caso estava
+    consertado (fechada no E161, `747ae5e`). `avarias-api.test.ts:24` mandava um
+    PNG de **70 bytes**: a borda por magic bytes era medida, o tamanho nunca —
+    e o teto real do parser era **102.400 bytes de corpo contra os 2 MiB que
+    cliente e servidor anunciavam, 19,5× de mentira** com a foto de celular de
+    1,5 MB (fechada no E167, `8b12b0d`). `ajustes-da-semana.test.ts:26`
+    afirmava, na letra, *"sem referência nenhuma, fica fora do recorte"* — o
+    ramo `null` escrito como intenção, quando ele era alcançado por
+    CONSTRUÇÃO pela confecção, o trabalho sem peça de acervo, logo sem reserva,
+    logo sem `bloqueio.casamentoData`: a peça que leva mais tempo era a única
+    fora de "Esta semana". E `e115-orcamento-aceite-api.test.ts:55` e `:76`
+    provavam as duas metades de um beco em orçamentos DIFERENTES e paravam nas
+    paredes — verde sobre **R$ 5.000,00 aceitos, R$ 5.500,00 pedidos e R$ 0,00
+    contratáveis**. **Três das cinco fecharam junto do épico que passou pela
+    área; as duas que sobraram são as duas que ninguém tinha motivo de abrir**,
+    e é essa a assimetria que a regra descreve: o teste que prega só é revisto
+    quando alguém chega ali por outro caminho. As duas fecharam no E170, cada
+    uma com o vermelho medido depois de quebrar a produção de propósito —
+    `expected null to be 5` na régua da costureira, `expected 200 "OK", got 404
+    "Not Found"` na saída do beco, e nos dois casos os testes VELHOS seguiram
+    verdes com o defeito de volta no lugar.)*
+
 ---
 
 ## Histórico
