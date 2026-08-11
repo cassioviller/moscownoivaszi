@@ -2,7 +2,14 @@ import { test, expect, request as pwRequest, type Page } from "@playwright/test"
 import path from "node:path";
 import { inArray } from "drizzle-orm";
 import { db, leadsTable, atendimentosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
+import {
+  lerEstado,
+  API_URL,
+  criarAtendimentoLivre,
+  apagarCabineCriada,
+  apagarReservaDeProva,
+  type ReservaDeProva,
+} from "./helpers";
 
 const estado = lerEstado();
 
@@ -20,6 +27,8 @@ test.describe("Provas pedem o recorte (E87)", () => {
   const nomeFutura = `E2E Prova Futura ${sufixo}`;
   const nomePassada = `E2E Prova Passada ${sufixo}`;
   const leadIds: string[] = [];
+  // E161/G7: cada PROVA ganha uma reserva descartável — e a limpeza é nossa.
+  const reservas: ReservaDeProva[] = [];
   let cabineId: string;
 
   /** Coleta as URLs das chamadas GET /atendimentos que a tela dispara. */
@@ -65,13 +74,14 @@ test.describe("Provas pedem o recorte (E87)", () => {
       );
       // Horário LIVRE: a vendedora é compartilhada e o banco persiste — as
       // sobras das execuções passadas ocupam intervalos (E115).
-      await criarAtendimentoLivre(api, estado.lojaId, {
+      const criado = await criarAtendimentoLivre(api, estado.lojaId, {
         leadId,
         cabineId,
         vendedoraId,
         tipo: "PROVA",
         ymd,
       });
+      if (criado.reservaCriada) reservas.push(criado.reservaCriada);
     };
 
     await prova(nomeFutura, 6);
@@ -87,6 +97,11 @@ test.describe("Provas pedem o recorte (E87)", () => {
     // beforeAll passou a falhar com 12 horários ocupados.
     if (leadIds.length > 0) {
       await db.delete(atendimentosTable).where(inArray(atendimentosTable.leadId, leadIds));
+    }
+    // E161/G7: as reservas descartáveis saem ANTES dos leads — o bloqueio
+    // referencia o lead, e a peça não pode acumular no banco persistente.
+    for (const r of reservas) await apagarReservaDeProva(r);
+    if (leadIds.length > 0) {
       await db.delete(leadsTable).where(inArray(leadsTable.id, leadIds));
     }
     await apagarCabineCriada(cabineId);

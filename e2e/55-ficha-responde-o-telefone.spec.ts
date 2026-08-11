@@ -8,7 +8,14 @@ import {
   contratosTable,
   atendimentosTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
+import {
+  lerEstado,
+  API_URL,
+  criarAtendimentoLivre,
+  apagarCabineCriada,
+  apagarReservaDeProva,
+  type ReservaDeProva,
+} from "./helpers";
 
 const estado = lerEstado();
 
@@ -35,6 +42,8 @@ test.describe("E125 — a ficha responde o telefone", () => {
   let leadNovaId: string;
   let contratoId: string;
   let cabineId: string;
+  // E161/G7: a PROVA da visita ganha reserva descartável — a limpeza é nossa.
+  const reservas: ReservaDeProva[] = [];
 
   test.beforeAll(async () => {
     const api = await pwRequest.newContext({ baseURL: API_URL });
@@ -69,13 +78,15 @@ test.describe("E125 — a ficha responde o telefone", () => {
       for (const offset of [8, 9, 11, 13, 15]) {
         for (const v of vendedoras) {
           try {
-            return await criarAtendimentoLivre(api, estado.lojaId, {
+            const criado = await criarAtendimentoLivre(api, estado.lojaId, {
               leadId: dados.leadId,
               cabineId,
               vendedoraId: v,
               tipo: dados.tipo,
               ymd: ymdFuturo(offset),
             });
+            if (criado.reservaCriada) reservas.push(criado.reservaCriada);
+            return criado;
           } catch (e) {
             erros.push(String(e));
           }
@@ -131,6 +142,8 @@ test.describe("E125 — a ficha responde o telefone", () => {
     const leads = [leadId, leadNovaId].filter(Boolean);
     if (leads.length > 0)
       await db.delete(atendimentosTable).where(inArray(atendimentosTable.leadId, leads));
+    // E161/G7: a reserva descartável sai antes do lead que ela referencia.
+    for (const r of reservas) await apagarReservaDeProva(r);
     await apagarCabineCriada(cabineId);
     if (contratoId) {
       await db.delete(parcelasTable).where(eq(parcelasTable.contratoId, contratoId));

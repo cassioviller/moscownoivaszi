@@ -145,6 +145,37 @@ export async function ajusteDaNoiva(
 }
 
 /**
+ * E161/G2 — a reserva de vestido é DESTA noiva?
+ *
+ * Irmã do `ajusteDaNoiva` acima, escrita para a mesma pergunta um nível ao
+ * lado. As rotas provavam o `bloqueioId` contra a LOJA e paravam aí, e o
+ * pareamento noiva↔vestido ficava por conta do formulário: uma prova na ficha
+ * da Ana com o vestido da Beatriz é aceita, e ao concluir o carimbo do E37 cai
+ * no bloqueio da Beatriz — a janela dela colapsa para um dia em que ela não
+ * provou nada, e a peça é liberada antes da hora.
+ *
+ * **`lead_id` NULO passa, e é decisão, não descuido:** é o caso comum (61 das
+ * 63 avarias do dev vivem em bloqueio sem noiva — a loja segurou a peça antes
+ * de saber de quem seria) e recusá-lo trocaria um defeito raro por uma parede
+ * diária. Sem noiva no bloqueio não há o que comparar; com noiva, tem de ser a
+ * mesma. É a mesma régua que `contratos.ts:377` já aplica.
+ */
+export async function bloqueioDaNoiva(
+  bloqueioId: string,
+  lojaId: string,
+  leadId: string,
+): Promise<boolean> {
+  const [b] = await db.select({ leadId: bloqueioVestidosTable.leadId })
+    .from(bloqueioVestidosTable)
+    .where(and(
+      eq(bloqueioVestidosTable.id, bloqueioId),
+      eq(bloqueioVestidosTable.lojaId, lojaId),
+    )).limit(1);
+  if (!b) return false;
+  return b.leadId === null || b.leadId === leadId;
+}
+
+/**
  * E156 — o `origemAjusteId` que a peça nova declara é uma confecção desta loja,
  * e já pronta?
  *

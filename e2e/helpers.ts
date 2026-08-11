@@ -2,7 +2,7 @@ import { expect, type Page, type Locator, type APIRequestContext, request } from
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, atendimentosTable, cabinesTable } from "../lib/db/src/index";
+import { db, atendimentosTable, cabinesTable, bloqueioVestidosTable, vestidosTable } from "../lib/db/src/index";
 
 export interface E2EState {
   lojaId: string;
@@ -49,10 +49,25 @@ export async function criarAtendimentoLivre(
     cabineId: string;
     vendedoraId: string;
     tipo?: "ATENDIMENTO" | "PROVA";
+    /**
+     * E161/G7: prova É prova de um vestido — a rota exige a reserva. Quem cria
+     * PROVA passa o bloqueio (via `criarReservaParaProva`) ou deixa que este
+     * helper crie um descartável — e nesse caso limpe com
+     * `apagarReservaDeProva`, senão a peça acumula no banco persistente.
+     */
+    bloqueioId?: string;
     /** Dia (YYYY-MM-DD) no fuso da loja. */
     ymd: string;
   },
-): Promise<{ id: string; inicio: string }> {
+): Promise<{ id: string; inicio: string; reservaCriada?: ReservaDeProva }> {
+  // G7: a PROVA sem bloqueio informado ganha uma reserva descartável própria —
+  // o mesmo contrato que a rota passou a exigir da tela.
+  let reservaCriada: ReservaDeProva | undefined;
+  let bloqueioId = dados.bloqueioId;
+  if ((dados.tipo ?? "ATENDIMENTO") === "PROVA" && !bloqueioId) {
+    reservaCriada = await criarReservaParaProva(req, lojaId, dados.leadId);
+    bloqueioId = reservaCriada.bloqueioId;
+  }
   const stamp = Date.now();
   for (let tentativa = 0; tentativa < 12; tentativa++) {
     const hh = String(9 + ((stamp + tentativa) % 8)).padStart(2, "0");
@@ -65,11 +80,12 @@ export async function criarAtendimentoLivre(
         cabineId: dados.cabineId,
         vendedoraId: dados.vendedoraId,
         tipo: dados.tipo ?? "ATENDIMENTO",
+        ...(bloqueioId ? { bloqueioId } : {}),
         inicio,
       },
     });
     if (res.status() === 201) {
-      return { id: ((await res.json()) as { id: string }).id, inicio };
+      return { id: ((await res.json()) as { id: string }).id, inicio, reservaCriada };
     }
     const corpo = (await res.json()) as { error?: string };
     if (corpo.error !== "CABINE_OCUPADA" && corpo.error !== "VENDEDORA_OCUPADA") {
@@ -102,6 +118,62 @@ export async function apagarCabineCriada(cabineId: string | null | undefined): P
   if (!cabineId) return;
   await db.delete(atendimentosTable).where(eq(atendimentosTable.cabineId, cabineId));
   await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
+}
+
+export interface ReservaDeProva {
+  vestidoId: string;
+  bloqueioId: string;
+}
+
+/**
+ * E161/G7 — a reserva descartável que uma PROVA de E2E precisa.
+ *
+ * A rota passou a exigir `bloqueioId` em toda prova (prova é prova de um
+ * vestido), e os specs criavam PROVA solta — a fixture vivia no ponto cego que
+ * a guarda fechou, o padrão da S-M4. Peça própria por chamada: sem disputa de
+ * disponibilidade entre specs nem entre execuções, porque o vestido é novo.
+ * O casamento fica ~1 ano à frente para as janelas derivadas não tocarem os
+ * dias que os specs usam (+6, +8..+15).
+ */
+export async function criarReservaParaProva(
+  req: APIRequestContext,
+  lojaId: string,
+  leadId: string,
+): Promise<ReservaDeProva> {
+  const stamp = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const vestido = await req.post(`${API_URL}/api/lojas/${lojaId}/vestidos`, {
+    data: { codigo: `e2e-prova-${stamp}`, nome: `Vestido de prova E2E ${stamp}`, precoBase: 1000 },
+  });
+  if (vestido.status() !== 201) {
+    throw new Error(`criarReservaParaProva: vestido ${vestido.status()} ${await vestido.text()}`);
+  }
+  const vestidoId = ((await vestido.json()) as { id: string }).id;
+  const casamento = new Date(Date.now() + 370 * 24 * 3_600_000);
+  const bloqueio = await req.post(`${API_URL}/api/lojas/${lojaId}/bloqueios`, {
+    data: {
+      vestidoId,
+      leadId,
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: casamento.toISOString(),
+    },
+  });
+  if (bloqueio.status() !== 201) {
+    throw new Error(`criarReservaParaProva: bloqueio ${bloqueio.status()} ${await bloqueio.text()}`);
+  }
+  return { vestidoId, bloqueioId: ((await bloqueio.json()) as { id: string }).id };
+}
+
+/**
+ * A limpeza da reserva descartável — direto no banco, porque o DELETE de
+ * bloqueio recusa (com razão) enquanto o atendimento da prova existir; apague
+ * os atendimentos antes (a régua `apagarCabineCriada` já faz isso).
+ */
+export async function apagarReservaDeProva(
+  reserva: ReservaDeProva | null | undefined,
+): Promise<void> {
+  if (!reserva) return;
+  await db.delete(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.id, reserva.bloqueioId));
+  await db.delete(vestidosTable).where(eq(vestidosTable.id, reserva.vestidoId));
 }
 
 /** Login pela UI (o mesmo caminho da usuária real). */

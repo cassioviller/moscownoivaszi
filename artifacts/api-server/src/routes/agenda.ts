@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItensTable, regraDisponibilidadeTable, bloqueioVestidosTable, ausenciasTable, usuariosTable, vestidosTable, orcamentoItensTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, count, max, inArray, gte, lt, lte } from "drizzle-orm";
-import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja, bloqueioDaNoiva } from "../lib/escopo-loja";
 import {
   ListCabinesResponse,
   CreateCabineBody,
@@ -48,7 +48,13 @@ import {
   SLOT_MINUTOS,
   type MotivoRecusa,
 } from "@workspace/agenda-core";
-import { addDias, inicioDoDia, type DbExecutor } from "../lib/disponibilidade";
+import {
+  addDias,
+  inicioDoDia,
+  verificarDisponibilidade,
+  ocupacaoFisica,
+  type DbExecutor,
+} from "../lib/disponibilidade";
 import { randomUUID } from "node:crypto";
 import { erroDeValidacao } from "../lib/erros";
 import { intervaloValidado } from "../lib/intervalo";
@@ -65,6 +71,44 @@ const router: IRouter = Router();
  * inicio), como o lote17 provou sob concorrência. Isto existe para a mensagem
  * ser específica em vez de um 409 que não diz o que colidiu.
  */
+/**
+ * G5 (E161) — o `FOR UPDATE` trancava a CABINE, e o conflito de vendedora
+ * atravessa cabines.
+ *
+ * A S-M22 fechou o eixo da cabine e deixou o eixo da vendedora vivo: duas
+ * requisições pondo a MESMA vendedora no mesmo horário em cabines DIFERENTES
+ * trancavam linhas diferentes, não se enxergavam, e as duas respondiam 201. A
+ * UNIQUE `(loja, vendedora, inicio)` só pega o instante EXATO — e desde o E40 o
+ * conflito é de INTERVALO, então a prova das 14:00 e o atendimento das 14:30
+ * com a mesma vendedora passavam pelos dois lados. É o achado A06.2 dos
+ * ângulos, agora com a causa.
+ *
+ * **A ordem é cabine → vendedora, sempre**, nas duas portas. Como são tabelas
+ * diferentes com ordem fixa, não há ciclo possível entre elas.
+ */
+/**
+ * G1 (E161): aborta a transação da conclusão da prova com rollback — o mesmo
+ * idioma do `ConflitoDisponibilidadeError` de `reservas.ts:49`.
+ */
+class ConflitoDaProvaError extends Error {
+  constructor(public readonly conflitos: unknown[]) {
+    super("VESTIDO_INDISPONIVEL");
+  }
+}
+
+async function trancarEixos(
+  tx: DbExecutor,
+  cabineId: string,
+  vendedoraId: string,
+): Promise<void> {
+  await tx.select({ id: cabinesTable.id }).from(cabinesTable)
+    .where(eq(cabinesTable.id, cabineId))
+    .for("update");
+  await tx.select({ id: usuariosTable.id }).from(usuariosTable)
+    .where(eq(usuariosTable.id, vendedoraId))
+    .for("update");
+}
+
 async function recusaDeMoverAtendimento(
   lojaId: string,
   existente: { id: string; cabineId: string; vendedoraId: string; inicio: Date; tipo: "ATENDIMENTO" | "PROVA" },
@@ -110,7 +154,17 @@ async function recusaDeMoverAtendimento(
   // grade e o `recusaDeMover`. O `30` vivia cravado aqui como literal: mudar a
   // constante corrigia a grade e não corrigia esta busca, e as duas divergiam
   // em silêncio.
-  const janelaMs = Math.max(1, regra?.provaDuracao ?? 1) * SLOT_MINUTOS * 60_000;
+  //
+  // G4 (E161): era `regra?.provaDuracao ?? 1` — a janela lia UMA duração e a
+  // régua da sobreposição lia OUTRA, o `expediente` montado dez linhas acima.
+  // A ironia está medida: `EXPEDIENTE_PADRAO` traz `provaDuracao: 2`, então a
+  // loja SEM regra tinha janela de 30 min contra ocupação de 60 — **a prova das
+  // 14:10 ficava fora do SELECT** e duas noivas entravam na mesma cabine às
+  // 14:50, sem UNIQUE que pegasse (a UNIQUE é do instante EXATO, e o conflito
+  // virou de INTERVALO no E40). Uma fonte só: o expediente efetivo.
+  // O `?? 1` é o MESMO fallback de `duracaoSlots` (`agenda-core/mover.ts:80`) —
+  // a janela e a régua passam a aplicar a mesma expressão sobre a mesma fonte.
+  const janelaMs = Math.max(1, expediente.provaDuracao ?? 1) * SLOT_MINUTOS * 60_000;
   const destinoMs = new Date(destino.inicio).getTime();
   const concorrentes = await executor
     .select({
@@ -378,6 +432,53 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     return;
   }
 
+  /**
+   * G7/A06.3 — o POST aceitava `tipo: PROVA` SEM `bloqueioId`.
+   *
+   * O comentário de `agenda/index.tsx:154-159` **diz que isso foi consertado**
+   * ao matar o diálogo antigo. Foi consertado na TELA; a rota nunca soube — e
+   * uma prova sem vestido é uma prova de nada: a noiva vem ao ateliê, a cabine
+   * fica ocupada, e no dia não há peça reservada para ela experimentar. O
+   * carimbo do E37 (`provaDataReal`) também não tem onde cair, então a janela
+   * de disponibilidade nunca colapsa.
+   *
+   * O spec `e115-portal-agenda:119`, que pregava o defeito criando PROVA sem
+   * bloqueio, muda junto — é o caso do E170: teste que fixa comportamento
+   * descoberto defeituoso é achado, não cobertura.
+   */
+  if (parsed.data.tipo === "PROVA" && !parsed.data.bloqueioId) {
+    res.status(422).json({
+      error: "PROVA_SEM_VESTIDO",
+      detalhe: "Uma prova precisa da reserva do vestido que vai ser provado.",
+      campos: [{ campo: "bloqueioId", motivo: "Escolha a reserva de vestido desta prova" }],
+    });
+    return;
+  }
+
+  /**
+   * G2 — o `bloqueioId` era provado contra a LOJA, não contra a NOIVA.
+   *
+   * O pareamento noiva↔vestido só o formulário garantia. Prova na ficha da Ana
+   * com o vestido da Beatriz: ao concluir, o carimbo do E37 cai **no bloqueio
+   * da Beatriz** — a janela dela colapsa para um dia em que ela não provou
+   * nada, e a peça é liberada antes da hora. Confirma o A05.3 e o A06.5 pelos
+   * dois lados.
+   *
+   * `bloqueioDaNoiva` é irmã do `ajusteDaNoiva` que o E155 escreveu para
+   * exatamente esta pergunta, e nasce aqui em vez de no E164 porque este épico
+   * chega primeiro — o E164 a reusa para o R5/V4 em vez de escrever outra.
+   * Bloqueio com `lead_id` NULO passa: é o caso comum (61 de 63 no dev), e
+   * recusá-lo seria trocar um defeito raro por uma parede diária.
+   */
+  if (parsed.data.bloqueioId && !(await bloqueioDaNoiva(parsed.data.bloqueioId, lojaId, parsed.data.leadId))) {
+    res.status(422).json({
+      error: "RESERVA_DE_OUTRA_NOIVA",
+      detalhe: "Esta reserva de vestido é de outra noiva — escolha uma reserva desta noiva.",
+      campos: [{ campo: "bloqueioId", motivo: "A reserva pertence a outra noiva" }],
+    });
+    return;
+  }
+
   // E115 — a criação só barrava o DIA fechado (E38), enquanto o reagendamento
   // roda as QUATRO recusas do agenda-core: uma prova às 17h30 ocupava a cabine
   // até 19h e o POST às 18h respondia 201 no mesmo lugar de onde o arrastar
@@ -391,9 +492,8 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   // CABINE serializa os criadores; a recusa relê pela tx e enxerga o que o
   // vencedor commitou.
   const criado = await db.transaction(async (tx) => {
-    await tx.select({ id: cabinesTable.id }).from(cabinesTable)
-      .where(eq(cabinesTable.id, parsed.data.cabineId))
-      .for("update");
+    // G5: os DOIS eixos — o conflito de vendedora atravessa cabines.
+    await trancarEixos(tx, parsed.data.cabineId, parsed.data.vendedoraId);
     const recusa = await recusaDeMoverAtendimento(
       lojaId,
       {
@@ -460,7 +560,21 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     return;
   }
 
-  const mudouMovimento = parsed.data.inicio !== undefined || parsed.data.cabineId !== undefined;
+  /**
+   * G3 (E161) — trocar SÓ a vendedora pulava o `recusaDeMover` inteiro.
+   *
+   * `mudouMovimento` olhava `inicio` e `cabineId` e nada mais: nem
+   * VENDEDORA_AUSENTE nem VENDEDORA_OCUPADA eram consultados. **A vendedora de
+   * férias recebia atendimento com 200** — e a grade, que consulta a MESMA
+   * função com as ausências, nunca teria aceitado o mesmo gesto.
+   *
+   * Trocar o responsável É movimento: muda quem tem de estar na loja naquela
+   * hora, e é exatamente sobre isso que as duas recusas de vendedora falam.
+   */
+  const mudouMovimento =
+    parsed.data.inicio !== undefined ||
+    parsed.data.cabineId !== undefined ||
+    parsed.data.vendedoraId !== undefined;
 
   // E36: carimbar o início REAL na primeira entrada em EM_ATENDIMENTO. A coluna
   // `atendidoEm` existia e ninguém a escrevia; é do relógio do servidor, não do
@@ -503,11 +617,15 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
    * UPDATE independente no pool — deixa de poder se separar da conclusão da
    * prova: ou os dois commitam, ou nenhum.
    */
-  const atualizado = await db.transaction(async (tx) => {
+  let atualizado;
+  try {
+    atualizado = await db.transaction(async (tx) => {
     if (mudouMovimento) {
-      await tx.select({ id: cabinesTable.id }).from(cabinesTable)
-        .where(eq(cabinesTable.id, parsed.data.cabineId ?? existente.cabineId))
-        .for("update");
+      await trancarEixos(
+        tx,
+        parsed.data.cabineId ?? existente.cabineId,
+        parsed.data.vendedoraId ?? existente.vendedoraId,
+      );
       const recusa = await recusaDeMoverAtendimento(lojaId as string, existente, parsed.data, tx);
       if (recusa) return { recusa } as const;
     }
@@ -526,16 +644,88 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     // Usa o início real (E36); cai no horário marcado se a prova foi concluída
     // sem passar por "iniciar". Colapsar a janela só reduz ocupação — nunca cria
     // conflito, então não precisa revalidar disponibilidade.
+    /**
+     * G1 (E161) — a justificativa do comentário acima só vale metade das vezes.
+     *
+     * "Colapsar a janela só reduz ocupação — nunca cria conflito" é verdade
+     * **se a data real cair DENTRO da janela derivada**. E o POST aceita a prova
+     * em qualquer dia: `provaDataReal` fora da janela de prova não colapsa nada,
+     * ela MOVE a ocupação para um lugar novo. **Medido:** a prova da noiva A
+     * concluída em 14/10 sobrepõe a janela FÍSICA da noiva B — exatamente o
+     * estado que o `PATCH /reservas` recusa com 409, entrando por um UPDATE que
+     * não tinha nem a tranca do vestido.
+     *
+     * O conserto é a régua da porta irmã: `FOR UPDATE` na linha do vestido (a
+     * mesma tranca que `reservas.ts:493` e `:604` tomam) e
+     * `verificarDisponibilidade` pelo executor da transação. Quando o carimbo
+     * cai dentro da janela — o caso normal, a prova concluída no dia marcado —
+     * a verificação passa e o custo é uma consulta a mais numa ação que já
+     * escreve em duas tabelas.
+     */
     if (parsed.data.situacao === "CONCLUIDO" && existente.tipo === "PROVA" && existente.bloqueioId) {
-      await tx.update(bloqueioVestidosTable)
-        .set({ provaDataReal: atendimento.atendidoEm ?? atendimento.inicio, updatedAt: new Date() })
+      const [bloqueio] = await tx.select().from(bloqueioVestidosTable)
         .where(and(
           eq(bloqueioVestidosTable.id, existente.bloqueioId),
           eq(bloqueioVestidosTable.lojaId, lojaId as string),
-        ));
+        ))
+        .for("update");
+      if (bloqueio) {
+        await tx.select({ id: vestidosTable.id }).from(vestidosTable)
+          .where(eq(vestidosTable.id, bloqueio.vestidoId))
+          .for("update");
+        const provaDataReal = atendimento.atendidoEm ?? atendimento.inicio;
+        const candidato = {
+          id: bloqueio.id,
+          tipo: bloqueio.tipo,
+          casamentoData: bloqueio.casamentoData,
+          provaDataReal,
+          retiradaDataReal: bloqueio.retiradaDataReal,
+          devolucaoDataReal: bloqueio.devolucaoDataReal,
+          lavagemConcluidaEm: bloqueio.lavagemConcluidaEm,
+          inicio: bloqueio.inicio,
+          fim: bloqueio.fim,
+        };
+        const resultado = await verificarDisponibilidade({
+          lojaId: lojaId as string,
+          vestidoId: bloqueio.vestidoId,
+          candidato,
+          ignorarBloqueioId: bloqueio.id,
+          hoje: new Date(),
+          executor: tx,
+        });
+        // Por EXCEÇÃO, não por retorno: o UPDATE do atendimento já rodou nesta
+        // transação, e um `return` normal COMMITARIA a conclusão sem o carimbo
+        // — a separação exata que a S-M22 diz não poder existir ("ou os dois
+        // commitam, ou nenhum"). O throw derruba a transação inteira.
+        if (!resultado.disponivel) throw new ConflitoDaProvaError(resultado.conflitos);
+        const ocupacao = ocupacaoFisica(candidato, resultado.regra);
+        await tx.update(bloqueioVestidosTable)
+          .set({
+            provaDataReal,
+            ocupacaoInicio: ocupacao?.inicio ?? null,
+            ocupacaoFim: ocupacao?.fim ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(bloqueioVestidosTable.id, bloqueio.id));
+      }
     }
     return { atendimento };
-  });
+    });
+  } catch (err) {
+    // G1: o mesmo 409 que o `PATCH /reservas` devolve para o mesmo estado — a
+    // régua é uma, e a resposta também. O rollback já desfez a conclusão: o
+    // atendimento segue como estava, sem a metade órfã.
+    if (err instanceof ConflitoDaProvaError) {
+      res.status(409).json({
+        error: "VESTIDO_INDISPONIVEL",
+        detalhe:
+          "A data real desta prova cai em cima de outro compromisso deste vestido — confira a agenda da peça antes de concluir.",
+        conflitos: err.conflitos,
+      });
+      return;
+    }
+    throw err;
+  }
   if ("recusa" in atualizado && atualizado.recusa) {
     res.status(422).json({ error: atualizado.recusa.motivo, detalhe: atualizado.recusa.detalhe });
     return;

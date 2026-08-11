@@ -3,7 +3,14 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, atendimentosTable, cabinesTable, usuariosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL , diaLocalSP} from "./helpers";
+import {
+  lerEstado,
+  API_URL,
+  diaLocalSP,
+  criarReservaParaProva,
+  apagarReservaDeProva,
+  type ReservaDeProva,
+} from "./helpers";
 
 const estado = lerEstado();
 
@@ -26,6 +33,8 @@ test.describe("Prova ocupa intervalo (E40)", () => {
   const stamp = `${Date.now()}-${randomUUID().slice(0, 8)}`;
   const cabineId = `e2e-cabine-e40-${randomUUID().slice(0, 8)}`;
   let vendedoraId: string;
+  // E161/G7: prova exige a reserva do vestido — descartável, própria do spec.
+  let reserva: ReservaDeProva | undefined;
 
   test.beforeAll(async ({ request }) => {
     await db.insert(cabinesTable).values({ id: cabineId, lojaId: estado.lojaId, nome: cabineId });
@@ -51,6 +60,7 @@ test.describe("Prova ocupa intervalo (E40)", () => {
   test.afterAll(async () => {
     await db.delete(atendimentosTable).where(eq(atendimentosTable.cabineId, cabineId));
     await db.delete(cabinesTable).where(eq(cabinesTable.id, cabineId));
+    await apagarReservaDeProva(reserva);
     if (vendedoraId) await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedoraId));
   });
 
@@ -65,9 +75,19 @@ test.describe("Prova ocupa intervalo (E40)", () => {
     const baseMs = Date.parse(`${ymd}T10:00:00-03:00`);
     const H = 3600_000;
     const iso = (ms: number) => new Date(ms).toISOString();
+    // E161/G7: a rota passou a exigir a reserva do vestido em toda PROVA.
+    reserva = await criarReservaParaProva(request, estado.lojaId, estado.leadId);
+
     const criar = (tipo: "ATENDIMENTO" | "PROVA", inicio: string) =>
       request.post(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos`, {
-        data: { leadId: estado.leadId, cabineId, vendedoraId, tipo, inicio },
+        data: {
+          leadId: estado.leadId,
+          cabineId,
+          vendedoraId,
+          tipo,
+          ...(tipo === "PROVA" ? { bloqueioId: reserva!.bloqueioId } : {}),
+          inicio,
+        },
       });
 
     // Prova ocupa [base, base+1h). Atendimento avulso 3h depois (sem conflito).

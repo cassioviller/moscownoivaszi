@@ -105,12 +105,31 @@ describe("E115 — a foto do contrato aparece, e a agenda recusa igual nos dois 
       return d.toISOString();
     };
 
+    /**
+     * E161/G7 — este spec PREGAVA o defeito: criava `tipo: "PROVA"` sem
+     * `bloqueioId`, e a suíte verde sobre esse caminho autorizava a prova sem
+     * vestido. O comentário de `agenda/index.tsx:154-159` já dizia que o caso
+     * tinha sido consertado — foi, na tela; a rota nunca soube, e este teste
+     * era a prova de que ninguém ia descobrir. É o caso do E170.
+     *
+     * A reserva entra agora, e o que o spec afirma (as quatro recusas do
+     * reagendar valem no criar) segue valendo intacto.
+     */
+    const vestidoDaProva = await criarVestido(f);
+    const reservaDaProva = await criarBloqueio(f, {
+      vestidoId: vestidoDaProva.id,
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: dataFutura(150),
+      leadId: lead.id,
+    });
+
     function criar(inicio: string, tipo: "ATENDIMENTO" | "PROVA" = "ATENDIMENTO") {
       return agent.post(`/api/lojas/${f.lojaId}/atendimentos`).send({
         leadId: lead.id,
         cabineId: cabine.id,
         vendedoraId: f.vendedoraId,
         tipo,
+        ...(tipo === "PROVA" ? { bloqueioId: reservaDaProva.id } : {}),
         inicio,
       });
     }

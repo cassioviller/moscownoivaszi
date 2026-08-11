@@ -2,8 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, atendimentosTable, auditLogTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import {
+  criarBloqueio,
   criarFixture,
   criarLead,
+  criarVestido,
   dataFutura,
   fecharPool,
   limparFixture,
@@ -42,6 +44,17 @@ describe("E97 — contato da loja × confirmação da noiva", () => {
       .send({ nome: `Cabine E97 ${seq}` })
       .expect(201);
     const inicio = new Date(dataFutura(30).getTime() + seq++ * 3_600_000);
+    // E161/G7: prova É prova de um vestido. A fixture criava PROVA sem
+    // `bloqueioId` — o estado que o POST passou a recusar, e que deixava a
+    // noiva vir ao ateliê sem peça reservada para experimentar. O que este
+    // arquivo testa (contato × confirmação) não muda com a reserva presente.
+    const vestido = await criarVestido(f);
+    const bloqueio = await criarBloqueio(f, {
+      vestidoId: vestido.id,
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: dataFutura(120),
+      leadId: lead.id,
+    });
     const r = await agent
       .post(`/api/lojas/${f.lojaId}/atendimentos`)
       .send({
@@ -49,6 +62,7 @@ describe("E97 — contato da loja × confirmação da noiva", () => {
         cabineId: cabine.body.id,
         vendedoraId: f.vendedoraId,
         tipo: "PROVA",
+        bloqueioId: bloqueio.id,
         inicio: inicio.toISOString(),
       })
       .expect(201);
