@@ -11,11 +11,11 @@
 -- existe só chega lá por este script. IF NOT EXISTS: reexecutar não é erro.
 BEGIN;
 
-CREATE INDEX IF NOT EXISTS "registros_cobranca_lead_idx" ON "registros_cobranca" USING btree ("lead_id");
-CREATE INDEX IF NOT EXISTS "registros_cobranca_loja_idx" ON "registros_cobranca" USING btree ("loja_id");
-CREATE INDEX IF NOT EXISTS "orcamentos_loja_status_idx" ON "orcamentos" USING btree ("loja_id","status");
-CREATE INDEX IF NOT EXISTS "orcamentos_lead_idx" ON "orcamentos" USING btree ("lead_id");
-CREATE INDEX IF NOT EXISTS "orcamento_itens_orcamento_idx" ON "orcamento_itens" USING btree ("orcamento_id");
-CREATE INDEX IF NOT EXISTS "bloqueio_vestidos_loja_cancelado_idx" ON "bloqueio_vestidos" USING btree ("loja_id","cancelado_em");
+CREATE INDEX IF NOT EXISTS registros_cobranca_lead_idx ON registros_cobranca USING btree (lead_id);
+CREATE INDEX IF NOT EXISTS registros_cobranca_loja_idx ON registros_cobranca USING btree (loja_id);
+CREATE INDEX IF NOT EXISTS orcamentos_loja_status_idx ON orcamentos USING btree (loja_id,status);
+CREATE INDEX IF NOT EXISTS orcamentos_lead_idx ON orcamentos USING btree (lead_id);
+CREATE INDEX IF NOT EXISTS orcamento_itens_orcamento_idx ON orcamento_itens USING btree (orcamento_id);
+CREATE INDEX IF NOT EXISTS bloqueio_vestidos_loja_cancelado_idx ON bloqueio_vestidos USING btree (loja_id,cancelado_em);
 
 COMMIT;
