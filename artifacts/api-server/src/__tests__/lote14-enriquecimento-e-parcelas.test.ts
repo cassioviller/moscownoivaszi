@@ -164,7 +164,13 @@ describe("Lote 14 — enriquecimento relacional, checklist e operações de parc
       .send({ numParcelas: 2, primeiroVencimento: dataFutura(10).toISOString() })
       .expect(409);
 
-    const outro = await criarContrato(f, { leadId: lead.id, valorTotal: 50, fechadoEm: dataFutura(-5) });
+    // E158: outra noiva, e não a mesma. O índice `contratos_lead_ativo_unico`
+    // passou a proibir dois contratos ATIVOS para a mesma noiva — a fixture
+    // montava exatamente o estado que a S-M3 mede como R$ 10.000,00 a receber
+    // sobre uma venda de R$ 5.000,00. Este caso só quer um contrato de
+    // R$ 50,00 para provar o 422 da entrada maior; a dona dele é indiferente.
+    const outraNoiva = await criarLead(f);
+    const outro = await criarContrato(f, { leadId: outraNoiva.id, valorTotal: 50, fechadoEm: dataFutura(-5) });
     await agent
       .post(`/api/lojas/${f.lojaId}/contratos/${outro.id}/parcelas/gerar-plano`)
       .send({ entrada: 60, numParcelas: 1, primeiroVencimento: dataFutura(10).toISOString() })

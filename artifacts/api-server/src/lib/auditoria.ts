@@ -50,6 +50,13 @@ export const ACOES_AUDITORIA = [
   // espelho do CONTA_PAGAR_REMOVIDA do E107, e ficou sem trilha pelo mesmo
   // tempo em que a irmã já tinha a dela.
   "PARCELA_REMOVIDA",
+  // P2/E158: gerar o carnê depois RENUMERA as parcelas que já existiam — a
+  // avulsa de R$ 350,00 que era 1 vira 11. Nada explicava o salto, e as trilhas
+  // de recebimento gravavam `numero`: quem conferisse o caixa pela auditoria
+  // casava o dinheiro com a linha errada. Esta linha guarda o de→para por
+  // parcela, e as trilhas de parcela passaram a gravar também o `parcelaId`,
+  // que é a única chave que a renumeração não move.
+  "PARCELAS_RENUMERADAS",
   // S4/E107: apagar uma conta PREVISTA some com uma obrigação. Não move caixa
   // realizado (a paga é recusada antes), e por isso é um degrau abaixo do B3 —
   // mas depois do DELETE não há linha para consultar, então o que não estiver
@@ -143,6 +150,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
   LEAD_REMOVIDO: "Noiva removida do cadastro",
   PARCELA_REMOVIDA: "Parcela removida",
+  PARCELAS_RENUMERADAS: "Parcelas renumeradas",
   CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
   CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",

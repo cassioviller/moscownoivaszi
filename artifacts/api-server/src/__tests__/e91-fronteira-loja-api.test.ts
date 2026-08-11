@@ -145,8 +145,13 @@ describe("E91 — fronteira da loja (API)", () => {
   // ───────────────────────── B2 🔴 ─────────────────────────
 
   it("DELETE /admin/usuarios de quem tem contrato é 409 — e o contrato continua lá", async () => {
+    // E158: noiva PRÓPRIA, e não o `leadA` compartilhado. A partir do índice
+    // `contratos_lead_ativo_unico` uma noiva tem no máximo um contrato ATIVO —
+    // e o `leadA` já ganhou o dele num teste acima. O que este caso precisa é
+    // de UM contrato da vendedora de A; de quem ele é não importa.
+    const dona = await criarLead(A);
     const contrato = await criarContrato(A, {
-      leadId: leadA,
+      leadId: dona.id,
       valorTotal: 8000,
       fechadoEm: new Date("2026-01-10T12:00:00-03:00"),
     });

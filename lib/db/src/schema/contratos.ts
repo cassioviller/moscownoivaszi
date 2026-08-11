@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, decimal, integer, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -57,6 +58,30 @@ export const contratosTable = pgTable("contratos", {
 }, (t) => ({
   // B10/E91: comissão, dashboard e conversão abrem por loja + data do fecho.
   lojaFechadoEmIdx: index("contratos_loja_fechado_em_idx").on(t.lojaId, t.fechadoEm),
+  /**
+   * K3/A08.1 (E158) — uma noiva tem no máximo UM contrato ativo, e agora quem
+   * garante é o banco.
+   *
+   * A guarda existia só em código (`contratos.ts:184`), lida no pool antes da
+   * transação: duas vendedoras clicando "gerar contrato" no mesmo segundo liam
+   * as duas "não tem ativo" e as duas inseriam. **Medido:** dois contratos
+   * ATIVOS de R$ 5.000,00 para a mesma noiva, a ficha somando 2 × 10 ×
+   * R$ 500,00 = R$ 10.000,00 a receber sobre uma venda de R$ 5.000,00, e a
+   * comissão fechando sobre o dobro — o estrago da S-M3 entrando por outra
+   * porta.
+   *
+   * A rota passou a trancar a linha do LEAD e reler dentro da transação, o que
+   * fecha a corrida no caminho normal. Este índice é o cinto: fecha a porta
+   * para script, seed e rota futura que não conheçam a régua. Parcial em
+   * `status = 'ATIVO'` porque contrato CANCELADO não segura noiva nenhuma — a
+   * mesma noiva pode ter três cancelados e um ativo.
+   *
+   * No dev, `309` contratos ATIVOS e ZERO leads com dois — o índice nasce
+   * verde num banco que já viveu.
+   */
+  ativoUnicoPorLead: uniqueIndex("contratos_lead_ativo_unico")
+    .on(t.leadId)
+    .where(sql`${t.status} = 'ATIVO'`),
 }));
 
 export const insertContratoSchema = createInsertSchema(contratosTable).omit({ createdAt: true, updatedAt: true });

@@ -41,6 +41,10 @@ export const ROTULO_ACAO: Record<string, string> = {
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
   LEAD_REMOVIDO: "Noiva removida do cadastro",
   PARCELA_REMOVIDA: "Parcela removida",
+  // P2/E158: o carnê gerado depois empurra as avulsas para o fim da fila. O
+  // detalhe guarda o de→para por parcela — é a linha que explica por que a
+  // trilha de um recebimento antigo cita um número que a tela não mostra mais.
+  PARCELAS_RENUMERADAS: "Parcelas renumeradas",
   CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
   RESERVA_REMOVIDA: "Reserva removida",
   BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",

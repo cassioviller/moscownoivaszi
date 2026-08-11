@@ -520,6 +520,44 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // Persistência atômica: contrato + parcelas + snapshot de itens.
   const result = await db.transaction(async (tx) => {
     /**
+     * E158 — A ORDEM DAS TRANCAS DO MÓDULO, escrita uma vez:
+     *
+     *     lead → contrato → parcelas → bloqueios
+     *
+     * Não é preferência: é o que impede deadlock. O cancelamento tranca a
+     * linha do lead ANTES dos bloqueios pelo mesmo motivo — sem a ordem
+     * comum, este POST (segurando o lead, esperando o bloqueio) e um
+     * cancelamento simultâneo (segurando o bloqueio, esperando o lead) se
+     * matariam em ciclo. Toda porta nova deste arquivo obedece a ordem.
+     */
+
+    /**
+     * K3/A08.1 — o contrato ativo duplicado, relido SOB TRANCA.
+     *
+     * A guarda de `:184` lê no pool, fora desta transação: duas vendedoras no
+     * mesmo segundo liam as duas "esta noiva não tem contrato ativo" e as duas
+     * inseriam. **Medido:** dois contratos ATIVOS de R$ 5.000,00 para a mesma
+     * noiva — a ficha somando R$ 10.000,00 a receber sobre uma venda de
+     * R$ 5.000,00, com a comissão fechando sobre o dobro.
+     *
+     * A linha do LEAD é a tranca certa porque é ela que o invariante nomeia
+     * ("um lead, um contrato ativo") — e é uma linha que sempre existe, mesmo
+     * quando não há contrato nenhum para trancar. O índice parcial
+     * `contratos_lead_ativo_unico` fecha por baixo o que esta releitura fecha
+     * por cima.
+     */
+    await tx.select({ id: leadsTable.id }).from(leadsTable)
+      .where(and(eq(leadsTable.id, contratoData.leadId), eq(leadsTable.lojaId, lojaId)))
+      .for("update");
+    const [ativoAgora] = await tx.select({ id: contratosTable.id }).from(contratosTable)
+      .where(and(
+        eq(contratosTable.leadId, contratoData.leadId),
+        eq(contratosTable.lojaId, lojaId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    if (ativoAgora) return { duplicado: true as const };
+
+    /**
      * S-M7 — a guarda de reserva exclusiva, relida SOB TRANCA.
      *
      * `presosPorContratoAtivo` é lido lá em cima no pool global, fora desta
@@ -545,6 +583,32 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
           .where(and(eq(bloqueioVestidosTable.id, bloqueioId), eq(bloqueioVestidosTable.lojaId, lojaId)))
           .for("update");
       }
+      /**
+       * K2 — a reconferência relia MENOS do que a guarda lenta provou.
+       *
+       * Ela devolvia só `id` e refazia só a prova de `presosPorContratoAtivo`,
+       * deixando `canceladoEm` de fora — e é justamente o campo que muda na
+       * janela: o cancelamento de OUTRO contrato soft-cancela o bloqueio
+       * (`:993`) no mesmo segundo. **Medido:** o contrato nasce preso a uma
+       * reserva morta; `verificarDisponibilidade` ignora bloqueio cancelado e
+       * a EXCLUDE também, então o mesmo vestido é vendido de novo para o mesmo
+       * sábado — R$ 9.000,00 prometidos sobre uma peça, descobertos na
+       * retirada. É o defeito que o comentário de `:317-322` declara fechado
+       * no caminho lento, reaberto pela janela.
+       *
+       * A releitura agora é a MESMA consulta da guarda lenta (`:323-330`):
+       * mesma loja, mesmo `isNull(canceladoEm)`. Se algum bloqueio deixou de
+       * responder a ela, a reserva morreu enquanto líamos.
+       */
+      const vivosAgora = await tx.select({ id: bloqueioVestidosTable.id })
+        .from(bloqueioVestidosTable)
+        .where(and(
+          inArray(bloqueioVestidosTable.id, bloqueioIds),
+          eq(bloqueioVestidosTable.lojaId, lojaId),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ));
+      if (vivosAgora.length !== bloqueioIds.length) return { reservaMorreu: true as const };
+
       const presosAgora = await tx
         .select({ bloqueioId: contratoBloqueiosTable.bloqueioId })
         .from(contratoBloqueiosTable)
@@ -726,6 +790,27 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     return { contrato };
   });
 
+  // K3: perder a corrida do contrato duplicado dá o MESMO 409 da guarda de
+  // `:184` — para a vendedora não existe diferença entre perder por um segundo
+  // e por um dia. Esta é a régua do módulo inteiro para corrida perdida.
+  if ("duplicado" in result) {
+    res.status(409).json({ error: "CONTRATO_ATIVO_DUPLICADO", detalhe: "Este lead já possui um contrato ativo" });
+    return;
+  }
+
+  // K2: a reserva foi cancelada enquanto montávamos o contrato — quase sempre
+  // porque o contrato que a segurava caiu no mesmo segundo. A peça está livre,
+  // mas ESTA reserva não existe mais: a vendedora precisa reservar de novo, e a
+  // frase diz isso em vez de mandar "tentar de novo" o gesto que vai falhar.
+  if ("reservaMorreu" in result) {
+    res.status(409).json({
+      error: "RESERVA_CANCELADA",
+      detalhe: "Esta reserva de vestido foi cancelada enquanto o contrato era montado — reserve a peça de novo.",
+      campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva foi cancelada" }],
+    });
+    return;
+  }
+
   // S-M7: quem perde a corrida recebe o MESMO 409 da guarda lenta — para a
   // vendedora não existe diferença entre perder por um segundo e por um dia.
   if ("corrida" in result) {
@@ -864,13 +949,45 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     }
   }
 
+  /**
+   * K8 — a guarda de `:817` lê no pool e o UPDATE não repetia a condição.
+   *
+   * Entre a leitura do status e esta escrita cabe o cancelamento inteiro: o
+   * PATCH gravava CPF, datas e observações num contrato que a trilha
+   * `CONTRATO_CANCELADO` já congelou, e o PDF saía com os dados novos — o
+   * documento divergindo do que a auditoria diz ter sido cancelado. A prova de
+   * data logo acima piora o caso: ela filtra bloqueios VIVOS, e num contrato
+   * recém-cancelado todos têm `canceladoEm`, então a data mudava sem prova
+   * nenhuma.
+   *
+   * O conserto é o idioma do DELETE de parcela (`:1300-1304`): a condição do
+   * `where` repete o estado LIDO. Zero linhas quer dizer que o contrato deixou
+   * de ser ATIVO no meio — e a resposta é o mesmo 422 da guarda lenta.
+   */
   const [contrato] = await db.update(contratosTable)
     .set({ ...parsed.data, updatedAt: new Date() })
-    .where(and(eq(contratosTable.id, contratoId as string), eq(contratosTable.lojaId, lojaId as string)))
+    .where(and(
+      eq(contratosTable.id, contratoId as string),
+      eq(contratosTable.lojaId, lojaId as string),
+      eq(contratosTable.status, "ATIVO"),
+    ))
     .returning();
 
   if (!contrato) {
-    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    // Zero linhas tem dois sentidos, e a releitura (só no caminho de erro, que
+    // é raro) diz qual: o contrato caiu no meio, ou nunca esteve aqui.
+    const [aindaExiste] = await db
+      .select({ id: contratosTable.id })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId as string), eq(contratosTable.lojaId, lojaId as string)));
+    if (!aindaExiste) {
+      res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+      return;
+    }
+    res.status(422).json({
+      error: "CONTRATO_NAO_ATIVO",
+      detalhe: "Contrato cancelado é registro morto — ele não se edita.",
+    });
     return;
   }
   res.json(UpdateContratoResponse.parse(contrato));
@@ -897,28 +1014,74 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
   }
 
   const agora = new Date();
-  // Lidas ANTES de qualquer escrita: é o único momento em que ainda dá para
-  // saber o que o cancelamento vai desfazer, e é isso que a trilha guarda (B3).
-  const parcelasAntes = await db
-    .select()
-    .from(parcelasTable)
-    .where(eq(parcelasTable.contratoId, contrato.id));
 
-  // Dinheiro que já entrou nesta venda, venha de parcela quitada ou meio paga.
-  const comRecebimento = parcelasAntes.filter((p) => (p.valorRecebido ?? 0) > 0);
-  const idsComRecebimento = comRecebimento.map((p) => p.id);
-  const totalRecebidoAntes = reais(
-    comRecebimento.reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0),
-  );
-  const abertasAntes = parcelasAntes.filter((p) => estaAberta(p));
-  const totalAbertoAntes = reais(
-    abertasAntes.reduce(
-      (s, p) => s + Math.max(0, centavos(p.valorPrevisto) - centavos(p.valorRecebido ?? 0)),
-      0,
-    ),
-  );
+  const desfecho = await db.transaction(async (tx) => {
+    /**
+     * K1/P1 — as parcelas eram lidas no POOL, e o dinheiro escapava pela janela.
+     *
+     * `parcelasAntes` decidia DUAS coisas a partir de um SELECT feito fora
+     * desta transação: quem tem recebimento (`idsComRecebimento`) e quanto a
+     * trilha vai declarar. Um recebimento que commitasse entre aquela leitura e
+     * as escritas daqui virava PAGA — e PAGA escapa de `inArray(status,
+     * STATUS_ABERTO)` (só PREVISTA e PARCIAL) **e** de `idsComRecebimento`, que
+     * foi montado quando `valorRecebido` ainda era nulo.
+     *
+     * **Medido:** cancelamento com `destinoPago: "estornar"` no mesmo segundo
+     * do Pix de R$ 700,00 → contrato CANCELADO com uma parcela PAGA viva de
+     * R$ 700,00, que `entrouDinheiro` (`caixa.ts:82`) conta no caixa realizado
+     * PARA SEMPRE, enquanto a trilha grava `totalRecebido: 0` e
+     * `totalEstornado: 0`. A loja devolveu R$ 700,00 que o caixa jura ter
+     * recebido, e não há linha que explique. Pior: não há volta — `POST
+     * /estornar` exige contrato ATIVO, e este está cancelado.
+     *
+     * O conserto é ler DENTRO da transação e sob `FOR UPDATE`. O `POST
+     * /receber` escreve por CAS na mesma linha (`:1129-1143`): a tranca o
+     * segura até commitarmos, e aí o CAS dele não casa mais — ele devolve
+     * `PARCELA_MUDOU` 409, que é a verdade (a parcela mudou: o contrato caiu).
+     *
+     * A ordem é a do módulo — lead → contrato → parcelas → bloqueios.
+     */
+    const [lead] = await tx
+      .select({
+        id: leadsTable.id,
+        etapa: leadsTable.etapa,
+        contratoFechadoEm: leadsTable.contratoFechadoEm,
+      })
+      .from(leadsTable)
+      .where(and(eq(leadsTable.id, contrato.leadId), eq(leadsTable.lojaId, lojaId)))
+      .for("update");
 
-  await db.transaction(async (tx) => {
+    const [sobTranca] = await tx
+      .select({ status: contratosTable.status })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
+      .for("update");
+    // Cancelar duas vezes ao mesmo tempo: quem chega depois vê CANCELADO já
+    // commitado e recebe o mesmo 409 da guarda lenta, em vez de gravar uma
+    // segunda trilha dizendo que anulou parcelas que o primeiro já anulou.
+    if (!sobTranca) return { sumiu: true as const };
+    if (sobTranca.status === "CANCELADO") return { jaCancelado: true as const };
+
+    const parcelasAntes = await tx
+      .select()
+      .from(parcelasTable)
+      .where(eq(parcelasTable.contratoId, contrato.id))
+      .for("update");
+
+    // Dinheiro que já entrou nesta venda, venha de parcela quitada ou meio paga.
+    const comRecebimento = parcelasAntes.filter((p) => (p.valorRecebido ?? 0) > 0);
+    const idsComRecebimento = comRecebimento.map((p) => p.id);
+    const totalRecebidoAntes = reais(
+      comRecebimento.reduce((s, p) => s + centavos(p.valorRecebido ?? 0), 0),
+    );
+    const abertasAntes = parcelasAntes.filter((p) => estaAberta(p));
+    const totalAbertoAntes = reais(
+      abertasAntes.reduce(
+        (s, p) => s + Math.max(0, centavos(p.valorPrevisto) - centavos(p.valorRecebido ?? 0)),
+        0,
+      ),
+    );
+
     // `comissaoEstornadaEm` NÃO é gravado aqui: ele marca quando o estorno foi
     // RECONCILIADO num fechamento, e não quando o contrato caiu (isso é o
     // `canceladoEm`). Deixá-lo nulo é o que mantém o estorno §6.4 pendente para
@@ -1000,6 +1163,48 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
     }
 
     /**
+     * P3 — cancelar não desfazia `contratoFechadoEm` nem a etapa do lead.
+     *
+     * Fechar o contrato carimba as duas coisas (`:713-724`) e o cancelamento
+     * não mexia em nenhuma. Quem lê o carimbo é a curva de sazonalidade
+     * (`leads.ts:432`, `count(*) filter (where contrato_fechado_em is not
+     * null)`): **a venda cancelada seguia contada como fechada**, e a curva que
+     * diz à dona em que mês vai faltar vestido superestimava a demanda com
+     * vendas que não existem. A noiva ainda ficava no kanban em
+     * CONTRATO_FECHADO sem contrato nenhum.
+     *
+     * O desfazer é condicional a NÃO haver outro contrato ativo — a noiva que
+     * refez a venda continua tendo fechado, e o carimbo é da primeira vez
+     * (`lead.contratoFechadoEm ?? new Date()` na criação).
+     *
+     * A etapa só regride quando está EXATAMENTE em CONTRATO_FECHADO, que é o
+     * estado que a criação do contrato pôs ali. De EM_PROVAS para a frente
+     * quem moveu foi uma pessoa, sobre a peça que já saiu do ateliê: apagar
+     * isso seria inventar um passado. Nesse caso o carimbo cai (a venda não
+     * fechou) e a etapa fica — a divergência é real e é da loja resolver.
+     */
+    const [outroAtivo] = await tx
+      .select({ id: contratosTable.id })
+      .from(contratosTable)
+      .where(and(
+        eq(contratosTable.leadId, contrato.leadId),
+        eq(contratosTable.lojaId, lojaId),
+        eq(contratosTable.status, "ATIVO"),
+      ));
+    const desfezOFecho = !outroAtivo && lead !== undefined;
+    const etapaDesfeita =
+      desfezOFecho && lead.etapa === "CONTRATO_FECHADO" ? ("ORCAMENTO_ABERTO" as const) : null;
+    if (desfezOFecho) {
+      await tx.update(leadsTable)
+        .set({
+          contratoFechadoEm: null,
+          ...(etapaDesfeita ? { etapa: etapaDesfeita } : {}),
+          updatedAt: agora,
+        })
+        .where(eq(leadsTable.id, lead.id));
+    }
+
+    /**
      * B3/E94 — a trilha do cancelamento, DENTRO da transação.
      *
      * Esta é a maior ação de dinheiro do sistema e era a única sem rastro: ela
@@ -1032,9 +1237,23 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
           parsed.data.destinoPago === "estornar" ? idsComRecebimento.length : 0,
         parcelasAnuladas: abertasAntes.length,
         totalAnulado: totalAbertoAntes,
+        // P3: o que o cancelamento desfez no LEAD. Sem estas duas linhas, quem
+        // lê a trilha não sabe por que a noiva saiu da curva de sazonalidade.
+        fechoDesfeito: desfezOFecho,
+        etapaDesfeitaPara: etapaDesfeita,
       },
     });
+    return { ok: true as const };
   });
+
+  if ("sumiu" in desfecho) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  if ("jaCancelado" in desfecho) {
+    res.status(409).json({ error: "CONTRATO_JA_CANCELADO", detalhe: "Contrato já está cancelado" });
+    return;
+  }
 
   const fullContrato = await db.query.contratosTable.findFirst({
     where: and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)),
@@ -1153,6 +1372,21 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads",
       entidadeId: existente.id,
       detalhe: {
         contratoId: existente.contratoId,
+        /**
+         * P2 — `numero` NÃO é chave estável, e a trilha o usava como se fosse.
+         *
+         * `gerar-plano` renumera as parcelas que já existiam (`:1470`): a
+         * avulsa de R$ 350,00 que era 1 vira 11 quando o carnê nasce. A linha
+         * desta trilha continua dizendo "parcela 1" — e quem conferir o caixa
+         * pela auditoria casa o recebimento com a linha ERRADA, que é o oposto
+         * exato da razão de a trilha existir.
+         *
+         * `parcelaId` é imutável e é o que o leitor deve casar. O `numero` fica
+         * porque é o que a pessoa vê na tela NO MOMENTO do ato — e a
+         * renumeração agora deixa a própria linha `PARCELAS_RENUMERADAS` que
+         * explica o de→para.
+         */
+        parcelaId: existente.id,
         numero: existente.numero,
         // O que entrou NESTE recebimento (a trilha é por ação), mais o
         // acumulado e o que sobrou — sem eles um recebimento parcial na
@@ -1221,7 +1455,33 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
    * recebido. Só um dos dois casa, e só ele audita. O perdedor não recebe erro:
    * ele pediu "estornada" e a parcela está estornada.
    */
-  const parcela = await db.transaction(async (tx) => {
+  const desfecho = await db.transaction(async (tx) => {
+    /**
+     * K7 — o estorno reconferia o status da PARCELA e omitia o do CONTRATO.
+     *
+     * A guarda de `:1201` chama `contratoAtivo` no pool; o UPDATE abaixo
+     * repete a condição de `status` da parcela e nada diz sobre o contrato.
+     * Entre as duas cabe o cancelamento inteiro — e ele NÃO fecha esta porta:
+     * com `destinoPago: "manter"` (o default) a parcela PAGA continua PAGA,
+     * então o `inArray(status, ["PAGA","PARCIAL"])` casa e o estorno volta a
+     * parcela para PREVISTA num contrato morto.
+     *
+     * **Medido:** R$ 1.000,00 de sinal saem do caixa realizado e reaparecem
+     * como cobrança ABERTA de uma venda que não existe — no horizonte, no
+     * aging e na régua de cobrança que liga para a noiva pedir o dinheiro de
+     * um contrato cancelado.
+     *
+     * A tranca é a do módulo: contrato → parcela. O contrato entra em
+     * `FOR UPDATE` e é relido; o cancelamento concorrente ou já commitou (e
+     * lemos CANCELADO) ou espera aqui.
+     */
+    const [contrato] = await tx
+      .select({ status: contratosTable.status })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, existente.contratoId), eq(contratosTable.lojaId, lojaId as string)))
+      .for("update");
+    if (!contrato || contrato.status !== "ATIVO") return { contratoNaoAtivo: true as const };
+
     const [atualizada] = await tx.update(parcelasTable)
       .set({
         status: "PREVISTA",
@@ -1242,10 +1502,24 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
         inArray(parcelasTable.status, ["PAGA", "PARCIAL"]),
       ))
       .returning();
+    /**
+     * P4 — o perdedor da corrida fazia `parse(undefined)`, e virava 500.
+     *
+     * Este `atual` é tipado `Parcela | undefined` e ia direto para
+     * `EstornarParcelaResponse.parse()` lá embaixo. Some a linha entre o UPDATE
+     * que não casou e este SELECT — o vencedor devolve a parcela a PREVISTA e
+     * um `DELETE /parcelas` (que só aceita PREVISTA) a apaga — e a vendedora lê
+     * **"Não consegui falar com o sistema"** numa ação que JÁ tinha acontecido.
+     * O 500 é a resposta errada duas vezes: mente sobre a causa e esconde que
+     * o estorno foi feito.
+     */
     if (!atualizada) {
       const [atual] = await tx.select().from(parcelasTable)
         .where(eq(parcelasTable.id, existente.id));
-      return atual;
+      if (!atual) return { sumiu: true as const };
+      // S6/E107: o perdedor não recebe erro — ele pediu "estornada" e a
+      // parcela está estornada. O que ele NÃO faz é auditar de novo.
+      return { parcela: atual };
     }
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
@@ -1255,15 +1529,26 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
       entidadeId: existente.id,
       detalhe: {
         contratoId: existente.contratoId,
+        // P2: a chave estável é o id — `numero` é o rótulo do momento.
+        parcelaId: existente.id,
         numero: existente.numero,
         // O que o estorno desfez — some da parcela, fica na trilha.
         valorRecebido: existente.valorRecebido,
         recebidoEm: existente.recebidoEm,
       },
     });
-    return atualizada;
+    return { parcela: atualizada };
   });
-  res.json(EstornarParcelaResponse.parse(parcela));
+
+  if ("contratoNaoAtivo" in desfecho) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
+  if ("sumiu" in desfecho) {
+    res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
+    return;
+  }
+  res.json(EstornarParcelaResponse.parse(desfecho.parcela));
 });
 
 router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<void> => {
@@ -1310,6 +1595,8 @@ router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<vo
       entidadeId: atual.id,
       detalhe: {
         contratoId: atual.contratoId,
+        // P2: a chave estável é o id — `numero` é o rótulo do momento.
+        parcelaId: atual.id,
         numero: atual.numero,
         descricao: atual.descricao,
         valorPrevisto: atual.valorPrevisto,
@@ -1355,21 +1642,61 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas", async (req, res): P
     return;
   }
 
-  // Próximo número livre; a UNIQUE (contrato, numero) segura o duplo POST.
-  const numero = contrato.parcelas.reduce((maior, p) => Math.max(maior, p.numero), 0) + 1;
-  const [parcela] = await db
-    .insert(parcelasTable)
-    .values({
-      id: randomUUID(),
-      lojaId,
-      contratoId,
-      numero,
-      descricao: parsed.data.descricao,
-      valorPrevisto: parsed.data.valorPrevisto,
-      vencimento: parsed.data.vencimento,
-    })
-    .returning();
-  res.status(201).json(CreateParcelaAvulsaResponse.parse(parcela));
+  /**
+   * K9 — o número da avulsa era calculado em memória, e a colisão saía como
+   * "Já existe um registro com estes dados".
+   *
+   * O `reduce` sobre `contrato.parcelas` lidas no pool decidia o próximo
+   * número, e a UNIQUE (contrato, numero) segurava o duplo POST — mas o que a
+   * vendedora lia era o 409 genérico `REGISTRO_DUPLICADO`, no meio de um fluxo
+   * de dinheiro. É literalmente o caso que `erros.ts:181-185` registra ter sido
+   * lido como regressão financeira por dois minutos. E a mensagem não diz nada:
+   * a segunda cobrança de avaria era LEGÍTIMA, só precisava do número seguinte.
+   *
+   * Sob a tranca do contrato o número é decidido em série, e a colisão deixa de
+   * existir em vez de virar mensagem. A releitura do status no mesmo gesto
+   * fecha a janela em que o cancelamento passa por aqui no meio — uma cobrança
+   * nova num contrato morto é o irmão do K7.
+   */
+  const desfecho = await db.transaction(async (tx) => {
+    const [sobTranca] = await tx
+      .select({ status: contratosTable.status })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
+      .for("update");
+    if (!sobTranca) return { sumiu: true as const };
+    if (sobTranca.status !== "ATIVO") return { naoAtivo: sobTranca.status };
+
+    const [maior] = await tx
+      .select({ numero: sql<number | null>`max(${parcelasTable.numero})` })
+      .from(parcelasTable)
+      .where(eq(parcelasTable.contratoId, contratoId));
+    const numero = Math.max(0, maior?.numero ?? 0) + 1;
+
+    const [parcela] = await tx
+      .insert(parcelasTable)
+      .values({
+        id: randomUUID(),
+        lojaId,
+        contratoId,
+        numero,
+        descricao: parsed.data.descricao,
+        valorPrevisto: parsed.data.valorPrevisto,
+        vencimento: parsed.data.vencimento,
+      })
+      .returning();
+    return { parcela };
+  });
+
+  if ("sumiu" in desfecho) {
+    res.status(422).json({ error: "CONTRATO_INVALIDO", detalhe: "Contrato não encontrado nesta loja" });
+    return;
+  }
+  if ("naoAtivo" in desfecho) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: `Contrato está ${desfecho.naoAtivo}` });
+    return;
+  }
+  res.status(201).json(CreateParcelaAvulsaResponse.parse(desfecho.parcela));
 });
 
 router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (req, res): Promise<void> => {
@@ -1413,21 +1740,56 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
     res.status(422).json({ error: "ENTRADA_MAIOR", detalhe: "Entrada maior que o valor total do contrato" });
     return;
   }
+  /**
+   * P5 — `numParcelas: 2.5` era a ÚNICA validação do carnê que não devolvia 422.
+   *
+   * O spec declara `numParcelas: { type: integer, minimum: 1, maximum: 360 }`
+   * (`openapi.yaml:6279`) e o zod gerado devolve `zod.number().min(1).max(360)`
+   * — o gerador **perde o `integer`**. O fracionário passava pela porta, chegava
+   * a `montarPlanoParcelas`, batia no `!Number.isInteger(n)` de
+   * `plano.ts:84` e subia `PLANO_SEM_PARCELAS` como exceção não tratada: 500,
+   * e a vendedora lendo "Não consegui falar com o sistema" por ter digitado
+   * um ponto.
+   *
+   * A guarda mora aqui, e não numa edição do arquivo gerado (que a próxima
+   * geração apagaria). O `try` embaixo é o cinto: as três recusas do
+   * financeiro-core são regra de negócio, e regra de negócio é 422.
+   */
+  if (!Number.isInteger(parsed.data.numParcelas)) {
+    res.status(422).json({
+      error: "NUM_PARCELAS_INVALIDO",
+      detalhe: "O número de parcelas tem de ser inteiro.",
+      campos: [{ campo: "numParcelas", motivo: "Use um número inteiro de parcelas" }],
+    });
+    return;
+  }
 
   // E95: o carnê sai do MESMO `montarPlanoParcelas` que a tela de orçamento
   // usa. Antes esta rota espaçava por 30 dias corridos e a tela por mês, e
   // `primeiroVencimento` significava a ENTRADA aqui e a PARCELA 1 lá — o mesmo
   // campo mudando de sentido conforme houvesse entrada. A régua agora é uma:
   // mensal por dia fixo, e `primeiroVencimento` é sempre a parcela 1.
-  const plano = montarPlanoParcelas({
-    totalCentavos,
-    entradaCentavos,
-    numParcelas: parsed.data.numParcelas,
-    primeiroVencimento: diaDeNegocio(parsed.data.primeiroVencimento),
-    vencimentoEntrada: parsed.data.vencimentoEntrada
-      ? diaDeNegocio(parsed.data.vencimentoEntrada)
-      : undefined,
-  });
+  let plano;
+  try {
+    plano = montarPlanoParcelas({
+      totalCentavos,
+      entradaCentavos,
+      numParcelas: parsed.data.numParcelas,
+      primeiroVencimento: diaDeNegocio(parsed.data.primeiroVencimento),
+      vencimentoEntrada: parsed.data.vencimentoEntrada
+        ? diaDeNegocio(parsed.data.vencimentoEntrada)
+        : undefined,
+    });
+  } catch (err) {
+    // P5: as recusas do financeiro-core são regra de negócio — 422, com o nome
+    // da regra no código. Qualquer outra coisa é defeito nosso e sobe.
+    const nome = err instanceof Error ? err.message : "";
+    if (nome.startsWith("PLANO_")) {
+      res.status(422).json({ error: nome, detalhe: "Este plano de parcelas não fecha — confira entrada e número de parcelas." });
+      return;
+    }
+    throw err;
+  }
 
   const linhas: (typeof parcelasTable.$inferInsert)[] = plano.map((p) => ({
     id: randomUUID(),
@@ -1457,9 +1819,37 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
    * falhar no meio.
    */
   const maiorDoPlano = plano.reduce((m, p) => Math.max(m, p.numero), 0);
-  const paraDeslocar = [...contrato.parcelas].sort((a, b) => a.numero - b.numero);
 
-  const criadas = await db.transaction(async (tx) => {
+  const desfecho = await db.transaction(async (tx) => {
+    /**
+     * E158 — as duas guardas desta rota também liam no pool.
+     *
+     * `contrato.status` e `jaTemCarne` vêm do `findFirst` de `:1383`, fora
+     * desta transação. Dois cliques em "gerar carnê" no mesmo segundo liam os
+     * dois `jaTemCarne === false` e montavam DOIS carnês: uma venda de
+     * R$ 5.000,00 com R$ 10.000,00 em parcelas — o estrago exato da S-M3,
+     * entrando pela porta que a S-M3 não enumerou. Não estava na lista do
+     * plano do E158; foi visto ao consertar o P2, e fica porque a tese do
+     * épico é ESTA (`toda guarda relê sob a tranca`) e o conserto mora na
+     * transação que o P2 já obrigava a mexer.
+     *
+     * A tranca é a do módulo: contrato → parcelas.
+     */
+    const [sobTranca] = await tx
+      .select({ status: contratosTable.status })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, contratoId), eq(contratosTable.lojaId, lojaId)))
+      .for("update");
+    if (!sobTranca) return { sumiu: true as const };
+    if (sobTranca.status !== "ATIVO") return { naoAtivo: true as const };
+
+    const parcelasAgora = await tx
+      .select()
+      .from(parcelasTable)
+      .where(eq(parcelasTable.contratoId, contrato.id));
+    if (parcelasAgora.some((p) => p.origem === "PLANO")) return { jaTemCarne: true as const };
+
+    const paraDeslocar = [...parcelasAgora].sort((a, b) => a.numero - b.numero);
     for (const p of paraDeslocar) {
       await tx.update(parcelasTable)
         .set({ numero: -(p.numero + 1) })
@@ -1472,10 +1862,53 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
         .set({ numero: maiorDoPlano + 1 + i })
         .where(eq(parcelasTable.id, p.id));
     }
-    return doPlano;
+
+    /**
+     * P2 — a renumeração passa a deixar rastro.
+     *
+     * Sem esta linha, a parcela PAGA de R$ 350,00 que era 1 vira 11 e NADA no
+     * sistema explica por quê: a trilha do recebimento diz "parcela 1", a tela
+     * mostra "parcela 11", e quem conferir o caixa pela auditoria casa o
+     * dinheiro com a linha errada. O `parcelaId` que as trilhas de parcela
+     * agora gravam resolve o casamento; esta linha resolve a PERGUNTA — por que
+     * o número mudou, e quando.
+     */
+    if (paraDeslocar.length > 0) {
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "PARCELAS_RENUMERADAS",
+        entidade: "contrato",
+        entidadeId: contrato.id,
+        detalhe: {
+          motivo: "Carnê gerado depois: o plano ocupa 0..N e as avulsas vão para depois",
+          deParaPorParcela: paraDeslocar.map((p, i) => ({
+            parcelaId: p.id,
+            descricao: p.descricao,
+            de: p.numero,
+            para: maiorDoPlano + 1 + i,
+          })),
+        },
+      });
+    }
+
+    return { criadas: doPlano };
   });
 
-  criadas.sort((a, b) => a.numero - b.numero);
+  if ("sumiu" in desfecho) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  if ("naoAtivo" in desfecho) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
+  if ("jaTemCarne" in desfecho) {
+    res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui carnê" });
+    return;
+  }
+
+  const criadas = [...desfecho.criadas].sort((a, b) => a.numero - b.numero);
   res.status(201).json(GerarPlanoParcelasResponse.parse(criadas));
 });
 
