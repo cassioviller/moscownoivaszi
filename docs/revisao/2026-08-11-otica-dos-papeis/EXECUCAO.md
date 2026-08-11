@@ -21,7 +21,7 @@ projetos**.
 | ~~**E163**~~ | ~~as guardas que se desligam no nulo~~ | B | ✅ `d37fa3a` · [relatório](execucao/E163.md) |
 | ~~**E164**~~ | ~~o escopo da noiva: loja E dona, em toda porta~~ | C | ✅ `0eeb297` · [relatório](execucao/E164.md) — encolhido pelo E161 (G2/A05.3 fecharam lá) |
 | ~~**E165**~~ | ~~o PDF fala a verdade e cabe na página~~ | C | ✅ `784dd3c` · [relatório](execucao/E165.md) |
-| ~~**E166**~~ | ~~o link público cumpre o que promete~~ | C | ✅ `<hash>` · [relatório](execucao/E166.md) — fecha a S-O7 junto; **o primeiro E2E do caminho público** (eram zero) |
+| ~~**E166**~~ | ~~o link público cumpre o que promete~~ | C | ✅ `3af3064` · [relatório](execucao/E166.md) — fecha a S-O7 junto; **o primeiro E2E do caminho público** (eram zero) |
 | E167 | a avaria fecha | C | ⏳ próximo |
 | E168 | a agenda diz a mesma coisa em todas as telas | C | ⏳ |
 | E169 | a tela do contrato e o dinheiro miúdo | C | ⏳ |
