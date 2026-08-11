@@ -431,7 +431,7 @@ em instrução de busca.
 |---|---|---|
 | F1 · orçamento e aceite | `wf_f902dab2-254` | `code-review-wf_f902dab2-254.js` |
 | F2 · contrato e dinheiro | ✅ **feita — 15 defeitos** | `code-review-wf_46e32def-6ea.js` |
-| F3 · reserva e acervo | `wf_e422fb0e-599` | `code-review-wf_e422fb0e-599.js` |
+| F3 · reserva e acervo | ✅ **feita — 15 defeitos** | `code-review-wf_e422fb0e-599.js` |
 | F4 · agenda e atendimento | ✅ **feita — 15 defeitos** | `code-review-wf_be4aed57-907.js` |
 
 Mesma regra de gravação: a seção de cada fatia é escrita assim que ela termina.
@@ -671,3 +671,99 @@ que já tinha acontecido; e `numParcelas: 2.5` sobe uma exceção não tratada �
 **P15** fecha a fatia com o defeito mais silencioso: `descontoValor === 0` é "sem
 desconto" para a régua do dinheiro e "com desconto" para o papel e para a tela.
 **O mesmo registro, dois arquivos, duas respostas.**
+
+---
+
+# Fatia 3 — reserva e acervo
+
+✅ **Feita.** 5 arquivos, ~2.400 linhas, 61 agentes, 3,10 M tokens — a maior
+passada da revisão. **65 achados verificados**, colapsados em **15 defeitos**.
+
+**A tese:** a avaria — o dinheiro que a loja cobra quando a peça volta danificada
+— **não fecha por caminho nenhum**. Três defeitos independentes a bloqueiam em
+pontos diferentes, e cada um sozinho já bastaria.
+
+## A avaria: cobrada em 3% dos casos, e nem sempre
+
+**V1 · A foto é barrada em 100 KB, não nos 2 MiB anunciados** (`reservas.ts:834`).
+`app.ts:64` monta `express.json({limit:"6mb"})` **só** na rota de foto de vestido;
+o resto cai no `express.json()` padrão. **Medido:** o teto real é ≈75 KiB, e a
+foto de celular tem 1,5 MB — **20× o limite**. O cliente autoriza 2 MiB, o
+servidor declara 2 MiB, e os dois mentem por **27×**. O 422 `FOTO_MUITO_GRANDE`
+da linha 834 é código morto. E a suíte é verde porque o único teste manda um PNG
+1×1 de **70 bytes**.
+
+**V14 · Sem `leadId` no bloqueio, a tela não oferece cobrar**
+(`[bloqueioId].tsx:111`). `useListContratos` roda com `enabled: !!reserva?.leadId`.
+E o servidor mede, na própria letra (`reservas.ts:920-929`), que **61 das 63
+avarias do banco vivem em bloqueio sem noiva**. A rota cobraria; a única tela que
+expõe a cobrança não desenha o botão. **O reparo nunca vira parcela em 97% das
+avarias do banco.**
+
+**V2 · A tela decide "já cobrada" por `parcelaId`, o servidor por `cobrancaViva`**
+(`[bloqueioId].tsx:705`) — e o payload nem carrega o status da parcela. Contrato
+cancelado, parcela do reparo CANCELADA junto: o servidor **volta a aceitar**
+cobrar e remover; a tela mostra "Cobrado — ver parcela" para sempre e esconde os
+dois botões. **R$ 800,00 que não entram no carnê novo, e uma avaria impossível de
+limpar.** O ciclo sem saída que `reservas.ts:765-788` diz ter sido fechado
+continua fechado do lado do cliente.
+
+**V3 · `AVARIA_DE_OUTRA_NOIVA` compara só o `leadId` nulável** (`:931`) e nunca
+cai para `reservaId → reservas.lead_id`, que é NOT NULL. **O dono existe e não é
+perguntado:** R$ 1.500,00 de reparo caem no carnê da noiva B por um dano que ela
+não causou, e o extrato do portal dela mostra a cobrança.
+
+**V11 e V15** fecham o cerco: duas cobranças simultâneas colidem na UNIQUE e a
+perdedora lê **"Já existe um registro com estes dados"** — que se lê como "já
+cobrei este reparo", então a vendedora para de tentar e **os R$ 500,00 da segunda
+avaria nunca entram**. E o `DELETE /avarias` é o único DELETE do arquivo sem
+`FOR UPDATE`: a avaria some enquanto a cobrança nasce, deixando **parcela viva de
+R$ 1.500,00 sem foto, sem descrição e sem avaria que a sustente** — o cenário
+literal que o cabeçalho do E97/F23 diz existir para impedir.
+
+## O `casamentoData` que ninguém consegue corrigir
+
+**V5 · A data do casamento do bloqueio é gravada uma vez e nunca mais muda**
+(`:551`). O `UpdateBloqueioBody` não tem o campo; a única porta que a altera exige
+`bloqueio.reservaId` — e **nenhum cliente do repositório escreve esse vínculo**:
+`novo.tsx:260-267` omite `reservaId`, e `useCreateReserva`/`useUpdateReserva` têm
+**zero chamadores** em `artifacts/` e `e2e/`. **Medido:** a noiva muda o casamento
+de 12/09 para 03/10, a ficha passa a dizer 03/10, o bloqueio fica em 12/09 para
+sempre. O vestido fica bloqueado na semana errada e **LIVRE na semana do
+casamento de verdade** — outra noiva o reserva sem conflito nenhum.
+
+**V12 · `casamentoData: null` vira 01/01/1970** (`:191`). `.optional()` só
+curto-circuita em `undefined`; `new Date(null)` é uma data válida. O casamento
+some da lente "Reservas" e reaparece sob **"janeiro de 1970"**, com o vestido
+liberado no calendário para a data real.
+
+## As telas que oferecem o que não existe
+
+**V7 · A ficha nunca lê `canceladoEm`** (`:507`). O livro de reservas esconde o
+item cancelado, mas `provas/`, `ajustes/` e `ajustes/[ajusteId]` **continuam
+linkando para a ficha**, que desenha "Vestido ainda no ateliê" e o botão
+"Registrar retirada". **A peça sai do ateliê para uma noiva cuja reserva a loja
+cancelou** — enquanto a disponibilidade já a anuncia livre para outra.
+
+**V6 · Os três campos de movimentação nascem preenchidos com a data do
+CASAMENTO** (`:253`) — inclusive devolução e volta da lavanderia, que são sempre
+posteriores a ela. Um clique sem tocar no campo grava `lavagemConcluidaEm`
+**anterior ao início da lavagem**, e pela régua de `disponibilidade.ts:259` **a
+janela de lavagem deixa de existir**: o vestido fica disponível enquanto está na
+lavanderia.
+
+**V15 · O botão "Registrar avaria" não faz nada para quem tem `editar` sem
+`criar`** (`:1103`) — perfil que `permissoes.ts:98` documenta como "válido e
+comum". O `getElementById(...)?.scrollIntoView` engole a chamada, o diálogo fecha,
+a página não se move um pixel, e **nenhum toast explica**. O F25 existe justamente
+porque "passado esse momento o vestido já voltou para a arara".
+
+## As corridas que faltavam
+
+**V10** (`:111`): o PATCH de reserva é a única rota de escrita do módulo que **não
+tranca nada** — duas transições partem do mesmo status e a reserva fica CONFIRMADA
+com todos os bloqueios cancelados. **V8** (`:280`) é o R2 do review anterior com
+o mecanismo completo. **V13** (`:292`): o DELETE de reserva ignora a coluna legada
+`contratos.bloqueio_vestido_id` que o DELETE irmão conta **de propósito** — o
+contrato fica com o vínculo nulo e **as parcelas seguem sendo cobradas** sobre um
+vestido que voltou ao mercado.
