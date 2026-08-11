@@ -110,9 +110,43 @@ que ninguém consegue derrubar é o único que sobrevive.
       especificação da 2ª: onze ângulos, cético por achado, e **cada ângulo
       grava `rodada-2-achados/NN-<angulo>.md` assim que a verificação dele
       termina** — o escritor grava, o fecho commita.
-- [ ] Localizadores concluídos
-- [ ] Verificação concluída
-- [ ] Achados escritos em `rodada-2-achados/`, no git
+- [x] Localizadores concluídos — os onze, zero mortos
+- [x] Verificação concluída — 55 achados julgados, um cético por achado
+- [x] Achados escritos em `rodada-2-achados/`, no git — os onze arquivos
+      pingaram no disco ÂNGULO A ÂNGULO enquanto a rodada corria, como a
+      segunda queda ensinou
+
+## O que a rodada devolveu
+
+**Run `wf_4d6ca4ce-f18`: 77 agentes (11 localizadores + 55 céticos + 11
+escritores), 3,76 M tokens, 100 minutos, zero erros.** Dos 55 achados que os
+localizadores afirmaram, o cético derrubou 2. Sobreviveram **53 — nenhum 🔴,
+2 🟠, 45 🟡, 6 🔵**:
+
+| # | Ângulo | Vivos | O maior |
+|---|---|---|---|
+| 1 | dinheiro | 3 🟡 | quantidade negativa entra no criar de item (o editar recusa) |
+| 2 | fuso-data | 4 🟡 | vigência de comissão: validação pelo DIA, dedup pelo INSTANTE |
+| 3 | transacao | 7 🟡 + 1 🔵 | **a enumeração da S-M18**: 7 check-then-write sem tranca, um a um |
+| 4 | permissao | 9 🟡 | **a enumeração da S-M9**: 9 sítios criar×editar, um a mais que os 8 estimados |
+| 5 | contrato-tela-servidor | 1 🟠 + 5 🟡 | `parcela.origem` fora do spec — reparo cobrado antes do carnê trava o "Gerar plano" |
+| 6 | estados | 5 🟡 | contrato aceita bloqueio soft-cancelado como reserva; CANCELADO só é terminal numa porta |
+| 7 | duplicacao | 1 🟠 + 2 🟡 | o diálogo de receber parcela em duas grafias — a do contrato perde a data |
+| 8 | passivo | 4 🟡 + 1 🔵 | três comentários que MENTEM sobre guardas de hoje |
+| 9 | eficiencia | 3 🟡 + 1 🔵 | `registros_cobranca` sem índice em `lead_id` — o agregado mais chamado varre a tabela |
+| 10 | reguas-e-testes | 1 🟡 + 2 🔵 | a régua S-D44 é cega para o `e2e/` |
+| 11 | consertos-de-hoje | 2 🟡 + 1 🔵 | o conserto da S-M1 nasceu com a guarda fora da transação — a forma que a S-M7 fechou no MESMO dia |
+
+**As duas varreduras da fila estão enumeradas.** A S-M9 pedia os sítios do
+criar×editar: o ângulo 4 entregou **nove**, com âncora dupla (gate da tela ×
+ação derivada da rota) em cada um. A S-M18 pedia os check-then-write: o
+ângulo 3 entregou **sete**, e o ângulo 11 achou mais dois NOS CONSERTOS DE
+HOJE — a S-M1 e a S-M16 nasceram na forma que a S-M7 tinha acabado de fechar.
+Fechar as duas sobras agora é executar a lista, não procurá-la.
+
+**Há sobreposição entre ângulos, ainda não consolidada** — o sítio do estoque
+aparece no 4 e no 8; a quantidade negativa, no 1 e no 5. A consolidação (a
+camada G do método) é o próximo passo antes de virar fila de execução.
 
 **Enquanto estas caixas não estiverem marcadas, o que existe é esta página.**
 Se a sessão cair, é daqui que se retoma — e não da transcrição, que a regra 32
