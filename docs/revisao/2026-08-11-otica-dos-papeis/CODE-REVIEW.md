@@ -938,3 +938,13 @@ fatias, e é decisão da dona.
    que transforma isto em plano.
 4. **Só então o `/code-review ultra`**, sobre a branch do conserto, onde ele tem
    diff real de tranca em transação e de máquina de estados para morder.
+
+---
+
+## O plano existe
+
+`docs/propostas/2026-08-11-otica-dos-papeis-plano.md` — os 149 achados + S-M10
+em **14 épicos (E158–E171)**, quatro faixas, com a Fase 0 de decisões da dona
+(D1 o desenho do gate, D2 MANUTENCAO no E150, D3 validade, D4 varredura no CI)
+e as duas contagens no `moscow_base` na frente. A Faixa A é serial; a C
+paraleliza; o `ultra` roda sobre a branch de cada faixa antes do merge.
