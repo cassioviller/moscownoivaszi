@@ -30,7 +30,7 @@ abaixo é a fila; conte o que tem seção, não deduza.
 |---|---|---|---|
 | 1 | `artifacts/api-server/src/routes/contratos.ts` | ⏳ rodando | — |
 | 2 | `artifacts/api-server/src/lib/aceite-orcamento.ts` | ✅ **feito** | 10 (7 correção, 3 limpeza) |
-| 3 | `artifacts/api-server/src/routes/reservas.ts` | ⏳ rodando | — |
+| 3 | `artifacts/api-server/src/routes/reservas.ts` | ✅ **feito** | 10 (todos de correção) |
 
 ### Os três disparados em paralelo — como retomar se a sessão cair
 
@@ -216,3 +216,101 @@ Quatro dos dez já tinham sido vistos pela ótica de papel, e **isso os promove*
 carimbo inventado), C4 (o beco por corrida com as portas de item) e C5 (o
 comprovante que muda depois do aceite). É a resposta empírica para a pergunta que
 abriu esta revisão: a ótica de papel e a leitura por dentro **não se substituem**.
+
+---
+
+# Alvo 3 — `artifacts/api-server/src/routes/reservas.ts`
+
+✅ **Feito.** 1.083 linhas, 30 agentes, 1,48 M tokens. Os quatro ângulos
+levantaram 37 candidatos; a verificação **matou 1** e manteve 36, consolidados
+em **10 defeitos distintos — todos de correção**. Nenhum de limpeza sobreviveu
+ao corte: os de reuso e eficiência existiam, mas ficaram abaixo dos dez piores.
+
+**A tese:** este arquivo guarda a peça que o contrato exige, e **quatro das suas
+portas escrevem sem tranca** enquanto o `POST /contratos` tranca exatamente as
+linhas que elas mexem (`contratos.ts:544`). A S-M22 fechou dez sítios de
+check-then-write; **nenhum deles foi aqui**.
+
+## As quatro corridas — todas com o mesmo desfecho medido
+
+O desfecho é sempre o mesmo e vale escrever uma vez: **contrato ATIVO de
+R$ 5.000,00 cobrando as 9 parcelas, com o vestido solto de volta ao mercado** —
+porque o bloqueio soft-cancelado sai da disponibilidade (`disponibilidade.ts:409`)
+E do EXCLUDE do banco (`WHERE cancelado_em IS NULL`), então outra noiva reserva
+a MESMA peça para a MESMA data. **A dupla promessa só aparece na retirada.**
+
+**R1 · Cancelar reserva não tranca as linhas de bloqueio** (`:157`). A contagem
+de contratos ATIVOS que a S-M24 pôs roda sem tranca; o `POST /contratos` tranca
+b1 e commita no meio; o cancelamento, que já leu zero, grava `canceladoEm` por
+cima.
+
+**R2 · O DELETE reconta com o `bloqueioIds` lido no POOL** (`:284`). O
+`FOR UPDATE` da linha 330 tranca a reserva, mas o `POST /bloqueios` tranca a
+linha do **vestido** (`:493`), nunca a da reserva — então o bloqueio nascido na
+janela não é reconferido, `if (bloqueioIds.length)` pula a recontagem inteira, e
+o `ON DELETE CASCADE` o leva junto. **A API responde 201 para quem criou e 204
+para quem apagou**, e a auditoria grava `bloqueios: 0`.
+
+**R3 · A propagação de data revalida sem `FOR UPDATE`** (`:213`). O POST e o
+PATCH de bloqueio trancam a linha do vestido; esta porta não. O EXCLUDE só
+compara envelopes FÍSICOS, e o par PROVA×FÍSICA passa sem 23P01.
+
+**R4 · A transição de status é validada fora da transação** (`:119`).
+CANCELADA é terminal (`TRANSICOES_RESERVA.CANCELADA = []`) e ainda assim vira
+CONCLUIDA: as duas requisições leem CONFIRMADA, as duas são aprovadas, e a
+segunda grava por cima. **A reserva fica CONCLUIDA com todos os vestidos soltos e
+uma trilha dizendo que ela foi cancelada.**
+
+## As seis guardas ausentes — não dependem de tempo
+
+**R5 · `leadId` e `reservaId` provados só contra a loja** (`:450`). O bloqueio da
+noiva B pendura na reserva da noiva A. Consequência de dinheiro: a linha 935
+compara `bloqueioDaAvaria.leadId`, então **o reparo do vestido que A alugou só
+pode ser cobrado no carnê de B** — e cobrá-lo em A devolve 422
+`AVARIA_DE_OUTRA_NOIVA`. Mesma classe do S2/E107, que `escopo-loja.ts:127` já
+documenta.
+
+**R6 · O PATCH propaga `casamentoData` sem perguntar aos contratos ATIVOS**
+(`:195`). O PDF e o portal seguem dizendo 10/05, a janela de 10/05 fica livre
+para outra noiva, e o `PATCH /contratos` responde "mude a reserva primeiro" —
+a reserva que já mudou. É a mesma divergência que `contratos.ts:414` e `:852`
+recusam nas duas pontas.
+
+**R7 · O POST de bloqueio aceita reserva CANCELADA** (`:517`). O bloqueio nasce
+**invisível para a disponibilidade e visível para o EXCLUDE** — a tela mostra o
+vestido livre, e o INSERT da próxima noiva morre em 23P01 com um 409 que não diz
+qual reserva é. Sem saída a não ser apagar na mão. A S-M24 mandou estado
+terminal ser terminal em toda porta; esta ficou de fora.
+
+**R8 · O soft-cancel não toca em `atendimentos`** (`:182`). A prova segue
+AGENDADA apontando bloqueio cancelado; a peça é alugada para outra e sai na
+retirada; **a noiva chega para a prova e o vestido não está no ateliê**. E se
+alguém concluir o atendimento, `agenda.ts:529-536` carimba `provaDataReal` num
+bloqueio morto. Confirma o A05.2 do ângulo da costureira.
+
+**R9 · `cobrar` lê o contrato no pool e insere a parcela depois** (`:891`). O
+cancelamento em massa do contrato roda no meio, e a parcela de **R$ 480,00**
+nasce fora dele: contrato CANCELADO com parcela viva no carnê, no aging e no
+extrato do portal.
+
+**R10 · Reservar exige `vestidos`; contratar exige `leads`** (`:428`). A
+Recepção tem `leads` ver+criar e `vestidos` só ver
+(`configuracao-inicial.ts:108`). Ela monta a venda, o contrato morre em 422
+mandando reservar, ela clica em reservar e leva **403 ACESSO_NEGADO_MODULO** —
+e nenhuma das duas mensagens diz que o problema é permissão. **É a prova em
+código do que o ângulo 06 tinha deduzido pela tela.**
+
+## O cruzamento
+
+| Code review | Ângulo | O que muda |
+|---|---|---|
+| R10 (permissão cruzada) | A06.4 | O ângulo viu o botão gateado na tela; o review achou os dois `requireModulo` divergentes e o perfil que cai no meio |
+| R8 (atendimento órfão) | A05.2 | Duas lentes, mesmo defeito — sobe de confiança |
+| R5 (lead × reserva) | A05.3 e A06.5 | Três lentes; o review acrescentou a consequência de dinheiro da avaria |
+| R1, R2, R3, R4 | A08.2 | O ângulo apontou um sentido; o review achou **quatro portas**, não uma |
+
+**Seis são novos.** E o padrão que emerge dos dois alvos já lidos é um só: **as
+varreduras anteriores (S-M7, S-M18/S-M22, S-M24) acertaram o padrão e erraram o
+alcance.** Elas fecharam os sítios que enumeraram; o que ficou de fora da
+enumeração continua aberto, e é sempre no mesmo lugar — a fronteira entre duas
+rotas que mexem na mesma linha.
