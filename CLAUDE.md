@@ -57,9 +57,10 @@ para o documento que manda.
    (`rodada-2-consolidado.md`) e fechados em 10 commits no dia seguinte —
    inclusive **a S-M9 (`bcbdf27`, 10 sítios criar×editar) e a S-M18
    (`d4bdc76`, 10 sítios check-then-write sob tranca)**, cujas enumerações
-   saíram dos ângulos 4 e 3. **Restam 2, ambas 🟡**: S-M10 (campo vazio =
-   apague, toca contrato e tela) e S-M17 (espera dados de banco real, não
-   código). A tabela do `EXECUCAO.md` é a fila.
+   saíram dos ângulos 4 e 3. **Resta 1**: a S-M17 🟡, que espera dados de banco
+   real, não código — a **S-M10 fechou no E169** (`fe8afdd`) da trilha nova, que
+   a absorveu por tocar as mesmas duas pontas. A tabela do `EXECUCAO.md` é a
+   fila.
 
    O registro da sessão anterior — `2026-08-07-sessao-zerando-o-codigo.md` —
    continua valendo para tudo que não seja a fila: ele é quem conta como o
@@ -81,15 +82,17 @@ para o documento que manda.
    | Trilha | Rastreador | Estado |
    |---|---|---|
    | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EM CURSO — 149 achados em 14 épicos (E158–E171). Faixas A, B e **C executadas** (E158–E169); resta a D (E170–E171), mais as sobras S-O da tabela do `EXECUCAO.md`** |
-   | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). Restam 2 🟡: **S-M10 foi absorvida pelo E169 da trilha nova**; S-M17 espera dados de banco real |
+   | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
 
-   **Fora da trilha em curso são 3 sobras abertas: a S-M17 (espera um dump de
-   instalação real), mais as 2 que esperam gente** — S-A2 (as fotos que faltam
-   do caderno) e S-A27 (classificar as peças com a dona; o acervo tem 132
-   peças do legado em `moscow_base`, todas sem "Tipo de peça"). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
+   **Fora da trilha em curso são 3 sobras abertas, e NENHUMA delas é código:**
+   a S-M17 espera um dump de instalação real, e as outras 2 esperam gente —
+   S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
+   dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
+   peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
+   em curso — **conte lá, são 23** (2026-08-11, depois da Faixa C). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
    viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no
