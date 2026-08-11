@@ -17,7 +17,7 @@ projetos**.
 | ~~**E159**~~ | ~~`reservas.ts`: as quatro portas sem tranca, e o estado terminal em todas~~ | A | ✅ `6eb4fda` · [relatório](execucao/E159.md) |
 | ~~**E160**~~ | ~~orçamento e aceite: o CAS entra na tranca, e o que a noiva viu é o que se grava~~ | A | ✅ `b2f57ab` · [relatório](execucao/E160.md) |
 | ~~**E161**~~ | ~~agenda: o eixo da vendedora, e o PATCH que pulava a recusa~~ | A | ✅ `747ae5e` · [relatório](execucao/E161.md) |
-| ~~**E162**~~ | ~~o aceite ganha um caminho até o contrato (**o épico-bandeira**)~~ | B | ✅ `HASH_E162` · [relatório](execucao/E162.md) |
+| ~~**E162**~~ | ~~o aceite ganha um caminho até o contrato (**o épico-bandeira**)~~ | B | ✅ `b39d292` · [relatório](execucao/E162.md) |
 | E163 | as guardas que se desligam no nulo | B | ⏳ próximo |
 | E164 | o escopo da noiva: loja E dona, em toda porta | C | ⏳ |
 | E165 | o PDF fala a verdade e cabe na página | C | ⏳ |
