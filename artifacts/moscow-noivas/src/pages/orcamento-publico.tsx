@@ -147,7 +147,19 @@ export default function OrcamentoPublico() {
                   <Button
                     className="w-full"
                     disabled={aceitar.isPending}
-                    onClick={() => aceitar.mutate({ params })}
+                    /**
+                     * E160/C2 — a versão vai junto: o aceite confere contra o
+                     * que ela VIU, não contra a mais nova.
+                     *
+                     * Sem isto, a aba aberta há uma hora aceitava a versão
+                     * nascida no meio, e o contrato saía R$ 500,00 acima do
+                     * que a página mostrava — por baixo da guarda do E115,
+                     * porque o hash gravado era o da versão nova. O servidor
+                     * responde 409 PROPOSTA_MUDOU e a noiva recarrega.
+                     */
+                    onClick={() =>
+                      aceitar.mutate({ params: { ...params, versao: dados?.versaoNumero ?? undefined } })
+                    }
                     data-testid="aceitar-orcamento"
                   >
                     {aceitar.isPending ? "Registrando…" : "Aceitar esta proposta"}

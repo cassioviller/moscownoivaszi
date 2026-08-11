@@ -15,8 +15,8 @@ projetos**.
 |---|---|---|---|
 | ~~**E158**~~ | ~~`contratos.ts`: toda guarda relê sob a tranca, e o duplicado morre no banco~~ | A | ✅ `09d65d8` · [relatório](execucao/E158.md) |
 | ~~**E159**~~ | ~~`reservas.ts`: as quatro portas sem tranca, e o estado terminal em todas~~ | A | ✅ `6eb4fda` · [relatório](execucao/E159.md) |
-| E160 | orçamento e aceite: o CAS entra na tranca | A | ⏳ próximo |
-| E161 | agenda: o eixo da vendedora, e o PATCH que pula a recusa | A | ⏳ |
+| ~~**E160**~~ | ~~orçamento e aceite: o CAS entra na tranca, e o que a noiva viu é o que se grava~~ | A | ✅ `HASH_E160` · [relatório](execucao/E160.md) |
+| E161 | agenda: o eixo da vendedora, e o PATCH que pula a recusa | A | ⏳ próximo |
 | E162 | o aceite ganha um caminho até o contrato (**o épico-bandeira**) | B | ⏳ |
 | E163 | as guardas que se desligam no nulo | B | ⏳ |
 | E164 | o escopo da noiva: loja E dona, em toda porta | C | ⏳ |
@@ -45,6 +45,8 @@ commit** do épico que as viu.
 | S-O4 | **R6** — o PATCH de reserva propaga `casamentoData` sem perguntar aos contratos ATIVOS. O PDF e o portal seguem dizendo 10/05, a janela fica livre para outra noiva, e o `PATCH /contratos` responde "mude a reserva primeiro" — a reserva que já mudou. **Não está em épico nenhum do plano** | 🟡 | E159 | aberta |
 | S-O5 | **R8** — o soft-cancel de bloqueio não toca em `atendimentos`: a prova segue AGENDADA apontando bloqueio cancelado, a peça é alugada para outra e sai na retirada, e a noiva chega para a prova sem vestido. Confirma o A05.2. **Não está em épico nenhum do plano** | 🟡 | E159 | aberta |
 | S-O6 | `contarHistoria` e `cobrancaViva` recebem o executor como `typeof db` com cast — o tipo de transação do drizzle não é atribuível ao do pool. `DbExecutor` (`disponibilidade.ts`) resolveria os dois | 🔵 | E159 | aberta |
+| S-O7 | O aceite pelo PORTAL não manda `versao` (o C2 do E160): a página dele não exibe número de versão, então não há o que comparar. A proteção que ele tem é a leitura sob tranca. Fecha junto do **E166**, que mexe na página da noiva | 🔵 | E160 | aberta |
+| S-O8 | **C2 descreve um mecanismo real sobre um gatilho que não existe hoje**: `criarVersaoEnviada` só roda ao ENTRAR em ENVIADO e a máquina de estados não volta de ENVIADO para RASCUNHO — um orçamento tem UMA versão, sempre. A guarda `versaoVista` entrou porque o **E166/O1** vai abrir o reenvio; **quando abrir, confira que ela continua de pé** | 🟡 | E160 | aberta |
 
 ## O que herda das trilhas anteriores
 

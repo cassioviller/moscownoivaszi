@@ -2692,12 +2692,25 @@ paths:
         avança o status para APROVADO e deixa linha na auditoria. Idempotente:
         o segundo clique devolve o aceite existente. Não é assinatura
         certificada — é registro próprio com prova de integridade.
+
+
+        E160/C2: `versao` é o número que a PÁGINA DELA mostrava
+        (`versaoNumero` do GET público). Quando informado, o aceite recusa com
+        409 se a proposta mudou embaixo dela — sem ele, a aba aberta há uma
+        hora aceitava a versão nova, e o contrato saía R$ 500,00 acima do que
+        ela leu, por baixo da guarda do E115.
       parameters:
         - name: token
           in: query
           required: true
           schema:
             type: string
+        - name: versao
+          in: query
+          required: false
+          description: O `versaoNumero` que a página da noiva exibia.
+          schema:
+            type: integer
       responses:
         "200":
           description: Aceite registrado (ou o já existente)
@@ -2708,6 +2721,8 @@ paths:
                 required: [aceitoEm]
                 properties:
                   aceitoEm: { type: string, format: date-time }
+        "409":
+          description: A proposta mudou depois que a página foi aberta
         "404":
           description: Token desconhecido
         "410":

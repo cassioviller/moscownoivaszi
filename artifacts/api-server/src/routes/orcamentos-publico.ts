@@ -82,20 +82,32 @@ router.post("/orcamentos/publico/aceite", async (req, res): Promise<void> => {
     return;
   }
 
-  // Idempotente: o clique duplo devolve o aceite que já existe.
-  if (orcamento.aceitoEm) {
-    res.json(AceitarOrcamentoPublicoResponse.parse({ aceitoEm: orcamento.aceitoEm }));
+  /**
+   * C8 — a pré-condição morava aqui E lá dentro, e as duas divergiam.
+   *
+   * Esta rota conferia `aceitoEm` e `status` lendo o POOL, e a rotina gravava
+   * sem reconferir nada: a janela entre as duas guardas é exatamente onde o C1
+   * vive. Agora a pergunta é feita UMA vez, sob a tranca, e esta rota só
+   * traduz o desfecho para HTTP — que é o trabalho dela.
+   */
+  const desfecho = await aceitarOrcamentoEnviado(orcamento, noivaNome, parsed.data.versao);
+  if (!desfecho.ok) {
+    if (desfecho.motivo === "SUMIU") {
+      res.status(404).json({ error: "LINK_INVALIDO" });
+      return;
+    }
+    if (desfecho.motivo === "VERSAO_MUDOU") {
+      res.status(409).json({
+        error: "PROPOSTA_MUDOU",
+        detalhe:
+          "Esta proposta foi atualizada depois que você abriu a página. Recarregue para ver a versão nova antes de aceitar.",
+      });
+      return;
+    }
+    res.status(422).json({ error: "NAO_ENVIADO", detalhe: `Orçamento está ${desfecho.status}` });
     return;
   }
-  if (orcamento.status !== "ENVIADO") {
-    res.status(422).json({ error: "NAO_ENVIADO", detalhe: `Orçamento está ${orcamento.status}` });
-    return;
-  }
-
-  // E78: a rotina mora em lib/aceite-orcamento — o portal aceita pela MESMA
-  // transação, com o mesmo rastro.
-  const aceitoEm = await aceitarOrcamentoEnviado(orcamento, noivaNome);
-  res.json(AceitarOrcamentoPublicoResponse.parse({ aceitoEm }));
+  res.json(AceitarOrcamentoPublicoResponse.parse({ aceitoEm: desfecho.aceitoEm }));
 });
 
 export default router;

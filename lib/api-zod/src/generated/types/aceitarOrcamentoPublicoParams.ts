@@ -8,4 +8,8 @@
 
 export type AceitarOrcamentoPublicoParams = {
 token: string;
+/**
+ * O `versaoNumero` que a página da noiva exibia.
+ */
+versao?: number;
 };

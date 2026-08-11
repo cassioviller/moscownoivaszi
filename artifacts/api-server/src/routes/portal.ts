@@ -342,18 +342,24 @@ router.post("/portal/aceite", async (req, res): Promise<void> => {
     res.status(422).json({ error: "NAO_ENVIADO", detalhe: "Não há proposta enviada" });
     return;
   }
-  // Idempotente: o clique duplo devolve o aceite que já existe.
-  if (orcamento.aceitoEm) {
-    res.json(AceitarPortalResponse.parse({ aceitoEm: orcamento.aceitoEm }));
+  // C8: a pré-condição é feita UMA vez, sob a tranca, dentro da rotina — esta
+  // rota só traduz o desfecho para HTTP. O portal não manda `versao` porque a
+  // página dele não exibe número de versão; a proteção do C2 que ele tem é a
+  // leitura sob tranca, e isso está registrado como sobra.
+  const desfecho = await aceitarOrcamentoEnviado(orcamento, linha.lead.noivaNome);
+  if (!desfecho.ok) {
+    if (desfecho.motivo === "SUMIU") {
+      res.status(404).json({ error: "LINK_INVALIDO" });
+      return;
+    }
+    if (desfecho.motivo === "VERSAO_MUDOU") {
+      res.status(409).json({ error: "PROPOSTA_MUDOU", detalhe: "Esta proposta foi atualizada — recarregue a página." });
+      return;
+    }
+    res.status(422).json({ error: "NAO_ENVIADO", detalhe: `Orçamento está ${desfecho.status}` });
     return;
   }
-  if (orcamento.status !== "ENVIADO") {
-    res.status(422).json({ error: "NAO_ENVIADO", detalhe: `Orçamento está ${orcamento.status}` });
-    return;
-  }
-
-  const aceitoEm = await aceitarOrcamentoEnviado(orcamento, linha.lead.noivaNome);
-  res.json(AceitarPortalResponse.parse({ aceitoEm }));
+  res.json(AceitarPortalResponse.parse({ aceitoEm: desfecho.aceitoEm }));
 });
 
 // E85: a noiva confirma a presença pelo portal — o MESMO carimbo do E39

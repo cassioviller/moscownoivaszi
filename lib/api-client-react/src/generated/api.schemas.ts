@@ -3001,6 +3001,10 @@ token: string;
 
 export type AceitarOrcamentoPublicoParams = {
 token: string;
+/**
+ * O `versaoNumero` que a página da noiva exibia.
+ */
+versao?: number;
 };
 
 export type AceitarOrcamentoPublico200 = {

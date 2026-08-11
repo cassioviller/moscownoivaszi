@@ -9,37 +9,137 @@ import { randomUUID } from "node:crypto";
  * /orcamentos/publico/aceite e virou função quando o portal (E78) passou a
  * aceitar TAMBÉM — dois caminhos, uma transação, um invariante.
  *
- * Pré-condições (quem chama decide o status HTTP):
- * - `aceitoEm` já preenchido → devolva o existente (idempotência).
- * - status !== "ENVIADO" → 422.
+ * **É a única escrita de estado do sistema que acontece sem sessão, feita pela
+ * pessoa que menos pode conferir o resultado.** 71 linhas produziram 10
+ * defeitos na revisão da ótica dos papéis — a maior densidade de qualquer
+ * arquivo do repositório —, e o E160 é o conserto dos sete de correção.
+ */
+
+/**
+ * C8 — o retorno era `Promise<Date>` e escondia se a rotina GRAVOU ou perdeu a
+ * corrida.
+ *
+ * Por causa disso as duas rotas chamadoras duplicavam a pré-condição de status
+ * (`orcamentos-publico.ts:89` e `portal.ts:350`), e nenhuma das duas conseguia
+ * distinguir os casos que importam: a linha sumiu, o status mudou, a versão
+ * envelheceu. Agora o desfecho é explícito e quem chama traduz para HTTP.
+ */
+export type DesfechoAceite =
+  | { ok: true; aceitoEm: Date; gravadoAgora: boolean }
+  | { ok: false; motivo: "SUMIU" }
+  | { ok: false; motivo: "NAO_ENVIADO"; status: string }
+  | { ok: false; motivo: "VERSAO_MUDOU"; versaoAtual: number | null };
+
+/**
+ * @param versaoVista O número da versão que a NOIVA tinha na tela. Quando vem,
+ *   o aceite recusa se a proposta mudou embaixo dela (C2). Ausente é o caso
+ *   legado — aba aberta antes deste código, ou chamador que ainda não a manda.
  */
 export async function aceitarOrcamentoEnviado(
   orcamento: { id: string; lojaId: string },
   noivaNome: string,
-): Promise<Date> {
-  const [versao] = await db
-    .select({ numero: orcamentoVersoesTable.numero, hash: orcamentoVersoesTable.hash })
-    .from(orcamentoVersoesTable)
-    .where(eq(orcamentoVersoesTable.orcamentoId, orcamento.id))
-    .orderBy(desc(orcamentoVersoesTable.numero))
-    .limit(1);
-
+  versaoVista?: number | null,
+): Promise<DesfechoAceite> {
   const agora = new Date();
-  const aceito = await db.transaction(async (tx) => {
-    // UPDATE condicional: duas abas aceitando ao mesmo tempo gravam UM aceite.
+
+  return await db.transaction(async (tx) => {
+    /**
+     * C1/C4 — o CAS não participava de tranca nenhuma, e o status não era
+     * reconferido dentro da transação.
+     *
+     * O compare-and-swap guardava só `isNull(aceitoEm)` e gravava `APROVADO`
+     * incondicionalmente. A pré-condição de status que o docstring delegava a
+     * quem chama era conferida no POOL e nunca reestabelecida aqui — enquanto
+     * `/recusar` e `/aprovar` escrevem a MESMA linha.
+     *
+     * **Medido:** orçamento de R$ 12.400,00 recusado às 14:00:00 volta a
+     * APROVADO às 14:00:00,2 pelo aceite que leu o pool às 13:59:59,8.
+     * RECUSADO é terminal (`estados.ts:49`), a vendedora lê "recusado" na tela,
+     * e o `POST /contratos` fecha os R$ 12.400,00 sobre a proposta que a loja
+     * negou. Na ordem inversa é o espelho: orçamento RECUSADO carregando o
+     * comprovante do aceite, com o badge "Aceito pela noiva" na tela.
+     *
+     * A S-M22 escolheu `FOR UPDATE` + reconferência para serializar contra
+     * este CAS e aplicou o padrão em dois lugares — mas o próprio CAS ficou de
+     * fora. Agora ele entra: a linha do orçamento é a tranca, e as três portas
+     * de item (`orcamentos.ts`) tomam a MESMA linha.
+     */
+    const [sobTranca] = await tx
+      .select({
+        status: orcamentosTable.status,
+        aceitoEm: orcamentosTable.aceitoEm,
+      })
+      .from(orcamentosTable)
+      .where(eq(orcamentosTable.id, orcamento.id))
+      .for("update");
+    if (!sobTranca) return { ok: false, motivo: "SUMIU" } as const;
+    // Idempotência: o clique duplo devolve o aceite que JÁ existe, e agora ele
+    // vem da linha trancada — não de uma leitura de pool que pode ter
+    // envelhecido entre a guarda da rota e este ponto.
+    if (sobTranca.aceitoEm) {
+      return { ok: true, aceitoEm: sobTranca.aceitoEm, gravadoAgora: false } as const;
+    }
+    if (sobTranca.status !== "ENVIADO") {
+      return { ok: false, motivo: "NAO_ENVIADO", status: sobTranca.status } as const;
+    }
+
+    /**
+     * C2 — o aceite gravava a versão MAIS ALTA, não a que a noiva viu.
+     *
+     * `desc(numero)` era lido com `db`, fora da transação, e o cliente não
+     * informava versão nem hash. **Medido:** ela vê e aceita R$ 5.000,00 na aba
+     * antiga, a leitura pega a versão 2 nascida no meio, e o contrato sai
+     * **R$ 5.500,00 — R$ 500,00 acima** — passando por baixo da guarda do E115,
+     * porque o hash gravado é o da versão nova.
+     *
+     * Duas metades, e as duas são necessárias: a leitura veio para DENTRO da
+     * transação (fecha a janela entre ler e gravar) e o chamador passa a
+     * informar `versaoVista` — a comparação é contra o que ela VIU, não contra
+     * o mais novo. Sem a segunda, a aba aberta há uma hora continuaria aceitando
+     * uma proposta que ela nunca leu.
+     */
+    const [versao] = await tx
+      .select({ numero: orcamentoVersoesTable.numero, hash: orcamentoVersoesTable.hash })
+      .from(orcamentoVersoesTable)
+      .where(eq(orcamentoVersoesTable.orcamentoId, orcamento.id))
+      .orderBy(desc(orcamentoVersoesTable.numero))
+      .limit(1);
+
+    const numeroAtual = versao?.numero ?? null;
+    if (versaoVista !== undefined && versaoVista !== null && versaoVista !== numeroAtual) {
+      return { ok: false, motivo: "VERSAO_MUDOU", versaoAtual: numeroAtual } as const;
+    }
+
+    // O CAS continua — ele é a rede do clique duplo simultâneo, que a tranca
+    // acima serializa mas não elimina como classe.
     const [atualizado] = await tx
       .update(orcamentosTable)
       .set({
         aceitoEm: agora,
-        aceiteVersao: versao?.numero ?? null,
+        aceiteVersao: numeroAtual,
         aceiteHash: versao?.hash ?? null,
         status: "APROVADO",
         aprovadoEm: agora,
-        updatedAt: agora,
+        // C10: `updatedAt: agora` repetia à mão o que o `$onUpdate` do schema
+        // já faz. Não era defeito de comportamento — era a dúvida plantada
+        // ("então o $onUpdate não vale aqui?"), e ela já tinha sido copiada.
       })
       .where(and(eq(orcamentosTable.id, orcamento.id), isNull(orcamentosTable.aceitoEm)))
       .returning();
-    if (!atualizado) return null;
+    /**
+     * C3/O4 — o `?? agora` inventava um carimbo de aceite que não foi gravado.
+     *
+     * Perdida a corrida, `jaAceito?.aceitoEm ?? agora` não distinguia "outro já
+     * aceitou" de "a linha não existe mais". Se o orçamento fosse apagado no
+     * meio (um ENVIADO se apaga), o UPDATE casava zero linhas, a auditoria não
+     * rodava, e a API respondia **200 com um `aceitoEm` inventado**: a noiva lia
+     * "Aceito em 11/08/2026 14:02" e o ateliê não tinha registro nenhum.
+     *
+     * Aqui dentro da tranca o caso é impossível de confundir: ou o UPDATE casou
+     * (e o carimbo é o que ficou gravado), ou a linha sumiu entre o `FOR UPDATE`
+     * e agora — e aí a resposta é 404, nunca um instante inventado.
+     */
+    if (!atualizado?.aceitoEm) return { ok: false, motivo: "SUMIU" } as const;
 
     // Direto na tabela, não pelo helper: o aceite não tem sessão — o autor é
     // a noiva, com usuarioId nulo e o nome desnormalizado, como o schema (E10)
@@ -52,20 +152,8 @@ export async function aceitarOrcamentoEnviado(
       acao: "ORCAMENTO_ACEITO",
       entidade: "orcamento",
       entidadeId: orcamento.id,
-      detalhe: { versao: versao?.numero ?? null, hash: versao?.hash ?? null },
+      detalhe: { versao: numeroAtual, hash: versao?.hash ?? null },
     });
-    return atualizado;
+    return { ok: true, aceitoEm: atualizado.aceitoEm, gravadoAgora: true } as const;
   });
-
-  // Quem PERDEU a corrida devolvia `agora` — o instante desta requisição —, e a
-  // resposta afirmava uma hora de aceite que não existe no banco. O aceite é o
-  // carimbo que a noiva vê ("aceito em ..."), e nas duas abas ele saía
-  // diferente para o MESMO fato. Perdida a corrida, o que vale é o que ficou
-  // gravado: relê-se a linha.
-  if (aceito?.aceitoEm) return aceito.aceitoEm;
-  const [jaAceito] = await db
-    .select({ aceitoEm: orcamentosTable.aceitoEm })
-    .from(orcamentosTable)
-    .where(eq(orcamentosTable.id, orcamento.id));
-  return jaAceito?.aceitoEm ?? agora;
 }

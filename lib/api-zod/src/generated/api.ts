@@ -5539,10 +5539,13 @@ export const GetOrcamentoPublicoResponse = zod.object({
 
 /**
  * E74: "ela viu" vira "ela concordou com ESTA versão". Grava instante, número da versão enviada e o hash do conteúdo (E75) no orçamento, avança o status para APROVADO e deixa linha na auditoria. Idempotente: o segundo clique devolve o aceite existente. Não é assinatura certificada — é registro próprio com prova de integridade.
+ *
+ * E160/C2: `versao` é o número que a PÁGINA DELA mostrava (`versaoNumero` do GET público). Quando informado, o aceite recusa com 409 se a proposta mudou embaixo dela — sem ele, a aba aberta há uma hora aceitava a versão nova, e o contrato saía R$ 500,00 acima do que ela leu, por baixo da guarda do E115.
  * @summary A noiva aceita o orçamento pelo link — sem login
  */
 export const AceitarOrcamentoPublicoQueryParams = zod.object({
-  "token": zod.coerce.string()
+  "token": zod.coerce.string(),
+  "versao": zod.coerce.number().optional().describe('O `versaoNumero` que a página da noiva exibia.')
 })
 
 export const AceitarOrcamentoPublicoResponse = zod.object({

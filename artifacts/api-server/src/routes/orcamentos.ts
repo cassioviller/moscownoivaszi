@@ -19,7 +19,7 @@ import {
   CriarLinkOrcamentoResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
-import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva, vestidoNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva, vestidoNaLoja, atendimentoNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
@@ -258,6 +258,25 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
 
+  /**
+   * O3 — o `atendimentoId` entrava no insert pelo spread, SEM prova de loja.
+   *
+   * Era a sexta FK de corpo do módulo sem conferência, e a função que faltava
+   * **já existia**: `atendimentoNaLoja` (`escopo-loja.ts:101`), escrita no E115
+   * com o comentário "era a única FK de corpo do módulo sem prova". O E115
+   * fechou cinco; esta ficou — um `atendimentoId` da loja B carimbava o
+   * orçamento de A, e a ficha do atendimento de outra loja passava a apontar
+   * para dentro desta.
+   */
+  if (parsed.data.atendimentoId && !(await atendimentoNaLoja(parsed.data.atendimentoId, lojaId))) {
+    res.status(422).json({
+      error: "REFERENCIA_INVALIDA",
+      detalhe: "Este atendimento não é desta loja.",
+      campos: [{ campo: "atendimentoId", motivo: "Atendimento não encontrado nesta loja" }],
+    });
+    return;
+  }
+
   // Quem abriu vem da SESSÃO, nunca do corpo: aceitar um `vendedoraId` do
   // cliente deixava atribuir o orçamento (e a comissão que nasce dele) a
   // outra pessoa — mesma regra do vendedorId da cobrança.
@@ -366,6 +385,25 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
       .for("update");
     if (!agora) return null;
     if (recusaConteudoCongelado(agora.status) && mexeNoDesconto) return { corrida: true as const };
+    /**
+     * O2 — a tranca existia e relia o status, mas a releitura só decidia
+     * `mexeNoDesconto`. Com o desconto intocado, o `.set({...parsed.data})`
+     * gravava o `status` do corpo **por cima do que a tranca acabou de ler**:
+     * o aceite da noiva era sobrescrito por RECUSADO, ou o RECUSADO da loja
+     * por APROVADO.
+     *
+     * O achado A08.3 afirmava que "o PATCH ao lado tem `FOR UPDATE` +
+     * reconferência desde a S-M22". **Tem a tranca; não cobria o campo que
+     * decide o estado** — foi a correção mais útil que uma segunda lente
+     * produziu na revisão.
+     *
+     * A máquina de estados é reperguntada aqui dentro, com o status RELIDO.
+     * `transicaoOrcamentoValida` já trata `de === para` como no-op, então o
+     * PATCH que não mexe em status atravessa sem ruído.
+     */
+    if (parsed.data.status && !transicaoOrcamentoValida(agora.status, parsed.data.status)) {
+      return { transicaoInvalida: agora.status };
+    }
     const [atualizado] = await tx.update(orcamentosTable)
       .set({
         ...parsed.data,
@@ -384,6 +422,13 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
     res.status(422).json({
       error: "ORCAMENTO_APROVADO",
       detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    });
+    return;
+  }
+  if (orcamento && "transicaoInvalida" in orcamento) {
+    res.status(422).json({
+      error: "TRANSICAO_INVALIDA",
+      detalhe: `Orçamento não pode ir de ${orcamento.transicaoInvalida} para ${parsed.data.status}`,
     });
     return;
   }
@@ -476,6 +521,40 @@ router.delete("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promis
   }
   res.status(204).send();
 });
+
+/**
+ * C4 — as três portas de item liam o status do pai no POOL e escreviam soltas,
+ * e **o CAS do aceite não participava de tranca nenhuma**.
+ *
+ * A S-M22 escolheu `FOR UPDATE` + reconferência para serializar contra o
+ * aceite e aplicou o padrão no PATCH do orçamento — as portas de item ficaram
+ * de fora. **Medido:** o aceite grava o hash de R$ 5.000,00 às 14:02:00; o
+ * `POST /itens` que leu ENVIADO um instante antes insere um véu de R$ 1.500,00
+ * às 14:02:00,1. O vivo vira R$ 6.500,00 e o orçamento entra em **beco
+ * permanente** — 422 para sempre no contrato (o hash não bate mais), e as três
+ * portas de item agora recusam com `ORCAMENTO_APROVADO`. Só refazendo tudo e
+ * pedindo novo aceite à noiva.
+ *
+ * A tranca é a linha do ORÇAMENTO, a mesma que o CAS do aceite atualiza — é
+ * ela que serializa os dois. A guarda rápida de cada rota fica: ela dá o 422
+ * certo sem custo de transação para o caminho errado.
+ */
+async function sobPaiTrancado<T>(
+  orcamentoId: string,
+  escrever: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>,
+): Promise<{ valor: T } | { congelado: ReturnType<typeof recusaConteudoCongelado> } | { sumiu: true }> {
+  return await db.transaction(async (tx) => {
+    const [pai] = await tx
+      .select({ status: orcamentosTable.status })
+      .from(orcamentosTable)
+      .where(eq(orcamentosTable.id, orcamentoId))
+      .for("update");
+    if (!pai) return { sumiu: true as const };
+    const recusa = recusaConteudoCongelado(pai.status);
+    if (recusa) return { congelado: recusa };
+    return { valor: await escrever(tx) };
+  });
+}
 
 router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -585,14 +664,26 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
     }
   }
 
-  const [item] = await db.insert(orcamentoItensTable).values({
-    id: randomUUID(),
-    lojaId: orcamento.lojaId,
-    orcamentoId,
-    ...parsed.data,
-  }).returning();
+  // C4: a escrita entra na transação que tranca o pai — ver `sobPaiTrancado`.
+  const criado = await sobPaiTrancado(orcamentoId, async (tx) => {
+    const [item] = await tx.insert(orcamentoItensTable).values({
+      id: randomUUID(),
+      lojaId: orcamento.lojaId,
+      orcamentoId,
+      ...parsed.data,
+    }).returning();
+    return item;
+  });
+  if ("congelado" in criado) {
+    res.status(422).json(criado.congelado);
+    return;
+  }
+  if ("sumiu" in criado) {
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
+    return;
+  }
 
-  res.status(201).json(AddOrcamentoItemResponse.parse(item));
+  res.status(201).json(AddOrcamentoItemResponse.parse(criado.valor));
 });
 
 router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
@@ -606,7 +697,7 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
 
   // E115 — mesma guarda do POST de item: acordo fechado não muda.
   const [pai] = await db
-    .select({ status: orcamentosTable.status })
+    .select({ status: orcamentosTable.status, orcamentoId: orcamentosTable.id })
     .from(orcamentoItensTable)
     .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
@@ -622,16 +713,24 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     }
   }
 
-  const [item] = await db.update(orcamentoItensTable)
-    .set(parsed.data)
-    .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
-    .returning();
-  if (!item) {
+  // C4: a escrita entra na transação que tranca o pai.
+  const alterado = await sobPaiTrancado(pai.orcamentoId, async (tx) => {
+    const [item] = await tx.update(orcamentoItensTable)
+      .set(parsed.data)
+      .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)))
+      .returning();
+    return item;
+  });
+  if ("congelado" in alterado) {
+    res.status(422).json(alterado.congelado);
+    return;
+  }
+  if ("sumiu" in alterado || !alterado.valor) {
     res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
 
-  res.json(UpdateOrcamentoItemResponse.parse(item));
+  res.json(UpdateOrcamentoItemResponse.parse(alterado.valor));
 });
 
 router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promise<void> => {
@@ -639,7 +738,7 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
   const itemId = req.params.itemId as string;
   // E115 — mesma guarda do POST/PATCH de item, e o 404 que o delete cru não tinha.
   const [pai] = await db
-    .select({ status: orcamentosTable.status })
+    .select({ status: orcamentosTable.status, orcamentoId: orcamentosTable.id })
     .from(orcamentoItensTable)
     .innerJoin(orcamentosTable, eq(orcamentosTable.id, orcamentoItensTable.orcamentoId))
     .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
@@ -654,7 +753,20 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
       return;
     }
   }
-  await db.delete(orcamentoItensTable).where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+  // C4: a escrita entra na transação que tranca o pai.
+  const removido = await sobPaiTrancado(pai.orcamentoId, async (tx) => {
+    await tx.delete(orcamentoItensTable)
+      .where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
+    return true;
+  });
+  if ("congelado" in removido) {
+    res.status(422).json(removido.congelado);
+    return;
+  }
+  if ("sumiu" in removido) {
+    res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
+    return;
+  }
   res.status(204).send();
 });
 
@@ -719,11 +831,39 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("lea
     return;
   }
 
-  // Aprovar NÃO mexe na etapa do lead — o funil só avança para
-  // CONTRATO_FECHADO quando um contrato é efetivamente fechado.
-  await db.update(orcamentosTable)
+  /**
+   * C1/A08.3 — `/aprovar` e `/recusar` escreviam a MESMA linha do CAS do
+   * aceite, sem transação e sem condição de status.
+   *
+   * A guarda acima lê o pool; entre ela e este UPDATE cabe o aceite público
+   * inteiro — que roda SEM sessão, pela pessoa que menos pode conferir o
+   * resultado. **Medido:** orçamento de R$ 12.400,00 recusado às 14:00:00
+   * volta a APROVADO às 14:00:00,2 pelo aceite que leu o pool às 13:59:59,8;
+   * na ordem inversa, o orçamento fica RECUSADO carregando o comprovante do
+   * aceite, com o badge "Aceito pela noiva" na tela da vendedora.
+   *
+   * O conserto é a condição no `where`: só escreve quem ainda encontra o
+   * estado que leu. Zero linhas = alguém chegou primeiro, e a resposta é o
+   * mesmo 422 da guarda lenta.
+   *
+   * Aprovar NÃO mexe na etapa do lead — o funil só avança para
+   * CONTRATO_FECHADO quando um contrato é efetivamente fechado.
+   */
+  const [aprovado] = await db.update(orcamentosTable)
     .set({ status: "APROVADO", aprovadoEm: new Date(), updatedAt: new Date() })
-    .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
+    .where(and(
+      eq(orcamentosTable.id, orcamentoId),
+      eq(orcamentosTable.lojaId, lojaId),
+      inArray(orcamentosTable.status, ["RASCUNHO", "ENVIADO"]),
+    ))
+    .returning({ status: orcamentosTable.status });
+  if (!aprovado) {
+    res.status(422).json({
+      error: "TRANSICAO_INVALIDA",
+      detalhe: "Este orçamento mudou de estado enquanto você decidia — recarregue a tela.",
+    });
+    return;
+  }
 
   res.status(204).send();
 });
@@ -743,9 +883,23 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("lea
     return;
   }
 
-  await db.update(orcamentosTable)
+  // C1/A08.3: a mesma condição do `/aprovar` — a irmã em que o estrago é
+  // maior, porque RECUSADO é terminal e o aceite da noiva o sobrescrevia.
+  const [recusado] = await db.update(orcamentosTable)
     .set({ status: "RECUSADO", updatedAt: new Date() })
-    .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)));
+    .where(and(
+      eq(orcamentosTable.id, orcamentoId),
+      eq(orcamentosTable.lojaId, lojaId),
+      inArray(orcamentosTable.status, ["RASCUNHO", "ENVIADO"]),
+    ))
+    .returning({ status: orcamentosTable.status });
+  if (!recusado) {
+    res.status(422).json({
+      error: "TRANSICAO_INVALIDA",
+      detalhe: "Este orçamento mudou de estado enquanto você decidia — recarregue a tela.",
+    });
+    return;
+  }
 
   res.status(204).send();
 });
