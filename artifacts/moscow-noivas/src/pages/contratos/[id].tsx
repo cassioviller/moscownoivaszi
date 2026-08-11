@@ -68,7 +68,7 @@ import { mensagemApi } from "@/lib/erro-api";
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
 // defeito que o épico existe para fechar.
 import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
-import { planoDaDigitacao } from "@/lib/financeiro/plano";
+import { planoDaDigitacao, temCarne } from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -142,6 +142,9 @@ export default function ContratoDetail() {
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),
     [contrato?.parcelas],
   );
+  // S-M19: a pergunta do servidor (`origem === PLANO`), não `length > 0` — a
+  // parcela de avaria cobrada antes do carnê não pode esconder o "Gerar plano".
+  const contratoTemCarne = temCarne(parcelas);
   const hoje = hojeLocal();
   const atrasada = (p: Parcela) => estaAtrasada(p, hoje);
 
@@ -535,7 +538,7 @@ export default function ContratoDetail() {
             <CardTitle>Plano de pagamento</CardTitle>
           </CardHeader>
           <CardContent>
-            {parcelas.length > 0 ? (
+            {parcelas.length > 0 && (
               <div className="space-y-3">
                 <ul className="space-y-3">
                   {parcelas.map((parcela) => {
@@ -610,18 +613,25 @@ export default function ContratoDetail() {
                   </Alert>
                 )}
               </div>
-            ) : podeCriarParcela && contratoAtivo ? (
+            )}
+            {/* S-M19: o formulário existe enquanto NÃO houver carnê (origem
+                PLANO) — não enquanto não houver parcela nenhuma. A avaria
+                cobrada antes do carnê aparece na lista acima E o plano ainda
+                se gera. */}
+            {!contratoTemCarne && podeCriarParcela && contratoAtivo ? (
               /* E136/E6: Enter conclui o plano — era o único fluxo de dinheiro
                  desta tela e não tinha <form>. */
               <form
-                className="space-y-3"
+                className={parcelas.length > 0 ? "space-y-3 border-t pt-4 mt-4" : "space-y-3"}
                 onSubmit={(e) => {
                   e.preventDefault();
                   void onGerarPlano();
                 }}
               >
                 <p className="text-muted-foreground text-sm">
-                  Nenhuma parcela registrada. Gere o plano de pagamento do contrato.
+                  {parcelas.length > 0
+                    ? "As parcelas acima não são o carnê do contrato. Gere o plano de pagamento."
+                    : "Nenhuma parcela registrada. Gere o plano de pagamento do contrato."}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -674,9 +684,9 @@ export default function ContratoDetail() {
                   {gerarPlano.isPending ? "Gerando…" : "Gerar plano"}
                 </Button>
               </form>
-            ) : (
+            ) : parcelas.length === 0 ? (
               <p className="text-muted-foreground text-sm">Nenhuma parcela registrada.</p>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>

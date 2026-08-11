@@ -213,4 +213,27 @@ describe("S26 — o carnê nasce mesmo depois de o reparo ter sido cobrado", () 
     ]);
     expect(parcelas.find((p) => p.descricao?.startsWith("Reparo"))!.numero).toBe(4);
   });
+
+  it("S-M19 — a RESPOSTA da API carrega `origem`: é por ela que a tela decide se mostra o Gerar plano", async () => {
+    /**
+     * O servidor decidia certo desde a S26, mas o schema `Parcela` do OpenAPI
+     * não declarava `origem` — o `Response.parse` STRIPAVA a coluna e a tela,
+     * sem o dado, perguntava `parcelas.length > 0`: o reparo cobrado antes do
+     * carnê escondia o "Gerar plano" para sempre (achado 5#1 da rodada 2,
+     * 🟠). Este teste prega a fronteira: a parcela do reparo chega à tela
+     * dizendo AVARIA, e a de carnê dizendo PLANO.
+     */
+    const { contrato } = await contratoComReparoCobrado(350);
+
+    const antes = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}`).expect(200);
+    const parcelasAntes = antes.body.parcelas as { origem?: string }[];
+    expect(parcelasAntes).toHaveLength(1);
+    expect(parcelasAntes[0]!.origem).toBe("AVARIA");
+
+    await gerarPlano(contrato.id, 1000, 4).expect(201);
+
+    const depois = await agent.get(`/api/lojas/${f.lojaId}/contratos/${contrato.id}`).expect(200);
+    const origens = (depois.body.parcelas as { origem: string }[]).map((p) => p.origem).sort();
+    expect(origens).toEqual(["AVARIA", "PLANO", "PLANO", "PLANO", "PLANO", "PLANO"]);
+  });
 });

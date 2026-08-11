@@ -270,6 +270,7 @@ export * from './parcela';
 export * from './parcelaContrato';
 export * from './parcelaFormaRecebimento';
 export * from './parcelaLead';
+export * from './parcelaOrigem';
 export * from './parcelaStatus';
 export * from './pedirRemarcacaoPortal200';
 export * from './pedirRemarcacaoPortalParams';

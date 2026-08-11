@@ -71,3 +71,17 @@ export function planoDaDigitacao(params: {
     return { erro: "Não consegui montar o carnê com esses valores.", linhas: null };
   }
 }
+
+/**
+ * S-M19 — "este contrato já tem carnê?" pela MESMA pergunta do servidor.
+ *
+ * O `gerar-plano` recusa por `origem === "PLANO"` desde a S26: parcela de
+ * avaria ou avulsa NÃO é carnê, e um contrato pode (e deve) gerar o dele com
+ * elas já lançadas — a ordem do balcão é essa. A tela perguntava
+ * `parcelas.length > 0`, a heurística pré-S26: um reparo de R$ 350,00 cobrado
+ * antes do carnê escondia o "Gerar plano" de um contrato de R$ 5.000,00 para
+ * sempre.
+ */
+export function temCarne(parcelas: ReadonlyArray<{ origem: string }>): boolean {
+  return parcelas.some((p) => p.origem === "PLANO");
+}

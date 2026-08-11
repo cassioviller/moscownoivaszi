@@ -7,6 +7,7 @@
  */
 import type { ParcelaContrato } from './parcelaContrato';
 import type { ParcelaFormaRecebimento } from './parcelaFormaRecebimento';
+import type { ParcelaOrigem } from './parcelaOrigem';
 import type { ParcelaStatus } from './parcelaStatus';
 
 export interface Parcela {
@@ -18,6 +19,7 @@ export interface Parcela {
   descricao?: string | null;
   valorPrevisto: number;
   vencimento: Date;
+  origem: ParcelaOrigem;
   status: ParcelaStatus;
   /**
      * Acumulado desta parcela, somando todos os recebimentos

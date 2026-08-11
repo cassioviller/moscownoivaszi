@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { montarPlanoParcelas, planoDaDigitacao, ratearRestante } from "./plano";
+import { montarPlanoParcelas, planoDaDigitacao, ratearRestante, temCarne } from "./plano";
 import { centavos } from "./dinheiro";
 
 /**
@@ -135,5 +135,20 @@ describe("planoDaDigitacao — a prévia a partir do que está no formulário", 
     expect(aVista.erro).toBeNull();
     expect(aVista.linhas).toHaveLength(1);
     expect(aVista.linhas![0].valorCentavos).toBe(948055);
+  });
+});
+
+describe("temCarne — a pergunta do servidor, não a heurística pré-S26 (S-M19)", () => {
+  it("parcela de AVARIA ou AVULSA não é carnê: o contrato ainda gera o dele", () => {
+    // O caso medido pelo achado 5#1 da rodada 2: reparo de R$ 350,00 cobrado
+    // antes do carnê num contrato de R$ 5.000,00 — a heurística
+    // `parcelas.length > 0` escondia o "Gerar plano" para sempre.
+    expect(temCarne([{ origem: "AVARIA" }])).toBe(false);
+    expect(temCarne([{ origem: "AVULSA" }, { origem: "AVARIA" }])).toBe(false);
+    expect(temCarne([])).toBe(false);
+  });
+
+  it("uma parcela de PLANO basta — o carnê existe e não se gera de novo", () => {
+    expect(temCarne([{ origem: "AVULSA" }, { origem: "PLANO" }])).toBe(true);
   });
 });

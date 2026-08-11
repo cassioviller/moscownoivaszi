@@ -1906,6 +1906,15 @@ export const ContratoFormaPagamento = {
   OUTRO: 'OUTRO',
 } as const;
 
+export type ParcelaOrigem = typeof ParcelaOrigem[keyof typeof ParcelaOrigem];
+
+
+export const ParcelaOrigem = {
+  PLANO: 'PLANO',
+  AVULSA: 'AVULSA',
+  AVARIA: 'AVARIA',
+} as const;
+
 export type ParcelaStatus = typeof ParcelaStatus[keyof typeof ParcelaStatus];
 
 
@@ -1954,6 +1963,7 @@ export interface Parcela {
   descricao?: string | null;
   valorPrevisto: number;
   vencimento: string;
+  origem: ParcelaOrigem;
   status: ParcelaStatus;
   /**
      * Acumulado desta parcela, somando todos os recebimentos

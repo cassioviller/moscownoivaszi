@@ -6267,7 +6267,7 @@ components:
     # ── Financeiro ──
     Parcela:
       type: object
-      required: [id, lojaId, contratoId, numero, valorPrevisto, vencimento, status]
+      required: [id, lojaId, contratoId, numero, valorPrevisto, vencimento, status, origem]
       properties:
         id: { type: string }
         lojaId: { type: string }
@@ -6276,6 +6276,12 @@ components:
         descricao: { type: ["string", "null"] }
         valorPrevisto: { type: number }
         vencimento: { type: string, format: date-time }
+        # S26/S-M19: de onde a parcela veio. O servidor decide "já tem carnê?"
+        # por `origem === PLANO` desde a S26 — sem o campo aqui, o Zod de
+        # resposta STRIPAVA a coluna e a tela voltava a perguntar
+        # `parcelas.length > 0`: um reparo de avaria cobrado antes do carnê
+        # sumia com o "Gerar plano" para sempre.
+        origem: { type: string, enum: [PLANO, AVULSA, AVARIA] }
         # PARCIAL (E49): a noiva pagou parte. O dinheiro entrou no caixa e o
         # resto (valorPrevisto − valorRecebido) segue cobrável.
         status: { type: string, enum: [PREVISTA, PARCIAL, PAGA, CANCELADA] }
