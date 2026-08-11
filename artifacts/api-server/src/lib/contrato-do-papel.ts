@@ -88,22 +88,49 @@ export type ContratoComPapel = Contrato & {
 
 /** O PDF do contrato, byte por byte igual dos dois lados. */
 export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
-  // Canceladas não entram no documento: o papel mostra o que a noiva deve.
-  const parcelas = [...contrato.parcelas]
-    .filter((p) => p.status !== "CANCELADA")
-    .sort((a, b) => a.numero - b.numero)
-    .map((p) => ({
-      // O NÚMERO manda sobre a descrição: quem cria o contrato grava um genérico
-      // "Parcela 0", mas entrada é definida por numero 0 (mesma regra da tela).
-      descricao: p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`,
-      valor: brl(p.valorPrevisto),
-      vencimento: dataBR.format(p.vencimento),
-      forma: rotuloForma(p.formaRecebimento),
-    }));
+  const cancelado = contrato.status === "CANCELADO";
+
+  /**
+   * P10 (E165, decisão do plano: tarja) — o contrato CANCELADO imprimia igual
+   * a um vivo: o filtro descartava as CANCELADAs, a seção do plano sumia, e o
+   * papel parecia um contrato à vista em aberto — sem uma palavra sobre o
+   * cancelamento. Num cancelado, as parcelas FICAM no documento, marcadas: o
+   * papel conta a história verdadeira, com a tarja em cima.
+   *
+   * P12 — e o plano separa o CARNÊ (origem PLANO, que soma o valor total) das
+   * cobranças que nasceram depois (avaria, multa, avulsa): a parcela de avaria
+   * entrava na mesma lista e o papel listava R$ 5.350,00 sob "Valor total:
+   * R$ 5.000,00", sem linha que reconciliasse — e como o PDF é regerado a cada
+   * download, o contrato assinado por um valor passava a imprimir outro.
+   */
+  const vivasOuTodas = [...contrato.parcelas]
+    .filter((p) => cancelado || p.status !== "CANCELADA")
+    .sort((a, b) => a.numero - b.numero);
+  const formatar = (p: (typeof vivasOuTodas)[number]) => ({
+    // O NÚMERO manda sobre a descrição: quem cria o contrato grava um genérico
+    // "Parcela 0", mas entrada é definida por numero 0 (mesma regra da tela).
+    descricao:
+      (p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`) +
+      (p.status === "CANCELADA" ? " (cancelada)" : ""),
+    valor: brl(p.valorPrevisto),
+    vencimento: dataBR.format(p.vencimento),
+    forma: rotuloForma(p.formaRecebimento),
+  });
+  const parcelas = vivasOuTodas.filter((p) => p.origem === "PLANO").map(formatar);
+  const extras = vivasOuTodas.filter((p) => p.origem !== "PLANO").map(formatar);
+  const totalExtrasC = vivasOuTodas
+    .filter((p) => p.origem !== "PLANO" && p.status !== "CANCELADA")
+    .reduce((s, p) => s + Math.round(p.valorPrevisto * 100), 0);
 
   return gerarContratoPdf({
     lojaNome: contrato.loja.nome,
     noivaNome: contrato.lead?.noivaNome ?? "",
+    tarja:
+      cancelado && contrato.canceladoEm
+        ? `CANCELADO EM ${dataBRInstante.format(contrato.canceladoEm)}`
+        : cancelado
+          ? "CANCELADO"
+          : undefined,
     // O CPF do contrato manda: é o que foi conferido no fechamento.
     cpf: contrato.cpf ?? undefined,
     whatsapp: contrato.lead?.whatsapp ?? undefined,
@@ -124,11 +151,17 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
       const brutoC = brutoEmCentavos(contrato.itens);
       const abatimentoC = brutoC - Math.round(contrato.valorTotal * 100);
       const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
-      return { subtotal: brl(brutoC / 100), desconto: `−${brl(abatimentoC / 100)}${rotulo}` };
+      // P14/E165: o sinal é o hífen ASCII — o U+2212 que morava aqui virava
+      // "?" no desenhista WinAnsi, e o papel imprimia «Desconto: ?R$ 500,00»:
+      // o abatimento sem sinal, lido como mais uma cobrança. O desenhista
+      // também traduz (cinto duplo), mas o montador é a origem certa.
+      return { subtotal: brl(brutoC / 100), desconto: `-${brl(abatimentoC / 100)}${rotulo}` };
     })(),
     valorTotal: brl(contrato.valorTotal),
     formaPagamento: rotuloForma(contrato.formaPagamento),
     parcelas,
+    cobrancasExtras: extras.length > 0 ? extras : undefined,
+    totalExtras: extras.length > 0 ? brl(totalExtrasC / 100) : undefined,
     dataCasamento: contrato.dataCasamento ? dataBR.format(contrato.dataCasamento) : undefined,
     dataRetirada: contrato.dataRetirada ? dataBR.format(contrato.dataRetirada) : undefined,
     dataDevolucao: contrato.dataDevolucao ? dataBR.format(contrato.dataDevolucao) : undefined,

@@ -20,8 +20,8 @@ projetos**.
 | ~~**E162**~~ | ~~o aceite ganha um caminho até o contrato (**o épico-bandeira**)~~ | B | ✅ `b39d292` · [relatório](execucao/E162.md) |
 | ~~**E163**~~ | ~~as guardas que se desligam no nulo~~ | B | ✅ `d37fa3a` · [relatório](execucao/E163.md) |
 | ~~**E164**~~ | ~~o escopo da noiva: loja E dona, em toda porta~~ | C | ✅ `0eeb297` · [relatório](execucao/E164.md) — encolhido pelo E161 (G2/A05.3 fecharam lá) |
-| E165 | o PDF fala a verdade e cabe na página | C | ⏳ próximo |
-| E166 | o link público cumpre o que promete | C | ⏳ |
+| ~~**E165**~~ | ~~o PDF fala a verdade e cabe na página~~ | C | ✅ `HASH_E165` · [relatório](execucao/E165.md) |
+| E166 | o link público cumpre o que promete | C | ⏳ próximo |
 | E167 | a avaria fecha | C | ⏳ |
 | E168 | a agenda diz a mesma coisa em todas as telas | C | ⏳ |
 | E169 | a tela do contrato e o dinheiro miúdo | C | ⏳ |
@@ -50,6 +50,7 @@ commit** do épico que as viu.
 | S-O10 | A etapa **ACEITO** no funil é decisão de produto não perguntada: o aceite avança até ORCAMENTO_ABERTO e a fila responde a visibilidade, mas `ETAPAS_CONVERTIDA` não enxerga o sim, e "do orçamento ao contrato leva quantos dias" segue sem medida agregada | 🟡 | E162 | aberta |
 | S-O11 | A reserva no lead **errado** segue sem troca de dona (a metade do A02.4 que não entrou): a ficha da reserva não edita `leadId`; a adoção só cobre a sem dona | 🟡 | E162 | aberta |
 | S-O12 | `proximo-passo.ts` sem o ramo do aceite: a faixa da ficha ainda diz "Enviar a proposta" com proposta aceita — `EntradaProximoPasso` não carrega orçamentos. A fila e o cartão cobrem o caso; o ramo fecharia o A01.5 por inteiro | 🔵 | E162 | aberta |
+| S-O14 | O botão "Baixar PDF" da tela de contrato não distingue vivo de cancelado — com a tarja do E165 o download ficou seguro; o E169 decide se o botão muda | 🔵 | E165 | aberta |
 | S-O13 | Os três sítios de tela que já liam `descontoTipo && descontoValor` (portal, página pública, orçamento) seguem com a expressão inline em vez de `temDesconto` — comportamento certo, régua não nomeada. Higiene | 🔵 | E163 | aberta |
 | S-O9 | `trancarEixos` (E161) tranca a linha da vendedora em `usuarios`, tabela quente compartilhada com login/equipe. Contenção improvável (a tranca dura a transação do agendamento); se aparecer, a alternativa é advisory lock por `(lojaId, vendedoraId)` | 🔵 | E161 | aberta |
 
