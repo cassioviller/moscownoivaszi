@@ -430,7 +430,7 @@ em instrução de busca.
 | Fatia | Run ID | Script |
 |---|---|---|
 | F1 · orçamento e aceite | `wf_f902dab2-254` | `code-review-wf_f902dab2-254.js` |
-| F2 · contrato e dinheiro | `wf_46e32def-6ea` | `code-review-wf_46e32def-6ea.js` |
+| F2 · contrato e dinheiro | ✅ **feita — 15 defeitos** | `code-review-wf_46e32def-6ea.js` |
 | F3 · reserva e acervo | `wf_e422fb0e-599` | `code-review-wf_e422fb0e-599.js` |
 | F4 · agenda e atendimento | ✅ **feita — 15 defeitos** | `code-review-wf_be4aed57-907.js` |
 
@@ -574,3 +574,100 @@ dois. `provaDuracao` está certo na rota e certo em `novo.tsx`; o defeito é a
 terceira cópia. O filtro de `situacao` está certo na tela; o defeito é o servidor
 não concordar. A instrução de caçar a fronteira não foi retórica: **foi o que
 achou dois terços do resultado.**
+
+---
+
+# Fatia 2 — contrato e dinheiro
+
+✅ **Feita.** 5 arquivos, ~2.400 linhas, 48 agentes, 2,61 M tokens. **48 achados
+verificados**, condensados em **15 defeitos distintos**. Três frentes: a corrida
+do cancelamento, **o papel que o PDF imprime**, e o vão tela×servidor.
+
+**O achado que muda o dia:** a fatia abriu uma frente que nenhuma lente anterior
+tinha tocado — **o documento que a noiva assina**. Cinco dos quinze defeitos
+estão no PDF, e o ângulo 07, que revisou o dinheiro inteiro e não achou um
+centavo errado, não olhou o papel. A aritmética está certa; **o que se imprime
+dela, não.**
+
+## O PDF — cinco defeitos no documento assinável
+
+**P11 · A partir de 15 parcelas, as assinaturas são desenhadas fora da página**
+(`contrato-do-papel.ts:129`). Página única, MediaBox [0 0 595 842], sem quebra.
+**Medido, replicando a aritmética:** contrato de R$ 9.000,00 em entrada + 18
+parcelas = 19 linhas; "OBSERVACOES" cai em y=62, e as quatro linhas do bloco de
+assinatura em **y=−15, −33, −59 e −77**. O PDF sai válido, abre normalmente, e
+**não tem onde a noiva e a loja assinam**. Com 24 parcelas some a seção de
+observações; com 36 somem seis linhas do próprio carnê. E `numParcelas` aceita
+até 360 — o campo da tela oferece `max={360}`.
+
+**P10 · Contrato CANCELADO imprime igual a um vivo** (`contratos.ts:775`). A
+rota não filtra status e o montador descarta as parcelas CANCELADA — então some
+a seção "Plano de pagamento" e **o papel parece um contrato à vista em aberto**,
+sem uma palavra sobre o cancelamento. O botão "Baixar PDF" não é gated por
+`contratoAtivo`.
+
+**P12 · O plano impresso soma mais que o total impresso** (`:92`). O filtro só
+descarta CANCELADA, então a parcela de avaria entra: **R$ 5.350,00 listados sob
+"Valor total: R$ 5.000,00"**, sem nenhuma linha que reconcilie. E o PDF é
+regerado do estado atual a cada download — **o contrato assinado por R$ 5.000,00
+passa a imprimir R$ 5.350,00 depois da avaria.**
+
+**P14 · O sinal de menos do desconto vira "?"** (`:125`). O montador escreve
+U+2212; o desenhista só sabe WinAnsi e troca todo codePoint > 255 por `?`. Sai
+**«Desconto: ?R$ 500,00 (10%)»** — em TODO contrato com desconto, nos dois
+chamadores (loja e portal). O abatimento fica sem sinal, lido como mais uma
+cobrança.
+
+**P13 · A observação some a partir de ~95 caracteres** (`:134`). Uma linha de
+`Tj` em x=50, sem quebra: os caracteres finais são desenhados fora da página, e
+o `\n` digitado não vira quebra visual — as frases colam. No exemplo medido, o
+que fica de fora é **a multa de R$ 150,00 por dia de atraso**.
+
+## A corrida do cancelamento, e o dinheiro que não volta
+
+**P1** (`:902`) é o K1 do review anterior visto com mais alcance: `parcelasAntes`
+lido no pool decide quem tem recebimento. **Medido:** R$ 2.000,00 recebidos na
+janela ficam PAGOS e vivos no caixa, a trilha grava `totalEstornado` sem eles, **e
+não há volta — `POST /estornar` exige contrato ATIVO.** O dinheiro que a loja
+declarou ter devolvido soma receita para sempre.
+
+**P3 · Cancelar não desfaz `contratoFechadoEm` nem a etapa** (`:927`). A curva de
+sazonalidade (`leads.ts:432`) filtra por essa coluna: **a venda cancelada segue
+contada como fechada**, e a curva que diz à dona em que mês vai faltar vestido
+superestima a demanda. A noiva também fica no kanban em CONTRATO_FECHADO sem
+contrato nenhum.
+
+**P2 · A renumeração do `gerar-plano` obsoleta o `numero` da trilha** (`:1470`).
+A parcela PAGA de R$ 350,00 é movida de 1 para 11, e a auditoria continua dizendo
+"parcela 1" — **quem conferir o caixa pela trilha casa o recebimento com a linha
+errada**, que é exatamente o oposto da razão declarada de a trilha existir.
+
+## O vão tela × servidor
+
+**P6 · "Remover" oferecido em parcela PARCIAL** (`[id].tsx:536`). A tela usa
+`estaAberta` (PREVISTA + PARCIAL); o servidor só aceita PREVISTA. O toast diz
+**"Só parcelas em aberto podem ser removidas" sobre uma parcela que ESTÁ em
+aberto** — uma contradição literal, sem gesto possível.
+
+**P7 · Parcela removida do carnê não tem volta.** O plano passa a somar
+R$ 4.500,00 de R$ 5.000,00, o alerta acende, `temCarne` segue true e o servidor
+responde 409 JA_TEM_PLANO para sempre. **Não existe gesto nenhum na aplicação que
+devolva os R$ 500,00.**
+
+**P8 · O alerta de divergência grita em todo contrato com avaria** (`:196`) —
+soma AVULSA e AVARIA e compara com `valorTotal`, num estado que o servidor
+considera correto. **O alarme que existe para denunciar carnê corrompido deixa de
+ser lido justamente quando a divergência for verdadeira.**
+
+**P9** é o K10 do review de `contratos.ts` reconfirmado por outra passada, agora
+com a prova de ausência: `grep conflitos` em `artifacts/moscow-noivas/src` **não
+devolve um único sítio**.
+
+**P4 e P5** são dois 500 que deveriam ser 422: o estorno perdedor faz
+`parse(undefined)` e a vendedora lê "Não consegui falar com o sistema" numa ação
+que já tinha acontecido; e `numParcelas: 2.5` sobe uma exceção não tratada — **a
+única validação do carnê que não devolve 422**.
+
+**P15** fecha a fatia com o defeito mais silencioso: `descontoValor === 0` é "sem
+desconto" para a régua do dinheiro e "com desconto" para o papel e para a tela.
+**O mesmo registro, dois arquivos, duas respostas.**
