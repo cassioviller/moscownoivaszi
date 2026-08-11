@@ -29,7 +29,7 @@ abaixo é a fila; conte o que tem seção, não deduza.
 | # | Alvo | Estado | Achados |
 |---|---|---|---|
 | 1 | `artifacts/api-server/src/routes/contratos.ts` | ⏳ rodando | — |
-| 2 | `artifacts/api-server/src/lib/aceite-orcamento.ts` | ⏳ rodando | — |
+| 2 | `artifacts/api-server/src/lib/aceite-orcamento.ts` | ✅ **feito** | 10 (7 correção, 3 limpeza) |
 | 3 | `artifacts/api-server/src/routes/reservas.ts` | ⏳ rodando | — |
 
 ### Os três disparados em paralelo — como retomar se a sessão cair
@@ -117,3 +117,102 @@ assumido**:
 # Alvo 1 — `artifacts/api-server/src/routes/contratos.ts`
 
 ⏳ em curso — nada gravado ainda.
+
+---
+
+# Alvo 2 — `artifacts/api-server/src/lib/aceite-orcamento.ts`
+
+✅ **Feito.** 71 linhas de código, 20 agentes, 933 mil tokens. Os quatro ângulos
+de achado levantaram 27 candidatos; a passada de verificação **matou 3** e
+manteve 24, que se consolidaram em **10 defeitos distintos** — 7 de correção
+(6 CONFIRMED, 1 PLAUSIBLE) e 3 de limpeza.
+
+**A régua deste arquivo:** 71 linhas produziram 10 defeitos. É a maior densidade
+de qualquer arquivo já revisado neste repositório — e o motivo é estrutural: é a
+única escrita de estado que acontece **sem sessão**, feita pela pessoa que menos
+pode conferir o resultado.
+
+## Os sete de correção
+
+**C1 · O CAS não reconfere o status sob a transação** (`:40`). O compare-and-swap
+guarda só `isNull(aceitoEm)` e grava `APROVADO` incondicionalmente. A
+pré-condição de status que o docstring (`:12-14`) delegou a quem chama é
+conferida no pool e nunca reestabelecida dentro do `tx`, enquanto `/recusar`
+(`orcamentos.ts:747`) e `/aprovar` (`:724`) escrevem a MESMA linha sem transação
+e sem condição de status. **Medido:** orçamento de R$ 12.400,00 recusado às
+14:00:00 volta a `APROVADO` às 14:00:00,2 pelo aceite que leu o pool às
+13:59:59,8. RECUSADO é terminal (`estados.ts:49`), a vendedora lê "recusado" na
+tela, e `POST /contratos` fecha os R$ 12.400,00 sobre a proposta que a loja
+negou. Na ordem inversa é o espelho: orçamento RECUSADO carregando o comprovante
+do aceite, com o badge "Aceito pela noiva" em `orcamentos/[id].tsx:757`.
+
+**C2 · O aceite grava a versão mais alta, não a que a noiva viu** (`:20`).
+`desc(numero)` lido com `db` fora da transação; o cliente não informa versão nem
+hash. **Medido:** ela vê e aceita R$ 5.000,00 na aba antiga, a linha 20 lê a
+versão 2 nascida no meio, e o contrato sai **R$ 5.500,00 — R$ 500,00 acima** —
+passando por baixo da guarda do E115, porque o hash gravado é o da versão nova.
+
+**C3 · `?? agora` inventa um carimbo de aceite que não foi gravado** (`:70`).
+Perdida a corrida, `jaAceito?.aceitoEm ?? agora` não distingue "outro já aceitou"
+de "a linha não existe mais". Se o orçamento é apagado no meio (um ENVIADO se
+apaga), o UPDATE casa zero linhas, a auditoria não roda, e a API responde **200
+com um `aceitoEm` inventado**. A noiva lê "Aceito em 11/08/2026 14:02" e o
+ateliê não tem registro nenhum.
+
+**C4 · A transação do aceite não tranca a linha** (`:28`). A S-M22 escolheu
+`FOR UPDATE` + reconferência para serializar contra este CAS e aplicou o padrão
+em dois lugares — **mas o próprio CAS não participa de tranca alguma**. As três
+portas de item (`orcamentos.ts:499`, `:613`, `:646`) leem o status do pai no pool
+e escrevem soltas. **Medido:** aceite grava hash de R$ 5.000,00 às 14:02:00; o
+`POST /itens` que leu ENVIADO um instante antes insere um véu de R$ 1.500,00 às
+14:02:00,1. O vivo vira R$ 6.500,00 e o orçamento entra em **beco permanente** —
+422 para sempre no contrato, e as três portas de item agora recusam com
+`ORCAMENTO_APROVADO`. Só refazendo tudo e pedindo novo aceite.
+
+**C5 · O hash não cobre `observacoes` nem `validade`** (`:32`). A página pública
+mostra os dois lendo a **linha viva**, e o `PATCH` só barra mexer no desconto
+quando APROVADO — texto livre passa. **Medido:** a observação muda de "entrada de
+R$ 1.500,00 e 7x R$ 500,00" para "entrada de R$ 2.500,00 e 5x R$ 500,00", o
+total continua R$ 5.000,00, o hash continua batendo. O comprovante que ela
+guarda passa a afirmar **R$ 1.000,00 a mais de entrada** sob o mesmo "Aceito em".
+
+**C6 · O aceite não confere a validade** (`:12`). Nem a rotina nem os dois
+chamadores olham `orcamento.validade`; só o TTL do link. **Medido:** proposta
+vencida em 10/07 aceita em 11/08 na mesma página que diz "válida até 10/07/2026"
+— e o contrato fecha em R$ 5.000,00 com a coleção já remarcada para R$ 5.800,00.
+**R$ 800,00 abaixo do preço vigente.**
+
+**C7 · `aceiteHash` nulo desliga a guarda do E115** (`:35`) — PLAUSIBLE, e a
+única do lote que depende de dado, não de código. Sem versão congelada a rotina
+grava `null` em silêncio, e a guarda em `contratos.ts:236` é `if
+(orcamento.aceiteHash)`. **Medido:** ela lê R$ 5.000,00, o item sobe para
+R$ 8.000,00 enquanto ENVIADO, ela aceita, o hash grava nulo, a guarda é pulada
+inteira e o contrato nasce dos itens vivos — **R$ 3.000,00 a mais**. É
+exatamente o caso que o comentário de `contratos.ts:230-235` diz existir para
+impedir. **Confirma-se com uma contagem no `moscow_base`:** ENVIADOs sem linha em
+`orcamento_versoes`. Se der zero, o achado morre.
+
+## Os três de limpeza
+
+O retorno `Promise<Date>` esconde se a rotina gravou ou perdeu a corrida, e por
+isso as duas rotas duplicam a pré-condição (`:19`); o aceite custa três idas ao
+banco em série, quatro para quem perde (`:28`) — e mover a leitura para dentro do
+`tx` **fecha a janela do C2 de quebra**; e `updatedAt: agora` (`:38`) repete à
+mão o que o `$onUpdate` do schema já faz, plantando a dúvida que já foi copiada
+para `orcamentos.ts:725` e `:747`.
+
+## O cruzamento com os oito ângulos
+
+Quatro dos dez já tinham sido vistos pela ótica de papel, e **isso os promove**:
+
+| Code review | Ângulo | O que muda |
+|---|---|---|
+| C1 (CAS × /recusar) | A08.3 | O ângulo viu o estado impossível; o review deu o exemplo de R$ 12.400,00 nas duas ordens |
+| C2 (versão por `desc`) | A03.6 | O ângulo disse "fechado por sorte"; o review mostra a porta aberta pelo RASCUNHO→ENVIADO |
+| C6 (validade) | A03.4 e A07.4 | Três lentes independentes, mesmo defeito |
+| C7 (hash nulo) | A03.7 | O ângulo já pedia contagem no banco; o review concorda e fica PLAUSIBLE |
+
+**Seis são novos** — nenhum dos oito ângulos os viu. Os mais graves são C3 (o
+carimbo inventado), C4 (o beco por corrida com as portas de item) e C5 (o
+comprovante que muda depois do aceite). É a resposta empírica para a pergunta que
+abriu esta revisão: a ótica de papel e a leitura por dentro **não se substituem**.
