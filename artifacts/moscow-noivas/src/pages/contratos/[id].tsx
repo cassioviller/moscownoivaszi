@@ -6,11 +6,9 @@ import {
   useCancelarContrato,
   getListContratosQueryKey,
   useGerarPlanoParcelas,
-  useReceberParcela,
   useEstornarParcela,
   useRemoveParcela,
   type Parcela,
-  type ReceberParcelaInputFormaRecebimento,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
@@ -52,8 +50,8 @@ import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaParaISO, statusContratoLabel, instanteDia, diaMesAno } from "@/lib/formatos";
 import { fraseEstornoParcela, fraseRemocaoParcela } from "@/lib/financeiro/confirmacoes";
+import { DialogoReceberParcela, rotuloParcela } from "@/components/dialogo-receber-parcela";
 import {
-  ROTULO_FORMA,
   rotuloForma,
   estaAtrasada,
   estaAberta,
@@ -116,8 +114,6 @@ export default function ContratoDetail() {
 
   // Receber parcela
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
-  const [valorRecebido, setValorRecebido] = useState("");
-  const [formaRecebimento, setFormaRecebimento] = useState<ReceberParcelaInputFormaRecebimento | "">("");
 
   // Confirmação de remover/estornar
   const [confirmacao, setConfirmacao] = useState<{ tipo: "remover" | "estornar"; parcela: Parcela } | null>(null);
@@ -128,7 +124,6 @@ export default function ContratoDetail() {
 
   const cancelar = useCancelarContrato();
   const gerarPlano = useGerarPlanoParcelas();
-  const receber = useReceberParcela();
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
@@ -319,42 +314,14 @@ export default function ContratoDetail() {
     }
   };
 
-  const abrirReceber = (parcela: Parcela) => {
-    // O que FALTA, não o previsto: numa parcela meio recebida, sugerir o valor
-    // cheio cobraria de novo o que já entrou.
-    setValorRecebido(saldoAberto(parcela).toFixed(2).replace(".", ","));
-    setFormaRecebimento("");
-    setParcelaReceber(parcela);
-  };
-
-  const onReceber = async () => {
-    if (!parcelaReceber) return;
-    const valor = parseValor(valorRecebido);
-    if (valor === null || Number.isNaN(valor) || valor <= 0) {
-      toast({ title: "Valor recebido inválido", variant: "destructive" });
-      return;
-    }
-    try {
-      await receber.mutateAsync({
-        lojaId: activeLojaId!,
-        parcelaId: parcelaReceber.id,
-        data: {
-          valorRecebido: valor,
-          recebidoEm: new Date().toISOString(),
-          ...(formaRecebimento ? { formaRecebimento } : {}),
-        },
-      });
-      await invalidarParcelas();
-      toast({ title: "Recebimento registrado" });
-      setParcelaReceber(null);
-    } catch (err) {
-      toast({
-        title: "Não deu para receber",
-        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
-        variant: "destructive",
-      });
-    }
-  };
+  /**
+   * S-M20: o diálogo de receber é UM — `components/dialogo-receber-parcela`,
+   * o do F28/E98/E136. A cópia local desta página divergiu em três pontos
+   * medidos pela rodada 2 (achado 7#1, 🟠): carimbava `recebidoEm = agora`
+   * SEMPRE (o Pix de sábado lançado na segunda datava o caixa de segunda),
+   * não tinha o `<form>` do E136 e reescrevia `rotuloParcela`.
+   */
+  const abrirReceber = (parcela: Parcela) => setParcelaReceber(parcela);
 
   const onConfirmarAcaoParcela = async () => {
     if (!confirmacao) return;
@@ -376,8 +343,6 @@ export default function ContratoDetail() {
       });
     }
   };
-
-  const rotuloParcela = (p: Parcela) => (p.numero === 0 ? "Entrada" : p.descricao || `Parcela ${p.numero}`);
 
   const statusParcela = (p: Parcela) => {
     if (p.status === "CANCELADA") return { rotulo: "Cancelada", variante: "outline" as const };
@@ -769,56 +734,18 @@ export default function ContratoDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Receber parcela */}
-      <Dialog open={!!parcelaReceber} onOpenChange={(open) => !open && setParcelaReceber(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Receber {parcelaReceber ? rotuloParcela(parcelaReceber).toLowerCase() : "parcela"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="receber-valor">Valor recebido</Label>
-              <Input
-                id="receber-valor"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={valorRecebido}
-                onChange={(e) => setValorRecebido(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Forma de recebimento</Label>
-              {/* O Select devolve string; as opções saem das chaves de ROTULO_FORMA,
-                  que o próprio tipo do mapa mantém alinhadas com o enum da API. */}
-              <Select
-                value={formaRecebimento}
-                onValueChange={(v) => setFormaRecebimento(v as ReceberParcelaInputFormaRecebimento)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Forma…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ROTULO_FORMA).map(([valor, rotulo]) => (
-                    <SelectItem key={valor} value={valor}>
-                      {rotulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setParcelaReceber(null)}>
-              Voltar
-            </Button>
-            <Button onClick={onReceber} disabled={receber.isPending}>
-              {receber.isPending ? "Registrando…" : "Registrar recebimento"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Receber parcela — o diálogo compartilhado (S-M20): campo de data com
+          a régua hoje-vs-dia-passado, <form> do E136 e as frases de erro do
+          B6. O gancho `aoReceber` recarrega o GET do contrato, que é a única
+          coisa desta tela que o `invalidarCaixa` do diálogo não cobre. */}
+      <DialogoReceberParcela
+        lojaId={activeLojaId!}
+        parcela={parcelaReceber}
+        onFechar={() => setParcelaReceber(null)}
+        aoReceber={() =>
+          queryClient.invalidateQueries({ queryKey: getGetContratoQueryKey(activeLojaId!, id!) })
+        }
+      />
 
       {/* Confirmação de remover/estornar parcela */}
       <AlertDialog open={!!confirmacao} onOpenChange={(open) => !open && setConfirmacao(null)}>

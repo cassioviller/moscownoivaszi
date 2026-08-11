@@ -71,12 +71,20 @@ export function DialogoReceberParcela({
   onFechar,
   /** Contexto da linha de origem — em `/cobranca` a parcela sozinha não se explica. */
   descricao,
+  /**
+   * S-M20: invalidação EXTRA da tela dona, depois do sucesso. O diálogo já
+   * invalida `chavesDoCaixa`; a ficha do contrato precisa também do próprio
+   * GET /contratos/:id — sem este gancho ela mantinha uma CÓPIA do diálogo
+   * inteira só para poder invalidar a query dela, e a cópia perdeu a data.
+   */
+  aoReceber,
 }: {
   lojaId: string;
   /** `null` fecha o diálogo; qualquer parcela o abre já preenchida. */
   parcela: Parcela | null;
   onFechar: () => void;
   descricao?: string;
+  aoReceber?: () => unknown;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -121,6 +129,7 @@ export function DialogoReceberParcela({
         },
       });
       await invalidarCaixa(queryClient, lojaId);
+      await aoReceber?.();
       toast({ title: "Recebimento registrado" });
       onFechar();
     } catch (err) {
