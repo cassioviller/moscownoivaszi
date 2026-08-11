@@ -432,7 +432,7 @@ em instrução de busca.
 | F1 · orçamento e aceite | `wf_f902dab2-254` | `code-review-wf_f902dab2-254.js` |
 | F2 · contrato e dinheiro | `wf_46e32def-6ea` | `code-review-wf_46e32def-6ea.js` |
 | F3 · reserva e acervo | `wf_e422fb0e-599` | `code-review-wf_e422fb0e-599.js` |
-| F4 · agenda e atendimento | `wf_be4aed57-907` | `code-review-wf_be4aed57-907.js` |
+| F4 · agenda e atendimento | ✅ **feita — 15 defeitos** | `code-review-wf_be4aed57-907.js` |
 
 Mesma regra de gravação: a seção de cada fatia é escrita assim que ela termina.
 Retomada por run ID só vale nesta sessão.
@@ -469,3 +469,108 @@ sugerem é uma régua **enumerável e verificável por varredura**:
 > memória de quem revisa.
 
 Isso é proposta, não decisão: entra no consolidado para a dona decidir.
+
+---
+
+# Fatia 4 — agenda e atendimento
+
+✅ **Feita.** 6 arquivos, ~2.600 linhas, 49 agentes, 2,58 M tokens. **64 achados
+verificados**, colapsados em **15 defeitos distintos**. É a maior colheita de
+qualquer passada desta revisão — e a instrução de caçar o vão entre arquivos
+explica por quê: **nove dos quinze só existem na fronteira.**
+
+**A tese:** a régua de agendamento é **re-derivada em três lugares** — a tela do
+dia, a tela de agendar e a rota — e **as três divergem**. Não há uma fonte da
+verdade sobre quanto dura uma prova, quem segura uma cabine, ou que dia é hoje.
+
+## As três réguas que discordam
+
+**G8 · A tela do dia esquece `provaDuracao`** (`agenda/index.tsx:108`). Monta o
+expediente com abertura, fechamento e `dias`, e **perde o quarto campo** — que a
+rota (`agenda.ts:83-89`) e a tela irmã (`novo.tsx:299-310`) carregam do mesmo
+GET. Toda prova vira 1 slot: a célula das 14:30 fica acesa, aceita o card, e o
+servidor devolve 422 sobre um destino que a própria tela pintou como livre.
+**A ironia está medida:** a loja SEM regra cai no `EXPEDIENTE_PADRAO`, que traz
+`provaDuracao: 2` — **só a loja configurada erra.**
+
+**G9 · A tela filtra `situacao`, o servidor não** (`novo.tsx:317`). A tela tira
+CONCLUIDO e FALTOU das ocupadas; o servidor busca concorrentes sem olhar
+situação. O slot aparece habilitado, o POST recusa — e **a grade do dia, na tela
+ao lado, apaga a mesma célula.** Duas telas da mesma agenda dizendo coisas
+opostas sobre o mesmo horário.
+
+**G4 · A janela de busca usa uma duração e a régua usa outra** (`agenda.ts:113`).
+`regra?.provaDuracao ?? 1` contra o expediente efetivo montado três linhas acima.
+Loja sem regra: a janela é de 30 min, a ocupação é de 60 — **a prova das 14:10
+fica fora do SELECT** e duas noivas entram na mesma cabine às 14:50, sem UNIQUE
+que pegue.
+
+**G11 · A semana é montada no fuso do navegador** (`semana.tsx:48`), enquanto os
+atendimentos são recortados pelo dia da LOJA. Navegador em UTC às 02:00 de
+segunda = 23:00 de domingo em São Paulo: **a semana corrente inteira não é
+buscada**, e o botão "Esta semana" leva à seguinte. É a fronteira que sobrou da
+S-M25, agora com o mecanismo inteiro.
+
+## O que corrompe DADO, não tela
+
+**G1 · Concluir uma prova carimba `provaDataReal` sem revalidar nada**
+(`agenda.ts:531`) — e essa é exatamente a coluna que `PATCH /reservas` classifica
+como "mudouJanelas" e protege com `FOR UPDATE` + `verificarDisponibilidade` +
+409. O comentário da linha 527 justifica a ausência dizendo que colapsar janela
+nunca cria conflito; **só é verdade se a data real cair dentro da janela
+derivada, e o POST aceita a prova em qualquer dia.** Medido: prova de A concluída
+em 14/10 sobrepõe a janela FÍSICA de B — o estado que a outra porta recusaria com
+409, entrando por um UPDATE sem sequer a tranca do vestido.
+
+**G2 · O `bloqueioId` é provado contra a loja, não contra a noiva**
+(`agenda.ts:374`) — pareamento que **só o formulário garante**. Prova na ficha da
+Ana com o vestido da Beatriz, e ao concluir, o carimbo cai **no bloqueio da
+Beatriz**: a janela dela colapsa para um dia em que ela não provou nada, e a peça
+é liberada antes da hora. Confirma o A05.3 e o A06.5 pelos dois lados.
+
+**G3 · Trocar só a vendedora pula `recusaDeMover` inteiro** (`agenda.ts:463`).
+`mudouMovimento` olha `inicio` e `cabineId` e nada mais — nem VENDEDORA_AUSENTE
+nem VENDEDORA_OCUPADA são consultados. **A vendedora de férias recebe atendimento
+com 200**, e a grade, que consulta a MESMA função com as ausências, nunca teria
+aceitado.
+
+**G5 · O `FOR UPDATE` tranca a cabine; o conflito de vendedora atravessa
+cabines.** É o achado A06.2 dos ângulos, agora com a causa: a S-M22 fechou o eixo
+da cabine e **deixou o eixo da vendedora vivo**.
+
+## As perdas silenciosas
+
+**G6 · Desativar uma cabine some com os atendimentos dela** (`grade.tsx:119` e
+`semana.tsx:104`) — e o 409 do DELETE **recomenda exatamente isso**: "Desative-a
+se ela saiu de uso". As 4 provas continuam no banco, continuam AGENDADO, as
+noivas continuam recebendo confirmação, e **no dia ninguém vê que existem.**
+
+**G10 · Mover um atendimento não zera `confirmadoEm`** (`agenda.ts:492`). A noiva
+confirmou 14:00, a recepção arrastou para 17:00, e a tela segue contando "1
+confirmou pelo portal". **Ninguém avisa a noiva, e ela chega às 14:00.** O mesmo
+com `remarcacaoPedidaEm`, que fica na tela de Mensagens para sempre.
+
+**G14 · A fila "Falta procurar" ignora `remarcacaoPedidaEm`** (`index.tsx:216`) —
+re-deriva à mão a régua que já vive em `mensagens-do-dia.ts:65` e esquece o
+terceiro fato. A recepção manda "confirme sua presença hoje às 14h" **para quem
+avisou às 9h que não vem.**
+
+**G12** (`agenda.ts:1065`): o PUT de regras aceita abertura 9 e fechamento 5 — a
+validação existe só no formulário. A loja inteira para de agendar e **nenhuma
+tela diz por quê.** **G13** (`index.tsx:252`): o botão de WhatsApp não tem gate de
+permissão nem trata o 403 — a noiva é procurada, o contato não é gravado, e a
+próxima pessoa procura de novo. **G15** (`grade.tsx:137`): o diálogo de reagendar
+não passa por `recusaDeMover` — a doutrina do E27 invertida justamente para quem
+usa teclado e celular, que é quem o diálogo foi criado para atender.
+
+**G7** confirma o A06.3: o POST aceita `PROVA` sem `bloqueioId`, e o comentário
+de `index.tsx:154-159` **diz que isso foi consertado** ao matar o diálogo antigo.
+Foi consertado na tela; a rota nunca soube.
+
+## O que esta fatia prova sobre o método
+
+Nove dos quinze defeitos **não existem dentro de nenhum arquivo** — existem entre
+dois. `provaDuracao` está certo na rota e certo em `novo.tsx`; o defeito é a
+terceira cópia. O filtro de `situacao` está certo na tela; o defeito é o servidor
+não concordar. A instrução de caçar a fronteira não foi retórica: **foi o que
+achou dois terços do resultado.**
