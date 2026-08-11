@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
 import { brl, instanteLongo, tipoItemLabel } from "@/lib/formatos";
+import { mensagemApi } from "@/lib/erro-api";
 
 /**
  * Página PÚBLICA do orçamento (/orcamento/:token) — o que a noiva abre pelo
@@ -27,6 +29,11 @@ const ERROS: Record<string, string> = {
   LINK_EXPIRADO: "Este link expirou. Peça um novo para a sua vendedora.",
   LINK_INVALIDO: "Link inválido — confira se ele veio inteiro do WhatsApp.",
   MUITAS_TENTATIVAS: "Muitas tentativas em pouco tempo. Espere alguns minutos e abra o link de novo.",
+  // A03.3/E166: os desfechos do ACEITE também têm frase — o botão tinha zero
+  // tratamento de erro, e a noiva clicava no vazio.
+  PROPOSTA_MUDOU: "Esta proposta foi atualizada — recarregue a página para ver a versão nova antes de aceitar.",
+  VALIDADE_VENCIDA: "Esta proposta venceu — peça uma atualização à sua vendedora para aceitar.",
+  NAO_ENVIADO: "Esta proposta não está mais aberta para aceite — fale com a sua vendedora.",
 };
 
 
@@ -43,14 +50,27 @@ export default function OrcamentoPublico() {
     },
   });
 
+  // A03.3/E166: o botão de aceite não tinha onError NENHUM — a rede caía, o
+  // 409 chegava, e a página não dizia uma palavra. O mapa é o mesmo dos erros
+  // de abertura, e a mensagem fica onde o dedo está.
+  const [erroDoAceite, setErroDoAceite] = useState<string | null>(null);
   const aceitar = useAceitarOrcamentoPublico({
     mutation: {
-      onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: getGetOrcamentoPublicoQueryKey(params) }),
+      onSuccess: () => {
+        setErroDoAceite(null);
+        void queryClient.invalidateQueries({ queryKey: getGetOrcamentoPublicoQueryKey(params) });
+      },
+      onError: (err) => {
+        const codigo = (err as { data?: { error?: string } })?.data?.error;
+        setErroDoAceite(
+          (codigo && ERROS[codigo]) ??
+            (err as { data?: { detalhe?: string } })?.data?.detalhe ??
+            "Não conseguimos registrar o aceite agora. Confira a conexão e tente de novo.",
+        );
+      },
     },
   });
 
-  const erro = orcamento.error as { data?: { error?: string } } | null;
   const dados = orcamento.data;
 
   return (
@@ -69,8 +89,13 @@ export default function OrcamentoPublico() {
               <Skeleton className="h-8 w-1/2" />
             </div>
           ) : orcamento.isError ? (
-            <p className="text-sm text-center">
-              {ERROS[erro?.data?.error ?? ""] ?? ERROS.LINK_INVALIDO}
+            /* O12/E166: todo 500 e toda queda de rede viravam "link inválido"
+               — a noiva com o link CERTO às 23h lia que o link estava errado e
+               pedia outro. Esta era a única tela que refazia a tradução à mão;
+               agora ela passa pelo `mensagemApi`, que separa "o sistema não
+               respondeu" de "o link não existe" como todas as outras. */
+            <p className="text-sm text-center" data-testid="erro-da-pagina">
+              {mensagemApi(orcamento.error, ERROS.LINK_INVALIDO, ERROS)}
             </p>
           ) : (
             <>
@@ -102,6 +127,13 @@ export default function OrcamentoPublico() {
               </ul>
 
               <div className="space-y-1 border-t pt-3">
+                {/* O9/E166: o desconto EXIBIDO é bruto − líquido do snapshot —
+                    a conta que fecha. Antes a linha imprimia o descontoValor
+                    cru, e um desconto VALOR maior que a soma saía como "Soma
+                    R$ 4.800,00 · Desconto R$ 5.000,00 · Total R$ 0,00": uma
+                    subtração de −R$ 200,00 apresentada como zero no documento
+                    que decide a compra. O rótulo percentual fica como
+                    contexto; o número é sempre a diferença real. */}
                 {dados!.descontoTipo && dados!.descontoValor ? (
                   <>
                     <div className="flex justify-between text-sm text-muted-foreground">
@@ -109,11 +141,12 @@ export default function OrcamentoPublico() {
                       <span className="tabular-nums">{brl(dados!.totalBruto)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Desconto</span>
+                      <span>
+                        Desconto
+                        {dados!.descontoTipo === "PERCENTUAL" ? ` (${dados!.descontoValor}%)` : ""}
+                      </span>
                       <span className="tabular-nums">
-                        {dados!.descontoTipo === "PERCENTUAL"
-                          ? `${dados!.descontoValor}%`
-                          : `${brl(dados!.descontoValor)}`}
+                        − {brl(dados!.totalBruto - dados!.totalLiquido)}
                       </span>
                     </div>
                   </>
@@ -130,6 +163,26 @@ export default function OrcamentoPublico() {
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap border-t pt-3">
                   {dados!.observacoes}
                 </p>
+              )}
+
+              {/* O8/E166: RECUSADO ganha o ramo que não tinha — a noiva reabria
+                  o link e via a proposta inteira que a loja já deu por perdida,
+                  com o rodapé prometendo validade e sem uma palavra. A decisão
+                  do plano ("recusar revoga o token") foi ATENUADA de propósito:
+                  revogar deixaria a página dizendo "link inválido", que é pior
+                  que a verdade — o registro fica legível, sem botão. */}
+              {dados!.status === "RECUSADO" ? (
+                <div className="rounded-md border p-3 text-sm text-muted-foreground" data-testid="proposta-encerrada">
+                  Esta proposta foi encerrada. Se você ainda procura o vestido, é só falar com a
+                  sua vendedora — ela monta uma proposta nova.
+                </div>
+              ) : null}
+
+              {/* A03.3: o erro do aceite aparece ONDE o dedo está. */}
+              {erroDoAceite && (
+                <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm" data-testid="erro-do-aceite">
+                  {erroDoAceite}
+                </div>
               )}
 
               {/* E74: o aceite. Aceita → comprovante; ENVIADO sem aceite → botão. */}

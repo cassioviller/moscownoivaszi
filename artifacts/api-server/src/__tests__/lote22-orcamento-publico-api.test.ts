@@ -40,9 +40,21 @@ describe("Orçamento — link público (E13)", () => {
     ag.post(`/api/lojas/${f.lojaId}/orcamentos/${orcamentoId}/link`);
   const abrir = (token: string) => request(app).get(`/api/orcamentos/publico?token=${token}`);
 
+  /**
+   * O1/E166: o link exige ≥1 item, e estes quatro casos nasceram com o
+   * orçamento VAZIO — eles provavam token, carimbo e expiração num orçamento
+   * que hoje não pode virar link nenhum. Cada um ganha o vestido que o caso
+   * sempre pressupôs; o que eles provam não mudou.
+   */
+  const comItem = async (leadId: string, status: "RASCUNHO" | "ENVIADO" | "RECUSADO") => {
+    const orc = await criarOrcamento(f, { leadId, status });
+    await criarOrcamentoItem(f, { orcamentoId: orc.id, descricao: "Vestido", valorUnitario: 5000 });
+    return orc;
+  };
+
   it("gera token de 43 chars com ~7 dias, e RASCUNHO vira ENVIADO (compartilhar É enviar)", async () => {
     const lead = await criarLead(f);
-    const orc = await criarOrcamento(f, { leadId: lead.id, status: "RASCUNHO" });
+    const orc = await comItem(lead.id, "RASCUNHO");
 
     const res = await gerar(orc.id).expect(200);
     expect(res.body.token).toHaveLength(43);
@@ -87,7 +99,7 @@ describe("Orçamento — link público (E13)", () => {
 
   it("a primeira abertura carimba publicoAbertoEm — e a segunda NÃO regrava", async () => {
     const lead = await criarLead(f);
-    const orc = await criarOrcamento(f, { leadId: lead.id, status: "ENVIADO" });
+    const orc = await comItem(lead.id, "ENVIADO");
     const { body: link } = await gerar(orc.id).expect(200);
 
     await abrir(link.token).expect(200);
@@ -105,7 +117,7 @@ describe("Orçamento — link público (E13)", () => {
 
   it("regenerar troca o token e o link antigo morre em 404", async () => {
     const lead = await criarLead(f);
-    const orc = await criarOrcamento(f, { leadId: lead.id, status: "ENVIADO" });
+    const orc = await comItem(lead.id, "ENVIADO");
     const { body: antigo } = await gerar(orc.id).expect(200);
     const { body: novo } = await gerar(orc.id).expect(200);
     expect(novo.token).not.toBe(antigo.token);
@@ -116,7 +128,7 @@ describe("Orçamento — link público (E13)", () => {
 
   it("expirado é 410; token desconhecido é 404; RECUSADO não gera (422)", async () => {
     const lead = await criarLead(f);
-    const orc = await criarOrcamento(f, { leadId: lead.id, status: "ENVIADO" });
+    const orc = await comItem(lead.id, "ENVIADO");
     const { body: link } = await gerar(orc.id).expect(200);
     await db
       .update(orcamentosTable)
@@ -126,7 +138,9 @@ describe("Orçamento — link público (E13)", () => {
 
     await abrir("token-que-nao-existe").expect(404);
 
-    const recusado = await criarOrcamento(f, { leadId: lead.id, status: "RECUSADO" });
+    // Com item: o 422 é por estar RECUSADO, não por estar vazio (O1/E166 pôs
+    // as duas guardas na mesma porta, e a de RECUSADO vem primeiro).
+    const recusado = await comItem(lead.id, "RECUSADO");
     const res = await gerar(recusado.id).expect(422);
     expect(res.body.error).toBe("ORCAMENTO_RECUSADO");
   });

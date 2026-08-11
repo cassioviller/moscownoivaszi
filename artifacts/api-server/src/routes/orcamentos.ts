@@ -161,6 +161,10 @@ async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: stri
     totalBruto,
     totalLiquido,
     hash,
+    // O7/C5 (E166): o que a página dela mostra acima do comprovante congela
+    // JUNTO — antes, observações e validade eram lidas da linha viva.
+    observacoes: orcamento.observacoes,
+    validade: orcamento.validade,
   });
 }
 
@@ -682,6 +686,22 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
 
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
   const virandoEnviado = parsed.data.status === "ENVIADO" && existente.status !== "ENVIADO";
+  // O1 (E166): "marcar como enviado" é a segunda porta que congela versão — e
+  // congelar o vazio cria o aceite de R$ 0,00 que trava a venda inteira.
+  if (virandoEnviado) {
+    const [temItem] = await db.select({ id: orcamentoItensTable.id })
+      .from(orcamentoItensTable)
+      .where(eq(orcamentoItensTable.orcamentoId, orcamentoId as string))
+      .limit(1);
+    if (!temItem) {
+      res.status(422).json({
+        error: "ORCAMENTO_VAZIO",
+        detalhe: "A proposta não tem nenhum item — lance o vestido antes de marcar como enviada.",
+        campos: [{ campo: "itens", motivo: "Lance ao menos um item" }],
+      });
+      return;
+    }
+  }
   const mexeNoDesconto =
     parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined;
   // B11/E95: a marca de ENVIADO e a versão congelada nascem juntas ou não
@@ -1104,6 +1124,45 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads"
     return;
   }
 
+  /**
+   * O1 (E166) — o link congelava um orçamento VAZIO, e era a ação primária da
+   * tela de um orçamento novo.
+   *
+   * A versão 1 nascia com `totalLiquido: 0` e hash do conteúdo vazio; a
+   * página da noiva imprimia **Total R$ 0,00** com o botão "Aceitar" aceso.
+   * Ela aceitava, o orçamento ia para APROVADO — terminal — e a vendedora não
+   * conseguia mais lançar o vestido de R$ 5.000,00: 422 no item, 422 no
+   * contrato. Uma venda inteira sem contrato possível, e o aceite gravado era
+   * de zero. A versão nunca mais congela vazia.
+   */
+  const [temItem] = await db.select({ id: orcamentoItensTable.id })
+    .from(orcamentoItensTable)
+    .where(eq(orcamentoItensTable.orcamentoId, orcamentoId))
+    .limit(1);
+  if (!temItem) {
+    res.status(422).json({
+      error: "ORCAMENTO_VAZIO",
+      detalhe: "A proposta não tem nenhum item — lance o vestido antes de mandar o link para a noiva.",
+      campos: [{ campo: "itens", motivo: "Lance ao menos um item" }],
+    });
+    return;
+  }
+
+  /**
+   * D3 (E166, decisão da dona) — o link regenerado de uma proposta VENCIDA
+   * re-abre a validade EXPLICITAMENTE, em vez de por acidente.
+   *
+   * O aceite passou a barrar proposta vencida (C6): sem isto, regenerar o link
+   * entregaria à noiva uma página que só sabe dizer "venceu". Reenviar É
+   * reabrir a negociação: a validade recomeça (30 dias, a régua da casa) e uma
+   * versão NOVA congela com ela — a noiva aceita o que está vendo, prazo
+   * incluído, e a aba velha esbarra na guarda de versão do E160.
+   */
+  const validadeVencida = !!orcamento.validade && orcamento.validade < new Date();
+  const validadeNova = validadeVencida
+    ? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS))
+    : null;
+
   const token = gerarTokenConvite();
   const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
   // B11/E95: o link, a marca de ENVIADO e a versão congelada, na mesma
@@ -1116,12 +1175,15 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads"
         publicoToken: token,
         publicoExpiraEm: expiraEm,
         ...(orcamento.status === "RASCUNHO" ? { status: "ENVIADO" as const } : {}),
+        ...(validadeNova ? { validade: validadeNova } : {}),
         updatedAt: new Date(),
       })
       .where(eq(orcamentosTable.id, orcamento.id));
 
     // E75: compartilhar É enviar — e enviar congela a versão que a noiva verá.
-    if (orcamento.status === "RASCUNHO") {
+    // D3: reabrir uma proposta vencida também congela — a validade nova entra
+    // no snapshot que ela vai ler.
+    if (orcamento.status === "RASCUNHO" || validadeNova) {
       await criarVersaoEnviada(tx, lojaId, orcamentoId);
     }
   });

@@ -34,6 +34,20 @@ export function diaDeNegocio(data: Date | string): string {
   return new Date(data).toISOString().slice(0, 10);
 }
 
+/**
+ * O mesmo dia de negócio escrito como a noiva lê: DD/MM/AAAA.
+ *
+ * Nasce aqui, e não na rota, porque a régua de formatadores (S30) diz onde
+ * formatador pode nascer — e porque a inversão não precisa de `Intl` nenhum:
+ * `diaDeNegocio` já resolveu a parte difícil, que é qual dia é. Duas rotas
+ * declararam `new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" })` para
+ * imprimir a mesma frase de validade vencida; a varredura reprovou as duas.
+ */
+export function diaBR(data: Date | string): string {
+  const [ano, mes, dia] = diaDeNegocio(data).split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
 /** Instante em que o dia local começa em São Paulo. */
 export function inicioDoDia(dia: string): Date {
   return new Date(`${dia}T00:00:00-03:00`);

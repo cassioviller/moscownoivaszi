@@ -1,6 +1,7 @@
 import { db, orcamentosTable, orcamentoVersoesTable, auditLogTable, leadsTable } from "@workspace/db";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { diaBR } from "@workspace/financeiro-core";
 import { avancarEtapaLead } from "./estados";
 
 /**
@@ -29,7 +30,20 @@ export type DesfechoAceite =
   | { ok: true; aceitoEm: Date; gravadoAgora: boolean }
   | { ok: false; motivo: "SUMIU" }
   | { ok: false; motivo: "NAO_ENVIADO"; status: string }
-  | { ok: false; motivo: "VERSAO_MUDOU"; versaoAtual: number | null };
+  | { ok: false; motivo: "VERSAO_MUDOU"; versaoAtual: number | null }
+  | { ok: false; motivo: "VALIDADE_VENCIDA"; validade: Date };
+
+/**
+ * A frase da validade vencida mora com o desfecho, não com quem responde HTTP.
+ *
+ * As duas portas do aceite (`orcamentos-publico.ts` e `portal.ts`) nasceram
+ * cada uma com sua cópia da frase e do formatador — a mesma divisão que o C8
+ * já tinha desfeito na pré-condição de status. Uma cópia, uma frase: o
+ * caminho de volta que ela lê é o mesmo pelas duas portas.
+ */
+export function mensagemValidadeVencida(validade: Date): string {
+  return `Esta proposta venceu em ${diaBR(validade)} — peça uma atualização à sua vendedora para aceitar.`;
+}
 
 /**
  * @param versaoVista O número da versão que a NOIVA tinha na tela. Quando vem,
@@ -69,6 +83,7 @@ export async function aceitarOrcamentoEnviado(
       .select({
         status: orcamentosTable.status,
         aceitoEm: orcamentosTable.aceitoEm,
+        validade: orcamentosTable.validade,
       })
       .from(orcamentosTable)
       .where(eq(orcamentosTable.id, orcamento.id))
@@ -100,7 +115,7 @@ export async function aceitarOrcamentoEnviado(
      * uma proposta que ela nunca leu.
      */
     const [versao] = await tx
-      .select({ numero: orcamentoVersoesTable.numero, hash: orcamentoVersoesTable.hash })
+      .select({ numero: orcamentoVersoesTable.numero, hash: orcamentoVersoesTable.hash, validade: orcamentoVersoesTable.validade })
       .from(orcamentoVersoesTable)
       .where(eq(orcamentoVersoesTable.orcamentoId, orcamento.id))
       .orderBy(desc(orcamentoVersoesTable.numero))
@@ -109,6 +124,24 @@ export async function aceitarOrcamentoEnviado(
     const numeroAtual = versao?.numero ?? null;
     if (versaoVista !== undefined && versaoVista !== null && versaoVista !== numeroAtual) {
       return { ok: false, motivo: "VERSAO_MUDOU", versaoAtual: numeroAtual } as const;
+    }
+
+    /**
+     * C6/A03.4 (E166, decisão D3) — o aceite não conferia a validade em porta
+     * NENHUMA: três lentes viram o mesmo furo. A proposta vencida em 10/07 era
+     * aceita em 11/08 na mesma página que dizia "válida até 10/07/2026" — e o
+     * contrato fechava em R$ 5.000,00 com a coleção já remarcada para
+     * R$ 5.800,00: R$ 800,00 abaixo do preço vigente. Só o TTL do LINK era
+     * conferido, e a expiração do link protege o token, não o preço.
+     *
+     * A régua é a validade que a PÁGINA DELA mostra: a congelada na versão
+     * (E166), com a linha viva como fallback das versões antigas. O caminho de
+     * volta é a D3: o relink re-abre a validade explicitamente e congela
+     * versão nova.
+     */
+    const validadeEfetiva = versao?.validade ?? sobTranca.validade;
+    if (validadeEfetiva && validadeEfetiva < agora) {
+      return { ok: false, motivo: "VALIDADE_VENCIDA", validade: validadeEfetiva } as const;
     }
 
     // O CAS continua — ele é a rede do clique duplo simultâneo, que a tranca

@@ -5930,10 +5930,13 @@ export const GetPortalResponse = zod.object({
 
 /**
  * Delega à MESMA rotina do E74 (uma transação, um invariante): grava instante, versão e hash, avança para APROVADO e deixa a linha na auditoria como "(link público)". Idempotente. O alvo é o mesmo orçamento que o GET /portal exibe.
+ *
+ * S-O7/E166: `versao` chega aqui pelo mesmo motivo do link público — a sobra do E160 ficou aberta porque a página do portal não EXIBIA número de versão, e a proteção dela era só a leitura sob tranca. Exibir não é o que importa: a página já RECEBE o `versaoNumero` (o portal monta a proposta com a mesma função), e mandar de volta o que se leu é o que prova que a proposta não mudou embaixo dela.
  * @summary O aceite da proposta, pelo portal
  */
 export const AceitarPortalQueryParams = zod.object({
-  "token": zod.coerce.string()
+  "token": zod.coerce.string(),
+  "versao": zod.coerce.number().optional().describe('O `versaoNumero` que a página do portal recebeu.')
 })
 
 export const AceitarPortalResponse = zod.object({

@@ -107,6 +107,17 @@ export const orcamentoVersoesTable = pgTable("orcamento_versoes", {
   totalBruto: decimal("total_bruto", { precision: 10, scale: 2, mode: "number" }).notNull(),
   totalLiquido: decimal("total_liquido", { precision: 10, scale: 2, mode: "number" }).notNull(),
   hash: text("hash").notNull(),
+  /**
+   * O7/C5 (E166) — a página da noiva mostra observações e validade LOGO ACIMA
+   * do comprovante de aceite, e as duas eram lidas da linha VIVA: a observação
+   * mudava de "entrada de R$ 1.500,00" para "entrada de R$ 2.500,00" com o
+   * total intacto, o hash continuava batendo, e o comprovante passava a
+   * afirmar R$ 1.000,00 a mais de entrada sob o mesmo "Aceito em". Agora as
+   * duas congelam com a versão. Nulos = versão anterior a esta coluna — a
+   * página cai na linha viva, como sempre fez.
+   */
+  observacoes: text("observacoes"),
+  validade: timestamp("validade", { withTimezone: true }),
   criadaEm: timestamp("criada_em", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   numeroUnq: uniqueIndex("orcamento_versoes_numero_unq").on(t.orcamentoId, t.numero),

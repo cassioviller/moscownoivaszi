@@ -7,7 +7,7 @@ import {
   AceitarOrcamentoPublicoQueryParams,
   AceitarOrcamentoPublicoResponse,
 } from "@workspace/api-zod";
-import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
+import { aceitarOrcamentoEnviado, mensagemValidadeVencida } from "../lib/aceite-orcamento";
 import { montarOrcamentoPublico } from "../lib/visao-noiva";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -101,6 +101,15 @@ router.post("/orcamentos/publico/aceite", async (req, res): Promise<void> => {
         error: "PROPOSTA_MUDOU",
         detalhe:
           "Esta proposta foi atualizada depois que você abriu a página. Recarregue para ver a versão nova antes de aceitar.",
+      });
+      return;
+    }
+    // C6/D3 (E166): a frase diz o caminho — pedir a atualização à vendedora,
+    // que reabre a validade regenerando o link.
+    if (desfecho.motivo === "VALIDADE_VENCIDA") {
+      res.status(422).json({
+        error: "VALIDADE_VENCIDA",
+        detalhe: mensagemValidadeVencida(desfecho.validade),
       });
       return;
     }

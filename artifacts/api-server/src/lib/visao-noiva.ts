@@ -46,8 +46,12 @@ export async function montarOrcamentoPublico(
       lojaNome,
       noivaNome,
       status: orcamento.status,
-      validade: orcamento.validade,
-      observacoes: orcamento.observacoes,
+      // O7/C5 (E166): a página lê o SNAPSHOT — observações e validade eram as
+      // duas únicas coisas da tela dela vindas da linha viva, impressas logo
+      // acima do comprovante. Nulo = versão anterior às colunas: cai na linha,
+      // como sempre foi.
+      validade: versao.validade ?? orcamento.validade,
+      observacoes: versao.observacoes ?? orcamento.observacoes,
       descontoTipo: versao.descontoTipo,
       descontoValor: versao.descontoValor,
       totalBruto: versao.totalBruto,

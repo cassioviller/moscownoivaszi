@@ -3033,6 +3033,10 @@ token: string;
 
 export type AceitarPortalParams = {
 token: string;
+/**
+ * O `versaoNumero` que a página do portal recebeu.
+ */
+versao?: number;
 };
 
 export type AceitarPortal200 = {

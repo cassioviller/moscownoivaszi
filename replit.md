@@ -547,7 +547,20 @@ rode o codegen.
   com aceite reconstrói o conteúdo vivo pela MESMA régua do congelamento
   (`conteudoEnviado`) e compara com o `aceiteHash` — divergiu, 422
   `ORCAMENTO_DIVERGE_DO_ACEITE`: o contrato nasce do que a noiva viu, nunca de
-  um valor que ela não aceitou.
+  um valor que ela não aceitou. **A versão não congela VAZIA** (E166): as duas
+  portas que congelam (`POST /link` e o PATCH que marca ENVIADO) exigem ≥1
+  item — 422 `ORCAMENTO_VAZIO` —, porque o aceite de R$ 0,00 leva o orçamento a
+  APROVADO terminal e mata a venda. E o snapshot cobre **tudo o que a página
+  dela mostra**: `observacoes` e `validade` congelam junto dos itens, e não
+  mais da linha viva.
+- **A validade barra o aceite, e reenviar É reabrir a negociação** (E166,
+  decisão D3 da dona). Proposta vencida responde 422 `VALIDADE_VENCIDA` com a
+  data e o caminho ("peça uma atualização à sua vendedora") — pelas DUAS portas
+  do aceite (link público e portal), que agora **também conferem a versão que a
+  página leu**. O `POST /link` de uma proposta vencida reabre a validade (30
+  dias) e congela versão NOVA com ela: a noiva aceita o que está vendo, prazo
+  incluído. Só o TTL do LINK era conferido antes, e a expiração do link protege
+  o token, não o preço.
 - **A régua da ação destrutiva** (E10/E99). Toda ação que apaga, desfaz dinheiro
   ou tira acesso **pede confirmação**; a confirmação **nomeia o objeto** ("o
   portal de Marina", "Parcela 3") **e o que se perde** — o valor em dinheiro

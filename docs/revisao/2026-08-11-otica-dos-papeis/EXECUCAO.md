@@ -21,8 +21,8 @@ projetos**.
 | ~~**E163**~~ | ~~as guardas que se desligam no nulo~~ | B | ✅ `d37fa3a` · [relatório](execucao/E163.md) |
 | ~~**E164**~~ | ~~o escopo da noiva: loja E dona, em toda porta~~ | C | ✅ `0eeb297` · [relatório](execucao/E164.md) — encolhido pelo E161 (G2/A05.3 fecharam lá) |
 | ~~**E165**~~ | ~~o PDF fala a verdade e cabe na página~~ | C | ✅ `784dd3c` · [relatório](execucao/E165.md) |
-| E166 | o link público cumpre o que promete | C | ⏳ próximo |
-| E167 | a avaria fecha | C | ⏳ |
+| ~~**E166**~~ | ~~o link público cumpre o que promete~~ | C | ✅ `<hash>` · [relatório](execucao/E166.md) — fecha a S-O7 junto; **o primeiro E2E do caminho público** (eram zero) |
+| E167 | a avaria fecha | C | ⏳ próximo |
 | E168 | a agenda diz a mesma coisa em todas as telas | C | ⏳ |
 | E169 | a tela do contrato e o dinheiro miúdo | C | ⏳ |
 | E170 | os testes que pregavam o defeito passam a pegá-lo | D | ⏳ |
@@ -45,13 +45,15 @@ commit** do épico que as viu.
 | S-O4 | **R6** — o PATCH de reserva propaga `casamentoData` sem perguntar aos contratos ATIVOS. O PDF e o portal seguem dizendo 10/05, a janela fica livre para outra noiva, e o `PATCH /contratos` responde "mude a reserva primeiro" — a reserva que já mudou. **Não está em épico nenhum do plano** | 🟡 | E159 | aberta |
 | S-O5 | **R8** — o soft-cancel de bloqueio não toca em `atendimentos`: a prova segue AGENDADA apontando bloqueio cancelado, a peça é alugada para outra e sai na retirada, e a noiva chega para a prova sem vestido. Confirma o A05.2. **Não está em épico nenhum do plano** | 🟡 | E159 | aberta |
 | S-O6 | `contarHistoria` e `cobrancaViva` recebem o executor como `typeof db` com cast — o tipo de transação do drizzle não é atribuível ao do pool. `DbExecutor` (`disponibilidade.ts`) resolveria os dois | 🔵 | E159 | aberta |
-| S-O7 | O aceite pelo PORTAL não manda `versao` (o C2 do E160): a página dele não exibe número de versão, então não há o que comparar. A proteção que ele tem é a leitura sob tranca. Fecha junto do **E166**, que mexe na página da noiva | 🔵 | E160 | aberta |
+| S-O7 | ~~O aceite pelo PORTAL não manda `versao` (o C2 do E160)~~ — **FECHADA no E166**, e o argumento que a mantinha aberta estava errado de lado: não é preciso EXIBIR o número de versão, é preciso devolver o que a página LEU — e ela recebe `versaoNumero` desde sempre (o portal monta a proposta com a mesma `montarOrcamentoPublico`). Enquanto isso não valia, a mesma proposta tinha duas portas e só uma protegida | 🔵 | E160, E166 | **fechada (E166)** |
 | S-O8 | ~~C2 descreve um mecanismo real sobre um gatilho que não existe~~ — **FECHADA no E162**: o desfazer-aceite volta a RASCUNHO e o relink congela versão nova; a guarda `versaoVista` foi conferida contra o gatilho REAL no teste A01.2/S-O8 | 🟡 | E160, E162 | **fechada (E162)** |
 | S-O10 | A etapa **ACEITO** no funil é decisão de produto não perguntada: o aceite avança até ORCAMENTO_ABERTO e a fila responde a visibilidade, mas `ETAPAS_CONVERTIDA` não enxerga o sim, e "do orçamento ao contrato leva quantos dias" segue sem medida agregada | 🟡 | E162 | aberta |
 | S-O11 | A reserva no lead **errado** segue sem troca de dona (a metade do A02.4 que não entrou): a ficha da reserva não edita `leadId`; a adoção só cobre a sem dona | 🟡 | E162 | aberta |
 | S-O12 | `proximo-passo.ts` sem o ramo do aceite: a faixa da ficha ainda diz "Enviar a proposta" com proposta aceita — `EntradaProximoPasso` não carrega orçamentos. A fila e o cartão cobrem o caso; o ramo fecharia o A01.5 por inteiro | 🔵 | E162 | aberta |
 | S-O14 | O botão "Baixar PDF" da tela de contrato não distingue vivo de cancelado — com a tarja do E165 o download ficou seguro; o E169 decide se o botão muda | 🔵 | E165 | aberta |
 | S-O13 | Os três sítios de tela que já liam `descontoTipo && descontoValor` (portal, página pública, orçamento) seguem com a expressão inline em vez de `temDesconto` — comportamento certo, régua não nomeada. Higiene | 🔵 | E163 | aberta |
+| S-O15 | As **duas portas que congelam versão fazem metades diferentes do mesmo gesto**: o `POST /link` reabre a validade da proposta vencida (D3), o PATCH que marca ENVIADO não reabre nada. Hoje não produz defeito — a vendedora que reenvia passa pelo link —, mas é a forma exata que o C8 já teve uma vez (a pré-condição em dois lugares, divergindo). Material para o E171 | 🔵 | E166 | aberta |
+| S-O16 | A página pública lê `dados!` com `!` em dezoito lugares (`orcamento-publico.tsx`). Padrão da tela desde o E13, sem defeito hoje (o ramo de erro retorna antes) — é a asserção que sobrevive a uma refatoração e vira `undefined` em produção | 🔵 | E166 | aberta |
 | S-O9 | `trancarEixos` (E161) tranca a linha da vendedora em `usuarios`, tabela quente compartilhada com login/equipe. Contenção improvável (a tranca dura a transação do agendamento); se aparecer, a alternativa é advisory lock por `(lojaId, vendedoraId)` | 🔵 | E161 | aberta |
 
 ## O que herda das trilhas anteriores

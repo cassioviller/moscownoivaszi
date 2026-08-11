@@ -285,7 +285,18 @@ export default function NoivaPortal() {
                     <Button
                       className="w-full"
                       disabled={aceitar.isPending}
-                      onClick={() => aceitar.mutate({ params })}
+                      /**
+                       * S-O7/E166 — a versão vai junto, como no link público.
+                       * A sobra do E160 ficou aberta por "a página não exibe
+                       * número de versão"; o que protege não é exibir, é
+                       * mandar de volta o número que esta página LEU — e ela
+                       * o recebe desde sempre no `versaoNumero`.
+                       */
+                      onClick={() =>
+                        aceitar.mutate({
+                          params: { ...params, versao: orc.versaoNumero ?? undefined },
+                        })
+                      }
                       data-testid="aceitar-portal"
                     >
                       {aceitar.isPending

@@ -35,7 +35,7 @@ import {
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
 import { leadNaLoja } from "../lib/escopo-loja";
-import { aceitarOrcamentoEnviado } from "../lib/aceite-orcamento";
+import { aceitarOrcamentoEnviado, mensagemValidadeVencida } from "../lib/aceite-orcamento";
 import {
   montarOrcamentoPublico,
   montarVestidosLookbook,
@@ -342,11 +342,23 @@ router.post("/portal/aceite", async (req, res): Promise<void> => {
     res.status(422).json({ error: "NAO_ENVIADO", detalhe: "Não há proposta enviada" });
     return;
   }
-  // C8: a pré-condição é feita UMA vez, sob a tranca, dentro da rotina — esta
-  // rota só traduz o desfecho para HTTP. O portal não manda `versao` porque a
-  // página dele não exibe número de versão; a proteção do C2 que ele tem é a
-  // leitura sob tranca, e isso está registrado como sobra.
-  const desfecho = await aceitarOrcamentoEnviado(orcamento, linha.lead.noivaNome);
+  /**
+   * C8: a pré-condição é feita UMA vez, sob a tranca, dentro da rotina — esta
+   * rota só traduz o desfecho para HTTP.
+   *
+   * S-O7/E166 — o portal passa a mandar `versao`, e a sobra do E160 fecha. Ela
+   * ficou aberta com o argumento "a página dele não exibe número de versão,
+   * então não há o que comparar"; o argumento estava errado de lado. Exibir não
+   * é o ponto — a página do portal **recebe** `versaoNumero` desde sempre (o
+   * portal monta a proposta com a mesma `montarOrcamentoPublico`), e o que
+   * prova que a proposta não mudou embaixo dela é mandar de volta o número que
+   * ela LEU. A proteção deixa de ser só a leitura sob tranca.
+   */
+  const desfecho = await aceitarOrcamentoEnviado(
+    orcamento,
+    linha.lead.noivaNome,
+    parsed.data.versao,
+  );
   if (!desfecho.ok) {
     if (desfecho.motivo === "SUMIU") {
       res.status(404).json({ error: "LINK_INVALIDO" });
@@ -354,6 +366,13 @@ router.post("/portal/aceite", async (req, res): Promise<void> => {
     }
     if (desfecho.motivo === "VERSAO_MUDOU") {
       res.status(409).json({ error: "PROPOSTA_MUDOU", detalhe: "Esta proposta foi atualizada — recarregue a página." });
+      return;
+    }
+    if (desfecho.motivo === "VALIDADE_VENCIDA") {
+      res.status(422).json({
+        error: "VALIDADE_VENCIDA",
+        detalhe: mensagemValidadeVencida(desfecho.validade),
+      });
       return;
     }
     res.status(422).json({ error: "NAO_ENVIADO", detalhe: `Orçamento está ${desfecho.status}` });

@@ -133,6 +133,33 @@ describe("Portal da noiva (E78)", () => {
     expect(status.body.ultimoAcessoEm).toBeTruthy();
   });
 
+  /**
+   * S-O7 (E166) — o portal manda `versao`, e a guarda do C2/E160 passa a valer
+   * pelas DUAS portas.
+   *
+   * A sobra ficou aberta com o argumento "a página do portal não exibe número
+   * de versão, então não há o que comparar". O argumento estava errado de
+   * lado: a página RECEBE `versaoNumero` desde sempre (o portal monta a
+   * proposta com a mesma `montarOrcamentoPublico`) — o que prova que a
+   * proposta não mudou embaixo dela é mandar de volta o número que ela leu.
+   *
+   * VERMELHO ANTES: 200. A rota ignorava a versão, o parâmetro nem existia no
+   * spec, e a aba aberta há uma hora aceitava pelo portal o que a guarda do
+   * link público recusava — a mesma proposta, duas portas, uma protegida.
+   */
+  it("S-O7 · o aceite pelo portal confere a versão que a página leu (409 se mudou)", async () => {
+    const res = await publico()
+      .post(`/api/portal/aceite?token=${token}&versao=1`)
+      .expect(409);
+    expect(res.body.error).toBe("PROPOSTA_MUDOU");
+
+    // E não gravou nada: o orçamento continua ENVIADO, esperando o aceite certo.
+    const [orcamento] = await db.select().from(orcamentosTable)
+      .where(eq(orcamentosTable.id, orcamentoId));
+    expect(orcamento.status).toBe("ENVIADO");
+    expect(orcamento.aceitoEm).toBeNull();
+  });
+
   it("o aceite pelo portal grava o MESMO rastro do E74", async () => {
     const res = await publico().post(`/api/portal/aceite?token=${token}`).expect(200);
     expect(res.body.aceitoEm).toBeTruthy();

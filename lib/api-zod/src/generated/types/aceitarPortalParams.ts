@@ -8,4 +8,8 @@
 
 export type AceitarPortalParams = {
 token: string;
+/**
+ * O `versaoNumero` que a página do portal recebeu.
+ */
+versao?: number;
 };
