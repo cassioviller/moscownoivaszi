@@ -14,8 +14,11 @@ test.describe("Contratos", () => {
     await expect(page.getByText(/Contrato #/).first()).toBeVisible();
   });
 
-  // FALHA ESPERADA no main (achado C4): botão "Novo Contrato" sem handler
-  // (contratos/index.tsx:17-20).
+  // Era o C4 (botão "Novo Contrato" sem handler), fechado na rodada 6 — este
+  // teste prova o conserto. S-M28: o comentário dizia "FALHA ESPERADA no
+  // main" sobre uma suíte verde com retries: 0 — quem lesse gastava o
+  // primeiro gesto conferindo um defeito que não existe, ou descartava um
+  // vermelho REAL como "a falha documentada".
   test("botão Novo Contrato leva a um fluxo de criação", async ({ page }) => {
     await page.goto("/contratos");
     await page.getByRole("button", { name: "Novo Contrato" }).click();
@@ -23,20 +26,19 @@ test.describe("Contratos", () => {
     const navegou = !page.url().endsWith("/contratos");
     expect(
       abriuDialog || navegou,
-      "Novo Contrato deveria abrir formulário ou navegar (botão sem handler em contratos/index.tsx:17)",
+      "Novo Contrato deveria abrir formulário ou navegar — se falhou, o C4 regrediu",
     ).toBe(true);
   });
 
-  // FALHA ESPERADA no main (achado C2): o detalhe chama GET /api/contratos/{id};
-  // o servidor só tem /api/lojas/{lojaId}/contratos/{id} → 404 → "não encontrado"
-  // para um contrato que existe. Comprovado também por probe direto na API.
+  // Era o C2 (o detalhe chamava GET /api/contratos/{id} sem loja e levava
+  // 404), fechado na rodada 6 — este teste prova o conserto.
   test("detalhe do contrato carrega valor e parcelas", async ({ page }) => {
     test.skip(!estado.contratoId, "sem contrato seedado");
     const erros = coletarErrosApi(page);
     await page.goto(`/contratos/${estado.contratoId}`);
     await expect(
       page.getByText("Detalhes financeiros"),
-      `Detalhe do contrato deveria abrir (bug C2 — URL divergente):\n${resumoErros(erros)}`,
+      `Detalhe do contrato deveria abrir — se falhou, o C2 (URL divergente) regrediu:\n${resumoErros(erros)}`,
     ).toBeVisible();
   });
 

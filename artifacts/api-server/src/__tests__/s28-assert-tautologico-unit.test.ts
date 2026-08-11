@@ -416,9 +416,13 @@ describe("S28 — nenhum assert da suíte prova a si mesmo", () => {
       "const leadA = await criarLead(fixtureDaLojaDeTeste);\n" +
       "const leadB = await criarLead(fixtureDaLojaDeTeste);\n" +
       "expect(leadA.id).not.toBe(leadB.id);";
-    // Elas SÃO comparadas — e é o caso em que a comparação é o ponto (provar
-    // que são diferentes). O `.not` é o que separa: por isso ele não entra.
-    expect(gemeasCompararadasEm(legitimo).length).toBeLessThanOrEqual(1);
+    // S-M28 (rodada 2, achado 10#2): o comentário antigo jurava que o `.not`
+    // separava e o assert (`toBeLessThanOrEqual(1)`) não podia falhar — um par
+    // só devolve 0 ou 1. MEDIDO: a regex `juntas` tem `[^;]*` entre o expect e
+    // o matcher, então `.not.toBe` CASA — o molde legítimo É flagrado hoje, e
+    // quem esbarrar na varredura principal ajusta o teste novo sabendo disso,
+    // em vez de desconfiar da sonda guiado por um docbloco que mentia.
+    expect(gemeasCompararadasEm(legitimo).length).toBe(1);
 
     const semAssert =
       "const leadA = await criarLead(fixtureDaLojaDeTeste);\n" +

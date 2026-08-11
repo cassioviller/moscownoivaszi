@@ -322,14 +322,27 @@ export default function Projecao() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm">
+                {/* S-M28 (rodada 2, achado 11#3): a S-M4 fixa diaNegativo=hoje
+                    quando o saldo de partida é negativo, e trocou a frase nas
+                    duas irmãs (alerta-caixa, sino) — esta terceira consumidora
+                    ficou de fora: a dona clicava em "O caixa já está negativo"
+                    no sino e aterrissava aqui lendo "fica negativo em 10 de
+                    agosto" — o fato presente como previsão futura. O mesmo
+                    ternário das irmãs. */}
                 {curva.diaNegativo ? (
-                  <>
-                    Caixa fica{" "}
-                    <span className="font-semibold text-destructive">
-                      negativo em {diaMesLongo(curva.diaNegativo)}
-                    </span>
-                    .
-                  </>
+                  curva.diaNegativo <= hoje ? (
+                    <>
+                      <span className="font-semibold text-destructive">O caixa já está negativo</span>.
+                    </>
+                  ) : (
+                    <>
+                      Caixa fica{" "}
+                      <span className="font-semibold text-destructive">
+                        negativo em {diaMesLongo(curva.diaNegativo)}
+                      </span>
+                      .
+                    </>
+                  )
                 ) : (
                   <>Caixa positivo em todo o horizonte.</>
                 )}{" "}

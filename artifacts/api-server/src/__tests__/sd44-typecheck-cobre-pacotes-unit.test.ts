@@ -123,4 +123,20 @@ describe("S-D44 — a lista de pacotes casa com quem o typecheck alcança", () =
     expect(referenciasDaRaiz().length).toBeGreaterThanOrEqual(5);
     expect(filtrosDaRaiz().inclui.length).toBeGreaterThanOrEqual(2);
   });
+
+  /**
+   * S-M28 (rodada 2, achado 10#1): o `e2e/` não tem package.json, então
+   * `pacotes()` nunca o enxerga — ele é alcançado EXCLUSIVAMENTE pela linha
+   * `typecheck:e2e` encadeada no script da raiz, e nenhum assert a defendia.
+   * Apagar o `&& pnpm run typecheck:e2e` — o gesto exato que criou a fresta
+   * da S-D23 — deixava esta sonda verde e os 63 arquivos de e2e/ sem
+   * typecheck de novo (a S-D25 mediu 7 specs vermelhos por um erro desses).
+   */
+  it("o script da raiz encadeia o typecheck do e2e/ — a única rota até ele", () => {
+    const raiz = JSON.parse(readFileSync(join(RAIZ, "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    expect(raiz.scripts.typecheck).toContain("typecheck:e2e");
+    expect(raiz.scripts["typecheck:e2e"]).toBeTruthy();
+  });
 });
