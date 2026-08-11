@@ -58,6 +58,8 @@ import {
   saldoAberto,
   abertoEmCentavos,
   teveRecebimento,
+  podeRemoverParcela,
+  motivoNaoRemove,
 } from "@/lib/financeiro/forma";
 import { hojeLocal } from "@/lib/financeiro/datas";
 import { mensagemApi } from "@/lib/erro-api";
@@ -66,13 +68,21 @@ import { mensagemApi } from "@/lib/erro-api";
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
 // defeito que o épico existe para fechar.
 import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos, temDesconto } from "@/lib/financeiro/dinheiro";
-import { planoDaDigitacao, temCarne } from "@/lib/financeiro/plano";
+import {
+  planoDaDigitacao,
+  temCarne,
+  totalDoCarneCentavos,
+  faltanteDoCarneCentavos,
+} from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 
 const MENSAGENS_ERRO: Record<string, string> = {
   JA_TEM_PLANO: "Este contrato já tem um plano de pagamento.",
+  // P7/E169: completar o carnê é gesto próprio, e a entrada não cabe nele.
+  ENTRADA_NO_COMPLEMENTO:
+    "A entrada só existe quando o carnê nasce — para completar o que falta, deixe a entrada em branco.",
   ENTRADA_MAIOR: "A entrada não pode ser maior que o total do contrato.",
   CONTRATO_NAO_ATIVO: "Contrato cancelado — sem movimentação de parcelas.",
   CONTRATO_JA_CANCELADO: "Contrato já está cancelado.",
@@ -167,9 +177,28 @@ export default function ContratoDetail() {
     };
   }, [parcelas]);
 
-  const totalPlanoCentavos = useMemo(
-    () => somaCentavos(parcelas.filter((p) => p.status !== "CANCELADA"), (p) => p.valorPrevisto),
+  /**
+   * P8/E169 — o "Total do plano" e o alerta que ele acende falam do CARNÊ.
+   *
+   * A soma era de toda parcela não-CANCELADA, e a parcela de avaria
+   * (`origem: AVARIA`) entra nela por construção: num contrato de R$ 5.000,00
+   * com um reparo de R$ 350,00, o total do plano dava **R$ 5.350,00** e o
+   * alerta vermelho acendia sobre um estado que o servidor considera
+   * perfeitamente correto. O alarme que existe para denunciar carnê corrompido
+   * tocava em todo contrato com avaria — e por isso deixaria de ser lido
+   * justamente quando a divergência fosse verdadeira.
+   *
+   * É a mesma separação do papel (P12/E165): o carnê de um lado, as cobranças
+   * fora do valor total do outro, cada um com o próprio subtotal.
+   */
+  const totalCarneCentavos = useMemo(() => totalDoCarneCentavos(parcelas), [parcelas]);
+  const foraDoCarne = useMemo(
+    () => parcelas.filter((p) => p.origem !== "PLANO" && p.status !== "CANCELADA"),
     [parcelas],
+  );
+  const totalForaDoCarneCentavos = useMemo(
+    () => somaCentavos(foraDoCarne, (p) => p.valorPrevisto),
+    [foraDoCarne],
   );
 
   /**
@@ -182,19 +211,33 @@ export default function ContratoDetail() {
    * `gerar-plano` executa no servidor (routes/contratos.ts), inclusive o
    * default da entrada vencer hoje.
    */
+  /**
+   * P7/E169 — quanto falta no carnê. Removida a parcela 10 de R$ 500,00 de um
+   * carnê de R$ 5.000,00, o plano soma R$ 4.500,00, `temCarne` segue verdadeiro
+   * e o formulário sumia para sempre: **não havia gesto nenhum na aplicação que
+   * devolvesse aqueles R$ 500,00** — o servidor respondia 409 JA_TEM_PLANO. Ele
+   * agora aceita completar, e é este número que a tela divide.
+   */
+  const faltanteCarneCentavos = contrato
+    ? faltanteDoCarneCentavos(parcelas, centavos(contrato.valorTotal))
+    : 0;
+  const completandoCarne = faltanteCarneCentavos > 0;
+
   const previaDoPlano = useMemo(
     () =>
       planoDaDigitacao({
-        totalCentavos: contrato ? centavos(contrato.valorTotal) : 0,
-        entradaDigitada: entrada,
+        // Completando, o que se divide é o BURACO — a prévia mostra o mesmo
+        // carnê que o servidor vai gravar, como a régua S10 manda.
+        totalCentavos: completandoCarne ? faltanteCarneCentavos : contrato ? centavos(contrato.valorTotal) : 0,
+        entradaDigitada: completandoCarne ? "" : entrada,
         numParcelasDigitado: numParcelas,
         primeiroVencimento,
         vencimentoEntrada: hojeLocal(),
       }),
-    [contrato, entrada, numParcelas, primeiroVencimento],
+    [contrato, entrada, numParcelas, primeiroVencimento, completandoCarne, faltanteCarneCentavos],
   );
   const planoDivergente =
-    parcelas.length > 0 && contrato != null && totalPlanoCentavos !== centavos(contrato.valorTotal);
+    contratoTemCarne && contrato != null && totalCarneCentavos !== centavos(contrato.valorTotal);
 
   /**
    * Receber, estornar, remover parcela e cancelar contrato são MOVIMENTO DE
@@ -295,7 +338,10 @@ export default function ContratoDetail() {
         lojaId: activeLojaId!,
         contratoId: id!,
         data: {
-          ...(entradaValor ? { entrada: entradaValor } : {}),
+          // P7: completar o carnê nunca cria entrada — `numero === 0` significa
+          // ENTRADA em seis pontos do sistema, e a do contrato já foi combinada
+          // quando o carnê nasceu. O servidor recusa com ENTRADA_NO_COMPLEMENTO.
+          ...(entradaValor && !completandoCarne ? { entrada: entradaValor } : {}),
           numParcelas: n,
           // E95: a data é a da PARCELA 1. Antes esta rota a usava como data da
           // ENTRADA quando havia entrada, e a parcela 1 caía 30 dias depois —
@@ -304,7 +350,7 @@ export default function ContratoDetail() {
         },
       });
       await invalidarParcelas();
-      toast({ title: "Plano de pagamento gerado" });
+      toast({ title: completandoCarne ? "Carnê completado" : "Plano de pagamento gerado" });
     } catch (err) {
       toast({
         title: "Não deu para gerar o plano",
@@ -536,18 +582,31 @@ export default function ContratoDetail() {
                           </div>
                         </div>
                         {podeMexer && estaAberta(parcela) && (
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={() => abrirReceber(parcela)}>
                               {parcela.status === "PARCIAL" ? "Receber o restante" : "Receber"}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => setConfirmacao({ tipo: "remover", parcela })}
-                            >
-                              Remover
-                            </Button>
+                            {/* P6/E169: "aberta" decide quem se RECEBE; quem se
+                                REMOVE é `podeRemoverParcela`, a régua do
+                                servidor. Em PARCIAL o botão levava a um 422
+                                cuja frase — "Só parcelas em aberto podem ser
+                                removidas" — se contradizia sobre uma parcela
+                                que ESTÁ em aberto, e não havia gesto possível.
+                                No lugar dele, o gesto que existe. */}
+                            {podeRemoverParcela(parcela) ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setConfirmacao({ tipo: "remover", parcela })}
+                              >
+                                Remover
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground" data-testid="motivo-nao-remove">
+                                {motivoNaoRemove(parcela)}
+                              </span>
+                            )}
                           </div>
                         )}
                         {/* E115: `teveRecebimento` agora vê a CANCELADA que
@@ -565,17 +624,35 @@ export default function ContratoDetail() {
                     );
                   })}
                 </ul>
-                <div className="flex justify-between items-center pt-1">
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Total do plano</span>
-                  <span className={`font-semibold text-sm ${planoDivergente ? "text-destructive" : ""}`}>
-                    {brl(reais(totalPlanoCentavos))}
-                  </span>
-                </div>
+                {contratoTemCarne && (
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Total do carnê</span>
+                    <span className={`font-semibold text-sm ${planoDivergente ? "text-destructive" : ""}`}>
+                      {brl(reais(totalCarneCentavos))}
+                    </span>
+                  </div>
+                )}
+                {/* P8: as cobranças que NÃO são o carnê ganham subtotal próprio,
+                    como no papel (P12/E165) — elas não entram no valor total do
+                    contrato e não têm por que fazer o alerta acender. */}
+                {foraDoCarne.length > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Cobranças fora do carnê
+                    </span>
+                    <span className="text-sm text-muted-foreground" data-testid="total-fora-do-carne">
+                      {brl(reais(totalForaDoCarneCentavos))}
+                    </span>
+                  </div>
+                )}
                 {planoDivergente && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      O total do plano difere do valor total do contrato ({brl(contrato.valorTotal)}).
+                      O carnê soma {brl(reais(totalCarneCentavos))} e o contrato é de{" "}
+                      {brl(contrato.valorTotal)}.
+                      {faltanteCarneCentavos > 0 &&
+                        ` Faltam ${brl(reais(faltanteCarneCentavos))} — gere as parcelas que completam o carnê aqui embaixo.`}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -585,7 +662,9 @@ export default function ContratoDetail() {
                 PLANO) — não enquanto não houver parcela nenhuma. A avaria
                 cobrada antes do carnê aparece na lista acima E o plano ainda
                 se gera. */}
-            {!contratoTemCarne && podeCriarParcela && contratoAtivo ? (
+            {/* P7/E169: e o formulário também reabre quando o carnê PERDEU
+                uma parcela — era esse o beco sem saída. */}
+            {(!contratoTemCarne || completandoCarne) && podeCriarParcela && contratoAtivo ? (
               /* E136/E6: Enter conclui o plano — era o único fluxo de dinheiro
                  desta tela e não tinha <form>. */
               <form
@@ -595,22 +674,28 @@ export default function ContratoDetail() {
                   void onGerarPlano();
                 }}
               >
-                <p className="text-muted-foreground text-sm">
-                  {parcelas.length > 0
-                    ? "As parcelas acima não são o carnê do contrato. Gere o plano de pagamento."
-                    : "Nenhuma parcela registrada. Gere o plano de pagamento do contrato."}
+                <p className="text-muted-foreground text-sm" data-testid="texto-gerar-plano">
+                  {completandoCarne
+                    ? `Faltam ${brl(reais(faltanteCarneCentavos))} no carnê deste contrato — gere as parcelas que completam o valor.`
+                    : parcelas.length > 0
+                      ? "As parcelas acima não são o carnê do contrato. Gere o plano de pagamento."
+                      : "Nenhuma parcela registrada. Gere o plano de pagamento do contrato."}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="plano-entrada">Entrada (opcional)</Label>
-                    <Input
-                      id="plano-entrada"
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={entrada}
-                      onChange={(e) => setEntrada(e.target.value)}
-                    />
-                  </div>
+                  {/* P7: completando não há entrada — ela pertence ao carnê que
+                      já nasceu, e o servidor recusa (ENTRADA_NO_COMPLEMENTO). */}
+                  {!completandoCarne && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="plano-entrada">Entrada (opcional)</Label>
+                      <Input
+                        id="plano-entrada"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={entrada}
+                        onChange={(e) => setEntrada(e.target.value)}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="plano-parcelas">Nº de parcelas</Label>
                     <Input
@@ -648,7 +733,11 @@ export default function ContratoDetail() {
                 <PreviaDoCarne erro={previaDoPlano.erro} linhas={previaDoPlano.linhas} />
 
                 <Button type="submit" disabled={gerarPlano.isPending}>
-                  {gerarPlano.isPending ? "Gerando…" : "Gerar plano"}
+                  {gerarPlano.isPending
+                    ? "Gerando…"
+                    : completandoCarne
+                      ? "Completar carnê"
+                      : "Gerar plano"}
                 </Button>
               </form>
             ) : parcelas.length === 0 ? (
@@ -761,10 +850,17 @@ export default function ContratoDetail() {
                   RECEBIDO — parcela de R$ 1.000,00 com R$ 300,00 recebidos, o
                   diálogo dizia desfazer R$ 1.000,00. A frase (e o número que
                   ela cita) é decisão pura em lib/financeiro/confirmacoes. */}
+              {/* P7/E169: removida uma parcela do CARNÊ, a frase diz o buraco
+                  que fica e onde ele se tapa — "não pode ser desfeita" tinha
+                  virado mentira agora que o gerar-plano completa. */}
               {confirmacao &&
                 (confirmacao.tipo === "estornar"
                   ? fraseEstornoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela)
-                  : fraseRemocaoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela))}
+                  : fraseRemocaoParcela(rotuloParcela(confirmacao.parcela), confirmacao.parcela, {
+                      somaDepoisCentavos:
+                        totalCarneCentavos - centavos(confirmacao.parcela.valorPrevisto),
+                      totalContratoCentavos: centavos(contrato.valorTotal),
+                    }))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

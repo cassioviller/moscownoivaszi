@@ -85,6 +85,83 @@ export function liquidoEmCentavos(
 }
 
 /**
+ * O6 (E169) — a QUANTIDADE tem a mesma borda que o valor, e não tinha régua.
+ *
+ * A tela de orçamento lia o valor unitário com `parseValor` (que separa "não
+ * digitou" de "digitou bobagem" desde o C3) e a quantidade ao lado com
+ * `Math.trunc(Number(texto) || 1)`. `Number("3un")` é `NaN`, `NaN || 1` é `1`,
+ * e a guarda `quantidade < 1` nunca dispara: **3 véus de R$ 800,00 entravam
+ * como 1 — R$ 1.600,00 a menos**, sem um toast. E é esse total que o hash da
+ * versão certifica e que a noiva aceita.
+ *
+ * Mesma convenção do `parseValor`: `null` é "não digitou" (quem chama decide o
+ * padrão), `NaN` é "digitou errado" (quem chama recusa). Fracionário é bobagem
+ * — "2,5" véus não existe, e truncar em silêncio é a classe do defeito acima.
+ */
+export function parseQuantidade(texto: string): number | null {
+  const t = texto.trim();
+  if (!t) return null;
+  // Sem ponto de milhar e sem vírgula decimal de propósito: quantidade de peça
+  // é inteiro pequeno, e aceitar "1.000" aqui seria abrir a mesma ambiguidade
+  // que o `parseValor` precisa carregar por ser dinheiro.
+  if (!/^[+-]?\d+$/.test(t)) return Number.NaN;
+  const n = Number(t);
+  return Number.isSafeInteger(n) ? n : Number.NaN;
+}
+
+/**
+ * A07.3 (E169) — o teto do desconto, para os DOIS tipos, num lugar só.
+ *
+ * O S-M23 (`db45820`) fechou metade: `PERCENTUAL > 100` passa a ser 422 porque
+ * o clamp de `liquidoEmCentavos` (`:83`) engole o excesso e o orçamento zera em
+ * silêncio. A linha de baixo (`:84`, o ramo VALOR) faz exatamente a mesma
+ * coisa e não tinha teto em porta nenhuma — e a mensagem do 422 mandava a
+ * vendedora para lá: *"para um valor em reais, troque o tipo para VALOR"*.
+ *
+ * **Medido:** orçamento de R$ 5.000,00 com desconto de R$ 6.000,00 em VALOR sai
+ * como **R$ 0,00** — bruto 500000c, `Math.max(0, 500000 − 600000)` = 0. Com a
+ * versão ENVIADA, é esse zero que congela no snapshot e no hash que a noiva
+ * assina, o mesmo estrago do S-M23 por outra porta.
+ *
+ * `brutoCentavos` nulo significa **não há itens contra os quais comparar** — é
+ * o caso do `POST /orcamentos`, cujo corpo não aceita itens: o orçamento nasce
+ * sempre com bruto zero, e recusar ali um desconto em reais proibiria o
+ * caminho legítimo "crio com o desconto combinado, lanço os itens depois". Só a
+ * regra do percentual vale sem itens.
+ */
+export function recusaDeDesconto(
+  tipo: string | null | undefined,
+  valor: number | null | undefined,
+  brutoCentavos: number | null,
+): { error: string; detalhe: string } | null {
+  if (typeof valor !== "number") return null;
+  if (tipo === "PERCENTUAL" && valor > 100) {
+    return {
+      error: "DESCONTO_INVALIDO",
+      detalhe: "Desconto percentual não passa de 100 — para um valor em reais, troque o tipo para VALOR.",
+    };
+  }
+  if (tipo === "VALOR" && brutoCentavos != null && centavos(valor) > brutoCentavos) {
+    return {
+      error: "DESCONTO_INVALIDO",
+      detalhe:
+        `Desconto de ${brlSimples(valor)} é maior que os itens do orçamento ` +
+        `(${brlSimples(reais(brutoCentavos))}) — o total sairia zerado.`,
+    };
+  }
+  return null;
+}
+
+/**
+ * Reais em texto para a frase de recusa acima. Não é o `brl` da tela (que traz
+ * NBSP e mora no frontend): é o mínimo que o servidor precisa para o `detalhe`
+ * do 422 dizer o número em vez de descrevê-lo.
+ */
+function brlSimples(valor: number): string {
+  return `R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
  * Lê reais como o usuário os escreve — a outra borda, a do teclado.
  *
  * Vazio é `null` (não digitou) e lixo é `NaN` (digitou errado): quem chama

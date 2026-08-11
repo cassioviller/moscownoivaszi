@@ -38,6 +38,7 @@ import {
   hojeLocal,
   brutoEmCentavos,
   liquidoEmCentavos,
+  recusaDeDesconto,
   reais as reaisFinanceiro,
 } from "@workspace/financeiro-core";
 import { leadsQueCasam } from "../lib/busca-lead";
@@ -61,19 +62,12 @@ const router: IRouter = Router();
  * orçamento em silêncio, a versão ENVIADA congelava R$ 0,00 no snapshot E no
  * hash, e o aceite da noiva assinava zero. Desconto de mais de 100% não é
  * desconto, é erro de digitação — e a borda é quem o diz.
+ *
+ * A07.3 (E169): o S-M23 fechou UMA das duas linhas do clamp. A de baixo — o
+ * ramo VALOR — faz exatamente a mesma coisa, e a mensagem do 422 mandava a
+ * vendedora para lá na letra. A régua agora é `recusaDeDesconto`, no
+ * financeiro-core, e a MESMA função roda na tela antes do clique.
  */
-function recusaDescontoPercentual(
-  tipo: string | undefined | null,
-  valor: number | undefined | null,
-): { error: string; detalhe: string } | null {
-  if (tipo === "PERCENTUAL" && typeof valor === "number" && valor > 100) {
-    return {
-      error: "DESCONTO_INVALIDO",
-      detalhe: "Desconto percentual não passa de 100 — para um valor em reais, troque o tipo para VALOR.",
-    };
-  }
-  return null;
-}
 
 function recusaConteudoCongelado(status: string): { error: string; detalhe: string } | null {
   if (status === "APROVADO") {
@@ -263,7 +257,18 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
 
-  const descontoInvalido = recusaDescontoPercentual(parsed.data.descontoTipo, parsed.data.descontoValor);
+  /**
+   * A07.3 — bruto `null` no POST porque o corpo de criação **não aceita
+   * itens**: o orçamento nasce sempre com bruto zero, e comparar o desconto em
+   * reais com esse zero proibiria o caminho legítimo "crio já com o desconto
+   * combinado, lanço as peças em seguida". A regra do percentual, que não
+   * depende de item nenhum, vale aqui igual.
+   */
+  const descontoInvalido = recusaDeDesconto(
+    parsed.data.descontoTipo,
+    parsed.data.descontoValor,
+    null,
+  );
   if (descontoInvalido) {
     res.status(422).json(descontoInvalido);
     return;
@@ -648,6 +653,9 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
   
   const existente = await db.query.orcamentosTable.findFirst({
     where: and(eq(orcamentosTable.id, orcamentoId as string), eq(orcamentosTable.lojaId, lojaId as string)),
+    // A07.3: os itens entram porque o teto do desconto em VALOR é o BRUTO —
+    // não há teto a cobrar sem saber quanto o orçamento vale.
+    with: { itens: true },
   });
   if (!existente) {
     res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
@@ -675,9 +683,11 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
 
   // S-M23: o par EFETIVO (o que fica valendo depois do PATCH) é o que se valida
   // — mandar só o tipo PERCENTUAL com um valor antigo de 150 é o mesmo erro.
-  const descontoInvalido = recusaDescontoPercentual(
+  // A07.3: e o par efetivo do tipo VALOR se mede contra o bruto dos itens.
+  const descontoInvalido = recusaDeDesconto(
     parsed.data.descontoTipo ?? existente.descontoTipo,
     parsed.data.descontoValor ?? existente.descontoValor,
+    brutoEmCentavos(existente.itens),
   );
   if (descontoInvalido && (parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined)) {
     res.status(422).json(descontoInvalido);

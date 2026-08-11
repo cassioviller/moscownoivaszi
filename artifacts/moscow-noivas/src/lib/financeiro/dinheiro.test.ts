@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { centavos, parseValor, reais, somaCentavos } from "./dinheiro";
+import {
+  brutoEmCentavos,
+  centavos,
+  liquidoEmCentavos,
+  parseQuantidade,
+  parseValor,
+  reais,
+  recusaDeDesconto,
+  somaCentavos,
+} from "./dinheiro";
 
 describe("centavos / reais", () => {
   it("ida e volta preserva a quantia", () => {
@@ -62,5 +71,86 @@ describe("parseValor", () => {
     expect(parseValor("")).toBeNull();
     expect(parseValor("   ")).toBeNull();
     expect(parseValor("abc")).toBeNaN();
+  });
+});
+
+/**
+ * O6 (E169) — a quantidade tinha a mesma borda do valor e nenhuma régua:
+ * `Math.trunc(Number("3un") || 1)` é 1, e a guarda `< 1` da tela nunca
+ * disparava. Três véus de R$ 800,00 entravam como um.
+ */
+describe("parseQuantidade — a irmã do parseValor, para o que se CONTA", () => {
+  it("3 véus são 3, e o total do orçamento é o de 3", () => {
+    expect(parseQuantidade("3")).toBe(3);
+    // O número medido do achado: 3 × R$ 800,00 = R$ 2.400,00. Lido como 1,
+    // o orçamento saía R$ 800,00 — R$ 1.600,00 a menos no que a noiva aceita.
+    const itens = [{ valorUnitario: 800, quantidade: parseQuantidade("3") ?? 1 }];
+    expect(reais(brutoEmCentavos(itens))).toBe(2400);
+  });
+
+  it("'3un' é NaN, não 1 — quem chama recusa em vez de gravar em silêncio", () => {
+    expect(parseQuantidade("3un")).toBeNaN();
+    expect(parseQuantidade("três")).toBeNaN();
+    // Meio véu não existe: truncar aqui é a mesma classe de defeito.
+    expect(parseQuantidade("2,5")).toBeNaN();
+    expect(parseQuantidade("2.5")).toBeNaN();
+  });
+
+  it("vazio é null — quem chama decide o padrão (a tela usa 1)", () => {
+    expect(parseQuantidade("")).toBeNull();
+    expect(parseQuantidade("  ")).toBeNull();
+  });
+
+  it("negativo passa como negativo, para a guarda `< 1` da tela pegá-lo", () => {
+    // S-M23: "-1" virava quantidade −1 e SUBTRAÍA o item do total. Quem recusa
+    // é a tela; esta função só não pode transformá-lo em 1 pelo caminho.
+    expect(parseQuantidade("-1")).toBe(-1);
+    expect(parseQuantidade("0")).toBe(0);
+  });
+});
+
+/**
+ * A07.3 (E169) — o teto do desconto vale para os DOIS tipos. O S-M23 fechou o
+ * percentual e a mensagem dele mandava a vendedora para a porta aberta.
+ */
+describe("recusaDeDesconto — o teto dos dois tipos, numa régua só", () => {
+  const BRUTO = centavos(5000); // R$ 5.000,00 em itens
+
+  it("percentual acima de 100 continua recusado (S-M23)", () => {
+    expect(recusaDeDesconto("PERCENTUAL", 150, BRUTO)?.error).toBe("DESCONTO_INVALIDO");
+    expect(recusaDeDesconto("PERCENTUAL", 100, BRUTO)).toBeNull();
+  });
+
+  it("desconto em VALOR maior que os itens é recusado, e a frase traz o número", () => {
+    // Sem a régua: `Math.max(0, 500000 − 600000)` = 0 — o orçamento de
+    // R$ 5.000,00 passava a valer R$ 0,00, e era esse zero que a versão
+    // ENVIADA congelava no hash que a noiva assina.
+    expect(reais(liquidoEmCentavos(BRUTO, "VALOR", 6000))).toBe(0);
+    const recusa = recusaDeDesconto("VALOR", 6000, BRUTO);
+    expect(recusa?.error).toBe("DESCONTO_INVALIDO");
+    expect(recusa?.detalhe).toContain("R$ 6.000,00");
+    expect(recusa?.detalhe).toContain("R$ 5.000,00");
+  });
+
+  it("desconto que cabe passa, e o exato-bruto também", () => {
+    expect(recusaDeDesconto("VALOR", 500, BRUTO)).toBeNull();
+    expect(recusaDeDesconto("VALOR", 5000, BRUTO)).toBeNull();
+  });
+
+  it("um centavo acima do bruto já é recusa — a fronteira é em CENTAVOS", () => {
+    expect(recusaDeDesconto("VALOR", 5000.01, BRUTO)?.error).toBe("DESCONTO_INVALIDO");
+  });
+
+  it("bruto null é 'não há itens para comparar' — só a regra do percentual vale", () => {
+    // É o `POST /orcamentos`, cujo corpo não aceita itens: recusar ali um
+    // desconto em reais proibiria "crio com o desconto combinado, lanço as
+    // peças depois".
+    expect(recusaDeDesconto("VALOR", 6000, null)).toBeNull();
+    expect(recusaDeDesconto("PERCENTUAL", 150, null)?.error).toBe("DESCONTO_INVALIDO");
+  });
+
+  it("sem valor não há o que recusar", () => {
+    expect(recusaDeDesconto("VALOR", null, BRUTO)).toBeNull();
+    expect(recusaDeDesconto(null, 6000, BRUTO)).toBeNull();
   });
 });

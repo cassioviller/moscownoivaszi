@@ -158,8 +158,16 @@ function InteresseForm({
     // `Number("8.000")` é 8 — o teto de oito mil virava oito reais, e o filtro
     // de vestidos passava a esconder o catálogo inteiro. `parseValor` lê o
     // ponto de milhar como pt-BR (a mesma régua do item de orçamento).
-    const teto = parseValor(tetoOrcamento) ?? undefined;
-    if (teto !== undefined && (!Number.isFinite(teto) || teto < 0)) {
+    // S-M10/E169: campo vazio quer dizer APAGUE, e agora ele tem como dizê-lo.
+    // `parseValor` devolve `null` para "não digitou" — era esse `null` que
+    // virava `undefined`, sumia do JSON e deixava o `set: { ...insertData }` do
+    // `onConflictDoUpdate` preservar o valor ANTIGO: a vendedora limpava o teto
+    // de R$ 8.000,00, lia "Interesses salvos", e o aviso "acima do teto" da tela
+    // de orçamento seguia acendendo sobre um número que a noiva não disse mais.
+    // O contrato passou a admitir `null` (`LeadInteresseInput`), e `null` é o
+    // que a tela manda quando o campo está vazio.
+    const teto = parseValor(tetoOrcamento);
+    if (teto !== null && (!Number.isFinite(teto) || teto < 0)) {
       toast({
         title: "Teto de orçamento inválido",
         description: "Informe um valor em reais (ex.: 8000).",
@@ -172,8 +180,8 @@ function InteresseForm({
         lojaId: activeLojaId!,
         leadId: leadId!,
         data: {
-          algoAMais: algoAMais || undefined,
-          naoQuerUsar: naoQuerUsar || undefined,
+          algoAMais: algoAMais || null,
+          naoQuerUsar: naoQuerUsar || null,
           tetoOrcamento: teto,
           atributos: Object.entries(selecoes).map(([atributoId, opcaoId]) => ({
             atributoId,

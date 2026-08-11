@@ -1,4 +1,5 @@
 import { brl } from "@/lib/formatos";
+import { reais } from "./dinheiro";
 
 /**
  * E128 (C5/C7) — a confirmação de dinheiro diz o número CERTO.
@@ -20,9 +21,31 @@ export function fraseEstornoParcela(rotulo: string, p: { valorRecebido?: number 
   return `O recebimento de ${rotulo} (${brl(p.valorRecebido ?? 0)}) será desfeito e a parcela volta a ficar em aberto.`;
 }
 
-/** A remoção tira do plano o que estava PREVISTO — aqui o previsto é o certo. */
-export function fraseRemocaoParcela(rotulo: string, p: { valorPrevisto: number }): string {
-  return `${rotulo} (${brl(p.valorPrevisto)}) será removida do plano. Esta ação não pode ser desfeita.`;
+/**
+ * A remoção tira do plano o que estava PREVISTO — aqui o previsto é o certo.
+ *
+ * P7 (E169) — e quando a parcela é do CARNÊ, a frase diz a consequência com o
+ * número. Removida a parcela 10 de R$ 500,00 de um carnê de R$ 5.000,00, o
+ * plano passa a somar **R$ 4.500,00 de R$ 5.000,00**: até o E169 não existia
+ * gesto nenhum na aplicação que devolvesse aqueles R$ 500,00 — `temCarne`
+ * seguia verdadeiro e o `gerar-plano` respondia 409 JA_TEM_PLANO para sempre.
+ * Agora existe (o formulário reabre e completa), e a frase diz onde ele está,
+ * porque "não pode ser desfeita" deixou de ser verdade e virava mentira.
+ */
+export function fraseRemocaoParcela(
+  rotulo: string,
+  p: { valorPrevisto: number; origem?: string },
+  carne?: { somaDepoisCentavos: number; totalContratoCentavos: number },
+): string {
+  const abertura = `${rotulo} (${brl(p.valorPrevisto)}) será removida do plano.`;
+  if (p.origem === "PLANO" && carne && carne.somaDepoisCentavos < carne.totalContratoCentavos) {
+    return (
+      `${abertura} O carnê passa a somar ${brl(reais(carne.somaDepoisCentavos))} de um contrato ` +
+      `de ${brl(reais(carne.totalContratoCentavos))} — para repor a diferença você vai precisar ` +
+      `gerar as parcelas que faltam, ali embaixo.`
+    );
+  }
+  return `${abertura} Esta ação não pode ser desfeita.`;
 }
 
 /** A conta em aberto sai da carteira com o valor que a carteira esperava. */

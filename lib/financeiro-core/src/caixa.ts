@@ -82,6 +82,37 @@ export function teveRecebimento(obrigacao: {
   return obrigacao.recebidoEm != null && centavos(obrigacao.valorRecebido ?? 0) > 0;
 }
 
+/**
+ * P6 (E169) — quem pode SUMIR do plano é só a parcela em que ninguém tocou.
+ *
+ * A tela de contrato oferecia "Remover" para toda parcela `estaAberta` —
+ * PREVISTA **e** PARCIAL. O servidor (`DELETE /parcelas/:id`) só aceita
+ * PREVISTA, e a recusa dele é `PARCELA_NAO_PREVISTA`, que a tela traduz por
+ * *"Só parcelas em aberto podem ser removidas"*: a vendedora lia essa frase
+ * **sobre uma parcela que ESTÁ em aberto**, uma contradição literal, e não
+ * havia gesto nenhum que resolvesse.
+ *
+ * A régua é a do servidor, e ela tem razão: apagar uma PARCIAL apagaria os
+ * R$ 300,00 que já entraram no caixa junto com a linha que os explica. O
+ * caminho existe e é outro — estornar o recebimento (a parcela volta a
+ * PREVISTA) e então remover.
+ */
+export function podeRemoverParcela(parcela: { status: string }): boolean {
+  return parcela.status === "PREVISTA";
+}
+
+/**
+ * Por que esta parcela não pode ser removida AGORA — a frase que substitui o
+ * botão. `null` quando ela pode.
+ */
+export function motivoNaoRemove(parcela: { status: string }): string | null {
+  if (podeRemoverParcela(parcela)) return null;
+  if (parcela.status === "PARCIAL") {
+    return "Estorne o recebimento antes: só uma parcela sem nada recebido sai do plano.";
+  }
+  return null;
+}
+
 /** Centavos que ainda faltam. Nunca negativo — pagar a mais não vira crédito. */
 function saldoAbertoC(o: ObrigacaoPrevista): number {
   return Math.max(0, centavos(o.valorPrevisto) - centavos(o.valorRecebido ?? 0));

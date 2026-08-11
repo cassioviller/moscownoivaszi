@@ -5321,10 +5321,23 @@ components:
             $ref: "#/components/schemas/VestidoAtributo"
     LeadInteresseInput:
       type: object
+      # S-M10 (E169) — campo vazio querendo dizer "apague".
+      #
+      # O `PUT /leads/:id/interesse` monta o upsert com `set: { ...insertData }`:
+      # campo AUSENTE some do JSON, some do `set`, e o valor antigo fica. A tela
+      # limpava o teto de R$ 8.000,00, mandava `undefined` e mostrava
+      # "Interesses salvos" — o teto continuava R$ 8.000,00, e o aviso "acima do
+      # teto" da tela de orçamento seguia acendendo sobre um número que a noiva
+      # já não tinha dito. Nem um `null` explícito resolvia: o contrato não o
+      # admitia, e o zod devolvia 400.
+      #
+      # Agora as três escalares aceitam `null`, e os dois sentidos ficam
+      # separados: `null` é APAGUE, ausente segue sendo "não mexi" (é o que o
+      # `definirTeto` do E2E 19 usa, mandando só o teto).
       properties:
-        algoAMais: { type: string }
-        naoQuerUsar: { type: string }
-        tetoOrcamento: { type: number }
+        algoAMais: { type: ["string", "null"] }
+        naoQuerUsar: { type: ["string", "null"] }
+        tetoOrcamento: { type: ["number", "null"] }
         atributos:
           type: array
           items:

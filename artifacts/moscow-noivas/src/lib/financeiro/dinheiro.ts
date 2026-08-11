@@ -13,3 +13,10 @@ export { centavos, reais, somaCentavos, parseValor } from "@workspace/financeiro
  * que o servidor recusava.
  */
 export { brutoEmCentavos, liquidoEmCentavos, temDesconto } from "@workspace/financeiro-core";
+
+/**
+ * E169: a quantidade do item lê pela mesma borda que o valor (O6), e o teto do
+ * desconto é a MESMA função que o servidor executa (A07.3) — a tela avisa antes
+ * do clique com a frase que o 422 traria depois.
+ */
+export { parseQuantidade, recusaDeDesconto } from "@workspace/financeiro-core";

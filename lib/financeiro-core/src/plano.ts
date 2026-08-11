@@ -1,4 +1,5 @@
 import { addMeses, hojeLocal } from "./datas";
+import { centavos } from "./dinheiro";
 
 /**
  * O plano de parcelas — o carnê que a loja combina com a noiva (E95).
@@ -107,4 +108,71 @@ export function montarPlanoParcelas(params: PlanoParams): ParcelaPlanejada[] {
   }
 
   return linhas;
+}
+
+/**
+ * S-M19 — "este contrato já tem carnê?" pela MESMA pergunta do servidor.
+ *
+ * O `gerar-plano` recusa por `origem === "PLANO"` desde a S26: parcela de
+ * avaria ou avulsa NÃO é carnê, e um contrato pode (e deve) gerar o dele com
+ * elas já lançadas — a ordem do balcão é essa. A tela perguntava
+ * `parcelas.length > 0`, a heurística pré-S26: um reparo de R$ 350,00 cobrado
+ * antes do carnê escondia o "Gerar plano" de um contrato de R$ 5.000,00 para
+ * sempre.
+ *
+ * E169: a função subiu da tela para o core, porque o `gerar-plano` do servidor
+ * passou a precisar da mesma pergunta com a mesma resposta (P7).
+ */
+export function temCarne(parcelas: ReadonlyArray<{ origem: string }>): boolean {
+  return parcelas.some((p) => p.origem === "PLANO");
+}
+
+/** Uma parcela como as telas e a rota a enxergam para somar o carnê. */
+export type ParcelaDoCarne = {
+  origem: string;
+  status: string;
+  valorPrevisto: number;
+};
+
+/**
+ * P8 (E169) — quanto o CARNÊ soma. Só `origem: PLANO`, e só o que está vivo.
+ *
+ * O alerta de divergência da tela de contrato somava TODAS as parcelas não
+ * canceladas e comparava com `valorTotal`. A parcela de avaria (`origem:
+ * AVARIA`) entra nessa soma por construção: **num contrato de R$ 5.000,00 com
+ * um reparo de R$ 350,00, o alerta vermelho "o total do plano difere do valor
+ * total do contrato (R$ 5.000,00)" acende sobre um estado que o servidor
+ * considera perfeitamente correto** — e ele existe justamente para denunciar
+ * carnê corrompido. Alarme que toca todo dia deixa de ser lido no dia em que a
+ * divergência é verdadeira.
+ *
+ * É a mesma separação que o E165 fez no papel (P12): o plano lista `origem:
+ * PLANO`, que soma o total por construção, e o resto vai para "Cobranças fora
+ * do valor total".
+ */
+export function totalDoCarneCentavos(parcelas: ReadonlyArray<ParcelaDoCarne>): number {
+  return parcelas
+    .filter((p) => p.origem === "PLANO" && p.status !== "CANCELADA")
+    .reduce((total, p) => total + centavos(p.valorPrevisto), 0);
+}
+
+/**
+ * P7 (E169) — o buraco que a remoção de uma parcela do carnê abriu, em
+ * centavos. Zero quando o carnê fecha, e zero quando ele nem existe.
+ *
+ * Removida a parcela 10 de R$ 500,00 de um carnê de R$ 5.000,00, o plano passa
+ * a somar **R$ 4.500,00 de R$ 5.000,00**, `temCarne` segue verdadeiro e o
+ * `gerar-plano` respondia 409 JA_TEM_PLANO para sempre: **não existia gesto
+ * nenhum na aplicação que devolvesse aqueles R$ 500,00**. Esta é a conta que a
+ * tela usa para reabrir o formulário e que a rota usa para aceitar completar.
+ *
+ * Nunca negativo: carnê que soma MAIS que o contrato é a outra divergência, e
+ * quem a denuncia é o alerta, não este número.
+ */
+export function faltanteDoCarneCentavos(
+  parcelas: ReadonlyArray<ParcelaDoCarne>,
+  totalContratoCentavos: number,
+): number {
+  if (!temCarne(parcelas)) return 0;
+  return Math.max(0, totalContratoCentavos - totalDoCarneCentavos(parcelas));
 }

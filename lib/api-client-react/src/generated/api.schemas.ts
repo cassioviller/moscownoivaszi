@@ -723,9 +723,12 @@ export interface LeadUpdate {
 }
 
 export interface LeadInteresseInput {
-  algoAMais?: string;
-  naoQuerUsar?: string;
-  tetoOrcamento?: number;
+  /** @nullable */
+  algoAMais?: string | null;
+  /** @nullable */
+  naoQuerUsar?: string | null;
+  /** @nullable */
+  tetoOrcamento?: number | null;
   atributos?: VestidoAtributo[];
 }
 

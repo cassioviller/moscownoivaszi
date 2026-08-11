@@ -80,7 +80,17 @@ import { podeNoModulo } from "@/lib/permissoes";
 import { avisosDeEstoque, nomeDoItemEstoque } from "@/lib/estoque-aviso";
 import { confeccoesDaNoiva as confeccoesDoOrcamento } from "@/lib/confeccoes-da-noiva";
 import { precoDaSaida } from "@/lib/preco-da-saida";
-import { brutoEmCentavos, centavos, liquidoEmCentavos, parseValor, reais } from "@/lib/financeiro/dinheiro";
+import {
+  brutoEmCentavos,
+  centavos,
+  liquidoEmCentavos,
+  parseQuantidade,
+  parseValor,
+  reais,
+  recusaDeDesconto,
+  temDesconto,
+} from "@/lib/financeiro/dinheiro";
+import { opcoesDeVendedora } from "@/lib/equipe-select";
 import { planoDaDigitacao } from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { diaDeNegocio, hojeLocal } from "@/lib/financeiro/datas";
@@ -322,6 +332,18 @@ export default function OrcamentoDetail() {
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  /**
+   * O11/E169 — a tela distingue `criar` de `editar`, como o servidor.
+   *
+   * `POST /orcamentos/:id/itens` termina em SUBSTANTIVO, então `acaoDoRequest`
+   * (`lib/permissoes.ts:132`) devolve `criar` — e o `POST /contratos` também.
+   * A tela cobrava `editar` para as duas coisas: a estagiária com
+   * `{ver, criar}`, perfil que o próprio repositório nomeia como real, criava o
+   * orçamento e **não conseguia pôr uma linha nele** — nem gerar o contrato de
+   * um orçamento aprovado. O precedente é `contratos/[id].tsx`, que separa
+   * `podeCriarParcela` de `podeEditar` desde o E115, pela mesma razão.
+   */
+  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
 
   // D4 (E93): aqui havia um `useListLeads` SEM paginação — e sem
   // `pagina`/`porPagina` a rota devolve a loja inteira
@@ -476,6 +498,9 @@ export default function OrcamentoDetail() {
   // Editável só em RASCUNHO/ENVIADO (aprovado é a base do contrato; recusado é read-only).
   const statusEditavel = orcamento.status === "RASCUNHO" || orcamento.status === "ENVIADO";
   const editavel = statusEditavel && podeEditar;
+  // O11: lançar item é CRIAR — quem tem `criar` sem `editar` vê o formulário
+  // que o servidor aceita, e quem tem `editar` sem `criar` deixa de vê-lo.
+  const podeLancarItem = statusEditavel && podeCriar;
   const invalidar = () => queryClient.invalidateQueries({ queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!) });
   const invalidarLista = () => queryClient.invalidateQueries({ queryKey: getListOrcamentosQueryKey(activeLojaId!) });
 
@@ -520,8 +545,15 @@ export default function OrcamentoDetail() {
     const valorUnitario = parseValor(values.valorUnitario);
     // S-M23: a MESMA guarda do editar (55 linhas abaixo) — sem ela, "-1" no
     // campo virava quantidade −1 e SUBTRAÍA o item do total em silêncio.
-    const quantidade = Math.trunc(Number(values.quantidade) || 1);
-    if (quantidade < 1) {
+    //
+    // O6/E169: e a leitura passa por `parseQuantidade`, irmã do `parseValor`
+    // ao lado. Era `Math.trunc(Number(values.quantidade) || 1)`: `Number("3un")`
+    // é NaN, `NaN || 1` é 1, a guarda `< 1` nunca disparava, e 3 véus de
+    // R$ 800,00 entravam como um — R$ 1.600,00 a menos no total que o hash
+    // certifica e a noiva aceita, sem um toast.
+    const digitada = parseQuantidade(values.quantidade);
+    const quantidade = digitada ?? 1;
+    if (!Number.isFinite(quantidade) || quantidade < 1) {
       toast({ title: "Quantidade inválida — use 1 ou mais", variant: "destructive" });
       return;
     }
@@ -560,7 +592,7 @@ export default function OrcamentoDetail() {
             : {}),
         },
       });
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
       itemForm.reset({ tipo: values.tipo, vestidoId: "", itemEstoqueId: "", ajusteId: "", descricao: "", valorUnitario: "", quantidade: "1" });
     } catch (err) {
       toast({ title: "Não deu para adicionar item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
@@ -579,13 +611,14 @@ export default function OrcamentoDetail() {
   const onEditarItem = async (values: EditarItemValues) => {
     if (!itemEmEdicao) return;
     const valorUnitario = parseValor(values.valorUnitario);
-    const quantidade = Math.trunc(Number(values.quantidade) || 1);
+    // O6/E169: a mesma régua do adicionar, 60 linhas acima.
+    const quantidade = parseQuantidade(values.quantidade) ?? 1;
     if (valorUnitario === null || !Number.isFinite(valorUnitario) || valorUnitario <= 0) {
       toast({ title: "Valor unitário inválido", variant: "destructive" });
       return;
     }
-    if (quantidade < 1) {
-      toast({ title: "Quantidade inválida", variant: "destructive" });
+    if (!Number.isFinite(quantidade) || quantidade < 1) {
+      toast({ title: "Quantidade inválida — use 1 ou mais", variant: "destructive" });
       return;
     }
     try {
@@ -594,7 +627,7 @@ export default function OrcamentoDetail() {
         itemId: itemEmEdicao.id,
         data: { descricao: values.descricao, valorUnitario, quantidade },
       });
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Item atualizado" });
       setItemEmEdicao(null);
     } catch (err) {
@@ -605,7 +638,7 @@ export default function OrcamentoDetail() {
   const onRemoveItem = async (itemId: string) => {
     try {
       await removeItem.mutateAsync({ lojaId: activeLojaId!, itemId });
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
     } catch (err) {
       toast({ title: "Não deu para remover item", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
@@ -623,7 +656,7 @@ export default function OrcamentoDetail() {
         data: { validade: diaParaISO(validade) },
       });
       setValidadeEditada(null);
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Validade salva" });
     } catch (err) {
       toast({ title: "Não deu para salvar a validade", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
@@ -642,12 +675,15 @@ export default function OrcamentoDetail() {
     // S-M23: "150" pensando em R$ 150,00 com o tipo em PERCENTUAL zerava o
     // orçamento em silêncio (o clamp engole >100) — e a versão enviada
     // congelava R$ 0,00 no hash que a noiva assina.
-    if (descontoTipo === "PERCENTUAL" && valor > 100) {
-      toast({
-        title: "Desconto percentual não passa de 100",
-        description: "Para um valor em reais, troque o tipo para R$.",
-        variant: "destructive",
-      });
+    //
+    // A07.3/E169: a mesma frase agora vale para o tipo VALOR — desconto maior
+    // que os itens zera igual, e a mensagem do S-M23 mandava a vendedora
+    // exatamente para essa porta ("troque o tipo para R$"). A régua é a MESMA
+    // função que o servidor executa: a tela avisa antes do clique com o texto
+    // que o 422 traria depois.
+    const recusa = recusaDeDesconto(descontoTipo, valor, totais.brutoC);
+    if (recusa) {
+      toast({ title: "Desconto inválido", description: recusa.detalhe, variant: "destructive" });
       return;
     }
     try {
@@ -656,10 +692,37 @@ export default function OrcamentoDetail() {
         orcamentoId: id!,
         data: { descontoTipo: descontoTipo as "PERCENTUAL" | "VALOR", descontoValor: valor },
       });
-      await invalidar();
+      await Promise.all([invalidar(), invalidarLista()]);
       toast({ title: "Desconto aplicado" });
     } catch (err) {
       toast({ title: "Não deu para aplicar desconto", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+    }
+  };
+
+  /**
+   * O14/E169 — o gesto que faltava: REMOVER o desconto.
+   *
+   * `onAplicarDesconto` recusa `valor <= 0` no cliente, e não existia outro
+   * caminho no frontend inteiro que zerasse `descontoValor` — o servidor sempre
+   * aceitou 0 e ninguém o chamava. Quem quis dar R$ 20,00 e deixou o seletor em
+   * PERCENTUAL tirava **R$ 1.000,00 de um orçamento de R$ 5.000,00** e só
+   * desfazia refazendo o orçamento inteiro.
+   *
+   * Zero é a resposta certa e não `null`: `temDesconto` (P15/E163) já lê tipo
+   * com valor 0 como SEM desconto, nas três telas e no papel.
+   */
+  const onRemoverDesconto = async () => {
+    try {
+      await atualizar.mutateAsync({
+        lojaId: activeLojaId!,
+        orcamentoId: id!,
+        data: { descontoValor: 0 },
+      });
+      setDescontoValor("");
+      await Promise.all([invalidar(), invalidarLista()]);
+      toast({ title: "Desconto removido — o total voltou ao valor dos itens" });
+    } catch (err) {
+      toast({ title: "Não deu para remover o desconto", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
     }
   };
 
@@ -670,6 +733,29 @@ export default function OrcamentoDetail() {
       toast({ title: status === "ENVIADO" ? "Orçamento marcado como enviado" : "Orçamento voltou para rascunho" });
     } catch (err) {
       toast({ title: "Não deu para mudar o status", description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO), variant: "destructive" });
+    }
+  };
+
+  /**
+   * O13/E169 — o desfazer-aceite era o SEXTO sítio, e estava inline no JSX.
+   *
+   * O achado contou quatro escritas sem `invalidarLista()`; a varredura que o
+   * fecha contou CINCO handlers, e este — que muda o status de APROVADO para
+   * RASCUNHO — não era handler nenhum, morava dentro do `onClick` do diálogo,
+   * fora do alcance de qualquer sonda que leia handlers. Virou handler para
+   * ser cobrável.
+   */
+  const onDesfazerAceite = async () => {
+    try {
+      await desfazerAceite.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id! });
+      await Promise.all([invalidar(), invalidarLista()]);
+      toast({ title: "Aceite desfeito — o orçamento voltou a rascunho" });
+    } catch (err) {
+      toast({
+        title: "Não deu para desfazer o aceite",
+        description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+        variant: "destructive",
+      });
     }
   };
 
@@ -891,7 +977,9 @@ export default function OrcamentoDetail() {
                   Ver contrato
                 </Link>
               </Button>
-            ) : podeEditar && !contratos.isLoading ? (
+            ) : /* O11: `POST /contratos` termina em substantivo — o servidor
+                   deriva `criar`, e era `editar` que a tela cobrava. */
+            podeCriar && !contratos.isLoading ? (
               <Button size="sm" onClick={abrirGerarContrato}>
                 <ScrollText className="h-4 w-4 mr-2" />
                 Gerar contrato
@@ -974,23 +1062,7 @@ export default function OrcamentoDetail() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                try {
-                  await desfazerAceite.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id! });
-                  await queryClient.invalidateQueries({ queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!) });
-                  toast({ title: "Aceite desfeito — o orçamento voltou a rascunho" });
-                } catch (err) {
-                  toast({
-                    title: "Não deu para desfazer o aceite",
-                    description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              Desfazer aceite
-            </AlertDialogAction>
+            <AlertDialogAction onClick={onDesfazerAceite}>Desfazer aceite</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1140,8 +1212,11 @@ export default function OrcamentoDetail() {
             </div>
           )}
 
-          {editavel && (
+          {(editavel || podeLancarItem) && (
             <>
+              {/* O11: lançar item é CRIAR; mudar desconto e validade é EDITAR
+                  (PATCH). Os dois gestos moravam no mesmo `editavel`. */}
+              {podeLancarItem && (
               <Form {...itemForm}>
                 <form onSubmit={itemForm.handleSubmit(onAddItem)} className="flex flex-wrap items-end gap-2 border-t pt-4">
                   <FormField
@@ -1347,7 +1422,9 @@ export default function OrcamentoDetail() {
                   <Button type="submit" disabled={addItem.isPending}>Adicionar</Button>
                 </form>
               </Form>
+              )}
 
+              {editavel && (
               <div className="flex flex-wrap items-end gap-2 border-t pt-4">
                 <div className="w-36">
                   <label className="text-xs text-muted-foreground">Tipo de desconto</label>
@@ -1368,12 +1445,27 @@ export default function OrcamentoDetail() {
                 <Button variant="outline" onClick={onAplicarDesconto} disabled={atualizar.isPending}>
                   Aplicar desconto
                 </Button>
+                {/* O14/E169: o desconto aplicado por engano tinha ida e não
+                    tinha volta — o botão só aparece quando há o que remover. */}
+                {temDesconto(orcamento.descontoTipo, orcamento.descontoValor) && (
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={onRemoverDesconto}
+                    disabled={atualizar.isPending}
+                    data-testid="button-remover-desconto"
+                  >
+                    Remover desconto
+                  </Button>
+                )}
               </div>
+              )}
 
               {/* F18: a validade era invisível e inalterável pela tela — só
                   existia se quem criou o orçamento tivesse mandado, e os dois
                   atalhos naturais não mandavam. É ela que põe a proposta na
                   fila de lembrete do E69. */}
+              {editavel && (
               <div className="flex flex-wrap items-end gap-2 border-t pt-4">
                 <div className="w-44">
                   <label className="text-xs text-muted-foreground" htmlFor="orcamento-validade">
@@ -1390,6 +1482,7 @@ export default function OrcamentoDetail() {
                   Salvar validade
                 </Button>
               </div>
+              )}
             </>
           )}
         </CardContent>
@@ -1548,14 +1641,18 @@ export default function OrcamentoDetail() {
                           <SelectValue placeholder="Escolha…" />
                         </SelectTrigger>
                       </FormControl>
+                      {/* O10/E169: a lista é a dos ATIVOS mais a SELECIONADA.
+                          O filtro inline escondia a vendedora desativada que o
+                          orçamento aponta, e o campo desenhava em branco: quem
+                          lesse "Escolha…" escolhia outra pessoa, e a comissão
+                          de R$ 250,00 (5% de R$ 5.000,00) trocava de bolso por
+                          um campo que parecia vazio. */}
                       <SelectContent>
-                        {(equipe.data ?? [])
-                          .filter((m) => m.ativo !== false)
-                          .map((m) => (
-                            <SelectItem key={m.usuarioId} value={m.usuarioId}>
-                              {m.nome}
-                            </SelectItem>
-                          ))}
+                        {opcoesDeVendedora(equipe.data ?? [], field.value).map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.rotulo}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     {field.value && field.value !== orcamento.vendedoraId && (

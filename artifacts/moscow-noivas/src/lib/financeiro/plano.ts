@@ -73,15 +73,13 @@ export function planoDaDigitacao(params: {
 }
 
 /**
- * S-M19 — "este contrato já tem carnê?" pela MESMA pergunta do servidor.
+ * S-M19 — "este contrato já tem carnê?" pela MESMA pergunta do servidor; e,
+ * desde o E169 (P7/P8), quanto ele SOMA e quanto FALTA nele.
  *
- * O `gerar-plano` recusa por `origem === "PLANO"` desde a S26: parcela de
- * avaria ou avulsa NÃO é carnê, e um contrato pode (e deve) gerar o dele com
- * elas já lançadas — a ordem do balcão é essa. A tela perguntava
- * `parcelas.length > 0`, a heurística pré-S26: um reparo de R$ 350,00 cobrado
- * antes do carnê escondia o "Gerar plano" de um contrato de R$ 5.000,00 para
- * sempre.
+ * As três subiram para o core no E169: o `gerar-plano` do servidor passou a
+ * precisar do mesmo `faltanteDoCarneCentavos` que esta tela usa para reabrir o
+ * formulário, e uma segunda grafia da conta é a classe de defeito que o
+ * `financeiro-core` existe para matar.
  */
-export function temCarne(parcelas: ReadonlyArray<{ origem: string }>): boolean {
-  return parcelas.some((p) => p.origem === "PLANO");
-}
+export { temCarne, totalDoCarneCentavos, faltanteDoCarneCentavos } from "@workspace/financeiro-core";
+export type { ParcelaDoCarne } from "@workspace/financeiro-core";

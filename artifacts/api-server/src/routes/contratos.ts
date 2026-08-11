@@ -43,10 +43,12 @@ import {
   centavos,
   diaDeNegocio,
   estaAberta,
+  faltanteDoCarneCentavos,
   liquidoEmCentavos,
   montarPlanoParcelas,
   reais,
   STATUS_ABERTO,
+  temCarne,
 } from "@workspace/financeiro-core";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { vendedoraNaLoja } from "../lib/escopo-loja";
@@ -1833,14 +1835,46 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
    * fora do sistema por causa de um reparo de R$ 350 — e sem caminho de volta,
    * porque a parcela do reparo não se apaga (ela é a cobrança).
    */
-  const jaTemCarne = contrato.parcelas.some((p) => p.origem === "PLANO");
-  if (jaTemCarne) {
+  const totalCentavos = centavos(Number(contrato.valorTotal));
+  /**
+   * P7 (E169) — o carnê que perdeu uma parcela passa a ter volta.
+   *
+   * `DELETE /parcelas/:id` aceita qualquer parcela PREVISTA, inclusive uma do
+   * carnê. Removida a parcela 10 de R$ 500,00 de um contrato de R$ 5.000,00, o
+   * plano passava a somar **R$ 4.500,00**, `origem: PLANO` continuava
+   * existindo, e este 409 fechava a porta para sempre: **não havia gesto
+   * nenhum na aplicação que devolvesse aqueles R$ 500,00**, nem por API. A
+   * parcela avulsa não serve — ela nasce `AVULSA`/`AVARIA`, fica fora do carnê
+   * e é justamente o que o P8 tirou da soma.
+   *
+   * A pergunta deixa de ser "já tem carnê?" e passa a ser "o carnê FECHA?".
+   * Fechando, o 409 é o de sempre; faltando, o gerar-plano monta as parcelas do
+   * FALTANTE e as pendura depois das que existem.
+   */
+  const jaTemCarne = temCarne(contrato.parcelas);
+  const faltanteCentavos = faltanteDoCarneCentavos(contrato.parcelas, totalCentavos);
+  if (jaTemCarne && faltanteCentavos === 0) {
     res.status(409).json({ error: "JA_TEM_PLANO", detalhe: "Contrato já possui carnê" });
     return;
   }
+  const completando = jaTemCarne;
 
-  const totalCentavos = centavos(Number(contrato.valorTotal));
-  const entradaCentavos = centavos(parsed.data.entrada ?? 0);
+  const entradaCentavos = completando ? 0 : centavos(parsed.data.entrada ?? 0);
+  /**
+   * Completar não cria ENTRADA: `numero === 0` significa entrada em seis
+   * pontos do sistema (as três telas de parcela, o portal da noiva, a
+   * conciliação e o PDF), e a entrada do contrato já foi combinada quando o
+   * carnê nasceu. Aceitar o campo em silêncio mudaria o valor que a noiva vê
+   * sem dizer nada — 422 com o gesto na frase.
+   */
+  if (completando && centavos(parsed.data.entrada ?? 0) > 0) {
+    res.status(422).json({
+      error: "ENTRADA_NO_COMPLEMENTO",
+      detalhe: "A entrada só existe quando o carnê nasce — para completar o que falta, deixe a entrada em branco.",
+      campos: [{ campo: "entrada", motivo: "Deixe em branco para completar o carnê" }],
+    });
+    return;
+  }
   if (entradaCentavos > totalCentavos) {
     res.status(422).json({ error: "ENTRADA_MAIOR", detalhe: "Entrada maior que o valor total do contrato" });
     return;
@@ -1877,7 +1911,8 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
   let plano;
   try {
     plano = montarPlanoParcelas({
-      totalCentavos,
+      // P7: completando, o que se divide é o BURACO, não o contrato inteiro.
+      totalCentavos: completando ? faltanteCentavos : totalCentavos,
       entradaCentavos,
       numParcelas: parsed.data.numParcelas,
       primeiroVencimento: diaDeNegocio(parsed.data.primeiroVencimento),
@@ -1952,7 +1987,60 @@ router.post("/lojas/:lojaId/contratos/:contratoId/parcelas/gerar-plano", async (
       .select()
       .from(parcelasTable)
       .where(eq(parcelasTable.contratoId, contrato.id));
-    if (parcelasAgora.some((p) => p.origem === "PLANO")) return { jaTemCarne: true as const };
+    /**
+     * P7 — a releitura sob a tranca faz a MESMA pergunta nova do pool: o carnê
+     * fecha? Quem chegou para completar e encontra o buraco já tapado (ou o
+     * buraco de outro tamanho, porque uma segunda parcela caiu no meio) recebe
+     * 409 em vez de gravar um complemento que não fecha mais.
+     */
+    const faltanteAgora = faltanteDoCarneCentavos(parcelasAgora, totalCentavos);
+    if (completando) {
+      if (faltanteAgora !== faltanteCentavos) return { jaTemCarne: true as const };
+    } else if (temCarne(parcelasAgora)) {
+      return { jaTemCarne: true as const };
+    }
+
+    if (completando) {
+      /**
+       * Completar não renumera nada: as parcelas que existem ficam onde estão
+       * (o `numero` delas já foi citado por trilhas de recebimento — P2), e o
+       * complemento entra no fim da fila.
+       *
+       * A descrição não repete o formato "Parcela i/n" do carnê original: o
+       * `n` de lá é o tamanho de um carnê que já não existe, e imprimir
+       * "Parcela 1/1" ao lado de "Parcela 9/10" mentiria no papel do E165.
+       */
+      const proximo = parcelasAgora.reduce((m, p) => Math.max(m, p.numero), 0) + 1;
+      const complemento = plano.map((p, i) => ({
+        id: randomUUID(),
+        lojaId,
+        contratoId: contrato.id,
+        numero: proximo + i,
+        origem: "PLANO" as const,
+        descricao: `Parcela ${proximo + i}`,
+        valorPrevisto: reais(p.valorCentavos),
+        vencimento: ancoraDeNegocio(p.vencimento),
+      }));
+      const criadas = await tx.insert(parcelasTable).values(complemento).returning();
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "CARNE_COMPLETADO",
+        entidade: "contrato",
+        entidadeId: contrato.id,
+        detalhe: {
+          motivo: "O carnê somava menos que o contrato — as parcelas do faltante foram geradas",
+          faltanteAntes: reais(faltanteCentavos),
+          parcelas: criadas.map((p) => ({
+            parcelaId: p.id,
+            numero: p.numero,
+            valorPrevisto: p.valorPrevisto,
+            vencimento: p.vencimento,
+          })),
+        },
+      });
+      return { criadas };
+    }
 
     const paraDeslocar = [...parcelasAgora].sort((a, b) => a.numero - b.numero);
     for (const p of paraDeslocar) {

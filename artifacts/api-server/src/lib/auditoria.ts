@@ -61,6 +61,11 @@ export const ACOES_AUDITORIA = [
   // parcela, e as trilhas de parcela passaram a gravar também o `parcelaId`,
   // que é a única chave que a renumeração não move.
   "PARCELAS_RENUMERADAS",
+  // P7/E169: o carnê que tinha perdido uma parcela ganhou as que faltavam.
+  // A trilha guarda o buraco medido e as linhas criadas: quem lê o extrato
+  // depois vê por que existem duas gerações de carnê no mesmo contrato — e
+  // "Parcela 11" ao lado de "Parcela 9/10" só faz sentido com esta linha.
+  "CARNE_COMPLETADO",
   // S4/E107: apagar uma conta PREVISTA some com uma obrigação. Não move caixa
   // realizado (a paga é recusada antes), e por isso é um degrau abaixo do B3 —
   // mas depois do DELETE não há linha para consultar, então o que não estiver
@@ -156,6 +161,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   LEAD_REMOVIDO: "Noiva removida do cadastro",
   PARCELA_REMOVIDA: "Parcela removida",
   PARCELAS_RENUMERADAS: "Parcelas renumeradas",
+  CARNE_COMPLETADO: "Carnê completado (parcelas que faltavam)",
   CONTA_PAGAR_REMOVIDA: "Conta a pagar removida",
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
   CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",

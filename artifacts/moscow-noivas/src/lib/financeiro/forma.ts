@@ -13,6 +13,10 @@ export {
   // E125: o saldo devedor de um contrato — a MESMA soma do portal da noiva.
   abertoEmCentavos,
   teveRecebimento,
+  // P6/E169: "aberta" decide quem se RECEBE; quem se REMOVE é outra pergunta,
+  // e a resposta é a do servidor (só PREVISTA).
+  podeRemoverParcela,
+  motivoNaoRemove,
 } from "@workspace/financeiro-core";
 
 /**

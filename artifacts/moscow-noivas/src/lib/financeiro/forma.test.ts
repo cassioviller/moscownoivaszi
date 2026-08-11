@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Parcela } from "@workspace/api-client-react";
-import { FORMAS, estaAtrasada, rotuloForma, vencidas } from "./forma";
+import {
+  FORMAS,
+  estaAberta,
+  estaAtrasada,
+  motivoNaoRemove,
+  podeRemoverParcela,
+  rotuloForma,
+  vencidas,
+} from "./forma";
 
 const HOJE = "2027-07-16";
 const negocio = (dia: string) => new Date(`${dia}T12:00:00-03:00`).toISOString();
@@ -69,5 +77,32 @@ describe("vencidas", () => {
 
   it("lista vazia devolve zero, não NaN", () => {
     expect(vencidas([], HOJE)).toEqual({ qtd: 0, total: 0 });
+  });
+});
+
+/**
+ * P6 (E169) — "aberta" decide quem se RECEBE; quem se REMOVE é outra pergunta.
+ *
+ * A tela de contrato oferecia "Remover" para PREVISTA e PARCIAL (`estaAberta`),
+ * e o servidor só aceita PREVISTA: a recusa dele, traduzida, dizia *"Só
+ * parcelas em aberto podem ser removidas"* **sobre uma parcela em aberto** —
+ * contradição literal, sem gesto possível.
+ */
+describe("podeRemoverParcela — a régua do servidor, não a de estar aberta", () => {
+  it("PREVISTA sai do plano; PARCIAL não, porque já tem dinheiro dentro", () => {
+    expect(podeRemoverParcela({ status: "PREVISTA" })).toBe(true);
+    expect(podeRemoverParcela({ status: "PARCIAL" })).toBe(false);
+    expect(podeRemoverParcela({ status: "PAGA" })).toBe(false);
+    expect(podeRemoverParcela({ status: "CANCELADA" })).toBe(false);
+  });
+
+  it("as duas continuam ABERTAS — é justamente por isso que a frase antiga mentia", () => {
+    expect(estaAberta({ status: "PREVISTA" })).toBe(true);
+    expect(estaAberta({ status: "PARCIAL" })).toBe(true);
+  });
+
+  it("em PARCIAL o motivo diz o gesto que existe: estornar antes", () => {
+    expect(motivoNaoRemove({ status: "PARCIAL" })).toContain("Estorne");
+    expect(motivoNaoRemove({ status: "PREVISTA" })).toBeNull();
   });
 });

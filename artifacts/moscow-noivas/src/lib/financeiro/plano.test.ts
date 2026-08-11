@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { montarPlanoParcelas, planoDaDigitacao, ratearRestante, temCarne } from "./plano";
+import {
+  faltanteDoCarneCentavos,
+  montarPlanoParcelas,
+  planoDaDigitacao,
+  ratearRestante,
+  temCarne,
+  totalDoCarneCentavos,
+} from "./plano";
 import { centavos } from "./dinheiro";
 
 /**
@@ -152,3 +159,56 @@ describe("temCarne — a pergunta do servidor, não a heurística pré-S26 (S-M1
     expect(temCarne([{ origem: "AVULSA" }, { origem: "PLANO" }])).toBe(true);
   });
 });
+
+/**
+ * P8/P7 (E169) — o carnê tem soma própria, e o que falta nele tem número.
+ *
+ * O caso medido: contrato de R$ 5.000,00 em 10 × R$ 500,00 mais um reparo de
+ * avaria de R$ 350,00. O "Total do plano" da tela somava os dois e o alerta
+ * vermelho de divergência acendia sobre um estado que o servidor considera
+ * correto — R$ 5.350,00 sob um contrato de R$ 5.000,00.
+ */
+describe("o carnê soma sozinho, e o buraco dele tem tamanho", () => {
+  const carne = Array.from({ length: 10 }, () => ({
+    origem: "PLANO",
+    status: "PREVISTA",
+    valorPrevisto: 500,
+  }));
+  const avaria = { origem: "AVARIA", status: "PREVISTA", valorPrevisto: 350 };
+
+  it("a avaria de R$ 350,00 fica fora do total do carnê", () => {
+    expect(reaisDe(totalDoCarneCentavos([...carne, avaria]))).toBe(5000);
+    // A soma antiga — toda parcela não-CANCELADA — dava 5.350,00 e acendia o
+    // alerta em TODO contrato com avaria.
+    expect(reaisDe(centavos(5000) + centavos(350))).toBe(5350);
+  });
+
+  it("parcela CANCELADA não conta: o carnê é o que está vivo", () => {
+    const comCancelada = [
+      ...carne,
+      { origem: "PLANO", status: "CANCELADA", valorPrevisto: 500 },
+    ];
+    expect(reaisDe(totalDoCarneCentavos(comCancelada))).toBe(5000);
+  });
+
+  it("removida a parcela 10, faltam exatamente R$ 500,00", () => {
+    const semADecima = [...carne.slice(0, 9), avaria];
+    expect(reaisDe(totalDoCarneCentavos(semADecima))).toBe(4500);
+    expect(reaisDe(faltanteDoCarneCentavos(semADecima, centavos(5000)))).toBe(500);
+  });
+
+  it("carnê que fecha não falta nada — e sem carnê também não", () => {
+    expect(faltanteDoCarneCentavos([...carne, avaria], centavos(5000))).toBe(0);
+    // Só a avaria lançada: não há carnê, e "faltar" é pergunta de carnê.
+    expect(faltanteDoCarneCentavos([avaria], centavos(5000))).toBe(0);
+  });
+
+  it("carnê que soma MAIS que o contrato não devolve faltante negativo", () => {
+    const inchado = [...carne, { origem: "PLANO", status: "PREVISTA", valorPrevisto: 500 }];
+    expect(faltanteDoCarneCentavos(inchado, centavos(5000))).toBe(0);
+  });
+});
+
+function reaisDe(cents: number): number {
+  return cents / 100;
+}

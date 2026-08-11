@@ -1729,9 +1729,9 @@ export const SetLeadInteresseParams = zod.object({
 })
 
 export const SetLeadInteresseBody = zod.object({
-  "algoAMais": zod.string().optional(),
-  "naoQuerUsar": zod.string().optional(),
-  "tetoOrcamento": zod.number().optional(),
+  "algoAMais": zod.string().nullish(),
+  "naoQuerUsar": zod.string().nullish(),
+  "tetoOrcamento": zod.number().nullish(),
   "atributos": zod.array(zod.object({
   "atributoId": zod.string(),
   "opcaoId": zod.string()
