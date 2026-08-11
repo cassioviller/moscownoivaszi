@@ -58,6 +58,7 @@ export * from './ausenciaInput';
 export * from './autorAuditoria';
 export * from './avaria';
 export * from './avariaInput';
+export * from './avariaParcelaStatus';
 export * from './backupLog';
 export * from './backupLogGatilho';
 export * from './backupLogStatus';

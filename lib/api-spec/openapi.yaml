@@ -5821,6 +5821,14 @@ components:
         reservaId: { type: ["string", "null"] }
         ocupacaoInicio: { type: ["string", "null"], format: date-time }
         ocupacaoFim: { type: ["string", "null"], format: date-time }
+        # V14/E167 — de QUEM é este bloqueio, pela MESMA régua que a cobrança
+        # de avaria já usa (V3/E163): o `leadId` próprio, ou o da reserva-mãe
+        # quando ele é nulo. Medido: 61 das 63 avarias do banco vivem em
+        # bloqueio sem `lead_id`, e a ficha só buscava o contrato pelo campo
+        # nulável — em 97% das avarias o botão "Cobrar reparo" não era
+        # desenhado. Só o GET e o PATCH do bloqueio o preenchem (a listagem
+        # não paga o join).
+        donoLeadId: { type: ["string", "null"] }
         vestido:
           $ref: "#/components/schemas/Vestido"
         # Manutenção não tem noiva — lead é null nesses bloqueios.
@@ -5853,6 +5861,14 @@ components:
         # E97: preenchido = já cobrada. A tela usa isto para trocar o botão por
         # "Cobrado — ver parcela" em vez de oferecer a cobrança de novo.
         parcelaId: { type: ["string", "null"] }
+        # V2/E167 — `parcelaId` preenchido NÃO é o mesmo que cobrança viva, e a
+        # tela decidia por ele enquanto o servidor decide por `cobrancaViva`.
+        # Cancelado o contrato, a parcela do reparo vira CANCELADA junto: o
+        # servidor volta a aceitar cobrar e remover, e a tela mostrava
+        # "Cobrado — ver parcela" para sempre, escondendo os dois botões.
+        # R$ 800,00 que não entram no carnê novo e uma avaria impossível de
+        # limpar. O status vem junto para as duas pontas lerem o mesmo estado.
+        parcelaStatus: { type: ["string", "null"], enum: [PREVISTA, PARCIAL, PAGA, CANCELADA, null] }
         registradoPorNome: { type: ["string", "null"] }
         criadaEm: { type: string, format: date-time }
 

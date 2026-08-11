@@ -108,13 +108,28 @@ export default function ReservaDetalhe() {
       enabled: !!activeLojaId && !!bloqueioId,
     },
   });
+  /**
+   * V14/E167 — a ficha pergunta pelo DONO do bloqueio, não pelo `leadId` dele.
+   *
+   * `bloqueio_vestidos.lead_id` é NULLABLE e `reservas.lead_id` é NOT NULL: o
+   * bloqueio pendurado numa reserva-mãe tem dona sem ter noiva própria. O
+   * servidor já cobrava por esse dono desde o V3/E163 e a tela desistia no
+   * nulo — com `enabled: !!reserva?.leadId`, a consulta do contrato nem saía.
+   * Medido na letra da própria rota: **61 das 63 avarias do banco vivem em
+   * bloqueio sem noiva**, então em 97% delas a rota cobraria e a única tela
+   * que expõe a cobrança não desenhava o botão. O reparo nunca virava parcela.
+   *
+   * O `?? reserva?.leadId` é o fallback de payload antigo em cache: o campo
+   * nasceu neste épico.
+   */
+  const donoDaReserva = reserva?.donoLeadId ?? reserva?.leadId ?? null;
   const contratosDaNoiva = useListContratos(
     activeLojaId!,
-    { leadId: reserva?.leadId ?? "" },
+    { leadId: donoDaReserva ?? "" },
     {
       query: {
-        queryKey: getListContratosQueryKey(activeLojaId!, { leadId: reserva?.leadId ?? "" }),
-        enabled: !!activeLojaId && !!reserva?.leadId,
+        queryKey: getListContratosQueryKey(activeLojaId!, { leadId: donoDaReserva ?? "" }),
+        enabled: !!activeLojaId && !!donoDaReserva,
       },
     },
   );
@@ -673,7 +688,25 @@ export default function ReservaDetalhe() {
               </p>
             ) : (
               <ul className="divide-y">
-                {(avarias.data ?? []).map((a) => (
+                {(avarias.data ?? []).map((a) => {
+                  /**
+                   * V2/E167 — "já cobrada" é cobrança VIVA, não `parcelaId`
+                   * preenchido.
+                   *
+                   * A tela decidia por `a.parcelaId` e o servidor por
+                   * `cobrancaViva` (`reservas.ts`), e os dois discordavam no
+                   * caso que acontece: cancelado o contrato, a parcela do
+                   * reparo vira CANCELADA junto. O servidor volta a aceitar
+                   * cobrar e a remover; a tela mostrava "Cobrado — ver
+                   * parcela" para sempre e escondia os dois botões. Com um
+                   * reparo de R$ 800,00, são R$ 800,00 que nunca entram no
+                   * carnê novo que a noiva assina meses depois — e uma avaria
+                   * impossível de limpar. O ciclo sem saída que o servidor diz
+                   * ter fechado continuava fechado do lado do cliente.
+                   */
+                  const cobrada = !!a.parcelaId && a.parcelaStatus !== "CANCELADA";
+                  const cobrancaMorreu = !!a.parcelaId && a.parcelaStatus === "CANCELADA";
+                  return (
                   <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-sm">{a.descricao}</p>
@@ -702,7 +735,7 @@ export default function ReservaDetalhe() {
                             novo — ele leva à parcela. Antes ele continuava ali,
                             idêntico, e o segundo clique criava a segunda
                             cobrança do mesmo conserto. */}
-                        {a.parcelaId ? (
+                        {cobrada ? (
                           contratoAtivo && (
                             <Button asChild variant="ghost" size="sm">
                               <Link to={`/loja/${activeLojaId}/contratos/${contratoAtivo.id}`}>
@@ -721,7 +754,10 @@ export default function ReservaDetalhe() {
                               onClick={() => cobrarReparo(a)}
                               data-testid={`cobrar-reparo-${a.id}`}
                             >
-                              Cobrar reparo
+                              {/* A cobrança anterior morreu com o contrato: o
+                                  gesto é o mesmo, e o rótulo diz que já houve
+                                  uma. */}
+                              {cobrancaMorreu ? "Recobrar reparo" : "Cobrar reparo"}
                             </Button>
                           )
                         )}
@@ -743,7 +779,7 @@ export default function ReservaDetalhe() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Remover esta avaria?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                {a.parcelaId ? (
+                                {cobrada ? (
                                   <>
                                     Esta avaria já virou parcela do contrato. Remova a parcela
                                     primeiro — apagar a avaria agora deixaria a noiva devendo por um
@@ -751,6 +787,9 @@ export default function ReservaDetalhe() {
                                   </>
                                 ) : (
                                   <>
+                                    {cobrancaMorreu
+                                      ? "A cobrança deste reparo foi cancelada junto com o contrato — não há mais parcela que a foto sustente. "
+                                      : ""}
                                     “{a.descricao}”{a.temFoto ? " e a foto que a comprova" : ""} saem
                                     para sempre. {a.temFoto ? "A foto é a prova do dano — " : ""}
                                     não há como recuperar depois.
@@ -760,7 +799,7 @@ export default function ReservaDetalhe() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              {!a.parcelaId && (
+                              {!cobrada && (
                                 <AlertDialogAction
                                   onClick={() =>
                                     comToast(
@@ -787,7 +826,8 @@ export default function ReservaDetalhe() {
                       </span>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
 
@@ -1091,22 +1131,53 @@ export default function ReservaDetalhe() {
           <AlertDialogHeader>
             <AlertDialogTitle>O vestido voltou como saiu?</AlertDialogTitle>
             <AlertDialogDescription>
-              Confira agora, com a peça na mão. Depois que ela voltar para a arara, um dano
-              encontrado não tem mais como ser cobrado com prova.
+              {/**
+               * V15/E167 — quem tem `vestidos.editar` sem `vestidos.criar` via
+               * um botão que não fazia NADA.
+               *
+               * O formulário só existe sob `podeRegistrarAvaria`
+               * (`vestidos.criar`, S-M21), e o perfil `{ver, editar}` sem
+               * `criar` é o que `permissoes.ts` documenta como "válido e
+               * comum" — a gerente que revisa o que a vendedora cadastrou. Ela
+               * registrava a devolução, o diálogo abria, ela clicava em
+               * "Registrar avaria", e o `getElementById(...)?.scrollIntoView`
+               * engolia a chamada no `?.`: o diálogo fechava, a página não se
+               * movia um pixel e nenhum toast explicava. E o F25 existe
+               * justamente porque "passado esse momento o vestido já voltou
+               * para a arara" — o dano ficava sem registro e sem cobrança.
+               */}
+              {podeRegistrarAvaria ? (
+                <>
+                  Confira agora, com a peça na mão. Depois que ela voltar para a arara, um dano
+                  encontrado não tem mais como ser cobrado com prova.
+                </>
+              ) : (
+                <>
+                  Confira agora, com a peça na mão — mas o registro da avaria não está no seu
+                  acesso: ele pede a permissão de <strong>criar</strong> em Vestidos, e o seu
+                  perfil tem só a de editar. Chame quem pode registrar antes de a peça voltar
+                  para a arara; depois disso o dano não tem mais como ser cobrado com prova.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Sim, tudo certo</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setConferirDevolucao(false);
-                document
-                  .getElementById("registrar-avaria")
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
-              }}
-            >
-              Registrar avaria
-            </AlertDialogAction>
+            <AlertDialogCancel>
+              {podeRegistrarAvaria ? "Sim, tudo certo" : "Entendi"}
+            </AlertDialogCancel>
+            {podeRegistrarAvaria && (
+              <AlertDialogAction
+                data-testid="ir-registrar-avaria"
+                onClick={() => {
+                  setConferirDevolucao(false);
+                  document
+                    .getElementById("registrar-avaria")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              >
+                Registrar avaria
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

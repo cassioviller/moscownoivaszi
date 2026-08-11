@@ -5,6 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AvariaParcelaStatus } from './avariaParcelaStatus';
 
 export interface Avaria {
   id: string;
@@ -17,6 +18,8 @@ export interface Avaria {
   temFoto: boolean;
   /** @nullable */
   parcelaId?: string | null;
+  /** @nullable */
+  parcelaStatus?: AvariaParcelaStatus;
   /** @nullable */
   registradoPorNome?: string | null;
   criadaEm: Date;

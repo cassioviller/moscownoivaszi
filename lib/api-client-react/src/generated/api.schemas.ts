@@ -1086,6 +1086,8 @@ export interface BloqueioVestido {
   ocupacaoInicio?: string | null;
   /** @nullable */
   ocupacaoFim?: string | null;
+  /** @nullable */
+  donoLeadId?: string | null;
   vestido?: Vestido;
   lead?: Lead | null;
 }
@@ -1397,6 +1399,19 @@ export interface BloqueioVestidoInput {
   reservaId?: string;
 }
 
+/**
+ * @nullable
+ */
+export type AvariaParcelaStatus = typeof AvariaParcelaStatus[keyof typeof AvariaParcelaStatus] | null;
+
+
+export const AvariaParcelaStatus = {
+  PREVISTA: 'PREVISTA',
+  PARCIAL: 'PARCIAL',
+  PAGA: 'PAGA',
+  CANCELADA: 'CANCELADA',
+} as const;
+
 export interface Avaria {
   id: string;
   lojaId: string;
@@ -1408,6 +1423,8 @@ export interface Avaria {
   temFoto: boolean;
   /** @nullable */
   parcelaId?: string | null;
+  /** @nullable */
+  parcelaStatus?: AvariaParcelaStatus;
   /** @nullable */
   registradoPorNome?: string | null;
   criadaEm: string;

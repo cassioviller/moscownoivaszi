@@ -574,6 +574,34 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   res.json(ListBloqueiosResponse.parse(bloqueios));
 });
 
+/**
+ * V14/E167 — de QUEM é este bloqueio, dito uma vez.
+ *
+ * `bloqueio_vestidos.lead_id` é NULLABLE, e `reservas.lead_id` é NOT NULL: um
+ * bloqueio pendurado numa reserva-mãe TEM dona mesmo sem noiva própria. A
+ * cobrança de avaria já sabia disso desde o V3/E163 (`donoDaAvaria`, no
+ * `POST /avarias/:id/cobrar`) — a ficha, não. Ela buscava o contrato por
+ * `reserva?.leadId` e desistia no nulo, e o servidor mede na própria letra
+ * que **61 das 63 avarias do banco vivem em bloqueio sem noiva**: em 97% dos
+ * casos a rota cobraria e a única tela que expõe a cobrança não desenhava o
+ * botão.
+ *
+ * Agora a régua é UMA, e sai pelo payload: quem desenha e quem cobra leem o
+ * mesmo dono.
+ */
+export async function donoDoBloqueio(
+  bloqueio: { leadId: string | null; reservaId: string | null },
+  executor: typeof db = db,
+): Promise<string | null> {
+  if (bloqueio.leadId) return bloqueio.leadId;
+  if (!bloqueio.reservaId) return null;
+  const [mae] = await executor
+    .select({ leadId: reservasTable.leadId })
+    .from(reservasTable)
+    .where(eq(reservasTable.id, bloqueio.reservaId));
+  return mae?.leadId ?? null;
+}
+
 // E79: a ficha da reserva pede UM bloqueio, não a loja inteira.
 router.get("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {
   const { lojaId, bloqueioId } = req.params as { lojaId: string; bloqueioId: string };
@@ -585,7 +613,7 @@ router.get("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<voi
     res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva de vestido não existe nesta loja." });
     return;
   }
-  res.json(GetBloqueioResponse.parse(bloqueio));
+  res.json(GetBloqueioResponse.parse({ ...bloqueio, donoLeadId: await donoDoBloqueio(bloqueio) }));
 });
 
 router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
@@ -819,7 +847,15 @@ router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<v
     res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: atualizado.conflitos });
     return;
   }
-  res.json(UpdateBloqueioResponse.parse(atualizado.bloqueio));
+  // V14/E167: o PATCH devolve o MESMO payload do GET. A ficha invalida e relê
+  // depois de cada movimentação, mas um campo que só uma das duas portas
+  // preenche é armadilha para quem ler o schema depois.
+  res.json(
+    UpdateBloqueioResponse.parse({
+      ...atualizado.bloqueio,
+      donoLeadId: await donoDoBloqueio(atualizado.bloqueio),
+    }),
+  );
 });
 
 /**
@@ -923,10 +959,24 @@ router.use("/lojas/:lojaId/avarias", requireModulo("vestidos"));
 
 const AVARIA_FOTO_MAX_BYTES = 2 * 1024 * 1024;
 
-/** Meta da avaria para o contrato — nunca os bytes na listagem. */
-function avariaMeta(a: typeof avariasTable.$inferSelect) {
+/**
+ * Meta da avaria para o contrato — nunca os bytes na listagem.
+ *
+ * V2/E167: o `parcelaStatus` entra junto. `parcelaId` preenchido NÃO é o mesmo
+ * que cobrança viva — é a distinção inteira que o `cobrancaViva` abaixo
+ * documenta —, e sem o status a tela não tinha como fazer a mesma conta que o
+ * servidor faz. Ela decidia por `parcelaId` e o servidor por `cobrancaViva`:
+ * cancelado o contrato de R$ 5.000,00, a parcela do reparo de **R$ 800,00**
+ * vira CANCELADA, o servidor volta a aceitar cobrar e remover, e a tela
+ * mostrava "Cobrado — ver parcela" para sempre, com os dois botões escondidos.
+ * Os R$ 800,00 não entram no carnê novo e a avaria fica impossível de limpar.
+ */
+function avariaMeta(
+  a: typeof avariasTable.$inferSelect,
+  parcelaStatus: string | null = null,
+) {
   const { fotoBytes, fotoMime, ...meta } = a;
-  return { ...meta, temFoto: fotoBytes !== null };
+  return { ...meta, temFoto: fotoBytes !== null, parcelaStatus };
 }
 
 /**
@@ -958,11 +1008,28 @@ class AvariaJaCobrada extends Error {}
  * avaria e a foto ficam, e o reparo volta a ser cobrável".
  */
 async function cobrancaViva(parcelaId: string, executor: typeof db = db): Promise<boolean> {
+  const status = await statusDaCobranca(parcelaId, executor);
+  return status !== null && status !== "CANCELADA";
+}
+
+/**
+ * V2/E167 — o mesmo estado que `cobrancaViva` lê, em vez de o booleano.
+ *
+ * A tela precisa dizer POR QUE o botão mudou ("Cobrado" × "recobrar"), e a
+ * régua de vivacidade tem de ser a MESMA das duas pontas: quem responde o
+ * payload e quem responde o 409. Nulo = parcela apagada (o `set null` da FK
+ * já zerou o `parcela_id`) ou sem cobrança nenhuma.
+ */
+async function statusDaCobranca(
+  parcelaId: string | null,
+  executor: typeof db = db,
+): Promise<string | null> {
+  if (!parcelaId) return null;
   const [parcela] = await executor
     .select({ status: parcelasTable.status })
     .from(parcelasTable)
     .where(eq(parcelasTable.id, parcelaId));
-  return !!parcela && parcela.status !== "CANCELADA";
+  return parcela?.status ?? null;
 }
 
 async function contratoAtivoDaLoja(
@@ -978,12 +1045,15 @@ async function contratoAtivoDaLoja(
 
 router.get("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
   const { lojaId, bloqueioId } = req.params;
+  // V2/E167: o status da parcela vem no MESMO SELECT — a tela decide "cobrado"
+  // pela mesma régua do servidor, e não por `parcelaId` não-nulo.
   const avarias = await db
-    .select()
+    .select({ avaria: avariasTable, parcelaStatus: parcelasTable.status })
     .from(avariasTable)
+    .leftJoin(parcelasTable, eq(parcelasTable.id, avariasTable.parcelaId))
     .where(and(eq(avariasTable.lojaId, lojaId as string), eq(avariasTable.bloqueioId, bloqueioId as string)))
     .orderBy(avariasTable.criadaEm);
-  res.json(ListAvariasResponse.parse(avarias.map(avariaMeta)));
+  res.json(ListAvariasResponse.parse(avarias.map((l) => avariaMeta(l.avaria, l.parcelaStatus))));
 });
 
 router.post("/lojas/:lojaId/bloqueios/:bloqueioId/avarias", async (req, res): Promise<void> => {
@@ -1121,15 +1191,15 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * ("prova quando é provável"): sem noiva em NENHUMA das duas pontas, não há
    * o que comparar e a rota segue; com noiva em qualquer uma, tem de ser a
    * mesma.
+   *
+   * V14 (E167): a derivação virou `donoDoBloqueio`, e a FICHA passou a ler o
+   * mesmo campo pelo payload do bloqueio. Enquanto ela morava só aqui, a tela
+   * não desenhava o botão nos 61 bloqueios sem noiva — a régua existia e não
+   * chegava a quem clica.
    */
-  let donoDaAvaria = bloqueioDaAvaria?.leadId ?? null;
-  if (!donoDaAvaria && bloqueioDaAvaria?.reservaId) {
-    const [reservaMae] = await db
-      .select({ leadId: reservasTable.leadId })
-      .from(reservasTable)
-      .where(eq(reservasTable.id, bloqueioDaAvaria.reservaId));
-    donoDaAvaria = reservaMae?.leadId ?? null;
-  }
+  const donoDaAvaria = bloqueioDaAvaria
+    ? await donoDoBloqueio(bloqueioDaAvaria)
+    : null;
   if (donoDaAvaria && donoDaAvaria !== contrato.leadId) {
     res.status(422).json({
       error: "AVARIA_DE_OUTRA_NOIVA",
@@ -1239,7 +1309,13 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
     res.status(409).json({ error: "AVARIA_JA_COBRADA", detalhe: "Este reparo já virou parcela do contrato" });
     return;
   }
-  res.status(201).json(CobrarAvariaResponse.parse(avariaMeta(depois!)));
+  // V2/E167: o status sai LIDO da parcela recém-criada, não presumido — é a
+  // mesma resposta que a listagem dará no próximo GET.
+  res.status(201).json(
+    CobrarAvariaResponse.parse(
+      avariaMeta(depois!, await statusDaCobranca(depois!.parcelaId)),
+    ),
+  );
 });
 
 /**

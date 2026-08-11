@@ -40,6 +40,8 @@ export interface BloqueioVestido {
   ocupacaoInicio?: Date | null;
   /** @nullable */
   ocupacaoFim?: Date | null;
+  /** @nullable */
+  donoLeadId?: string | null;
   vestido?: Vestido;
   lead?: Lead | null;
 }

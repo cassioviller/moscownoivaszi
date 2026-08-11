@@ -63,6 +63,32 @@ app.use(
   requireModulo("vestidos"),
   express.json({ limit: "6mb" }),
 );
+/**
+ * V1/E167 — a FOTO DA AVARIA passava pela mesma porta e nunca ganhou o teto.
+ *
+ * A rota anuncia 2 MiB no cliente (`[bloqueioId].tsx:135`) e no servidor
+ * (`reservas.ts`, `AVARIA_FOTO_MAX_BYTES`), e as duas declarações mentiam: sem
+ * parser próprio, `POST /bloqueios/:id/avarias` caía no `express.json()`
+ * global logo abaixo, de **100 KB**. Medido nesta árvore, com a foto de
+ * celular de 1,5 MB: o corpo chega com **2.000.080 bytes contra um limite de
+ * 102.400** e o servidor responde **413 PAYLOAD_MUITO_GRANDE** antes de uma
+ * linha da rota rodar — 19,5× o teto real, e o teto real é 20× menor que o
+ * anunciado. O 422 `FOTO_MUITO_GRANDE` era código morto, e a suíte era verde
+ * porque o único teste mandava um PNG 1×1 de 70 bytes.
+ *
+ * A conta do limite: 2 MiB de foto × 4/3 do base64 = 2,67 MiB. `4mb` cobre
+ * isso com o envelope do JSON e ainda deixa a foto de até ~3 MiB CHEGAR — é o
+ * que faz o 422 (que nomeia o teto e o gesto) ser a resposta do excesso, em
+ * vez do 413 mudo do parser. Mesma montagem da foto de vestido acima, e pelos
+ * mesmos dois motivos: o gate vem ANTES do parser (B15/E104) e o parser vem
+ * antes do global (o primeiro a rodar marca `req._body`).
+ */
+app.use(
+  "/api/lojas/:lojaId/bloqueios/:bloqueioId/avarias",
+  requireSessaoComLoja,
+  requireModulo("vestidos"),
+  express.json({ limit: "4mb" }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
