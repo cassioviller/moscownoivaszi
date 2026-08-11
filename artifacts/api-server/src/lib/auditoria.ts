@@ -68,6 +68,8 @@ export const ACOES_AUDITORIA = [
   // 404, contagem e rastro") aplicada a reserva, bloqueio, atendimento,
   // orçamento e avaria. Depois do DELETE a trilha é o único rastro deles.
   "RESERVA_REMOVIDA",
+  // S-M24: cancelar a reserva solta os vestidos — nao deixava trilha nenhuma.
+  "RESERVA_CANCELADA",
   "BLOQUEIO_REMOVIDO",
   "ATENDIMENTO_REMOVIDO",
   "ORCAMENTO_REMOVIDO",
@@ -145,6 +147,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   CONTABILIDADE_ENVIADA: "Período declarado à contabilidade",
   CONCILIACAO_MARCADA: "Movimentos conferidos com o extrato",
   RESERVA_REMOVIDA: "Reserva removida",
+  RESERVA_CANCELADA: "Reserva cancelada (vestidos liberados)",
   BLOQUEIO_REMOVIDO: "Bloqueio de vestido removido",
   ATENDIMENTO_REMOVIDO: "Atendimento removido da agenda",
   ORCAMENTO_REMOVIDO: "Orçamento removido",

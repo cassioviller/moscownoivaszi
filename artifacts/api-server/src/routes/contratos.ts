@@ -314,11 +314,18 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   // por bloqueio na ordem da lista, e é ela que os testes pregam. Só o
   // `verificarDisponibilidade` segue por candidato: o motor de conflito é por
   // peça e período, e consolidá-lo mudaria contagem em caminho de erro.
+  // S-M24 (rodada 2, achado 6#1): o filtro que o PATCH sempre teve (`:802`) e
+  // o POST não — sem `isNull(canceladoEm)`, um bloqueio SOFT-CANCELADO era
+  // aceito como reserva do contrato novo: a venda nascia ATIVA segurando uma
+  // reserva morta que a disponibilidade ignora, e a MESMA peça podia ser
+  // prometida de novo — dois contratos ativos sobre um vestido, R$ 9.000,00
+  // somados, o dobro-prometido do E107 reaberto por esta porta.
   const bloqueiosEncontrados = bloqueioIds.length > 0
     ? await db.select().from(bloqueioVestidosTable)
         .where(and(
           inArray(bloqueioVestidosTable.id, bloqueioIds),
           eq(bloqueioVestidosTable.lojaId, lojaId),
+          isNull(bloqueioVestidosTable.canceladoEm),
         ))
     : [];
   const bloqueioPorId = new Map(bloqueiosEncontrados.map((b) => [b.id, b]));
@@ -690,12 +697,27 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * (`leads.ts:451`), que filtra por `is not null`: a noiva sem carimbo não
      * é contada como "já fechou" na curva que diz quando falta vestido.
      */
-    const etapaNova = avancarEtapaLead(lead.etapa, "CONTRATO_FECHADO");
+    /**
+     * S-M24 (rodada 2, achado 6#5): `avancarEtapaLead` não mexe em quem está
+     * fora do funil — e um lead PERDIDO que fecha contrato SEGUIA perdido. A
+     * conversão contava a venda como perda, e a noiva entrava na janela do
+     * expurgo LGPD com contrato ATIVO: o whatsapp da cobrança dos R$ 3.000,00
+     * restantes era anonimizado. Vender para quem voltou É reviver: a etapa
+     * vira CONTRATO_FECHADO e os carimbos de perda são limpos — a história da
+     * perda continua na trilha de auditoria, que é onde história mora.
+     */
+    const voltouDoPerdido = lead.etapa === "PERDIDO";
+    const etapaNova = voltouDoPerdido
+      ? ("CONTRATO_FECHADO" as const)
+      : avancarEtapaLead(lead.etapa, "CONTRATO_FECHADO");
     if (etapaNova !== lead.etapa || !lead.contratoFechadoEm) {
       await tx.update(leadsTable)
         .set({
           etapa: etapaNova,
           contratoFechadoEm: lead.contratoFechadoEm ?? new Date(),
+          ...(voltouDoPerdido
+            ? { perdidaEm: null, perdidaMotivo: null, perdidaDetalhe: null }
+            : {}),
           updatedAt: new Date(),
         })
         .where(eq(leadsTable.id, lead.id));
@@ -772,6 +794,31 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
   const parsed = UpdateContratoBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
+    return;
+  }
+
+  /**
+   * S-M24 (rodada 2, achado 6#3): CANCELADO era terminal em toda porta MENOS
+   * nesta — o PATCH gravava CPF, datas e observações num contrato que a
+   * trilha CONTRATO_CANCELADO já congelou, e o PDF saía com os dados novos:
+   * o documento divergia do que a auditoria diz que foi cancelado. Pior, a
+   * única prova do PATCH (data × reserva) filtra bloqueios vivos, e num
+   * cancelado TODOS têm canceladoEm — a data mudava sem prova nenhuma. O
+   * arquivo morto não se reescreve.
+   */
+  const [statusAtual] = await db
+    .select({ status: contratosTable.status })
+    .from(contratosTable)
+    .where(and(eq(contratosTable.id, contratoId as string), eq(contratosTable.lojaId, lojaId as string)));
+  if (!statusAtual) {
+    res.status(404).json({ error: "CONTRATO_NAO_ENCONTRADO", detalhe: "Este contrato não existe nesta loja." });
+    return;
+  }
+  if (statusAtual.status !== "ATIVO") {
+    res.status(422).json({
+      error: "CONTRATO_NAO_ATIVO",
+      detalhe: "Contrato cancelado é registro morto — ele não se edita.",
+    });
     return;
   }
 

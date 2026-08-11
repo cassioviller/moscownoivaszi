@@ -52,6 +52,13 @@ class ConflitoDisponibilidadeError extends Error {
   }
 }
 
+/** S-M24: cancelar a reserva de um contrato ATIVO soltaria a peça da noiva. */
+class ReservaPresaAContrato extends Error {
+  constructor(public readonly contratos: number) {
+    super("RESERVA_COM_CONTRATO");
+  }
+}
+
 // Reservas
 router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -130,6 +137,46 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
         .where(eq(reservasTable.id, reserva.id));
 
       if (dados.status === "CANCELADA") {
+        /**
+         * S-M24 (rodada 2, achado 6#2): esta porta soltava os vestidos de um
+         * contrato ATIVO — os dois DELETEs contam o vínculo e recusam com 409,
+         * e o 409 deles ainda apontava para CÁ como saída. Cancelar a reserva
+         * enquanto o contrato de R$ 5.000,00 segue cobrando parcelas devolvia
+         * a peça ao mercado: outra noiva a reservava para a MESMA data, e a
+         * dupla promessa só aparecia na retirada. Agora a mesma pergunta dos
+         * DELETEs roda aqui (dentro da transação, achado 3#7), e o
+         * cancelamento deixa trilha — não deixava nenhuma.
+         */
+        const bloqueiosDaReserva = await tx.select({ id: bloqueioVestidosTable.id })
+          .from(bloqueioVestidosTable)
+          .where(and(
+            eq(bloqueioVestidosTable.reservaId, reserva.id),
+            isNull(bloqueioVestidosTable.canceladoEm),
+          ));
+        if (bloqueiosDaReserva.length > 0) {
+          const presos = await tx.select({ contratoId: contratoBloqueiosTable.contratoId })
+            .from(contratoBloqueiosTable)
+            .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+            .where(and(
+              inArray(contratoBloqueiosTable.bloqueioId, bloqueiosDaReserva.map((b) => b.id)),
+              eq(contratosTable.status, "ATIVO"),
+            ));
+          if (presos.length > 0) {
+            throw new ReservaPresaAContrato(presos.length);
+          }
+        }
+        await registrarAuditoria(tx, {
+          lojaId,
+          usuario: req.usuario!,
+          acao: "RESERVA_CANCELADA",
+          entidade: "reserva",
+          entidadeId: reserva.id,
+          detalhe: {
+            leadId: reserva.leadId,
+            casamentoData: reserva.casamentoData,
+            bloqueiosSoltos: bloqueiosDaReserva.length,
+          },
+        });
         // A constraint EXCLUDE do banco não enxerga o status da reserva —
         // soft-cancela os bloqueios vinculados para liberar os vestidos.
         await tx.update(bloqueioVestidosTable)
@@ -188,6 +235,16 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
   } catch (err) {
     if (err instanceof ConflitoDisponibilidadeError) {
       res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: err.conflitos });
+      return;
+    }
+    if (err instanceof ReservaPresaAContrato) {
+      res.status(409).json({
+        error: "RESERVA_COM_CONTRATO",
+        detalhe:
+          `${err.contratos} contrato(s) ativo(s) preso(s) ao vestido desta reserva — ` +
+          "cancele o contrato primeiro, ou o vestido da noiva voltaria ao mercado.",
+        contratosAtivos: err.contratos,
+      });
       return;
     }
     throw err;

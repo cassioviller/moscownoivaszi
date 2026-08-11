@@ -42,7 +42,7 @@ describe("S-M22 — a guarda relida sob tranca vê o que commitou na janela", ()
 
   it("DELETE /parcelas × receber: o recebimento commitado na janela SEGURA a parcela (era 204 com o dinheiro sumindo)", async () => {
     const lead = await criarLead(f);
-    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 500 });
+    const contrato = await criarContrato(f, { leadId: lead.id, valorTotal: 500, fechadoEm: dataFutura(-5) });
     const parcelaId = randomUUID();
     await db.insert(parcelasTable).values({
       id: parcelaId,

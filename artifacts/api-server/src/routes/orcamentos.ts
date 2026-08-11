@@ -38,6 +38,32 @@ import { erroDeValidacao } from "../lib/erros";
 
 const router: IRouter = Router();
 
+/**
+ * S-M24 (rodada 2, achado 6#4) — os DOIS estados que congelam conteúdo.
+ *
+ * As quatro portas de conteúdo (item POST/PATCH/DELETE e desconto) só
+ * perguntavam por APROVADO — mas RECUSADO também é terminal
+ * (`TRANSICOES_ORCAMENTO`: nenhuma saída), e um orçamento recusado de
+ * R$ 3.500,00 podia virar R$ 500,00 depois do não: quem relesse a proposta, ou
+ * comparasse com o motivo de perda do lead, encontrava outra história. Sem uso
+ * legítimo possível — recusado nunca reenvia nem aprova.
+ */
+function recusaConteudoCongelado(status: string): { error: string; detalhe: string } | null {
+  if (status === "APROVADO") {
+    return {
+      error: "ORCAMENTO_APROVADO",
+      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
+    };
+  }
+  if (status === "RECUSADO") {
+    return {
+      error: "ORCAMENTO_RECUSADO",
+      detalhe: "O que a noiva recusou é registro — crie um novo orçamento em vez de reescrever o não.",
+    };
+  }
+  return null;
+}
+
 /** Avança o lead para ORCAMENTO_ABERTO (só se for à frente no funil). */
 async function marcarOrcamentoAberto(lojaId: string, leadId: string): Promise<void> {
   const lead = await db.query.leadsTable.findFirst({
@@ -271,15 +297,12 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
 
   // E115 — o desconto muda o líquido tanto quanto um item: em APROVADO ele
   // também congela, senão a guarda dos itens tem uma porta dos fundos.
-  if (
-    existente.status === "APROVADO" &&
-    (parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined)
-  ) {
-    res.status(422).json({
-      error: "ORCAMENTO_APROVADO",
-      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
-    });
-    return;
+  {
+    const recusa = recusaConteudoCongelado(existente.status);
+    if (recusa && (parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined)) {
+      res.status(422).json(recusa);
+      return;
+    }
   }
 
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";
@@ -299,7 +322,7 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
       .where(eq(orcamentosTable.id, orcamentoId as string))
       .for("update");
     if (!agora) return null;
-    if (agora.status === "APROVADO" && mexeNoDesconto) return { corrida: true as const };
+    if (recusaConteudoCongelado(agora.status) && mexeNoDesconto) return { corrida: true as const };
     const [atualizado] = await tx.update(orcamentosTable)
       .set({
         ...parsed.data,
@@ -429,12 +452,12 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/itens", async (req, res): Pr
   // aprovação manual) congelou o conteúdo, e mexer nos itens depois deixaria
   // aceite, portal e contrato falando de números diferentes. ENVIADO continua
   // editável de propósito (E75): a noiva vê a versão congelada, não o vivo.
-  if (orcamento.status === "APROVADO") {
-    res.status(422).json({
-      error: "ORCAMENTO_APROVADO",
-      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
-    });
-    return;
+  {
+    const recusa = recusaConteudoCongelado(orcamento.status);
+    if (recusa) {
+      res.status(422).json(recusa);
+      return;
+    }
   }
 
   /**
@@ -548,12 +571,12 @@ router.patch("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promis
     res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
-  if (pai.status === "APROVADO") {
-    res.status(422).json({
-      error: "ORCAMENTO_APROVADO",
-      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
-    });
-    return;
+  {
+    const recusa = recusaConteudoCongelado(pai.status);
+    if (recusa) {
+      res.status(422).json(recusa);
+      return;
+    }
   }
 
   const [item] = await db.update(orcamentoItensTable)
@@ -581,12 +604,12 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
     res.status(404).json({ error: "ITEM_NAO_ENCONTRADO", detalhe: "Este item não existe nesta loja." });
     return;
   }
-  if (pai.status === "APROVADO") {
-    res.status(422).json({
-      error: "ORCAMENTO_APROVADO",
-      detalhe: "Orçamento aprovado não muda mais — crie um novo orçamento para renegociar",
-    });
-    return;
+  {
+    const recusa = recusaConteudoCongelado(pai.status);
+    if (recusa) {
+      res.status(422).json(recusa);
+      return;
+    }
   }
   await db.delete(orcamentoItensTable).where(and(eq(orcamentoItensTable.id, itemId), eq(orcamentoItensTable.lojaId, lojaId)));
   res.status(204).send();
