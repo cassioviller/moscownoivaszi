@@ -29,10 +29,19 @@ para o documento que manda.
    que escrevia no dev e declarava sucesso (S-M15 `050fa33` — agora ela prova
    o alvo). A S-M4 ainda derrubou o spec 32 do E2E ao expor que a loja da
    suíte estava GENUINAMENTE negativa — a fixture vivia no ponto cego que a
-   sobra fechou (`fc8729d`). **Restam 4, todas 🟡**: S-M9 (varredura
-   criar×editar, forma da S36), S-M18 (varredura check-then-write, forma da
-   S-M7), S-M10 (campo vazio = apague, toca contrato e tela) e S-M17 (espera
-   dados de banco real, não código). A tabela do `EXECUCAO.md` é a fila.
+   sobra fechou (`fc8729d`).
+
+   **2026-08-11: a RODADA 2 rodou e a fila dela está EXECUTADA.** A segunda
+   varredura (`RODADA-2.md`: 77 agentes, 3,76 M tokens, na 3ª tentativa — as
+   duas primeiras morreram com a sessão, e a lição virou gravação por ângulo
+   em `rodada-2-achados/`) devolveu **53 achados verificados** (nenhum 🔴,
+   2 🟠, 45 🟡, 6 🔵), consolidados em **10 épicos**
+   (`rodada-2-consolidado.md`) e fechados em 10 commits no dia seguinte —
+   inclusive **a S-M9 (`bcbdf27`, 10 sítios criar×editar) e a S-M18
+   (`d4bdc76`, 10 sítios check-then-write sob tranca)**, cujas enumerações
+   saíram dos ângulos 4 e 3. **Restam 2, ambas 🟡**: S-M10 (campo vazio =
+   apague, toca contrato e tela) e S-M17 (espera dados de banco real, não
+   código). A tabela do `EXECUCAO.md` é a fila.
 
    O registro da sessão anterior — `2026-08-07-sessao-zerando-o-codigo.md` —
    continua valendo para tudo que não seja a fila: ele é quem conta como o
@@ -52,14 +61,15 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 18 sobras, 14 fechadas NO MESMO DIA. Restam 4 🟡: S-M9 e S-M18 (varreduras), S-M10 (campo vazio = apague), S-M17 (espera dados, não código). É a fila do dia** |
+   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 18 sobras da rodada 1 (16 fechadas) + 53 achados da rodada 2 (fechados em 10 épicos, 2026-08-11). Restam 2 🟡: S-M10 (campo vazio = apague) e S-M17 (espera dados, não código)** |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
 
-   **São 17 sobras abertas: as 15 de código da revisão max, mais as 2 que
-   esperam gente** — S-A2 (as fotos do caderno) e S-A27 (classificar as 496
-   peças com a dona). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
+   **São 4 sobras abertas: as 2 da revisão max (S-M10, S-M17), mais as 2 que
+   esperam gente** — S-A2 (as fotos que faltam do caderno) e S-A27
+   (classificar as peças com a dona; o acervo agora tem 132 peças do legado
+   carregadas em `moscow_base`, todas sem "Tipo de peça"). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
    viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no
@@ -93,7 +103,7 @@ para o documento que manda.
    `git rev-list --count origin/main..main` antes de assumir que ainda está em
    dia — esta linha envelhece a cada commit, e já envelheceu quatro vezes.
 
-   Hoje a régua é **API 1105 · frontend 534 · E2E 165 · typecheck verde em 5
+   Hoje a régua é **API 1134 · frontend 536 · E2E 165 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que

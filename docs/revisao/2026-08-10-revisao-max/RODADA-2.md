@@ -174,13 +174,18 @@ o vermelho medido onde ele era mensurável:
 | S-M27 🟡 os índices fora do B10/E91 | `7251d91` (+`f47e30a`) | 9#1–4 — schema + migração 0013 + DDL de banco existente |
 | S-M28 🟡/🔵 as réguas que mentiam | `7fd7fc4` | 10#1–3, 8#5, 11#3 |
 
-**O que a execução ensinou** (a parte que vale mais que o diff): a suíte
-COMPLETA pegou o que os subsets não pegaram — o DDL da S-M27 escrevia nomes
-entre aspas e a regex da varredura S-A20 (case-insensitive) capturava o `IF`
-de `IF NOT EXISTS` seis vezes (`f47e30a`, uma linha). E o gate de "Dar baixa"
-das comissões provou que a linha 152 da tela (que o S36 tinha dado por
-obsoleta) estava CERTA: a rota exige `admin.editar` explícito, e quem mentia
-era o bloco novo do S36.
+**O que a execução ensinou** (a parte que vale mais que o diff): as suítes
+COMPLETAS pegaram o que os subsets não pegaram, três vezes. (1) O DDL da
+S-M27 escrevia nomes entre aspas e a regex da varredura S-A20
+(case-insensitive) capturava o `IF` de `IF NOT EXISTS` seis vezes
+(`f47e30a`, uma linha). (2) O spec 35 do E2E ainda falava com o diálogo de
+receber que a S-M20 apagou — os seletores da cópia morta (`#receber-valor`)
+viraram os do compartilhado. (3) O assert do toast do spec 34 caiu por
+strict mode: o Radix espelha o título numa região aria-live e o getByText
+cru resolve DOIS elementos — `.first()`. E o gate de "Dar baixa" das
+comissões provou que a linha 152 da tela (que o S36 tinha dado por obsoleta)
+estava CERTA: a rota exige `admin.editar` explícito, e quem mentia era o
+bloco novo do S36.
 
 Guardas que ficam: `sm21-gate-acao-da-tela-unit` (os dez pares tela×ação
 pinados), `sm22-corrida-check-then-write-api` (corrida determinística nos
