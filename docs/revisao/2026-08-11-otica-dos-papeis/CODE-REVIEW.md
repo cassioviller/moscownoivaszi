@@ -28,7 +28,7 @@ abaixo é a fila; conte o que tem seção, não deduza.
 
 | # | Alvo | Estado | Achados |
 |---|---|---|---|
-| 1 | `artifacts/api-server/src/routes/contratos.ts` | ⏳ rodando | — |
+| 1 | `artifacts/api-server/src/routes/contratos.ts` | ✅ **feito** | 10 (9 correção, 1 limpeza) |
 | 2 | `artifacts/api-server/src/lib/aceite-orcamento.ts` | ✅ **feito** | 10 (7 correção, 3 limpeza) |
 | 3 | `artifacts/api-server/src/routes/reservas.ts` | ✅ **feito** | 10 (todos de correção) |
 
@@ -116,7 +116,106 @@ assumido**:
 
 # Alvo 1 — `artifacts/api-server/src/routes/contratos.ts`
 
-⏳ em curso — nada gravado ainda.
+✅ **Feito.** 1.482 linhas, 39 agentes, 1,79 M tokens — o maior dos três. Os
+quatro ângulos levantaram 34 candidatos, todos verificados; **10 defeitos
+distintos** sobreviveram ao corte (8 CONFIRMED, 2 PLAUSIBLE), agrupando 24 dos
+34. Ficaram de fora as sobras de qualidade pura.
+
+**A tese:** duas famílias explicam quase tudo. A primeira é **check-then-write**
+— guarda lida no pool, escrita sem reconferência dentro da transação — e ela
+atinge quatro portas: cancelar contrato, criar com reserva, estornar avulso e o
+PATCH. A segunda é **guarda que se desliga sozinha no nulo**, e atinge duas: a
+prova de data do PATCH e o próprio portão E150.
+
+## O dinheiro, medido
+
+**K1 · O cancelamento lê as parcelas fora da transação** (`:943`, a leitura em
+`:902`). Um recebimento que commita na janela vira PAGA, escapa do
+`inArray(status, STATUS_ABERTO)` **e** de `idsComRecebimento`, e sobrevive ao
+cancelamento com o dinheiro dentro. **Medido:** cancelamento com `destinoPago:
+"estornar"` no mesmo segundo do Pix de R$ 700,00 → contrato CANCELADO com uma
+parcela PAGA viva de R$ 700,00, que `entrouDinheiro` (`caixa.ts:82`) conta no
+caixa realizado **para sempre** — enquanto a trilha grava `totalRecebido: 0`,
+`totalEstornado: 0`. A loja devolveu R$ 700,00 que o caixa jura ter recebido, e
+não há linha que explique.
+
+**K3 · `CONTRATO_ATIVO_DUPLICADO` lido só no pool** (`:184`). O `FOR UPDATE` da
+S-M7 (`:541`) só tranca bloqueios, e **nem roda quando `bloqueioIds` está
+vazio**; não há unique em `contratos.lead_id` — o unique existe só em
+`orcamento_id`. **Medido:** dois contratos ATIVOS de R$ 5.000,00 para a mesma
+noiva, a ficha somando 2 × 10 × R$ 500,00 = **R$ 10.000,00 a receber sobre uma
+venda de R$ 5.000,00**, com a comissão fechando sobre o dobro. É o estrago da
+S-M3 entrando por outra porta.
+
+**K7 · O estorno avulso não reconfere o status do contrato** (`:1201`) —
+PLAUSIBLE. O UPDATE de `:1240-1243` reconfere o status da PARCELA e omite o do
+CONTRATO. **Medido:** R$ 1.000,00 de sinal somem do caixa realizado e reaparecem
+como cobrança aberta de uma venda morta — no horizonte, no aging e na régua de
+cobrança da noiva.
+
+## A peça prometida duas vezes
+
+**K2 · A reconferência da S-M7 não relê `canceladoEm`** (`:543`). Ela relê só
+`id` e só refaz a prova de `presosPorContratoAtivo`. **Medido:** o contrato nasce
+201 preso a uma reserva morta; `verificarDisponibilidade` ignora bloqueios
+cancelados e a EXCLUDE também; o mesmo vestido é vendido de novo no mesmo sábado
+— **R$ 9.000,00 prometidos sobre uma peça**, descobertos na retirada. É
+exatamente o defeito que a S-M24 declara fechado no comentário de `:317-322`.
+
+**K4 · O E150 aceita bloqueio de MANUTENCAO como se fosse reserva** (`:444`).
+`vestidosReservados` aceita bloqueio de QUALQUER tipo, e MANUTENCAO nasce sem
+`casamentoData` (`reservas.ts:455-460`) — o que **desliga sozinha** a guarda de
+data de `:412`. **Medido:** venda de R$ 4.000,00 satisfeita por uma janela de
+manutenção de 01/03–05/03, e outra de R$ 4.000,00 com reserva legítima de 10/05
+que não conflita com março. **Dois contratos, R$ 8.000,00, o mesmo vestido no
+mesmo sábado — o dobro-prometido que o E150 existe para impedir.**
+
+**K5 · A guarda de data do PATCH se desliga no nulo** (`:853`), e o PATCH nunca
+chama `verificarDisponibilidade` — embora o comentário de `:826-834` afirme que
+ele repete "as duas provas que o POST faz". O contrato passa a prometer 10/05 com
+o envelope físico sem cobrir o dia.
+
+## O gate, dito pelo próprio arquivo
+
+**K6 · O 422 do E150 descreve a consequência e não diz a ação** (`:476`). A tela
+só envia bloqueios `RESERVA_CASAMENTO` **com `leadId` da noiva**
+(`orcamentos/[id].tsx:274-284`), e a peça costuma estar segura por bloqueio com
+`lead_id` NULO — o caso que **o próprio arquivo mede em `:388-390`: 61 de 63** —
+que `reservas.ts:512` continua permitindo criar. O diálogo manda
+`bloqueioVestidoIds: []`, o POST responde 422, e a vendedora lê que a peça "não
+tem reserva neste contrato" sem instrução nenhuma. **A venda aceita não fecha por
+tela nenhuma.** É o A02.4 do ângulo da vendedora, agora com o número do próprio
+código.
+
+**K10 · O 409 `VESTIDO_INDISPONIVEL` é o único erro do arquivo sem `detalhe`**
+(`:441`). Nenhum consumidor traduz o código: `MENSAGENS_ERRO`
+(`orcamentos/[id].tsx:98-110`) não o lista e `POR_FAIXA` (`erro-api.ts:39-42`) só
+cobre 401 e 403. Com a noiva na frente, a vendedora lê **"Tente novamente"** —
+uma frase que manda repetir o gesto que vai falhar sempre. O payload `conflitos`,
+que sabe a resposta, não é lido por tela nenhuma.
+
+## Os dois restantes
+
+**K8** (`:867`, PLAUSIBLE): o PATCH confere ATIVO no pool e o UPDATE não repete a
+condição — contrato CANCELADO com dados alterados **depois** do cancelamento, e o
+PDF imprimindo a data nova. O idioma de tranca já usado no DELETE de parcela
+(`:1300-1304`) não foi aplicado aqui. **K9** (`:1359`): o número da parcela
+avulsa é calculado em memória e a colisão vira o 409 genérico
+`REGISTRO_DUPLICADO` — "Já existe um registro com estes dados", no meio de um
+fluxo de dinheiro, que é literalmente o caso que `erros.ts:181-185` registra ter
+sido lido como regressão financeira por dois minutos.
+
+## O cruzamento
+
+| Code review | Ângulo | O que muda |
+|---|---|---|
+| K3 (contrato duplicado) | A08.1 | Mesmo defeito, mesma medida — duas lentes independentes |
+| K6 (422 sem ação) | A01.4 e A02.3 | Três lentes; o review achou o 61-de-63 dentro do próprio arquivo |
+| K2 (`canceladoEm` não relido) | A08.2 | O ângulo viu os dois sentidos; o review provou por que a tranca não alcança |
+| K10 (erro sem tradução) | A02.3 | O ângulo viu o schema sem o campo; o review viu o erro sem `detalhe` |
+
+**K1, K4, K5, K7, K8 e K9 são novos** — seis de dez, a mesma proporção dos outros
+dois alvos.
 
 ---
 
