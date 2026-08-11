@@ -13,23 +13,29 @@ para o documento que manda.
    ampliado. As **regras acumuladas** no fim do arquivo valem para o trabalho de
    hoje, e a seção de crítica diz por que cada uma existe, com a evidência que a
    motivou. Não é história: é o contrato.
-2. **A trilha em curso** — `docs/revisao/2026-08-10-revisao-max/`, aberta em
-   2026-08-10. A primeira coisa que ela diz é a que mais muda o dia: **o
-   backlog de código voltou, e ele é NOVO.** A revisão `max` do aplicativo
-   inteiro (68 agentes, 5,58 M tokens) rodou sobre um repositório com ZERO
-   sobras de código e achou **15 defeitos**. As 15 foram **conferidas âncora
-   por âncora antes de virarem trabalho** (regra 20) e as 15 são verdadeiras —
-   o que é notícia, e virou a regra 33. **Catorze das dezoito fecharam no
-   MESMO dia**, cada uma com o vermelho medido antes — as duas 🔴, as seis 🟠
-   e seis 🟡. As mais graves: o `DELETE` de cabine em cascata (S-M1
-   `3f21fa7`), o carnê que nascia `AVULSA` e dobrava a venda (S-M3 `ae4a8e7`,
-   medido: 9 parcelas somando R$ 10.000,00 num contrato de R$ 5.000,00), a
-   corrida das duas noivas pelo mesmo vestido (S-M7 `75882f0`, `FOR UPDATE` +
-   reconferência, corrida determinística em teste) e a régua do banco virgem
-   que escrevia no dev e declarava sucesso (S-M15 `050fa33` — agora ela prova
-   o alvo). A S-M4 ainda derrubou o spec 32 do E2E ao expor que a loja da
-   suíte estava GENUINAMENTE negativa — a fixture vivia no ponto cego que a
-   sobra fechou (`fc8729d`).
+2. **A trilha em curso** — `docs/revisao/2026-08-11-otica-dos-papeis/`,
+   aberta em 2026-08-11 a pedido da dona: a revisão pela ótica de quem USA
+   (dona, vendedora, costureira, noiva), mirando o **gate entre o aceite e o
+   contrato**. Três lentes (8 ângulos, 3 alvos `high`, 4 fatias `max`)
+   produziram **149 achados**; o plano
+   (`docs/propostas/2026-08-11-otica-dos-papeis-plano.md`) os colapsou em
+   **14 épicos, E158–E171, em quatro faixas**, e a Fase 0 (4 decisões da dona
+   + 2 contagens) fechou no mesmo dia — todas na recomendação. **As Faixas A
+   e B estão EXECUTADAS e publicadas**: E158–E163, seis commits de código,
+   ~64 achados riscados, cada um com o vermelho medido literal antes do verde
+   (a tabela do `EXECUCAO.md` da trilha é a fila; **conte, não deduza**). O
+   maior fecho: o E162 abriu o caminho aceite → fila → reserva inline →
+   contrato que NENHUM teste cruzava, e o beco do APROVADO terminal ganhou a
+   porta gerencial. Restam as Faixas C (E164–E169, paralelizáveis) e D
+   (E170–E171, as réguas).
+
+   A trilha anterior — `2026-08-10-revisao-max/` — está de pé como história:
+   a revisão `max` do aplicativo inteiro (68 agentes, 5,58 M tokens) sobre um
+   repositório com ZERO sobras achou 15 defeitos verdadeiros (regra 33), e as
+   mais graves fecharam no mesmo dia: o `DELETE` de cabine em cascata (S-M1
+   `3f21fa7`), o carnê que nascia `AVULSA` e dobrava a venda (S-M3 `ae4a8e7`),
+   a corrida das duas noivas pelo mesmo vestido (S-M7 `75882f0`) e a régua do
+   banco virgem que escrevia no dev (S-M15 `050fa33`).
 
    **2026-08-11: a RODADA 2 rodou e a fila dela está EXECUTADA.** A segunda
    varredura (`RODADA-2.md`: 77 agentes, 3,76 M tokens, na 3ª tentativa — as
@@ -54,22 +60,24 @@ para o documento que manda.
    cópia de worktree órfão, e desde `c98341e` as **16 varreduras** do
    repositório enumeram pelo versionamento, com piso de população.
 
-   **A trilha em curso é a da revisão max; o resto é backlog de SOBRAS.** As
-   tabelas de Sobras continuam sendo a fonte da verdade de cada rastreador.
-   **Conte-as, não deduza** — a linha aberta é a que NÃO está riscada, e o fecho
-   de 2026-08-07 achou sete fechadas sem risco justamente por contar:
+   **A trilha em curso é a da ótica dos papéis; o resto é backlog de
+   SOBRAS.** As tabelas de Sobras continuam sendo a fonte da verdade de cada
+   rastreador. **Conte-as, não deduza** — a linha aberta é a que NÃO está
+   riscada, e o fecho de 2026-08-07 achou sete fechadas sem risco justamente
+   por contar:
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Revisão max** | **`2026-08-10-revisao-max/`** | **EM CURSO — 18 sobras da rodada 1 (16 fechadas) + 53 achados da rodada 2 (fechados em 10 épicos, 2026-08-11). Restam 2 🟡: S-M10 (campo vazio = apague) e S-M17 (espera dados, não código)** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EM CURSO — 149 achados em 14 épicos (E158–E171). Faixas A e B executadas (E158–E163); restam C (E164–E169) e D (E170–E171), mais as sobras S-O da tabela do `EXECUCAO.md`** |
+   | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). Restam 2 🟡: **S-M10 foi absorvida pelo E169 da trilha nova**; S-M17 espera dados de banco real |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
    | Arqueologia do legado (29 fotos do papel) | `2026-08-04-arqueologia-legado/` | fechada em 2026-08-05 — 10 épicos, 2 sobras abertas (2 🟡): S-A2, S-A27 |
 
-   **São 4 sobras abertas: as 2 da revisão max (S-M10, S-M17), mais as 2 que
-   esperam gente** — S-A2 (as fotos que faltam do caderno) e S-A27
-   (classificar as peças com a dona; o acervo agora tem 132 peças do legado
-   carregadas em `moscow_base`, todas sem "Tipo de peça"). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
+   **Fora da trilha em curso são 3 sobras abertas: a S-M17 (espera um dump de
+   instalação real), mais as 2 que esperam gente** — S-A2 (as fotos que faltam
+   do caderno) e S-A27 (classificar as peças com a dona; o acervo tem 132
+   peças do legado em `moscow_base`, todas sem "Tipo de peça"). O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
    viraram código — S-D36 (`74c540f`) e S-A16 (`8179ae5`) — implementadas no
@@ -105,7 +113,7 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1134 · frontend 536 · E2E 165 · typecheck verde em 5
+   Hoje a régua é **API 1186 · frontend 536 · E2E 165 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
