@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, decimal, integer, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, decimal, integer, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { lojasTable } from "./loja";
@@ -40,6 +40,14 @@ export const orcamentosTable = pgTable("orcamentos", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({
   publicoTokenUnq: uniqueIndex("orcamentos_publico_token_unq").on(t.publicoToken),
+  // S-M27 (rodada 2, achado 9#2): toda consulta de orçamento começa em
+  // lojaId (lista paginada roda DUAS — count + página) e as quentes somam
+  // status (fila de /mensagens, card do dashboard em todo load da home) ou
+  // leadId (ficha da noiva). Sem índice, cada uma varria a tabela de TODAS
+  // as lojas — os irmãos da mesma classe (contratos, leads, parcelas) têm o
+  // deles desde o B10/E91.
+  lojaStatusIdx: index("orcamentos_loja_status_idx").on(t.lojaId, t.status),
+  leadIdx: index("orcamentos_lead_idx").on(t.leadId),
 }));
 
 export const insertOrcamentoSchema = createInsertSchema(orcamentosTable).omit({ createdAt: true, updatedAt: true });
@@ -66,7 +74,11 @@ export const orcamentoItensTable = pgTable("orcamento_itens", {
   valorUnitario: decimal("valor_unitario", { precision: 10, scale: 2, mode: "number" }).notNull(),
   quantidade: integer("quantidade").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // S-M27: o irmão contrato_itens TEM o dele (contrato_itens_contrato_idx) —
+  // o `inArray(orcamentoId, ids)` de toda listagem varria a tabela inteira.
+  orcamentoIdx: index("orcamento_itens_orcamento_idx").on(t.orcamentoId),
+}));
 
 export const insertOrcamentoItemSchema = createInsertSchema(orcamentoItensTable).omit({ createdAt: true });
 export type InsertOrcamentoItem = z.infer<typeof insertOrcamentoItemSchema>;

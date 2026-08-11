@@ -231,7 +231,17 @@ export const registrosCobrancaTable = pgTable("registros_cobranca", {
   observacao: text("observacao"),
   vendedorId: text("vendedor_id").references(() => usuariosTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => ({
+  // S-M27 (rodada 2, achado 9#1): o Postgres NÃO cria índice para FK — a
+  // regra do B10/E91, que fechou a classe em parcelas/contratos/leads e
+  // deixou esta tabela de fora. `ultimoContatoPorLead` filtra por lead_id em
+  // CINCO pontos quentes (toda página de /noivas, o sino a cada 5 min, a
+  // lista de parcelas, o detalhe do lead) e o funil dispara 12 varreduras da
+  // tabela inteira num render. A tabela só cresce — um clique de cobrança
+  // por linha.
+  leadIdx: index("registros_cobranca_lead_idx").on(t.leadId),
+  lojaIdx: index("registros_cobranca_loja_idx").on(t.lojaId),
+}));
 
 export const insertRegistroCobrancaSchema = createInsertSchema(registrosCobrancaTable).omit({ createdAt: true });
 export type InsertRegistroCobranca = z.infer<typeof insertRegistroCobrancaSchema>;

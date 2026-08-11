@@ -69,7 +69,13 @@ export const bloqueioVestidosTable = pgTable("bloqueio_vestidos", {
   reservaId: text("reserva_id").references(() => reservasTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => ({
+  // S-M27 (rodada 2, achado 9#3): o único índice desta tabela era o EXCLUDE
+  // gist por (vestido_id, daterange) — a consulta quente é POR LOJA
+  // (`buscarBloqueiosAtivos`: lojaId + canceladoEm nulo, disparada a cada
+  // data escolhida no acervo) e varria os bloqueios de TODAS as lojas.
+  lojaCanceladoIdx: index("bloqueio_vestidos_loja_cancelado_idx").on(t.lojaId, t.canceladoEm),
+}));
 
 export const insertBloqueioVestidoSchema = createInsertSchema(bloqueioVestidosTable).omit({ createdAt: true, updatedAt: true });
 export type InsertBloqueioVestido = z.infer<typeof insertBloqueioVestidoSchema>;

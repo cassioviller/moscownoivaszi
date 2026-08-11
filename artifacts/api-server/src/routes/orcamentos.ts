@@ -207,8 +207,14 @@ router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
   // O líquido de cada orçamento da página, em centavos, pela MESMA régua do
   // `POST /contratos` (`liquidoEmCentavos`) — nunca uma segunda fórmula.
   const ids = orcamentos.map((o) => o.id);
+  // S-M27 (rodada 2, achado 9#4): no recorte `?leadId=` o relational builder
+  // JÁ trouxe os itens para a resposta — a segunda consulta baixava as mesmas
+  // linhas de novo só para o valorTotal. Quando a relação veio, o cálculo a
+  // consome; a consulta só roda no ramo da listagem geral, onde é a única.
   const itensDaPagina = ids.length
-    ? await db.select().from(orcamentoItensTable).where(inArray(orcamentoItensTable.orcamentoId, ids))
+    ? leadId
+      ? orcamentos.flatMap((o) => (o as { itens?: (typeof orcamentoItensTable.$inferSelect)[] }).itens ?? [])
+      : await db.select().from(orcamentoItensTable).where(inArray(orcamentoItensTable.orcamentoId, ids))
     : [];
   const itensPorOrcamento = new Map<string, typeof itensDaPagina>();
   for (const item of itensDaPagina) {
