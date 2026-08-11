@@ -353,3 +353,17 @@ As quatro decisões foram tomadas pela dona no mesmo dia, todas na recomendaçã
 
 O E162 está desbloqueado. Restam as contagens C1/C2 e o push do main (regra 29)
 antes de abrir a Faixa A.
+
+## As contagens C1 e C2 — RODADAS em 2026-08-11, no `moscow_base`
+
+**C1 — zero em todas as três medidas.** ENVIADOs/APROVADOs sem linha em
+`orcamento_versoes`: **0**. APROVADOs com `aceite_hash` nulo: **0**. O ramo
+legado do C7/A03.7 **morre como preocupação de dado** — no E163 sobra só a
+mudança de código (o gate deixa de depender de hash truthy e o `/aprovar`
+grava o hash), sem backfill.
+
+**C2 (S-M17) — o banco não tem o que medir.** `moscow_base` tem **0 parcelas e
+0 contratos** — é a base do acervo do legado, não uma instalação que fechou
+vendas. O predicado da S-M17 ("AVULSAs criadas no instante do contrato somando
+o `valor_total`") continua correto e continua **esperando um dump de instalação
+real**. A sobra permanece aberta, e nenhum épico deste plano a fecha.
