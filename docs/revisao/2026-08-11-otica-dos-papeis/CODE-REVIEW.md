@@ -55,6 +55,35 @@ leia-o antes de concluir que um resultado veio vazio.
 resolvem: refaça o alvo que não tem seção aqui. É por isso que a seção é
 gravada assim que o alvo termina, e não no fim dos três.
 
+## Na fila depois destes três — o `max` do fluxo completo, em 4 fatias
+
+Decidido com a dona em 2026-08-11, com o recorte e o momento escolhidos por
+ela: **API + telas, agora, sobre o código de hoje** — não depois dos consertos.
+O motivo do "agora" é que o cruzamento com os 59 achados dos oito ângulos
+adianta boa parte da etapa 4.
+
+O fluxo completo mede **~9.200 linhas em 13 arquivos**. Uma passada `max` única
+sobre isso dilui o esforço; por isso vai fatiado por fronteira, cada fatia com
+contexto fechado e o servidor junto da tela que fala com ele — porque foi
+exatamente na fronteira entre dois arquivos que a conferência de 2026-08-05
+achou três defeitos que quatro rodadas de revisão não tinham achado (regra 22).
+
+| Fatia | Arquivos | Linhas |
+|---|---|---|
+| **F1 · orçamento e aceite** | `routes/orcamentos.ts`, `routes/orcamentos-publico.ts`, `lib/aceite-orcamento.ts`, `lib/conteudo-orcamento.ts`, `pages/orcamentos/[id].tsx`, `pages/orcamento-publico.tsx` | ~2.660 |
+| **F2 · contrato e dinheiro** | `routes/contratos.ts`, `lib/contrato-do-papel.ts`, `pages/contratos/[id].tsx`, mais `estados.ts` e `dinheiro.ts` | ~2.400 |
+| **F3 · reserva e acervo** | `routes/reservas.ts`, `pages/reservas/[bloqueioId].tsx`, `pages/reservas/index.tsx`, `pages/reservas/helpers.ts`, `escopo-loja.ts` | ~2.400 |
+| **F4 · agenda e atendimento** | `routes/agenda.ts`, `pages/atendimentos/novo.tsx`, `pages/agenda/{index,grade,semana}.tsx`, `agenda-core/src/mover.ts` | ~2.600 |
+
+**A sobreposição é de propósito.** `contratos.ts`, `aceite-orcamento.ts` e
+`reservas.ts` são revistos duas vezes: uma sozinhos, no `high` de hoje, e outra
+ao lado da tela que fala com eles, no `max`. Duas lentes diferentes sobre o
+mesmo arquivo é o desenho, não desperdício — e a divergência entre as duas
+passadas, se houver, é achado por si só.
+
+Cada fatia grava a sua seção neste arquivo assim que termina, pela mesma regra
+dos alvos de cima.
+
 ## O que esta revisão NÃO é
 
 Ela não substitui a **etapa 4** (verificação âncora por âncora dos 59 achados
