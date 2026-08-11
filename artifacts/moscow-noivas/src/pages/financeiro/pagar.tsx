@@ -124,6 +124,12 @@ export default function Pagar() {
   // (criar); remover conta é DELETE (editar). O servidor já recusava por
   // trás; a tela oferecia os quatro botões a quem ia levar 403 depois do
   // clique — o molde é o de receber.tsx:91.
+  //
+  // S-M21 (a âncora ORIGINAL da S-M9): PAGAR e ESTORNAR são editar — a rota
+  // /pagar declara requireModulo("financeiro","editar") explícito, e o
+  // /estornar deriva editar do verbo. O botão "Pagar" aparecia por criar: a
+  // estagiária {ver, criar} via e levava 403; a gerente {ver, editar} — quem
+  // PODE pagar — não via o botão. Só "Lançar despesa" é criar de verdade.
   const podeCriar = podeNoModulo(acessosModulos, "financeiro", "criar");
   const podeEditar = podeNoModulo(acessosModulos, "financeiro", "editar");
   const { toast } = useToast();
@@ -549,7 +555,7 @@ export default function Pagar() {
           <CardContent className="p-0">
             {/* A seleção só existe para PAGAR: sem o gate, os checkboxes
                 seriam peso morto apontando para um botão que não aparece. */}
-            {podeCriar && selecionaveis.length > 0 && (
+            {podeEditar && selecionaveis.length > 0 && (
               <div className="flex items-center gap-3 border-b px-4 py-2">
                 <Checkbox
                   id="todas"
@@ -572,7 +578,7 @@ export default function Pagar() {
                   <div key={c.id} className="flex flex-col gap-2 px-4 py-3">
                     <div className="flex items-baseline justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        {podeCriar && c.status === "PREVISTA" && (
+                        {podeEditar && c.status === "PREVISTA" && (
                           <Checkbox
                             className="mt-1"
                             aria-label={`Selecionar ${c.descricao}`}
@@ -606,7 +612,7 @@ export default function Pagar() {
                       </div>
                     </div>
 
-                    {c.status === "PREVISTA" && (podeCriar || podeEditar) && (
+                    {c.status === "PREVISTA" && podeEditar && (
                       <div className="flex justify-end gap-2 border-t pt-2">
                         {podeEditar && (
                           <Button
@@ -618,7 +624,7 @@ export default function Pagar() {
                             Remover
                           </Button>
                         )}
-                        {podeCriar && (
+                        {podeEditar && (
                           <Button size="sm" variant="outline" onClick={() => abrirPagar([c.id])}>
                             Pagar
                           </Button>
@@ -627,14 +633,14 @@ export default function Pagar() {
                     )}
                     {/* O "Saída conjunta" fica para quem só vê: é a única
                         linha que explica por que N contas dividem um valor. */}
-                    {c.status === "PAGA" && pagamento && (podeCriar || pagamento.contas > 1) && (
+                    {c.status === "PAGA" && pagamento && (podeEditar || pagamento.contas > 1) && (
                       <div className="flex items-center justify-end gap-3 border-t pt-2">
                         {pagamento.contas > 1 && (
                           <span className="text-xs text-muted-foreground">
                             Saída conjunta de {pagamento.contas} contas
                           </span>
                         )}
-                        {podeCriar && (
+                        {podeEditar && (
                           <Button
                             size="sm"
                             variant="ghost"

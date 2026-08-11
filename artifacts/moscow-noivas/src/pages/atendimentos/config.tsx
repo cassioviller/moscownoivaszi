@@ -79,7 +79,12 @@ export default function ConfigAtendimentos() {
 
   // Cabines e disponibilidade são gateadas por `agenda` no backend — era
   // `config`, um módulo que o servidor não conhece: negava para todo mundo.
+  // S-M21 (fecha sítio da S-M9): o form de cabine NOVA é POST → criar; o
+  // Switch de ativar/desativar e o expediente são PATCH/PUT → editar. A régua
+  // única (editar) oferecia o "Adicionar" a quem levava 403 e o escondia de
+  // quem o servidor aceitava.
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
+  const podeCriarCabine = podeNoModulo(acessosModulos, "agenda", "criar");
 
   const [nomeCabine, setNomeCabine] = useState("");
 
@@ -492,7 +497,7 @@ export default function ConfigAtendimentos() {
             </ul>
           )}
 
-          {podeEditar && (
+          {podeCriarCabine && (
             <form
               className="flex items-center gap-2"
               onSubmit={(e) => {

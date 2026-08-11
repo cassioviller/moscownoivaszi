@@ -75,7 +75,14 @@ export default function EstoqueVestidos() {
   const queryClient = useQueryClient();
   const [emEdicao, setEmEdicao] = useState<Record<string, string>>({});
 
+  // S-M21 (fecha sítio da S-M9): um booleano só (editar) governava três
+  // gestos de ações distintas — cadastrar (POST → criar), salvar quantidade
+  // (PATCH → editar) e remover (DELETE → editar). Quem tinha {ver, editar}
+  // preenchia "Saiote 2 aros" e levava 403 acao criar; quem tinha {ver,
+  // criar} não via formulário nenhum, e o empty-state ainda mandava "pedir à
+  // administração" — para alguém que o servidor autorizava.
   const podeGerir = podeNoModulo(acessosModulos, "vestidos", "editar");
+  const podeCadastrar = podeNoModulo(acessosModulos, "vestidos", "criar");
 
   const { data: itens, isLoading, isError, error, refetch } = useListItensEstoque(activeLojaId!, {
     query: { queryKey: getListItensEstoqueQueryKey(activeLojaId!), enabled: !!activeLojaId },
@@ -178,7 +185,7 @@ export default function EstoqueVestidos() {
         </Button>
       </div>
 
-      {podeGerir && (
+      {podeCadastrar && (
         <Card>
           <CardContent className="pt-6">
             <Form {...form}>
@@ -260,7 +267,7 @@ export default function EstoqueVestidos() {
         <div className="text-center py-12 space-y-1">
           <p className="text-muted-foreground">Nenhuma peça de estoque cadastrada ainda.</p>
           <p className="text-sm text-muted-foreground">
-            {podeGerir
+            {podeCadastrar
               ? "Cadastre os saiotes e crinóis que hoje só existem como frase no contrato — e diga quantos são de cada."
               : "Peça à administração para cadastrar o estoque."}
           </p>

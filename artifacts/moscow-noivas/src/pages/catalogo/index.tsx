@@ -14,10 +14,14 @@ export default function Catalogo() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
 
-  // No main o backend gateia /atributos pelo módulo "vestidos" (catalogo.ts).
-  // TODO Onda 4: o orcamentos distinguia ver/criar/editar dentro de "config";
-  // hoje o gate é flat por módulo.
-  const podeGerir = podeNoModulo(acessosModulos, "vestidos", "editar");
+  // S-M21 (fecha sítio da S-M9): o TODO que morava aqui MENTIA — "o gate é
+  // flat por módulo" descrevia o mundo de antes do E101. O servidor deriva a
+  // ação do método (POST /atributos → CRIAR), e o botão "Novo atributo"
+  // perguntava editar: {ver, editar} preenchia dez opções de Cor e levava 403
+  // no salvar; {ver, criar} não achava o caminho.
+  const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
+  // Abrir um atributo para EDITAR é outra ação — o link da lista segue editar.
+  const podeEditar = podeNoModulo(acessosModulos, "vestidos", "editar");
 
   const { data: atributos, isLoading, isError, error, refetch } = useListAtributos(activeLojaId!, {
     query: { ...CACHE_ESTAVEL,
@@ -37,7 +41,7 @@ export default function Catalogo() {
             As características que descrevem vestidos e interesses — e conectam um ao outro.
           </p>
         </div>
-        {podeGerir && (
+        {podeCriar && (
           <Button asChild data-testid="button-novo-atributo">
             <Link to={`/loja/${lojaId}/catalogo/novo`}>
               <Plus className="h-4 w-4 mr-2" />
@@ -59,7 +63,7 @@ export default function Catalogo() {
         <div className="text-center py-12 space-y-1">
           <p className="text-muted-foreground">Nenhum atributo no catálogo ainda.</p>
           <p className="text-sm text-muted-foreground">
-            {podeGerir
+            {podeCriar
               ? "Crie o primeiro — ele passará a aparecer no cadastro de vestidos e de interesses."
               : "Peça à administração para configurar o catálogo."}
           </p>
@@ -94,7 +98,7 @@ export default function Catalogo() {
                 );
                 return (
                   <li key={a.id}>
-                    {podeGerir ? (
+                    {podeEditar ? (
                       <Link
                         to={`/loja/${lojaId}/catalogo/${a.id}/editar`}
                         className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/50 transition-colors"

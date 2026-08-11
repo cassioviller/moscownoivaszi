@@ -229,7 +229,15 @@ export default function ReservaDetalhe() {
     [atendimentos.data],
   );
   const podeMovimentar = podeNoModulo(acessosModulos, "vestidos", "editar");
-  const podeAjustes = podeNoModulo(acessosModulos, "agenda", "ver");
+  // S-M21 (fecha dois sítios da S-M9): o registro de avaria herdava o gate do
+  // vizinho (vestidos.editar) mas o POST deriva CRIAR — quem devolvia o
+  // vestido, via a barra rasgada e anexava a foto levava 403 depois do
+  // trabalho. E os ajustes eram o descasamento mais largo dos nove: a tela
+  // liberava ESCRITA por agenda.VER — todo perfil que enxerga a agenda via
+  // formulário de costura e checkbox, e cada gesto oferecido era um 403.
+  const podeRegistrarAvaria = podeNoModulo(acessosModulos, "vestidos", "criar");
+  const podeCriarAjuste = podeNoModulo(acessosModulos, "agenda", "criar");
+  const podeEditarAjuste = podeNoModulo(acessosModulos, "agenda", "editar");
 
   // Formularios locais: data da retirada/devolução, novo ajuste por prova,
   // novo item de checklist por ajuste, ajuste aguardando confirmação de remoção.
@@ -783,7 +791,7 @@ export default function ReservaDetalhe() {
               </ul>
             )}
 
-            {podeMovimentar && (
+            {podeRegistrarAvaria && (
               <div className="space-y-2 border-t pt-4" id="registrar-avaria">
                 <Input
                   placeholder="O que aconteceu com o vestido? (ex.: barra rasgada)"
@@ -885,7 +893,7 @@ export default function ReservaDetalhe() {
                                   >
                                     {a.descricao}
                                   </span>
-                                  {podeAjustes && (
+                                  {podeEditarAjuste && (
                                     <div className="flex shrink-0 items-center gap-2">
                                       <Button
                                         variant="ghost"
@@ -918,7 +926,7 @@ export default function ReservaDetalhe() {
                                         <label className="flex items-center gap-2">
                                           <Checkbox
                                             checked={c.feito}
-                                            disabled={!podeAjustes || updateItem.isPending}
+                                            disabled={!podeEditarAjuste || updateItem.isPending}
                                             onCheckedChange={(v) => alternarItem(c.id, v === true)}
                                             aria-label={`Item ${c.descricao}`}
                                           />
@@ -932,7 +940,7 @@ export default function ReservaDetalhe() {
                                             {c.descricao}
                                           </span>
                                         </label>
-                                        {podeAjustes && (
+                                        {podeEditarAjuste && (
                                           <Button
                                             variant="ghost"
                                             size="icon"
@@ -950,7 +958,7 @@ export default function ReservaDetalhe() {
                                 )}
 
                                 {/* Adicionar item ao checklist */}
-                                {podeAjustes && (
+                                {podeCriarAjuste && (
                                   <form
                                     className="flex items-center gap-2 pl-3"
                                     onSubmit={(e) => {
@@ -984,7 +992,7 @@ export default function ReservaDetalhe() {
                       )}
 
                       {/* Adicionar ajuste */}
-                      {podeAjustes && (
+                      {podeCriarAjuste && (
                         <form
                           className="flex items-center gap-2"
                           onSubmit={(e) => {

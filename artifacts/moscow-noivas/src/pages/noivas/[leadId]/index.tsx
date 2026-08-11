@@ -138,7 +138,11 @@ export default function NoivaDetalhe() {
 
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
   // F1: agendar é do módulo AGENDA — quem só edita a ficha não marca horário.
-  const podeAgendar = podeNoModulo(acessosModulos, "agenda", "editar");
+  // S-M21 (fecha sítio da S-M9): agendar é CRIAR — o destino (atendimentos/novo)
+  // e o servidor concordam. Com editar, a atendente {ver, criar} — quem agenda —
+  // não via o atalho do caminho mais percorrido do app, e {ver, editar} via,
+  // navegava e era barrada na página seguinte.
+  const podeAgendar = podeNoModulo(acessosModulos, "agenda", "criar");
 
   const novoOrcamento = async () => {
     try {

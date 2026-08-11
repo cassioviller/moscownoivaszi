@@ -150,21 +150,23 @@ function descreverFaixa(f: ComissaoFaixa): string {
 
 export default function Comissoes() {
   const { activeLojaId, acessosModulos } = useAuth();
-  // Baixar estorno é ação de admin — a mesma régua do gate do backend.
   /**
-   * S36 — o módulo é `comissao`, e era `admin`.
+   * S36 pôs o módulo certo (comissao, era admin) — e a S-M21 pôs a AÇÃO e a
+   * EXCEÇÃO certas (fecha dois sítios da S-M9):
    *
-   * As três ações desta tela (baixar estorno, reabrir fechamento, criar regra)
-   * vivem em `/lojas/:lojaId/comissao`, que o servidor guarda por
-   * `requireModulo("comissao")`. Gatear por `admin.editar` era pedir OUTRA
-   * coisa: quem tinha comissão e não admin não achava o botão, e quem tinha
-   * admin e não comissão o via e levava 403.
-   *
-   * Nos quatro perfis padrão nenhum dos dois casos acontece — Proprietária tem
-   * os dois, as demais não têm nenhum —, e é por isso que ninguém tropeçou:
-   * o defeito esperava a primeira loja que customizasse um perfil.
+   * - "Salvar regra" é POST → o servidor deriva CRIAR; a seção inteira
+   *   rendia SEM gate nenhum, e a vendedora só-ver montava a escada e levava
+   *   403 no salvar (o Trash de versão idem, com editar).
+   * - "Dar baixa" no estorno exige requireModulo("admin","editar") EXPLÍCITO
+   *   na rota (comissao.ts: "uma decisão humana, gateada por admin"), ALÉM do
+   *   prefixo comissao — o S36 afirmou que as três ações compartilham a mesma
+   *   guarda, e a baixa nunca compartilhou.
+   * - Reabrir e remover versão são DELETE → editar, e casavam.
    */
   const podeMexerNaComissao = podeNoModulo(acessosModulos, "comissao", "editar");
+  const podeCriarRegra = podeNoModulo(acessosModulos, "comissao", "criar");
+  const podeBaixarEstorno =
+    podeMexerNaComissao && podeNoModulo(acessosModulos, "admin", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -660,7 +662,7 @@ export default function Comissoes() {
                           : `${brl(linha.estornoPendente)} de estorno abatido (cancelamento de mês já pago)`}
                       </p>
                     )}
-                    {soEstorno && podeMexerNaComissao && (
+                    {soEstorno && podeBaixarEstorno && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -948,7 +950,7 @@ export default function Comissoes() {
                               )}
                               {regra.bonusAcumulaFaixas && " · bônus acumulam"}
                             </p>
-                            <Button
+                            {podeMexerNaComissao && (<Button
                               variant="ghost"
                               size="icon"
                               aria-label={`Remover a versão de ${diaMesAno(inicio)} de ${vendedora.nome}`}
@@ -958,7 +960,7 @@ export default function Comissoes() {
                               }
                             >
                               <Trash2 className="h-4 w-4" />
-                            </Button>
+                            </Button>)}
                           </div>
                           <ul className="mt-1 space-y-1">
                             {regra.faixas.map((f) => (
@@ -977,6 +979,7 @@ export default function Comissoes() {
           )}
 
           {/* — Nova regra — */}
+          {podeCriarRegra && (
           <div className="space-y-3 rounded-lg border border-dashed p-4">
             <p className="text-sm font-medium">Definir regra</p>
             <div className="flex flex-wrap items-end gap-3">
@@ -1081,6 +1084,7 @@ export default function Comissoes() {
               </Button>
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 

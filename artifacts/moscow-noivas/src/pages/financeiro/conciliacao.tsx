@@ -52,10 +52,15 @@ export default function Conciliacao() {
   const { lojaId } = useParams();
   const { activeLojaId, acessosModulos } = useAuth();
   // S42 — a comparação com o extrato é leitura pura no navegador e fica para
-  // qualquer sessão; o que ESCREVE é só o "Marcar como conferidas" (POST
-  // /financeiro/conciliacao/marcar, guardado por financeiro/criar via o
-  // prefixo de financeiro.ts:111). Era a última tela de financeiro sem gate.
-  const podeMarcar = podeNoModulo(acessosModulos, "financeiro", "criar");
+  // qualquer sessão; o que ESCREVE é só o "Marcar como conferidas".
+  //
+  // S-M21 (fecha sítio da S-M9): o gate era `criar`, e o comentário afirmava
+  // esse guard como fato — mas `marcar` está em POST_QUE_MUTA desde o E115
+  // (carimba linhas EXISTENTES), então o servidor deriva **editar**. Quem
+  // tinha {ver, criar} via o botão e levava 403 depois de casar o extrato
+  // inteiro; quem tinha {ver, editar} — a única pessoa que o servidor aceita
+  // — não via o botão. O comentário nasceu errado uma semana DEPOIS do E115.
+  const podeMarcar = podeNoModulo(acessosModulos, "financeiro", "editar");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [transacoes, setTransacoes] = useState<TransacaoExtrato[] | null>(null);

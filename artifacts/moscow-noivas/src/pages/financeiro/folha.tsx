@@ -143,9 +143,15 @@ export default function Folha() {
   const criarRecorrencia = useCreateRecorrencia();
   const atualizarRecorrencia = useUpdateRecorrencia();
 
-  // Definir salário é escrita no financeiro; o servidor recusa de qualquer
-  // jeito, isto só evita oferecer o que vai ser negado.
+  // S-M21 (fecha sítio da S-M9): "Definir salário" e "Adicionar despesa" são
+  // POST /recorrencias — o servidor deriva CRIAR, e a página inteira
+  // perguntava editar: a gerente com {ver, editar} cadastrava o salário de
+  // R$ 2.400,00 e levava 403 (a competência seguinte nascia sem a conta da
+  // folha); quem tinha {ver, criar} não via os formulários. O comentário
+  // antigo ("o servidor recusa de qualquer jeito") assumia um alinhamento
+  // que não existia. Editar/Desativar seguem editar — esses casam.
   const podeEditar = podeNoModulo(acessosModulos, "financeiro", "editar");
+  const podeCriar = podeNoModulo(acessosModulos, "financeiro", "criar");
 
   const [novoUsuarioId, setNovoUsuarioId] = useState("");
   const [novoValor, setNovoValor] = useState("");
@@ -623,7 +629,7 @@ export default function Folha() {
             </ul>
           )}
 
-          {podeEditar && (
+          {podeCriar && (
             <div className="flex flex-wrap items-end gap-2 border-t pt-3">
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Colaboradora</Label>
@@ -718,7 +724,7 @@ export default function Folha() {
             </ul>
           )}
 
-          {podeEditar && (
+          {podeCriar && (
             <div className="flex flex-wrap items-end gap-2 border-t pt-3">
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground" htmlFor="despesa-descricao">

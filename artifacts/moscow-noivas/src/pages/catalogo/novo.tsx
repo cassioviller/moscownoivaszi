@@ -25,6 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { mensagemApi } from "@/lib/erro-api";
+import { podeNoModulo } from "@/lib/permissoes";
 
 const novoAtributoSchema = z.object({
   nome: z.string().min(1, "Informe o nome"),
@@ -36,7 +37,12 @@ type NovoAtributoValues = z.infer<typeof novoAtributoSchema>;
 
 export default function NovoAtributo() {
   const { lojaId } = useParams();
-  const { activeLojaId } = useAuth();
+  const { activeLojaId, acessosModulos } = useAuth();
+  // S-M21 (fecha sítio da S-M9): a página não tinha gate NENHUM — quem
+  // digitasse a URL com vestidos só-ver preenchia "Cor" com dez opções e
+  // levava 403 no salvar, com o cadastro digitado perdido. O POST deriva
+  // criar; a mesma frase do idioma de atendimentos/novo.
+  const podeCriar = podeNoModulo(acessosModulos, "vestidos", "criar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -99,6 +105,9 @@ export default function NovoAtributo() {
         <h1 className="text-3xl font-serif">Novo atributo</h1>
       </div>
 
+      {!podeCriar ? (
+        <p className="text-sm text-muted-foreground">Você não tem permissão para criar atributos.</p>
+      ) : (
       <Card>
         <CardContent className="pt-6">
           <Form {...form}>
@@ -162,6 +171,7 @@ export default function NovoAtributo() {
           </Form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
