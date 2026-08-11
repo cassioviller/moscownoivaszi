@@ -429,7 +429,7 @@ em instrução de busca.
 
 | Fatia | Run ID | Script |
 |---|---|---|
-| F1 · orçamento e aceite | `wf_f902dab2-254` | `code-review-wf_f902dab2-254.js` |
+| F1 · orçamento e aceite | ✅ **feita — 15 defeitos** | `code-review-wf_f902dab2-254.js` |
 | F2 · contrato e dinheiro | ✅ **feita — 15 defeitos** | `code-review-wf_46e32def-6ea.js` |
 | F3 · reserva e acervo | ✅ **feita — 15 defeitos** | `code-review-wf_e422fb0e-599.js` |
 | F4 · agenda e atendimento | ✅ **feita — 15 defeitos** | `code-review-wf_be4aed57-907.js` |
@@ -443,7 +443,7 @@ Retomada por run ID só vale nesta sessão.
 |---|---|---|
 | 8 ângulos (ótica de papel) | 59 — 3 🔴, 26 🟠, 23 🟡, 7 🔵 | `achados/01..08` |
 | 3 code reviews `high` | 30 — 26 correção, 4 limpeza | este arquivo |
-| 4 fatias `max` | ⏳ rodando | este arquivo |
+| 4 fatias `max` | 60 — 15 por fatia | este arquivo |
 
 **A medida que mais importa para o método:** em cada um dos três alvos, **seis
 dos dez defeitos eram novos** — invisíveis para os oito ângulos. E vários dos que
@@ -767,3 +767,174 @@ o mecanismo completo. **V13** (`:292`): o DELETE de reserva ignora a coluna lega
 `contratos.bloqueio_vestido_id` que o DELETE irmão conta **de propósito** — o
 contrato fica com o vínculo nulo e **as parcelas seguem sendo cobradas** sobre um
 vestido que voltou ao mercado.
+
+---
+
+# Fatia 1 — orçamento e aceite
+
+✅ **Feita.** 6 arquivos, ~2.660 linhas, 55 agentes, 3,09 M tokens. **55 achados
+verificados**, consolidados em **15 defeitos**.
+
+**A tese:** o congelamento de versão — a peça que existe para garantir que a
+noiva assine o que viu — **não exige conteúdo, não é reconferido sob a tranca que
+tem, e não cobre metade do que a página dela mostra.**
+
+## Os três que quebram o congelamento
+
+**O1 · O link congela um orçamento VAZIO** (`orcamentos.ts:699`). O `POST /link`
+não exige um único item, **e é a ação primária da tela de um orçamento novo**.
+A versão 1 nasce com `totalLiquido: 0` e hash do conteúdo vazio; a página da
+noiva imprime **Total R$ 0,00** com o botão "Aceitar esta proposta" aceso. Ela
+aceita, o orçamento vai para APROVADO — que é terminal — e a vendedora **não
+consegue mais lançar o vestido de R$ 5.000,00**: 422 no item e 422 no contrato.
+**Uma venda de R$ 5.000,00 sem contrato possível, e o aceite gravado é de zero.**
+
+**O2 · A reconferência sob `FOR UPDATE` só protege o desconto**
+(`orcamentos.ts:368`). A tranca existe e relê `agora.status` — mas essa releitura
+só decide `mexeNoDesconto`. Com o desconto intocado, o `.set({...parsed.data})`
+grava o `status` do corpo **por cima do que a tranca acabou de ler**. O aceite da
+noiva é sobrescrito por RECUSADO, e o achado A08.3 dizia que "o PATCH ao lado tem
+`FOR UPDATE` + reconferência desde a S-M22". **Tem a tranca; não cobre o campo que
+decide o estado.** É a correção mais útil que uma segunda lente produziu hoje.
+
+**O5 · O `/aprovar` manual desliga o gate do E115** (`orcamentos.ts:724`). O gate
+em `contratos.ts:236` é `if (orcamento.aceiteHash)` — **ele depende do ACEITE, não
+da VERSÃO congelada**. Aprovar à mão um enviado (caminho comum, oferecido pela
+tela) deixa o hash nulo. **Medido:** a página da noiva afirma R$ 5.000,00 aprovado
+e o contrato nasce em R$ 5.500,00, sem 422 em porta nenhuma. **Isto corrige o
+A03.7**, que examinou o mesmo `if` e concluiu que hash nulo só alcançava linha
+legada.
+
+## O dinheiro que se perde por digitação e por gesto
+
+**O6 · "3un" vira quantidade 1, em silêncio** (`[id].tsx:487`). `Number("3un")` é
+`NaN`, `NaN || 1` é `1`, e a guarda `quantidade < 1` nunca dispara. **Medido:** 3
+véus de R$ 800,00 saem como R$ 800,00 — **R$ 1.600,00 a menos**, sem um toast. E
+esse total é o que o hash certifica e o que a noiva aceita. O `valorUnitario` ao
+lado **não tem esse buraco**: passa por `parseValor`, que separa "não digitou" de
+"digitou bobagem" exatamente para isto.
+
+**O14 · A tela aplica desconto e nunca o remove** (`[id].tsx:602`). `valor <= 0` é
+recusado no cliente e **não existe outro gesto no frontend inteiro que zere
+`descontoValor`** — o servidor aceita 0 e ninguém o chama. Quem quis dar R$ 20,00
+e deixou o seletor em PERCENTUAL tira **R$ 1.000,00** de um orçamento de
+R$ 5.000,00 e só desfaz refazendo tudo.
+
+**O13 · Editar item não invalida a LISTA** (`[id].tsx:527`). Quatro escritas
+chamam `invalidar()` e nunca `invalidarLista()`, que existe uma linha ao lado.
+**R$ 500,00 de diferença entre duas telas do mesmo sistema por até 30 segundos**,
+com a noiva ao lado — e o comentário de `App.tsx:123-125` descreve essa falha
+exata como o risco que o piso de frescor criaria.
+
+## O que a noiva vê que não devia
+
+**O7 · `observacoes` e `validade` continuam graváveis depois do aceite**
+(`:334`) — e a página lê as duas **da linha viva**, impressas logo acima do
+comprovante. O comprovante afirma que ela concordou com o que está na tela, e
+metade do que está na tela mudou depois.
+
+**O8 · Recusar não revoga o link, e a página não tem ramo para RECUSADO**
+(`:746`). Ela reabre e vê a proposta inteira de R$ 5.000,00 que a loja já deu por
+perdida, com o rodapé prometendo "Proposta válida até…", sem botão e **sem uma
+palavra de explicação**.
+
+**O9 · A soma da página da noiva não fecha** (`orcamento-publico.tsx:116`):
+"Soma R$ 4.800,00", "Desconto R$ 5.000,00", "Total R$ 0,00" — o desconto gravado e
+o total clampado lado a lado, uma subtração de −R$ 200,00 apresentada como zero
+**no documento que decide a compra**.
+
+**O12 · Todo 500 e toda queda de rede viram "Link inválido"**
+(`orcamento-publico.tsx:73`). A noiva com o link certo às 23h lê que o link está
+errado e pede outro. Toda outra tela passa por `mensagemApi`, que tem a régua por
+faixa; **a página pública é a única que refaz a tradução à mão.**
+
+## As três fronteiras de permissão e escopo
+
+**O3** (`:267`): o `atendimentoId` entra no insert **sem prova de loja** — e a
+função que faltava, `atendimentoNaLoja`, **já existe** (escopo-loja.ts:101),
+escrita no E115 com o comentário "era a única FK de corpo do módulo sem prova".
+Fecharam cinco; a sexta ficou. **O11** (`:288`): a tela exige `editar` onde o
+servidor deriva `criar` — a estagiária com `{ver, criar}`, perfil que o próprio
+repositório nomeia como real, cria o orçamento e **não consegue pôr uma linha
+nele**. **O10** (`:1366`): o select filtra vendedora inativa e o servidor não —
+a comissão de R$ 5.000,00 fica em nome de quem não trabalha mais na loja, **com o
+campo em branco na tela**.
+
+**O4** é o `?? agora` do aceite, reconfirmado por uma terceira lente, agora com o
+detalhe cruel: o `invalidateQueries` refaz o GET, recebe 404, e **a mesma tela
+troca o comprovante verde por "Link inválido"** diante da noiva.
+
+**O15** fecha: `reservasDesmarcadas` sobrevive ao fechar o diálogo, e a reserva do
+véu desmarcada meia hora antes **não entra no contrato** — que depois não a
+libera, porque nunca soube dela.
+
+---
+
+# Fecho: as três lentes, 149 achados, e o que vem depois
+
+Todas as passadas terminaram. Nada aqui foi verificado pela regra 20 ainda —
+**este arquivo é diagnóstico, não fila de trabalho.**
+
+| Lente | Achados | Agentes | Tokens |
+|---|---|---|---|
+| 8 ângulos (ótica de papel) | 59 — 3 🔴, 26 🟠, 23 🟡, 7 🔵 | 8 | ~1,1 M |
+| 3 code reviews `high` (por arquivo) | 30 | 89 | ~4,3 M |
+| 4 fatias `max` (servidor + tela) | 60 | 213 | ~11,4 M |
+| **Total** | **149** | **310** | **~16,8 M** |
+
+## O que cada lente pegou que as outras não pegavam
+
+Isto é a medida mais útil do dia, e ela é empírica, não teórica:
+
+- **Só a ótica de papel** viu que a costureira está ANTES do gate, que Renato não
+  tem fila de aceitos sem contrato, e que o link promete um aviso que não existe.
+- **Só a leitura por arquivo** viu o `?? agora` inventando carimbo de aceite, o
+  `FOR UPDATE` que não relê `canceladoEm`, e o E150 aceitando MANUTENCAO.
+- **Só a leitura por fronteira** viu o `provaDuracao` esquecido na terceira cópia,
+  a tela que filtra `situacao` contra um servidor que não filtra, o PDF com as
+  assinaturas em Y negativo, e o `/aprovar` que desliga o gate do E115.
+
+Em cada um dos três alvos `high`, **seis dos dez defeitos eram novos**. Nas
+fatias `max`, **nove dos quinze da fatia 4 moram entre arquivos**. Três medidas
+independentes dizendo a mesma coisa: **uma lente só teria deixado metade
+invisível.**
+
+## As correções que as lentes fizeram umas nas outras
+
+Vale mais que os achados, porque é o que a regra 20 existe para pegar:
+
+- O **A03.7** concluiu que `aceiteHash` nulo só alcançava linha legada. **Errado**
+  — o O5 mostrou que o gate depende do ACEITE, não da VERSÃO, e que `/aprovar` à
+  mão é caminho comum e oferecido pela tela.
+- O **A08.3** afirmou que "o PATCH ao lado tem `FOR UPDATE` + reconferência desde
+  a S-M22". **Meia verdade** — o O2 mostrou que a reconferência só cobre o
+  desconto.
+- O ângulo 05 supôs que a prova ficaria órfã do contrato travado. **Ao contrário:**
+  a costureira está antes do gate.
+- O `e107-prova-e-rastro` **não é sobre provas de vestido** — "prova" ali é prova
+  de propriedade. Quem procurar cobertura de costura nele não acha.
+
+## O padrão único, agora com 149 achados de evidência
+
+**As varreduras anteriores acertaram o padrão e erraram o alcance.** S-M7,
+S-M18/S-M22 e S-M24 escolheram a régua certa e fecharam os sítios que
+enumeraram. O que ficou fora da enumeração continua aberto — e apareceu hoje em
+`reservas.ts` (4 portas), `contratos.ts` (4 portas), `agenda.ts` (2 eixos) e
+`orcamentos.ts` (o campo que a reconferência não cobre).
+
+A proposta que decorre disso — **régua enumerável verificada por varredura no CI,
+em vez de conserto caso a caso pela quarta vez** — está no fim da seção das
+fatias, e é decisão da dona.
+
+## O que vem depois, em ordem
+
+1. **Etapa 4 — verificação âncora por âncora** (regra 20). Os 59 dos ângulos
+   ainda não foram conferidos; os 90 dos reviews já passaram por um verificador
+   independente por local, mas **isso não substitui a conferência da casa**.
+2. **Duas contagens no `moscow_base`** resolvem os dois PLAUSIBLE de dado:
+   ENVIADOs sem linha em `orcamento_versoes` (mata ou confirma o A03.7/C7), e a
+   S-M17, que já esperava por isso.
+3. **Consolidado** — 149 achados não são 149 épicos. O agrupamento por raiz é o
+   que transforma isto em plano.
+4. **Só então o `/code-review ultra`**, sobre a branch do conserto, onde ele tem
+   diff real de tranca em transação e de máquina de estados para morder.
