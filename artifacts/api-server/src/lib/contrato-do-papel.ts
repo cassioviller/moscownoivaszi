@@ -1,6 +1,6 @@
 import { gerarContratoPdf } from "./contrato-pdf";
 import type { Contrato, ContratoItem, Parcela, Lead, Loja } from "@workspace/db";
-import { brutoEmCentavos } from "@workspace/financeiro-core";
+import { brutoEmCentavos, temDesconto } from "@workspace/financeiro-core";
 
 /**
  * E100/F21 — o contrato como PAPEL, com uma régua só.
@@ -116,7 +116,9 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     // Com desconto, o subtotal (bruto) e o abatimento explicam por que a soma
     // dos itens não é o total. O abatimento é bruto − total: reconcilia sempre.
     ...(() => {
-      if (!contrato.descontoTipo) return {};
+      // P15/E163: a pergunta é da régua única — tipo com valor 0 é SEM desconto,
+      // como o dinheiro sempre tratou; o papel imprimia "Desconto − R$ 0,00".
+      if (!temDesconto(contrato.descontoTipo, contrato.descontoValor)) return {};
       // `brutoEmCentavos` do core (E95/C1) — era a mesma conta reescrita à mão,
       // e o papel que a noiva assina é o pior lugar para uma cópia divergir.
       const brutoC = brutoEmCentavos(contrato.itens);

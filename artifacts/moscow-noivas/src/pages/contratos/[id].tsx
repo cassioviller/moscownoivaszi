@@ -65,7 +65,7 @@ import { mensagemApi } from "@/lib/erro-api";
 // por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
 // defeito que o épico existe para fechar.
-import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
+import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos, temDesconto } from "@/lib/financeiro/dinheiro";
 import { planoDaDigitacao, temCarne } from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
@@ -472,7 +472,9 @@ export default function ContratoDetail() {
                 {/* Com desconto, itens (bruto) ≠ valor total (líquido). A linha
                     fecha a conta: subtotal − desconto = total. O abatimento é
                     bruto − total, então reconcilia sempre. */}
-                {contrato.descontoTipo && (() => {
+                {/* P15/E163: a régua única — tipo com valor 0 é SEM desconto,
+                    como o dinheiro sempre tratou; a tela desenhava o bloco. */}
+                {temDesconto(contrato.descontoTipo, contrato.descontoValor) && (() => {
                   // `brutoEmCentavos` é a régua do core (E95/C1) — a mesma que
                   // o PDF do MESMO contrato usa. O `reduce` inline aqui era a
                   // terceira escrita da conta, e a tela e o papel divergirem

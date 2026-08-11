@@ -1162,8 +1162,35 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("lea
    * Aprovar NÃO mexe na etapa do lead — o funil só avança para
    * CONTRATO_FECHADO quando um contrato é efetivamente fechado.
    */
+  /**
+   * C7/O5 (E163) — o `/aprovar` manual desligava o gate do E115.
+   *
+   * O gate em `contratos.ts` é `if (hashEsperado)` — e aprovar à mão um
+   * ENVIADO (caminho comum, oferecido pela tela) deixava o hash NULO: a página
+   * da noiva afirmava R$ 5.000,00 aprovado e o contrato nascia dos itens vivos
+   * em R$ 5.500,00, sem 422 em porta nenhuma. Agora a aprovação manual carimba
+   * o hash da versão VIGENTE (a que a noiva vê): o contrato tem de nascer
+   * dela. Orçamento sem versão (nunca enviado, aprovado direto do rascunho)
+   * segue sem hash — não há "o que ela viu" para certificar, e o gate do
+   * contrato também conferirá a versão congelada quando ela existir.
+   *
+   * A contagem C1 da Fase 0 matou o ramo legado: ZERO APROVADOs com hash nulo
+   * e versão congelada no `moscow_base` — sem backfill.
+   */
+  const [versaoVigente] = await db
+    .select({ numero: orcamentoVersoesTable.numero, hash: orcamentoVersoesTable.hash })
+    .from(orcamentoVersoesTable)
+    .where(eq(orcamentoVersoesTable.orcamentoId, orcamentoId))
+    .orderBy(desc(orcamentoVersoesTable.numero))
+    .limit(1);
+
   const [aprovado] = await db.update(orcamentosTable)
-    .set({ status: "APROVADO", aprovadoEm: new Date(), updatedAt: new Date() })
+    .set({
+      status: "APROVADO",
+      aprovadoEm: new Date(),
+      ...(versaoVigente ? { aceiteVersao: versaoVigente.numero, aceiteHash: versaoVigente.hash } : {}),
+      updatedAt: new Date(),
+    })
     .where(and(
       eq(orcamentosTable.id, orcamentoId),
       eq(orcamentosTable.lojaId, lojaId),

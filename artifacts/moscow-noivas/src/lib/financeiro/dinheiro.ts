@@ -12,4 +12,4 @@ export { centavos, reais, somaCentavos, parseValor } from "@workspace/financeiro
  * vendedora não tinha como destravar, porque o número que ela via era o único
  * que o servidor recusava.
  */
-export { brutoEmCentavos, liquidoEmCentavos } from "@workspace/financeiro-core";
+export { brutoEmCentavos, liquidoEmCentavos, temDesconto } from "@workspace/financeiro-core";

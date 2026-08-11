@@ -7,6 +7,7 @@ import {
   bloqueioVestidosTable,
   orcamentosTable,
   orcamentoItensTable,
+  orcamentoVersoesTable,
   leadsTable,
   contratoBloqueiosTable,
   usuariosTable,
@@ -233,9 +234,32 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
     // contrato pelos itens vivos faria a noiva assinar R$ 5.500 tendo aceite
     // registrado de R$ 5.000. A conferência é pelo MESMO hash do aceite
     // (`conteudoEnviado`, a régua única do congelamento).
-    if (orcamento.aceiteHash) {
+    /**
+     * C7/O5 (E163) — o gate dependia do ACEITE, não da VERSÃO congelada.
+     *
+     * `if (orcamento.aceiteHash)` se desligava no nulo — e o `/aprovar`
+     * manual (caminho comum, oferecido pela tela) deixava o hash nulo. O A03.7
+     * concluiu que hash nulo só alcançava linha legada; **o O5 corrigiu**: era
+     * o caminho da aprovação à mão. A contagem C1 da Fase 0 confirmou o resto
+     * (zero linhas legadas no `moscow_base`).
+     *
+     * O `/aprovar` agora carimba o hash da versão vigente; ESTA guarda vira o
+     * cinto — orçamento COM versão congelada confere SEMPRE, mesmo que o
+     * carimbo tenha faltado: a versão é o que a noiva vê, com ou sem aceite.
+     */
+    let hashEsperado = orcamento.aceiteHash;
+    if (!hashEsperado) {
+      const [versaoVigente] = await db
+        .select({ hash: orcamentoVersoesTable.hash })
+        .from(orcamentoVersoesTable)
+        .where(eq(orcamentoVersoesTable.orcamentoId, contratoData.orcamentoId))
+        .orderBy(desc(orcamentoVersoesTable.numero))
+        .limit(1);
+      hashEsperado = versaoVigente?.hash ?? null;
+    }
+    if (hashEsperado) {
       const vivo = conteudoEnviado(itens, orcamento.descontoTipo, orcamento.descontoValor);
-      if (vivo.hash !== orcamento.aceiteHash) {
+      if (vivo.hash !== hashEsperado) {
         res.status(422).json({
           error: "ORCAMENTO_DIVERGE_DO_ACEITE",
           detalhe:
@@ -406,6 +430,30 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         error: "RESERVA_JA_CONTRATADA",
         detalhe: "Esta reserva de vestido já está presa por outro contrato ativo.",
         campos: [{ campo: "bloqueioVestidoIds", motivo: "A reserva já é de outro contrato" }],
+      });
+      return;
+    }
+    /**
+     * K4 (E163, decisão D2) — MANUTENCAO não é reserva de casamento.
+     *
+     * `vestidosReservados` aceitava bloqueio de QUALQUER tipo, e MANUTENCAO
+     * nasce sem `casamentoData` — o que desligava sozinha a guarda de data
+     * logo abaixo. **Medido:** venda de R$ 4.000,00 satisfeita por uma janela
+     * de manutenção de 01/03–05/03, e outra de R$ 4.000,00 com reserva
+     * legítima de 10/05 que não conflita com março — dois contratos,
+     * R$ 8.000,00, o MESMO vestido no mesmo sábado: o dobro-prometido que o
+     * E150 existe para impedir, entrando por outra porta.
+     *
+     * A decisão da dona (D2): o gate exige `tipo = RESERVA_CASAMENTO`. Se um
+     * dia existir caso legítimo de vender peça segurada por manutenção, ele
+     * vira campo explícito — não um furo.
+     */
+    if (bloqueio.tipo !== "RESERVA_CASAMENTO") {
+      res.status(422).json({
+        error: "BLOQUEIO_NAO_E_RESERVA",
+        detalhe:
+          "Uma janela de manutenção não segura a peça para a noiva — crie uma reserva de casamento para vendê-la.",
+        campos: [{ campo: "bloqueioVestidoIds", motivo: "O bloqueio é de manutenção, não de reserva" }],
       });
       return;
     }
@@ -959,6 +1007,49 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
           campos: [{ campo: "dataCasamento", motivo: "Diverge da reserva do vestido" }],
         });
         return;
+      }
+      /**
+       * K5 (E163) — a guarda acima se DESLIGAVA no nulo, e não havia outra.
+       *
+       * O comentário do PATCH afirmava repetir "as duas provas que o POST
+       * faz"; a segunda (`verificarDisponibilidade`) nunca rodava, e a
+       * primeira só morde quando `bloqueio.casamentoData` existe. Um bloqueio
+       * manual (janela `inicio`/`fim`, sem data de casamento) deixava o
+       * contrato mover a data para 10/05 **com o envelope físico sem cobrir o
+       * dia** — e com a peça possivelmente já ocupada por outra noiva na data
+       * nova.
+       *
+       * Sem data no bloqueio, a pergunta vira a do POST: a peça serve o dia
+       * novo? Um candidato de reserva na data nova, ignorando o próprio
+       * bloqueio — outra noiva segurando o dia responde 409 com conflitos.
+       */
+      if (!bloqueio.casamentoData) {
+        const resultado = await verificarDisponibilidade({
+          lojaId: lojaId as string,
+          vestidoId: bloqueio.vestidoId,
+          candidato: {
+            id: bloqueio.id,
+            tipo: "RESERVA_CASAMENTO",
+            casamentoData: parsed.data.dataCasamento,
+            provaDataReal: null,
+            retiradaDataReal: null,
+            devolucaoDataReal: null,
+            lavagemConcluidaEm: null,
+            inicio: null,
+            fim: null,
+          },
+          ignorarBloqueioId: bloqueio.id,
+          hoje: new Date(),
+        });
+        if (!resultado.disponivel) {
+          res.status(409).json({
+            error: "VESTIDO_INDISPONIVEL",
+            detalhe:
+              "A peça reservada deste contrato não cobre a data nova — outra reserva ocupa o período. Ajuste a reserva antes.",
+            conflitos: resultado.conflitos,
+          });
+          return;
+        }
       }
     }
   }

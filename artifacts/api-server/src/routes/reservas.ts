@@ -1089,10 +1089,30 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
    * a rota segue como antes; com noiva, ela tem de ser a mesma.
    */
   const [bloqueioDaAvaria] = await db
-    .select({ leadId: bloqueioVestidosTable.leadId })
+    .select({ leadId: bloqueioVestidosTable.leadId, reservaId: bloqueioVestidosTable.reservaId })
     .from(bloqueioVestidosTable)
     .where(eq(bloqueioVestidosTable.id, avaria.bloqueioId));
-  if (bloqueioDaAvaria?.leadId && bloqueioDaAvaria.leadId !== contrato.leadId) {
+  /**
+   * V3 (E163) — a guarda comparava só o `leadId` NULÁVEL do bloqueio, e nunca
+   * caía para `reservaId → reservas.lead_id`, que é NOT NULL.
+   *
+   * **O dono existia e não era perguntado:** um bloqueio sem noiva pendurado
+   * numa reserva (que SEMPRE tem noiva) deixava o reparo de R$ 1.500,00 cair
+   * no carnê da noiva B por um dano que ela não causou — e o extrato do portal
+   * dela mostrava a cobrança. A régua continua a mesma do comentário acima
+   * ("prova quando é provável"): sem noiva em NENHUMA das duas pontas, não há
+   * o que comparar e a rota segue; com noiva em qualquer uma, tem de ser a
+   * mesma.
+   */
+  let donoDaAvaria = bloqueioDaAvaria?.leadId ?? null;
+  if (!donoDaAvaria && bloqueioDaAvaria?.reservaId) {
+    const [reservaMae] = await db
+      .select({ leadId: reservasTable.leadId })
+      .from(reservasTable)
+      .where(eq(reservasTable.id, bloqueioDaAvaria.reservaId));
+    donoDaAvaria = reservaMae?.leadId ?? null;
+  }
+  if (donoDaAvaria && donoDaAvaria !== contrato.leadId) {
     res.status(422).json({
       error: "AVARIA_DE_OUTRA_NOIVA",
       detalhe: "Este reparo é do vestido de outra noiva — cobre no contrato dela",

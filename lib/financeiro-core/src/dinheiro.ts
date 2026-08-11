@@ -58,6 +58,22 @@ export function brutoEmCentavos(
  * Unificar no `round2` fecharia o 422 e deixaria a conta errada nos quatro
  * lugares de forma consistente; por isso a régua é esta, em centavos.
  */
+/**
+ * P15 (E163) — a pergunta "este registro TEM desconto?" tem UMA resposta.
+ *
+ * `descontoValor === 0` era "sem desconto" para a régua do dinheiro (o `!valor`
+ * de `liquidoEmCentavos` logo abaixo) e "com desconto" para o papel e para a
+ * tela do contrato, que só olhavam `descontoTipo` — o mesmo registro, dois
+ * arquivos, duas respostas: o PDF imprimia "Desconto − R$ 0,00" num contrato
+ * que o dinheiro tratava como sem desconto. Quem pergunta, pergunta AQUI.
+ */
+export function temDesconto(
+  tipo: string | null | undefined,
+  valor: number | null | undefined,
+): boolean {
+  return !!tipo && !!valor && valor > 0;
+}
+
 export function liquidoEmCentavos(
   brutoC: number,
   tipo: string | null | undefined,
