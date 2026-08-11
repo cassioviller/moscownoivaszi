@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, reservasTable, bloqueioVestidosTable, vestidosTable, atendimentosTable, contratoBloqueiosTable } from "@workspace/db";
 import { eq, and, isNull, gte, lt, asc, desc, sql, inArray } from "drizzle-orm";
 import { registrarAuditoria } from "../lib/auditoria";
-import { leadNaLoja, reservaNaLoja } from "../lib/escopo-loja";
+import { leadNaLoja, reservaNaLoja, reservaDaNoiva } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
   CreateReservaBody,
@@ -612,6 +612,24 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   }
   if (dados.reservaId && !(await reservaNaLoja(dados.reservaId, lojaId))) {
     res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
+    return;
+  }
+  /**
+   * R5/V4 (E164) — `leadId` e `reservaId` eram provados cada um contra a LOJA,
+   * e nunca um contra o outro.
+   *
+   * O bloqueio da noiva A pendurava na reserva da noiva B, e a consequência é
+   * de dinheiro: com o V3, a guarda de avaria cai para `reservas.lead_id` —
+   * o reparo do vestido que A alugou só poderia ser cobrado no carnê de B, e
+   * cobrá-lo em A devolveria 422. Mesma classe do S2/E107, que
+   * `escopo-loja.ts` já documenta.
+   */
+  if (dados.reservaId && dados.leadId && !(await reservaDaNoiva(dados.reservaId, lojaId, dados.leadId))) {
+    res.status(422).json({
+      error: "RESERVA_DE_OUTRA_NOIVA",
+      detalhe: "Esta reserva agrupadora é de outra noiva — o bloqueio não pode apontar as duas.",
+      campos: [{ campo: "reservaId", motivo: "A reserva pertence a outra noiva" }],
+    });
     return;
   }
   /**

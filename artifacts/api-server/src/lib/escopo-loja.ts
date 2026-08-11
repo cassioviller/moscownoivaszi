@@ -176,6 +176,29 @@ export async function bloqueioDaNoiva(
 }
 
 /**
+ * E164/R5 — a reserva (agrupadora) é DESTA noiva?
+ *
+ * `reservas.lead_id` é NOT NULL — toda reserva TEM dona, e por isso aqui não
+ * há o ramo do nulo que `bloqueioDaNoiva` acima precisa ter. O POST de
+ * bloqueio aceitava `leadId` da noiva A com `reservaId` da noiva B provando
+ * cada um só contra a LOJA: o bloqueio da A pendurava na reserva da B, e a
+ * consequência era de dinheiro — a guarda de avaria (V3) passa a cair para
+ * `reservas.lead_id`, então o reparo do vestido que A alugou só podia ser
+ * cobrado no carnê de B, e cobrá-lo em A devolvia 422 AVARIA_DE_OUTRA_NOIVA.
+ */
+export async function reservaDaNoiva(
+  reservaId: string,
+  lojaId: string,
+  leadId: string,
+): Promise<boolean> {
+  const [r] = await db.select({ leadId: reservasTable.leadId })
+    .from(reservasTable)
+    .where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)))
+    .limit(1);
+  return !!r && r.leadId === leadId;
+}
+
+/**
  * E156 — o `origemAjusteId` que a peça nova declara é uma confecção desta loja,
  * e já pronta?
  *
