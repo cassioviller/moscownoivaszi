@@ -13,7 +13,7 @@ projetos**.
 
 | Épico | Tese | Faixa | Estado |
 |---|---|---|---|
-| ~~**E158**~~ | ~~`contratos.ts`: toda guarda relê sob a tranca, e o duplicado morre no banco~~ | A | ✅ `HASH_E158` · [relatório](execucao/E158.md) |
+| ~~**E158**~~ | ~~`contratos.ts`: toda guarda relê sob a tranca, e o duplicado morre no banco~~ | A | ✅ `09d65d8` · [relatório](execucao/E158.md) |
 | E159 | `reservas.ts`: as quatro portas sem tranca, e o estado terminal em todas | A | ⏳ próximo |
 | E160 | orçamento e aceite: o CAS entra na tranca | A | ⏳ |
 | E161 | agenda: o eixo da vendedora, e o PATCH que pula a recusa | A | ⏳ |
