@@ -337,3 +337,19 @@ fluxo aceite→fila→contrato). Typecheck verde nos 5 projetos. `banco-virgem`
 verde após cada migração. E a tabela de rastreamento desta trilha
 (`CODE-REVIEW.md` + `PROGRESSO.md`) com os 149 riscados um a um — **contados,
 não deduzidos**.
+
+---
+
+## Fase 0 — DECIDIDO em 2026-08-11
+
+As quatro decisões foram tomadas pela dona no mesmo dia, todas na recomendação:
+
+| # | Decisão | Resposta |
+|---|---|---|
+| D1 | Desenho do gate | **(c) Fila + reserva inline.** O aceite não reserva; nasce a fila "aceitos sem contrato" e o diálogo de contrato cria a reserva na hora (padrão E65). A fila medirá se a janela justifica evoluir para reserva no envio. |
+| D2 | MANUTENCAO no E150 | **Não.** O gate passa a exigir `tipo = RESERVA_CASAMENTO`. |
+| D3 | Validade barra aceite | **Sim, com caminho.** Erro diz o próximo passo; regenerar link re-abre a validade explicitamente. |
+| D4 | Varredura no CI | **Sim.** O E171 entra no plano como está. |
+
+O E162 está desbloqueado. Restam as contagens C1/C2 e o push do main (regra 29)
+antes de abrir a Faixa A.
