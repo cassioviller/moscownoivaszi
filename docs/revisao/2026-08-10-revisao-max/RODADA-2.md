@@ -153,3 +153,36 @@ Se a sessão cair, é daqui que se retoma — e não da transcrição, que a reg
 diz não ser backup de nada. O handle do run está acima e serve para retomar
 enquanto o disco o guardar; **a página não depende dele** — e agora os
 achados também não dependem: eles pingam no repositório ângulo a ângulo.
+
+## A execução — 2026-08-11
+
+A consolidação está em [`rodada-2-consolidado.md`](./rodada-2-consolidado.md):
+53 sobreviventes − 4 duplicatas entre ângulos = **49 defeitos únicos, em 10
+épicos**. Os dez fecharam NO DIA SEGUINTE à varredura, cada um num commit com
+o vermelho medido onde ele era mensurável:
+
+| Épico | Commit | O que fechou |
+|---|---|---|
+| S-M19 🟠 `parcela.origem` atravessa o spec | `b25654d` | 5#1 — o "Gerar plano" travado por reparo cobrado cedo |
+| S-M20 🟠 o diálogo de receber vira UM | `cad5832` | 7#1 — a data do dinheiro dependia da tela |
+| S-M22 🟡 check-then-write sob tranca | `d4bdc76` | **fecha a S-M18** — 10 sítios, 2 nascidos nos consertos do dia 10 |
+| S-M24 🟡 estado terminal em toda porta | `20678b0` | 6#1–5 |
+| S-M23 🟡 os pisos da borda + OFX pt-BR | `db45820` | 1#1–3, 5#2–6 |
+| S-M21 🟡 criar×editar nas telas | `bcbdf27` | **fecha a S-M9** — 10 sítios + 3 comentários que mentiam |
+| S-M25 🟡 dia × instante | `b8556aa` | 2#1–4 |
+| S-M26 🟡 uma contagem, uma régua | `425f570` | 7#2–3 |
+| S-M27 🟡 os índices fora do B10/E91 | `7251d91` (+`f47e30a`) | 9#1–4 — schema + migração 0013 + DDL de banco existente |
+| S-M28 🟡/🔵 as réguas que mentiam | `7fd7fc4` | 10#1–3, 8#5, 11#3 |
+
+**O que a execução ensinou** (a parte que vale mais que o diff): a suíte
+COMPLETA pegou o que os subsets não pegaram — o DDL da S-M27 escrevia nomes
+entre aspas e a regex da varredura S-A20 (case-insensitive) capturava o `IF`
+de `IF NOT EXISTS` seis vezes (`f47e30a`, uma linha). E o gate de "Dar baixa"
+das comissões provou que a linha 152 da tela (que o S36 tinha dado por
+obsoleta) estava CERTA: a rota exige `admin.editar` explícito, e quem mentia
+era o bloco novo do S36.
+
+Guardas que ficam: `sm21-gate-acao-da-tela-unit` (os dez pares tela×ação
+pinados), `sm22-corrida-check-then-write-api` (corrida determinística nos
+dois piores sítios), o assert do encadeamento `typecheck:e2e` na S-D44, e a
+migração 0013 + `docs/migracoes/2026-08-11-sm27` nos dois caminhos de banco.

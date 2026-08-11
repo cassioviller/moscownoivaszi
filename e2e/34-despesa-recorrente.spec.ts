@@ -79,6 +79,9 @@ test.describe("Despesa recorrente (E48)", () => {
 
     // Gerar de novo não duplica — a mensagem diz isso em vez de fingir sucesso.
     await page.getByRole("button", { name: "Gerar competência" }).click();
-    await expect(page.getByText("Competência já estava gerada")).toBeVisible();
+    // `.first()`: o Radix espelha o título do toast numa região aria-live de
+    // anúncio — o getByText cru resolve DOIS elementos e o strict mode
+    // derruba o assert com o toast na tela (medido no fecho da rodada 2).
+    await expect(page.getByText("Competência já estava gerada").first()).toBeVisible();
   });
 });

@@ -76,11 +76,13 @@ test.describe("Recebimento parcial (E49)", () => {
     const linha = page.locator("li").filter({ hasText: "Entrada" }).first();
     await linha.getByRole("button", { name: "Receber", exact: true }).click();
 
+    // S-M20: a ficha do contrato usa o diálogo COMPARTILHADO (o mesmo de
+    // /receber e /cobranca) — id e botão são os dele.
     // O diálogo sugere o saldo (1000, nada recebido ainda); recebemos 400.
-    const valor = page.locator("#receber-valor");
+    const valor = page.locator("#valorRecebido");
     await expect(valor).toHaveValue(/1000|1\.000/);
     await valor.fill("400,00");
-    await page.getByRole("button", { name: "Registrar recebimento" }).click();
+    await page.getByTestId("confirmar-recebimento").click();
 
     // A parcela vira PARCIAL e diz o que falta — não some, nem finge inteira.
     await expect(linha.getByText("Parcial", { exact: false })).toBeVisible();
@@ -98,7 +100,7 @@ test.describe("Recebimento parcial (E49)", () => {
 
     await linha.getByRole("button", { name: "Receber o restante" }).click();
     // Sugerir 1000 de novo cobraria outra vez o que já entrou.
-    await expect(page.locator("#receber-valor")).toHaveValue(/600/);
+    await expect(page.locator("#valorRecebido")).toHaveValue(/600/);
   });
 
   test("o resto continua no a receber e no atraso", async ({ request }) => {
