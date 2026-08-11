@@ -665,9 +665,16 @@ router.get("/admin/consolidado", async (_req, res): Promise<void> => {
   const [lojas, leadsPorLoja, contratosPorLoja, recebidoPorLoja, abertoPorLoja] = await Promise.all([
     db.select({ id: lojasTable.id, nome: lojasTable.nome }).from(lojasTable)
       .where(eq(lojasTable.ativo, true)).orderBy(lojasTable.nome),
+    // S-M26 (rodada 2, achado 7#2): o consolidado excluía só PERDIDO enquanto
+    // o dashboard da loja exclui PERDIDO e DEVOLVIDO — e DEVOLVIDO é a etapa
+    // final FELIZ do funil: toda noiva que casou e devolveu o vestido termina
+    // ali, para sempre. A linha da rede lia 100 "no funil" onde a dona da
+    // loja lia 40 — 2,5× o real, inflado por todo casamento já realizado, e a
+    // diferença só crescia com a vida da loja. A régua é UMA: quem saiu do
+    // funil (pelo sim ou pelo não) não é lead ativo.
     db.select({ lojaId: leadsTable.lojaId, total: sql<number>`count(*)`.mapWith(Number) })
       .from(leadsTable)
-      .where(sql`${leadsTable.etapa} <> 'PERDIDO'`)
+      .where(sql`${leadsTable.etapa} not in ('PERDIDO', 'DEVOLVIDO')`)
       .groupBy(leadsTable.lojaId),
     db.select({ lojaId: contratosTable.lojaId, total: sql<number>`count(*)`.mapWith(Number) })
       .from(contratosTable)

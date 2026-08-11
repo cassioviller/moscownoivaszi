@@ -46,11 +46,13 @@ import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 
-import { competenciaAtual, hojeLocal, addDias, inicioDoDia } from "@/lib/financeiro/datas";
+import { competenciaAtual, hojeLocal, addDias, inicioDoDia, diaLocal } from "@/lib/financeiro/datas";
 import { agingDeParcelas } from "@/lib/financeiro/cobranca";
 import {
   aContatarNaJanela,
   orcamentosVencendoNaJanela,
+  marcasPersistentesDeCobranca,
+  particionaPorCobranca,
   resumoDaFila,
 } from "@/lib/mensagens-do-dia";
 
@@ -200,7 +202,18 @@ export default function Dashboard() {
   const filaDeMensagens = useMemo(() => {
     const agora = Date.now();
     const aContatar = aContatarNaJanela(atendimentosQuery.data ?? [], agora).length;
-    const emAtraso = agingDeParcelas(parcelasAbertas.data ?? []).noivas.length;
+    /**
+     * S-M26 (rodada 2, achado 7#3): o cartão somava TODAS as inadimplentes
+     * enquanto /mensagens aplica a S-D13 — noiva já cobrada no dia de hoje da
+     * loja sai de `aCobrar`. A recepcionista cobrava 4 noivas pela fila,
+     * voltava, e o cartão seguia dizendo "9 mensagens" com a fila mostrando 5
+     * — a divergência exata que o F7 declarou ser pior que não contar. O dado
+     * sempre esteve em mãos (`agingDeParcelas` devolve `ultimoContatoEm` por
+     * noiva); a composição é a MESMA de mensagens/index.tsx.
+     */
+    const inadimplentes = agingDeParcelas(parcelasAbertas.data ?? []).noivas;
+    const persistentes = marcasPersistentesDeCobranca(inadimplentes, hojeLocal(), diaLocal);
+    const emAtraso = particionaPorCobranca(inadimplentes, persistentes).aCobrar.length;
     // S-M25: a validade é dia de negócio — a janela conta DIAS locais.
     const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], hojeLocal()).length;
     return resumoDaFila(aContatar + emAtraso + vencendo);
