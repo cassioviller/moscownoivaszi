@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, leadsTable, contratosTable, parcelasTable, contasPagarTable } from "../lib/db/src/index";
-import { coletarErrosApi, resumoErros, lerEstado, API_URL } from "./helpers";
+import { coletarErrosApi, resumoErros, lerEstado, API_URL , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -42,7 +42,7 @@ test.describe("Financeiro", () => {
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
     // Meio-dia de São Paulo: o dia não escorrega para o vizinho em fuso nenhum.
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = diaLocalSP();
     const vencimento = `${hoje}T12:00:00-03:00`;
 
     const conta = await request.post(

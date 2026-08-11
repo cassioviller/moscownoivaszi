@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, atendimentosTable, cabinesTable, usuariosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -61,7 +61,7 @@ test.describe("Prova ocupa intervalo (E40)", () => {
     await request.post(`${API_URL}/api/auth/selecionar-loja`, { data: { lojaId: estado.lojaId } });
 
     // Base fixa dentro do expediente — cabine e vendedora são só desta execução.
-    const ymd = new Date().toISOString().slice(0, 10);
+    const ymd = diaLocalSP();
     const baseMs = Date.parse(`${ymd}T10:00:00-03:00`);
     const H = 3600_000;
     const iso = (ms: number) => new Date(ms).toISOString();

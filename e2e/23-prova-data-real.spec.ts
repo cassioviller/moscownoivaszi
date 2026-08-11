@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, atendimentosTable, cabinesTable, usuariosTable, vestidosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -91,7 +91,7 @@ test.describe("Prova conclui e carimba a data real (E37)", () => {
 
     // Prova ligada ao bloqueio, instante fixo dentro do expediente — cabine e
     // vendedora são só desta execução, então não há com quem colidir.
-    const ymd = new Date().toISOString().slice(0, 10);
+    const ymd = diaLocalSP();
     const inicio = new Date(Date.parse(`${ymd}T10:00:00-03:00`)).toISOString();
     const at = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/atendimentos`, {
       data: {

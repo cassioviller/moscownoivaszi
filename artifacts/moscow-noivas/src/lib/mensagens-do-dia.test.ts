@@ -116,26 +116,32 @@ describe("a fila de quem já foi procurada", () => {
   });
 });
 
-describe("orçamentos vencendo", () => {
-  it("pega o ENVIADO que vence dentro de 72h", () => {
-    const o = { status: "ENVIADO", validade: new Date(AGORA + 24 * H).toISOString() };
-    expect(orcamentosVencendoNaJanela([o], AGORA)).toHaveLength(1);
+describe("orçamentos vencendo — a validade é DIA de negócio (S-M25)", () => {
+  // O teste antigo fabricava validades como INSTANTES relativos — pregava a
+  // semântica errada que o achado 2#2 mediu: às 12:00:01 do próprio dia de
+  // validade o lembrete morria, na tarde em que "vence hoje" mais converte.
+  const HOJE = "2026-08-14";
+  const anc = (dia: string) => `${dia}T15:00:00.000Z`; // meio-dia SP
+
+  it("pega o ENVIADO que vence na janela de 3 dias — inclusive o de HOJE, o dia INTEIRO", () => {
+    expect(orcamentosVencendoNaJanela([{ status: "ENVIADO", validade: anc(HOJE) }], HOJE)).toHaveLength(1);
+    expect(orcamentosVencendoNaJanela([{ status: "ENVIADO", validade: anc("2026-08-17") }], HOJE)).toHaveLength(1);
   });
 
-  it("não pega o que JÁ venceu — lembrar de um prazo morto não é mensagem a enviar", () => {
-    const o = { status: "ENVIADO", validade: new Date(AGORA - H).toISOString() };
-    expect(orcamentosVencendoNaJanela([o], AGORA)).toHaveLength(0);
+  it("não pega o que venceu ONTEM nem o de depois da janela", () => {
+    expect(orcamentosVencendoNaJanela([{ status: "ENVIADO", validade: anc("2026-08-13") }], HOJE)).toHaveLength(0);
+    expect(orcamentosVencendoNaJanela([{ status: "ENVIADO", validade: anc("2026-08-18") }], HOJE)).toHaveLength(0);
   });
 
   it("não pega rascunho nem aprovado, mesmo com validade próxima", () => {
-    const validade = new Date(AGORA + 24 * H).toISOString();
+    const validade = anc("2026-08-15");
     const rascunho = { status: "RASCUNHO", validade };
     const aprovado = { status: "APROVADO", validade };
-    expect(orcamentosVencendoNaJanela([rascunho, aprovado], AGORA)).toHaveLength(0);
+    expect(orcamentosVencendoNaJanela([rascunho, aprovado], HOJE)).toHaveLength(0);
   });
 
   it("orçamento sem validade não vence e não entra na fila", () => {
-    expect(orcamentosVencendoNaJanela([{ status: "ENVIADO", validade: null }], AGORA)).toHaveLength(0);
+    expect(orcamentosVencendoNaJanela([{ status: "ENVIADO", validade: null }], HOJE)).toHaveLength(0);
   });
 });
 

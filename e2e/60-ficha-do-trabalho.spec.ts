@@ -8,7 +8,7 @@ import {
   leadsTable,
   orcamentosTable,
 } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -62,7 +62,7 @@ test.describe("Ficha do trabalho da costureira (S-A17)", () => {
       leadId,
       cabineId,
       vendedoraId: vendedoras[0]!.usuarioId,
-      ymd: new Date().toISOString().slice(0, 10),
+      ymd: diaLocalSP(),
     });
     atendimentoId = atendimento.id;
 

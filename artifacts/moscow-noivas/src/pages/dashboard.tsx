@@ -201,7 +201,8 @@ export default function Dashboard() {
     const agora = Date.now();
     const aContatar = aContatarNaJanela(atendimentosQuery.data ?? [], agora).length;
     const emAtraso = agingDeParcelas(parcelasAbertas.data ?? []).noivas.length;
-    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], agora).length;
+    // S-M25: a validade é dia de negócio — a janela conta DIAS locais.
+    const vencendo = orcamentosVencendoNaJanela(orcamentosEnviados.data?.itens ?? [], hojeLocal()).length;
     return resumoDaFila(aContatar + emAtraso + vencendo);
   }, [atendimentosQuery.data, parcelasAbertas.data, orcamentosEnviados.data]);
 

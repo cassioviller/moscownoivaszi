@@ -17,7 +17,16 @@
  */
 
 export const JANELA_CONFIRMACAO_MS = 48 * 3_600_000;
-export const JANELA_ORCAMENTO_MS = 72 * 3_600_000;
+/**
+ * S-M25 (rodada 2, achado 2#2): a janela do orçamento é em DIAS, não em ms.
+ * A validade é data de NEGÓCIO (âncora meio-dia SP — representação do dia,
+ * não prazo), e compará-la como instante declarava o orçamento "vencido" às
+ * 12:00:01 do próprio dia de validade: a fila parava de oferecer o lembrete
+ * exatamente na tarde do último dia, quando "sua proposta vence hoje" mais
+ * converte. A régua do resto do sistema (`estaAtrasada`) conta DIAS — vencido
+ * é só no dia seguinte — e esta passa a ser a mesma.
+ */
+export const JANELA_ORCAMENTO_DIAS = 3;
 
 /** O mínimo que a régua precisa saber de um atendimento. */
 export type AtendimentoDaFila = {
@@ -97,16 +106,26 @@ export function jaContatadasNaJanela<T extends AtendimentoDaFila>(
     .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
 }
 
-/** Orçamentos ENVIADOS vencendo na janela — os já vencidos não entram. */
+/**
+ * Orçamentos ENVIADOS vencendo na janela — os já vencidos não entram.
+ *
+ * `hoje` é o dia LOCAL da loja (`hojeLocal()`), e a conta inteira é por dia:
+ * a validade ancorada ao meio-dia de São Paulo tem o dia UTC igual ao dia de
+ * negócio (é a propriedade da âncora), então `slice(0, 10)` do ISO já é o dia
+ * certo. O orçamento vale o dia INTEIRO da validade.
+ */
 export function orcamentosVencendoNaJanela<T extends OrcamentoDaFila>(
   orcamentos: readonly T[],
-  agora: number,
+  hoje: string,
 ): T[] {
+  const limite = new Date(`${hoje}T12:00:00Z`);
+  limite.setUTCDate(limite.getUTCDate() + JANELA_ORCAMENTO_DIAS);
+  const diaLimite = limite.toISOString().slice(0, 10);
   return orcamentos
     .filter((o) => {
       if (o.status !== "ENVIADO" || !o.validade) return false;
-      const t = new Date(o.validade).getTime();
-      return t >= agora && t <= agora + JANELA_ORCAMENTO_MS;
+      const dia = new Date(o.validade).toISOString().slice(0, 10);
+      return dia >= hoje && dia <= diaLimite;
     })
     .sort((a, b) => new Date(a.validade!).getTime() - new Date(b.validade!).getTime());
 }

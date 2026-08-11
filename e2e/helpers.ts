@@ -214,3 +214,23 @@ export function coletarErrosApi(page: Page): ErroApi[] {
 export function resumoErros(erros: ErroApi[]): string {
   return erros.map((e) => `${e.status} ${e.url}`).join("\n");
 }
+
+/**
+ * S-M25 (rodada 2, achado 2#3) — o "hoje" (e o dia relativo) no fuso da LOJA.
+ *
+ * Dez specs computavam o dia por `toISOString().slice(0, 10)` — o calendário
+ * UTC. Das 21h à meia-noite de São Paulo o dia UTC já é o dia SEGUINTE: o
+ * spec 09 criava a conta vencendo no dia-UTC e a tela de Pagar (janela do mês
+ * corrente de `hojeLocal()`) não a mostrava — vermelho determinístico nas ~3
+ * horas finais do último dia de cada mês, sem código errado. O app inteiro
+ * vive em `hojeLocal()`; os specs passam a viver no mesmo dia.
+ */
+export function diaLocalSP(offsetDias = 0, base: Date = new Date()): string {
+  const instante = new Date(base.getTime() + offsetDias * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instante);
+}

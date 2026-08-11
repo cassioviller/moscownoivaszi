@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -35,7 +35,7 @@ test.describe("Procurar para confirmar (E39, revisto pelo E97)", () => {
     expect(cab.status(), await cab.text()).toBe(201);
     cabineId = ((await cab.json()) as { id: string }).id;
 
-    ymd = new Date().toISOString().slice(0, 10);
+    ymd = diaLocalSP();
     const criado = await criarAtendimentoLivre(request, estado.lojaId, {
       leadId: estado.leadId,
       cabineId,

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -18,7 +18,7 @@ test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 function noProximo(alvo: number): string {
   const base = new Date();
   for (let i = 1; i <= 8; i++) {
-    const ymd = new Date(base.getTime() + i * 86400_000).toISOString().slice(0, 10);
+    const ymd = diaLocalSP(i, base);
     if (new Date(`${ymd}T14:00:00-03:00`).getUTCDay() === alvo) {
       return `${ymd}T14:00:00-03:00`;
     }

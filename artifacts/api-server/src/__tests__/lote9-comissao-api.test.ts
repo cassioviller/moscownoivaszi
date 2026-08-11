@@ -136,6 +136,41 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
     await agent.delete(`/api/lojas/${f.lojaId}/comissao/regras/${segunda.body.id}`).expect(204);
   });
 
+  it("S-M25 — a MESMA vigência em OUTRA hora do mesmo dia corrige, não versiona de novo", async () => {
+    /**
+     * Rodada 2, achado 2#1: a validação pergunta pelo DIA e o dedup perguntava
+     * pelo INSTANTE — a regra nascida da tela (meia-noite SP) e a correção
+     * enviada com a âncora canônica (meio-dia SP) viravam DUAS regras da mesma
+     * competência: o `find` escolhia pela hora e o fechamento pagava R$ 500,00
+     * onde a correção dizia R$ 300,00. Mesmo dia local = mesma vigência.
+     */
+    const meiaNoite = new Date("2021-09-01T00:00:00-03:00").toISOString();
+    const meioDia = new Date("2021-09-01T12:00:00-03:00").toISOString();
+    const enviar = (vigenciaInicio: string, percentual: number) =>
+      agent
+        .post(`/api/lojas/${f.lojaId}/comissao/regras`)
+        .send({
+          vendedoraId: f.vendedoraId,
+          vigenciaInicio,
+          faixas: [{ minAcumulado: 0, maxAcumulado: null, percentual }],
+        })
+        .expect(201);
+
+    await enviar(meiaNoite, 5);
+    const correcao = await enviar(meioDia, 3);
+    expect(correcao.body.faixas[0].percentual).toBe(3);
+
+    const regras = await agent.get(`/api/lojas/${f.lojaId}/comissao/regras`).expect(200);
+    const doDia = regras.body.filter(
+      (r: { vigenciaInicio: string }) => new Date(r.vigenciaInicio).toISOString().startsWith("2021-09-01"),
+    );
+    // VERMELHO ANTES: 2 — e a antiga (5%) continuava vencendo o find.
+    expect(doDia).toHaveLength(1);
+    expect(doDia[0].faixas[0].percentual).toBe(3);
+
+    await agent.delete(`/api/lojas/${f.lojaId}/comissao/regras/${correcao.body.id}`).expect(204);
+  });
+
   it("preview mostra o mês ao vivo e o quanto falta para o próximo degrau", async () => {
     const lead = await criarLead(f);
     await criarContrato(f, { leadId: lead.id, valorTotal: 6000, fechadoEm: dia("2025-02-10") });

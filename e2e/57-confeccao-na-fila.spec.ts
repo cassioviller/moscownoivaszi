@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, ajustesTable, atendimentosTable, leadsTable } from "../lib/db/src/index";
-import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada } from "./helpers";
+import { lerEstado, API_URL, criarAtendimentoLivre, apagarCabineCriada , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -63,7 +63,7 @@ test.describe("Confecção na fila da costureira (E155)", () => {
       leadId,
       cabineId,
       vendedoraId: vendedoras[0]!.usuarioId,
-      ymd: new Date().toISOString().slice(0, 10),
+      ymd: diaLocalSP(),
     });
     atendimentoId = atendimento.id;
 

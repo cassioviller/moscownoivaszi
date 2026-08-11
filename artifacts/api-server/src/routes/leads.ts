@@ -435,8 +435,13 @@ router.get("/lojas/:lojaId/leads/sazonalidade", async (req, res): Promise<void> 
     .where(and(
       eq(leadsTable.lojaId, lojaId),
       sql`${leadsTable.etapa} <> 'PERDIDO'`,
-      sql`${leadsTable.casamentoData} >= now()`,
-      sql`${leadsTable.casamentoData} < now() + interval '12 months'`,
+      // S-M25 (rodada 2, achado 2#4): `casamentoData` é data de NEGÓCIO
+      // (âncora meio-dia SP) e era comparada com `now()` — a partir de
+      // 12:00:01 o casamento de HOJE saía da curva, e o bucket do mês
+      // corrente oscilava com a hora da consulta. O recorte é por DIA local,
+      // a mesma régua do `to_char` duas linhas acima.
+      gte(leadsTable.casamentoData, inicioDoDia(hojeLocal())),
+      lt(leadsTable.casamentoData, inicioDoDia(addMeses(hojeLocal(), 12))),
     ))
     .groupBy(sql`1`)
     .orderBy(sql`1`);

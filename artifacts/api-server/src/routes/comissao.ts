@@ -10,7 +10,7 @@ import {
   usuariosTable,
   usuariosLojasTable,
 } from "@workspace/db";
-import { eq, and, count, gte, lt, lte, inArray, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, count, gte, lt, lte, inArray, isNull, isNotNull, desc, sql } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/pg-core";
 import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
 import { registrarAuditoria } from "../lib/auditoria";
@@ -404,13 +404,23 @@ router.post("/lojas/:lojaId/comissao/regras", async (req, res): Promise<void> =>
   }
 
   const regraId = await db.transaction(async (tx) => {
+    /**
+     * S-M25 (rodada 2, achado 2#1): a validação acima pergunta pelo DIA
+     * ("dois instantes do mesmo primeiro dia são a mesma vigência") e este
+     * dedup perguntava pelo INSTANTE — a correção enviada com a âncora
+     * canônica (meio-dia SP) não casava com a regra nascida da tela
+     * (meia-noite SP) e virava SEGUNDA regra da mesma competência: o `find`
+     * escolhia pela hora, o fechamento pagava R$ 500,00 onde a correção dizia
+     * R$ 300,00, e a linha do tempo desenhava um período invertido. A régua é
+     * a da própria validação: mesmo DIA local = mesma vigência.
+     */
     const [existente] = await tx
       .select({ id: comissaoRegrasTable.id })
       .from(comissaoRegrasTable)
       .where(and(
         eq(comissaoRegrasTable.lojaId, lojaId),
         eq(comissaoRegrasTable.vendedoraId, vendedoraId),
-        eq(comissaoRegrasTable.vigenciaInicio, vigenciaInicio),
+        sql`(${comissaoRegrasTable.vigenciaInicio} at time zone 'America/Sao_Paulo')::date = ${diaLocal(vigenciaInicio)}::date`,
       ));
 
     let id: string;

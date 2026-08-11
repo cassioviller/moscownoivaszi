@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, ausenciasTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -38,7 +38,7 @@ test.describe("Ausência da equipe na agenda (E151)", () => {
 
     // Um dia bem à frente: o banco do E2E persiste, e uma ausência sobre a
     // agenda de hoje atrapalharia os outros specs.
-    dia = new Date(Date.now() + 250 * 86_400_000).toISOString().slice(0, 10);
+    dia = diaLocalSP(250);
     const criada = await request.post(`${API_URL}/api/lojas/${estado.lojaId}/ausencias`, {
       data: { usuarioId: vendedoraId, inicio: dia, fim: dia, motivo: "E2E Férias" },
     });

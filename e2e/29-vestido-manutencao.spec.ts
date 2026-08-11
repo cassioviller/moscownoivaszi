@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, vestidosTable, bloqueioVestidosTable } from "../lib/db/src/index";
-import { lerEstado, API_URL } from "./helpers";
+import { lerEstado, API_URL , diaLocalSP} from "./helpers";
 
 const estado = lerEstado();
 
@@ -46,7 +46,7 @@ test.describe("Vestido — marcar em manutenção (E43)", () => {
     // Peça nova: nenhuma manutenção ainda.
     await expect(page.getByText("Manutenção", { exact: true })).toHaveCount(0);
 
-    const inicio = new Date(Date.now() + 10 * 24 * 3600_000).toISOString().slice(0, 10);
+    const inicio = diaLocalSP(10);
     await page.getByTestId("manutencao-inicio").fill(inicio);
     await page.getByTestId("marcar-manutencao").click();
 
