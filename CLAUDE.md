@@ -93,15 +93,17 @@ para o documento que manda.
    (`2912526`). Antes da conferência a tabela também dizia zero 🟠 — a diferença
    é que agora é verdade.
 
-   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-10 o
-   `origin/main` foi de `e624e4e` para `f88eff2` — **31 commits** (a revisão
-   max inteira), fast-forward puro, com autorização da dona no mesmo dia. O
-   costume vem de 2026-08-07, quando o remoto destravou de 322 commits e o
-   custo de deixá-lo para trás ficou medido: **todo worktree de agente nasce
-   em `origin/main`**, e cada agente atrasado gastava o primeiro gesto se
-   reposicionando (regra 29). Confira com
-   `git rev-list --count origin/main..main` antes de assumir que ainda está em
-   dia — esta linha envelhece a cada commit, e já envelheceu quatro vezes.
+   **Tudo isso está no `main`, e o `main` está PUBLICADO.** Em 2026-08-11 o
+   `origin/main` foi de `f88eff2` para a ponta da rodada 2 — **23 commits**
+   (a segunda varredura, a consolidação e os 10 épicos executados),
+   fast-forward puro, com autorização da dona no mesmo dia. Antes disso,
+   2026-08-10 publicou os 31 da revisão max. O costume vem de 2026-08-07,
+   quando o remoto destravou de 322 commits e o custo de deixá-lo para trás
+   ficou medido: **todo worktree de agente nasce em `origin/main`**, e cada
+   agente atrasado gastava o primeiro gesto se reposicionando (regra 29).
+   Confira com `git rev-list --count origin/main..main` antes de assumir que
+   ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
+   cinco vezes.
 
    Hoje a régua é **API 1134 · frontend 536 · E2E 165 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 63 arquivos de `e2e/`** (S-D23,
