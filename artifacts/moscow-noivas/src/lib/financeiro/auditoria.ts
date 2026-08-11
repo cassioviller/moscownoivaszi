@@ -31,6 +31,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
+  ORCAMENTO_ACEITE_DESFEITO: "Aceite do orçamento desfeito (gerencial)",
   PROVA_CONFIRMADA: "Prova confirmada pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",
   // O espelho tinha PARADO: estas cinco já existiam (ou passam a existir) no

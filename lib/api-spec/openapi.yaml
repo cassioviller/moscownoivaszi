@@ -2626,6 +2626,131 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Orcamento"
+  /lojas/{lojaId}/orcamentos/aceitos-sem-contrato:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+    get:
+      operationId: listAceitosSemContrato
+      tags: [orcamentos]
+      summary: A fila do gate — orçamentos aceitos/aprovados que ainda não viraram contrato
+      description: >
+        E162: o aceite da noiva não cria reserva e o contrato exige reserva —
+        entre os dois existia um vão que NENHUMA tela vigiava. Esta é a
+        primeira consulta do sistema que cruza orçamento com contrato: um
+        APROVADO sem contrato é dinheiro comprometido parado, e a idade dele é
+        o quanto a promessa está esperando.
+      responses:
+        "200":
+          description: Os aceites parados, do mais antigo ao mais novo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrcamentoAceitoSemContrato"
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/desfazer-aceite:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: desfazerAceiteOrcamento
+      tags: [orcamentos]
+      summary: Desfaz o aceite/aprovação — a porta gerencial do beco
+      description: >
+        E162 (A01.2): APROVADO era terminal SEM saída — reservar dava 409 se a
+        peça saiu, trocar o item dava 422, voltar o status dava 422, e o
+        contrato dava 422. Este gesto gerencial devolve o orçamento a RASCUNHO
+        (limpa aceite, versão e hash; a história fica na auditoria e nas
+        versões antigas), para a vendedora trocar a peça e gerar novo link —
+        que congela versão NOVA e pede novo aceite à noiva. Recusado quando já
+        existe contrato apontando o orçamento.
+      responses:
+        "200":
+          description: O orçamento de volta a RASCUNHO
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orcamento"
+        "404":
+          description: Orçamento não encontrado
+        "409":
+          description: Já existe contrato apontando este orçamento
+        "422":
+          description: O orçamento não está APROVADO
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/reservar:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: reservarPecaDoOrcamento
+      tags: [orcamentos]
+      summary: Cria a reserva de uma peça vendida por este orçamento, de dentro do fluxo de venda
+      description: >
+        E162 (R10, decisão registrada no épico): reservar DE DENTRO do fluxo
+        de venda exige `leads.criar` — a venda é de quem vende —, e não
+        `vestidos.criar`, que é o gate do acervo. O alcance é estreito de
+        propósito: só peças que são ITEM deste orçamento, sempre em nome da
+        noiva dele. A régua de disponibilidade é a MESMA do POST /bloqueios.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vestidoId, casamentoData]
+              properties:
+                vestidoId: { type: string }
+                casamentoData: { type: string, format: date-time }
+      responses:
+        "201":
+          description: A reserva criada, em nome da noiva do orçamento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueioVestido"
+        "404":
+          description: Orçamento não encontrado
+        "409":
+          description: A peça não está disponível no período (conflitos no corpo)
+        "422":
+          description: A peça não é item deste orçamento
+  /lojas/{lojaId}/orcamentos/{orcamentoId}/reservas-candidatas:
+    parameters:
+      - $ref: "#/components/parameters/LojaIdParam"
+      - name: orcamentoId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listReservasCandidatas
+      tags: [orcamentos]
+      summary: As reservas que o contrato deste orçamento PODE prender
+      description: >
+        E162 (A02.4): as reservas vivas da noiva MAIS as sem dona (`leadId`
+        nulo) das peças vendidas pelos itens — o caso que o servidor de
+        contratos chama de "legítimo e comum" (61 de 63 no dev) e que o filtro
+        por lead da tela nunca oferecia. A adoção acontece no fechamento do
+        contrato, que dá dono à reserva sem dona.
+      responses:
+        "200":
+          description: Candidatas — da noiva primeiro, depois as sem dona
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BloqueioVestido"
+        "404":
+          description: Orçamento não encontrado
   /lojas/{lojaId}/orcamentos/{orcamentoId}/link:
     parameters:
       - $ref: "#/components/parameters/LojaIdParam"
@@ -5856,6 +5981,23 @@ components:
         horizonteDias: { type: integer }
 
     # ── Orçamentos ──
+    # E162: uma linha da fila do gate — o aceite parado com o valor e a idade.
+    OrcamentoAceitoSemContrato:
+      type: object
+      required: [orcamentoId, leadId, noivaNome, valor, aprovadoEm]
+      properties:
+        orcamentoId: { type: string }
+        leadId: { type: string }
+        noivaNome: { type: string }
+        # O líquido da versão que a noiva aceitou (ou o vivo, para aprovação
+        # manual sem versão) — é o dinheiro comprometido parado.
+        valor: { type: number }
+        # aceitoEm nulo = aprovação manual (o /aprovar não passa pelo aceite).
+        aceitoEm: { type: ["string", "null"], format: date-time }
+        aprovadoEm: { type: string, format: date-time }
+        # Peças de acervo vendidas pelos itens que AINDA não têm reserva viva —
+        # o tamanho do risco: 0 = só falta gerar o contrato.
+        pecasSemReserva: { type: integer }
     Orcamento:
       type: object
       required: [id, lojaId, leadId, vendedoraId, status, createdAt]

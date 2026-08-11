@@ -438,7 +438,16 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
       hoje: new Date(),
     });
     if (!resultado.disponivel) {
-      res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: resultado.conflitos });
+      // K10/E162: era o ÚNICO erro do arquivo sem `detalhe` — nenhum consumidor
+      // traduzia o código, e a vendedora lia "Tente novamente" com a noiva na
+      // frente: uma frase que manda repetir o gesto que vai falhar sempre. O
+      // payload `conflitos` segue, e o diálogo do E162 é o primeiro leitor.
+      res.status(409).json({
+        error: "VESTIDO_INDISPONIVEL",
+        detalhe:
+          "Uma das peças reservadas ficou indisponível no período — confira os conflitos e ajuste a reserva ou a data antes de fechar.",
+        conflitos: resultado.conflitos,
+      });
       return;
     }
     vestidosReservados.add(bloqueio.vestidoId);
@@ -473,10 +482,15 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   if (pecasVendidas.length > 0) {
     const semReserva = pecasVendidas.filter((it) => !vestidosReservados.has(it.vestidoId!));
     if (semReserva.length > 0) {
+      // A01.4/E162: a frase dizia o RISCO e parava — a única do arquivo sem o
+      // gesto, comparada com as vizinhas ("Ajuste a data ou a reserva",
+      // "escolha uma reserva desta noiva"). Agora ela aponta o caminho que o
+      // E162 abriu: reservar de dentro do próprio diálogo.
       res.status(422).json({
         error: "ITEM_SEM_RESERVA",
         detalhe:
-          "O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana.",
+          "O contrato vende uma peça que não está reservada — ela pode sair para outra noiva no mesmo fim de semana. " +
+          "Reserve pelo bloco «Peças do acervo» do próprio diálogo, sem sair dele.",
         campos: semReserva.map((it) => ({
           campo: "itens",
           motivo: `«${it.descricao}» não tem reserva neste contrato`,

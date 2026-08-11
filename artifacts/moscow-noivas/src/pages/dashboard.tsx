@@ -17,6 +17,8 @@ import {
   useListOrcamentos,
   getListOrcamentosQueryKey,
   useListAjustes,
+  useListAceitosSemContrato,
+  getListAceitosSemContratoQueryKey,
   getListAjustesQueryKey,
   useUpdateAtendimento,
 } from "@workspace/api-client-react";
@@ -37,6 +39,7 @@ import {
   PhoneCall,
   MessageCircle,
   Scissors,
+  Signature,
 } from "lucide-react";
 import { diaMesAno, etapaLabel, instanteHora } from "@/lib/formatos";
 import { brl } from "@/lib/formatos";
@@ -198,6 +201,32 @@ export default function Dashboard() {
     () => ajustesDaSemana(ajustesQuery.data ?? []),
     [ajustesQuery.data],
   );
+
+  /**
+   * E162 (A01.5/A04.1) — a fila do gate no painel do Renato.
+   *
+   * O aceite tirava o orçamento da fila de "vencendo em 72h" e o punha num
+   * estado que NENHUMA tela vigiava: o "sim" da noiva com o vestido solto, e
+   * o tempo até alguém notar era ilimitado. O cartão diz o dinheiro parado e
+   * a idade do mais antigo — as duas medidas que o achado A04.2 provou não
+   * existirem em consulta nenhuma. Some quando vazio (disciplina do F7).
+   */
+  const aceitosQuery = useListAceitosSemContrato(activeLojaId!, {
+    query: {
+      queryKey: getListAceitosSemContratoQueryKey(activeLojaId!),
+      enabled: !!activeLojaId && veLeads,
+    },
+  });
+  const aceitosParados = aceitosQuery.data ?? [];
+  const valorParado = useMemo(
+    () => aceitosParados.reduce((s, a) => s + a.valor, 0),
+    [aceitosParados],
+  );
+  const idadeMaisAntigo = useMemo(() => {
+    if (aceitosParados.length === 0) return 0;
+    const maisAntigo = new Date(aceitosParados[0].aprovadoEm).getTime();
+    return Math.floor((Date.now() - maisAntigo) / (24 * 3_600_000));
+  }, [aceitosParados]);
 
   const filaDeMensagens = useMemo(() => {
     const agora = Date.now();
@@ -382,6 +411,30 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground mt-0.5">{DESCRICAO_AJUSTES}</p>
               </div>
               <Scissors className="h-5 w-5 shrink-0 text-primary" />
+            </CardHeader>
+          </Card>
+        </Link>
+      ) : null}
+
+      {/* E162: o aceite parado é a notícia mais cara do painel — dinheiro já
+          comprometido pela noiva esperando alguém gerar o contrato. */}
+      {aceitosParados.length > 0 ? (
+        <Link to={`/loja/${activeLojaId}/orcamentos`} className="block">
+          <Card className="hover-elevate border-primary/40" data-testid="card-aceitos-sem-contrato">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+              <div className="min-w-0">
+                <CardTitle className="text-base">
+                  {aceitosParados.length === 1
+                    ? `1 aceite esperando contrato — ${brl(valorParado)} parados`
+                    : `${aceitosParados.length} aceites esperando contrato — ${brl(valorParado)} parados`}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {idadeMaisAntigo === 0
+                    ? "O mais antigo é de hoje — a noiva já disse sim; falta o contrato."
+                    : `O mais antigo espera há ${idadeMaisAntigo} dia${idadeMaisAntigo === 1 ? "" : "s"} — a noiva já disse sim; falta o contrato.`}
+                </p>
+              </div>
+              <Signature className="h-5 w-5 shrink-0 text-primary" />
             </CardHeader>
           </Card>
         </Link>

@@ -25,6 +25,7 @@ export {
   ListOrcamentosParams,
   ListContratosParams,
   CreateParcelaAvulsaBody,
+  ReservarPecaDoOrcamentoBody,
   ExpurgarLeadsPerdidosBody,
   PreviaExpurgoLeadsPerdidosParams,
   GetConversaoLeadsParams,

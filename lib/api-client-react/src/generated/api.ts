@@ -163,6 +163,7 @@ import type {
   MembroEquipeUpdate,
   MinhaComissao,
   Orcamento,
+  OrcamentoAceitoSemContrato,
   OrcamentoInput,
   OrcamentoItem,
   OrcamentoItemInput,
@@ -200,6 +201,7 @@ import type {
   Reserva,
   ReservaInput,
   ReservaUpdate,
+  ReservarPecaDoOrcamentoBody,
   SaldoReferencia,
   SaldoReferenciaInput,
   SelecionarLojaInput,
@@ -9595,6 +9597,314 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getRecusarOrcamentoMutationOptions(options));
     }
+
+export const getListAceitosSemContratoUrl = (lojaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/orcamentos/aceitos-sem-contrato`
+}
+
+/**
+ * E162: o aceite da noiva não cria reserva e o contrato exige reserva — entre os dois existia um vão que NENHUMA tela vigiava. Esta é a primeira consulta do sistema que cruza orçamento com contrato: um APROVADO sem contrato é dinheiro comprometido parado, e a idade dele é o quanto a promessa está esperando.
+ * @summary A fila do gate — orçamentos aceitos/aprovados que ainda não viraram contrato
+ */
+export const listAceitosSemContrato = async (lojaId: string, options?: RequestInit): Promise<OrcamentoAceitoSemContrato[]> => {
+
+  return customFetch<OrcamentoAceitoSemContrato[]>(getListAceitosSemContratoUrl(lojaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAceitosSemContratoQueryKey = (lojaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/orcamentos/aceitos-sem-contrato`
+    ] as const;
+    }
+
+
+export const getListAceitosSemContratoQueryOptions = <TData = Awaited<ReturnType<typeof listAceitosSemContrato>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAceitosSemContrato>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAceitosSemContratoQueryKey(lojaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAceitosSemContrato>>> = ({ signal }) => listAceitosSemContrato(lojaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAceitosSemContrato>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAceitosSemContratoQueryResult = NonNullable<Awaited<ReturnType<typeof listAceitosSemContrato>>>
+export type ListAceitosSemContratoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary A fila do gate — orçamentos aceitos/aprovados que ainda não viraram contrato
+ */
+
+export function useListAceitosSemContrato<TData = Awaited<ReturnType<typeof listAceitosSemContrato>>, TError = ErrorType<unknown>>(
+ lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAceitosSemContrato>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAceitosSemContratoQueryOptions(lojaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDesfazerAceiteOrcamentoUrl = (lojaId: string,
+    orcamentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/orcamentos/${orcamentoId}/desfazer-aceite`
+}
+
+/**
+ * E162 (A01.2): APROVADO era terminal SEM saída — reservar dava 409 se a peça saiu, trocar o item dava 422, voltar o status dava 422, e o contrato dava 422. Este gesto gerencial devolve o orçamento a RASCUNHO (limpa aceite, versão e hash; a história fica na auditoria e nas versões antigas), para a vendedora trocar a peça e gerar novo link — que congela versão NOVA e pede novo aceite à noiva. Recusado quando já existe contrato apontando o orçamento.
+ * @summary Desfaz o aceite/aprovação — a porta gerencial do beco
+ */
+export const desfazerAceiteOrcamento = async (lojaId: string,
+    orcamentoId: string, options?: RequestInit): Promise<Orcamento> => {
+
+  return customFetch<Orcamento>(getDesfazerAceiteOrcamentoUrl(lojaId,orcamentoId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDesfazerAceiteOrcamentoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerAceiteOrcamento>>, TError,{lojaId: string;orcamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof desfazerAceiteOrcamento>>, TError,{lojaId: string;orcamentoId: string}, TContext> => {
+
+const mutationKey = ['desfazerAceiteOrcamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof desfazerAceiteOrcamento>>, {lojaId: string;orcamentoId: string}> = (props) => {
+          const {lojaId,orcamentoId} = props ?? {};
+
+          return  desfazerAceiteOrcamento(lojaId,orcamentoId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DesfazerAceiteOrcamentoMutationResult = NonNullable<Awaited<ReturnType<typeof desfazerAceiteOrcamento>>>
+
+    export type DesfazerAceiteOrcamentoMutationError = ErrorType<void>
+
+    /**
+ * @summary Desfaz o aceite/aprovação — a porta gerencial do beco
+ */
+export const useDesfazerAceiteOrcamento = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof desfazerAceiteOrcamento>>, TError,{lojaId: string;orcamentoId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof desfazerAceiteOrcamento>>,
+        TError,
+        {lojaId: string;orcamentoId: string},
+        TContext
+      > => {
+      return useMutation(getDesfazerAceiteOrcamentoMutationOptions(options));
+    }
+
+export const getReservarPecaDoOrcamentoUrl = (lojaId: string,
+    orcamentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/orcamentos/${orcamentoId}/reservar`
+}
+
+/**
+ * E162 (R10, decisão registrada no épico): reservar DE DENTRO do fluxo de venda exige `leads.criar` — a venda é de quem vende —, e não `vestidos.criar`, que é o gate do acervo. O alcance é estreito de propósito: só peças que são ITEM deste orçamento, sempre em nome da noiva dele. A régua de disponibilidade é a MESMA do POST /bloqueios.
+ * @summary Cria a reserva de uma peça vendida por este orçamento, de dentro do fluxo de venda
+ */
+export const reservarPecaDoOrcamento = async (lojaId: string,
+    orcamentoId: string,
+    reservarPecaDoOrcamentoBody: ReservarPecaDoOrcamentoBody, options?: RequestInit): Promise<BloqueioVestido> => {
+
+  return customFetch<BloqueioVestido>(getReservarPecaDoOrcamentoUrl(lojaId,orcamentoId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reservarPecaDoOrcamentoBody)
+  }
+);}
+
+
+
+
+export const getReservarPecaDoOrcamentoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reservarPecaDoOrcamento>>, TError,{lojaId: string;orcamentoId: string;data: BodyType<ReservarPecaDoOrcamentoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reservarPecaDoOrcamento>>, TError,{lojaId: string;orcamentoId: string;data: BodyType<ReservarPecaDoOrcamentoBody>}, TContext> => {
+
+const mutationKey = ['reservarPecaDoOrcamento'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reservarPecaDoOrcamento>>, {lojaId: string;orcamentoId: string;data: BodyType<ReservarPecaDoOrcamentoBody>}> = (props) => {
+          const {lojaId,orcamentoId,data} = props ?? {};
+
+          return  reservarPecaDoOrcamento(lojaId,orcamentoId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReservarPecaDoOrcamentoMutationResult = NonNullable<Awaited<ReturnType<typeof reservarPecaDoOrcamento>>>
+    export type ReservarPecaDoOrcamentoMutationBody = BodyType<ReservarPecaDoOrcamentoBody>
+    export type ReservarPecaDoOrcamentoMutationError = ErrorType<void>
+
+    /**
+ * @summary Cria a reserva de uma peça vendida por este orçamento, de dentro do fluxo de venda
+ */
+export const useReservarPecaDoOrcamento = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reservarPecaDoOrcamento>>, TError,{lojaId: string;orcamentoId: string;data: BodyType<ReservarPecaDoOrcamentoBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reservarPecaDoOrcamento>>,
+        TError,
+        {lojaId: string;orcamentoId: string;data: BodyType<ReservarPecaDoOrcamentoBody>},
+        TContext
+      > => {
+      return useMutation(getReservarPecaDoOrcamentoMutationOptions(options));
+    }
+
+export const getListReservasCandidatasUrl = (lojaId: string,
+    orcamentoId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/orcamentos/${orcamentoId}/reservas-candidatas`
+}
+
+/**
+ * E162 (A02.4): as reservas vivas da noiva MAIS as sem dona (`leadId` nulo) das peças vendidas pelos itens — o caso que o servidor de contratos chama de "legítimo e comum" (61 de 63 no dev) e que o filtro por lead da tela nunca oferecia. A adoção acontece no fechamento do contrato, que dá dono à reserva sem dona.
+ * @summary As reservas que o contrato deste orçamento PODE prender
+ */
+export const listReservasCandidatas = async (lojaId: string,
+    orcamentoId: string, options?: RequestInit): Promise<BloqueioVestido[]> => {
+
+  return customFetch<BloqueioVestido[]>(getListReservasCandidatasUrl(lojaId,orcamentoId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListReservasCandidatasQueryKey = (lojaId: string,
+    orcamentoId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/orcamentos/${orcamentoId}/reservas-candidatas`
+    ] as const;
+    }
+
+
+export const getListReservasCandidatasQueryOptions = <TData = Awaited<ReturnType<typeof listReservasCandidatas>>, TError = ErrorType<void>>(lojaId: string,
+    orcamentoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReservasCandidatas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListReservasCandidatasQueryKey(lojaId,orcamentoId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReservasCandidatas>>> = ({ signal }) => listReservasCandidatas(lojaId,orcamentoId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && orcamentoId !== null && orcamentoId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReservasCandidatas>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListReservasCandidatasQueryResult = NonNullable<Awaited<ReturnType<typeof listReservasCandidatas>>>
+export type ListReservasCandidatasQueryError = ErrorType<void>
+
+
+/**
+ * @summary As reservas que o contrato deste orçamento PODE prender
+ */
+
+export function useListReservasCandidatas<TData = Awaited<ReturnType<typeof listReservasCandidatas>>, TError = ErrorType<void>>(
+ lojaId: string,
+    orcamentoId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReservasCandidatas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListReservasCandidatasQueryOptions(lojaId,orcamentoId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCriarLinkOrcamentoUrl = (lojaId: string,
     orcamentoId: string,) => {

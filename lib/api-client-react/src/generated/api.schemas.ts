@@ -1559,6 +1559,17 @@ export interface ProximaJanelaVestido {
   horizonteDias: number;
 }
 
+export interface OrcamentoAceitoSemContrato {
+  orcamentoId: string;
+  leadId: string;
+  noivaNome: string;
+  valor: number;
+  /** @nullable */
+  aceitoEm?: string | null;
+  aprovadoEm: string;
+  pecasSemReserva?: number;
+}
+
 export type OrcamentoStatus = typeof OrcamentoStatus[keyof typeof OrcamentoStatus];
 
 
@@ -2994,6 +3005,11 @@ export const ListOrcamentosOrdem = {
   antigos: 'antigos',
   recentes: 'recentes',
 } as const;
+
+export type ReservarPecaDoOrcamentoBody = {
+  vestidoId: string;
+  casamentoData: string;
+};
 
 export type GetOrcamentoPublicoParams = {
 token: string;

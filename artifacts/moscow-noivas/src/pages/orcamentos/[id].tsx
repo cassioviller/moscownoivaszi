@@ -26,8 +26,10 @@ import {
   getGetComprometimentoEstoqueQueryKey,
   useListAjustes,
   getListAjustesQueryKey,
-  useListBloqueios,
-  getListBloqueiosQueryKey,
+  useListReservasCandidatas,
+  getListReservasCandidatasQueryKey,
+  useReservarPecaDoOrcamento,
+  useDesfazerAceiteOrcamento,
   useListEquipe,
   getListEquipeQueryKey,
   type OrcamentoItem,
@@ -107,6 +109,9 @@ const MENSAGENS_ERRO: Record<string, string> = {
   TRANSICAO_INVALIDA: "Esse orçamento não pode ir para esse status agora.",
   JA_TEM_CONTRATO: "Este orçamento já virou contrato.",
   CONTRATO_NAO_ATIVO: "O contrato foi cancelado — não há o que movimentar.",
+  // E162: os dois códigos novos do fluxo do gate.
+  ORCAMENTO_JA_VINCULADO: "Este orçamento já virou contrato — o aceite é a origem dele e não se desfaz.",
+  PECA_FORA_DO_ORCAMENTO: "Esta peça não é item deste orçamento — reserve pela tela de reservas.",
 };
 
 const novoItemSchema = z.object({
@@ -171,6 +176,13 @@ export default function OrcamentoDetail() {
   // `AlertDialogTrigger` some junto com o menu ao selecionar.
   const [recusarOpen, setRecusarOpen] = useState(false);
   const [aprovarOpen, setAprovarOpen] = useState(false);
+  const [desfazerAceiteOpen, setDesfazerAceiteOpen] = useState(false);
+  // A02.3/E162: o erro do gate aparece DENTRO do diálogo, com os motivos por
+  // peça e os conflitos — um toast atrás do diálogo é um recado que ninguém lê.
+  const [erroDoGate, setErroDoGate] = useState<{
+    titulo: string;
+    motivos: string[];
+  } | null>(null);
   // E72: as reservas físicas ativas da noiva entram no contrato (todas
   // marcadas por padrão) — cancelar o contrato passa a liberar as peças.
   const [reservasDesmarcadas, setReservasDesmarcadas] = useState<Set<string>>(new Set());
@@ -268,21 +280,45 @@ export default function OrcamentoDetail() {
   const atualizar = useUpdateOrcamento();
   const createContrato = useCreateContrato();
   const criarLink = useCriarLinkOrcamento();
+  // E162: a reserva nasce DENTRO do diálogo (R10 — gate leads.criar), e o
+  // aceite tem porta gerencial de desfazer (A01.2 — o beco).
+  const reservarPeca = useReservarPecaDoOrcamento();
+  const desfazerAceite = useDesfazerAceiteOrcamento();
 
-  // E72: as reservas de casamento ativas da noiva — o contrato as prende.
-  // E79: o recorte por noiva roda no banco; sobra o corte por tipo/cancelado.
-  const paramsBloqueios = { leadId: orcamento?.leadId ?? "" };
-  const bloqueiosQ = useListBloqueios(activeLojaId!, paramsBloqueios, {
+  /**
+   * E72 → E162 (A02.4): as reservas que o contrato PODE prender, pelo lado que
+   * sabe a resposta.
+   *
+   * A tela filtrava por `leadId=` e a reserva SEM DONA — que o servidor de
+   * contratos aceita com adoção no fechamento e chama de "legítimo e comum"
+   * (61 de 63 no dev) — ficava invisível: o diálogo nem desenhava a caixa. O
+   * endpoint devolve as vivas da noiva MAIS as sem dona das peças dos itens.
+   */
+  const candidatasQ = useListReservasCandidatas(activeLojaId!, id!, {
     query: {
-      queryKey: getListBloqueiosQueryKey(activeLojaId!, paramsBloqueios),
-      enabled: !!activeLojaId && contratoOpen && !!orcamento?.leadId,
+      queryKey: getListReservasCandidatasQueryKey(activeLojaId!, id!),
+      enabled: !!activeLojaId && contratoOpen && !!id,
     },
   });
-  const reservasDaNoiva = useMemo(
-    () =>
-      (bloqueiosQ.data ?? []).filter((b) => b.tipo === "RESERVA_CASAMENTO" && !b.canceladoEm),
-    [bloqueiosQ.data],
-  );
+  const reservasDaNoiva = useMemo(() => candidatasQ.data ?? [], [candidatasQ.data]);
+
+  /**
+   * A02.2/E162 — o cruzamento que o servidor faz em `contratos.ts` (E150),
+   * reproduzido ANTES do clique: peça de acervo vendida sem reserva MARCADA é
+   * aviso vermelho no diálogo, não um 422 depois do carnê digitado. A tela
+   * sempre teve tudo para saber — itens, `ehPecaDoAcervo` e as reservas — e o
+   * padrão "avisar antes" já existia três vezes neste arquivo (aviso-acima-
+   * teto, aviso-estoque, aviso-vendedora-divergente); faltava o único que
+   * TRAVA a venda.
+   */
+  const pecasSemReserva = useMemo(() => {
+    const cobertos = new Set(
+      reservasDaNoiva.filter((r) => !reservasDesmarcadas.has(r.id)).map((r) => r.vestidoId),
+    );
+    return (orcamento?.itens ?? []).filter(
+      (it) => ehPecaDoAcervo(it.tipo) && it.vestidoId && !cobertos.has(it.vestidoId),
+    );
+  }, [reservasDaNoiva, reservasDesmarcadas, orcamento?.itens]);
 
   // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
   const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
@@ -671,6 +707,11 @@ export default function OrcamentoDetail() {
       numParcelas: "1",
       primeiroVencimento: "",
     });
+    // O15/E162: `reservasDesmarcadas` sobrevivia ao fechar o diálogo — a
+    // reserva desmarcada na tentativa anterior reaparecia desmarcada na
+    // próxima, em silêncio. Reabrir é recomeçar: tudo marcado de novo.
+    setReservasDesmarcadas(new Set());
+    setErroDoGate(null);
     setContratoOpen(true);
   };
 
@@ -722,10 +763,72 @@ export default function OrcamentoDetail() {
       // continua aberto por cima do toast, e um toast atrás dele é um recado
       // que a pessoa não lê.
       if (aplicarErroDoServidor(contratoForm, err)) return;
+      /**
+       * A02.3/A01.4/E162 — os cinco erros do gate não apontam campo do
+       * formulário (`itens` e `bloqueioVestidoIds` não são campos), então o
+       * recado deles morria num toast atrás do diálogo — sem a peça, sem o
+       * gesto. Agora eles viram uma caixa DENTRO do diálogo, com os motivos
+       * por peça e os conflitos: é o primeiro leitor do payload `conflitos`
+       * que o servidor sempre soube montar (K10/P9).
+       */
+      const corpo = (err as { data?: { error?: string; detalhe?: string; campos?: { motivo?: string }[]; conflitos?: { motivo?: string; inicio?: string; fim?: string | null }[] } })?.data;
+      const DO_GATE = new Set([
+        "ITEM_SEM_RESERVA",
+        "VESTIDO_INDISPONIVEL",
+        "RESERVA_NAO_ENCONTRADA",
+        "RESERVA_DE_OUTRA_NOIVA",
+        "RESERVA_JA_CONTRATADA",
+        "RESERVA_CANCELADA",
+      ]);
+      if (corpo?.error && DO_GATE.has(corpo.error)) {
+        const motivos = [
+          ...(corpo.campos ?? []).map((c) => c.motivo).filter((m): m is string => !!m),
+          ...(corpo.conflitos ?? []).map((c) =>
+            [c.motivo, c.inicio && `de ${c.inicio}`, c.fim && `a ${c.fim}`].filter(Boolean).join(" "),
+          ),
+        ];
+        setErroDoGate({ titulo: corpo.detalhe ?? "A peça vendida precisa de reserva.", motivos });
+        return;
+      }
       toast({
         title: "Não deu para gerar contrato",
         description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
         variant: "destructive",
+      });
+    }
+  };
+
+  /**
+   * A02.1/E162 — a reserva nasce DENTRO do diálogo, no padrão do E65
+   * (`atendimentos/novo.tsx`: "noiva sem reserva deixava a vendedora num
+   * beco"). A porta é a do fluxo de venda (R10): `POST /orcamentos/:id/
+   * reservar`, gate `leads.criar` — a Recepção que monta a venda consegue
+   * reservar a peça da venda sem pedir o módulo do acervo.
+   */
+  const reservarInline = async (vestidoId: string) => {
+    const dataCasamento = contratoForm.getValues("dataCasamento");
+    if (!dataCasamento) {
+      contratoForm.setError("dataCasamento", {
+        message: "Informe a data do casamento — a reserva segura a peça para esse dia.",
+      });
+      return;
+    }
+    try {
+      await reservarPeca.mutateAsync({
+        lojaId: activeLojaId!,
+        orcamentoId: id!,
+        data: { vestidoId, casamentoData: diaParaISO(dataCasamento) },
+      });
+      setErroDoGate(null);
+      await queryClient.invalidateQueries({
+        queryKey: getListReservasCandidatasQueryKey(activeLojaId!, id!),
+      });
+      toast({ title: "Peça reservada para a noiva" });
+    } catch (err) {
+      const corpo = (err as { data?: { detalhe?: string; conflitos?: { motivo?: string }[] } })?.data;
+      setErroDoGate({
+        titulo: corpo?.detalhe ?? "A peça não está disponível no período.",
+        motivos: (corpo?.conflitos ?? []).map((c) => c.motivo ?? "").filter(Boolean),
       });
     }
   };
@@ -842,11 +945,55 @@ export default function OrcamentoDetail() {
           ...(editavel && orcamento.status === "ENVIADO"
             ? [{ rotulo: "Voltar para rascunho", onClick: () => onMudarStatus("RASCUNHO"), desabilitada: atualizar.isPending }]
             : []),
+          // E162 (A01.2): a porta gerencial do beco — só em APROVADO sem
+          // contrato. Com contrato o servidor recusa (409) e o menu nem oferece.
+          ...(podeEditar && orcamento.status === "APROVADO" && !contratoExistente
+            ? [{
+                rotulo: "Desfazer aceite",
+                onClick: () => setDesfazerAceiteOpen(true),
+                destrutiva: true,
+                desabilitada: desfazerAceite.isPending,
+              }]
+            : []),
           ...(editavel
             ? [{ rotulo: "Recusar", onClick: () => setRecusarOpen(true), destrutiva: true, desabilitada: recusar.isPending }]
             : []),
         ]}
       />
+
+      <AlertDialog open={desfazerAceiteOpen} onOpenChange={setDesfazerAceiteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desfazer o aceite deste orçamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O orçamento volta a rascunho para você trocar a peça ou o valor — e a noiva
+              precisa aceitar DE NOVO a proposta nova pelo link. O aceite atual fica
+              registrado na trilha de auditoria; use quando a peça aceita ficou
+              indisponível e a venda precisa de outro caminho.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  await desfazerAceite.mutateAsync({ lojaId: activeLojaId!, orcamentoId: id! });
+                  await queryClient.invalidateQueries({ queryKey: getGetOrcamentoQueryKey(activeLojaId!, id!) });
+                  toast({ title: "Aceite desfeito — o orçamento voltou a rascunho" });
+                } catch (err) {
+                  toast({
+                    title: "Não deu para desfazer o aceite",
+                    description: mensagemApi(err, "Tente novamente.", MENSAGENS_ERRO),
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Desfazer aceite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={recusarOpen} onOpenChange={setRecusarOpen}>
         <AlertDialogContent>
@@ -1320,11 +1467,14 @@ export default function OrcamentoDetail() {
           </DialogHeader>
           <Form {...contratoForm}>
             <form onSubmit={contratoForm.handleSubmit(onGerarContrato)} className="space-y-4">
-              {/* E72: as reservas ativas da noiva entram no contrato — todas
-                  marcadas por padrão; cancelar o contrato as libera. */}
-              {reservasDaNoiva.length > 0 && (
-                <div className="space-y-2 rounded-md border p-3">
-                  <p className="text-sm font-medium">Peças reservadas que este contrato prende</p>
+              {/* E72 → E162 (A02.2/K6): o bloco aparece SEMPRE que o contrato
+                  vende peça do acervo — inclusive vazio, que é justamente o
+                  estado que produzia o 422. As candidatas incluem as sem dona
+                  (adoção no fechamento — A02.4), e a peça sem reserva ganha o
+                  botão que cria a reserva sem sair do diálogo (E65). */}
+              {(reservasDaNoiva.length > 0 || pecasSemReserva.length > 0) && (
+                <div className="space-y-2 rounded-md border p-3" data-testid="bloco-reservas-contrato">
+                  <p className="text-sm font-medium">Peças do acervo — a reserva é o que segura a peça</p>
                   {reservasDaNoiva.map((r) => (
                     <label key={r.id} className="flex items-center gap-2 text-sm">
                       <input
@@ -1341,8 +1491,45 @@ export default function OrcamentoDetail() {
                       />
                       <span>
                         {r.vestido?.codigo ?? "?"} · {r.vestido?.nome ?? "vestido"}
+                        {!r.leadId && (
+                          <span className="text-muted-foreground"> · reserva sem dona — o contrato a adota</span>
+                        )}
                       </span>
                     </label>
+                  ))}
+                  {pecasSemReserva.map((it) => (
+                    <div
+                      key={it.id}
+                      className="flex items-center justify-between gap-2 rounded-md bg-destructive/10 px-2 py-1.5 text-sm"
+                      data-testid={`peca-sem-reserva-${it.vestidoId}`}
+                    >
+                      <span className="min-w-0 truncate">
+                        «{it.descricao}» ainda não tem reserva — pode sair para outra noiva
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={reservarPeca.isPending}
+                        onClick={() => void reservarInline(it.vestidoId!)}
+                        data-testid={`button-reservar-${it.vestidoId}`}
+                      >
+                        {reservarPeca.isPending ? "Reservando…" : "Reservar agora"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* A02.3/E162: o recado do gate mora DENTRO do diálogo — com a
+                  peça nomeada e os conflitos, que ganham aqui o primeiro
+                  leitor (K10/P9). */}
+              {erroDoGate && (
+                <div className="space-y-1 rounded-md border border-destructive bg-destructive/10 p-3 text-sm" data-testid="erro-do-gate">
+                  <p className="font-medium">{erroDoGate.titulo}</p>
+                  {erroDoGate.motivos.map((m, i) => (
+                    <p key={i} className="text-muted-foreground">
+                      {m}
+                    </p>
                   ))}
                 </div>
               )}

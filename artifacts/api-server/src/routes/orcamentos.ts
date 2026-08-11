@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, orcamentosTable, orcamentoItensTable, leadsTable, contratosTable } from "@workspace/db";
+import { db, orcamentosTable, orcamentoItensTable, leadsTable, contratosTable, bloqueioVestidosTable } from "@workspace/db";
 import { registrarAuditoria } from "../lib/auditoria";
-import { eq, and, inArray, desc, count } from "drizzle-orm";
+import { eq, and, inArray, desc, count, isNull, or } from "drizzle-orm";
 import {
   ListOrcamentosResponse,
   ListOrcamentosQueryParams,
@@ -16,13 +16,19 @@ import {
   UpdateOrcamentoItemBody,
   UpdateOrcamentoItemResponse,
   RemoveOrcamentoItemResponse,
-  CriarLinkOrcamentoResponse
+  CriarLinkOrcamentoResponse,
+  ListAceitosSemContratoResponse,
+  DesfazerAceiteOrcamentoResponse,
+  ReservarPecaDoOrcamentoBody,
+  ReservarPecaDoOrcamentoResponse,
+  ListReservasCandidatasResponse
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva, vestidoNaLoja, atendimentoNaLoja } from "../lib/escopo-loja";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado } from "../lib/conteudo-orcamento";
+import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { sql } from "drizzle-orm";
 import { gerarTokenConvite, CONVITE_TTL_MS } from "../lib/auth";
 import { avancarEtapaLead, transicaoOrcamentoValida } from "../lib/estados";
@@ -32,6 +38,7 @@ import {
   hojeLocal,
   brutoEmCentavos,
   liquidoEmCentavos,
+  reais as reaisFinanceiro,
 } from "@workspace/financeiro-core";
 import { leadsQueCasam } from "../lib/busca-lead";
 import { erroDeValidacao } from "../lib/erros";
@@ -302,6 +309,312 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     with: { lead: true, vendedora: true, itens: true }
   });
   res.status(201).json(CreateOrcamentoResponse.parse(fullOrcamento));
+});
+
+/**
+ * E162 (A01.5/A04.1/A04.2) — a fila do gate: aceitos que não viraram contrato.
+ *
+ * A primeira consulta do sistema que cruza orçamento com contrato. O ângulo 04
+ * mediu a ausência com três greps registrados no achado: nenhuma tela, nenhum
+ * card, nenhuma agregação — o aceite tirava o orçamento da única fila proativa
+ * (a de ENVIADOs vencendo) e o punha num estado que NENHUMA tela vigiava. O
+ * tempo até alguém notar era ilimitado.
+ *
+ * ANTES do `/:orcamentoId` de propósito: o Express casa na ordem de registro,
+ * e "aceitos-sem-contrato" viraria um id de orçamento.
+ */
+router.get("/lojas/:lojaId/orcamentos/aceitos-sem-contrato", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+
+  // APROVADO sem NENHUM contrato apontando (nem cancelado: orçamento com
+  // contrato cancelado não pode ser re-vinculado — ORCAMENTO_JA_VINCULADO —
+  // então ele não é "esperando contrato", é história).
+  const aceitos = await db
+    .select({
+      orcamento: orcamentosTable,
+      noivaNome: leadsTable.noivaNome,
+    })
+    .from(orcamentosTable)
+    .innerJoin(leadsTable, eq(leadsTable.id, orcamentosTable.leadId))
+    .leftJoin(contratosTable, eq(contratosTable.orcamentoId, orcamentosTable.id))
+    .where(and(
+      eq(orcamentosTable.lojaId, lojaId),
+      eq(orcamentosTable.status, "APROVADO"),
+      sql`${contratosTable.id} is null`,
+    ))
+    .orderBy(orcamentosTable.aprovadoEm);
+
+  if (aceitos.length === 0) {
+    res.json(ListAceitosSemContratoResponse.parse([]));
+    return;
+  }
+
+  const ids = aceitos.map((a) => a.orcamento.id);
+  const [versoes, itens] = await Promise.all([
+    // A versão mais alta de cada um — o valor que a noiva ACEITOU.
+    db.select().from(orcamentoVersoesTable)
+      .where(inArray(orcamentoVersoesTable.orcamentoId, ids))
+      .orderBy(orcamentoVersoesTable.orcamentoId, desc(orcamentoVersoesTable.numero)),
+    db.select().from(orcamentoItensTable)
+      .where(inArray(orcamentoItensTable.orcamentoId, ids)),
+  ]);
+  const versaoPorOrcamento = new Map<string, typeof orcamentoVersoesTable.$inferSelect>();
+  for (const v of versoes) {
+    if (!versaoPorOrcamento.has(v.orcamentoId)) versaoPorOrcamento.set(v.orcamentoId, v);
+  }
+
+  // As peças de acervo vendidas que AINDA não têm reserva viva utilizável
+  // (da noiva ou sem dona) — o tamanho do risco de cada linha.
+  const vestidoIds = [...new Set(itens.map((it) => it.vestidoId).filter((v): v is string => !!v))];
+  const bloqueiosVivos = vestidoIds.length
+    ? await db.select({
+        vestidoId: bloqueioVestidosTable.vestidoId,
+        leadId: bloqueioVestidosTable.leadId,
+      })
+        .from(bloqueioVestidosTable)
+        .where(and(
+          inArray(bloqueioVestidosTable.vestidoId, vestidoIds),
+          eq(bloqueioVestidosTable.tipo, "RESERVA_CASAMENTO"),
+          isNull(bloqueioVestidosTable.canceladoEm),
+        ))
+    : [];
+
+  const linhas = aceitos.map(({ orcamento, noivaNome }) => {
+    const versao = versaoPorOrcamento.get(orcamento.id);
+    const itensDele = itens.filter((it) => it.orcamentoId === orcamento.id);
+    const valor = versao
+      ? versao.totalLiquido
+      : reaisFinanceiro(
+          liquidoEmCentavos(brutoEmCentavos(itensDele), orcamento.descontoTipo, orcamento.descontoValor),
+        );
+    const pecas = itensDele.filter(
+      (it) => (it.tipo === "VESTIDO" || it.tipo === "ACESSORIO") && it.vestidoId,
+    );
+    const pecasSemReserva = pecas.filter(
+      (it) =>
+        !bloqueiosVivos.some(
+          (b) => b.vestidoId === it.vestidoId && (b.leadId === null || b.leadId === orcamento.leadId),
+        ),
+    ).length;
+    return {
+      orcamentoId: orcamento.id,
+      leadId: orcamento.leadId,
+      noivaNome,
+      valor,
+      aceitoEm: orcamento.aceitoEm,
+      // O `?? createdAt` cobre linha legada aprovada antes de `aprovadoEm`
+      // existir — a idade fica conservadora em vez de a linha quebrar o parse.
+      aprovadoEm: orcamento.aprovadoEm ?? orcamento.createdAt,
+      pecasSemReserva,
+    };
+  });
+
+  res.json(ListAceitosSemContratoResponse.parse(linhas));
+});
+
+/**
+ * E162 (A01.2 🔴) — a porta gerencial do beco.
+ *
+ * As quatro guardas em volta de um APROVADO são individualmente corretas e
+ * coletivamente fechavam TODAS as saídas de um aceite cuja peça ficou
+ * indisponível: reservar → 409, trocar item → 422, voltar status → 422
+ * (`TRANSICOES_ORCAMENTO.APROVADO = []`), contratar → 422 ITEM_SEM_RESERVA. E
+ * apagar também não (409). O acordo aceito virava um registro que o sistema se
+ * recusava a converter — R$ 5.000,00 de compromisso gravado e zero de venda.
+ *
+ * A saída volta para RASCUNHO (e não ENVIADO) DE PROPÓSITO: em RASCUNHO os
+ * itens são editáveis E o próximo `POST /link` congela uma versão NOVA
+ * (`criarVersaoEnviada` roda no RASCUNHO→ENVIADO) — a noiva re-aceita o que
+ * ela VAI ver, não o que tinha visto. É o gatilho real que a guarda
+ * `versaoVista` do E160 esperava (S-O8). A máquina de estados não tem esta
+ * transição de propósito — este é um gesto GERENCIAL, com auditoria própria,
+ * não um PATCH de status.
+ */
+router.post(
+  "/lojas/:lojaId/orcamentos/:orcamentoId/desfazer-aceite",
+  requireModulo("leads", "editar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
+
+    const desfecho = await db.transaction(async (tx) => {
+      const [orcamento] = await tx.select().from(orcamentosTable)
+        .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)))
+        .for("update");
+      if (!orcamento) return { sumiu: true as const };
+      if (orcamento.status !== "APROVADO") return { naoAprovado: orcamento.status };
+      // Já virou contrato (mesmo cancelado): o aceite é a origem dele e não se
+      // desfaz — o caminho é cancelar o contrato / criar novo orçamento.
+      const [contrato] = await tx.select({ id: contratosTable.id }).from(contratosTable)
+        .where(eq(contratosTable.orcamentoId, orcamentoId));
+      if (contrato) return { temContrato: true as const };
+
+      const [limpo] = await tx.update(orcamentosTable)
+        .set({
+          status: "RASCUNHO",
+          aceitoEm: null,
+          aceiteVersao: null,
+          aceiteHash: null,
+          aprovadoEm: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(orcamentosTable.id, orcamentoId))
+        .returning();
+
+      // O aceite desfeito NÃO some da história: a trilha guarda o que havia.
+      await registrarAuditoria(tx, {
+        lojaId,
+        usuario: req.usuario!,
+        acao: "ORCAMENTO_ACEITE_DESFEITO",
+        entidade: "orcamento",
+        entidadeId: orcamentoId,
+        detalhe: {
+          leadId: orcamento.leadId,
+          aceitoEm: orcamento.aceitoEm,
+          aceiteVersao: orcamento.aceiteVersao,
+          aceiteHash: orcamento.aceiteHash,
+          aprovadoEm: orcamento.aprovadoEm,
+        },
+      });
+      return { orcamento: limpo };
+    });
+
+    if ("sumiu" in desfecho) {
+      res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
+      return;
+    }
+    if ("naoAprovado" in desfecho) {
+      res.status(422).json({
+        error: "TRANSICAO_INVALIDA",
+        detalhe: `Só um orçamento aprovado tem aceite a desfazer — este está ${desfecho.naoAprovado}.`,
+      });
+      return;
+    }
+    if ("temContrato" in desfecho) {
+      res.status(409).json({
+        error: "ORCAMENTO_JA_VINCULADO",
+        detalhe: "Este orçamento já virou contrato — o aceite é a origem dele. Cancele o contrato ou crie um novo orçamento.",
+      });
+      return;
+    }
+    res.json(DesfazerAceiteOrcamentoResponse.parse(desfecho.orcamento));
+  },
+);
+
+/**
+ * E162 (R10, decisão registrada) — reservar DE DENTRO do fluxo de venda exige
+ * `leads.criar`, não `vestidos.criar`.
+ *
+ * O perfil Recepção real tem `leads` ver+criar e `vestidos` só ver: ela montava
+ * a venda, o contrato morria em 422 mandando reservar, ela clicava em reservar
+ * e levava 403 — e nenhuma mensagem dizia que o problema era permissão. A
+ * decisão: a venda é de quem vende. O alcance é estreito de propósito — só
+ * peças que são ITEM deste orçamento, sempre em nome da noiva DELE — para a
+ * porta não virar um `POST /bloqueios` sem gate de acervo.
+ */
+router.post(
+  "/lojas/:lojaId/orcamentos/:orcamentoId/reservar",
+  requireModulo("leads", "criar"),
+  async (req, res): Promise<void> => {
+    const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
+    // V12: `casamentoData: null` atravessa o zod como 01/01/1970 — a mesma
+    // guarda de corpo cru de `reservas.ts`.
+    if (
+      typeof req.body === "object" && req.body !== null &&
+      (req.body as Record<string, unknown>).casamentoData === null
+    ) {
+      res.status(422).json({
+        error: "DATA_DE_CASAMENTO_INVALIDA",
+        detalhe: "A data do casamento não pode ser vazia — é ela que decide quando o vestido fica reservado.",
+        campos: [{ campo: "casamentoData", motivo: "Informe a data do casamento" }],
+      });
+      return;
+    }
+    const parsed = ReservarPecaDoOrcamentoBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(erroDeValidacao(parsed.error));
+      return;
+    }
+
+    const orcamento = await db.query.orcamentosTable.findFirst({
+      where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+      with: { itens: true },
+    });
+    if (!orcamento) {
+      res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
+      return;
+    }
+    const ehItem = orcamento.itens.some(
+      (it) => (it.tipo === "VESTIDO" || it.tipo === "ACESSORIO") && it.vestidoId === parsed.data.vestidoId,
+    );
+    if (!ehItem) {
+      res.status(422).json({
+        error: "PECA_FORA_DO_ORCAMENTO",
+        detalhe: "Esta porta só reserva peça que o orçamento vende — para outras reservas, use a tela de reservas.",
+        campos: [{ campo: "vestidoId", motivo: "A peça não é item deste orçamento" }],
+      });
+      return;
+    }
+
+    const criado = await criarReservaDeVestido({
+      lojaId,
+      vestidoId: parsed.data.vestidoId,
+      // Sempre em nome da noiva do orçamento — é o que fecha o A02.4 na origem:
+      // a reserva já nasce com dona, e o diálogo a oferece na hora.
+      leadId: orcamento.leadId,
+      tipo: "RESERVA_CASAMENTO",
+      casamentoData: parsed.data.casamentoData,
+    });
+    if ("conflitos" in criado) {
+      res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: criado.conflitos });
+      return;
+    }
+    res.status(201).json(ReservarPecaDoOrcamentoResponse.parse(criado.bloqueio));
+  },
+);
+
+/**
+ * E162 (A02.4/K6) — as reservas que o contrato deste orçamento PODE prender.
+ *
+ * A tela filtrava por `leadId=` e a reserva SEM DONA — que o servidor de
+ * contratos chama de "legítimo e comum" (61 de 63 no dev) e aceita com adoção
+ * no fechamento — ficava invisível: o diálogo nem desenhava a caixa. Uma
+ * consulta só, do lado que sabe a resposta: as vivas da noiva MAIS as sem dona
+ * das peças vendidas pelos itens.
+ */
+router.get("/lojas/:lojaId/orcamentos/:orcamentoId/reservas-candidatas", async (req, res): Promise<void> => {
+  const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
+  const orcamento = await db.query.orcamentosTable.findFirst({
+    where: and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)),
+    with: { itens: true },
+  });
+  if (!orcamento) {
+    res.status(404).json({ error: "ORCAMENTO_NAO_ENCONTRADO", detalhe: "Este orçamento não existe nesta loja." });
+    return;
+  }
+  const vestidoIds = [
+    ...new Set(
+      orcamento.itens
+        .filter((it) => (it.tipo === "VESTIDO" || it.tipo === "ACESSORIO") && it.vestidoId)
+        .map((it) => it.vestidoId as string),
+    ),
+  ];
+  const candidatas = await db.query.bloqueioVestidosTable.findMany({
+    where: and(
+      eq(bloqueioVestidosTable.lojaId, lojaId),
+      eq(bloqueioVestidosTable.tipo, "RESERVA_CASAMENTO"),
+      isNull(bloqueioVestidosTable.canceladoEm),
+      or(
+        eq(bloqueioVestidosTable.leadId, orcamento.leadId),
+        ...(vestidoIds.length
+          ? [and(isNull(bloqueioVestidosTable.leadId), inArray(bloqueioVestidosTable.vestidoId, vestidoIds))]
+          : []),
+      ),
+    ),
+    with: { vestido: true, lead: true },
+  });
+  // Da noiva primeiro — são as que o E72 sempre marcou por padrão.
+  candidatas.sort((a, b) => Number(b.leadId === orcamento.leadId) - Number(a.leadId === orcamento.leadId));
+  res.json(ListReservasCandidatasResponse.parse(candidatas));
 });
 
 router.get("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise<void> => {
@@ -864,6 +1177,10 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("lea
     });
     return;
   }
+
+  // A04.6 (E162): aprovar também prova que a proposta existiu — a noiva
+  // avança até ORCAMENTO_ABERTO se estava atrás, como no aceite público.
+  await marcarOrcamentoAberto(lojaId, orcamento.leadId);
 
   res.status(204).send();
 });

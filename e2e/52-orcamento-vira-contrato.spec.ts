@@ -9,29 +9,36 @@ import {
   orcamentosTable,
   orcamentoItensTable,
   contratosTable,
+  vestidosTable,
+  bloqueioVestidosTable,
 } from "../lib/db/src/index";
-import { lerEstado } from "./helpers";
+import { lerEstado, API_URL } from "./helpers";
 
 const estado = lerEstado();
 
 test.use({ storageState: path.join(__dirname, ".auth", "admin.json") });
 
 /**
- * E120 — a jornada orçamento → contrato, com a venda no bolso certo.
+ * E120 → E162 — a jornada orçamento → contrato, POR DENTRO do gate.
  *
- * A Maria monta o orçamento; a ADMIN (a sessão logada) fecha o contrato de
- * manhã. Antes do E120, o contrato nascia da admin — `vendedoraId: user!.id`,
- * fixo — e R$ 210,00 de comissão (R$ 4.200,00 a 5%) trocavam de bolso em
- * silêncio. Agora o diálogo nasce da vendedora do orçamento, trocar é gesto
- * explícito com aviso, e a primária do rascunho é chegar à noiva — não o
- * "Aprovar" que queima a prova digital (B5).
+ * O A02.6/A01.6 mediu: este spec era o único E2E de orçamento→contrato e
+ * passava POR FORA do E150 — o item não tinha `vestidoId`, então a guarda
+ * "peça vendida exige reserva" nunca rodava, e a jornada verde autorizava o
+ * beco que a vendedora real encontrava. Agora o item aponta uma peça REAL do
+ * acervo, a noiva aceita pelo link público, o aceite aparece na fila de
+ * /mensagens, e a reserva nasce DENTRO do diálogo de contrato (E162) — o
+ * caminho novo inteiro, de ponta a ponta, pela interface.
+ *
+ * O B1/B6 do E120 continua provado no mesmo fluxo: a venda nasce da Maria e a
+ * data do casamento vem da ficha.
  */
-test.describe("Orçamento vira contrato (E120)", () => {
+test.describe("Orçamento vira contrato (E120 + E162)", () => {
   const stamp = Date.now();
   const noivaNome = `E2E Venda da Maria ${stamp}`;
   const CASAMENTO = "2027-05-15";
   let leadId: string;
   let orcamentoId: string;
+  let vestidoId: string;
   let mariaId: string;
   let mariaNome: string;
 
@@ -52,6 +59,16 @@ test.describe("Orçamento vira contrato (E120)", () => {
       casamentoData: new Date(`${CASAMENTO}T12:00:00Z`),
     });
 
+    // E162: a peça REAL do acervo — é ela que faz o gate do E150 rodar.
+    vestidoId = randomUUID();
+    await db.insert(vestidosTable).values({
+      id: vestidoId,
+      lojaId: estado.lojaId,
+      codigo: `e2e-52-${stamp}`,
+      nome: `Vestido do gate ${stamp}`,
+      precoBase: 4200,
+    });
+
     orcamentoId = randomUUID();
     await db.insert(orcamentosTable).values({
       id: orcamentoId,
@@ -65,6 +82,7 @@ test.describe("Orçamento vira contrato (E120)", () => {
       lojaId: estado.lojaId,
       orcamentoId,
       tipo: "VESTIDO",
+      vestidoId,
       descricao: `Vestido E2E ${stamp}`,
       valorUnitario: 4200,
       quantidade: 1,
@@ -72,10 +90,19 @@ test.describe("Orçamento vira contrato (E120)", () => {
   });
 
   test.afterAll(async () => {
-    // contratos.leadId é RESTRICT — o contrato sai antes do cascade do lead.
+    // contratos.leadId é RESTRICT — o contrato sai antes do cascade do lead; e
+    // a reserva criada pelo diálogo sai antes do vestido e do lead dela.
     if (leadId) {
       await db.delete(contratosTable).where(eq(contratosTable.leadId, leadId));
+    }
+    if (vestidoId) {
+      await db.delete(bloqueioVestidosTable).where(eq(bloqueioVestidosTable.vestidoId, vestidoId));
+    }
+    if (leadId) {
       await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+    }
+    if (vestidoId) {
+      await db.delete(vestidosTable).where(eq(vestidosTable.id, vestidoId));
     }
   });
 
@@ -93,15 +120,29 @@ test.describe("Orçamento vira contrato (E120)", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("a admin fecha a venda e o contrato nasce da Maria (B1 + B6)", async ({ page }) => {
+  test("aceite → fila → reserva inline → contrato: o caminho novo, por dentro do gate", async ({ page }) => {
+    /**
+     * 1. O link nasce (congela a versão) e a NOIVA aceita pelo endpoint
+     * público — sem sessão, como no sábado às 23h. A UI dela é coberta pelo
+     * spec 22 do link público; aqui o aceite entra por API para o spec provar
+     * o lado da LOJA, que é o que o E162 mudou.
+     */
+    const link = await page.request.post(
+      `${API_URL}/api/lojas/${estado.lojaId}/orcamentos/${orcamentoId}/link`,
+    );
+    expect(link.ok()).toBeTruthy();
+    const { token } = (await link.json()) as { token: string };
+    const aceite = await page.request.post(`${API_URL}/api/orcamentos/publico/aceite?token=${token}`);
+    expect(aceite.ok()).toBeTruthy();
+
+    // 2. A FILA sabe: o aceite parado aparece em /mensagens com o gesto.
+    await page.goto(`/loja/${estado.lojaId}/mensagens`);
+    const fila = page.getByTestId("card-fila-aceitos");
+    await expect(fila.getByText(noivaNome)).toBeVisible();
+    await expect(fila.getByText(/peça(s)? sem reserva/)).toBeVisible();
+
+    // 3. O diálogo de contrato avisa ANTES do clique — e a reserva nasce ALI.
     await page.goto(`/loja/${estado.lojaId}/orcamentos/${orcamentoId}`);
-
-    // Aprova pelo menu (o caso da manhã seguinte — sem aceite, com aviso).
-    await page.getByRole("button", { name: "Mais ações" }).click();
-    await page.getByRole("menuitem", { name: "Aprovar" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Aprovar" }).click();
-
-    // Aprovado, a primária vira Gerar contrato.
     const gerar = page.getByRole("button", { name: "Gerar contrato" });
     await expect(gerar).toBeVisible();
     await gerar.click();
@@ -112,24 +153,31 @@ test.describe("Orçamento vira contrato (E120)", () => {
     // B6: a data do casamento vem da ficha, sem redigitar.
     await expect(dialogo.getByLabel("Data do casamento")).toHaveValue(CASAMENTO);
 
-    // Trocar a dona é explícito e AVISA — e desfazer a troca cala o aviso.
-    await dialogo.getByTestId("select-vendedora-venda").click();
-    await page.getByRole("option").filter({ hasNotText: mariaNome }).first().click();
-    await expect(dialogo.getByTestId("aviso-vendedora-divergente")).toBeVisible();
-    await dialogo.getByTestId("select-vendedora-venda").click();
-    await page.getByRole("option", { name: mariaNome }).click();
-    await expect(dialogo.getByTestId("aviso-vendedora-divergente")).toHaveCount(0);
+    // A02.2: o aviso vermelho existe ANTES de digitar o carnê.
+    await expect(dialogo.getByTestId(`peca-sem-reserva-${vestidoId}`)).toBeVisible();
 
+    // E162: "Reservar agora" — a reserva nasce sem sair do diálogo (E65).
+    await dialogo.getByTestId(`button-reservar-${vestidoId}`).click();
+    await expect(dialogo.getByTestId(`peca-sem-reserva-${vestidoId}`)).toHaveCount(0);
+    await expect(dialogo.getByText(/Vestido do gate/)).toBeVisible();
+
+    // 4. O contrato fecha POR DENTRO do gate — a reserva recém-criada vai junto.
     await dialogo.getByLabel(/1ª parcela vence em/).fill("2026-09-10");
     await dialogo.getByRole("button", { name: "Gerar contrato" }).click();
 
     await expect(page).toHaveURL(/\/contratos\/[0-9a-f-]+$/);
 
-    // A prova do dinheiro: a venda é da Maria, não de quem clicou.
+    // A prova do dinheiro (B1): a venda é da Maria, não de quem clicou. E a
+    // prova do gate: o contrato prende a reserva que o diálogo criou.
     const [contrato] = await db
-      .select({ vendedoraId: contratosTable.vendedoraId })
+      .select({ id: contratosTable.id, vendedoraId: contratosTable.vendedoraId })
       .from(contratosTable)
       .where(eq(contratosTable.leadId, leadId));
     expect(contrato.vendedoraId).toBe(mariaId);
+    const [reserva] = await db
+      .select({ leadId: bloqueioVestidosTable.leadId })
+      .from(bloqueioVestidosTable)
+      .where(eq(bloqueioVestidosTable.vestidoId, vestidoId));
+    expect(reserva.leadId).toBe(leadId);
   });
 });

@@ -1,6 +1,7 @@
-import { db, orcamentosTable, orcamentoVersoesTable, auditLogTable } from "@workspace/db";
+import { db, orcamentosTable, orcamentoVersoesTable, auditLogTable, leadsTable } from "@workspace/db";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { avancarEtapaLead } from "./estados";
 
 /**
  * E74 — a rotina do aceite, num lugar só: grava instante, versão enviada e
@@ -140,6 +141,32 @@ export async function aceitarOrcamentoEnviado(
      * e agora — e aí a resposta é 404, nunca um instante inventado.
      */
     if (!atualizado?.aceitoEm) return { ok: false, motivo: "SUMIU" } as const;
+
+    /**
+     * A04.6 (E162) — o aceite passa a mexer no funil: avança a noiva até
+     * ORCAMENTO_ABERTO se ela estava ATRÁS (o "sim" prova que a proposta
+     * existiu). Uma etapa ACEITO não nasce aqui de propósito: criá-la mexeria
+     * no enum do banco, no kanban e na régua de conversão inteira — é decisão
+     * de produto, registrada como sobra. Quem responde "quantos aceites estão
+     * parados" é a fila `/orcamentos/aceitos-sem-contrato`, que enxerga o
+     * estado real em vez de um rótulo de funil.
+     */
+    const [lead] = await tx
+      .select({ id: leadsTable.id, etapa: leadsTable.etapa, orcamentoAbertoEm: leadsTable.orcamentoAbertoEm })
+      .from(leadsTable)
+      .where(eq(leadsTable.id, atualizado.leadId));
+    if (lead) {
+      const etapaNova = avancarEtapaLead(lead.etapa, "ORCAMENTO_ABERTO");
+      if (etapaNova !== lead.etapa) {
+        await tx.update(leadsTable)
+          .set({
+            etapa: etapaNova,
+            orcamentoAbertoEm: lead.orcamentoAbertoEm ?? agora,
+            updatedAt: agora,
+          })
+          .where(eq(leadsTable.id, lead.id));
+      }
+    }
 
     // Direto na tabela, não pelo helper: o aceite não tem sessão — o autor é
     // a noiva, com usuarioId nulo e o nome desnormalizado, como o schema (E10)

@@ -36,6 +36,7 @@ import {
   type ConflitoDetalhe,
 } from "../lib/disponibilidade";
 import { transicaoReservaValida } from "../lib/estados";
+import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { erroDeValidacao } from "../lib/erros";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 
@@ -655,19 +656,6 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     return;
   }
 
-  const id = randomUUID();
-  const candidato: BloqueioJanelasInput = {
-    id,
-    tipo: dados.tipo,
-    casamentoData: dados.casamentoData ?? null,
-    provaDataReal: null,
-    retiradaDataReal: null,
-    devolucaoDataReal: null,
-    lavagemConcluidaEm: null,
-    inicio: dados.inicio ?? null,
-    fim: dados.fim ?? null,
-  };
-
   /**
    * S-M22 (rodada 2, achado 3#4): a verificação rodava no POOL e o INSERT
    * solto — dois bloqueios do MESMO vestido criados no mesmo segundo não se
@@ -676,37 +664,21 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
    * noiva B) commitava sem 23P01 nenhum. `FOR UPDATE` na linha do VESTIDO
    * serializa os criadores concorrentes; a verificação relê pelo executor da
    * transação e enxerga o que o vencedor commitou.
+   *
+   * E162: a transação virou `criarReservaDeVestido` (lib) porque o criador
+   * ganhou uma segunda porta — o `POST /orcamentos/:id/reservar`, com gate
+   * `leads.criar` (decisão R10). Uma régua, duas permissões.
    */
-  const criado = await db.transaction(async (tx) => {
-    await tx.select({ id: vestidosTable.id }).from(vestidosTable)
-      .where(eq(vestidosTable.id, dados.vestidoId))
-      .for("update");
-    const resultado = await verificarDisponibilidade({
-      lojaId,
-      vestidoId: dados.vestidoId,
-      candidato,
-      hoje: new Date(),
-      executor: tx,
-    });
-    if (!resultado.disponivel) return { conflitos: resultado.conflitos };
-
-    const ocupacao = ocupacaoFisica(candidato, resultado.regra);
-
-    const [bloqueio] = await tx.insert(bloqueioVestidosTable).values({
-      id,
-      lojaId,
-      vestidoId: dados.vestidoId,
-      leadId: dados.leadId ?? null,
-      tipo: dados.tipo,
-      casamentoData: dados.casamentoData ?? null,
-      inicio: dados.inicio ?? null,
-      fim: dados.fim ?? null,
-      observacao: dados.observacao ?? null,
-      reservaId: dados.reservaId ?? null,
-      ocupacaoInicio: ocupacao?.inicio ?? null,
-      ocupacaoFim: ocupacao?.fim ?? null,
-    }).returning();
-    return { bloqueio: bloqueio! };
+  const criado = await criarReservaDeVestido({
+    lojaId,
+    vestidoId: dados.vestidoId,
+    leadId: dados.leadId ?? null,
+    tipo: dados.tipo,
+    casamentoData: dados.casamentoData ?? null,
+    inicio: dados.inicio ?? null,
+    fim: dados.fim ?? null,
+    observacao: dados.observacao ?? null,
+    reservaId: dados.reservaId ?? null,
   });
   if ("conflitos" in criado) {
     res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: criado.conflitos });

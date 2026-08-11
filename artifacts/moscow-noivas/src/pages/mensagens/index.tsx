@@ -17,6 +17,8 @@ import {
   getListRegistrosCobrancaQueryKey,
   useListPortais,
   getListPortaisQueryKey,
+  useListAceitosSemContrato,
+  getListAceitosSemContratoQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SemWhatsApp } from "@/components/sem-whatsapp";
@@ -24,7 +26,7 @@ import { PortalVencido } from "@/components/portal-vencido";
 import { Button } from "@/components/ui/button";
 import { Carregando, Erro } from "@/components/estado";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
-import { MessageCircle, CalendarCheck, HandCoins, FileClock, Undo2 } from "lucide-react";
+import { MessageCircle, CalendarCheck, HandCoins, FileClock, Undo2, Signature } from "lucide-react";
 import { format } from "date-fns";
 import { podeNoModulo } from "@/lib/permissoes";
 import {
@@ -259,8 +261,24 @@ export default function MensagensDoDia() {
     [orcamentos.data],
   );
 
+  /**
+   * E162 (A03.1) — o espelho que faltava: o aceite TIRAVA o orçamento da fila
+   * de "vencendo em 72h" (o recorte é por ENVIADO) e o punha num estado que
+   * nenhuma fila vigiava — enquanto a página da noiva afirmava "a sua
+   * vendedora já foi avisada". Agora o aviso existe: o aceite entra AQUI, na
+   * fila diária, no dia seguinte ao clique dela.
+   */
+  const aceitosQuery = useListAceitosSemContrato(lojaId!, {
+    query: {
+      queryKey: getListAceitosSemContratoQueryKey(lojaId!),
+      enabled: !!lojaId && veLeads,
+    },
+  });
+  const aceitosSemContrato = aceitosQuery.data ?? [];
+
   // Quem já foi cobrada nesta sessão não é mais "mensagem pronta para enviar".
-  const totalFila = aContatar.length + filaCobranca.aCobrar.length + orcamentosVencendo.length;
+  const totalFila =
+    aContatar.length + filaCobranca.aCobrar.length + orcamentosVencendo.length + aceitosSemContrato.length;
 
   /**
    * E121/C1 — a fila disparava 4 queries e lia zero vezes isLoading/isError:
@@ -575,6 +593,61 @@ export default function MensagensDoDia() {
                   </div>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {veLeads && (
+        <Card data-testid="card-fila-aceitos">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Signature className="h-5 w-5 text-primary" />
+              Aceites esperando contrato
+            </CardTitle>
+            <CardDescription>
+              A noiva já disse sim — o vestido só fica dela quando o contrato fechar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {aceitosQuery.isError ? (
+              <Erro
+                titulo="Os aceites não carregaram"
+                erro={aceitosQuery.error}
+                onTentarNovamente={() => void aceitosQuery.refetch()}
+              />
+            ) : aceitosQuery.isLoading ? (
+              <Carregando linhas={2} />
+            ) : aceitosSemContrato.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum aceite parado — todos viraram contrato.</p>
+            ) : (
+              <ul className="divide-y">
+                {aceitosSemContrato.map((a) => {
+                  const dias = Math.floor(
+                    (Date.now() - new Date(a.aprovadoEm).getTime()) / (24 * 3_600_000),
+                  );
+                  return (
+                    <li key={a.orcamentoId} className="flex items-center justify-between gap-3 py-2.5">
+                      <span className="min-w-0 truncate text-sm">
+                        <Link
+                          to={`/loja/${lojaId}/orcamentos/${a.orcamentoId}`}
+                          className="hover:underline"
+                        >
+                          {a.noivaNome}
+                        </Link>{" "}
+                        <span className="text-muted-foreground">
+                          · {brl(a.valor)} · {dias === 0 ? "aceito hoje" : `há ${dias} dia${dias === 1 ? "" : "s"}`}
+                          {(a.pecasSemReserva ?? 0) > 0 &&
+                            ` · ${a.pecasSemReserva} peça${a.pecasSemReserva === 1 ? "" : "s"} sem reserva`}
+                        </span>
+                      </span>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to={`/loja/${lojaId}/orcamentos/${a.orcamentoId}`}>Gerar contrato</Link>
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>

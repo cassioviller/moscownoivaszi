@@ -136,10 +136,16 @@ export default function OrcamentoPublico() {
               {dados!.aceitoEm ? (
                 <div className="flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  {/* A03.1/E162: dizia "a sua vendedora já foi avisada" — uma
+                      afirmação de fato que o mundo não cumpria: não havia
+                      notificação NENHUMA, e o aceite ainda tirava o orçamento
+                      da única fila proativa da loja. Agora o aceite entra na
+                      fila diária (/mensagens) e no painel — e a frase promete
+                      o que o sistema faz, não mais que isso. */}
                   <span>
                     Você aceitou esta proposta em{" "}
                     <span className="font-medium">{instanteLongo(dados!.aceitoEm)}</span>.
-                    A sua vendedora já foi avisada.
+                    O ateliê vai falar com você para acertar o contrato e os próximos passos.
                   </span>
                 </div>
               ) : dados!.status === "ENVIADO" ? (

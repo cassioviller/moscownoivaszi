@@ -34,6 +34,10 @@ export const ACOES_AUDITORIA = [
   "PERMISSOES_RESTAURADAS",
   // E74: a noiva aceitou pelo link publico — sem sessao, autor desnormalizado.
   "ORCAMENTO_ACEITO",
+  // E162 (A01.2): a porta gerencial do beco — desfazer o aceite devolve o
+  // orçamento a RASCUNHO para trocar a peça e pedir NOVO aceite. O aceite
+  // desfeito não some: esta linha guarda o que havia (instante, versão, hash).
+  "ORCAMENTO_ACEITE_DESFEITO",
   // E85: a noiva confirmou a presença pelo portal — mesma mecânica do aceite.
   "PROVA_CONFIRMADA",
   // E100/F37: e a noiva avisou que NÃO pode ir. Ela já era gravada desde a
@@ -145,6 +149,7 @@ export const ROTULO_ACAO: Record<AcaoAuditoria, string> = {
   PERMISSOES_ALTERADAS: "Permissões do perfil alteradas",
   PERMISSOES_RESTAURADAS: "Permissões do perfil restauradas ao padrão",
   ORCAMENTO_ACEITO: "Orçamento aceito pela noiva",
+  ORCAMENTO_ACEITE_DESFEITO: "Aceite do orçamento desfeito (gerencial)",
   PROVA_CONFIRMADA: "Prova confirmada pela noiva",
   REMARCACAO_PEDIDA: "Remarcação pedida pela noiva",
   LEADS_ANONIMIZADOS: "Noivas perdidas anonimizadas (LGPD)",

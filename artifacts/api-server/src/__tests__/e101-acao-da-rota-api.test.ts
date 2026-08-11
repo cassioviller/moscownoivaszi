@@ -182,8 +182,15 @@ describe("nenhum POST de ação escapa da classificação (B5)", () => {
         // Já tratado por `acaoDoRequest`, ou declarado na própria rota. A lista
         // é IMPORTADA, não recopiada: a varredura existe porque a régua para de
         // crescer, e uma segunda cópia dela aqui teria o mesmo defeito.
+        //
+        // E162: `"criar"` explícito também é classificação. O perigo que esta
+        // varredura caça é o DEFAULT silencioso (verbo novo valendo criar sem
+        // ninguém decidir) — não a decisão escrita. O caso que a trouxe:
+        // `POST /orcamentos/:id/reservar` CRIA um recurso (o bloqueio da
+        // reserva) apesar da forma /:id/<verbo>, e o gate `leads.criar` é a
+        // decisão R10 registrada no épico — a Recepção tem criar e não editar.
         const naRegex = POST_QUE_MUTA.test(`/${ultimo}`);
-        if (naRegex || comRequire?.includes('"editar"')) continue;
+        if (naRegex || comRequire?.includes('"editar"') || comRequire?.includes('"criar"')) continue;
 
         naoClassificados.push(`${arquivo}: POST ${caminho}`);
       }
