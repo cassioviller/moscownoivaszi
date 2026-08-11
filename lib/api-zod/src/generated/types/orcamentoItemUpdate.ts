@@ -9,6 +9,7 @@
 export interface OrcamentoItemUpdate {
   /** @minLength 1 */
   descricao?: string;
+  /** @minimum 0 */
   valorUnitario?: number;
   /** @minimum 1 */
   quantidade?: number;

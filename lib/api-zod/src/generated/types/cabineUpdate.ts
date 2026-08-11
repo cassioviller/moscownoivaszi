@@ -7,6 +7,7 @@
  */
 
 export interface CabineUpdate {
+  /** @minLength 1 */
   nome?: string;
   ativo?: boolean;
 }

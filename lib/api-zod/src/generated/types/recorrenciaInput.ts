@@ -18,6 +18,7 @@ export interface RecorrenciaInput {
   descricao?: string;
   categoria?: string;
   fornecedor?: string;
+  /** @minimum 0.01 */
   valor: number;
   diaVencimento: number;
 }

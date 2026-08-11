@@ -14,6 +14,7 @@ export interface Lead {
   id: string;
   lojaId: string;
   etapa: LeadEtapa;
+  /** @minLength 1 */
   noivaNome: string;
   /** @nullable */
   noivoNome?: string | null;

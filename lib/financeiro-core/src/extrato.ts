@@ -47,7 +47,15 @@ export function parseExtratoOFX(texto: string): TransacaoExtrato[] {
     if (!dtposted || !trnamt) continue;
     const data = diaDeDTPOSTED(dtposted);
     // OFX fala decimal com PONTO; alguns bancos brasileiros mandam vírgula.
-    const valor = Number(trnamt.replace(",", "."));
+    // S-M23 (achado 1#3): "1.500,00" virava NaN — o replace de UMA vírgula
+    // produzia "1.500.00", e a transação sumia do extrato EM SILÊNCIO: o PIX
+    // de R$ 1.500,00 já lançado caía em "só no sistema" e o relançamento
+    // contava R$ 1.500,00 duas vezes. O banco que manda vírgula decimal é o
+    // mesmo que escreve ponto de milhar acima de mil — com vírgula presente,
+    // a grafia é a pt-BR (pontos são milhar); sem vírgula, vale o spec OFX.
+    const valor = trnamt.includes(",")
+      ? Number(trnamt.replace(/\./g, "").replace(",", "."))
+      : Number(trnamt);
     if (!data || !Number.isFinite(valor) || valor === 0) continue;
     const descricao = campoOFX(bloco, "MEMO") ?? campoOFX(bloco, "NAME") ?? "";
     transacoes.push({ data, descricao, valor });

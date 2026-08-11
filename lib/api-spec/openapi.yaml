@@ -4829,7 +4829,8 @@ components:
     MembroEquipeUpdate:
       type: object
       properties:
-        nome: { type: string }
+        # S-M23: o minLength do criar vale no editar — PATCH com "" esvaziava o nome.
+        nome: { type: string, minLength: 1 }
         perfilId: { type: string }
         ativo: { type: boolean }
 
@@ -4919,7 +4920,7 @@ components:
     AtributoUpdate:
       type: object
       properties:
-        nome: { type: string }
+        nome: { type: string, minLength: 1 }
         ordem: { type: integer }
         ativo: { type: boolean }
     AtributoOpcao:
@@ -4940,7 +4941,7 @@ components:
     AtributoOpcaoUpdate:
       type: object
       properties:
-        valor: { type: string }
+        valor: { type: string, minLength: 1 }
         ordem: { type: integer }
         ativo: { type: boolean }
 
@@ -5029,7 +5030,7 @@ components:
       properties:
         codigo: { type: string, minLength: 1 }
         nome: { type: string, minLength: 1 }
-        precoBase: { type: number }
+        precoBase: { type: number, minimum: 0 }
         precoRealuguel: { type: number, minimum: 0 }
         # E156: a proveniência se declara no NASCIMENTO da peça, e só aqui — o
         # gesto é "esta confecção virou peça do acervo", não uma edição de ficha.
@@ -5047,12 +5048,14 @@ components:
     VestidoUpdate:
       type: object
       properties:
-        codigo: { type: string }
-        nome: { type: string }
-        precoBase: { type: number }
+        # S-M23: os pisos do criar valem no editar — PATCH com "" esvaziava
+        # código e nome, e um preço negativo entrava e voltava em toda leitura.
+        codigo: { type: string, minLength: 1 }
+        nome: { type: string, minLength: 1 }
+        precoBase: { type: number, minimum: 0 }
         # null EXPLÍCITO desfaz o preço de realuguel — a peça volta a ser
         # cobrada pelo precoBase em toda saída.
-        precoRealuguel: { type: ["number", "null"] }
+        precoRealuguel: { type: ["number", "null"], minimum: 0 }
         tamanho: { type: string }
         cor: { type: string }
         categoria: { type: string }
@@ -5076,7 +5079,8 @@ components:
         etapa:
           type: string
           enum: [NOVO, INTERESSES_PREENCHIDOS, ATENDIMENTO_AGENDADO, EM_ATENDIMENTO, ORCAMENTO_ABERTO, CONTRATO_FECHADO, EM_PROVAS, RETIRADO, CASAMENTO_REALIZADO, DEVOLVIDO, PERDIDO]
-        noivaNome: { type: string }
+        # S-M23: PATCH com "" virava noiva sem nome na fila de cobrança.
+        noivaNome: { type: string, minLength: 1 }
         noivoNome: { type: ["string", "null"] }
         cerimonialista: { type: ["string", "null"] }
         whatsapp: { type: ["string", "null"] }
@@ -5357,7 +5361,7 @@ components:
         nome: { type: string, minLength: 1 }
         tamanho: { type: ["string", "null"] }
         quantidade: { type: integer, minimum: 0 }
-        preco: { type: ["number", "null"] }
+        preco: { type: ["number", "null"], minimum: 0 }
         ativo: { type: boolean }
     ComprometimentoEstoque:
       type: object
@@ -5418,7 +5422,7 @@ components:
     CabineUpdate:
       type: object
       properties:
-        nome: { type: string }
+        nome: { type: string, minLength: 1 }
         ativo: { type: boolean }
     Atendimento:
       type: object
@@ -5567,9 +5571,9 @@ components:
     AjusteUpdate:
       type: object
       properties:
-        descricao: { type: string }
+        descricao: { type: string, minLength: 1 }
         tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
-        custo: { type: ["number", "null"] }
+        custo: { type: ["number", "null"], minimum: 0 }
         status: { type: string, enum: [PENDENTE, FEITO] }
     RegraDisponibilidade:
       type: object
@@ -5892,14 +5896,20 @@ components:
         # Sem vendedoraId: a autoria vem da sessão autenticada, nunca do corpo
         # — mesma regra do registro de cobrança.
         descontoTipo: { type: string, enum: [PERCENTUAL, VALOR] }
-        descontoValor: { type: number }
+        # S-M23: negativo virava desconto que COBRA a mais (−10% = ×1,10). O
+        # teto do PERCENTUAL (100) é guarda de rota — VALOR pode exceder o bruto
+        # legitimamente, o clamp decide.
+        descontoValor: { type: number, minimum: 0 }
         validade: { type: string, format: date-time }
         observacoes: { type: string }
     OrcamentoUpdate:
       type: object
       properties:
         descontoTipo: { type: string, enum: [PERCENTUAL, VALOR] }
-        descontoValor: { type: number }
+        # S-M23: negativo virava desconto que COBRA a mais (−10% = ×1,10). O
+        # teto do PERCENTUAL (100) é guarda de rota — VALOR pode exceder o bruto
+        # legitimamente, o clamp decide.
+        descontoValor: { type: number, minimum: 0 }
         validade: { type: string, format: date-time }
         observacoes: { type: string }
         status: { type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO] }
@@ -5928,13 +5938,16 @@ components:
         # mesma coisa.
         ajusteId: { type: string }
         descricao: { type: string, minLength: 1 }
-        valorUnitario: { type: number }
-        quantidade: { type: integer }
+        # S-M23 (achados 1#1/5#2): sem piso, quantidade −1 SUBTRAÍA do total —
+        # R$ 200,00 de serviço viravam desconto silencioso que contrato, aceite
+        # e carnê validavam em cadeia. O editar sempre teve o minimum.
+        valorUnitario: { type: number, minimum: 0 }
+        quantidade: { type: integer, minimum: 1 }
     OrcamentoItemUpdate:
       type: object
       properties:
         descricao: { type: string, minLength: 1 }
-        valorUnitario: { type: number }
+        valorUnitario: { type: number, minimum: 0 }
         quantidade: { type: integer, minimum: 1 }
     LinkOrcamentoPublico:
       type: object
@@ -6213,7 +6226,12 @@ components:
         vendedoraId: { type: string }
         cpf: { type: string }
         vestidoDescricao: { type: string }
-        valorTotal: { type: number }
+        # S-M23 (achado 5#4 + nota do ângulo 1): a parcela avulsa exige piso
+        # desde sempre — o carnê que entra pelo POST /contratos não exigia, e
+        # uma parcela de −R$ 1.000,00 compensada passava na guarda de SOMA:
+        # nascia PREVISTA e impagável, com o horizonte inflado em R$ 1.000,00
+        # (o saldoAberto clampa o negativo em zero).
+        valorTotal: { type: number, minimum: 0.01 }
         formaPagamento: { type: string, enum: [PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, BOLETO, TRANSFERENCIA, OUTRO] }
         dataCasamento: { type: string, format: date-time }
         dataRetirada: { type: string, format: date-time }
@@ -6225,9 +6243,9 @@ components:
             type: object
             required: [numero, valorPrevisto, vencimento]
             properties:
-              numero: { type: integer }
+              numero: { type: integer, minimum: 0 }
               descricao: { type: string }
-              valorPrevisto: { type: number }
+              valorPrevisto: { type: number, minimum: 0.01 }
               vencimento: { type: string, format: date-time }
     ContratoUpdate:
       type: object
@@ -6379,7 +6397,9 @@ components:
         descricao: { type: string, minLength: 1 }
         categoria: { type: string }
         fornecedor: { type: string }
-        valorPrevisto: { type: number }
+        # S-M23 (achado 5#3): a anatomia da S-M2 nas portas de CRIAÇÃO — uma
+        # conta de −R$ 3.200,00 AUMENTAVA o caixa projetado e calava o alerta.
+        valorPrevisto: { type: number, minimum: 0.01 }
         vencimento: { type: string, format: date-time }
     PagarContaInput:
       type: object
@@ -6491,7 +6511,8 @@ components:
         descricao: { type: string, minLength: 1, description: "Obrigatório para DESPESA/FORNECEDOR" }
         categoria: { type: string }
         fornecedor: { type: string }
-        valor: { type: number }
+        # S-M23: recorrência negativa gerava "despesa" que INFLAVA o caixa todo mês.
+        valor: { type: number, minimum: 0.01 }
         diaVencimento: { type: integer }
     RecorrenciaUpdate:
       type: object
@@ -6499,7 +6520,7 @@ components:
         descricao: { type: string, minLength: 1 }
         categoria: { type: string }
         fornecedor: { type: string }
-        valor: { type: number }
+        valor: { type: number, minimum: 0.01 }
         diaVencimento: { type: integer }
         ativo: { type: boolean }
     FolhaInput:

@@ -13,7 +13,10 @@ export interface ItemEstoqueUpdate {
   tamanho?: string | null;
   /** @minimum 0 */
   quantidade?: number;
-  /** @nullable */
+  /**
+     * @minimum 0
+     * @nullable
+     */
   preco?: number | null;
   ativo?: boolean;
 }

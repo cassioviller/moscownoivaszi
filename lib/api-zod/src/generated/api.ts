@@ -578,8 +578,11 @@ export const UpdateMembroEquipeParams = zod.object({
   "usuarioId": zod.coerce.string()
 })
 
+
+
+
 export const UpdateMembroEquipeBody = zod.object({
-  "nome": zod.string().optional(),
+  "nome": zod.string().min(1).optional(),
   "perfilId": zod.string().optional(),
   "ativo": zod.boolean().optional()
 })
@@ -854,8 +857,11 @@ export const UpdateAtributoParams = zod.object({
   "atributoId": zod.coerce.string()
 })
 
+
+
+
 export const UpdateAtributoBody = zod.object({
-  "nome": zod.string().optional(),
+  "nome": zod.string().min(1).optional(),
   "ordem": zod.number().optional(),
   "ativo": zod.boolean().optional()
 })
@@ -912,8 +918,11 @@ export const UpdateAtributoOpcaoParams = zod.object({
   "opcaoId": zod.coerce.string()
 })
 
+
+
+
 export const UpdateAtributoOpcaoBody = zod.object({
-  "valor": zod.string().optional(),
+  "valor": zod.string().min(1).optional(),
   "ordem": zod.number().optional(),
   "ativo": zod.boolean().optional()
 })
@@ -974,6 +983,8 @@ export const CreateVestidoParams = zod.object({
 
 
 
+export const createVestidoBodyPrecoBaseMin = 0;
+
 export const createVestidoBodyPrecoRealuguelMin = 0;
 
 
@@ -981,7 +992,7 @@ export const createVestidoBodyPrecoRealuguelMin = 0;
 export const CreateVestidoBody = zod.object({
   "codigo": zod.string().min(1),
   "nome": zod.string().min(1),
-  "precoBase": zod.number(),
+  "precoBase": zod.number().min(createVestidoBodyPrecoBaseMin),
   "precoRealuguel": zod.number().min(createVestidoBodyPrecoRealuguelMin).optional(),
   "origemAjusteId": zod.string().optional(),
   "tamanho": zod.string().optional(),
@@ -1142,11 +1153,19 @@ export const UpdateVestidoParams = zod.object({
   "vestidoId": zod.coerce.string()
 })
 
+
+
+export const updateVestidoBodyPrecoBaseMin = 0;
+
+export const updateVestidoBodyPrecoRealuguelMin = 0;
+
+
+
 export const UpdateVestidoBody = zod.object({
-  "codigo": zod.string().optional(),
-  "nome": zod.string().optional(),
-  "precoBase": zod.number().optional(),
-  "precoRealuguel": zod.number().nullish(),
+  "codigo": zod.string().min(1).optional(),
+  "nome": zod.string().min(1).optional(),
+  "precoBase": zod.number().min(updateVestidoBodyPrecoBaseMin).optional(),
+  "precoRealuguel": zod.number().min(updateVestidoBodyPrecoRealuguelMin).nullish(),
   "tamanho": zod.string().optional(),
   "cor": zod.string().optional(),
   "categoria": zod.string().optional(),
@@ -1365,13 +1384,16 @@ export const ListLeadsQueryParams = zod.object({
   "ordem": zod.enum(['antigos', 'recentes']).default(listLeadsQueryOrdemDefault)
 })
 
+
+
+
 export const ListLeadsResponse = zod.object({
   "total": zod.number(),
   "itens": zod.array(zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -1418,11 +1440,14 @@ export const CreateLeadBody = zod.object({
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional()
 })
 
+
+
+
 export const CreateLeadResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -1589,11 +1614,14 @@ export const GetLeadParams = zod.object({
   "leadId": zod.coerce.string()
 })
 
+
+
+
 export const GetLeadResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -1640,11 +1668,14 @@ export const UpdateLeadBody = zod.object({
   "origem": zod.enum(['LOJA', 'WHATSAPP', 'SITE', 'INSTAGRAM']).optional().describe('Corrigível enquanto o lead não converteu (CONTRATO_FECHADO ou além)')
 })
 
+
+
+
 export const UpdateLeadResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -1843,13 +1874,15 @@ export const UpdateItemEstoqueParams = zod.object({
 
 export const updateItemEstoqueBodyQuantidadeMin = 0;
 
+export const updateItemEstoqueBodyPrecoMin = 0;
+
 
 
 export const UpdateItemEstoqueBody = zod.object({
   "nome": zod.string().min(1).optional(),
   "tamanho": zod.string().nullish(),
   "quantidade": zod.number().min(updateItemEstoqueBodyQuantidadeMin).optional(),
-  "preco": zod.number().nullish(),
+  "preco": zod.number().min(updateItemEstoqueBodyPrecoMin).nullish(),
   "ativo": zod.boolean().optional()
 })
 
@@ -1959,8 +1992,11 @@ export const UpdateCabineParams = zod.object({
   "cabineId": zod.coerce.string()
 })
 
+
+
+
 export const UpdateCabineBody = zod.object({
-  "nome": zod.string().optional(),
+  "nome": zod.string().min(1).optional(),
   "ativo": zod.boolean().optional()
 })
 
@@ -1996,6 +2032,12 @@ export const ListAtendimentosQueryParams = zod.object({
   "ate": zod.coerce.string().regex(listAtendimentosQueryAteRegExp).optional().describe('Fim da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo)')
 })
 
+
+
+
+
+
+
 export const ListAtendimentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -2016,7 +2058,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2104,7 +2146,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2157,7 +2199,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2231,7 +2273,7 @@ export const ListAtendimentosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2284,6 +2326,12 @@ export const CreateAtendimentoBody = zod.object({
   "observacao": zod.string().optional()
 })
 
+
+
+
+
+
+
 export const CreateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -2304,7 +2352,7 @@ export const CreateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2392,7 +2440,7 @@ export const CreateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2445,7 +2493,7 @@ export const CreateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2519,7 +2567,7 @@ export const CreateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2571,6 +2619,12 @@ export const UpdateAtendimentoBody = zod.object({
   "observacao": zod.string().optional()
 })
 
+
+
+
+
+
+
 export const UpdateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -2591,7 +2645,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2679,7 +2733,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2732,7 +2786,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2806,7 +2860,7 @@ export const UpdateAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2863,6 +2917,12 @@ export const RegistrarContatoAtendimentoParams = zod.object({
   "atendimentoId": zod.coerce.string()
 })
 
+
+
+
+
+
+
 export const RegistrarContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -2883,7 +2943,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -2971,7 +3031,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3024,7 +3084,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3098,7 +3158,7 @@ export const RegistrarContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3145,6 +3205,12 @@ export const DesfazerContatoAtendimentoParams = zod.object({
   "atendimentoId": zod.coerce.string()
 })
 
+
+
+
+
+
+
 export const DesfazerContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -3165,7 +3231,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3253,7 +3319,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3306,7 +3372,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3380,7 +3446,7 @@ export const DesfazerContatoAtendimentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3422,6 +3488,10 @@ export const ListAjustesParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+
+
+
+
 export const ListAjustesResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -3448,7 +3518,7 @@ export const ListAjustesResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3522,7 +3592,7 @@ export const ListAjustesResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3576,6 +3646,10 @@ export const CreateAjusteBody = zod.object({
   "custo": zod.number().min(createAjusteBodyCustoMin).optional()
 })
 
+
+
+
+
 export const CreateAjusteResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -3602,7 +3676,7 @@ export const CreateAjusteResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3676,7 +3750,7 @@ export const CreateAjusteResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3718,12 +3792,21 @@ export const UpdateAjusteParams = zod.object({
   "ajusteId": zod.coerce.string()
 })
 
+
+export const updateAjusteBodyCustoMin = 0;
+
+
+
 export const UpdateAjusteBody = zod.object({
-  "descricao": zod.string().optional(),
+  "descricao": zod.string().min(1).optional(),
   "tipo": zod.enum(['AJUSTE', 'CONFECCAO']).optional(),
-  "custo": zod.number().nullish(),
+  "custo": zod.number().min(updateAjusteBodyCustoMin).nullish(),
   "status": zod.enum(['PENDENTE', 'FEITO']).optional()
 })
+
+
+
+
 
 export const UpdateAjusteResponse = zod.object({
   "id": zod.string(),
@@ -3751,7 +3834,7 @@ export const UpdateAjusteResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3825,7 +3908,7 @@ export const UpdateAjusteResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -3999,6 +4082,10 @@ export const ListReservasParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+
+
+
+
 export const ListReservasResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -4053,7 +4140,7 @@ export const ListReservasResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4084,7 +4171,7 @@ export const ListReservasResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4122,6 +4209,10 @@ export const CreateReservaBody = zod.object({
   "leadId": zod.string(),
   "casamentoData": zod.coerce.date()
 })
+
+
+
+
 
 export const CreateReservaResponse = zod.object({
   "id": zod.string(),
@@ -4177,7 +4268,7 @@ export const CreateReservaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4208,7 +4299,7 @@ export const CreateReservaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4246,6 +4337,10 @@ export const UpdateReservaBody = zod.object({
   "status": zod.enum(['EM_MONTAGEM', 'CONFIRMADA', 'CONCLUIDA', 'CANCELADA']).optional(),
   "casamentoData": zod.coerce.date().optional()
 })
+
+
+
+
 
 export const UpdateReservaResponse = zod.object({
   "id": zod.string(),
@@ -4301,7 +4396,7 @@ export const UpdateReservaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4332,7 +4427,7 @@ export const UpdateReservaResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4378,6 +4473,9 @@ export const ListBloqueiosQueryParams = zod.object({
   "leadId": zod.coerce.string().optional().describe('Filtra os bloqueios de uma noiva só (E79) — a ficha do orçamento e o portal param de baixar a loja inteira'),
   "futuras": zod.enum(['true', 'false']).optional().describe('Recorta por casamentoData contra hoje, em dia LOCAL America\/Sao_Paulo (E87) — \'true\' = casamentos de hoje em diante (asc), \'false\' = já realizados (desc). Bloqueios sem casamentoData ficam fora do recorte.')
 })
+
+
+
 
 export const ListBloqueiosResponseItem = zod.object({
   "id": zod.string(),
@@ -4427,7 +4525,7 @@ export const ListBloqueiosResponseItem = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4471,6 +4569,9 @@ export const CreateBloqueioBody = zod.object({
   "observacao": zod.string().optional(),
   "reservaId": zod.string().optional()
 })
+
+
+
 
 export const CreateBloqueioResponse = zod.object({
   "id": zod.string(),
@@ -4520,7 +4621,7 @@ export const CreateBloqueioResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4556,6 +4657,9 @@ export const GetBloqueioParams = zod.object({
   "lojaId": zod.coerce.string(),
   "bloqueioId": zod.coerce.string()
 })
+
+
+
 
 export const GetBloqueioResponse = zod.object({
   "id": zod.string(),
@@ -4605,7 +4709,7 @@ export const GetBloqueioResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4648,6 +4752,9 @@ export const UpdateBloqueioBody = zod.object({
   "fim": zod.coerce.date().optional(),
   "observacao": zod.string().optional()
 })
+
+
+
 
 export const UpdateBloqueioResponse = zod.object({
   "id": zod.string(),
@@ -4697,7 +4804,7 @@ export const UpdateBloqueioResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4863,6 +4970,9 @@ export const ListOrcamentosQueryParams = zod.object({
   "ordem": zod.enum(['antigos', 'recentes']).default(listOrcamentosQueryOrdemDefault)
 })
 
+
+
+
 export const ListOrcamentosResponse = zod.object({
   "total": zod.number(),
   "itens": zod.array(zod.object({
@@ -4886,7 +4996,7 @@ export const ListOrcamentosResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -4935,14 +5045,21 @@ export const CreateOrcamentoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createOrcamentoBodyDescontoValorMin = 0;
+
+
+
 export const CreateOrcamentoBody = zod.object({
   "leadId": zod.string(),
   "atendimentoId": zod.string().optional(),
   "descontoTipo": zod.enum(['PERCENTUAL', 'VALOR']).optional(),
-  "descontoValor": zod.number().optional(),
+  "descontoValor": zod.number().min(createOrcamentoBodyDescontoValorMin).optional(),
   "validade": zod.coerce.date().optional(),
   "observacoes": zod.string().optional()
 })
+
+
+
 
 export const CreateOrcamentoResponse = zod.object({
   "id": zod.string(),
@@ -4965,7 +5082,7 @@ export const CreateOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5011,6 +5128,9 @@ export const GetOrcamentoParams = zod.object({
   "orcamentoId": zod.coerce.string()
 })
 
+
+
+
 export const GetOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -5032,7 +5152,7 @@ export const GetOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5078,13 +5198,20 @@ export const UpdateOrcamentoParams = zod.object({
   "orcamentoId": zod.coerce.string()
 })
 
+export const updateOrcamentoBodyDescontoValorMin = 0;
+
+
+
 export const UpdateOrcamentoBody = zod.object({
   "descontoTipo": zod.enum(['PERCENTUAL', 'VALOR']).optional(),
-  "descontoValor": zod.number().optional(),
+  "descontoValor": zod.number().min(updateOrcamentoBodyDescontoValorMin).optional(),
   "validade": zod.coerce.date().optional(),
   "observacoes": zod.string().optional(),
   "status": zod.enum(['RASCUNHO', 'ENVIADO', 'APROVADO', 'RECUSADO']).optional()
 })
+
+
+
 
 export const UpdateOrcamentoResponse = zod.object({
   "id": zod.string(),
@@ -5107,7 +5234,7 @@ export const UpdateOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5162,6 +5289,9 @@ export const AddOrcamentoItemParams = zod.object({
 })
 
 
+export const addOrcamentoItemBodyValorUnitarioMin = 0;
+
+
 
 
 export const AddOrcamentoItemBody = zod.object({
@@ -5170,8 +5300,8 @@ export const AddOrcamentoItemBody = zod.object({
   "itemEstoqueId": zod.string().optional(),
   "ajusteId": zod.string().optional(),
   "descricao": zod.string().min(1),
-  "valorUnitario": zod.number(),
-  "quantidade": zod.number().optional()
+  "valorUnitario": zod.number().min(addOrcamentoItemBodyValorUnitarioMin),
+  "quantidade": zod.number().min(1).optional()
 })
 
 export const AddOrcamentoItemResponse = zod.object({
@@ -5193,12 +5323,14 @@ export const UpdateOrcamentoItemParams = zod.object({
 })
 
 
+export const updateOrcamentoItemBodyValorUnitarioMin = 0;
+
 
 
 
 export const UpdateOrcamentoItemBody = zod.object({
   "descricao": zod.string().min(1).optional(),
-  "valorUnitario": zod.number().optional(),
+  "valorUnitario": zod.number().min(updateOrcamentoItemBodyValorUnitarioMin).optional(),
   "quantidade": zod.number().min(1).optional()
 })
 
@@ -5228,6 +5360,9 @@ export const AprovarOrcamentoParams = zod.object({
   "orcamentoId": zod.coerce.string()
 })
 
+
+
+
 export const AprovarOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -5249,7 +5384,7 @@ export const AprovarOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5295,6 +5430,9 @@ export const RecusarOrcamentoParams = zod.object({
   "orcamentoId": zod.coerce.string()
 })
 
+
+
+
 export const RecusarOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
@@ -5316,7 +5454,7 @@ export const RecusarOrcamentoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5667,6 +5805,9 @@ export const ListContratosQueryParams = zod.object({
   "ordem": zod.enum(['antigos', 'recentes']).default(listContratosQueryOrdemDefault)
 })
 
+
+
+
 export const ListContratosResponse = zod.object({
   "total": zod.number(),
   "itens": zod.array(zod.object({
@@ -5729,7 +5870,7 @@ export const ListContratosResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5774,6 +5915,14 @@ export const CreateContratoParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const createContratoBodyValorTotalMin = 0.01;
+
+export const createContratoBodyParcelasItemNumeroMin = 0;
+
+export const createContratoBodyParcelasItemValorPrevistoMin = 0.01;
+
+
+
 export const CreateContratoBody = zod.object({
   "leadId": zod.string(),
   "orcamentoId": zod.string().optional(),
@@ -5782,19 +5931,22 @@ export const CreateContratoBody = zod.object({
   "vendedoraId": zod.string(),
   "cpf": zod.string().optional(),
   "vestidoDescricao": zod.string().optional(),
-  "valorTotal": zod.number(),
+  "valorTotal": zod.number().min(createContratoBodyValorTotalMin),
   "formaPagamento": zod.enum(['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'BOLETO', 'TRANSFERENCIA', 'OUTRO']).optional(),
   "dataCasamento": zod.coerce.date().optional(),
   "dataRetirada": zod.coerce.date().optional(),
   "dataDevolucao": zod.coerce.date().optional(),
   "observacoes": zod.string().optional(),
   "parcelas": zod.array(zod.object({
-  "numero": zod.number(),
+  "numero": zod.number().min(createContratoBodyParcelasItemNumeroMin),
   "descricao": zod.string().optional(),
-  "valorPrevisto": zod.number(),
+  "valorPrevisto": zod.number().min(createContratoBodyParcelasItemValorPrevistoMin),
   "vencimento": zod.coerce.date()
 })).optional()
 })
+
+
+
 
 export const CreateContratoResponse = zod.object({
   "id": zod.string(),
@@ -5856,7 +6008,7 @@ export const CreateContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -5897,6 +6049,9 @@ export const GetContratoParams = zod.object({
   "lojaId": zod.coerce.string(),
   "contratoId": zod.coerce.string()
 })
+
+
+
 
 export const GetContratoResponse = zod.object({
   "id": zod.string(),
@@ -5958,7 +6113,7 @@ export const GetContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -6009,6 +6164,9 @@ export const UpdateContratoBody = zod.object({
   "dataDevolucao": zod.coerce.date().optional(),
   "observacoes": zod.string().optional()
 })
+
+
+
 
 export const UpdateContratoResponse = zod.object({
   "id": zod.string(),
@@ -6070,7 +6228,7 @@ export const UpdateContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -6127,6 +6285,9 @@ export const CancelarContratoBody = zod.object({
   "motivo": zod.string().min(1),
   "destinoPago": zod.enum(['manter', 'estornar']).optional()
 })
+
+
+
 
 export const CancelarContratoResponse = zod.object({
   "id": zod.string(),
@@ -6188,7 +6349,7 @@ export const CancelarContratoResponse = zod.object({
   "id": zod.string(),
   "lojaId": zod.string(),
   "etapa": zod.enum(['NOVO', 'INTERESSES_PREENCHIDOS', 'ATENDIMENTO_AGENDADO', 'EM_ATENDIMENTO', 'ORCAMENTO_ABERTO', 'CONTRATO_FECHADO', 'EM_PROVAS', 'RETIRADO', 'CASAMENTO_REALIZADO', 'DEVOLVIDO', 'PERDIDO']),
-  "noivaNome": zod.string(),
+  "noivaNome": zod.string().min(1),
   "noivoNome": zod.string().nullish(),
   "cerimonialista": zod.string().nullish(),
   "whatsapp": zod.string().nullish(),
@@ -6612,6 +6773,8 @@ export const CreateContaPagarParams = zod.object({
 })
 
 
+export const createContaPagarBodyValorPrevistoMin = 0.01;
+
 
 
 export const CreateContaPagarBody = zod.object({
@@ -6621,7 +6784,7 @@ export const CreateContaPagarBody = zod.object({
   "descricao": zod.string().min(1),
   "categoria": zod.string().optional(),
   "fornecedor": zod.string().optional(),
-  "valorPrevisto": zod.number(),
+  "valorPrevisto": zod.number().min(createContaPagarBodyValorPrevistoMin),
   "vencimento": zod.coerce.date()
 })
 
@@ -7010,6 +7173,8 @@ export const CreateRecorrenciaParams = zod.object({
 })
 
 
+export const createRecorrenciaBodyValorMin = 0.01;
+
 
 
 export const CreateRecorrenciaBody = zod.object({
@@ -7018,7 +7183,7 @@ export const CreateRecorrenciaBody = zod.object({
   "descricao": zod.string().min(1).optional().describe('Obrigatório para DESPESA\/FORNECEDOR'),
   "categoria": zod.string().optional(),
   "fornecedor": zod.string().optional(),
-  "valor": zod.number(),
+  "valor": zod.number().min(createRecorrenciaBodyValorMin),
   "diaVencimento": zod.number()
 })
 
@@ -7042,13 +7207,15 @@ export const UpdateRecorrenciaParams = zod.object({
 })
 
 
+export const updateRecorrenciaBodyValorMin = 0.01;
+
 
 
 export const UpdateRecorrenciaBody = zod.object({
   "descricao": zod.string().min(1).optional(),
   "categoria": zod.string().optional(),
   "fornecedor": zod.string().optional(),
-  "valor": zod.number().optional(),
+  "valor": zod.number().min(updateRecorrenciaBodyValorMin).optional(),
   "diaVencimento": zod.number().optional(),
   "ativo": zod.boolean().optional()
 })

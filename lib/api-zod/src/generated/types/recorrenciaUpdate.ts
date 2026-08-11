@@ -11,6 +11,7 @@ export interface RecorrenciaUpdate {
   descricao?: string;
   categoria?: string;
   fornecedor?: string;
+  /** @minimum 0.01 */
   valor?: number;
   diaVencimento?: number;
   ativo?: boolean;

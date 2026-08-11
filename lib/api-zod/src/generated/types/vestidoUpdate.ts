@@ -9,10 +9,16 @@ import type { VestidoAtributo } from './vestidoAtributo';
 import type { VestidoUpdateStatus } from './vestidoUpdateStatus';
 
 export interface VestidoUpdate {
+  /** @minLength 1 */
   codigo?: string;
+  /** @minLength 1 */
   nome?: string;
+  /** @minimum 0 */
   precoBase?: number;
-  /** @nullable */
+  /**
+     * @minimum 0
+     * @nullable
+     */
   precoRealuguel?: number | null;
   tamanho?: string;
   cor?: string;

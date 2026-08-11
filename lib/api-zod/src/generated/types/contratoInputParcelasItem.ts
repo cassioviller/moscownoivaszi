@@ -7,8 +7,10 @@
  */
 
 export type ContratoInputParcelasItem = {
+  /** @minimum 0 */
   numero: number;
   descricao?: string;
+  /** @minimum 0.01 */
   valorPrevisto: number;
   vencimento: Date;
 };

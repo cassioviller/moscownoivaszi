@@ -7,6 +7,7 @@
  */
 
 export interface AtributoUpdate {
+  /** @minLength 1 */
   nome?: string;
   ordem?: number;
   ativo?: boolean;

@@ -153,3 +153,43 @@ describe("conciliarExtrato (E70)", () => {
     expect(r.casadas).toEqual([]);
   });
 });
+
+describe("S-M23 — OFX com grafia pt-BR (rodada 2, achado 1#3)", () => {
+  it('"1.500,00" com ponto de milhar É R$ 1.500,00 — antes virava NaN e a transação sumia em silêncio', () => {
+    const ofxPtBr = `
+OFXHEADER:100
+<OFX>
+<BANKTRANLIST>
+<STMTTRN>
+<TRNTYPE>CREDIT
+<DTPOSTED>20260715
+<TRNAMT>1.500,00
+<MEMO>PIX RECEBIDO MARIA
+</STMTTRN>
+<STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20260716
+<TRNAMT>-230,50
+<NAME>CONTA DE LUZ
+</STMTTRN>
+</BANKTRANLIST>
+</OFX>`;
+    const r = parseExtrato(ofxPtBr);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    // O caso medido: toda transação ≥ R$ 1.000,00 do banco que manda vírgula
+    // sumia (parse NaN → continue), o recebimento verdadeiro caía em
+    // "só no sistema" e o relançamento contava R$ 1.500,00 DUAS vezes.
+    expect(r.transacoes).toHaveLength(2);
+    expect(r.transacoes[0]).toMatchObject({ data: "2026-07-15", valor: 1500 });
+    expect(r.transacoes[1]).toMatchObject({ data: "2026-07-16", valor: -230.5 });
+  });
+
+  it("o OFX de ponto decimal do spec continua lido igual — a mudança só entra quando há vírgula", () => {
+    const r = parseExtrato(OFX);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.transacoes[0]!.valor).toBe(1500);
+    expect(r.transacoes[1]!.valor).toBe(-230.5);
+  });
+});

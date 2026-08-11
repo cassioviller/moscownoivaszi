@@ -482,7 +482,13 @@ export default function OrcamentoDetail() {
     // vírgula decimal como pt-BR, e separa "não digitou" (null) de "digitou
     // bobagem" (NaN).
     const valorUnitario = parseValor(values.valorUnitario);
-    const quantidade = Number(values.quantidade) || 1;
+    // S-M23: a MESMA guarda do editar (55 linhas abaixo) — sem ela, "-1" no
+    // campo virava quantidade −1 e SUBTRAÍA o item do total em silêncio.
+    const quantidade = Math.trunc(Number(values.quantidade) || 1);
+    if (quantidade < 1) {
+      toast({ title: "Quantidade inválida — use 1 ou mais", variant: "destructive" });
+      return;
+    }
     // E154: zero é valor LEGÍTIMO para peça de estoque — o saiote costuma ir
     // junto com o vestido, sem cobrar à parte, e ainda assim precisa entrar no
     // contrato para ser contado no dia. Para os outros tipos, zero segue erro.
@@ -595,6 +601,17 @@ export default function OrcamentoDetail() {
     const valor = parseValor(descontoValor) ?? Number.NaN;
     if (!descontoTipo || !Number.isFinite(valor) || valor <= 0) {
       toast({ title: "Informe tipo e valor do desconto", variant: "destructive" });
+      return;
+    }
+    // S-M23: "150" pensando em R$ 150,00 com o tipo em PERCENTUAL zerava o
+    // orçamento em silêncio (o clamp engole >100) — e a versão enviada
+    // congelava R$ 0,00 no hash que a noiva assina.
+    if (descontoTipo === "PERCENTUAL" && valor > 100) {
+      toast({
+        title: "Desconto percentual não passa de 100",
+        description: "Para um valor em reais, troque o tipo para R$.",
+        variant: "destructive",
+      });
       return;
     }
     try {

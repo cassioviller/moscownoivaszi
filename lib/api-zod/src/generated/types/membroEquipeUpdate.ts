@@ -7,6 +7,7 @@
  */
 
 export interface MembroEquipeUpdate {
+  /** @minLength 1 */
   nome?: string;
   perfilId?: string;
   ativo?: boolean;

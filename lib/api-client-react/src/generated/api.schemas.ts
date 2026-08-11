@@ -273,6 +273,7 @@ export interface AtividadeEquipe {
 }
 
 export interface MembroEquipeUpdate {
+  /** @minLength 1 */
   nome?: string;
   perfilId?: string;
   ativo?: boolean;
@@ -402,6 +403,7 @@ export interface AtributoInput {
 }
 
 export interface AtributoUpdate {
+  /** @minLength 1 */
   nome?: string;
   ordem?: number;
   ativo?: boolean;
@@ -414,6 +416,7 @@ export interface AtributoOpcaoInput {
 }
 
 export interface AtributoOpcaoUpdate {
+  /** @minLength 1 */
   valor?: string;
   ordem?: number;
   ativo?: boolean;
@@ -503,6 +506,7 @@ export interface VestidoInput {
   codigo: string;
   /** @minLength 1 */
   nome: string;
+  /** @minimum 0 */
   precoBase: number;
   /** @minimum 0 */
   precoRealuguel?: number;
@@ -523,10 +527,16 @@ export const VestidoUpdateStatus = {
 } as const;
 
 export interface VestidoUpdate {
+  /** @minLength 1 */
   codigo?: string;
+  /** @minLength 1 */
   nome?: string;
+  /** @minimum 0 */
   precoBase?: number;
-  /** @nullable */
+  /**
+     * @minimum 0
+     * @nullable
+     */
   precoRealuguel?: number | null;
   tamanho?: string;
   cor?: string;
@@ -593,6 +603,7 @@ export interface Lead {
   id: string;
   lojaId: string;
   etapa: LeadEtapa;
+  /** @minLength 1 */
   noivaNome: string;
   /** @nullable */
   noivoNome?: string | null;
@@ -946,7 +957,10 @@ export interface ItemEstoqueUpdate {
   tamanho?: string | null;
   /** @minimum 0 */
   quantidade?: number;
-  /** @nullable */
+  /**
+     * @minimum 0
+     * @nullable
+     */
   preco?: number | null;
   ativo?: boolean;
 }
@@ -998,6 +1012,7 @@ export interface CabineInput {
 }
 
 export interface CabineUpdate {
+  /** @minLength 1 */
   nome?: string;
   ativo?: boolean;
 }
@@ -1274,9 +1289,13 @@ export const AjusteUpdateStatus = {
 } as const;
 
 export interface AjusteUpdate {
+  /** @minLength 1 */
   descricao?: string;
   tipo?: AjusteUpdateTipo;
-  /** @nullable */
+  /**
+     * @minimum 0
+     * @nullable
+     */
   custo?: number | null;
   status?: AjusteUpdateStatus;
 }
@@ -1636,6 +1655,7 @@ export interface OrcamentoInput {
   leadId: string;
   atendimentoId?: string;
   descontoTipo?: OrcamentoInputDescontoTipo;
+  /** @minimum 0 */
   descontoValor?: number;
   validade?: string;
   observacoes?: string;
@@ -1661,6 +1681,7 @@ export const OrcamentoUpdateStatus = {
 
 export interface OrcamentoUpdate {
   descontoTipo?: OrcamentoUpdateDescontoTipo;
+  /** @minimum 0 */
   descontoValor?: number;
   validade?: string;
   observacoes?: string;
@@ -1685,13 +1706,16 @@ export interface OrcamentoItemInput {
   ajusteId?: string;
   /** @minLength 1 */
   descricao: string;
+  /** @minimum 0 */
   valorUnitario: number;
+  /** @minimum 1 */
   quantidade?: number;
 }
 
 export interface OrcamentoItemUpdate {
   /** @minLength 1 */
   descricao?: string;
+  /** @minimum 0 */
   valorUnitario?: number;
   /** @minimum 1 */
   quantidade?: number;
@@ -2064,8 +2088,10 @@ export const ContratoInputFormaPagamento = {
 } as const;
 
 export type ContratoInputParcelasItem = {
+  /** @minimum 0 */
   numero: number;
   descricao?: string;
+  /** @minimum 0.01 */
   valorPrevisto: number;
   vencimento: string;
 };
@@ -2078,6 +2104,7 @@ export interface ContratoInput {
   vendedoraId: string;
   cpf?: string;
   vestidoDescricao?: string;
+  /** @minimum 0.01 */
   valorTotal: number;
   formaPagamento?: ContratoInputFormaPagamento;
   dataCasamento?: string;
@@ -2226,6 +2253,7 @@ export interface ContaPagarInput {
   descricao: string;
   categoria?: string;
   fornecedor?: string;
+  /** @minimum 0.01 */
   valorPrevisto: number;
   vencimento: string;
 }
@@ -2333,6 +2361,7 @@ export interface RecorrenciaInput {
   descricao?: string;
   categoria?: string;
   fornecedor?: string;
+  /** @minimum 0.01 */
   valor: number;
   diaVencimento: number;
 }
@@ -2342,6 +2371,7 @@ export interface RecorrenciaUpdate {
   descricao?: string;
   categoria?: string;
   fornecedor?: string;
+  /** @minimum 0.01 */
   valor?: number;
   diaVencimento?: number;
   ativo?: boolean;

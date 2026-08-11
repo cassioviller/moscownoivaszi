@@ -48,6 +48,26 @@ const router: IRouter = Router();
  * comparasse com o motivo de perda do lead, encontrava outra história. Sem uso
  * legítimo possível — recusado nunca reenvia nem aprova.
  */
+/**
+ * S-M23 (rodada 2, achado 1#2): o clamp de `liquidoEmCentavos` engole qualquer
+ * percentual acima de 100 — "150" digitado pensando em R$ 150,00 zerava o
+ * orçamento em silêncio, a versão ENVIADA congelava R$ 0,00 no snapshot E no
+ * hash, e o aceite da noiva assinava zero. Desconto de mais de 100% não é
+ * desconto, é erro de digitação — e a borda é quem o diz.
+ */
+function recusaDescontoPercentual(
+  tipo: string | undefined | null,
+  valor: number | undefined | null,
+): { error: string; detalhe: string } | null {
+  if (tipo === "PERCENTUAL" && typeof valor === "number" && valor > 100) {
+    return {
+      error: "DESCONTO_INVALIDO",
+      detalhe: "Desconto percentual não passa de 100 — para um valor em reais, troque o tipo para VALOR.",
+    };
+  }
+  return null;
+}
+
 function recusaConteudoCongelado(status: string): { error: string; detalhe: string } | null {
   if (status === "APROVADO") {
     return {
@@ -226,6 +246,12 @@ router.post("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
     return;
   }
 
+  const descontoInvalido = recusaDescontoPercentual(parsed.data.descontoTipo, parsed.data.descontoValor);
+  if (descontoInvalido) {
+    res.status(422).json(descontoInvalido);
+    return;
+  }
+
   // Quem abriu vem da SESSÃO, nunca do corpo: aceitar um `vendedoraId` do
   // cliente deixava atribuir o orçamento (e a comissão que nasce dele) a
   // outra pessoa — mesma regra do vendedorId da cobrança.
@@ -303,6 +329,17 @@ router.patch("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise
       res.status(422).json(recusa);
       return;
     }
+  }
+
+  // S-M23: o par EFETIVO (o que fica valendo depois do PATCH) é o que se valida
+  // — mandar só o tipo PERCENTUAL com um valor antigo de 150 é o mesmo erro.
+  const descontoInvalido = recusaDescontoPercentual(
+    parsed.data.descontoTipo ?? existente.descontoTipo,
+    parsed.data.descontoValor ?? existente.descontoValor,
+  );
+  if (descontoInvalido && (parsed.data.descontoTipo !== undefined || parsed.data.descontoValor !== undefined)) {
+    res.status(422).json(descontoInvalido);
+    return;
   }
 
   const virandoAprovado = parsed.data.status === "APROVADO" && existente.status !== "APROVADO";

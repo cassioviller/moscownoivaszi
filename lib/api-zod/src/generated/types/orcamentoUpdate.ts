@@ -10,6 +10,7 @@ import type { OrcamentoUpdateStatus } from './orcamentoUpdateStatus';
 
 export interface OrcamentoUpdate {
   descontoTipo?: OrcamentoUpdateDescontoTipo;
+  /** @minimum 0 */
   descontoValor?: number;
   validade?: Date;
   observacoes?: string;

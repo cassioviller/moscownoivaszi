@@ -15,6 +15,7 @@ export interface ContaPagarInput {
   descricao: string;
   categoria?: string;
   fornecedor?: string;
+  /** @minimum 0.01 */
   valorPrevisto: number;
   vencimento: Date;
 }

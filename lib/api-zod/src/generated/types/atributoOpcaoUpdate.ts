@@ -7,6 +7,7 @@
  */
 
 export interface AtributoOpcaoUpdate {
+  /** @minLength 1 */
   valor?: string;
   ordem?: number;
   ativo?: boolean;

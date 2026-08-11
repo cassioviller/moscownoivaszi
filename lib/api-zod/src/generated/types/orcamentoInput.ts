@@ -11,6 +11,7 @@ export interface OrcamentoInput {
   leadId: string;
   atendimentoId?: string;
   descontoTipo?: OrcamentoInputDescontoTipo;
+  /** @minimum 0 */
   descontoValor?: number;
   validade?: Date;
   observacoes?: string;

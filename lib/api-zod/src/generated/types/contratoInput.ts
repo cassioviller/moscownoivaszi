@@ -16,6 +16,7 @@ export interface ContratoInput {
   vendedoraId: string;
   cpf?: string;
   vestidoDescricao?: string;
+  /** @minimum 0.01 */
   valorTotal: number;
   formaPagamento?: ContratoInputFormaPagamento;
   dataCasamento?: Date;
