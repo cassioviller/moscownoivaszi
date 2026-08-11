@@ -14,8 +14,8 @@ projetos**.
 | Épico | Tese | Faixa | Estado |
 |---|---|---|---|
 | ~~**E158**~~ | ~~`contratos.ts`: toda guarda relê sob a tranca, e o duplicado morre no banco~~ | A | ✅ `09d65d8` · [relatório](execucao/E158.md) |
-| E159 | `reservas.ts`: as quatro portas sem tranca, e o estado terminal em todas | A | ⏳ próximo |
-| E160 | orçamento e aceite: o CAS entra na tranca | A | ⏳ |
+| ~~**E159**~~ | ~~`reservas.ts`: as quatro portas sem tranca, e o estado terminal em todas~~ | A | ✅ `HASH_E159` · [relatório](execucao/E159.md) |
+| E160 | orçamento e aceite: o CAS entra na tranca | A | ⏳ próximo |
 | E161 | agenda: o eixo da vendedora, e o PATCH que pula a recusa | A | ⏳ |
 | E162 | o aceite ganha um caminho até o contrato (**o épico-bandeira**) | B | ⏳ |
 | E163 | as guardas que se desligam no nulo | B | ⏳ |
@@ -41,7 +41,10 @@ commit** do épico que as viu.
 |---|---|---|---|---|
 | S-O1 | `PARCELAS_RENUMERADAS` não entrou em `ACOES_FILTRAVEIS` (`moscow-noivas/src/lib/financeiro/auditoria.ts:66`) — o select da trilha não a oferece. A lista já era curada e incompleta (`RESERVA_CANCELADA` também está fora): é a mesma dívida com um item a mais, não regressão do E158 | 🔵 | E158 | aberta |
 | S-O2 | O 23505 do `contratos_lead_ativo_unico` vindo de porta que não seja o `POST /contratos` sai como `REGISTRO_DUPLICADO` genérico — o K9 um nível acima: `erros.ts:181-185` não traduz índice por índice | 🔵 | E158 | aberta |
-| S-O3 | O orval **perde o `integer`** do spec ao gerar o zod: `openapi.yaml:6279` declara `type: integer` e o gerado é `zod.number().min(1).max(360)`. O `numParcelas` foi fechado na rota (P5), mas a CLASSE não foi varrida — e ela não é greppável pelo spec. Material para o E171 | 🟡 | E158 | aberta |
+| S-O3 | O gerador de zod **perde restrições do spec**, e já custou dois achados: o `integer` de `numParcelas` (P5, `openapi.yaml:6279` → `zod.number().min(1).max(360)`) e a coerção de `null` em `zod.coerce.date()`, que devolve 1970 com `success: true` (V12). Os dois foram fechados na rota; a CLASSE não foi varrida, e ela não é greppável pelo spec. Material para o E171 | 🟡 | E158, E159 | aberta |
+| S-O4 | **R6** — o PATCH de reserva propaga `casamentoData` sem perguntar aos contratos ATIVOS. O PDF e o portal seguem dizendo 10/05, a janela fica livre para outra noiva, e o `PATCH /contratos` responde "mude a reserva primeiro" — a reserva que já mudou. **Não está em épico nenhum do plano** | 🟡 | E159 | aberta |
+| S-O5 | **R8** — o soft-cancel de bloqueio não toca em `atendimentos`: a prova segue AGENDADA apontando bloqueio cancelado, a peça é alugada para outra e sai na retirada, e a noiva chega para a prova sem vestido. Confirma o A05.2. **Não está em épico nenhum do plano** | 🟡 | E159 | aberta |
+| S-O6 | `contarHistoria` e `cobrancaViva` recebem o executor como `typeof db` com cast — o tipo de transação do drizzle não é atribuível ao do pool. `DbExecutor` (`disponibilidade.ts`) resolveria os dois | 🔵 | E159 | aberta |
 
 ## O que herda das trilhas anteriores
 

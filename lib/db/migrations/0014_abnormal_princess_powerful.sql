@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "contratos_lead_ativo_unico" ON "contratos" USING btree ("lead_id") WHERE "contratos"."status" = 'ATIVO';

@@ -59,6 +59,44 @@ class ReservaPresaAContrato extends Error {
   }
 }
 
+/**
+ * E159 — A ORDEM DAS TRANCAS, a mesma que `contratos.ts:521-532` estabelece:
+ *
+ *     linha-pai da rota (lead · reserva · avaria) → contrato → parcelas
+ *       → bloqueios (ORDENADOS por id) → vestidos (ORDENADOS por id)
+ *
+ * Os bloqueios vão ordenados porque `POST /contratos` também os tranca: sem
+ * ordem comum, um cancelamento de reserva segurando b1 e esperando b2, e um
+ * contrato segurando b2 e esperando b1, se matariam em ciclo em vez de fila.
+ */
+
+/**
+ * V12 — `casamentoData: null` virava **01/01/1970**, e o zod dizia que estava bom.
+ *
+ * `zod.coerce.date()` chama `new Date(null)`, que é uma data VÁLIDA (a época
+ * Unix): `UpdateReservaBody.safeParse({ casamentoData: null })` devolve
+ * `success: true` com `1970-01-01T00:00:00.000Z` — medido. O `.optional()` só
+ * curto-circuita em `undefined`, nunca em `null`.
+ *
+ * O estrago: o casamento some da lente "Reservas" (que recorta por data futura)
+ * e reaparece sob "janeiro de 1970", com o vestido LIVRE no calendário para a
+ * data real — outra noiva o reserva sem conflito nenhum.
+ *
+ * A guarda mora aqui e não no schema porque o zod é GERADO a partir do
+ * `openapi.yaml`: editar o arquivo gerado seria apagado na próxima geração, e
+ * o spec não tem como dizer "aceite a chave, recuse o valor nulo". A régua é
+ * olhar o corpo CRU, antes da coerção.
+ */
+function mandouDataNula(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as Record<string, unknown>).casamentoData === null;
+}
+
+const ERRO_DATA_NULA = {
+  error: "DATA_DE_CASAMENTO_INVALIDA",
+  detalhe: "A data do casamento não pode ser vazia — é ela que decide quando o vestido fica reservado.",
+  campos: [{ campo: "casamentoData", motivo: "Informe a data do casamento" }],
+};
+
 // Reservas
 router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -76,6 +114,12 @@ router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
 
 router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  // V12: a mesma armadilha do PATCH, e aqui o campo é OBRIGATÓRIO — o que a
+  // torna pior: a reserva NASCIA em 1970, sem nunca ter tido data.
+  if (mandouDataNula(req.body)) {
+    res.status(422).json(ERRO_DATA_NULA);
+    return;
+  }
   const parsed = CreateReservaBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
@@ -101,6 +145,12 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
 
 router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<void> => {
   const { lojaId, reservaId } = req.params as { lojaId: string; reservaId: string };
+  // V12: `casamentoData: null` atravessava o zod como 01/01/1970 e a reserva
+  // sumia da lente de datas futuras, com o vestido livre na data real.
+  if (mandouDataNula(req.body)) {
+    res.status(422).json(ERRO_DATA_NULA);
+    return;
+  }
   const parsed = UpdateReservaBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
@@ -115,7 +165,9 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
     return;
   }
 
-  // Mudança de status só por caminho válido da máquina de estados.
+  // A guarda rápida FICA: ela dá o 422 certo sem custo de transação para o
+  // caminho errado. O que muda (R4/V10) é que ela deixou de ser a última
+  // palavra — a reconferência sob tranca está lá dentro.
   if (dados.status && !transicaoReservaValida(reserva.status, dados.status)) {
     res.status(422).json({
       error: "TRANSICAO_INVALIDA",
@@ -127,7 +179,31 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
   const hoje = new Date();
 
   try {
-    await db.transaction(async (tx) => {
+    const desfecho = await db.transaction(async (tx) => {
+      /**
+       * R4/V10 — o PATCH era a ÚNICA rota de escrita do módulo que não trancava
+       * nada, e a máquina de estados era validada fora da transação.
+       *
+       * `CANCELADA` é terminal (`TRANSICOES_RESERVA.CANCELADA = []`) e ainda
+       * assim virava CONCLUIDA: duas requisições leem CONFIRMADA no pool, as
+       * duas passam pela guarda acima, a primeira cancela e solta os vestidos,
+       * a segunda grava CONCLUIDA por cima. **A reserva fica CONCLUIDA com
+       * todos os vestidos soltos e uma trilha dizendo que ela foi cancelada** —
+       * a peça anunciada livre para outra noiva enquanto a ficha diz que a
+       * reserva foi concluída com sucesso.
+       *
+       * A releitura sob `FOR UPDATE` refaz a MESMA pergunta da guarda rápida.
+       * É a régua da S-M24 — estado terminal é terminal em toda porta — que
+       * esta porta não tinha.
+       */
+      const [sobTranca] = await tx.select().from(reservasTable)
+        .where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)))
+        .for("update");
+      if (!sobTranca) return { sumiu: true as const };
+      if (dados.status && !transicaoReservaValida(sobTranca.status, dados.status)) {
+        return { transicaoInvalida: sobTranca.status };
+      }
+
       await tx.update(reservasTable)
         .set({
           status: dados.status,
@@ -154,6 +230,28 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             isNull(bloqueioVestidosTable.canceladoEm),
           ));
         if (bloqueiosDaReserva.length > 0) {
+          /**
+           * R1 — a contagem de contratos ATIVOS que a S-M24 pôs aqui rodava
+           * SEM tranca nas linhas de bloqueio.
+           *
+           * O `POST /contratos` tranca b1 (`contratos.ts:543`) e commita no
+           * meio; este cancelamento, que já tinha lido zero, grava
+           * `canceladoEm` por cima. **Medido:** contrato ATIVO de R$ 5.000,00
+           * cobrando as 9 parcelas com o vestido solto de volta ao mercado —
+           * o bloqueio soft-cancelado sai da disponibilidade
+           * (`disponibilidade.ts:409`) E do EXCLUDE do banco
+           * (`WHERE cancelado_em IS NULL`), então outra noiva reserva a MESMA
+           * peça para a MESMA data. A dupla promessa só aparece na retirada.
+           *
+           * A tranca vai ORDENADA por id — a mesma ordem do `POST /contratos`,
+           * porque as duas portas disputam as mesmas linhas.
+           */
+          for (const b of [...bloqueiosDaReserva].sort((x, y) => (x.id < y.id ? -1 : 1))) {
+            await tx.select({ id: bloqueioVestidosTable.id })
+              .from(bloqueioVestidosTable)
+              .where(eq(bloqueioVestidosTable.id, b.id))
+              .for("update");
+          }
           const presos = await tx.select({ contratoId: contratoBloqueiosTable.contratoId })
             .from(contratoBloqueiosTable)
             .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
@@ -185,10 +283,10 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             eq(bloqueioVestidosTable.reservaId, reserva.id),
             isNull(bloqueioVestidosTable.canceladoEm),
           ));
-        return;
+        return { ok: true as const };
       }
 
-      if (dados.casamentoData === undefined) return;
+      if (dados.casamentoData === undefined) return { ok: true as const };
 
       // Reserva é a fonte da verdade da data operacional → propaga a nova
       // data a todos os bloqueios vinculados, revalidando cada um.
@@ -197,6 +295,26 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
           eq(bloqueioVestidosTable.reservaId, reserva.id),
           isNull(bloqueioVestidosTable.canceladoEm),
         ));
+
+      /**
+       * R3 — a propagação de data revalidava SEM `FOR UPDATE` no vestido.
+       *
+       * O `POST /bloqueios` (`:493`) e o `PATCH /bloqueios` (`:604`) trancam a
+       * linha do VESTIDO justamente porque a verificação precisa enxergar os
+       * criadores concorrentes; esta porta refazia a mesma verificação sem a
+       * mesma tranca. E o EXCLUDE do banco não cobre o buraco: ele só compara
+       * envelopes FÍSICOS, então o par PROVA×FÍSICA que `conflitos()` acusa
+       * — a prova da noiva A dentro do uso da noiva B — passa sem 23P01.
+       *
+       * A tranca vai ORDENADA por `vestidoId`: uma reserva com duas peças e
+       * outra com as mesmas duas em ordem inversa se serializariam em deadlock.
+       * Ordenar aqui basta porque as portas irmãs trancam um vestido só.
+       */
+      for (const vestidoId of [...new Set(vinculados.map((b) => b.vestidoId))].sort()) {
+        await tx.select({ id: vestidosTable.id }).from(vestidosTable)
+          .where(eq(vestidosTable.id, vestidoId))
+          .for("update");
+      }
 
       for (const bloqueio of vinculados) {
         const candidato: BloqueioJanelasInput = {
@@ -231,7 +349,23 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
           })
           .where(eq(bloqueioVestidosTable.id, bloqueio.id));
       }
+      return { ok: true as const };
     });
+
+    if ("sumiu" in desfecho) {
+      res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva não existe nesta loja." });
+      return;
+    }
+    // R4/V10: perder a corrida dá o MESMO 422 da guarda rápida, com o status
+    // que o VENCEDOR deixou — a frase diz de onde para onde não dá, e é essa a
+    // informação que falta para a pessoa entender que alguém mexeu antes dela.
+    if ("transicaoInvalida" in desfecho) {
+      res.status(422).json({
+        error: "TRANSICAO_INVALIDA",
+        detalhe: `Reserva não pode ir de ${desfecho.transicaoInvalida} para ${dados.status}`,
+      });
+      return;
+    }
   } catch (err) {
     if (err instanceof ConflitoDisponibilidadeError) {
       res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: err.conflitos });
@@ -283,38 +417,58 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
     .where(eq(bloqueioVestidosTable.reservaId, reservaId));
   const bloqueioIds = bloqueios.map((b) => b.id);
 
-  const [avarias, vinculosAtivos, atendimentos] = await Promise.all([
-    bloqueioIds.length
-      ? db.select({ id: avariasTable.id }).from(avariasTable)
-          .where(inArray(avariasTable.bloqueioId, bloqueioIds))
-      : Promise.resolve([]),
-    bloqueioIds.length
-      ? db.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
-          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
-          .where(and(
-            inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
-            eq(contratosTable.status, "ATIVO"),
-          ))
-      : Promise.resolve([]),
-    // Atendimento não aponta para a reserva: ele chega a ela pelo bloqueio
-    // (`atendimentos.bloqueio_id`), e é por esse caminho que a cascata o leva.
-    bloqueioIds.length
-      ? db.select({ id: atendimentosTable.id }).from(atendimentosTable)
-          .where(inArray(atendimentosTable.bloqueioId, bloqueioIds))
-      : Promise.resolve([]),
-  ]);
+  /**
+   * V13 — o DELETE de reserva ignorava a coluna legada que o DELETE irmão conta
+   * DE PROPÓSITO.
+   *
+   * `DELETE /bloqueios` (`:674`) conta `contratos.bloqueio_vestido_id` além do
+   * N:N, com o comentário dizendo por quê: a coluna singular é LIDA em produção
+   * (portal, PDF), e um contrato ATIVO pendurado nela segura o bloqueio do
+   * mesmo jeito. Este DELETE, um nível acima e com cascata mais funda, não a
+   * contava. **O contrato ficava com o vínculo nulo (`set null` da FK) e as
+   * parcelas seguiam sendo cobradas sobre um vestido que voltou ao mercado.**
+   */
+  const contarHistoria = async (executor: typeof db, ids: string[]) =>
+    ids.length === 0
+      ? { avarias: 0, contratosAtivos: 0, atendimentos: 0 }
+      : await Promise.all([
+          executor.select({ id: avariasTable.id }).from(avariasTable)
+            .where(inArray(avariasTable.bloqueioId, ids)),
+          executor.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
+            .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
+            .where(and(
+              inArray(contratoBloqueiosTable.bloqueioId, ids),
+              eq(contratosTable.status, "ATIVO"),
+            )),
+          executor.select({ id: contratosTable.id }).from(contratosTable)
+            .where(and(
+              inArray(contratosTable.bloqueioVestidoId, ids),
+              eq(contratosTable.status, "ATIVO"),
+            )),
+          // Atendimento não aponta para a reserva: ele chega a ela pelo
+          // bloqueio (`atendimentos.bloqueio_id`), e é por esse caminho que a
+          // cascata o leva.
+          executor.select({ id: atendimentosTable.id }).from(atendimentosTable)
+            .where(inArray(atendimentosTable.bloqueioId, ids)),
+        ]).then(([av, vinc, legado, at]) => ({
+          avarias: av.length,
+          contratosAtivos: vinc.length + legado.length,
+          atendimentos: at.length,
+        }));
 
-  if (avarias.length + vinculosAtivos.length + atendimentos.length > 0) {
+  const historia = await contarHistoria(db, bloqueioIds);
+
+  if (historia.avarias + historia.contratosAtivos + historia.atendimentos > 0) {
     res.status(409).json({
       error: "RESERVA_COM_HISTORICO",
       detalhe:
         "Esta reserva carrega história que sumiria junto: " +
-        `${vinculosAtivos.length} contrato(s) ativo(s) preso(s) ao vestido, ` +
-        `${avarias.length} avaria(s) registrada(s) e ${atendimentos.length} atendimento(s)/prova(s). ` +
+        `${historia.contratosAtivos} contrato(s) ativo(s) preso(s) ao vestido, ` +
+        `${historia.avarias} avaria(s) registrada(s) e ${historia.atendimentos} atendimento(s)/prova(s). ` +
         "Cancele os bloqueios (soft-cancel) em vez de apagar a reserva.",
-      contratosAtivos: vinculosAtivos.length,
-      avarias: avarias.length,
-      atendimentos: atendimentos.length,
+      contratosAtivos: historia.contratosAtivos,
+      avarias: historia.avarias,
+      atendimentos: historia.atendimentos,
     });
     return;
   }
@@ -330,22 +484,30 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
     await tx.select({ id: reservasTable.id }).from(reservasTable)
       .where(eq(reservasTable.id, reservaId))
       .for("update");
-    if (bloqueioIds.length) {
-      const [avariasAgora, vinculosAgora, atendimentosAgora] = await Promise.all([
-        tx.select({ id: avariasTable.id }).from(avariasTable)
-          .where(inArray(avariasTable.bloqueioId, bloqueioIds)),
-        tx.select({ id: contratoBloqueiosTable.contratoId }).from(contratoBloqueiosTable)
-          .innerJoin(contratosTable, eq(contratosTable.id, contratoBloqueiosTable.contratoId))
-          .where(and(
-            inArray(contratoBloqueiosTable.bloqueioId, bloqueioIds),
-            eq(contratosTable.status, "ATIVO"),
-          )),
-        tx.select({ id: atendimentosTable.id }).from(atendimentosTable)
-          .where(inArray(atendimentosTable.bloqueioId, bloqueioIds)),
-      ]);
-      if (avariasAgora.length + vinculosAgora.length + atendimentosAgora.length > 0) {
-        return { corrida: true as const };
-      }
+    /**
+     * R2/V8 — a recontagem usava o `bloqueioIds` lido no POOL, e por isso não
+     * recontava nada.
+     *
+     * O `FOR UPDATE` acima tranca a RESERVA; o `POST /bloqueios` tranca a linha
+     * do **VESTIDO** (`:493`) e nunca a da reserva — então o bloqueio nascido
+     * na janela não conflita com esta tranca, não aparece na lista velha, e
+     * `if (bloqueioIds.length)` pulava a recontagem INTEIRA quando a lista
+     * estava vazia. O `ON DELETE CASCADE` o levava junto: **a API responde 201
+     * para quem criou e 204 para quem apagou**, e a auditoria grava
+     * `bloqueios: 0`.
+     *
+     * A lista é relida DENTRO da transação. Ela é o que a recontagem enumera e
+     * o que a trilha declara — as duas passam a falar do mesmo conjunto.
+     */
+    const idsAgora = (await tx
+      .select({ id: bloqueioVestidosTable.id })
+      .from(bloqueioVestidosTable)
+      .where(eq(bloqueioVestidosTable.reservaId, reservaId))
+    ).map((b) => b.id);
+
+    const agora = await contarHistoria(tx as unknown as typeof db, idsAgora);
+    if (agora.avarias + agora.contratosAtivos + agora.atendimentos > 0) {
+      return { corrida: true as const };
     }
     // ANTES do delete: depois dele não há linha de onde reconstituir.
     await registrarAuditoria(tx, {
@@ -354,7 +516,7 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
       acao: "RESERVA_REMOVIDA",
       entidade: "reserva",
       entidadeId: reservaId,
-      detalhe: { leadId: reserva.leadId, casamentoData: reserva.casamentoData, bloqueios: bloqueioIds.length },
+      detalhe: { leadId: reserva.leadId, casamentoData: reserva.casamentoData, bloqueios: idsAgora.length },
     });
     await tx.delete(reservasTable).where(and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)));
     return { ok: true as const };
@@ -450,6 +612,32 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
   if (dados.reservaId && !(await reservaNaLoja(dados.reservaId, lojaId))) {
     res.status(422).json({ error: "REFERENCIA_INVALIDA", detalhe: "reserva não é desta loja" });
     return;
+  }
+  /**
+   * R7 — o POST aceitava pendurar um bloqueio numa reserva CANCELADA.
+   *
+   * `reservaNaLoja` prova a LOJA e para aí. O bloqueio nascia num estado que o
+   * sistema lê de dois jeitos opostos: **invisível para a disponibilidade**
+   * (o PATCH que cancelou a reserva soft-cancela os bloqueios dela, mas este
+   * nasceu depois e fica vivo apontando uma reserva morta) e **visível para o
+   * EXCLUDE** do banco. A tela mostra o vestido livre, a vendedora tenta
+   * reservá-lo para a próxima noiva, e o INSERT morre em 23P01 com um 409 que
+   * não diz qual reserva está no caminho — sem saída a não ser apagar na mão.
+   *
+   * A S-M24 mandou estado terminal ser terminal em TODA porta. Esta ficou de
+   * fora da enumeração dela.
+   */
+  if (dados.reservaId) {
+    const [reservaMae] = await db.select({ status: reservasTable.status }).from(reservasTable)
+      .where(and(eq(reservasTable.id, dados.reservaId), eq(reservasTable.lojaId, lojaId)));
+    if (reservaMae?.status === "CANCELADA") {
+      res.status(422).json({
+        error: "RESERVA_CANCELADA",
+        detalhe: "Esta reserva foi cancelada — não dá para pendurar um vestido nela. Abra uma reserva nova.",
+        campos: [{ campo: "reservaId", motivo: "A reserva está cancelada" }],
+      });
+      return;
+    }
   }
 
   if (dados.tipo === "RESERVA_CASAMENTO" && !dados.casamentoData) {
@@ -779,8 +967,8 @@ class AvariaJaCobrada extends Error {}
  * o próprio schema já dizia isto: "removida a parcela pelo caminho legítimo, a
  * avaria e a foto ficam, e o reparo volta a ser cobrável".
  */
-async function cobrancaViva(parcelaId: string): Promise<boolean> {
-  const [parcela] = await db
+async function cobrancaViva(parcelaId: string, executor: typeof db = db): Promise<boolean> {
+  const [parcela] = await executor
     .select({ status: parcelasTable.status })
     .from(parcelasTable)
     .where(eq(parcelasTable.id, parcelaId));
@@ -942,7 +1130,31 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
   }
 
   const parcelaId = randomUUID();
-  await db.transaction(async (tx) => {
+  const desfecho = await db.transaction(async (tx) => {
+    /**
+     * R9/V11 — o contrato era lido no POOL e a parcela nascia depois.
+     *
+     * `contratoAtivoDaLoja` (`:907`) roda fora desta transação. O cancelamento
+     * em massa do contrato passa no meio, e a parcela de **R$ 480,00** nasce
+     * FORA dele: contrato CANCELADO com parcela viva no carnê, no aging e no
+     * extrato do portal da noiva — cobrança de uma venda que não existe.
+     *
+     * A mesma tranca fecha o V11: sem ela, duas cobranças simultâneas liam o
+     * mesmo `max(numero)` e colidiam na UNIQUE (contratoId, numero). A
+     * perdedora lia **"Já existe um registro com estes dados"**, que se lê como
+     * *já cobrei este reparo* — a vendedora para de tentar e **os R$ 500,00 da
+     * segunda avaria nunca entram**. Sob a tranca os números saem em série e a
+     * colisão deixa de existir, em vez de virar mensagem.
+     *
+     * A ordem é a do módulo: contrato → parcelas.
+     */
+    const [contratoSobTranca] = await tx
+      .select({ status: contratosTable.status })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, parsed.data.contratoId), eq(contratosTable.lojaId, lojaId as string)))
+      .for("update");
+    if (contratoSobTranca?.status !== "ATIVO") return { contratoNaoAtivo: true as const };
+
     /**
      * E110 — o próximo número LIVRE, nunca o 0.
      *
@@ -1001,10 +1213,16 @@ router.post("/lojas/:lojaId/avarias/:avariaId/cobrar", requireModulo("vestidos",
       ))
       .returning();
     if (!marcada) throw new AvariaJaCobrada();
+    return { ok: true as const };
   }).catch((err) => {
-    if (err instanceof AvariaJaCobrada) return;
+    if (err instanceof AvariaJaCobrada) return { jaCobrada: true as const };
     throw err;
   });
+
+  if (desfecho && "contratoNaoAtivo" in desfecho) {
+    res.status(422).json({ error: "CONTRATO_NAO_ATIVO", detalhe: "Contrato não está ativo" });
+    return;
+  }
 
   const depois = await db.query.avariasTable.findFirst({ where: eq(avariasTable.id, avaria.id) });
   if (depois?.parcelaId !== parcelaId) {
@@ -1044,7 +1262,29 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
   }
   // E115: destruir a foto-prova de um dano agora deixa rastro — era o único
   // DELETE do módulo com guarda e sem trilha.
-  await db.transaction(async (tx) => {
+  const resultado = await db.transaction(async (tx) => {
+    /**
+     * V15 — este era o ÚNICO DELETE do arquivo sem `FOR UPDATE`.
+     *
+     * A guarda de `cobrancaViva` roda no pool; entre ela e o delete cabe o
+     * `POST /avarias/:id/cobrar` inteiro. A avaria some enquanto a cobrança
+     * nasce, e sobra **parcela viva de R$ 1.500,00 sem foto, sem descrição e
+     * sem avaria que a sustente** — o cenário literal que o cabeçalho do
+     * E97/F23 logo acima diz existir para impedir. A FK é `set null`, então
+     * nem o banco reclama.
+     *
+     * `FOR UPDATE` na linha da avaria + releitura do `parcelaId` DENTRO da
+     * transação: o `cobrar` toma a mesma linha no `UPDATE avarias SET
+     * parcela_id`, então a tranca os serializa.
+     */
+    const [sobTranca] = await tx.select({ parcelaId: avariasTable.parcelaId })
+      .from(avariasTable)
+      .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)))
+      .for("update");
+    if (!sobTranca) return { sumiu: true as const };
+    if (sobTranca.parcelaId && (await cobrancaViva(sobTranca.parcelaId, tx as unknown as typeof db))) {
+      return { comCobranca: true as const };
+    }
     await registrarAuditoria(tx, {
       lojaId: lojaId as string,
       usuario: req.usuario!,
@@ -1061,7 +1301,19 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
     await tx
       .delete(avariasTable)
       .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)));
+    return { ok: true as const };
   });
+  if ("sumiu" in resultado) {
+    res.status(404).json({ error: "AVARIA_NAO_ENCONTRADA", detalhe: "Esta avaria não existe nesta loja." });
+    return;
+  }
+  if ("comCobranca" in resultado) {
+    res.status(409).json({
+      error: "AVARIA_COM_COBRANCA",
+      detalhe: "Esta avaria acabou de virar parcela do contrato — remova a parcela antes.",
+    });
+    return;
+  }
   res.status(204).send();
 });
 
