@@ -26,10 +26,20 @@ para o documento que manda.
    (a tabela do `EXECUCAO.md` da trilha é a fila; **conte, não deduza**). O
    maior fecho: o E162 abriu o caminho aceite → fila → reserva inline →
    contrato que NENHUM teste cruzava, e o beco do APROVADO terminal ganhou a
-   porta gerencial. **A Faixa C está pela metade**: E164 (`0eeb297`), E165
-   (`784dd3c`) e E166 (`3af3064`) fechados — o E166 fez nascer o **primeiro
-   E2E do caminho público**, que era ZERO enquanto o lado da loja tinha 165.
-   Restam **E167–E169** (paralelizáveis) e a Faixa D (E170–E171, as réguas).
+   porta gerencial. **A Faixa C está EXECUTADA**: E164 (`0eeb297`), E165
+   (`784dd3c`), E166 (`3af3064`), E167 (`8b12b0d`), E168 (`4db042d`) e E169
+   (`fe8afdd`). O E166 fez nascer o **primeiro E2E do caminho público**, que
+   era ZERO enquanto o lado da loja tinha 165. **Os três últimos rodaram em
+   PARALELO**, um agente por épico em worktree próprio, ~50 min de relógio, e
+   os três `cherry-pick` entraram sem um único conflito — inclusive no
+   `openapi.yaml`, que dois editaram (codegen re-rodado sobre o spec fundido:
+   zero drift). Duas lições do paralelo, e as duas são do integrador: a
+   **numeração de sobras colide** (os três reservaram faixas de S-O que se
+   atropelaram), e **vermelho de worktree não é vermelho** — os três
+   relataram o mesmo `backup-download-api.test.ts` reprovando, um deles como
+   🟠, e no `main` ele passa: `res.download` recusa caminho com componente
+   oculto, e todo worktree vive sob `.claude/`. Resta a **Faixa D** (E170–E171,
+   as réguas).
 
    A trilha anterior — `2026-08-10-revisao-max/` — está de pé como história:
    a revisão `max` do aplicativo inteiro (68 agentes, 5,58 M tokens) sobre um
@@ -70,7 +80,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EM CURSO — 149 achados em 14 épicos (E158–E171). Faixas A e B executadas (E158–E163) e a C pela metade (E164–E166); restam E167–E169 e a D (E170–E171), mais as sobras S-O da tabela do `EXECUCAO.md`** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EM CURSO — 149 achados em 14 épicos (E158–E171). Faixas A, B e **C executadas** (E158–E169); resta a D (E170–E171), mais as sobras S-O da tabela do `EXECUCAO.md`** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). Restam 2 🟡: **S-M10 foi absorvida pelo E169 da trilha nova**; S-M17 espera dados de banco real |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -115,8 +125,8 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1200 · frontend 536 · E2E 168 · typecheck verde em 5
-   projetos — o typecheck passou a incluir os 64 arquivos de `e2e/`** (S-D23,
+   Hoje a régua é **API 1219 · frontend 584 · E2E 171 · typecheck verde em 5
+   projetos — o typecheck passou a incluir os 68 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
    exercita o caminho da primeira execução — banco descartável, seed,

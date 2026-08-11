@@ -60,6 +60,17 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `regra_disponibilidade_loja_id_unique` antes do primeiro spec). Ela guarda e
   devolve o `e2e/.state.json`, então pode rodar no meio de outra coisa. Sobrepor
   o nome do banco: `BANCO_VIRGEM=...`.
+- **A suíte de API tem um teste que só passa no working tree PRINCIPAL**, e
+  três agentes já o relataram como defeito. `backup-download-api.test.ts`
+  ("baixa o dump de um backup ok") reprova em **todo worktree** com
+  `expected 200 "OK", got 500` e `NotFoundError` do `send` — porque
+  `res.download` **recusa caminho que tenha componente oculto**, e todo worktree
+  de agente vive sob `.claude/worktrees/`. Medido com uma sonda de duas linhas:
+  caminho limpo → **200**, o mesmo arquivo sob `.claude/` → **404
+  NotFoundError**. Não é regressão e não afeta produção (o servidor não roda sob
+  dotfile). **Quem trabalha em worktree confere este arquivo no `main` antes de
+  chamá-lo de vermelho** — a regra 18 manda parar por vermelho de verdade, e
+  este não é um.
 - **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
   `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
   ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —
@@ -370,6 +381,59 @@ rode o codegen.
   trabalho de outra loja (`REFERENCIA_INVALIDA`), ajuste comum ou confecção
   ainda pendente (`CONFECCAO_INVALIDA`). Apagar o trabalho da fila **não** apaga
   a peça: perde-se a proveniência, não o acervo.
+- **A avaria fecha (E167).** A foto de avaria tem parser próprio de 4 MB em
+  `app.ts`, montado como o da foto de vestido (gate antes do parser, parser
+  antes do global): a foto de celular de 1,5 MB **entra**, e o teto de 2 MiB
+  passa a ser cobrado pelo 422 `FOTO_MUITO_GRANDE` em vez do 413 do parser — o
+  limite anterior era 19,5× menor que uma foto real. O `GET` e o `PATCH` de um
+  bloqueio devolvem **`donoLeadId`** (o `lead_id` próprio, ou o da reserva-mãe
+  quando ele é nulo), que é a mesma régua com que `POST /avarias/:id/cobrar`
+  decide de quem é o reparo: a ficha da reserva acha o contrato por ele e passa
+  a oferecer a cobrança nos bloqueios sem noiva própria. O payload da avaria
+  carrega **`parcelaStatus`** — "cobrado" é cobrança VIVA, e com o contrato
+  cancelado a ficha volta a oferecer "Recobrar reparo" e a remoção, como o
+  servidor sempre aceitou. O diálogo de conferência da devolução só oferece
+  "Registrar avaria" a quem tem `vestidos.criar`; os demais leem qual permissão
+  falta, em vez de um botão que não faz nada.
+- **A agenda fala uma língua só (E168).** O expediente da loja é traduzido em
+  UM lugar — `expedienteDaRegra`, no `@workspace/agenda-core` —, e **uma
+  varredura reprova quem montar a segunda cópia**. Quem segura a cabine também
+  é decisão do núcleo: `seguraOIntervalo` diz que CONCLUIDO e FALTOU **não**
+  bloqueiam sobreposição (a noiva já saiu, ou não veio) e **bloqueiam o
+  instante exato**, porque as duas UNIQUE de `atendimentos` o bloqueiam. A
+  cabine desativada **continua desenhada** na grade e na semana enquanto tiver
+  atendimento, marcada "desativada", e não recebe nada novo; desativar avisa
+  quantos ficam. **Mover o horário derruba `confirmadoEm`, `contatadoEm` e
+  `remarcacaoPedidaEm`** e devolve a noiva à fila "Falta procurar" — trocar
+  cabine ou vendedora não derruba nada, porque a mensagem que ela recebeu não
+  fala de cabine. O `PUT /disponibilidade/regras` recusa expediente impossível
+  (422 `HORARIO_INVALIDO`, 422 `SEM_DIA_DE_FUNCIONAMENTO`) conferindo o valor
+  EFETIVO do upsert, não o corpo: antes um par invertido zerava a grade e a
+  loja recusava as 24 horas do dia sem dizer por quê. E a semana nasce do dia da
+  LOJA (`diaLocal`), como a tela do dia, não do relógio do navegador.
+- **O carnê que perdeu uma parcela se completa (E169).** `DELETE /parcelas/:id`
+  sempre aceitou uma parcela PREVISTA do próprio carnê, e o
+  `POST /contratos/:id/parcelas/gerar-plano` recusava com 409 `JA_TEM_PLANO`
+  para sempre: um contrato de R$ 5.000,00 que perdesse a parcela 10 ficava
+  somando R$ 4.500,00 **sem gesto de volta**. A guarda passou a ser "o carnê
+  FECHA?" em vez de "existe carnê?": faltando, a rota gera as parcelas do
+  FALTANTE, numeradas depois das que existem, sem renumerar nada, com
+  `CARNE_COMPLETADO` na auditoria — e a entrada é recusada ali com 422
+  `ENTRADA_NO_COMPLEMENTO`, porque `numero === 0` significa ENTRADA em seis
+  pontos do sistema. Na tela, o formulário reabre dizendo quanto falta e o botão
+  vira "Completar carnê".
+- **O teto do desconto vale para os dois tipos (E169).** `recusaDeDesconto`, no
+  `financeiro-core`, recusa percentual acima de 100 (S-M23) **e** desconto em
+  reais maior que o bruto dos itens — 422 `DESCONTO_INVALIDO` no
+  `PATCH /orcamentos`, com a mesma frase na tela antes do clique. O
+  `POST /orcamentos` não cobra o teto do VALOR por construção: o corpo de
+  criação não aceita itens, então não há bruto contra o qual comparar.
+- **`PUT /leads/:id/interesse`: `null` APAGA, ausente é "não mexi"** (S-M10, a
+  sobra 🟡 herdada da revisão max). `LeadInteresseInput` admite `null` em
+  `algoAMais`, `naoQuerUsar` e `tetoOrcamento`, e a tela manda `null` quando o
+  campo fica vazio. Limpar o teto de R$ 8.000,00 e salvar **apaga** o teto —
+  antes o campo ausente sumia do `set` do `onConflictDoUpdate`, o valor velho
+  ficava, e o toast dizia sucesso.
 - **Portal da noiva (E78)** — UM link público por noiva (`/noiva/:token`,
   `portal_tokens`, 30 dias **de inatividade**): proposta com aceite (E74),
   lookbook, próximas provas e extrato de parcelas só-leitura, com "falta pagar"
