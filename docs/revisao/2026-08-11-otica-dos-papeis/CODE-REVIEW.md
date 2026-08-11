@@ -413,3 +413,59 @@ varreduras anteriores (S-M7, S-M18/S-M22, S-M24) acertaram o padrão e erraram o
 alcance.** Elas fecharam os sítios que enumeraram; o que ficou de fora da
 enumeração continua aberto, e é sempre no mesmo lugar — a fronteira entre duas
 rotas que mexem na mesma linha.
+
+---
+
+# As 4 fatias do `max` — disparadas em 2026-08-11, base `adf77c8`
+
+Os três alvos de cima fecharam com **30 defeitos**. As quatro fatias rodam agora
+sobre o fluxo inteiro, com o servidor ao lado da tela que fala com ele.
+
+**A instrução que separa esta passada da anterior:** cada fatia foi mandada
+caçar **o vão entre dois arquivos**, não o defeito dentro de um. Está escrito na
+letra de cada prompt — "defeito que mora só dentro de um arquivo já foi
+procurado antes; o que interessa aqui é o vão entre dois". É a regra 22 virada
+em instrução de busca.
+
+| Fatia | Run ID | Script |
+|---|---|---|
+| F1 · orçamento e aceite | `wf_f902dab2-254` | `code-review-wf_f902dab2-254.js` |
+| F2 · contrato e dinheiro | `wf_46e32def-6ea` | `code-review-wf_46e32def-6ea.js` |
+| F3 · reserva e acervo | `wf_e422fb0e-599` | `code-review-wf_e422fb0e-599.js` |
+| F4 · agenda e atendimento | `wf_be4aed57-907` | `code-review-wf_be4aed57-907.js` |
+
+Mesma regra de gravação: a seção de cada fatia é escrita assim que ela termina.
+Retomada por run ID só vale nesta sessão.
+
+## O placar até aqui — 89 achados de duas lentes
+
+| Lente | Achados | Onde |
+|---|---|---|
+| 8 ângulos (ótica de papel) | 59 — 3 🔴, 26 🟠, 23 🟡, 7 🔵 | `achados/01..08` |
+| 3 code reviews `high` | 30 — 26 correção, 4 limpeza | este arquivo |
+| 4 fatias `max` | ⏳ rodando | este arquivo |
+
+**A medida que mais importa para o método:** em cada um dos três alvos, **seis
+dos dez defeitos eram novos** — invisíveis para os oito ângulos. E vários dos que
+se repetiram só ganharam número, exemplo ou causa raiz quando a segunda lente
+passou. Três vezes a mesma proporção não é coincidência: **a ótica de papel e a
+leitura por dentro cobrem áreas diferentes**, e usar uma só teria deixado
+metade do repositório sem olhar.
+
+## O padrão único dos três alvos — e o que ele implica para o conserto
+
+As varreduras anteriores (S-M7, S-M18/S-M22, S-M24) **acertaram o padrão e
+erraram o alcance**. Escolheram a régua certa — relê sob tranca dentro da
+transação; estado terminal é terminal em toda porta — e fecharam os sítios que
+conseguiram enumerar. O que ficou fora da enumeração continua aberto, sempre no
+mesmo lugar: **duas rotas que escrevem na mesma linha, e só uma toma a tranca.**
+
+Consertar caso a caso repete o ciclo pela quarta vez. O que os três relatórios
+sugerem é uma régua **enumerável e verificável por varredura**:
+
+> Toda porta que escreve em `bloqueio_vestidos`, em `reservas` ou em
+> `contratos` toma `FOR UPDATE` na linha do vestido e relê o que vai provar
+> **dentro** da transação — e a varredura que conta as portas roda no CI, não na
+> memória de quem revisa.
+
+Isso é proposta, não decisão: entra no consolidado para a dona decidir.
