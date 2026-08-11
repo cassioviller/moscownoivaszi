@@ -56,7 +56,8 @@ revisão vai atacar de oito ângulos.
 | 0 | Perícia da sessão caída | ✅ feito 04:12 | nada sobreviveu; ver seção acima |
 | 1 | Mapa do fluxo (leitura direta) | ✅ feito 04:15 | as 3 âncoras do gate, acima |
 | 2 | Abertura desta gravação | ✅ feito | este arquivo |
-| 3 | 8 ângulos de achado | ⏳ em curso | `achados/01..08-*.md` |
+| 2b | Este arquivo COMMITADO | ✅ feito | `0deabdd` — a terceira sessão caiu com ele ainda untracked |
+| 3 | 8 ângulos de achado | ✅ os 8 gravaram — 59 achados, 3.926 linhas | `achados/01..08-*.md` |
 | 4 | Verificação âncora por âncora | ⏳ aguarda | `verificacao/*.md` |
 | 5 | Consolidado | ⏳ aguarda | `CONSOLIDADO.md` |
 
