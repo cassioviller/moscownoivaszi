@@ -111,7 +111,10 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   declara o ambiente inteiro (navegador, timezone, viewport, tema, data). As
   env obrigatórias falham alto: o destino das 81 capturas da rodada 7 nasceu
   `undefined/` por env ausente, e o script se perdeu com o scratchpad — este é
-  versionado. Detalhes: `scripts/README.md`.
+  versionado. **A locale do manifest é MEDIDA antes da primeira captura** (E182):
+  o script abre o formulário de noiva nova, lê o placeholder do
+  `<input type=date>` e **para** se não for `dd/mm/aaaa`. Medido em 2026-08-12:
+  78 capturas em 2 min 1 s. Detalhes: `scripts/README.md`.
 - `pnpm --filter @workspace/api-server run backup` — dump do banco inteiro (E30); é o
   comando que o Scheduled Deployment do Replit chama para a rotina agendada. O status
   aparece em Configurações → Administração; dumps caem em `artifacts/api-server/backups/`.
@@ -631,6 +634,32 @@ rode o codegen.
   num filtro de dinheiro. Teste de UI que dependa do formato desses campos
   precisa fixar `--lang` no browser; a captura sem isso mede o navegador, não o
   app.
+- **E `--lang` SOZINHO não fixa nada neste Chromium** (E182, medido em
+  2026-08-12 no `/nix/store/…ungoogled-chromium-138`). São **três lugares**, e
+  os três precisam estar no `launch`: o `locale` do contexto, os args
+  `--lang=pt-BR --accept-lang=pt-BR,pt` e **`LANG=pt_BR.UTF-8` +
+  `LANGUAGE=pt_BR:pt` no `env` do processo**. Com os dois primeiros e sem o
+  terceiro, `/financeiro/receber` desenha o mesmo `2026-08-01` do DOM como
+  **`08/01/2026`** — que um leitor brasileiro lê como 8 de janeiro — e o campo
+  vazio sai `mm/dd/yyyy`. Com os três: `01/08/2026` e `dd/mm/aaaa`.
+- **`navigator.languages` e `Intl` MENTEM sobre isso, e é a armadilha da
+  medição**: os dois respondem o `locale` do CONTEXTO do Playwright — no
+  navegador quebrado acima, os dois diziam `pt-BR` enquanto o campo desenhava
+  `mm/dd/yyyy`. A única leitura que enxerga o defeito é o **shadow DOM da UA**
+  do próprio campo, que nem `getAttribute("placeholder")` nem `innerText`
+  alcançam. O caminho medido, em ~15 linhas: `contexto.newCDPSession(page)` →
+  `DOM.getDocument` → `DOM.querySelector('input[type="date"]')` →
+  `DOM.describeNode` com **`pierce: true`**, juntando os nós de texto na ordem
+  (`dd`,`/`,`mm`,`/`,`aaaa`). Está escrito em `scripts/capturar-telas.ts`
+  (`placeholderDeData`), e é reusável para qualquer conferência de locale de
+  interface.
+- **O navegador do E2E é en-US hoje** (S-O70): o `playwright.config.ts` monta
+  `launchOptions: { executablePath }` e nada mais — nem `--lang`, nem `LANG`,
+  nem `locale` no contexto. Medido com a configuração literal dele:
+  `navigator.languages` = `en-US` e o filtro de `/financeiro/receber` desenhando
+  `08/01/2026 · 08/31/2026`. Os 171 specs, e todo screenshot e trace de falha,
+  saem nessa interface — quem for pregar formato de data em E2E fixa os três
+  lugares antes.
 - **Para navegar o app à mão, o `E2E_API_PROXY` do Vite NÃO serve.** Ele existe
   só para o Playwright (`vite.config.ts:69`, ligado em `playwright.config.ts:59`)
   e devolve **404 em POST** — ou seja, o login não passa por ele e não há como

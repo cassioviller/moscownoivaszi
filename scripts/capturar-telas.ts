@@ -17,7 +17,14 @@
  *      navegador+versão, locale, timezone, viewport, tema, data. A rodada 7
  *      capturou em en-US sem saber, e o E92 provou que `<input type=date>`
  *      renderiza pela locale da INTERFACE do navegador — por isso a locale
- *      aqui é FIXA em pt-BR, no contexto E no `--lang` do Chromium.
+ *      aqui é FIXA em pt-BR, no contexto, no `--lang` do Chromium E no `LANG`
+ *      do processo;
+ *   4. **CONFERE a locale antes da primeira captura** (S-O42/E182), lendo o
+ *      placeholder do `<input type=date>` do formulário de noiva nova. O
+ *      manifest passa a gravar o que foi MEDIDO, não o que se afirma: `--lang`
+ *      sozinho rendia `mm/dd/yyyy` sob um carimbo que dizia pt-BR, e um carimbo
+ *      falso é pior que carimbo nenhum. Sem `dd/mm/aaaa`, o script para antes de
+ *      gastar 90 s produzindo 81 PNGs em en-US.
  *
  * As env vars obrigatórias FALHAM ALTO se faltarem: o diretório das 81
  * nasceu literalmente `undefined/` porque o script antigo interpolava uma
@@ -40,7 +47,7 @@
  *                   neste ambiente o Chromium empacotado não roda (NixOS),
  *                   e o executável vem do /nix/store.
  */
-import { chromium } from "@playwright/test";
+import { chromium, type BrowserContext, type Page } from "@playwright/test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -122,6 +129,129 @@ const VARIANTES = [
 // `defaultTheme="system" enableSystem` (moscow-noivas/src/App.tsx:358), e o
 // contexto novo não tem localStorage — o `colorScheme` do Playwright decide.
 
+// ── a conferência da locale (S-O42/E182): o manifest MEDE, não afirma ──────
+
+/** O que o campo de data tem de desenhar quando a interface está em pt-BR. */
+const PLACEHOLDER_ESPERADO = "dd/mm/aaaa";
+
+/**
+ * A rota do formulário de noiva nova, derivada da loja das rotas do manifest —
+ * é o formulário com `<input type=date>` mais estável do app
+ * (`noiva-form.tsx:236`, `data-testid="input-casamento-data"`), e ele já
+ * responde à mesma sessão que captura as outras 27.
+ */
+const ROTA_DO_FORMULARIO = ((): string | null => {
+  const comLoja = alvos.find((a) => /^\/loja\/[^/]+\//.test(a.rota));
+  const loja = comLoja?.rota.split("/")[2];
+  return loja ? `/loja/${loja}/noivas/nova` : null;
+})();
+
+/** O nó cru do CDP, no mínimo que a leitura do shadow DOM precisa. */
+interface NoDoDom {
+  nodeType: number;
+  nodeValue?: string;
+  children?: NoDoDom[];
+  shadowRoots?: NoDoDom[];
+}
+
+/**
+ * O placeholder do `<input type=date>`, lido do shadow DOM que o navegador
+ * desenha sozinho.
+ *
+ * Ele não está no DOM da página: mora na UA shadow root do campo, e nem
+ * `getAttribute("placeholder")` nem `innerText` chegam lá. O caminho que
+ * funciona é o CDP com `pierce: true`, juntando os nós de texto na ordem —
+ * `dd`, `/`, `mm`, `/`, `aaaa`.
+ *
+ * **E é a única leitura que enxerga o defeito.** Medido em 2026-08-12, no mesmo
+ * Chromium, com `--lang=pt-BR` e sem `LANG`/`LANGUAGE`: `navigator.languages`
+ * respondia `pt-BR` e `Intl.DateTimeFormat().resolvedOptions().locale`
+ * respondia `pt-BR` **enquanto o campo desenhava `mm/dd/yyyy`**. Quem confere a
+ * locale pelo `navigator` mede o contexto do Playwright, que é justamente a
+ * metade que nunca esteve errada.
+ */
+async function placeholderDeData(contexto: BrowserContext, page: Page): Promise<string | null> {
+  const cdp = await contexto.newCDPSession(page);
+  try {
+    const documento = await cdp.send("DOM.getDocument", { depth: 0 });
+    const alvo = await cdp.send("DOM.querySelector", {
+      nodeId: documento.root.nodeId,
+      selector: 'input[type="date"]',
+    });
+    if (!alvo.nodeId) return null;
+    const { node } = await cdp.send("DOM.describeNode", { nodeId: alvo.nodeId, depth: -1, pierce: true });
+    const partes: string[] = [];
+    const anda = (n: NoDoDom): void => {
+      if (n.nodeType === 3 && n.nodeValue?.trim()) partes.push(n.nodeValue.trim());
+      for (const filho of [...(n.children ?? []), ...(n.shadowRoots ?? [])]) anda(filho);
+    };
+    anda(node);
+    const lido = partes.join("");
+    return lido.length > 0 ? lido : null;
+  } finally {
+    await cdp.detach();
+  }
+}
+
+interface LocaleMedida {
+  declarada: string;
+  fixadaEm: string[];
+  onde: string;
+  placeholder: string | null;
+  esperado: string;
+  confere: boolean;
+}
+
+/**
+ * A conferência, ANTES da primeira captura.
+ *
+ * Ela roda no mesmo navegador que vai capturar — é o navegador, e não a página,
+ * que decide o formato — e para o script se o campo não sair em pt-BR: 81 PNGs
+ * em en-US sob um manifest que jura pt-BR custam mais que a falha, porque quem
+ * os reusar não tem como saber.
+ */
+async function conferirLocale(browser: Awaited<ReturnType<typeof chromium.launch>>): Promise<LocaleMedida> {
+  const contexto = await browser.newContext({
+    baseURL: BASE_URL,
+    locale: "pt-BR",
+    timezoneId: "America/Sao_Paulo",
+    storageState: STORAGE_STATE,
+  });
+  const page = await contexto.newPage();
+  try {
+    let onde = `${ROTA_DO_FORMULARIO} — "Data do casamento"`;
+    let placeholder: string | null = null;
+    if (ROTA_DO_FORMULARIO) {
+      try {
+        await page.goto(ROTA_DO_FORMULARIO, { waitUntil: "networkidle", timeout: 60_000 });
+        placeholder = await placeholderDeData(contexto, page);
+      } catch {
+        placeholder = null;
+      }
+    }
+    if (!placeholder) {
+      // O formulário real não respondeu (rota mudou, sessão sem permissão,
+      // campo que deixou de ser `type=date`). Mede-se um campo sintético NO
+      // MESMO navegador: perde-se a prova sobre o formulário e mantém-se a
+      // prova sobre o NAVEGADOR, que é onde este defeito mora. O manifest diz
+      // qual das duas foi — conferência que degrada em silêncio não confere.
+      onde = "<input type=date> sintético — o formulário real não respondeu";
+      await page.setContent('<input type="date">');
+      placeholder = await placeholderDeData(contexto, page);
+    }
+    return {
+      declarada: "pt-BR",
+      fixadaEm: ["contexto do Playwright", "--lang/--accept-lang do Chromium", "LANG/LANGUAGE no env do launch"],
+      onde,
+      placeholder,
+      esperado: PLACEHOLDER_ESPERADO,
+      confere: placeholder === PLACEHOLDER_ESPERADO,
+    };
+  } finally {
+    await contexto.close();
+  }
+}
+
 async function main(): Promise<void> {
   mkdirSync(DESTINO, { recursive: true });
 
@@ -146,14 +276,38 @@ async function main(): Promise<void> {
     // carimba o que não cumpre é pior que nenhum: é a S-D2 de novo, e desta vez
     // com o carimbo mentindo. Com `LANG`/`LANGUAGE` no ambiente do processo,
     // vira `dd/mm/aaaa`.
+    //
+    // E o preço não é o placeholder, é a data escrita (E182): o mesmo
+    // `value="2026-08-01"` do filtro de "Contas a receber" desenha **08/01/2026**
+    // sem as duas envs e **01/08/2026** com elas. `08/31/2026` se denuncia — não
+    // há mês 31; `08/01/2026` não se denuncia, lê-se como 8 de janeiro.
     args: ["--lang=pt-BR", "--accept-lang=pt-BR,pt"],
     env: { ...process.env, LANG: "pt_BR.UTF-8", LANGUAGE: "pt_BR:pt" },
   });
 
+  // A conferência vem ANTES da primeira captura, e ela é uma PORTA: sem
+  // `dd/mm/aaaa` o script não gasta 90 s produzindo capturas que ninguém pode
+  // reusar (S-O42/E182).
+  const locale = await conferirLocale(browser);
+  if (!locale.confere) {
+    console.error(
+      `capturar-telas: a interface do navegador NÃO está em pt-BR — o campo de data desenhou ` +
+        `"${locale.placeholder ?? "(nada)"}" onde tem de estar "${PLACEHOLDER_ESPERADO}".\n` +
+        `  medido em: ${locale.onde}\n` +
+        `  A rodada 7 capturou 81 telas em en-US sem saber (S-D2), e o --lang sozinho não basta no Chromium\n` +
+        `  do /nix/store: o launch precisa de LANG/LANGUAGE no env. Capturar assim grava um manifest que\n` +
+        `  jura pt-BR e entrega mm/dd/yyyy — pior que não capturar.`,
+    );
+    await browser.close();
+    process.exit(1);
+  }
+
   const ambiente = {
     navegador: `chromium ${browser.version()}`,
     executavel: executablePath ?? "chromium empacotado pelo Playwright",
-    locale: "pt-BR (contexto + --lang + LANG/LANGUAGE no ambiente — os três, S-O42)",
+    // MEDIDA, não afirmada (S-O42/E182): o carimbo anterior dizia "pt-BR
+    // (fixada no contexto e no --lang)" e o campo de data saía `mm/dd/yyyy`.
+    locale,
     timezone: "America/Sao_Paulo",
     viewports: { claro: "1280×800", escuro: "1280×800", "390": "390×844" },
     temas: { claro: "prefers-color-scheme: light", escuro: "prefers-color-scheme: dark", "390": "prefers-color-scheme: light" },
@@ -162,7 +316,8 @@ async function main(): Promise<void> {
     data: new Date().toISOString(),
   };
   console.log(`capturar-telas: ${alvos.length} rotas × ${VARIANTES.length} variantes → ${DESTINO}`);
-  console.log(`  navegador: ${ambiente.navegador} · locale pt-BR · ${ambiente.timezone}`);
+  console.log(`  navegador: ${ambiente.navegador} · ${ambiente.timezone}`);
+  console.log(`  locale MEDIDA: campo de data desenhou "${locale.placeholder}" em ${locale.onde}`);
 
   const capturadas: Record<string, string[]> = {};
   try {

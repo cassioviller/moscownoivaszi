@@ -34,10 +34,17 @@ Lê as 27 rotas do manifest das capturas de 2026-07-30 (sobreponível com
 `MANIFEST_ROTAS`), captura cada uma em `--claro`/`--escuro` (1280×800) e
 `--390` (390×844), página inteira, com sessão do E2E (`e2e/.auth/admin.json`,
 sobreponível com `STORAGE_STATE`) — e grava no manifest de saída o bloco
-`ambiente` que faltou nas 81 originais (S-D2): navegador+versão, locale
-**pt-BR fixada** (contexto e `--lang` — a rodada 7 capturou em en-US sem
-saber), timezone America/Sao_Paulo, viewport, tema, data. As env obrigatórias
+`ambiente` que faltou nas 81 originais (S-D2): navegador+versão, locale,
+timezone America/Sao_Paulo, viewport, tema, data. As env obrigatórias
 **falham alto**: o destino das 81 nasceu `undefined/` por env ausente.
+
+**A locale do manifest é MEDIDA, não afirmada** (S-O42/E182), e a medição é uma
+PORTA: antes da primeira captura o script abre o formulário de noiva nova e lê o
+placeholder do `<input type=date>`. Sai `dd/mm/aaaa`, ele captura e grava o que
+mediu; sai `mm/dd/yyyy`, ele **para** — 81 PNGs em en-US sob um carimbo que jura
+pt-BR custam mais que a falha, porque quem os reusar não tem como saber. O
+carimbo antigo dizia *"pt-BR (fixada no contexto e no `--lang`)"* e o campo saía
+`mm/dd/yyyy`. Hoje o bloco traz `onde`, `placeholder`, `esperado` e `confere`.
 Opcionais: `LOJA_ID` (troca o UUID embutido nas rotas), `NOIVA_TOKEN` (portal
 da noiva; sem ele a rota vai para `falharam`), `PLAYWRIGHT_CHROMIUM_PATH`
 (o mesmo do `playwright.config.ts`). O `@playwright/test` resolve do
@@ -72,4 +79,6 @@ vazia e o script avisa na saída.
 variantes por rota, sessão de admin, manifest de ambiente. A diferença que mais
 morde está registrada na **S-O42**: o `--lang=pt-BR` sozinho não fixa a locale
 da INTERFACE do Chromium deste ambiente — sem `LANG`/`LANGUAGE` no `env` do
-`launch`, o `<input type=date>` sai `mm/dd/yyyy`.
+`launch`, o `<input type=date>` sai `mm/dd/yyyy`. As duas fixam os três lugares
+desde o E182, e a irmã ainda **confere antes de capturar**; esta imprime a folha
+inteira de uma vez, e quem lê o PDF vê a data.
