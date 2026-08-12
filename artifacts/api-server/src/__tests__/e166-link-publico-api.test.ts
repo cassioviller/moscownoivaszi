@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { db, orcamentosTable, orcamentoVersoesTable } from "@workspace/db";
+import { db, orcamentosTable, orcamentoVersoesTable, leadsTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import {
   criarFixture,
@@ -148,6 +148,40 @@ describe("E166 — o link público cumpre o que promete", () => {
     const pagina = await agent.get(`/api/orcamentos/publico?token=${link.body.token}`);
     expect(pagina.status).toBe(200);
     expect(pagina.body.observacoes).toBe("Entrada de R$ 1.500,00 e 7x de R$ 500,00");
+  });
+
+  // ─────────── S-O10 — o "sim" dela vira carimbo ─────────────────────────────
+
+  /**
+   * S-O10 — o aceite carimba `leads.aceiteEm`, e o carimbo é independente da
+   * ETAPA.
+   *
+   * A decisão: o aceite não vira coluna do funil (seria a 12ª de um kanban que
+   * já se arrasta em 11, e não mexeria na conversão, que conta a partir de
+   * CONTRATO_FECHADO). Vira instante, como `orcamentoAbertoEm` e
+   * `contratoFechadoEm` já são.
+   *
+   * **O caso que mais importa é o que a etapa NÃO cobre.** Criar o orçamento já
+   * leva a noiva a ORCAMENTO_ABERTO; quando ela aceita, `avancarEtapaLead`
+   * devolve a MESMA etapa, e o bloco que grava rodava só quando a etapa mudava.
+   * Sem separar as duas coisas, o caso comum — a noiva que já estava em
+   * ORCAMENTO_ABERTO — aceitaria sem deixar carimbo, e o selo do funil nunca
+   * acenderia justamente para quem ele existe.
+   */
+  it("S-O10 · o aceite carimba aceiteEm — inclusive quando a etapa NÃO muda", async () => {
+    const lead = await criarLead(f);
+    const orcamento = await criarOrcamento(f, { leadId: lead.id, status: "RASCUNHO" });
+    await criarOrcamentoItem(f, { orcamentoId: orcamento.id, valorUnitario: 5000 });
+    // A noiva JÁ está na etapa que o aceite levaria: o aceite não a move.
+    await db.update(leadsTable).set({ etapa: "ORCAMENTO_ABERTO" }).where(eq(leadsTable.id, lead.id));
+
+    const link = await agent.post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/link`);
+    expect(link.status).toBe(200);
+    await agent.post(`/api/orcamentos/publico/aceite?token=${link.body.token}&versao=1`).expect(200);
+
+    const [depois] = await db.select().from(leadsTable).where(eq(leadsTable.id, lead.id));
+    expect(depois.aceiteEm).not.toBeNull();
+    expect(depois.etapa).toBe("ORCAMENTO_ABERTO");
   });
 
   // ─────────── S-O31 — a porta do link entra na tranca ───────────────────────

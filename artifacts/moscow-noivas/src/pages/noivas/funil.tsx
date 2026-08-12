@@ -57,6 +57,7 @@ import {
   transicaoLeadValida,
   leadParado,
   rotuloParado,
+  mostraSeloAceite,
   type EtapaLead,
 } from "@/lib/funil";
 import { diaMesAbrevAno } from "@/lib/formatos";
@@ -447,15 +448,39 @@ function CardNoiva({
           )}
         </div>
 
-        {alerta && (
-          <Badge
-            variant={parado.temperatura === "critico" ? "destructive" : "secondary"}
-            className="text-xs font-normal"
-            data-testid={`badge-parado-${lead.id}`}
-          >
-            {rotuloParado(parado)}
-          </Badge>
-        )}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {alerta && (
+            <Badge
+              variant={parado.temperatura === "critico" ? "destructive" : "secondary"}
+              className="text-xs font-normal"
+              data-testid={`badge-parado-${lead.id}`}
+            >
+              {rotuloParado(parado)}
+            </Badge>
+          )}
+          {/**
+           * S-O10 — o "sim" dela aparece no funil SEM virar coluna.
+           *
+           * O aceite não muda onde a noiva está: ela segue negociando, e o
+           * card fica em "Orçamento aberto". Muda o que a LOJA tem de fazer —
+           * e quem olha o funil para achar onde a venda emperrou não via essa
+           * diferença. Uma décima segunda coluna resolveria a mesma coisa por
+           * um preço muito maior: enum do banco, régua de transição, régua de
+           * conversão, e um kanban que já se arrasta em onze no celular.
+           *
+           * O selo some quando o contrato fecha, porque aí o aceite virou
+           * história — e o que o card precisa dizer é outra coisa.
+           */}
+          {mostraSeloAceite(lead) && (
+            <Badge
+              variant="outline"
+              className="text-xs font-normal"
+              data-testid={`badge-aceite-${lead.id}`}
+            >
+              Aceitou — falta o contrato
+            </Badge>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

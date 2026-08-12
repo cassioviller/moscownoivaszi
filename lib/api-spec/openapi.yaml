@@ -5242,6 +5242,10 @@ components:
         casamentoHorario: { type: ["string", "null"] }
         casamentoLocal: { type: ["string", "null"] }
         orcamentoAbertoEm: { type: ["string", "null"], format: date-time }
+        # S-O10: o "sim" da noiva é CARIMBO, não coluna do funil — o aceite não
+        # muda onde ela está, muda o que a loja tem de fazer. É ele que acende o
+        # selo "aceitou" no card, e dele sai "do sim ao contrato, quantos dias".
+        aceiteEm: { type: ["string", "null"], format: date-time }
         contratoFechadoEm: { type: ["string", "null"], format: date-time }
         perdidaEm: { type: ["string", "null"], format: date-time }
         perdidaMotivo:

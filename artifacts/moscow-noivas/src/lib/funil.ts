@@ -40,3 +40,27 @@ export function rotuloParado({ dias, nuncaContatada }: LeadParado): string {
   if (dias === 0) return "Contato hoje";
   return dias === 1 ? "Parada há 1 dia" : `Parada há ${dias} dias`;
 }
+
+/**
+ * S-O10 — o card mostra o "sim" da noiva **sem que ele vire coluna do funil**.
+ *
+ * A pergunta que o funil responde é *onde ela está*, e o aceite não muda isso:
+ * ela segue negociando até o contrato existir. O que o aceite muda é o que a
+ * LOJA tem de fazer — e quem varre o kanban atrás de onde a venda emperrou não
+ * enxergava a diferença entre "mandei a proposta" e "ela já disse sim".
+ *
+ * A alternativa era uma décima segunda etapa: enum do banco com migração,
+ * régua de transição, régua de conversão (que conta a partir de
+ * CONTRATO_FECHADO, e continuaria contando — aceite não é venda), e mais uma
+ * coluna para arrastar num celular que já tem onze. O selo entrega a mesma
+ * informação pelo preço de um carimbo.
+ *
+ * Some quando o contrato fecha: aí o aceite virou história, e o card tem outra
+ * coisa a dizer.
+ */
+export function mostraSeloAceite(lead: {
+  aceiteEm?: string | null;
+  contratoFechadoEm?: string | null;
+}): boolean {
+  return !!lead.aceiteEm && !lead.contratoFechadoEm;
+}

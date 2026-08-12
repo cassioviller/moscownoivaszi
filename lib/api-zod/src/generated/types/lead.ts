@@ -31,6 +31,8 @@ export interface Lead {
   /** @nullable */
   orcamentoAbertoEm?: Date | null;
   /** @nullable */
+  aceiteEm?: Date | null;
+  /** @nullable */
   contratoFechadoEm?: Date | null;
   /** @nullable */
   perdidaEm?: Date | null;

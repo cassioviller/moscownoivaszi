@@ -185,16 +185,37 @@ export async function aceitarOrcamentoEnviado(
      * estado real em vez de um rótulo de funil.
      */
     const [lead] = await tx
-      .select({ id: leadsTable.id, etapa: leadsTable.etapa, orcamentoAbertoEm: leadsTable.orcamentoAbertoEm })
+      .select({
+        id: leadsTable.id,
+        etapa: leadsTable.etapa,
+        orcamentoAbertoEm: leadsTable.orcamentoAbertoEm,
+        aceiteEm: leadsTable.aceiteEm,
+      })
       .from(leadsTable)
       .where(eq(leadsTable.id, atualizado.leadId));
     if (lead) {
+      /**
+       * S-O10 — **o carimbo do "sim" é independente da ETAPA**, e essa
+       * separação é o miolo do conserto.
+       *
+       * O bloco inteiro rodava dentro de `if (etapaNova !== lead.etapa)`. Mas
+       * criar o orçamento já leva a noiva a ORCAMENTO_ABERTO, então no caso
+       * COMUM — ela aceita a proposta que a vendedora acabou de montar —
+       * `avancarEtapaLead` devolve a mesma etapa e nada era gravado. Amarrar o
+       * carimbo à mudança de etapa faria o selo do funil ficar apagado
+       * justamente para quem ele existe.
+       *
+       * Por isso são duas decisões separadas: a etapa avança se estiver ATRÁS;
+       * o carimbo grava o PRIMEIRO sim, aconteça o que acontecer com a etapa.
+       */
       const etapaNova = avancarEtapaLead(lead.etapa, "ORCAMENTO_ABERTO");
-      if (etapaNova !== lead.etapa) {
+      const mudouEtapa = etapaNova !== lead.etapa;
+      const primeiroSim = !lead.aceiteEm;
+      if (mudouEtapa || primeiroSim) {
         await tx.update(leadsTable)
           .set({
-            etapa: etapaNova,
-            orcamentoAbertoEm: lead.orcamentoAbertoEm ?? agora,
+            ...(mudouEtapa ? { etapa: etapaNova, orcamentoAbertoEm: lead.orcamentoAbertoEm ?? agora } : {}),
+            ...(primeiroSim ? { aceiteEm: agora } : {}),
             updatedAt: agora,
           })
           .where(eq(leadsTable.id, lead.id));

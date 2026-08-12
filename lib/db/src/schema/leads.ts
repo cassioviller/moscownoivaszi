@@ -17,6 +17,24 @@ export const leadsTable = pgTable("leads", {
   casamentoHorario: text("casamento_horario"),
   casamentoLocal: text("casamento_local"),
   orcamentoAbertoEm: timestamp("orcamento_aberto_em", { withTimezone: true }),
+  /**
+   * S-O10 — **o "sim" dela é carimbo, não coluna do funil.**
+   *
+   * O aceite pelo link não muda ONDE a noiva está (ela segue negociando):
+   * muda o que a loja tem de fazer. Por isso ele não virou etapa — viraria a
+   * décima segunda coluna de um kanban que já se arrasta em onze no celular, e
+   * não mexeria no número de conversão, que conta a partir de CONTRATO_FECHADO
+   * porque aceite não é venda até o contrato existir.
+   *
+   * Vira o que os irmãos acima já são: um INSTANTE. É ele que acende o selo
+   * "aceitou" no card do funil, e é dele que sai "do sim ao contrato leva
+   * quantos dias" — a medida agregada que faltava, sem tocar no enum.
+   *
+   * Carimba o PRIMEIRO sim e não se apaga, como `perdidaEm`: desfazer o aceite
+   * devolve o orçamento a rascunho, e a noiva que já disse sim uma vez é fato
+   * da história dela.
+   */
+  aceiteEm: timestamp("aceite_em", { withTimezone: true }),
   contratoFechadoEm: timestamp("contrato_fechado_em", { withTimezone: true }),
   perdidaEm: timestamp("perdida_em", { withTimezone: true }),
   // Motivo estruturado da perda (obrigatório ao marcar PERDIDO via API) e o
