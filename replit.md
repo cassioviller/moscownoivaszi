@@ -431,6 +431,20 @@ rode o codegen.
   servidor sempre aceitou. O diálogo de conferência da devolução só oferece
   "Registrar avaria" a quem tem `vestidos.criar`; os demais leem qual permissão
   falta, em vez de um botão que não faz nada.
+- **A reserva se lê sozinha, e o dono do bloqueio é dito em toda porta de
+  `reservas.ts` (E179).** `GET /lojas/:lojaId/reservas/:reservaId` existe — até
+  aqui a única leitura de reserva era a listagem da loja INTEIRA, e foi ela que
+  tornou o V14 impossível de consertar só na tela. A forma é a do
+  `GET /bloqueios/:id` (E79): a noiva e os bloqueios com vestido, e **404
+  quando o id não é da loja** — a fronteira do E111 não alcança este caso,
+  porque a URL diz a loja certa e quem vem de fora é o ID. **`donoLeadId`
+  deixou de ser exclusividade do `GET`/`PATCH` do bloqueio**: as cinco portas de
+  `reservas.ts` que declaravam o campo e devolviam `undefined` passaram a
+  preenchê-lo (a listagem de bloqueios, o `POST /bloqueios` e as três de
+  reserva). Herdar o dono **não** é ser da noiva: o recorte `?leadId=` continua
+  filtrando pelo `lead_id` PRÓPRIO, e há teste pregando isso. Fora de
+  `reservas.ts` restam 11 operações com `BloqueioVestido` aninhado ainda mudas
+  (agenda, fila da costureira, orçamentos) — é a S-O56.
 - **A agenda fala uma língua só (E168).** O expediente da loja é traduzido em
   UM lugar — `expedienteDaRegra`, no `@workspace/agenda-core` —, e **uma
   varredura reprova quem montar a segunda cópia**. Quem segura a cabine também
@@ -552,6 +566,20 @@ rode o codegen.
   estático. **E o estrago do crash não fica no run:** os sete `afterAll`
   morreram no meio da limpeza, e o rastro que ficou derrubou OUTRO spec no run
   seguinte (o gotcha logo abaixo).
+- **O E2E é de PORTA ÚNICA na máquina, e worktree não isola porta** (E179). O
+  `playwright.config.ts` crava `5099` (API) e `5173` (Vite) com
+  `reuseExistingServer: true`: dois agentes rodando o E2E ao mesmo tempo — cada
+  um no seu worktree e no seu banco — compartilham os dois servidores, e quando
+  o primeiro termina e derruba os processos, o segundo passa a colher
+  `net::ERR_CONNECTION_REFUSED at http://localhost:5173/...`. **Medido em
+  2026-08-12**: um run que tinha acabado de fazer `166 passed · 1 failed ·
+  4 skipped` repetiu como **46 passed · 22 failed · 35 did not run**, com
+  **33 dos artefatos de falha acusando conexão recusada** — e o `ps` mostrava
+  um `vite` de OUTRO worktree (`agent-ac2104…`) subido no meio. Não há env para
+  trocar as portas. **A régua é a mesma do banco — medir em série —, e ela vale
+  para o E2E entre AGENTES, não só entre suítes:** confira `ps aux | grep vite`
+  antes de disparar, e se um vermelho em massa vier com "connection refused",
+  procure o vizinho antes do próprio código.
 - **O banco do E2E PERSISTE entre execuções: rastro de spec vira vermelho em
   outro arquivo, um run depois — e se lê como flake.** As três suítes rodam
   contra o `DATABASE_URL` de sempre; um `afterAll` que não roda (ou que morre no

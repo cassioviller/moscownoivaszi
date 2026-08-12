@@ -5,6 +5,7 @@ import { registrarAuditoria } from "../lib/auditoria";
 import { leadNaLoja, reservaNaLoja, reservaDaNoiva } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
+  GetReservaResponse,
   CreateReservaBody,
   CreateReservaResponse,
   UpdateReservaBody,
@@ -34,6 +35,7 @@ import {
   inicioDoDia,
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
+  type DbExecutor,
 } from "../lib/disponibilidade";
 import { transicaoReservaValida } from "../lib/estados";
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
@@ -101,19 +103,75 @@ const ERRO_DATA_NULA = {
   campos: [{ campo: "casamentoData", motivo: "Informe a data do casamento" }],
 };
 
+/**
+ * S-O17/E179 — a régua do dono, escrita para quem JÁ carregou a reserva-mãe.
+ *
+ * É a mesma frase do `donoDoBloqueio` abaixo — *o `leadId` próprio, ou o da
+ * reserva-mãe quando ele é nulo* —, na forma que não custa consulta: quem
+ * lista bloqueios traz `reservas.lead_id` no mesmo SELECT, e quem lista
+ * reservas já tem o `leadId` da própria linha na mão. O `donoDoBloqueio`
+ * assíncrono continua existindo para quem só tem os ids, e termina AQUI, para
+ * a régua não virar duas (regra 26).
+ *
+ * Herdar o dono **não** é ser da noiva: o recorte `?leadId=` da listagem
+ * continua filtrando pelo `lead_id` PRÓPRIO, que é o que a ficha do orçamento
+ * e o portal perguntam (E79). O `donoLeadId` responde outra pergunta — de quem
+ * é o reparo desta peça.
+ */
+function comDono<T extends { leadId: string | null }>(
+  bloqueio: T,
+  maeLeadId: string | null,
+): T & { donoLeadId: string | null } {
+  return { ...bloqueio, donoLeadId: bloqueio.leadId ?? maeLeadId };
+}
+
+/** Os bloqueios de uma reserva herdam o dono DELA — `reservas.lead_id` é NOT NULL. */
+function reservaComDonos<R extends { leadId: string; bloqueios: Array<{ leadId: string | null }> }>(
+  reserva: R,
+): R {
+  return { ...reserva, bloqueios: reserva.bloqueios.map((b) => comDono(b, reserva.leadId)) };
+}
+
 // Reservas
+const RESERVA_COM_TUDO = {
+  lead: true,
+  // Vestido aninhado: o livro de reservas exibe "codigo · nome".
+  bloqueios: { with: { vestido: true } },
+} as const;
+
 router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const reservas = await db.query.reservasTable.findMany({
     where: eq(reservasTable.lojaId, lojaId),
-    with: {
-      lead: true,
-      // Vestido aninhado: o livro de reservas exibe "codigo · nome".
-      bloqueios: { with: { vestido: true } },
-    },
+    with: RESERVA_COM_TUDO,
     orderBy: reservasTable.casamentoData,
   });
-  res.json(ListReservasResponse.parse(reservas));
+  res.json(ListReservasResponse.parse(reservas.map(reservaComDonos)));
+});
+
+/**
+ * S-O18/E179 — UMA reserva, que era a leitura que não existia.
+ *
+ * A única porta de leitura era a listagem da loja INTEIRA. Foi ela que tornou
+ * o conserto do V14 impossível de fazer só na tela (o plano do E167 pedia um
+ * conserto que não tinha de onde ler), e é a mesma fresta em que o V5 esbarra
+ * do outro lado — o `casamentoData` do bloqueio que ninguém corrige.
+ *
+ * A forma é a do `GET /bloqueios/:bloqueioId` (E79) um nível abaixo, e o 404
+ * é o da régua de sempre: id do path que não é da loja não vira 403 nem lista
+ * vazia, vira "não existe nesta loja".
+ */
+router.get("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<void> => {
+  const { lojaId, reservaId } = req.params as { lojaId: string; reservaId: string };
+  const reserva = await db.query.reservasTable.findFirst({
+    where: and(eq(reservasTable.id, reservaId), eq(reservasTable.lojaId, lojaId)),
+    with: RESERVA_COM_TUDO,
+  });
+  if (!reserva) {
+    res.status(404).json({ error: "RESERVA_NAO_ENCONTRADA", detalhe: "Esta reserva não existe nesta loja." });
+    return;
+  }
+  res.json(GetReservaResponse.parse(reservaComDonos(reserva)));
 });
 
 router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
@@ -142,9 +200,9 @@ router.post("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
 
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
-    with: { lead: true, bloqueios: { with: { vestido: true } } }
+    with: RESERVA_COM_TUDO,
   });
-  res.status(201).json(CreateReservaResponse.parse(fullReserva));
+  res.status(201).json(CreateReservaResponse.parse(reservaComDonos(fullReserva!)));
 });
 
 router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<void> => {
@@ -484,9 +542,9 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
 
   const fullReserva = await db.query.reservasTable.findFirst({
     where: eq(reservasTable.id, reserva.id),
-    with: { lead: true, bloqueios: { with: { vestido: true } } }
+    with: RESERVA_COM_TUDO,
   });
-  res.json(UpdateReservaResponse.parse(fullReserva));
+  res.json(UpdateReservaResponse.parse(reservaComDonos(fullReserva!)));
 });
 
 /**
@@ -526,7 +584,7 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
    * contava. **O contrato ficava com o vínculo nulo (`set null` da FK) e as
    * parcelas seguiam sendo cobradas sobre um vestido que voltou ao mercado.**
    */
-  const contarHistoria = async (executor: typeof db, ids: string[]) =>
+  const contarHistoria = async (executor: DbExecutor, ids: string[]) =>
     ids.length === 0
       ? { avarias: 0, contratosAtivos: 0, atendimentos: 0 }
       : await Promise.all([
@@ -603,7 +661,7 @@ router.delete("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<vo
       .where(eq(bloqueioVestidosTable.reservaId, reservaId))
     ).map((b) => b.id);
 
-    const agora = await contarHistoria(tx as unknown as typeof db, idsAgora);
+    const agora = await contarHistoria(tx, idsAgora);
     if (agora.avarias + agora.contratosAtivos + agora.atendimentos > 0) {
       return { corrida: true as const };
     }
@@ -657,7 +715,9 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
       ...(futuras === "true" ? [gte(bloqueioVestidosTable.casamentoData, hoje)] : []),
       ...(futuras === "false" ? [lt(bloqueioVestidosTable.casamentoData, hoje)] : []),
     ),
-    with: { vestido: true, lead: true },
+    // S-O17/E179: a reserva-mãe entra por UMA coluna, e é ela que faz o
+    // `donoLeadId` que o schema declara deixar de vir `undefined` aqui.
+    with: { vestido: true, lead: true, reserva: { columns: { leadId: true } } },
     // Com recorte, a ordem é do servidor: próximas da mais próxima à mais
     // distante, passadas da mais recente à mais antiga. Sem recorte, mantém-se
     // a ordem histórica (nenhuma) para não mudar o contrato dos outros usos.
@@ -668,7 +728,7 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
           ? [desc(bloqueioVestidosTable.casamentoData)]
           : undefined,
   });
-  res.json(ListBloqueiosResponse.parse(bloqueios));
+  res.json(ListBloqueiosResponse.parse(bloqueios.map((b) => comDono(b, b.reserva?.leadId ?? null))));
 });
 
 /**
@@ -685,10 +745,14 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
  *
  * Agora a régua é UMA, e sai pelo payload: quem desenha e quem cobra leem o
  * mesmo dono.
+ *
+ * Esta é a versão para quem só tem os ids — ela paga a consulta da mãe. Quem
+ * já a carregou usa o `comDono` lá em cima, e as duas terminam na mesma
+ * expressão.
  */
 export async function donoDoBloqueio(
   bloqueio: { leadId: string | null; reservaId: string | null },
-  executor: typeof db = db,
+  executor: DbExecutor = db,
 ): Promise<string | null> {
   if (bloqueio.leadId) return bloqueio.leadId;
   if (!bloqueio.reservaId) return null;
@@ -696,7 +760,7 @@ export async function donoDoBloqueio(
     .select({ leadId: reservasTable.leadId })
     .from(reservasTable)
     .where(eq(reservasTable.id, bloqueio.reservaId));
-  return mae?.leadId ?? null;
+  return comDono(bloqueio, mae?.leadId ?? null).donoLeadId;
 }
 
 // E79: a ficha da reserva pede UM bloqueio, não a loja inteira.
@@ -827,7 +891,15 @@ router.post("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: criado.conflitos });
     return;
   }
-  res.status(201).json(CreateBloqueioResponse.parse(criado.bloqueio));
+  // S-O17/E179: a quinta porta da família. Ela não é dispensável por o
+  // chamador "já saber o dono" — quem cria o véu manda `reservaId` e NÃO manda
+  // `leadId`, e é justamente esse caso que herda a dona da reserva-mãe.
+  res.status(201).json(
+    CreateBloqueioResponse.parse({
+      ...criado.bloqueio,
+      donoLeadId: await donoDoBloqueio(criado.bloqueio),
+    }),
+  );
 });
 
 router.patch("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {
@@ -1199,7 +1271,7 @@ class AvariaJaCobrada extends Error {}
  * o próprio schema já dizia isto: "removida a parcela pelo caminho legítimo, a
  * avaria e a foto ficam, e o reparo volta a ser cobrável".
  */
-async function cobrancaViva(parcelaId: string, executor: typeof db = db): Promise<boolean> {
+async function cobrancaViva(parcelaId: string, executor: DbExecutor = db): Promise<boolean> {
   const status = await statusDaCobranca(parcelaId, executor);
   return status !== null && status !== "CANCELADA";
 }
@@ -1214,7 +1286,7 @@ async function cobrancaViva(parcelaId: string, executor: typeof db = db): Promis
  */
 async function statusDaCobranca(
   parcelaId: string | null,
-  executor: typeof db = db,
+  executor: DbExecutor = db,
 ): Promise<string | null> {
   if (!parcelaId) return null;
   const [parcela] = await executor
@@ -1560,7 +1632,7 @@ router.delete("/lojas/:lojaId/avarias/:avariaId", async (req, res): Promise<void
       .where(and(eq(avariasTable.id, avariaId as string), eq(avariasTable.lojaId, lojaId as string)))
       .for("update");
     if (!sobTranca) return { sumiu: true as const };
-    if (sobTranca.parcelaId && (await cobrancaViva(sobTranca.parcelaId, tx as unknown as typeof db))) {
+    if (sobTranca.parcelaId && (await cobrancaViva(sobTranca.parcelaId, tx))) {
       return { comCobranca: true as const };
     }
     await registrarAuditoria(tx, {

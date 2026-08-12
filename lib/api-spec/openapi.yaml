@@ -2187,6 +2187,24 @@ paths:
         required: true
         schema:
           type: string
+    get:
+      operationId: getReserva
+      tags: [reservas]
+      summary: Uma reserva só — a leitura que faltava (S-O18/E179)
+      description: >-
+        A única leitura de reserva era a listagem da loja INTEIRA, e foi ela que
+        tornou o V14 impossível de consertar só na tela. Devolve a noiva e os
+        bloqueios (com vestido), como o `GET /bloqueios/{id}` do E79 faz um
+        nível abaixo.
+      responses:
+        "200":
+          description: A reserva, com a noiva e os bloqueios
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reserva"
+        "404":
+          description: Não existe ou não é desta loja
     patch:
       operationId: updateReserva
       tags: [reservas]
@@ -5855,8 +5873,13 @@ components:
         # quando ele é nulo. Medido: 61 das 63 avarias do banco vivem em
         # bloqueio sem `lead_id`, e a ficha só buscava o contrato pelo campo
         # nulável — em 97% das avarias o botão "Cobrar reparo" não era
-        # desenhado. Só o GET e o PATCH do bloqueio o preenchem (a listagem
-        # não paga o join).
+        # desenhado.
+        #
+        # S-O17/E179 — TODA porta o preenche agora. Até aqui só o GET e o PATCH
+        # do bloqueio o traziam, "porque a listagem não paga o join": a
+        # listagem declarava o campo e devolvia `undefined` em silêncio, e o
+        # contrato mentia para quem o pedisse. O join custa UMA coluna
+        # (`reservas.lead_id`) no mesmo SELECT, não uma consulta por linha.
         donoLeadId: { type: ["string", "null"] }
         vestido:
           $ref: "#/components/schemas/Vestido"

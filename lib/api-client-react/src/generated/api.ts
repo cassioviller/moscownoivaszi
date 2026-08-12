@@ -8029,6 +8029,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateReservaMutationOptions(options));
     }
 
+export const getGetReservaUrl = (lojaId: string,
+    reservaId: string,) => {
+
+
+
+
+  return `/api/lojas/${lojaId}/reservas/${reservaId}`
+}
+
+/**
+ * A única leitura de reserva era a listagem da loja INTEIRA, e foi ela que tornou o V14 impossível de consertar só na tela. Devolve a noiva e os bloqueios (com vestido), como o `GET /bloqueios/{id}` do E79 faz um nível abaixo.
+ * @summary Uma reserva só — a leitura que faltava (S-O18/E179)
+ */
+export const getReserva = async (lojaId: string,
+    reservaId: string, options?: RequestInit): Promise<Reserva> => {
+
+  return customFetch<Reserva>(getGetReservaUrl(lojaId,reservaId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReservaQueryKey = (lojaId: string,
+    reservaId: string,) => {
+    return [
+    `/api/lojas/${lojaId}/reservas/${reservaId}`
+    ] as const;
+    }
+
+
+export const getGetReservaQueryOptions = <TData = Awaited<ReturnType<typeof getReserva>>, TError = ErrorType<void>>(lojaId: string,
+    reservaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReserva>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReservaQueryKey(lojaId,reservaId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReserva>>> = ({ signal }) => getReserva(lojaId,reservaId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: lojaId !== null && lojaId !== undefined && reservaId !== null && reservaId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReserva>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReservaQueryResult = NonNullable<Awaited<ReturnType<typeof getReserva>>>
+export type GetReservaQueryError = ErrorType<void>
+
+
+/**
+ * @summary Uma reserva só — a leitura que faltava (S-O18/E179)
+ */
+
+export function useGetReserva<TData = Awaited<ReturnType<typeof getReserva>>, TError = ErrorType<void>>(
+ lojaId: string,
+    reservaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReserva>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReservaQueryOptions(lojaId,reservaId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateReservaUrl = (lojaId: string,
     reservaId: string,) => {
 

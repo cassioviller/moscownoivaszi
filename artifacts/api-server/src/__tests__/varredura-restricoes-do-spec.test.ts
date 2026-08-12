@@ -123,18 +123,27 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    *
    * `new Date(null)` é a época Unix, e é uma data VÁLIDA — o zod diz
    * `success: true` e a rota grava 01/01/1970. O V12 o fechou em `reservas.ts`
-   * com uma guarda de corpo cru, campo a campo; nas outras 928 ocorrências, o
+   * com uma guarda de corpo cru, campo a campo; nas outras 955 ocorrências, o
    * `null` explícito continua virando 1970 se alguém o mandar.
    *
    * O que salva a maioria é o corpo NÃO trazer a chave (ausente ≠ null), e por
    * isso a dívida é 🔵 e não 🟠. Mas ela é a mesma classe, e está contada.
+   *
+   * **929 → 956 no E179, e o vermelho foi o lembrete (regra 31).** A porta nova
+   * `GET /reservas/:id` reusa o schema `Reserva`, que aninha `BloqueioVestido`
+   * e `Lead`: **27 datas coercidas a mais, e nenhuma delas é campo de ENTRADA**
+   * — a operação não tem corpo. É o retrato subindo por RESPOSTA, que é a
+   * metade inofensiva da dívida: `coerce.date()` sobre o que o servidor acabou
+   * de ler do banco não recebe `null` de ninguém. A conta sobe assim mesmo,
+   * porque o dia em que ela parar de subir por porta nova é o dia em que ela
+   * deixa de contar a dívida inteira.
    */
   it("as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
     const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(929);
+    ).toBe(956);
   });
 
   /**

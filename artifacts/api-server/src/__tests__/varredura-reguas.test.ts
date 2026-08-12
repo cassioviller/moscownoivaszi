@@ -280,3 +280,48 @@ describe("varredura — formatador novo fora da régua exige decisão", () => {
     expect(arquivosFonte().length).toBeGreaterThan(200);
   });
 });
+
+// ───────── 5. executor de banco tipado como o POOL, e o cast que ele exige ─────────
+
+/**
+ * S-O6/E179 — `as unknown as typeof db` é a assinatura de um tipo que mente.
+ *
+ * Uma função que aceita "o db ou uma transação" tipada como `typeof db`
+ * **recusa a transação**: o executor que o `db.transaction` entrega não é
+ * atribuível ao do pool. Quem escreveu a função resolveu com um cast duplo, que
+ * é a única forma de o TypeScript ficar quieto — e o cast apaga a checagem
+ * inteira do argumento, não só a parte que incomodava. `DbExecutor`
+ * (`lib/disponibilidade.ts`) é a união que já existia no repositório para isso,
+ * derivada do próprio `db.transaction`, e com ela o argumento volta a ser
+ * conferido.
+ *
+ * Medido no E179: **quatro declarações e dois casts**, todos em `reservas.ts`.
+ * A sobra nomeava duas funções (`contarHistoria` e `cobrancaViva`) e a
+ * varredura achou quatro — `donoDoBloqueio` e `statusDaCobranca` tinham a mesma
+ * anotação sem nunca terem exigido o cast, porque ninguém as chamava de dentro
+ * de uma transação AINDA. Os dois casts vivem exatamente onde a chamada corre
+ * dentro de uma: a recontagem de história sob `FOR UPDATE` e a guarda do DELETE
+ * de avaria sob tranca.
+ *
+ * Este é o irmão de tipo da varredura de portas sob tranca: aquela cobra que a
+ * escrita segure a linha, esta cobra que o executor que a segura não precise
+ * mentir sobre o que é.
+ */
+describe("varredura — executor de transação não vira `typeof db` por cast", () => {
+  const CAST = /as unknown as typeof db\b/;
+  const ANOTACAO = /executor\s*(?:\?)?:\s*typeof db\b(?!\.)/;
+
+  it("as assinaturas reconhecem a grafia errada e ignoram a certa", () => {
+    expect(new RegExp(CAST.source).test(`contarHistoria(tx as unknown as typeof db, ids)`)).toBe(true);
+    expect(new RegExp(CAST.source).test(`contarHistoria(tx, ids)`)).toBe(false);
+    expect(new RegExp(ANOTACAO.source).test(`executor: typeof db = db,`)).toBe(true);
+    expect(new RegExp(ANOTACAO.source).test(`executor: DbExecutor = db,`)).toBe(false);
+    // O tipo ESTRUTURAL de `lib/auth.ts` não é a mesma coisa e fica de fora:
+    // ele pede UM método, e transação nenhuma é passada para lá.
+    expect(new RegExp(ANOTACAO.source).test(`executor: { insert: typeof db.insert } = db,`)).toBe(false);
+  });
+
+  it("nenhum executor é declarado como o pool, e nenhum cast o força a ser", () => {
+    expect([...varrer(CAST, []), ...varrer(ANOTACAO, [])]).toEqual([]);
+  });
+});
