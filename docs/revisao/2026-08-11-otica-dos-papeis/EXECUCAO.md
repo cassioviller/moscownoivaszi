@@ -39,7 +39,7 @@ espera uma decisão sua"*.
 | ~~**E172**~~ | ~~o que cada papel pode deixa de ser dedução e vira módulo~~ | pós-manuais | ✅ `971269c` · [relatório](execucao/E172.md) — nasce a **Costureira**, e `orcamentos`/`contratos` saem de dentro de `leads`. **O plano pedia metade**: fechar só o contrato deixava a Recepção aprovando a proposta (**404**, não 403), que é onde o preço congela |
 | ~~**E173**~~ | ~~a reserva sai de sincronia, e a noiva chega sem vestido~~ | A (resto) | ✅ `98940af` · [relatório](execucao/E173.md) — a prova órfã, a data que fica para trás e a troca de dona. **A ironia do S-O5 é a âncora**: o `DELETE` que recusa manda usar a porta sem guarda |
 | ~~**E174**~~ | ~~o dinheiro do orçamento, pelos dois lados que ninguém olhava~~ | B1 | ✅ `c35ba98` · [relatório](execucao/E174.md) — o teto do desconto se rompe pelo lado dos ITENS, e **o hash não prende a peça**: trocar o vestido mantendo descrição e preço não movia o hash |
-| ~~**E175**~~ | ~~a costureira: a cor que discordava de si mesma, e o trabalho que não nascia~~ | B2 | ✅ [relatório](execucao/E175.md) — **a confecção com casamento em 5 dias saía CINZA na fila** e vermelha na ficha; e a confecção não tinha onde nascer |
+| ~~**E175**~~ | ~~a costureira: a cor que discordava de si mesma, e o trabalho que não nascia~~ | B2 | ✅ `205417d` · [relatório](execucao/E175.md) — **a confecção com casamento em 5 dias saía CINZA na fila** e vermelha na ficha; e a confecção não tinha onde nascer |
 
 A **Faixa A é serial** — os quatro mexem nas mesmas transações. A **Faixa C
 paraleliza**. O `/code-review ultra` roda sobre a branch de cada faixa antes do
