@@ -44,7 +44,7 @@ espera uma decisão sua"*.
 | ~~**E176**~~ | ~~as portas: a mesma regra vale coisas diferentes conforme quem bate~~ | B3 | ✅ `67f98f8` · [relatório](execucao/E176.md) — **recusar não é sempre proteger**: a porta da loja recusa o WhatsApp torto e a captação pública o aceita, para não perder o lead |
 | ~~**E177**~~ | ~~a classe que o gerador perde: contá-la e fazê-la soar~~ | C | ✅ `3b38689` · [relatório](execucao/E177.md) — **115 `integer` no spec, ZERO `.int()` no zod**; e a perda saía como **500**, não como recusa |
 | ~~**E178**~~ | ~~o teto, o rótulo e o recorte: o mesmo número escrito em mais de um lugar~~ | C (lote 1 das 🔵) | ✅ `28c3588` · [relatório](execucao/E178.md) — **a S-O1 nomeava duas ações e eram OITO** (6 que o servidor grava sem rótulo na tela, 2 com rótulo e sem filtro); e o conserto do S-O26 saiu **meio conserto**, com o 410 certo e o corpo rotulado de gzip |
-| ~~**E183**~~ | ~~o que se fecha decidindo: a fila da costureira deixa de ter duas réguas~~ | decisões | ✅ `<hash>` · [relatório](execucao/E183.md) — o recorte passa a enxergar o que a cor enxerga, **e o vermelho veio do teste do E175, que pregava a decisão contrária**. Fecha a S-O9 e a S-O47 declaradas: *"aberta (declarada)" não é um estado* |
+| ~~**E183**~~ | ~~o que se fecha decidindo: a fila da costureira deixa de ter duas réguas~~ | decisões | ✅ `7a0fa9e` · [relatório](execucao/E183.md) — o recorte passa a enxergar o que a cor enxerga, **e o vermelho veio do teste do E175, que pregava a decisão contrária**. Fecha a S-O9 e a S-O47 declaradas: *"aberta (declarada)" não é um estado* |
 
 A **Faixa A é serial** — os quatro mexem nas mesmas transações. A **Faixa C
 paraleliza**. O `/code-review ultra` roda sobre a branch de cada faixa antes do
