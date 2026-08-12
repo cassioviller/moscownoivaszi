@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
 import { brl, instanteLongo, tipoItemLabel } from "@/lib/formatos";
+import { temDesconto } from "@/lib/financeiro/dinheiro";
 import { mensagemApi } from "@/lib/erro-api";
 
 /**
@@ -88,8 +89,15 @@ export default function OrcamentoPublico() {
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-8 w-1/2" />
             </div>
-          ) : orcamento.isError ? (
-            /* O12/E166: todo 500 e toda queda de rede viravam "link inválido"
+          ) : orcamento.isError || !dados ? (
+            /* S-O16/E181: `!dados` entra na PERGUNTA, e com ele somem os 20
+               `dados!` que esta tela afirmava. A asserção estava certa hoje —
+               o ramo de erro retorna antes —, e é exatamente essa a classe que
+               sobrevive a uma refatoração: quem mexer no ramo acima faz a
+               página inteira estourar em `undefined` na mão da noiva, sem
+               nada na tela. Com a guarda, o pior caso é a frase abaixo.
+
+               O12/E166: todo 500 e toda queda de rede viravam "link inválido"
                — a noiva com o link CERTO às 23h lia que o link estava errado e
                pedia outro. Esta era a única tela que refazia a tradução à mão;
                agora ela passa pelo `mensagemApi`, que separa "o sistema não
@@ -101,16 +109,16 @@ export default function OrcamentoPublico() {
             <>
               <div className="space-y-1">
                 <p className="text-sm">
-                  Olá, <span className="font-medium">{dados!.noivaNome}</span>! Esta é a sua
-                  proposta em <span className="font-medium">{dados!.lojaNome}</span>.
+                  Olá, <span className="font-medium">{dados.noivaNome}</span>! Esta é a sua
+                  proposta em <span className="font-medium">{dados.lojaNome}</span>.
                 </p>
-                {dados!.status === "APROVADO" && (
+                {dados.status === "APROVADO" && (
                   <Badge variant="secondary">Aprovado</Badge>
                 )}
               </div>
 
               <ul className="divide-y">
-                {dados!.itens.map((it, i) => (
+                {dados.itens.map((it, i) => (
                   <li key={i} className="flex items-start justify-between gap-3 py-2.5">
                     <div className="min-w-0">
                       <p className="text-sm">{it.descricao}</p>
@@ -134,19 +142,22 @@ export default function OrcamentoPublico() {
                     subtração de −R$ 200,00 apresentada como zero no documento
                     que decide a compra. O rótulo percentual fica como
                     contexto; o número é sempre a diferença real. */}
-                {dados!.descontoTipo && dados!.descontoValor ? (
+                {/* S-O13: a pergunta é `temDesconto` (P15/E163) — a mesma que
+                    o papel e a tela do contrato fazem. Tipo com valor 0 é SEM
+                    desconto, e a régua não se reescreve por tela. */}
+                {temDesconto(dados.descontoTipo, dados.descontoValor) ? (
                   <>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Soma dos itens</span>
-                      <span className="tabular-nums">{brl(dados!.totalBruto)}</span>
+                      <span className="tabular-nums">{brl(dados.totalBruto)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>
                         Desconto
-                        {dados!.descontoTipo === "PERCENTUAL" ? ` (${dados!.descontoValor}%)` : ""}
+                        {dados.descontoTipo === "PERCENTUAL" ? ` (${dados.descontoValor}%)` : ""}
                       </span>
                       <span className="tabular-nums">
-                        − {brl(dados!.totalBruto - dados!.totalLiquido)}
+                        − {brl(dados.totalBruto - dados.totalLiquido)}
                       </span>
                     </div>
                   </>
@@ -154,14 +165,14 @@ export default function OrcamentoPublico() {
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
                   <span className="font-serif text-xl tabular-nums">
-                    {brl(dados!.totalLiquido)}
+                    {brl(dados.totalLiquido)}
                   </span>
                 </div>
               </div>
 
-              {dados!.observacoes && (
+              {dados.observacoes && (
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap border-t pt-3">
-                  {dados!.observacoes}
+                  {dados.observacoes}
                 </p>
               )}
 
@@ -171,7 +182,7 @@ export default function OrcamentoPublico() {
                   do plano ("recusar revoga o token") foi ATENUADA de propósito:
                   revogar deixaria a página dizendo "link inválido", que é pior
                   que a verdade — o registro fica legível, sem botão. */}
-              {dados!.status === "RECUSADO" ? (
+              {dados.status === "RECUSADO" ? (
                 <div className="rounded-md border p-3 text-sm text-muted-foreground" data-testid="proposta-encerrada">
                   Esta proposta foi encerrada. Se você ainda procura o vestido, é só falar com a
                   sua vendedora — ela monta uma proposta nova.
@@ -186,7 +197,7 @@ export default function OrcamentoPublico() {
               )}
 
               {/* E74: o aceite. Aceita → comprovante; ENVIADO sem aceite → botão. */}
-              {dados!.aceitoEm ? (
+              {dados.aceitoEm ? (
                 <div className="flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   {/* A03.1/E162: dizia "a sua vendedora já foi avisada" — uma
@@ -197,11 +208,11 @@ export default function OrcamentoPublico() {
                       o que o sistema faz, não mais que isso. */}
                   <span>
                     Você aceitou esta proposta em{" "}
-                    <span className="font-medium">{instanteLongo(dados!.aceitoEm)}</span>.
+                    <span className="font-medium">{instanteLongo(dados.aceitoEm)}</span>.
                     O ateliê vai falar com você para acertar o contrato e os próximos passos.
                   </span>
                 </div>
-              ) : dados!.status === "ENVIADO" ? (
+              ) : dados.status === "ENVIADO" ? (
                 <div className="space-y-2 border-t pt-3">
                   <Button
                     className="w-full"
@@ -230,8 +241,8 @@ export default function OrcamentoPublico() {
               ) : null}
 
               <p className="text-xs text-muted-foreground border-t pt-3">
-                {dados!.validade
-                  ? `Proposta válida até ${instanteLongo(dados!.validade)}. `
+                {dados.validade
+                  ? `Proposta válida até ${instanteLongo(dados.validade)}. `
                   : ""}
                 Dúvidas ou quer fechar? É só responder à sua vendedora no WhatsApp.
               </p>

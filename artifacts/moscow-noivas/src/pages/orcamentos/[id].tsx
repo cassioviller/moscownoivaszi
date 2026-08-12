@@ -62,7 +62,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Select,
@@ -90,6 +89,8 @@ import {
   recusaDeDesconto,
   temDesconto,
 } from "@/lib/financeiro/dinheiro";
+import { recusaAoEditarItem } from "@/lib/financeiro/desconto-e-itens";
+import { DialogoRemoverItem } from "./remover-item";
 import { opcoesDeVendedora } from "@/lib/equipe-select";
 import { planoDaDigitacao } from "@/lib/financeiro/plano";
 import { PreviaDoCarne } from "@/components/previa-do-carne";
@@ -633,6 +634,14 @@ export default function OrcamentoDetail() {
     }
     if (!Number.isFinite(quantidade) || quantidade < 1) {
       toast({ title: "Quantidade inválida — use 1 ou mais", variant: "destructive" });
+      return;
+    }
+    // S-O49: o PATCH tem a MESMA recusa que o DELETE (E174) — baixar o valor ou
+    // a quantidade derruba o bruto igual. A régua é a do "Aplicar desconto" 70
+    // linhas abaixo, feita pelo outro lado do par (desconto, itens).
+    const recusa = recusaAoEditarItem(orcamento, itemEmEdicao.id, { valorUnitario, quantidade });
+    if (recusa) {
+      toast({ title: "O desconto não cabe nos itens", description: recusa.detalhe, variant: "destructive" });
       return;
     }
     try {
@@ -1193,7 +1202,9 @@ export default function OrcamentoDetail() {
 
           <div className="flex justify-end gap-6 text-sm border-t pt-3">
             <span className="text-muted-foreground">Subtotal: {brl(totais.bruto)}</span>
-            {orcamento.descontoTipo && orcamento.descontoValor ? (
+            {/* S-O13: a pergunta "tem desconto?" é `temDesconto` (P15/E163) —
+                a linha do subtotal era a última grafia inline desta tela. */}
+            {temDesconto(orcamento.descontoTipo, orcamento.descontoValor) ? (
               <span className="text-muted-foreground">
                 Desconto: {orcamento.descontoTipo === "PERCENTUAL" ? `${orcamento.descontoValor}%` : `${brl(orcamento.descontoValor)}`}
               </span>
@@ -1787,28 +1798,17 @@ export default function OrcamentoDetail() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!itemRemover} onOpenChange={(aberto) => !aberto && setItemRemover(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover este item?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {itemRemover?.descricao} sai do orçamento e o total é recalculado. Não dá para
-              desfazer — se foi engano, o item precisa ser lançado de novo.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (itemRemover) onRemoveItem(itemRemover.id);
-                setItemRemover(null);
-              }}
-            >
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* S-O49/E181: o diálogo saiu daqui para poder ser montado num teste, e
+          voltou sabendo o que o servidor responderia — o botão "Remover" some
+          de clicável quando o item que sai é o que sustenta o desconto. O
+          ÍCONE da lixeira continua vivo de propósito: botão morto sem uma
+          palavra é pior que a recusa explicada. */}
+      <DialogoRemoverItem
+        item={itemRemover}
+        orcamento={orcamento}
+        onConfirmar={onRemoveItem}
+        onFechar={() => setItemRemover(null)}
+      />
     </div>
   );
 }

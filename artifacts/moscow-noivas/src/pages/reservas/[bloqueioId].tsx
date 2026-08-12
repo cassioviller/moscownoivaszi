@@ -55,6 +55,7 @@ import { AlertCircle, ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAbrevAno, diaMesAnoLongo, diaParaISO } from "@/lib/formatos";
 import { parseValor } from "@/lib/financeiro/dinheiro";
+import { contratoAtivoDaNoiva } from "@/lib/contrato-ativo-da-noiva";
 import { invalidarCaixa } from "@/pages/financeiro/helpers";
 import { diaDeNegocio } from "@/lib/financeiro/datas";
 import { ROTULO_SITUACAO, dataHoraFmt } from "./helpers";
@@ -125,17 +126,22 @@ export default function ReservaDetalhe() {
    * nasceu neste épico.
    */
   const donoDaReserva = reserva?.donoLeadId ?? reserva?.leadId ?? null;
-  const contratosDaNoiva = useListContratos(
-    activeLojaId!,
-    { leadId: donoDaReserva ?? "" },
-    {
-      query: {
-        queryKey: getListContratosQueryKey(activeLojaId!, { leadId: donoDaReserva ?? "" }),
-        enabled: !!activeLojaId && !!donoDaReserva,
-      },
+  /**
+   * S-O20 — a pergunta é "qual é o contrato ATIVO dela", e agora ela é feita
+   * ao SERVIDOR. A tela pedia a carteira inteira de contratos da noiva **com
+   * as parcelas de cada um** (`contratos.ts:158` desce `parcelas` sempre que o
+   * recorte é por noiva) para peneirar um `status === "ATIVO"` na memória: a
+   * noiva que trocou de vestido duas vezes tem três contratos, e vinham os
+   * três carnês para achar um id.
+   */
+  const filtroDoContrato = { leadId: donoDaReserva ?? "", status: "ATIVO" as const };
+  const contratosDaNoiva = useListContratos(activeLojaId!, filtroDoContrato, {
+    query: {
+      queryKey: getListContratosQueryKey(activeLojaId!, filtroDoContrato),
+      enabled: !!activeLojaId && !!donoDaReserva,
     },
-  );
-  const contratoAtivo = (contratosDaNoiva.data?.itens ?? []).find((c) => c.status === "ATIVO") ?? null;
+  });
+  const contratoAtivo = contratoAtivoDaNoiva(contratosDaNoiva.data?.itens);
   const createAvaria = useCreateAvaria();
   const deleteAvaria = useDeleteAvaria();
   const cobrarAvaria = useCobrarAvaria();

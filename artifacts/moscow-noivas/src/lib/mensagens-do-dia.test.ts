@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   aContatarNaJanela,
+  faltaProcurar,
+  jaFoiProcurada,
+  respondeu,
   jaContatadasNaJanela,
   pediramRemarcacaoNaJanela,
   orcamentosVencendoNaJanela,
@@ -104,6 +107,39 @@ describe("a fila de quem já foi procurada", () => {
     const procurada = atendimento({ contatadoEm: new Date(AGORA - H).toISOString() });
     expect(jaContatadasNaJanela([procurada], AGORA)).toHaveLength(1);
     expect(aContatarNaJanela([procurada], AGORA)).toHaveLength(0);
+  });
+
+  /**
+   * S-O21/E181 — as duas filas são a MESMA pergunta com o `contatadoEm`
+   * trocado de sinal, e agora é o código que diz isso: as duas passaram a
+   * derivar de `respondeu`.
+   *
+   * A régua enumera os fatos de resposta em vez de citá-los um a um: fato novo
+   * na família entra em `respondeu` e as duas filas o ganham juntas. Antes, a
+   * `jaContatadasNaJanela` reconstruía os três pela negativa, e o quarto fato
+   * entraria só na fila que o autor tivesse aberto.
+   */
+  it("todo fato de resposta tira a noiva das DUAS filas, e é uma lista só", () => {
+    const RESPOSTAS = ["confirmadoEm", "remarcacaoPedidaEm"] as const;
+    for (const fato of RESPOSTAS) {
+      const respondeuAssim = atendimento({
+        contatadoEm: new Date(AGORA - 2 * H).toISOString(),
+        [fato]: new Date(AGORA - H).toISOString(),
+      });
+      expect(respondeu(respondeuAssim), fato).toBe(true);
+      expect(jaContatadasNaJanela([respondeuAssim], AGORA), fato).toHaveLength(0);
+      expect(aContatarNaJanela([respondeuAssim], AGORA), fato).toHaveLength(0);
+    }
+  });
+
+  it("sem resposta, a única diferença entre as duas filas é ter sido procurada", () => {
+    const procurada = atendimento({ contatadoEm: new Date(AGORA - H).toISOString() });
+    const nova = atendimento();
+    expect(respondeu(procurada)).toBe(false);
+    expect(faltaProcurar(nova)).toBe(true);
+    expect(jaFoiProcurada(nova)).toBe(false);
+    expect(faltaProcurar(procurada)).toBe(false);
+    expect(jaFoiProcurada(procurada)).toBe(true);
   });
 
   it("quem respondeu sai das duas listas", () => {

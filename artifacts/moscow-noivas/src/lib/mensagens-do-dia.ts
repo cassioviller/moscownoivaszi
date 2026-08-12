@@ -60,13 +60,47 @@ export function aContatarNaJanela<T extends AtendimentoDaFila>(
   atendimentos: readonly T[],
   agora: number,
 ): T[] {
+  return naJanela(atendimentos, agora, faltaProcurar);
+}
+
+/**
+ * S-O21 (E181) — o RECORTE das três filas, escrito uma vez.
+ *
+ * As três funções desta seção respondem perguntas diferentes sobre a mesma
+ * janela de 48h, e as três repetiam a conta e a ordenação. O recorte não é
+ * decisão de nenhuma delas: é o horário que ainda dá para remarcar.
+ */
+function naJanela<T extends AtendimentoDaFila>(
+  atendimentos: readonly T[],
+  agora: number,
+  pergunta: (a: AtendimentoDaFila) => boolean,
+): T[] {
   return atendimentos
     .filter((a) => {
-      if (!faltaProcurar(a)) return false;
+      if (!pergunta(a)) return false;
       const t = new Date(a.inicio).getTime();
       return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
     })
     .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+}
+
+/**
+ * S-O21 (E181) — **ela já respondeu**, e os fatos que dizem isso moram aqui.
+ *
+ * O E97/F6 separou "a loja procurou" (`contatadoEm`) de "a noiva respondeu"
+ * (`confirmadoEm`); o F37/E100 acrescentou o terceiro fato — quem pede
+ * remarcação também respondeu, respondeu "não posso". Duas filas dependem
+ * dessa mesma resposta, e as duas a escreviam por conta própria: uma pela
+ * afirmativa (`faltaProcurar`), outra pela negativa
+ * (`jaContatadasNaJanela` — `|| a.confirmadoEm || a.remarcacaoPedidaEm`).
+ *
+ * As duas grafias concordam hoje. A que a regra 26 descreve é a de amanhã: o
+ * quarto fato entraria numa e não na outra, e a noiva que respondeu sairia de
+ * uma fila e continuaria na outra — com o botão "Não procurei" oferecido para
+ * um contato que ela já respondeu.
+ */
+export function respondeu(a: AtendimentoDaFila): boolean {
+  return !!a.confirmadoEm || !!a.remarcacaoPedidaEm;
 }
 
 /**
@@ -85,9 +119,16 @@ export function aContatarNaJanela<T extends AtendimentoDaFila>(
  * ganham juntas.
  */
 export function faltaProcurar(a: AtendimentoDaFila): boolean {
-  return (
-    a.situacao === "AGENDADO" && !a.contatadoEm && !a.confirmadoEm && !a.remarcacaoPedidaEm
-  );
+  return a.situacao === "AGENDADO" && !a.contatadoEm && !respondeu(a);
+}
+
+/**
+ * A irmã exata: procurada e ainda sem resposta. A ÚNICA diferença para a de
+ * cima é o sinal do `contatadoEm` — e é isso que a S-O21 pede que fique
+ * visível, em vez de ser reconstruído pela negativa lá embaixo.
+ */
+export function jaFoiProcurada(a: AtendimentoDaFila): boolean {
+  return a.situacao === "AGENDADO" && !!a.contatadoEm && !respondeu(a);
 }
 
 /**
@@ -100,13 +141,11 @@ export function pediramRemarcacaoNaJanela<T extends AtendimentoDaFila>(
   atendimentos: readonly T[],
   agora: number,
 ): T[] {
-  return atendimentos
-    .filter((a) => {
-      if (a.situacao !== "AGENDADO" || !a.remarcacaoPedidaEm) return false;
-      const t = new Date(a.inicio).getTime();
-      return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
-    })
-    .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+  return naJanela(
+    atendimentos,
+    agora,
+    (a) => a.situacao === "AGENDADO" && !!a.remarcacaoPedidaEm,
+  );
 }
 
 /** Procuradas na janela e ainda sem resposta — a linha que o desfazer atende. */
@@ -114,15 +153,7 @@ export function jaContatadasNaJanela<T extends AtendimentoDaFila>(
   atendimentos: readonly T[],
   agora: number,
 ): T[] {
-  return atendimentos
-    .filter((a) => {
-      if (a.situacao !== "AGENDADO" || !a.contatadoEm || a.confirmadoEm || a.remarcacaoPedidaEm) {
-        return false;
-      }
-      const t = new Date(a.inicio).getTime();
-      return t >= agora && t <= agora + JANELA_CONFIRMACAO_MS;
-    })
-    .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+  return naJanela(atendimentos, agora, jaFoiProcurada);
 }
 
 /**

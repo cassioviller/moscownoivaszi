@@ -19,6 +19,7 @@ import {
   Clock,
 } from "lucide-react";
 import { brl, capitalizar, instanteLongo, tipoItemLabel } from "@/lib/formatos";
+import { temDesconto } from "@/lib/financeiro/dinheiro";
 import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 
 /**
@@ -199,7 +200,10 @@ export default function NoivaPortal() {
             <Skeleton className="h-56 w-full rounded-lg" />
             <Skeleton className="h-32 w-full rounded-lg" />
           </div>
-        ) : portal.isError ? (
+        ) : portal.isError || !dados ? (
+          /* S-O16/E181: eram 41 `dados!` nesta página — o maior ninho da
+             classe, e ela é a que a NOIVA abre. A guarda entra na pergunta e
+             as asserções somem; o pior caso deixa de ser tela em branco. */
           <p className="text-sm text-center">
             {ERROS[erro?.data?.error ?? ""] ?? ERROS.LINK_INVALIDO}
           </p>
@@ -237,7 +241,8 @@ export default function NoivaPortal() {
                 </ul>
 
                 <div className="space-y-1 border-t pt-3">
-                  {orc.descontoTipo && orc.descontoValor ? (
+                  {/* S-O13: a régua do desconto é `temDesconto` (P15/E163). */}
+                  {temDesconto(orc.descontoTipo, orc.descontoValor) ? (
                     <>
                       <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Soma dos itens</span>
@@ -320,11 +325,11 @@ export default function NoivaPortal() {
             )}
 
             {/* — As próximas provas: confirmar é um clique (E85) — */}
-            {dados!.provas.length > 0 && (
+            {dados.provas.length > 0 && (
               <section className="bg-card border rounded-lg p-6 shadow-sm space-y-4">
                 <h2 className="font-serif text-2xl">Suas próximas provas</h2>
                 <ul className="space-y-2">
-                  {dados!.provas.map((p) => (
+                  {dados.provas.map((p) => (
                     <li key={p.id} className="flex items-center gap-3 text-sm">
                       <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
                       <span>{capitalizar(dataHoraFmt.format(new Date(p.inicio)))}</span>
@@ -380,13 +385,13 @@ export default function NoivaPortal() {
             )}
 
             {/* — O lookbook (E21) — */}
-            {dados!.lookbook && dados!.lookbook.vestidos.length > 0 && (
+            {dados.lookbook && dados.lookbook.vestidos.length > 0 && (
               <section className="space-y-4">
                 <h2 className="text-center font-serif text-2xl">
                   Os vestidos que você provou
                 </h2>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  {dados!.lookbook.vestidos.map((v) => (
+                  {dados.lookbook.vestidos.map((v) => (
                     <figure
                       key={v.vestidoId}
                       className="overflow-hidden rounded-lg border bg-card"
@@ -439,17 +444,17 @@ export default function NoivaPortal() {
             )}
 
             {/* — F21/E100: o contrato, o documento que ela mais vai querer rever — */}
-            {dados!.contrato && (
+            {dados.contrato && (
               <section className="bg-card space-y-5 rounded-lg border p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-serif text-2xl">Seu contrato</h2>
                   <span className="text-muted-foreground text-xs">
-                    Fechado em {instanteLongo(dados!.contrato.fechadoEm)}
+                    Fechado em {instanteLongo(dados.contrato.fechadoEm)}
                   </span>
                 </div>
 
                 <ul className="divide-y">
-                  {dados!.contrato.itens.map((it, i) => (
+                  {dados.contrato.itens.map((it, i) => (
                     <li key={i} className="flex items-start justify-between gap-3 py-2.5">
                       <div className="min-w-0">
                         <p className="text-sm">{it.descricao}</p>
@@ -469,20 +474,22 @@ export default function NoivaPortal() {
                 {/* Com desconto, a soma dos itens NÃO é o total — e um contrato
                     que não fecha na tela dela é pior que não mostrar itens. */}
                 <div className="space-y-1 border-t pt-3">
-                  {dados!.contrato.descontoTipo && dados!.contrato.descontoValor ? (
+                  {/* S-O13: e o CONTRATO no portal era o quarto sítio inline —
+                      ele não estava na sobra, que nomeava três. */}
+                  {temDesconto(dados.contrato.descontoTipo, dados.contrato.descontoValor) ? (
                     <>
                       <div className="text-muted-foreground flex justify-between text-sm">
                         <span>Soma dos itens</span>
                         <span className="tabular-nums">
-                          {brl(dados!.contrato.totalBruto)}
+                          {brl(dados.contrato.totalBruto)}
                         </span>
                       </div>
                       <div className="text-muted-foreground flex justify-between text-sm">
                         <span>Desconto</span>
                         <span className="tabular-nums">
-                          {dados!.contrato.descontoTipo === "PERCENTUAL"
-                            ? `${dados!.contrato.descontoValor}%`
-                            : brl(dados!.contrato.descontoValor)}
+                          {dados.contrato.descontoTipo === "PERCENTUAL"
+                            ? `${dados.contrato.descontoValor}%`
+                            : brl(dados.contrato.descontoValor)}
                         </span>
                       </div>
                     </>
@@ -490,14 +497,14 @@ export default function NoivaPortal() {
                   <div className="flex justify-between font-medium">
                     <span>Total</span>
                     <span className="font-serif text-xl tabular-nums">
-                      {brl(dados!.contrato.valorTotal)}
+                      {brl(dados.contrato.valorTotal)}
                     </span>
                   </div>
                 </div>
 
-                {dados!.contrato.dataCasamento && (
+                {dados.contrato.dataCasamento && (
                   <p className="text-muted-foreground border-t pt-3 text-sm">
-                    Casamento em {instanteLongo(dados!.contrato.dataCasamento)}.
+                    Casamento em {instanteLongo(dados.contrato.dataCasamento)}.
                   </p>
                 )}
 
@@ -518,40 +525,40 @@ export default function NoivaPortal() {
             )}
 
             {/* — F39/E100: "O seu vestido" — a fase que o portal não cobria — */}
-            {dados!.vestido && (
+            {dados.vestido && (
               <section className="bg-card space-y-4 rounded-lg border p-6 shadow-sm">
                 <h2 className="font-serif text-2xl">O seu vestido</h2>
                 <div className="flex gap-4">
-                  {dados!.vestido.fotos.length > 0 && (
+                  {dados.vestido.fotos.length > 0 && (
                     <img
                       src={fotoUrl(
                         token!,
-                        dados!.vestido.vestidoId,
-                        dados!.vestido.fotos[0].ordem,
-                        String(dados!.vestido.fotos[0].atualizadaEm),
+                        dados.vestido.vestidoId,
+                        dados.vestido.fotos[0].ordem,
+                        String(dados.vestido.fotos[0].atualizadaEm),
                       )}
-                      alt={dados!.vestido.nome}
+                      alt={dados.vestido.nome}
                       loading="lazy"
                       className="aspect-[3/4] w-28 shrink-0 rounded-md object-cover"
                     />
                   )}
                   <div className="min-w-0 space-y-2">
-                    <p className="font-serif text-lg">{dados!.vestido.nome}</p>
+                    <p className="font-serif text-lg">{dados.vestido.nome}</p>
                     {/* A pergunta que ela repete: "que dia eu pego?". Feita a
                         retirada, a promessa vira registro. */}
-                    {dados!.vestido.retiradaFeitaEm ? (
+                    {dados.vestido.retiradaFeitaEm ? (
                       <p className="text-sm">
                         Retirado em{" "}
                         <span className="font-medium">
-                          {instanteLongo(dados!.vestido.retiradaFeitaEm)}
+                          {instanteLongo(dados.vestido.retiradaFeitaEm)}
                         </span>
                         .
                       </p>
-                    ) : dados!.vestido.retiradaPrevista ? (
+                    ) : dados.vestido.retiradaPrevista ? (
                       <p className="text-sm">
                         Retirada combinada para{" "}
                         <span className="font-medium">
-                          {instanteLongo(dados!.vestido.retiradaPrevista)}
+                          {instanteLongo(dados.vestido.retiradaPrevista)}
                         </span>
                         .
                       </p>
@@ -563,13 +570,13 @@ export default function NoivaPortal() {
                   </div>
                 </div>
 
-                {dados!.vestido.ajustes.length > 0 && (
+                {dados.vestido.ajustes.length > 0 && (
                   <div className="space-y-1.5 border-t pt-3">
                     <p className="text-muted-foreground text-xs uppercase tracking-wider">
                       Ajustes
                     </p>
                     <ul className="space-y-1">
-                      {dados!.vestido.ajustes.map((a, i) => (
+                      {dados.vestido.ajustes.map((a, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm">
                           {a.pronto ? (
                             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -589,7 +596,7 @@ export default function NoivaPortal() {
             )}
 
             {/* — O extrato (só leitura; pagar continua com a loja) — */}
-            {dados!.parcelas.length > 0 && (
+            {dados.parcelas.length > 0 && (
               <section className="bg-card border rounded-lg p-6 shadow-sm space-y-4">
                 <h2 className="font-serif text-2xl">Suas parcelas</h2>
 
@@ -598,25 +605,25 @@ export default function NoivaPortal() {
                     distância num carnê de oito linhas lido no celular, e cada
                     uma voltava como mensagem de WhatsApp para a vendedora — o
                     custo exato que o E78 existia para reduzir. */}
-                {dados!.resumoPagamento && (
+                {dados.resumoPagamento && (
                   <div className="bg-muted/40 flex flex-wrap gap-x-8 gap-y-2 rounded-md p-4">
                     <div>
                       <p className="text-muted-foreground text-xs uppercase tracking-wider">
                         Falta pagar
                       </p>
                       <p className="font-serif text-2xl tabular-nums">
-                        {brl(dados!.resumoPagamento.faltaPagar)}
+                        {brl(dados.resumoPagamento.faltaPagar)}
                       </p>
                     </div>
-                    {dados!.resumoPagamento.proximaEm && (
+                    {dados.resumoPagamento.proximaEm && (
                       <div>
                         <p className="text-muted-foreground text-xs uppercase tracking-wider">
                           Próxima parcela
                         </p>
                         <p className="text-lg tabular-nums">
-                          {brl(dados!.resumoPagamento.proximaValor ?? 0)}
+                          {brl(dados.resumoPagamento.proximaValor ?? 0)}
                           <span className="text-muted-foreground">
-                            {" "}em {instanteLongo(dados!.resumoPagamento.proximaEm)}
+                            {" "}em {instanteLongo(dados.resumoPagamento.proximaEm)}
                           </span>
                         </p>
                       </div>
@@ -624,7 +631,7 @@ export default function NoivaPortal() {
                   </div>
                 )}
                 <ul className="divide-y">
-                  {dados!.parcelas.map((p) => {
+                  {dados.parcelas.map((p) => {
                     const paga = p.status === "PAGA";
                     return (
                       <li
@@ -666,10 +673,10 @@ export default function NoivaPortal() {
 
             {/* — F35/E100: o caminho de volta — */}
             <RodapeDaLoja
-              nome={dados!.lojaNome}
-              endereco={dados!.lojaEndereco}
-              telefone={dados!.lojaTelefone}
-              noivaNome={dados!.noivaNome}
+              nome={dados.lojaNome}
+              endereco={dados.lojaEndereco}
+              telefone={dados.lojaTelefone}
+              noivaNome={dados.noivaNome}
             />
           </>
         )}

@@ -66,11 +66,18 @@ export function brutoEmCentavos(
  * tela do contrato, que só olhavam `descontoTipo` — o mesmo registro, dois
  * arquivos, duas respostas: o PDF imprimia "Desconto − R$ 0,00" num contrato
  * que o dinheiro tratava como sem desconto. Quem pergunta, pergunta AQUI.
+ *
+ * **S-O13 (E181) — a resposta vem com o NÚMERO garantido.** As telas que ainda
+ * escreviam `descontoTipo && descontoValor` à mão ganhavam de graça a estreita
+ * do tipo: dentro do `&&`, o valor é `number`. Trocar a expressão pela função
+ * custaria um `!` em cada sítio — trocar uma régua não nomeada por uma asserção
+ * é piorar o negócio (é a S-O16 do lado do dinheiro). Com o predicado, quem
+ * pergunta recebe as duas coisas: a resposta e a estreita.
  */
 export function temDesconto(
   tipo: string | null | undefined,
   valor: number | null | undefined,
-): boolean {
+): valor is number {
   return !!tipo && !!valor && valor > 0;
 }
 

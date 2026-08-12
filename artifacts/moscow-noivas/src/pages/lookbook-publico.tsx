@@ -53,12 +53,14 @@ export default function LookbookPublico() {
               <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
             ))}
           </div>
-        ) : lookbook.isError ? (
+        ) : lookbook.isError || !dados ? (
+          /* S-O16/E181: a terceira página pública, com uma asserção só — e é a
+             mesma guarda, para as três dizerem a mesma coisa. */
           <p className="text-sm text-center">{ERROS[erro?.data?.error ?? ""] ?? ERROS.LINK_INVALIDO}</p>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {dados!.vestidos.map((v) => (
+              {dados.vestidos.map((v) => (
                 <figure key={v.vestidoId} className="overflow-hidden rounded-lg border bg-card">
                   {v.fotos.length > 0 ? (
                     <div className={`grid ${v.fotos.length > 1 ? "grid-cols-2" : ""} gap-px`}>

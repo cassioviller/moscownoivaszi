@@ -51,6 +51,7 @@ import { podeNoModulo } from "@/lib/permissoes";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
+import { contratoAtivoDaNoiva } from "@/lib/contrato-ativo-da-noiva";
 import { proximaVisita } from "@/lib/proxima-visita";
 import { estadoDasConsultas } from "@/lib/estado-consulta";
 import { abertoEmCentavos } from "@/lib/financeiro/forma";
@@ -296,7 +297,10 @@ export default function NoivaDetalhe() {
   const linkZap = linkWhatsApp(lead.whatsapp, "");
 
   // F5/E98: o que falta, em uma frase — em vez de ler oito cards para descobrir.
-  const contratoAtivo = contratosDaNoiva.find((c) => c.status === "ATIVO") ?? null;
+  // S-O20: a mesma pergunta que a ficha da reserva faz, com a mesma régua —
+  // aqui a lista inteira é necessária (o card lista todos), então o recorte
+  // fica na régua e não na consulta.
+  const contratoAtivo = contratoAtivoDaNoiva(contratosDaNoiva);
   // E125/D3: a visita marcada cala a sugestão de agendar. Enquanto a agenda
   // conta, o banner espera (E121: sugerir "Agendar" e trocar de ideia um
   // segundo depois é afirmar o que não se sabe); se ela falhou, o banner cai
