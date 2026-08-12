@@ -70,13 +70,23 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * acrescenta um objeto aninhado a um schema de resposta, e é aí que a régua
    * serve — obriga a perguntar quem vai preenchê-lo.
    */
-  it("200 operações · 143 com schema de resposta · 70 com relação · 250 pares na fronteira", () => {
+  it("200 operações · 143 com schema de resposta · 70 com relação · 252 pares na fronteira", () => {
     expect(c.operacoes, "operação nova no spec: confira quem monta a resposta dela e atualize esta contagem").toBe(200);
     expect(c.comSchemaDeResposta).toBe(143);
     expect(c.comRelacao).toBe(70);
-    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(250);
-    expect(c.pares.filter((p) => p.entregue).length).toBe(144);
-    expect(c.pares.filter((p) => !p.entregue).length).toBe(106);
+    // E194: 250 → 252. A fronteira CRESCE quando um pai passa a ser entregue —
+    // o `PATCH /contratos` deixou de responder a linha crua, então `lead`,
+    // `vendedora`, `itens` e `parcelas` chegaram, e os filhos DELES entraram na
+    // conta. Régua que só desce estaria medindo outra coisa.
+    expect(c.pares.length, "a fronteira mudou — um objeto aninhado nasceu, ou um pai passou a ser entregue").toBe(252);
+    // 144 → 147 entregues e 106 → 105 não: os 2 pares novos nascem JÁ entregues
+    // (os filhos do contrato que o PATCH passou a devolver), e 1 dos 106 saiu da
+    // coluna do não. A `Ajuste.pecaDoAcervo` anda na direção contrária dentro da
+    // conta — ela some da vista do motor —, e é por isso que a soma não é a que
+    // se deduz de fora: **conte, não deduza** valeu aqui contra mim, que escrevi
+    // 151 antes de rodar.
+    expect(c.pares.filter((p) => p.entregue).length).toBe(147);
+    expect(c.pares.filter((p) => !p.entregue).length).toBe(105);
   });
 
   /**
@@ -84,8 +94,11 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * motor não as enxerga por dentro (ponto cego 3), e a contagem delas está
    * travada para a lista não crescer calada.
    */
-  it("31 operações montam a resposta fora do `with`, e a conta está travada", () => {
-    expect(c.montadasAMao.length, "operação nova sem consulta relacional? A varredura não a enxerga — conte-a aqui").toBe(31);
+  it("30 operações montam a resposta fora do `with`, e a conta está travada", () => {
+    // E194: 31 → 30. O `PATCH /contratos` saiu desta lista no dia em que passou
+    // a reler pelo mesmo `with` do `GET` (S-O113) — a régua enxerga uma porta a
+    // mais por dentro, e essa é a direção certa desta conta.
+    expect(c.montadasAMao.length, "operação nova sem consulta relacional? A varredura não a enxerga — conte-a aqui").toBe(30);
   });
 
   /**
@@ -104,9 +117,26 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     "OrcamentoPublico.itens": "lib/visao-noiva.ts:93 — `montarOrcamentoPublico`, a régua única do portal e da página pública",
     "ComissaoRegra.faixas": "routes/comissao.ts:131 — `regrasDaLoja` agrupa as faixas por regra e ordena pela escada",
     "ComissaoPreviewLinha.projecao": "routes/comissao.ts:763 — `projecaoDaLinha`, cálculo puro do `financeiro-core`",
+    /**
+     * **A oitava não é uma promessa vazia — é o PONTO CEGO do motor, e o E194 a
+     * pôs aqui de propósito.**
+     *
+     * `pecaDoAcervo` e `proximaProva` nascem de duas consultas próprias, e o
+     * E194 (S-O111) as tirou de dentro do `GET /ajustes` para um helper, porque
+     * as TRÊS portas de ajuste as prometem e só a fila as entregava. O efeito
+     * colateral está medido: o motor lê o corpo do handler e não segue a
+     * chamada, então uma aresta que passou de 1 para 3 portas entregues aparece
+     * aqui como "ninguém entrega".
+     *
+     * Isto é a **S-O114** deixando de ser hipótese. Enquanto o motor não seguir
+     * o executor para dentro da função chamada — o conserto que o E186 já fez na
+     * varredura das trancas —, esta linha é a única coisa que diz a verdade
+     * sobre estes dois campos.
+     */
+    "Ajuste.pecaDoAcervo": "routes/agenda.ts:`enriquecerAjustes` — as três portas de ajuste a entregam pelo helper (E194/S-O111); o motor não segue a chamada para fora do handler (S-O114)",
   };
 
-  it("as 7 arestas que nenhuma consulta entrega têm serializador escrito, e o endereço está aqui", () => {
+  it("as 8 arestas que a consulta relacional não entrega têm serializador escrito, e o endereço está aqui", () => {
     const vazias = [...c.arestas]
       .filter(([, v]) => v.entrega === 0)
       .map(([k]) => k)
@@ -130,10 +160,8 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
    * e o que não pode mudar em silêncio é o CONJUNTO.
    */
   const ENTREGA_DESIGUAL = [
-    "Ajuste.pecaDoAcervo",
     "BloqueioVestido.lead",
     "BloqueioVestido.vestido",
-    "Contrato.itens",
     "Contrato.lead",
     "Contrato.parcelas",
     "Contrato.vendedora",
@@ -148,7 +176,7 @@ describe("varredura — quem serializa o schema aninhado (S-O76)", () => {
     "Vestido.fotos",
   ];
 
-  it("16 arestas são entregues por umas portas e não por outras, e o conjunto está travado", () => {
+  it("14 arestas são entregues por umas portas e não por outras, e o conjunto está travado", () => {
     const desiguais = [...c.arestas]
       .filter(([, v]) => v.entrega > 0 && v.promete > v.entrega)
       .map(([k]) => k)

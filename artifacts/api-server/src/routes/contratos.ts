@@ -122,6 +122,31 @@ async function contratoAtivo(contratoId: string, lojaId: string): Promise<boolea
   return c?.status === "ATIVO";
 }
 
+/**
+ * S-O112 — **`Parcela.contrato` era prometida em 8 pares e entregue em 2.**
+ *
+ * Quem recebe ou estorna uma parcela recebe a linha de volta e lê
+ * `parcela.contrato.lead.noivaNome` para dizer de quem era o dinheiro — e
+ * achava `undefined`, porque as duas portas respondiam o `.returning()` cru.
+ * `GET /financeiro/parcelas` é quem monta o par (`financeiro.ts:139`), e o
+ * recorte é o mesmo: o `.parse` do schema reduz o contrato a `{leadId, lead}`.
+ *
+ * As outras quatro mudas da sobra **não se fecham assim, e é decisão de spec**:
+ * ali a parcela viaja DENTRO do contrato (`GET /contratos/:id`, o cancelamento,
+ * as duas portas de geração de carnê), e devolver o contrato dentro de cada
+ * parcela do próprio contrato é repetir o pai N vezes no filho. O que está
+ * errado lá é a PROMESSA, não a entrega — a saída é o idioma que o E192 já
+ * usou para `Atendimento.ajustes`: um schema estreito para o caso aninhado.
+ * Fica na S-O112, agora com o diagnóstico separado em duas metades.
+ */
+async function comOContratoDela<T extends { id: string }>(parcela: T) {
+  const completa = await db.query.parcelasTable.findFirst({
+    where: eq(parcelasTable.id, parcela.id),
+    with: { contrato: { with: { lead: true } } },
+  });
+  return completa ?? parcela;
+}
+
 router.get("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const query = ListContratosQueryParams.safeParse(req.query);
@@ -1188,7 +1213,26 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
     });
     return;
   }
-  res.json(UpdateContratoResponse.parse(contrato));
+  /**
+   * S-O113 — **a resposta era a linha CRUA, e o schema promete quatro
+   * relações.**
+   *
+   * O `.returning()` do UPDATE devolve as colunas de `contratos` e mais nada:
+   * sem `itens`, sem `parcelas`, sem `lead` e sem `vendedora`, que o `Contrato`
+   * declara e o `GET /contratos/:id` entrega. Medido pela
+   * `varredura-schemas-aninhados` do E192 — as quatro arestas prometidas por
+   * esta porta e entregues pela irmã.
+   *
+   * A releitura é a mesma do `GET` (`:989-992`), de propósito: quem grava e
+   * relê pelo mesmo `with` não pode divergir dele. Uma query a mais no caminho
+   * de sucesso de uma edição — que é gesto humano, não laço — em troca de a
+   * tela que salvar não precisar de um `GET` logo depois.
+   */
+  const completo = await db.query.contratosTable.findFirst({
+    where: and(eq(contratosTable.id, contrato.id), eq(contratosTable.lojaId, lojaId as string)),
+    with: { lead: true, vendedora: true, parcelas: true, itens: true },
+  });
+  res.json(UpdateContratoResponse.parse(completo ?? contrato));
 });
 
 router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): Promise<void> => {
@@ -1604,7 +1648,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contrat
     });
     return;
   }
-  res.json(ReceberParcelaResponse.parse(parcela));
+  res.json(ReceberParcelaResponse.parse(await comOContratoDela(parcela)));
 });
 
 // Estorno avulso: PAGA volta a PREVISTA (volta a ser cobrável), zerando os
@@ -1746,7 +1790,7 @@ router.post("/lojas/:lojaId/parcelas/:parcelaId/estornar", async (req, res): Pro
     res.status(404).json({ error: "PARCELA_NAO_ENCONTRADA", detalhe: "Esta parcela não existe nesta loja." });
     return;
   }
-  res.json(EstornarParcelaResponse.parse(desfecho.parcela));
+  res.json(EstornarParcelaResponse.parse(await comOContratoDela(desfecho.parcela)));
 });
 
 router.delete("/lojas/:lojaId/parcelas/:parcelaId", async (req, res): Promise<void> => {

@@ -1018,16 +1018,29 @@ const AJUSTE_WITH = {
   atendimento: { with: { lead: true, bloqueio: { with: { vestido: true, ...MAE_DO_BLOQUEIO } } } },
 } as const;
 
-router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
-  const lojaId = req.params.lojaId as string;
-  const ajustes = await db.query.ajustesTable.findMany({
-    where: eq(ajustesTable.lojaId, lojaId),
-    with: AJUSTE_WITH,
-  });
-
-  // O prazo real da costureira (E14): a PRÓXIMA prova do mesmo bloqueio depois
-  // da prova que criou o ajuste. Uma query pelas provas dos bloqueios em cena —
-  // não a agenda inteira — e o pareamento em memória.
+/**
+ * S-O111 — **`proximaProva` e `pecaDoAcervo` eram do `GET`, e o schema as
+ * promete nas três portas.**
+ *
+ * As duas nascem de consulta PRÓPRIA, não do `with`: a próxima prova do mesmo
+ * bloqueio e a peça de acervo que cita a confecção. Estavam escritas dentro do
+ * `GET /ajustes`, então `POST /ajustes` e `PATCH /ajustes/:id` devolviam
+ * `undefined` nos dois campos que o `Ajuste` declara — medido pela
+ * `varredura-schemas-aninhados` do E192: a aresta `Ajuste.pecaDoAcervo` era
+ * prometida em **3** portas e entregue em **1**.
+ *
+ * Quem cria um trabalho de costura pela tela recebe a resposta e desenha o card
+ * com ela; sem o prazo, o card nasce sem a data que a costureira usa para se
+ * organizar, e só a aparece depois de um F5.
+ *
+ * Extrair em vez de copiar (regra 26): a conta do prazo é a régua do E14, e uma
+ * segunda escrita dela na porta de criação divergiria da da fila no primeiro
+ * ajuste da regra.
+ */
+async function enriquecerAjustes<T extends { id: string; tipo: string; atendimento?: { bloqueioId?: string | null; inicio?: Date | null } | null }>(
+  lojaId: string,
+  ajustes: T[],
+): Promise<(T & { proximaProva: Date | null; pecaDoAcervo: { id: string; codigo: string; nome: string } | null })[]> {
   const bloqueioIds = [
     ...new Set(ajustes.map((a) => a.atendimento?.bloqueioId).filter((b): b is string => !!b)),
   ];
@@ -1045,11 +1058,6 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
         ))
     : [];
 
-  // E156 — a confecção que já virou peça do acervo. A proveniência mora em
-  // `vestidos.origem_ajuste_id` (a peça é o que sobrevive), então a fila lê pelo
-  // lado de lá: uma query pelas peças que citam os trabalhos em cena. É o que
-  // troca o gesto "virou peça do acervo" pelo link para a peça — sem isto, a
-  // fila ofereceria o mesmo gesto para sempre, no mesmo trabalho já concluído.
   const confeccaoIds = ajustes.filter((a) => a.tipo === "CONFECCAO").map((a) => a.id);
   const pecas = confeccaoIds.length
     ? await db
@@ -1067,7 +1075,7 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
     : [];
   const pecaPorAjuste = new Map(pecas.map(({ origemAjusteId, ...peca }) => [origemAjusteId!, peca]));
 
-  const comPrazo = ajustes.map((a) => {
+  return ajustes.map((a) => {
     const bloqueioId = a.atendimento?.bloqueioId;
     const aposEsta = a.atendimento?.inicio;
     const proxima = bloqueioId && aposEsta
@@ -1077,6 +1085,19 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
       : null;
     return { ...a, proximaProva: proxima, pecaDoAcervo: pecaPorAjuste.get(a.id) ?? null };
   });
+}
+
+router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
+  const lojaId = req.params.lojaId as string;
+  const ajustes = await db.query.ajustesTable.findMany({
+    where: eq(ajustesTable.lojaId, lojaId),
+    with: AJUSTE_WITH,
+  });
+
+  // O prazo real da costureira (E14) e a peça que a confecção virou (E156) —
+  // as duas contas moram em `enriquecerAjustes`, porque as três portas as
+  // prometem (S-O111).
+  const comPrazo = await enriquecerAjustes(lojaId, ajustes);
 
   res.json(ListAjustesResponse.parse(comPrazo.map(ajusteComDono)));
 });
@@ -1110,7 +1131,10 @@ router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
     where: eq(ajustesTable.id, ajuste.id),
     with: AJUSTE_WITH,
   });
-  res.status(201).json(CreateAjusteResponse.parse(fullAjuste && ajusteComDono(fullAjuste)));
+  // S-O111: o prazo e a peça de acervo entram aqui também — o schema os promete
+  // nas três portas, e quem cria pela tela desenha o card com esta resposta.
+  const [comPrazo] = fullAjuste ? await enriquecerAjustes(lojaId, [fullAjuste]) : [];
+  res.status(201).json(CreateAjusteResponse.parse(comPrazo && ajusteComDono(comPrazo)));
 });
 
 router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void> => {
@@ -1132,7 +1156,8 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
     where: eq(ajustesTable.id, ajuste.id),
     with: AJUSTE_WITH,
   });
-  res.json(UpdateAjusteResponse.parse(fullAjuste && ajusteComDono(fullAjuste)));
+  const [comPrazo] = fullAjuste ? await enriquecerAjustes(lojaId as string, [fullAjuste]) : [];
+  res.json(UpdateAjusteResponse.parse(comPrazo && ajusteComDono(comPrazo)));
 });
 
 /**
