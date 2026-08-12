@@ -718,6 +718,24 @@ router.get("/lojas/:lojaId/orcamentos/:orcamentoId/reservas-candidatas", async (
    * marcava como candidato e o `POST /contratos` o adotava, gravando o nome da
    * noiva errada por cima. A régua do dono, aplicada aqui, tira da lista o que
    * já é de alguém; a mesma régua guarda a porta do contrato.
+   *
+   * **S-O77/E189 — o filtro fica em MEMÓRIA, por decisão medida.**
+   *
+   * A sobra propunha empurrá-lo para o `where` com um `NOT EXISTS` contra
+   * `reservas`, temendo a lente 3 *"no dia em que a mesma peça acumular
+   * reservas canceladas"*. **A premissa não se sustenta**: o `isNull(canceladoEm)`
+   * acima já está no `where`, então bloqueio cancelado nunca entra no conjunto
+   * — o que cresce são as reservas VIVAS da mesma peça, e envelope físico que
+   * não se sobrepõe é o que a constraint EXCLUDE do banco garante.
+   *
+   * O tamanho, medido no banco da loja (`moscow_base`, 2026-08-12): dos **116**
+   * bloqueios `RESERVA_CASAMENTO` vivos, **ZERO** têm `lead_id` nulo, e a peça
+   * mais disputada do acervo carrega **3** reservas vivas. O `or` traz os
+   * bloqueios da noiva mais os sem `lead_id` das peças DESTE orçamento; o
+   * filtro descarta, hoje, nenhuma linha. Um `NOT EXISTS` por linha para
+   * economizar unidades de linhas troca leitura por SQL sem número que o
+   * justifique — e a régua do dono é a mesma nas três portas justamente por
+   * morar em `bloqueioComDono`, uma função só (regra 26).
    */
   const comDonos = candidatas
     .map((c) => bloqueioComDono(c))

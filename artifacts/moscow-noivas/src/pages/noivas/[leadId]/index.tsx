@@ -14,6 +14,9 @@ import {
   getListContratosQueryKey,
   useListAtendimentos,
   getListAtendimentosQueryKey,
+  useListReservas,
+  getListReservasQueryKey,
+  useUpdateReserva,
   type LeadUpdatePerdidaMotivo,
 } from "@workspace/api-client-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -46,7 +49,7 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, Plus, Pencil, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { brl, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
+import { brl, diaMesAno, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
 import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
@@ -64,6 +67,7 @@ import {
   casamentoUrgente,
 } from "../helpers";
 import { linkWhatsApp } from "@/lib/whatsapp";
+import { reservasForaDaData } from "@/lib/reservas-fora-da-data";
 
 const STATUS_ORCAMENTO: Record<string, string> = {
   RASCUNHO: "Rascunho",
@@ -146,13 +150,37 @@ export default function NoivaDetalhe() {
       enabled: !!activeLojaId && !!leadId && podeVerAgenda,
     },
   });
+  /**
+   * S-O74/E189 — **as reservas dela, para saber se ficaram para trás.**
+   *
+   * Esta é a consulta que dá o primeiro chamador ao `listReservas`, e o recorte
+   * `?leadId=` que ela usa nasceu no E185 (S-O55) sem nenhum. A ficha é o lugar
+   * porque é daqui que a data do casamento muda: `noivas/[leadId]/editar.tsx` é
+   * o **único** sítio de `artifacts/` que escreve `casamentoData` da noiva, e
+   * ele fica a um clique deste card.
+   *
+   * Gate de `vestidos`: o servidor guarda `/reservas` por esse módulo
+   * (`reservas.ts:58`). Quem não vê vestidos não dispara a consulta e a ficha
+   * fica como era — a mesma forma da agenda, logo acima.
+   */
+  const podeVerReservas = podeNoModulo(acessosModulos, "vestidos", "ver");
+  const paramsReservas = { leadId: leadId! };
+  const reservas = useListReservas(activeLojaId!, paramsReservas, {
+    query: {
+      queryKey: getListReservasQueryKey(activeLojaId!, paramsReservas),
+      enabled: !!activeLojaId && !!leadId && podeVerReservas,
+    },
+  });
   const createOrcamento = useCreateOrcamento();
   const updateLead = useUpdateLead();
+  const updateReserva = useUpdateReserva();
 
   // Diálogo de perda: motivo estruturado obrigatório, detalhe livre opcional.
   const [perdendo, setPerdendo] = useState(false);
   const [motivoPerda, setMotivoPerda] = useState<LeadUpdatePerdidaMotivo | "">("");
   const [detalhePerda, setDetalhePerda] = useState("");
+  /** Qual reserva está sendo movida — o `isPending` do hook não distingue. */
+  const [movendo, setMovendo] = useState<string | null>(null);
 
   const orcamentosDaNoiva = orcamentos.data?.itens ?? [];
   const contratosDaNoiva = contratos.data?.itens ?? [];
@@ -176,6 +204,20 @@ export default function NoivaDetalhe() {
    * S36: *"gateia por [agenda,leads] e escreve em [orcamentos]"*.
    */
   const podeCriarOrcamento = podeNoModulo(acessosModulos, "orcamentos", "criar");
+  /**
+   * S-O74/E189 — mover a reserva é `vestidos.editar`, o que o servidor exige
+   * no `PATCH /reservas/:id`. Quem só edita a ficha da noiva LÊ o aviso e não
+   * ganha o botão: é a lição do E172 (S-O40), e a varredura do S36 cobra.
+   */
+  const podeMoverReserva = podeNoModulo(acessosModulos, "vestidos", "editar");
+
+  /**
+   * O V5 do CODE-REVIEW, na ficha: *"a noiva muda o casamento de 12/09 para
+   * 03/10, a ficha passa a dizer 03/10, o bloqueio fica em 12/09 para sempre"*.
+   * A régua é pura e testada (`lib/reservas-fora-da-data.ts`) e devolve `null`
+   * quando não há divergência — aviso que aparece sempre vira moldura.
+   */
+  const avisoDeData = reservasForaDaData(lead?.casamentoData, reservas.data);
 
   const novoOrcamento = async () => {
     try {
@@ -194,6 +236,47 @@ export default function NoivaDetalhe() {
       });
     }
   };
+
+  /**
+   * O gesto que faltava desde o E173: mover a reserva para a data que a ficha
+   * já diz. **Uma chamada move tudo** — a reserva é o AGREGADO, e o servidor
+   * propaga na mesma transação para todos os bloqueios vinculados e para o
+   * contrato ATIVO, com `CONTRATO_DATA_SEGUIU_RESERVA` na trilha.
+   *
+   * Ele NÃO é efeito colateral de salvar a ficha, e essa é a decisão do épico:
+   * o `PATCH /reservas/:id` revalida a disponibilidade de cada peça e pode
+   * recusar com **409 `VESTIDO_INDISPONIVEL`** — pendurado no `PATCH /leads`,
+   * um vestido ocupado na data nova faria a correção de um TELEFONE falhar.
+   * Aqui a recusa chega no gesto que a pediu, com a frase que a explica.
+   */
+  async function moverReserva(reservaId: string, instante: string, rotulo: string) {
+    setMovendo(reservaId);
+    try {
+      await updateReserva.mutateAsync({
+        lojaId: activeLojaId!,
+        reservaId,
+        data: { casamentoData: instante },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListReservasQueryKey(activeLojaId!) });
+      toast({
+        title: "Reserva movida",
+        description: `As peças e o contrato ativo passaram para ${rotulo}.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Não deu para mover a reserva",
+        description: mensagemApi(err, "Tente novamente.", {
+          // O 409 da disponibilidade vem com os conflitos e sem `detalhe` —
+          // a frase é da tela, como em `atendimentos/novo`.
+          VESTIDO_INDISPONIVEL:
+            "Alguma peça desta reserva não está livre na data nova — confira a ficha do vestido antes de mover.",
+        }),
+        variant: "destructive",
+      });
+    } finally {
+      setMovendo(null);
+    }
+  }
 
   async function invalidarLead() {
     await Promise.all([
@@ -473,6 +556,64 @@ export default function NoivaDetalhe() {
             ) : (
               <p className="text-sm text-muted-foreground">Data a definir.</p>
             )}
+
+            {/* S-O74/E189 — o V5, que vivia pela metade: o servidor sabe mover
+                a reserva desde o E173 e nenhuma tela o chamava. A ficha dizia
+                a data nova e a peça continuava presa na antiga, em silêncio —
+                a noiva chegava no dia do casamento e o vestido estava com
+                outra pessoa. Quem não pode mexer em vestidos LÊ o aviso e não
+                ganha o botão: o servidor guarda o PATCH por `vestidos.editar`. */}
+            {avisoDeData && (
+              <div
+                className="border-destructive/40 bg-destructive/5 space-y-3 rounded-md border p-3"
+                data-testid="aviso-reservas-fora-da-data"
+              >
+                <p className="text-sm font-medium">
+                  {avisoDeData.foraDaData.length === 1
+                    ? "A reserva dela ficou em outra data."
+                    : `${avisoDeData.foraDaData.length} reservas dela ficaram em outra data.`}{" "}
+                  <span className="text-muted-foreground font-normal">
+                    Mover ajusta as peças e o contrato ativo para {diaMesAno(avisoDeData.dia)}.
+                  </span>
+                </p>
+                {avisoDeData.foraDaData.map((r) => (
+                  <div key={r.reservaId} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm">
+                      {diaMesAno(r.dia)}
+                      {r.pecas.length > 0 && (
+                        <span className="text-muted-foreground"> · {r.pecas.join(" · ")}</span>
+                      )}
+                    </span>
+                    {podeMoverReserva && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        /* Uma mutação de cada vez, e o "Movendo…" só na que foi
+                           clicada — `isPending` é do hook, não da linha, e com
+                           duas reservas as duas diriam a mesma coisa. Hoje isso
+                           não acontece (medido em `moscow_base`: as 118 noivas
+                           com reserva viva têm exatamente UMA), e é justamente
+                           por não acontecer que ninguém acharia o defeito. */
+                        disabled={updateReserva.isPending}
+                        onClick={() =>
+                          void moverReserva(
+                            r.reservaId,
+                            avisoDeData.instante,
+                            diaMesAno(avisoDeData.dia),
+                          )
+                        }
+                        data-testid={`button-mover-reserva-${r.reservaId}`}
+                      >
+                        {movendo === r.reservaId
+                          ? "Movendo…"
+                          : `Mover para ${diaMesAno(avisoDeData.dia)}`}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-x-10 gap-y-3">
               <Dado rotulo="Horário" valor={lead.casamentoHorario} />
               <Dado rotulo="Local" valor={lead.casamentoLocal} />
