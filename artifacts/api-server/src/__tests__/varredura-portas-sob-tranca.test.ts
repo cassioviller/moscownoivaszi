@@ -32,6 +32,13 @@ import {
  * Das 6 abertas, **2 são nascimento de linha-pai** (não há linha anterior para
  * reler) e **4 são portas de verdade**, cada uma com âncora na tabela de Sobras.
  *
+ * **Remedido em 2026-08-12**, sobre a base `aaf4c8e`: **271 arquivos, 32
+ * portas, 11 abertas**. As 6 que entraram são todas do gerador da loja de
+ * demonstração (`0cfae03`) — nenhuma porta de rota nasceu no intervalo, e a
+ * S-O31 que a coluna ABERTA perdeu já estava contada acima. A varredura pegou
+ * as 6 sozinha, no commit seguinte ao que as criou; quem não a leu foi quem
+ * commitou.
+ *
  * ## O que esta varredura NÃO vê
  *
  * Dito aqui porque é a informação mais útil da próxima rodada — a régua que
@@ -110,6 +117,32 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  *   `id` gerado. **Elas ficam nesta tabela de propósito** — automatizar
  *   "INSERT não precisa de tranca" seria a régua que autoriza, e o
  *   `contratos.ts:685` é a prova: é um INSERT e precisa de duas trancas.
+ *
+ * ### `scripts/loja-de-demonstracao.ts` — 6 portas, e a varredura acertou em
+ * vê-las
+ *
+ * O gerador da loja de demonstração (`0cfae03`) escreve orçamento, contrato e
+ * bloqueio direto na tabela, com `db` e sem tranca — e **a varredura ficou
+ * vermelha no commit seguinte, que é exatamente o que ela existe para fazer**.
+ * O `main` viveu 2 dias com este vermelho, e ele foi encontrado por acidente,
+ * ao medir outra coisa: a régua 18 diz que vermelho que vira paisagem apaga a
+ * régua 11, e foi o que aconteceu aqui.
+ *
+ * **Julgadas e absolvidas, não perdoadas**, pelos mesmos critérios das duas de
+ * nascimento acima:
+ *
+ * - O script **cria a loja que ele povoa**, na mesma execução. Não existe outra
+ *   sessão escrevendo naquelas linhas: não há noiva, vendedora nem tela — há um
+ *   `tsx` rodando sozinho contra ids que ele acabou de gerar.
+ * - Ele é **descartável por desenho**: a loja de demonstração existe para
+ *   produzir os prints dos manuais e é recriada do zero quando muda.
+ * - Ele **não roda em produção**. Nenhuma rota o chama; o caminho é o `tsx` na
+ *   mão de quem gera a documentação.
+ *
+ * A contagem fica travada em 6 pelo mesmo motivo que a de `comissao.ts` fica em
+ * 3: o que esta tabela impede não é a porta existir, é ela se multiplicar em
+ * silêncio. Se o gerador ganhar a sétima escrita, este arquivo fica vermelho e
+ * alguém decide de novo.
  */
 const SEM_DISCIPLINA: Record<string, number> = {
   "artifacts/api-server/src/routes/comissao.ts": 3,
@@ -117,8 +150,9 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // linha foi o que cobrou a baixa. Resta o nascimento de `POST /orcamentos`.
   "artifacts/api-server/src/routes/orcamentos.ts": 1,
   "artifacts/api-server/src/routes/reservas.ts": 1,
+  "scripts/loja-de-demonstracao.ts": 6,
 };
-const TOTAL_SEM_DISCIPLINA = 5;
+const TOTAL_SEM_DISCIPLINA = 11;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
@@ -264,7 +298,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 6 — 4 portas de verdade e 2 nascimentos julgados", () => {
+  it("o total da dívida é 11 — 3 de verdade, 2 nascimentos e 6 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
