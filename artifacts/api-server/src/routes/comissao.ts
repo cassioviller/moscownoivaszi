@@ -201,6 +201,40 @@ type EstornoPendente = { totalC: number; contratoIds: string[] };
  * competência ainda ABERTA não entra aqui: ele já some da base naturalmente,
  * porque a base só soma contratos ATIVO.
  */
+/**
+ * S-O32 — **as três portas que escrevem `contratos.comissao_estornada_em`
+ * trancam a linha do CONTRATO antes.**
+ *
+ * `comissao.ts` era **a única tabela quente que as Faixas A e B da trilha não
+ * abriram**, e a varredura do E171 a achou por isso: as três escritas — reabrir
+ * fechamento (`:1035`, que trancava a CONTA A PAGAR e não o contrato), fechar
+ * competência (`:1301`) e baixar estorno à mão (`:1407`) — decidiam sobre a
+ * mesma coluna sem segurar a linha.
+ *
+ * O modo de falha é o de sempre nesta casa, e aqui ele custa dinheiro de
+ * verdade: reabrir × fechar no mesmo segundo decidem em ordens diferentes. O
+ * estorno volta a `PENDENTE` pela reabertura e é **recarimbado pelo
+ * fechamento sem ter sido abatido** — a loja paga comissão sobre venda
+ * desfeita, que é exatamente o que o E54 existe para impedir.
+ *
+ * A tranca vai **ORDENADA por id**, como em `contratos.ts:586-594` e
+ * `reservas.ts:62-71`: duas portas segurando os mesmos contratos em ordens
+ * diferentes se serializariam num deadlock em vez de numa fila.
+ */
+async function trancarContratos(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  lojaId: string,
+  ids: readonly string[],
+): Promise<void> {
+  for (const id of [...ids].sort()) {
+    await tx
+      .select({ id: contratosTable.id })
+      .from(contratosTable)
+      .where(and(eq(contratosTable.id, id), eq(contratosTable.lojaId, lojaId)))
+      .for("update");
+  }
+}
+
 async function estornosPendentes(
   cliente: Cliente,
   lojaId: string,
@@ -1032,6 +1066,8 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
     // absorveu deixou de existir. Sem isto, o valor cancelado sumiria da
     // próxima apuração e a loja pagaria comissão sobre venda desfeita.
     if (estornos.length > 0) {
+      // S-O32: a linha do CONTRATO é a que se tranca — a conta a pagar já era.
+      await trancarContratos(tx, lojaId, estornos);
       await tx
         .update(contratosTable)
         .set({ comissaoEstornadaEm: null })
@@ -1298,6 +1334,9 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
       }).returning();
 
       if (reconciliados.length > 0) {
+        // S-O32: sem esta tranca, a reabertura concorrente devolve o estorno a
+        // PENDENTE e este UPDATE o recarimba sem que ele tenha sido abatido.
+        await trancarContratos(tx, lojaId, reconciliados);
         await tx
           .update(contratosTable)
           .set({ comissaoEstornadaEm: new Date() })
@@ -1404,6 +1443,9 @@ router.post("/lojas/:lojaId/comissao/estornos/baixa",
       const e = pend.get(vendedoraId);
       if (!e || e.contratoIds.length === 0) return null;
 
+      // S-O32: a lista já nasce dentro da transação; a tranca é o que impede
+      // que ela envelheça entre o cálculo e a escrita.
+      await trancarContratos(tx, lojaId, e.contratoIds);
       await tx
         .update(contratosTable)
         .set({

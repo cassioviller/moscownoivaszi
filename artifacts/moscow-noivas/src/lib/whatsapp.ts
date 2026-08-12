@@ -6,20 +6,13 @@
 import { brl, instanteHora } from "./formatos";
 
 /**
- * Deep-link wa.me. Prefixa o DDI 55 só se o número for nacional (10–11
- * dígitos) e mantém quando já vem com DDI (12–13 começando em 55); qualquer
- * outro tamanho é implausível e vira null em vez de um link quebrado.
+ * S-O44 — a régua dos DÍGITOS mudou de casa: ela vive em `@workspace/funil-core`,
+ * porque o SERVIDOR também precisa dela (a porta da API e a captação pública
+ * aceitavam o número que não vira link). Aqui fica o reexport, para as ~20 telas
+ * que já a importam daqui não mudarem de import — e para não existir uma
+ * segunda cópia da regra dos dígitos (regra 26).
  */
-export function linkWhatsApp(whatsapp: string | null | undefined, mensagem: string): string | null {
-  if (!whatsapp) return null;
-  let digitos = whatsapp.replace(/\D/g, "");
-  if (digitos.length === 10 || digitos.length === 11) {
-    digitos = `55${digitos}`;
-  } else if (!(digitos.length >= 12 && digitos.length <= 13 && digitos.startsWith("55"))) {
-    return null;
-  }
-  return `https://wa.me/${digitos}?text=${encodeURIComponent(mensagem)}`;
-}
+export { linkWhatsApp, whatsappUtilizavel, WHATSAPP_INUTILIZAVEL, WHATSAPP_NAO_ABRE_SELO } from "@workspace/funil-core";
 
 // `inicio` do atendimento é um INSTANTE; a mensagem fala a hora da loja, não
 // a do navegador — fuso fixo para o dia não escorregar em telefone viajando.
@@ -143,27 +136,6 @@ export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
   return linhas.join("\n");
 }
 
-/**
- * S-O43 — o número que a loja digita é ÚTIL, ou não é.
- *
- * O campo de WhatsApp da noiva não tinha máscara nem conferência: `<input
- * type="tel">` com placeholder e `z.string().optional()`. Um dígito a menos era
- * aceito, salvo e EXIBIDO na ficha como se estivesse bom — e do outro lado
- * `linkWhatsApp` devolvia `null`, então todo botão de wa.me do sistema
- * simplesmente não aparecia: a confirmação da prova, a fila "Falta procurar", a
- * cobrança, o rodapé do portal. Sem erro, sem aviso, sem ninguém descobrir por
- * quê. O comentário do próprio campo já dizia que o número torto "quebra em
- * silêncio os links wa.me da fila de mensagens".
- *
- * A conferência **deriva do link**, e é isso que impede as duas de divergirem:
- * não há uma segunda cópia da regra dos dígitos para alguém esquecer de mexer
- * (regra 26). Vazio é válido — WhatsApp é opcional, e a noiva que só deixou o
- * telefone fixo continua entrando.
- */
-export function whatsappUtilizavel(valor: string | null | undefined): boolean {
-  if (!valor || !valor.trim()) return true;
-  return linkWhatsApp(valor, "") !== null;
-}
 
 /**
  * A máscara do que se digita: `(11) 96222-0147`, `(11) 3062-4400`.

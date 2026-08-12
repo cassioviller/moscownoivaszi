@@ -31,7 +31,12 @@ import { randomUUID } from "node:crypto";
 import { transicaoLeadValida, converteu, ETAPAS_CONVERTIDA, type LeadEtapa } from "../lib/estados";
 import { registrarAuditoria } from "../lib/auditoria";
 import { ultimoContatoPorLead } from "../lib/ultimo-contato";
-import { leadParado, ETAPAS_EM_NEGOCIACAO } from "@workspace/funil-core";
+import {
+  leadParado,
+  ETAPAS_EM_NEGOCIACAO,
+  whatsappUtilizavel,
+  WHATSAPP_INUTILIZAVEL,
+} from "@workspace/funil-core";
 import { addDias, addMeses, hojeLocal, inicioDoDia } from "@workspace/financeiro-core";
 import { erroDeValidacao } from "../lib/erros";
 
@@ -153,12 +158,43 @@ router.get("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   }));
 });
 
+/**
+ * S-O44 — **a porta da loja recusa o número que não vira link.**
+ *
+ * A S-O43 fechou o FORMULÁRIO: máscara e `refine` no zod da tela. A porta
+ * continuava aceitando qualquer coisa, e quem chega por ela — um script, um
+ * import, a próxima tela que alguém escrever — reabria o sintoma mudo:
+ * `linkWhatsApp` devolve `null` e todos os botões de wa.me da noiva
+ * desaparecem sem uma palavra.
+ *
+ * Aqui recusar PROTEGE, e é o que separa esta porta da captação pública: quem
+ * digita está com a noiva na frente e corrige na hora. Na captação, recusar
+ * custaria o lead — lá a decisão é outra, e está em `captacao.ts`.
+ *
+ * A régua vem de `@workspace/funil-core`: **uma cópia, dois consumidores**.
+ */
+function recusaDeWhatsapp(valor: string | null | undefined) {
+  if (whatsappUtilizavel(valor)) return null;
+  return {
+    error: "WHATSAPP_INVALIDO",
+    detalhe: WHATSAPP_INUTILIZAVEL,
+    campos: [{ campo: "whatsapp", motivo: "Número não abre o WhatsApp" }],
+  };
+}
+
 router.post("/lojas/:lojaId/leads", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = CreateLeadBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json(erroDeValidacao(parsed.error));
     return;
+  }
+  {
+    const recusa = recusaDeWhatsapp(parsed.data.whatsapp);
+    if (recusa) {
+      res.status(422).json(recusa);
+      return;
+    }
   }
 
   const [lead] = await db.insert(leadsTable).values({
@@ -505,6 +541,22 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
     return;
   }
 
+  /**
+   * S-O44 — a mesma recusa do POST, e ela é MAIS necessária aqui: corrigir o
+   * telefone é justamente o que a Recepção ganhou no E172 (S-O41), e trocar um
+   * número bom por um torto apagaria os botões que já funcionavam.
+   *
+   * `undefined` é "não mexa" e não passa pela conferência; string vazia é
+   * "apague o número", e `whatsappUtilizavel` a aceita — WhatsApp é opcional.
+   */
+  if (parsed.data.whatsapp !== undefined) {
+    const recusa = recusaDeWhatsapp(parsed.data.whatsapp);
+    if (recusa) {
+      res.status(422).json(recusa);
+      return;
+    }
+  }
+
   // Mudança de etapa só por transição válida da máquina de estados.
   if (parsed.data.etapa && !transicaoLeadValida(existente.etapa, parsed.data.etapa)) {
     res.status(422).json({
@@ -584,8 +636,24 @@ router.patch("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => 
  *
  * A trilha grava o que sumiu ANTES de sumir — depois do delete não há de onde
  * reconstituir, que é exatamente o motivo de a trilha existir.
+ *
+ * **S-O46 — e ela passou a pedir `admin`, pelo mesmo motivo que o expurgo.**
+ *
+ * Não declarava ação nenhuma, então o guard de prefixo derivava `editar` de
+ * `leads` — e o E172 deu `leads: TUDO` à Recepção para ela corrigir o telefone
+ * que digitou (S-O41). Medido em 2026-08-12: a Recepção respondia **404**, ou
+ * seja, atravessava o gate; só não achava o id.
+ *
+ * É a MESMA classe do expurgo de LGPD, que o E172 mandou para `admin` — a
+ * diferença é que a tela já discordava do expurgo (ela o escondia sob
+ * `admin.ver`), e desta ninguém discordava porque **nenhuma tela a chama**: não
+ * existe `useDeleteLead` no frontend. Uma porta de API sem botão, com cascata
+ * em atendimento, orçamento, interesse e registro de cobrança, aberta para
+ * quem atende o telefone.
+ *
+ * Apagar a ficha da noiva é ato de administração, como anonimizá-la.
  */
-router.delete("/lojas/:lojaId/leads/:leadId", async (req, res): Promise<void> => {
+router.delete("/lojas/:lojaId/leads/:leadId", requireModulo("admin", "editar"), async (req, res): Promise<void> => {
   const { lojaId, leadId } = req.params;
   const [lead] = await db
     .select({ id: leadsTable.id, noivaNome: leadsTable.noivaNome, etapa: leadsTable.etapa })

@@ -1234,7 +1234,6 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
   const orcamentoId = req.params.orcamentoId as string;
 
   const token = gerarTokenConvite();
-  const expiraEm = new Date(Date.now() + CONVITE_TTL_MS);
 
   /**
    * B11/E95: o link, a marca de ENVIADO e a versão congelada, na mesma
@@ -1262,8 +1261,8 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
       .from(orcamentosTable)
       .where(and(eq(orcamentosTable.id, orcamentoId), eq(orcamentosTable.lojaId, lojaId)))
       .for("update");
-    if (!sobTranca) return { erro: "SUMIU" } as const;
-    if (sobTranca.status === "RECUSADO") return { erro: "RECUSADO" } as const;
+    if (!sobTranca) return { erro: "SUMIU", expiraEm: null } as const;
+    if (sobTranca.status === "RECUSADO") return { erro: "RECUSADO", expiraEm: null } as const;
 
     /**
      * O1 (E166) — o link congelava um orçamento VAZIO, e era a ação primária
@@ -1283,7 +1282,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
       .from(orcamentoItensTable)
       .where(eq(orcamentoItensTable.orcamentoId, orcamentoId))
       .limit(1);
-    if (!temItem) return { erro: "VAZIO" } as const;
+    if (!temItem) return { erro: "VAZIO", expiraEm: null } as const;
 
     /**
      * D3 (E166, decisão da dona) — o link regenerado de uma proposta VENCIDA
@@ -1303,6 +1302,31 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
       ? ancoraDeNegocio(addDias(hojeLocal(), VALIDADE_PADRAO_DIAS))
       : null;
 
+    /**
+     * S-O39 (decisão da dona, 2026-08-12) — **o link dura o que a proposta
+     * durar.**
+     *
+     * O `expiraEm` era `Date.now() + CONVITE_TTL_MS` — **sete dias**, o prazo
+     * do CONVITE DE EQUIPE (`lib/auth.ts:11`), enquanto a proposta vale trinta
+     * (`VALIDADE_PADRAO_DIAS`). A noiva que abria o WhatsApp no décimo dia lia
+     * *"link expirado"* numa proposta de pé, e o remédio — gerar o link de
+     * novo — só a vendedora conhecia.
+     *
+     * O prazo curto nunca foi uma escolha sobre propostas: veio emprestado do
+     * convite, que é outra coisa (uma senha por definir, e que se quer curta).
+     * A escolha sobre propostas é a VALIDADE, e a vendedora já a define por
+     * orçamento. Agora as duas são a mesma data.
+     *
+     * O piso de um dia existe para a proposta que vence hoje: o link tem de
+     * durar o dia inteiro em que ainda vale, e não morrer no instante em que
+     * foi gerado.
+     */
+    const validadeVigente = validadeNova ?? sobTranca.validade;
+    const umDia = 24 * 60 * 60 * 1000;
+    const expiraEm = validadeVigente
+      ? new Date(Math.max(validadeVigente.getTime(), Date.now() + umDia))
+      : new Date(Date.now() + CONVITE_TTL_MS);
+
     await tx.update(orcamentosTable)
       .set({
         publicoToken: token,
@@ -1319,7 +1343,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
     if (sobTranca.status === "RASCUNHO" || validadeNova) {
       await criarVersaoEnviada(tx, lojaId, orcamentoId);
     }
-    return { erro: null } as const;
+    return { erro: null, expiraEm } as const;
   });
 
   if (desfecho.erro === "SUMIU") {
@@ -1339,7 +1363,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcame
     return;
   }
 
-  res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
+  res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm: desfecho.expiraEm }));
 });
 
 router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("orcamentos", "editar"), async (req, res): Promise<void> => {

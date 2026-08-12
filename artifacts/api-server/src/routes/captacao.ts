@@ -11,6 +11,7 @@ import {
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { gerarTokenConvite } from "../lib/auth";
 import { randomUUID } from "node:crypto";
+import { whatsappUtilizavel } from "@workspace/funil-core";
 
 /**
  * Captação externa (E19): o formulário do site/Instagram cria o lead sozinho —
@@ -44,6 +45,32 @@ router.post("/captacao/leads", async (req, res): Promise<void> => {
   }
 
   const { noivaNome, noivoNome, whatsapp, casamentoData, origem, consentimento } = body.data;
+
+  /**
+   * S-O44 — **aqui o número torto ENTRA, e é decisão, não esquecimento.**
+   *
+   * A porta da loja (`leads.ts`) recusa o WhatsApp que não vira link: quem
+   * digita está com a noiva na frente e corrige na hora. **Aqui não há
+   * ninguém.** A noiva preenche o formulário do site, erra um dígito, e
+   * recusar custaria o CONTATO INTEIRO em vez de um botão — a loja perde a
+   * venda para não perder um link.
+   *
+   * Então aceita, grava, e **a ficha se marca sozinha**: `whatsappUtilizavel` é
+   * derivada do número (`funil-core`), e o selo *"Este número não abre o
+   * WhatsApp"* aparece nas quatro filas de mensagem, com o caminho para
+   * corrigir. Sem coluna nova, sem estado para desincronizar — a mesma decisão
+   * que a S-O5 tomou para a prova órfã.
+   *
+   * O log fica porque é o único lugar onde se pode CONTAR: se a captação
+   * começar a trazer muitos números tortos, o problema é a máscara do
+   * formulário do site, e é isto aqui que vai dizer.
+   */
+  if (!whatsappUtilizavel(whatsapp)) {
+    req.log.info(
+      { lojaId: loja.id, origem: origem ?? "SITE" },
+      "captacao_whatsapp_nao_abre",
+    );
+  }
   const [lead] = await db.insert(leadsTable).values({
     id: randomUUID(),
     lojaId: loja.id,

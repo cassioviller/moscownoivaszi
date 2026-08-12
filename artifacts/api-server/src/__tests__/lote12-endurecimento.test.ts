@@ -41,8 +41,19 @@ describe("Lote 12 — endurecimento para produção", () => {
     expect(res.headers["access-control-allow-origin"]).toBeUndefined();
   });
 
+  /**
+   * S-O46 (E176) trocou a PERSONA destes dois, não a tese.
+   *
+   * O que o C18 prega é a GUARDA: contrato vivo segura a ficha (409), e sem
+   * contrato ela sai limpa (204). Isso continua inteiro. O que mudou é quem
+   * apaga: a rota não declarava ação e derivava `editar` de `leads`, e o E172
+   * deu `leads: TUDO` à Recepção para ela corrigir o telefone que digitou —
+   * com isso, quem atende o telefone passava a apagar a ficha da noiva, com
+   * cascata em atendimento, orçamento, interesse e cobrança. Apagar é ato de
+   * ADMINISTRAÇÃO, como anonimizar (o expurgo do E172).
+   */
   it("C18: apagar lead com contrato → 409 e o lead permanece", async () => {
-    const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const agent = await loginComLoja(f.superAdminEmail, f.lojaId);
     const lead = await criarLead(f);
     await criarContrato(f, { leadId: lead.id, valorTotal: 1000, fechadoEm: dataFutura(0) });
 
@@ -54,7 +65,7 @@ describe("Lote 12 — endurecimento para produção", () => {
   });
 
   it("C18: apagar lead sem contrato continua permitido (204)", async () => {
-    const agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    const agent = await loginComLoja(f.superAdminEmail, f.lojaId);
     const lead = await criarLead(f);
     await agent.delete(`/api/lojas/${f.lojaId}/leads/${lead.id}`).expect(204);
 

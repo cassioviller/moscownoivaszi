@@ -430,7 +430,7 @@ export default function MensagensDoDia() {
                           </Button>
                         </span>
                       ) : (
-                        <SemWhatsApp leadId={a.leadId} />
+                        <SemWhatsApp leadId={a.leadId} whatsapp={a.lead?.whatsapp} />
                       )}
                     </li>
                   );
@@ -551,7 +551,7 @@ export default function MensagensDoDia() {
                           </Button>
                         </span>
                       ) : (
-                        <SemWhatsApp leadId={n.leadId} />
+                        <SemWhatsApp leadId={n.leadId} whatsapp={n.whatsapp} />
                       )}
                     </li>
                   );
@@ -711,7 +711,7 @@ export default function MensagensDoDia() {
                           </Button>
                         </span>
                       ) : (
-                        <SemWhatsApp leadId={o.leadId} />
+                        <SemWhatsApp leadId={o.leadId} whatsapp={o.lead?.whatsapp} />
                       )}
                     </li>
                   );

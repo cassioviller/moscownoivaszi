@@ -182,7 +182,7 @@ function LinhaNoiva({
                 </a>
               </Button>
             ) : (
-              <SemWhatsApp leadId={noiva.leadId} />
+              <SemWhatsApp leadId={noiva.leadId} whatsapp={noiva.whatsapp} />
             )}
           </div>
         </div>

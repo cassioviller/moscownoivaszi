@@ -12,3 +12,4 @@
  */
 export * from "./etapas";
 export * from "./parado";
+export * from "./whatsapp";
