@@ -110,14 +110,20 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 32** (2026-08-12: as quatro faixas
+   da ótica dos papéis — **conte lá, são 33** (2026-08-12: as quatro faixas
    fechadas, mais o que os manuais acharam e o que eles fizeram fechar).
-   **Os manuais de uso viraram a fonte de achado mais barata do repositório**: a
-   entrega 1 (vendedora, `3f3ec02`) achou dois defeitos que duas rodadas de
-   revisão não tinham achado, e a entrega 2 (costureira + noiva) achou a
-   **S-O40 🟡 — a Recepção fecha contrato**, que é o perfil com que a costureira
-   entra hoje. O motivo é sempre o mesmo: as rodadas olham o sistema por dentro,
-   e escrever o manual obriga a andar por onde a pessoa anda. A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
+   **Os manuais de uso viraram a fonte de achado mais barata do repositório**, e
+   as três entregas acharam nas três: a 1 (vendedora, `3f3ec02`) achou dois
+   defeitos que duas rodadas de revisão não tinham achado; a 2 (costureira +
+   noiva) achou a **S-O40 🟡 — a Recepção fecha contrato**; a 3 (recepção) achou
+   a **S-O41 🟡 — a Recepção cadastra a noiva e não consegue corrigi-la**. As
+   duas últimas são o mesmo `VER_E_CRIAR` visto pelas duas pontas: o perfil dá o
+   que não devia e nega o que devia. O motivo é sempre o mesmo: as rodadas olham
+   o sistema por dentro, e escrever o manual obriga a andar por onde a pessoa
+   anda. A entrega 3 trouxe a régua junto — a **`varredura-manuais.test.ts`**
+   (`f82efc9`) calcula o menu do zero (sidebar × perfis semeados) e cobra a
+   lista inteira que cada manual promete, de modo que item novo na sidebar
+   reprova a documentação que o esqueceu. A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
    termina em varredura: o E171 tornou contável o que ninguém contava. O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que

@@ -132,11 +132,11 @@ describe("varredura — o menu que o manual promete é o menu que o perfil abre"
 
   /**
    * O piso. Conjunto vazio aprova tudo em silêncio, que é a falha mais cara de
-   * uma sonda: verde por não ter olhado. Medido em 2026-08-12: **3 manuais**,
+   * uma sonda: verde por não ter olhado. Medido em 2026-08-12: **4 manuais**,
    * **19 itens de menu** e **4 perfis semeados**.
    */
   it("olha para manuais, itens e perfis — não para conjuntos vazios", () => {
-    expect(arquivos.length).toBeGreaterThanOrEqual(3);
+    expect(arquivos.length).toBeGreaterThanOrEqual(4);
     expect(itens.length).toBeGreaterThanOrEqual(15);
     expect(perfis.size).toBeGreaterThanOrEqual(4);
   });
@@ -208,4 +208,9 @@ describe("varredura — o menu que o manual promete é o menu que o perfil abre"
  * 4. **O que o item FAZ com cada ação.** "Aparece no menu" não é "pode editar":
  *    a Recepção vê Vestidos e só olha. O manual diz isso em prosa, e prosa não
  *    tem régua.
+ * 5. **Manual ainda não versionado.** Ela enumera com `git ls-files`, então um
+ *    arquivo novo em `docs/manuais/` que ainda não foi `git add`ado passa
+ *    invisível — e a suíte fica VERDE por não ter olhado. Custou uma rodada em
+ *    2026-08-12, com o manual da recepção pronto no disco: `git add` primeiro,
+ *    e é o piso de população que avisa quando a conta não cresceu.
  */

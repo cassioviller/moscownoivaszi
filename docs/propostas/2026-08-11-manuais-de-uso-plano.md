@@ -132,23 +132,27 @@ tamanho.
 |---|---|---|---|
 | **1** | **Vendedora** | É o caminho que a trilha mirou, o que mais gente percorre e o que mais mudou. Se só uma entrega acontecer, tem que ser esta. | ✅ `3f3ec02` — `docs/manuais/vendedora.html`; achou a S-O38 e a S-O39 |
 | **2** | **Costureira** + **Guia da Noiva** | Os dois mais curtos, e os dois que hoje não têm NADA. Juntos são menos trabalho que o da vendedora. | ✅ 2026-08-12 — `costureira.html` e `noiva.html`; achou a **S-O40** e corrigiu a moldura da S-O27 |
-| **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. | aberta |
+| **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. | ✅ 2026-08-12 — `recepcao.html`; achou a **S-O41**, o par da S-O40 |
 | **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. | aberta |
 
-As três páginas publicadas, para quem precisar do endereço:
+As quatro páginas publicadas, para quem precisar do endereço:
 
 | Manual | Fonte no repo | Página |
 |---|---|---|
 | Vendedora | `docs/manuais/vendedora.html` | <https://claude.ai/code/artifact/d0357a33-b02a-4247-9d98-9e16f23373ce> |
+| Recepção | `docs/manuais/recepcao.html` | <https://claude.ai/code/artifact/96055d45-f873-4228-b085-d7462c043866> |
 | Costureira | `docs/manuais/costureira.html` | <https://claude.ai/code/artifact/a9ce3b64-5d5d-4537-b653-6a41bd17f780> |
 | Guia da Noiva | `docs/manuais/noiva.html` | <https://claude.ai/code/artifact/e8af06df-a41b-4428-8ca1-05315c64940a> |
 
-**A varredura (a) continua devendo.** Ela ia nascer junto da entrega 1 e não
-nasceu; o que nasceu foi outra, e por outro motivo: a **varredura de links
-internos** (`lib/varredura-links-internos.test.ts`, `710b254`), que confere os
-113 destinos do frontend contra as 63 rotas declaradas — ela pega a classe da
-S-O38, não a do manual que cita tela renomeada. Com três manuais escritos, a
-varredura das telas citadas tem população para valer a pena; antes da entrega 3.
+**A varredura (a) nasceu na entrega 3** (`lib/varredura-manuais.test.ts`,
+`f82efc9`), duas entregas depois do prometido. Ela calcula o menu do zero — os
+rótulos e módulos de `sidebar.tsx` cruzados com os acessos dos perfis semeados
+de `configuracao-inicial.ts` — e cobra a lista INTEIRA dos dois lados de cada
+manual, mais os links entre arquivos e as âncoras do índice. Antes dela já havia
+nascido outra, por outro motivo: a **varredura de links internos**
+(`lib/varredura-links-internos.test.ts`, `710b254`), que confere os 113 destinos
+do frontend contra as 63 rotas declaradas — ela pega a classe da S-O38, não a do
+manual que descreve tela renomeada.
 
 Junto da entrega 1 nasce a **varredura (a)** e o esqueleto compartilhado da
 página — o resto é conteúdo.

@@ -1,0 +1,562 @@
+<title>Manual da Recepção — Moscow Noivas</title>
+<style>
+  /* ── Tokens: papel e tinta. O mesmo esqueleto dos outros manuais. ─────────
+     Claro é o padrão; o escuro redefine SÓ os tokens, nas duas guardas
+     (preferência do sistema e escolha explícita). Nenhuma cor nasce dentro de
+     um bloco de tema. */
+  :root {
+    --papel:      #faf9f6;
+    --folha:      #ffffff;
+    --tinta:      #1b1f2a;
+    --tinta-fraca:#5c6170;
+    --caneta:     #2e4e8f;
+    --caneta-suave:#eef1f8;
+    --carmim:     #a32f3f;
+    --carmim-suave:#fbeff0;
+    --linha:      #e3e1db;
+    --linha-forte:#c9c6bd;
+    --chip-borda: #cfd3dd;
+    --chip-fundo: #f2f3f7;
+    --sombra:     0 1px 2px rgba(27,31,42,.05), 0 8px 24px -16px rgba(27,31,42,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:      #15171c;
+      --folha:      #1d2027;
+      --tinta:      #e7e5e0;
+      --tinta-fraca:#9ba1ae;
+      --caneta:     #8fadea;
+      --caneta-suave:#1e2634;
+      --carmim:     #e58a97;
+      --carmim-suave:#2b1d20;
+      --linha:      #2b2f38;
+      --linha-forte:#3d424e;
+      --chip-borda: #3a4050;
+      --chip-fundo: #232833;
+      --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:      #15171c;
+    --folha:      #1d2027;
+    --tinta:      #e7e5e0;
+    --tinta-fraca:#9ba1ae;
+    --caneta:     #8fadea;
+    --caneta-suave:#1e2634;
+    --carmim:     #e58a97;
+    --carmim-suave:#2b1d20;
+    --linha:      #2b2f38;
+    --linha-forte:#3d424e;
+    --chip-borda: #3a4050;
+    --chip-fundo: #232833;
+    --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .pagina {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+  @media (min-width: 1020px) {
+    .pagina { grid-template-columns: 232px minmax(0, 1fr); gap: 56px; padding-right: 40px; }
+  }
+
+  /* ── Cabeçalho ─────────────────────────────────────────────────────────── */
+  .capa { grid-column: 1 / -1; padding: 56px 0 36px; border-bottom: 2px solid var(--linha-forte); }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--caneta); font-weight: 600; margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(34px, 6vw, 50px);
+    line-height: 1.08; margin: 0 0 14px; font-weight: 700;
+    letter-spacing: -.015em; text-wrap: balance;
+  }
+  .subtitulo {
+    font-size: clamp(18px, 2.6vw, 21px); color: var(--tinta-fraca);
+    margin: 0 0 26px; max-width: 34em; text-wrap: balance;
+  }
+  .contexto {
+    display: flex; flex-wrap: wrap; gap: 10px 26px;
+    font-size: 14px; color: var(--tinta-fraca);
+    padding-top: 20px; border-top: 1px solid var(--linha);
+  }
+  .contexto b { color: var(--tinta); font-weight: 600; }
+
+  /* ── Índice ────────────────────────────────────────────────────────────── */
+  .indice { padding: 28px 0 0; }
+  @media (min-width: 1020px) {
+    .indice { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 40px 0; }
+  }
+  .indice h2 {
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tinta-fraca); margin: 0 0 12px; font-weight: 600;
+  }
+  .indice ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .indice a {
+    display: block; padding: 5px 10px; margin-left: -10px;
+    color: var(--tinta-fraca); text-decoration: none; font-size: 14.5px;
+    border-radius: 5px; border-left: 2px solid transparent;
+  }
+  .indice a:hover { color: var(--caneta); background: var(--caneta-suave); }
+  .indice a:focus-visible { outline: 2px solid var(--caneta); outline-offset: 1px; }
+  .indice .num {
+    font-variant-numeric: tabular-nums; color: var(--linha-forte);
+    margin-right: 8px; font-size: 12.5px;
+  }
+
+  /* ── Corpo ─────────────────────────────────────────────────────────────── */
+  main { padding-top: 8px; min-width: 0; }
+  section { padding: 40px 0; border-bottom: 1px solid var(--linha); max-width: 68ch; }
+  section:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(25px, 3.6vw, 31px); line-height: 1.2;
+    margin: 0 0 8px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .passo {
+    font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--caneta); background: var(--caneta-suave);
+    border-radius: 999px; padding: 3px 11px; flex: none;
+    font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  h3 {
+    font-size: 17.5px; font-weight: 650; margin: 30px 0 8px;
+    letter-spacing: -.005em; text-wrap: balance;
+  }
+  .resumo { color: var(--tinta-fraca); margin: 0 0 22px; font-size: 16.5px; }
+  p { margin: 0 0 15px; }
+  ul { margin: 0 0 15px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--caneta); }
+  strong { font-weight: 650; }
+
+  /* ── A citação da interface parece interface ─────────────────────────── */
+  .btn {
+    display: inline-block; font-size: 14.5px; font-weight: 550;
+    background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+    border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+    line-height: 1.5; color: var(--tinta);
+  }
+  .fala {
+    border-left: 3px solid var(--caneta); background: var(--caneta-suave);
+    padding: 13px 18px; margin: 0 0 16px; border-radius: 0 7px 7px 0;
+    font-size: 16px; color: var(--tinta);
+  }
+  .fala.aviso { border-left-color: var(--carmim); background: var(--carmim-suave); }
+  .fala p { margin: 0; }
+  .fala p + p { margin-top: 9px; }
+  .fala .rotulo {
+    display: block; font-size: 11px; letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 600; color: var(--caneta); margin-bottom: 5px;
+  }
+  .fala.aviso .rotulo { color: var(--carmim); }
+
+  /* ── Tabelas ───────────────────────────────────────────────────────────── */
+  .rolagem { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--linha); border-radius: 9px; background: var(--folha); }
+  table { border-collapse: collapse; width: 100%; font-size: 15.5px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th {
+    font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--tinta-fraca); font-weight: 600; background: var(--chip-fundo);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.prazo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+
+  /* ── O caminho, em uma olhada ──────────────────────────────────────────── */
+  .trilha {
+    display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
+  }
+  .trilha span {
+    font-size: 14.5px; font-weight: 550; padding: 5px 11px;
+    border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+  }
+  .trilha span.fim { background: var(--caneta); border-color: var(--caneta); color: var(--folha); }
+  :root[data-theme="dark"] .trilha span.fim,
+  .trilha span.fim { color: var(--papel); }
+  .trilha i { color: var(--linha-forte); font-style: normal; font-size: 15px; }
+
+  /* ── Menu: o que ela vê / não vê ───────────────────────────────────────── */
+  .colunas { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 0 0 18px; }
+  @media (min-width: 620px) { .colunas { grid-template-columns: 1fr 1fr; } }
+  .caixa {
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 17px 19px; box-shadow: var(--sombra);
+  }
+  .caixa h4 {
+    margin: 0 0 11px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 650;
+  }
+  .caixa.ve h4 { color: var(--caneta); }
+  .caixa.naove h4 { color: var(--tinta-fraca); }
+  .caixa ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
+  .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
+
+  /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
+  .nota {
+    font-size: 15px; color: var(--tinta-fraca);
+    border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 22px;
+  }
+  .nota b { color: var(--tinta); }
+
+  footer {
+    grid-column: 1 / -1; padding: 34px 0 0; margin-top: 8px;
+    border-top: 2px solid var(--linha-forte);
+    font-size: 14px; color: var(--tinta-fraca); max-width: 68ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; border-radius: 3px; }
+</style>
+
+<div class="pagina">
+
+  <header class="capa">
+    <p class="eyebrow">Moscow Noivas · Manual de uso</p>
+    <h1>Manual da Recepção</h1>
+    <p class="subtitulo">A agenda e a porta da loja — quem entra, quando vem, e em qual cabine.</p>
+    <div class="contexto">
+      <span>Perfil: <b>Recepção</b></span>
+      <span>A agenda é sua: <b>por inteiro</b></span>
+      <span>Atualizado em <b>12/08/2026</b></span>
+    </div>
+  </header>
+
+  <nav class="indice" aria-label="Índice">
+    <h2>Neste manual</h2>
+    <ol>
+      <li><a href="#ve"><span class="num">—</span>O que você vê</a></li>
+      <li><a href="#dia"><span class="num">1</span>A agenda do dia</a></li>
+      <li><a href="#marcar"><span class="num">2</span>Marcar</a></li>
+      <li><a href="#mover"><span class="num">3</span>Remarcar</a></li>
+      <li><a href="#fila"><span class="num">4</span>A fila do atendimento</a></li>
+      <li><a href="#semana"><span class="num">5</span>A semana</a></li>
+      <li><a href="#mensagens"><span class="num">6</span>Mensagens de hoje</a></li>
+      <li><a href="#cadastrar"><span class="num">7</span>A noiva que ligou</a></li>
+      <li><a href="#config"><span class="num">8</span>Cabines &amp; horário</a></li>
+      <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
+      <li><a href="#prazos"><span class="num">—</span>Os prazos</a></li>
+      <li><a href="#verdade"><span class="num">—</span>Duas coisas a saber</a></li>
+    </ol>
+    <h2 style="margin-top:22px">Outros manuais</h2>
+    <ol>
+      <li><a href="vendedora.html"><span class="num">—</span>Manual da Vendedora</a></li>
+      <li><a href="costureira.html"><span class="num">—</span>Manual da Costureira</a></li>
+      <li><a href="noiva.html"><span class="num">—</span>Guia da Noiva</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="ve">
+      <h2>O que você vê, e o que você pode</h2>
+      <p class="resumo">A <strong>agenda é sua por inteiro</strong> — marcar, mover, configurar cabines e horário. No acervo você só olha, e nas noivas você cadastra mas não edita.</p>
+
+      <div class="colunas" data-perfil="Recepção">
+        <div class="caixa ve" data-menu="ve">
+          <h4>No seu menu</h4>
+          <ul>
+            <li>Seu dia</li><li>Noivas</li><li>Agenda</li><li>Atendimentos</li>
+            <li>Mensagens de hoje</li><li>Provas</li><li>Ajustes</li><li>Reservas</li>
+            <li>Vestidos</li><li>Catálogo</li><li>Orçamentos</li><li>Contratos</li>
+            <li>Minha comissão</li><li>Configurações</li>
+          </ul>
+        </div>
+        <div class="caixa naove" data-menu="naove">
+          <h4>Não aparece</h4>
+          <ul>
+            <li>Financeiro</li><li>Folha do mês</li><li>Comissões</li>
+            <li>Equipe</li><li>Permissões</li>
+          </ul>
+        </div>
+      </div>
+
+      <p><strong>Ver o item no menu não é poder mexer nele.</strong> A diferença é o que mais gera dúvida no primeiro mês, e vale decorar:</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Área</th><th>Você pode</th><th>Você não pode</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Agenda</strong></td>
+              <td>Marcar, remarcar, iniciar, concluir, registrar falta, configurar cabines, expediente e ausências</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>Noivas</strong></td>
+              <td>Ver todas, buscar, <strong>cadastrar</strong></td>
+              <td><strong>Editar a ficha</strong>, mover card no funil, marcar como perdida</td>
+            </tr>
+            <tr>
+              <td><strong>Acervo</strong></td>
+              <td>Consultar vestidos, catálogo e reservas</td>
+              <td>Cadastrar peça, reservar vestido, registrar retirada ou devolução</td>
+            </tr>
+            <tr>
+              <td><strong>Dinheiro</strong></td>
+              <td>—</td>
+              <td>Nada: caixa, parcelas, comissões e folha não abrem para você</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="fala aviso">
+        <span class="rotulo">Duas surpresas honestas</span>
+        <p><strong>Você cadastra a noiva e não consegue corrigi-la depois.</strong> Errou um dígito do WhatsApp? Não há <span class="btn">Editar dados</span> no seu perfil — quem conserta é a vendedora ou o Renato. Confira antes de salvar.</p>
+        <p><strong>E o botão <span class="btn">Gerar contrato</span> aparece para você.</strong> Orçamentos e Contratos abrem no seu menu, e o sistema aceita que a recepção feche um contrato. <strong>Não é o seu trabalho</strong> — quem fecha contrato é quem vendeu. Está registrado para ser corrigido; até lá, não clique.</p>
+      </div>
+    </section>
+
+    <section id="dia">
+      <h2><span class="passo">1</span>A agenda do dia</h2>
+      <p class="resumo">Menu → <span class="btn">Agenda</span>. É o dia da loja, <strong>cabine a cabine</strong>: uma coluna por cabine, uma linha a cada 30 minutos.</p>
+
+      <p>Cada atendimento é um card na célula da cabine e da hora. Ao lado da grade, dois quadros: <strong>Cabines</strong> — cada uma com <span class="btn">Ativa</span> ou <span class="btn">Inativa</span> — e <strong>Ajustes pendentes</strong>, o que a costureira ainda tem na fila.</p>
+
+      <p>Duas coisas na grade que parecem defeito e não são:</p>
+      <ul>
+        <li><strong>Uma prova ocupa mais de uma linha.</strong> A duração é configurada (a loja escolhe), e os slots seguintes ficam com uma barra de continuação — a cabine está presa naquele tempo todo</li>
+        <li><strong>Atendimento fora do expediente aparece numa lista abaixo da grade</strong>, não numa célula. Não há linha para ele; em vez de sumir, ele desce para baixo da grade, onde você o vê e pode movê-lo para dentro do horário</li>
+      </ul>
+
+      <p class="nota">Cabine desativada que ainda tem gente marcada <b>continua desenhada</b> na grade — some só quando fica vazia. É de propósito: desativar não desmarca ninguém, e a noiva que já foi confirmada precisa aparecer no dia.</p>
+
+      <h3>“Falta procurar”</h3>
+      <p>Abaixo da grade, a lista de quem ainda não foi procurado hoje, com hora e nome. O botão <span class="btn">Chamar no WhatsApp</span> faz <strong>duas coisas de uma vez</strong>: abre a conversa com a mensagem pronta e <strong>registra que a loja procurou</strong> — a linha sai da fila e ninguém manda a mesma mensagem duas vezes.</p>
+      <p>Embaixo, os números que a fila não mostra porque já saíram dela: <em>“2 confirmou pelo portal.”</em>, <em>“1 procurada, ainda sem resposta.”</em>, <em>“1 pediu para remarcar — está na fila de Mensagens.”</em></p>
+      <div class="fala">
+        <span class="rotulo">Se o registro falhar, o sistema fala</span>
+        <p>“O WhatsApp abriu, mas o contato não foi registrado.”</p>
+        <p>Quer dizer que a noiva foi procurada de verdade e o sistema não soube. Registre pela fila de novo — senão ela será procurada outra vez.</p>
+      </div>
+    </section>
+
+    <section id="marcar">
+      <h2><span class="passo">2</span>Marcar</h2>
+      <p class="resumo">Botão <span class="btn">Novo agendamento</span>, na Agenda — ou Menu → Atendimentos → <span class="btn">Agendar</span>. É a <strong>única porta</strong>: marcar por qualquer outro caminho não existe, e é de propósito.</p>
+
+      <div class="trilha">
+        <span>Tipo</span><i>→</i>
+        <span>Noiva</span><i>→</i>
+        <span>Cabine e vendedora</span><i>→</i>
+        <span>Data</span><i>→</i>
+        <span class="fim">Horário</span>
+      </div>
+
+      <h3>Atendimento ou Prova</h3>
+      <p><strong>Atendimento</strong> é a visita comum. <strong>Prova</strong> exige a <strong>reserva do vestido</strong> — é a regra que impede duas noivas de provarem a mesma peça no mesmo sábado.</p>
+      <div class="fala">
+        <span class="rotulo">Prova de noiva sem reserva — o que você lê</span>
+        <p>“Esta noiva ainda não tem reserva de casamento. Quem cuida do acervo pode criar uma.”</p>
+        <p>Não é bloqueio caprichoso e não há botão escondido: reservar peça é do acervo, e o seu perfil só consulta. <strong>Peça a reserva à vendedora e marque a prova depois</strong> — a tela mostra o recado em vez de um botão que o sistema recusaria.</p>
+      </div>
+
+      <h3>O horário é uma grade de botões, não um campo</h3>
+      <p>Escolhida a cabine, a vendedora e a data, <strong>o sistema acende só os horários que existem</strong>. O apagado tem o motivo escrito nele — passe o mouse para ler:</p>
+      <div class="fala">
+        <span class="rotulo">Os cinco motivos, literais</span>
+        <p>“a loja não abre nesse dia da semana”<br>
+           “o horário está fora do expediente da loja”<br>
+           “a vendedora está ausente nesse dia”<br>
+           “já há atendimento nessa cabine nesse horário”<br>
+           “a vendedora já tem atendimento nesse horário”</p>
+      </div>
+      <p>Quando é ausência, o recado traz o nome e o período: <em>“Maria está ausente de 12/08 a 20/08 — escolha outro dia ou outra pessoa.”</em></p>
+      <p class="nota">Agendado, o sistema pergunta se você quer <b>já mandar a confirmação</b> para a noiva, com um botão de WhatsApp — e só quando ela tem número cadastrado.</p>
+    </section>
+
+    <section id="mover">
+      <h2><span class="passo">3</span>Remarcar</h2>
+      <p class="resumo">Há dois caminhos para o mesmo gesto, e os dois passam pelas mesmas regras.</p>
+      <ul>
+        <li><strong>Arrastando o card</strong> na grade, para outra cabine ou outro horário. As células que não aceitam <strong>já estão apagadas</strong> — o sistema recusa antes do gesto, não depois</li>
+        <li><strong>Pelo diálogo de reagendar</strong>, escolhendo hora e cabine numa lista. É o caminho de quem usa teclado, e o mais confortável no celular — arrastar meia tela em 390 px é pontaria</li>
+      </ul>
+      <p>Deu certo, o sistema confirma com o destino: <em>“Ana Paula → Cabine 2, 14:30”</em>. Não deu, ele diz por quê: <em>“Esse horário não está livre”</em>, com um dos cinco motivos.</p>
+      <p class="nota">Quem avisou pelo portal que <b>não pode vir</b> aparece em Mensagens de hoje, no bloco “Pediram para remarcar”. O horário <b>continua preso</b> até você remarcar ou cancelar — o aviso dela não mexe na agenda sozinho.</p>
+    </section>
+
+    <section id="fila">
+      <h2><span class="passo">4</span>A fila do atendimento</h2>
+      <p class="resumo">Menu → <span class="btn">Atendimentos</span>. É onde o atendimento anda do “marcado” ao “terminou”, e cada passo é um botão.</p>
+
+      <div class="trilha">
+        <span>Agendado</span><i>→</i>
+        <span>Em atendimento</span><i>→</i>
+        <span class="fim">Concluído</span>
+      </div>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Estado</th><th>Os botões</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="btn">Agendado</span></td>
+              <td><span class="btn">Confirmar por WhatsApp</span> · <span class="btn">Iniciar atendimento</span> · <span class="btn">Marcou falta</span></td>
+            </tr>
+            <tr>
+              <td><span class="btn">Em atendimento</span></td>
+              <td><span class="btn">Interesses</span> · <span class="btn">Lookbook</span> · o seletor <em>“Como terminou?”</em> · <span class="btn">Concluir</span> · <span class="btn">Voltar para agendado</span></td>
+            </tr>
+            <tr>
+              <td><span class="btn">Concluído</span> / <span class="btn">Faltou</span></td>
+              <td><span class="btn">Reabrir</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>“Como terminou?” tem três respostas</strong> — <em>Reservou</em>, <em>Vai pensar</em>, <em>Não serviu</em> — e o <span class="btn">Concluir</span> só liga depois de você escolher uma. É esse campo que faz o relatório responder quantas visitas viram venda; um palpite estraga o número.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">O que pede confirmação, e por quê</span>
+        <p><span class="btn">Marcou falta</span>, <span class="btn">Voltar para agendado</span> e <span class="btn">Reabrir</span> abrem um aviso antes. Concluir, não.</p>
+        <p>A razão é o que se perde: voltar atrás <strong>apaga o horário real em que o atendimento começou</strong> e o desfecho, e não há como recuperá-los. Concluir é reversível; desfazer é que custa.</p>
+      </div>
+
+      <p class="nota">O sistema mede sozinho a que horas o atendimento <b>de fato</b> começou, quando você clica em “Iniciar atendimento” — é isso que aparece ao lado do estado, e é isso que o “Voltar para agendado” apaga.</p>
+    </section>
+
+    <section id="semana">
+      <h2><span class="passo">5</span>A semana</h2>
+      <p class="resumo">Na Agenda, o link <span class="btn">Semana →</span>. Uma linha por cabine, os sete dias lado a lado.</p>
+      <p>É a vista para <strong>encaixar</strong>: quando a noiva pergunta “tem alguma coisa na quinta ou na sexta?”, é aqui que o vão aparece sem folhear dia a dia. Os botões de seta andam de semana em semana, e <span class="btn">Esta semana</span> traz de volta.</p>
+      <p class="nota">A semana começa na <b>segunda</b> e é contada no fuso da loja — o atendimento de segunda de manhã não escorrega para a semana anterior por causa do relógio do computador.</p>
+    </section>
+
+    <section id="mensagens">
+      <h2><span class="passo">6</span>Mensagens de hoje</h2>
+      <p class="resumo">Responde <strong>com quem eu preciso falar hoje, e por quê</strong>. O topo diz a conta: <em>“7 mensagens prontas para enviar. Desça a fila clicando.”</em></p>
+
+      <p>São quatro blocos para o seu perfil, nesta ordem:</p>
+      <ul>
+        <li><strong>“Pediram para remarcar”</strong> — vem primeiro porque não é mensagem a enviar: <strong>é um horário preso</strong> que a loja pode devolver. Quanto antes remarcar, mais chance de outra noiva usar aquela hora</li>
+        <li><strong>“Procurar para confirmar — próximas 48h”</strong> — a fila do dia seguinte. Clicar abre o WhatsApp e registra que você procurou</li>
+        <li><strong>“Aceites esperando contrato”</strong> — noivas que já disseram sim pelo link. <strong>É informação, não tarefa sua</strong>: quem fecha o contrato é a vendedora</li>
+        <li><strong>“Orçamentos vencendo — próximas 72h”</strong> — o lembrete antes de a validade passar em silêncio. Também é da vendedora</li>
+      </ul>
+      <p class="nota">O bloco de valores em aberto é do financeiro e <b>não aparece para você</b> — cobrança não é da recepção.</p>
+    </section>
+
+    <section id="cadastrar">
+      <h2><span class="passo">7</span>A noiva que ligou</h2>
+      <p class="resumo">Menu → Noivas → <span class="btn">Adicionar noiva</span>. Dois campos são obrigatórios, e só dois.</p>
+
+      <p><strong>“Nome da noiva”</strong> e <strong>“Origem”</strong> — de onde ela veio: Loja, WhatsApp, Site ou Instagram. Todo o resto pode esperar: nome do noivo, WhatsApp, cerimonialista, data, horário e local do casamento.</p>
+
+      <p><strong>A Origem nasce vazia de propósito</strong>, e é o campo que mais vale acertar: é ele que responde <em>de onde vêm as noivas que fecham</em>. Quem atendeu o telefone é quem sabe — depois ninguém mais sabe. Um palpite estraga esse número para sempre.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">Confira antes de salvar</span>
+        <p>Você <strong>não consegue editar</strong> a ficha depois. O WhatsApp errado só se conserta pedindo à vendedora — e é o número pelo qual a loja vai confirmar a prova dela.</p>
+      </div>
+
+      <p>Salvou, o sistema abre a ficha dela direto e confirma: <em>“Noiva adicionada”</em>. Dali você já pode <span class="btn">Agendar atendimento</span>.</p>
+    </section>
+
+    <section id="config">
+      <h2><span class="passo">8</span>Cabines &amp; horário</h2>
+      <p class="resumo">Configurações → “as cabines” / “as regras de disponibilidade”. <strong>Esta tela é sua</strong>, e é ela que decide quais horários a grade acende para todo mundo.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>O que muda</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Abre (h)</strong> e <strong>Fecha (h)</strong></td><td>As linhas que a grade desenha</td></tr>
+            <tr><td><strong>Dias de funcionamento</strong></td><td>Os dias da semana em que a loja atende — botão por dia, aceso ou apagado</td></tr>
+            <tr><td><strong>Duração da prova</strong></td><td>Quantos minutos cada prova prende a cabine. <strong>Em minutos</strong>, não em número de linhas</td></tr>
+            <tr><td><strong>Lavagem do estoque (dias)</strong></td><td>Quanto tempo véu, saiote e bolero ficam na lavagem depois de devolvidos, antes de contar como disponíveis. Zero desliga</td></tr>
+            <tr><td><strong>Cabines</strong></td><td>Adicionar, renomear, ativar e desativar</td></tr>
+            <tr><td><strong>Ausências da equipe</strong></td><td>Quem, do dia, até o dia (inclusive) e o motivo</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>O botão fecha em <span class="btn">Salvar expediente</span>, e o sistema confirma: <em>“Horário salvo”</em>. Cabine nova: <em>“Cabine adicionada”</em>. Ausência: <em>“Ausência marcada”</em>.</p>
+
+      <div class="fala">
+        <span class="rotulo">A ausência é a ferramenta mais útil daqui</span>
+        <p>Marcada a ausência da vendedora, a grade <strong>apaga sozinha</strong> os horários dela naqueles dias, e quem tentar marcar lê o nome e o período. Vale mais que um recado no papel: ninguém marca por engano.</p>
+        <p><strong>As duas datas são inclusivas</strong> — quem digita 10/07 a 20/07 está dizendo que no dia 20 ainda não voltou.</p>
+      </div>
+
+      <p class="nota">Desativar cabine não desmarca ninguém: quem já estava marcado continua lá, e a coluna continua desenhada até esvaziar. <b>Remarque antes de desativar</b>, ou a desativação não termina.</p>
+    </section>
+
+    <section id="nao">
+      <h2>Quando o sistema diz não</h2>
+      <p class="resumo">Cada recado abaixo é literal — é o que aparece na tela.</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que fazer</th></tr></thead>
+          <tbody>
+            <tr><td>“Uma prova precisa da reserva do vestido que vai ser provado.”</td><td>Peça a reserva a quem cuida do acervo e marque depois</td></tr>
+            <tr><td>“Esse horário não está livre”</td><td>Vem com um dos cinco motivos. Escolha outra célula — as recusadas estão apagadas</td></tr>
+            <tr><td>“Um atendimento concluído é a história da ficha da noiva — ele não se apaga.”</td><td>Concluído não se apaga; use <span class="btn">Reabrir</span> se foi engano</td></tr>
+            <tr><td>“Nenhuma cabine ativa — a grade do dia precisa de ao menos uma.”</td><td>Ative uma cabine em Cabines &amp; horário</td></tr>
+            <tr><td>“Essa mudança não é possível agora”</td><td>O estado do atendimento mudou enquanto você decidia. Recarregue</td></tr>
+            <tr><td>“Não deu para reagendar”</td><td>Rede ou sistema. Tente de novo — nada foi gravado pela metade</td></tr>
+            <tr><td>“Sua sessão expirou. Entre de novo.”</td><td>O login dura 8 horas</td></tr>
+            <tr><td>“Seu acesso não permite isso — peça à gerente.”</td><td>Aquela ação é de outro perfil</td></tr>
+            <tr><td>“Não consegui falar com o sistema. Tente de novo em um instante.”</td><td>O sistema não respondeu. <strong>Não é erro seu</strong>, e o que já foi salvo continua salvo</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="prazos">
+      <h2>Os prazos que mexem com você</h2>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
+          <tbody>
+            <tr><td>Malha da grade</td><td class="prazo">30 minutos por linha</td></tr>
+            <tr><td>Duração da prova</td><td class="prazo">configurável — a loja escolhe</td></tr>
+            <tr><td>Confirmação de presença</td><td class="prazo">próximas 48 horas</td></tr>
+            <tr><td>Aviso de orçamento vencendo</td><td class="prazo">próximas 72 horas</td></tr>
+            <tr><td>Prova “iminente” (vermelho)</td><td class="prazo">7 dias ou menos</td></tr>
+            <tr><td>Sua sessão (login)</td><td class="prazo">8 horas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="verdade">
+      <h2>Duas coisas a saber, e não são detalhe</h2>
+      <ul>
+        <li><strong>Você cadastra a noiva e não a edita.</strong> É o desenho do perfil hoje, e a consequência prática é uma só: <strong>confira o WhatsApp antes de salvar</strong></li>
+        <li><strong>O botão <span class="btn">Gerar contrato</span> aparece para você e funciona.</strong> Não deveria — contrato é de quem vende. Está registrado para conserto; até lá, a regra é sua: não clique</li>
+      </ul>
+      <p>Se algum dos dois mudar, este manual muda junto.</p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Este manual descreve o sistema como ele está em <strong>12/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+  </footer>
+
+</div>
