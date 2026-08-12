@@ -41,7 +41,7 @@ espera uma decisão sua"*.
 | ~~**E174**~~ | ~~o dinheiro do orçamento, pelos dois lados que ninguém olhava~~ | B1 | ✅ `c35ba98` · [relatório](execucao/E174.md) — o teto do desconto se rompe pelo lado dos ITENS, e **o hash não prende a peça**: trocar o vestido mantendo descrição e preço não movia o hash |
 | ~~**E175**~~ | ~~a costureira: a cor que discordava de si mesma, e o trabalho que não nascia~~ | B2 | ✅ `205417d` · [relatório](execucao/E175.md) — **a confecção com casamento em 5 dias saía CINZA na fila** e vermelha na ficha; e a confecção não tinha onde nascer |
 | ~~**E176**~~ | ~~as portas: a mesma regra vale coisas diferentes conforme quem bate~~ | B3 | ✅ `67f98f8` · [relatório](execucao/E176.md) — **recusar não é sempre proteger**: a porta da loja recusa o WhatsApp torto e a captação pública o aceita, para não perder o lead |
-| ~~**E177**~~ | ~~a classe que o gerador perde: contá-la e fazê-la soar~~ | C | ✅ [relatório](execucao/E177.md) — **115 `integer` no spec, ZERO `.int()` no zod**; e a perda saía como **500**, não como recusa |
+| ~~**E177**~~ | ~~a classe que o gerador perde: contá-la e fazê-la soar~~ | C | ✅ `3b38689` · [relatório](execucao/E177.md) — **115 `integer` no spec, ZERO `.int()` no zod**; e a perda saía como **500**, não como recusa |
 
 A **Faixa A é serial** — os quatro mexem nas mesmas transações. A **Faixa C
 paraleliza**. O `/code-review ultra` roda sobre a branch de cada faixa antes do
