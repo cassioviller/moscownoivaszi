@@ -13,7 +13,7 @@ import {
   rotuloCasamento,
   rotuloProva,
   urgenteAjuste,
-} from "@/lib/ajustes-da-semana";
+} from "@/lib/ajustes-prazo";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -83,7 +83,7 @@ export default function AjusteDetalhe() {
    *
    * Este comentário dizia *"a mesma régua de urgência da fila"* sobre uma conta
    * escrita à mão aqui, uma segunda escrita à mão na fila, e uma terceira —
-   * `naSemana` — que decide o RECORTE. As três discordavam, e a pior
+   * `prazoApertado` — que decide o RECORTE. As três discordavam, e a pior
    * discordância era com a própria fila: a confecção com casamento em 5 dias
    * entrava no recorte "esta semana" e saía cinza lá, vermelha aqui.
    */

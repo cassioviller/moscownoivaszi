@@ -96,6 +96,14 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   seed, com `expect(linhas.length).toBeGreaterThanOrEqual(4)`: ela existe para
   que conjunto vazio não aprove tudo em silêncio, e num banco sem seed é
   exatamente isso que ela pega.
+  **A suíte de E2E, porém, NÃO é portátil para banco virgem** (medido no mesmo
+  dia): no banco próprio ela dá **166 passed · 1 failed · 4 skipped**, e a que
+  falha é `04-vestidos.spec.ts:80` ("a cor entre as características"), que no
+  banco de dev passa — `7 passed` no arquivo inteiro. São **5 dos 171** que
+  dependem de dado acumulado no dev. A régua do `banco-virgem.ts` não pega isso
+  porque ela sobe o `global-setup` e **não roda um spec sequer**. Então: suíte
+  de API, sim, em banco próprio; **E2E completo, no banco de dev** — e é por
+  isso que ele continua sendo o recurso que se mede em série.
 - **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
   `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
   ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —

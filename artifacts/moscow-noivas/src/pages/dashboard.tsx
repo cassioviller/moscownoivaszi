@@ -22,7 +22,7 @@ import {
   getListAjustesQueryKey,
   useUpdateAtendimento,
 } from "@workspace/api-client-react";
-import { ajustesDaSemana } from "@/lib/ajustes-da-semana";
+import { ajustesComPrazoApertado } from "@/lib/ajustes-prazo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -187,7 +187,7 @@ export default function Dashboard() {
   /**
    * E132/D10 — a 4ª persona do E66 não tinha cartão: a costureira logava e
    * nada dizia dos ajustes vencendo. A MESMA query e a MESMA régua da fila
-   * (`lib/ajustes-da-semana`) — o número do cartão é o da fila por construção
+   * (`lib/ajustes-prazo`) — o número do cartão é o da fila por construção
    * (a disciplina do F7); o gate é o do servidor (módulo agenda), via
    * `lib/permissoes`, e o cartão some quando não há nada.
    */
@@ -197,8 +197,8 @@ export default function Dashboard() {
       enabled: !!activeLojaId && veAgenda,
     },
   });
-  const ajustesSemana = useMemo(
-    () => ajustesDaSemana(ajustesQuery.data ?? []),
+  const ajustesApertados = useMemo(
+    () => ajustesComPrazoApertado(ajustesQuery.data ?? []),
     [ajustesQuery.data],
   );
 
@@ -398,15 +398,15 @@ export default function Dashboard() {
           e por isso a reserva vale para os dois. */}
       {ajustesQuery.isLoading ? (
         <AvisoCarregando descricao={DESCRICAO_AJUSTES} />
-      ) : ajustesSemana.length > 0 ? (
+      ) : ajustesApertados.length > 0 ? (
         <Link to={`/loja/${activeLojaId}/ajustes`} className="block">
           <Card className="hover-elevate border-primary/40">
             <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
               <div className="min-w-0">
                 <CardTitle className="text-base">
-                  {ajustesSemana.length === 1
-                    ? "1 ajuste para costurar esta semana"
-                    : `${ajustesSemana.length} ajustes para costurar esta semana`}
+                  {ajustesApertados.length === 1
+                    ? "1 ajuste com o prazo apertado"
+                    : `${ajustesApertados.length} ajustes com o prazo apertado`}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-0.5">{DESCRICAO_AJUSTES}</p>
               </div>

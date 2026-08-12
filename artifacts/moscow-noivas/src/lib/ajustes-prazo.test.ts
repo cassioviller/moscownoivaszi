@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  ajustesDaSemana,
+  ajustesComPrazoApertado,
   casamentoDeReferencia,
   prazoDias,
   rotuloCasamento,
   rotuloProva,
-  naSemana,
+  prazoApertado,
   urgenteAjuste,
-} from "./ajustes-da-semana";
+} from "./ajustes-prazo";
 
 /** Um dia YMD a N dias de hoje, no fuso da loja. */
 function emDias(n: number): string {
@@ -16,19 +16,19 @@ function emDias(n: number): string {
   );
 }
 
-describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E132)", () => {
+describe("ajustesComPrazoApertado — o cartão do painel conta o que a fila mostra (E132)", () => {
   it("pendente com prova em 3 dias entra; em 10 dias fica fora", () => {
     const dentro = { status: "PENDENTE", proximaProva: emDias(3) };
     const fora = { status: "PENDENTE", proximaProva: emDias(10) };
-    expect(ajustesDaSemana([dentro, fora])).toEqual([dentro]);
+    expect(ajustesComPrazoApertado([dentro, fora])).toEqual([dentro]);
   });
 
   it("atrasado é 'da semana' — é o que mais precisa da costureira", () => {
-    expect(ajustesDaSemana([{ status: "PENDENTE", proximaProva: emDias(-2) }])).toHaveLength(1);
+    expect(ajustesComPrazoApertado([{ status: "PENDENTE", proximaProva: emDias(-2) }])).toHaveLength(1);
   });
 
   it("FEITO não conta, mesmo com prova amanhã", () => {
-    expect(ajustesDaSemana([{ status: "FEITO", proximaProva: emDias(1) }])).toEqual([]);
+    expect(ajustesComPrazoApertado([{ status: "FEITO", proximaProva: emDias(1) }])).toEqual([]);
   });
 
   it("sem prova, vale o casamento; sem referência nenhuma, fica fora do recorte", () => {
@@ -37,7 +37,7 @@ describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E13
       atendimento: { bloqueio: { casamentoData: emDias(5) } },
     };
     const semReferencia = { status: "PENDENTE" };
-    expect(ajustesDaSemana([peloCasamento, semReferencia])).toEqual([peloCasamento]);
+    expect(ajustesComPrazoApertado([peloCasamento, semReferencia])).toEqual([peloCasamento]);
     expect(prazoDias(semReferencia)).toBeNull();
   });
 
@@ -61,7 +61,7 @@ describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E13
       atendimento: { bloqueio: null, lead: { casamentoData: emDias(5) } },
     };
     expect(prazoDias(confeccao)).toBe(5);
-    expect(ajustesDaSemana([confeccao])).toEqual([confeccao]);
+    expect(ajustesComPrazoApertado([confeccao])).toEqual([confeccao]);
   });
 
   it("o casamento do BLOQUEIO manda sobre o da noiva quando os dois existem", () => {
@@ -87,7 +87,7 @@ describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E13
   it("sem prova, sem reserva e sem casamento na ficha, o prazo segue nulo", () => {
     const a = { status: "PENDENTE", atendimento: { bloqueio: null, lead: { casamentoData: null } } };
     expect(prazoDias(a)).toBeNull();
-    expect(ajustesDaSemana([a])).toEqual([]);
+    expect(ajustesComPrazoApertado([a])).toEqual([]);
   });
 
   it("`casamentoDeReferencia` devolve uma grafia só — o `Date` do tipo gerado vira ISO", () => {
@@ -126,7 +126,7 @@ describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E13
  * Medido em 2026-08-12, com as três grafias que existiam:
  *
  * ```
- * caso                                             | naSemana | fila(cor) | ficha(cor)
+ * caso                                             | prazoApertado | fila(cor) | ficha(cor)
  * casamento em 10 dias, sem prova, com bloqueio    |  false   |   true    |   true
  * casamento em 10 dias, sem prova, SEM bloqueio    |  false   |   false   |   true
  * casamento em  5 dias, sem prova, SEM bloqueio    |  true    |   false   |   true
@@ -164,15 +164,37 @@ describe("urgenteAjuste — a COR, separada do RECORTE (S-O27)", () => {
     // e não achava nada, então nunca pintava.
     const c = trabalho({ casNoiva: emDiasISO(5) });
     expect(urgenteAjuste(c)).toBe(true);
-    expect(naSemana(c), "e ela ESTÁ no recorte da semana — era esse o absurdo").toBe(true);
+    expect(prazoApertado(c), "e ela ESTÁ no recorte da semana — era esse o absurdo").toBe(true);
   });
 
-  it("casamento em 10 dias é vermelho e NÃO está na semana — os dois ao mesmo tempo", () => {
-    // Estado válido, e é o ponto de separar os dois nomes: a cor avisa antes,
-    // o recorte lista o que se costura até sexta.
+  /**
+   * **E183 — este teste pregava a decisão CONTRÁRIA, e a régua era essa mesmo.**
+   *
+   * O E175 escreveu, aqui e no módulo, que *"uma linha vermelha FORA do recorte
+   * da semana é estado válido"*: a cor avisava antes, o recorte listava o que se
+   * costura até sexta. Era coerente e tinha um furo de uso — a peça vermelha só
+   * aparecia para quem trocasse de aba, e a aba padrão é a que a costureira abre
+   * de manhã. **Ninguém troca de aba para procurar o que não sabe que existe.**
+   *
+   * Decisão da dona em 2026-08-12: o recorte enxerga o que a cor enxerga. O
+   * assert virou do avesso de propósito, e fica escrito para quem reabrir o
+   * arquivo não achar que a mudança foi descuido.
+   */
+  it("casamento em 10 dias é vermelho E entra no recorte — as duas réguas viraram uma", () => {
     const c = trabalho({ casNoiva: emDiasISO(10) });
     expect(urgenteAjuste(c)).toBe(true);
-    expect(naSemana(c)).toBe(false);
+    expect(
+      prazoApertado(c),
+      "o que está vermelho aparece na aba padrão — era o furo que a S-O27 deixou aberto",
+    ).toBe(true);
+  });
+
+  it("casamento em 20 dias continua fora das duas — a folga não virou infinita", () => {
+    // O teto de 14 dias segue sendo teto: unificar as réguas não é alargar o
+    // recorte sem fim, senão a aba padrão vira a lista inteira e não recorta nada.
+    const c = trabalho({ casNoiva: emDiasISO(20) });
+    expect(urgenteAjuste(c)).toBe(false);
+    expect(prazoApertado(c)).toBe(false);
   });
 
   it("a PROVA manda quando existe: 8 dias já não é urgente", () => {

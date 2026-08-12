@@ -12,12 +12,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { diasAteCasamento } from "../noivas/helpers";
 import {
   casamentoDeReferencia,
-  naSemana,
+  prazoApertado,
   prazoDias,
   rotuloCasamento,
   rotuloProva,
   urgenteAjuste,
-} from "@/lib/ajustes-da-semana";
+} from "@/lib/ajustes-prazo";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { Badge } from "@/components/ui/badge";
@@ -35,11 +35,11 @@ import { NovaConfeccao } from "./nova-confeccao";
  */
 
 /** Prazo efetivo em dias: próxima prova, senão casamento; null = sem prazo. */
-// E132: a régua do prazo saiu para `lib/ajustes-da-semana` — o cartão do
+// E132: a régua do prazo saiu para `lib/ajustes-prazo` — o cartão do
 // painel conta o MESMO conjunto que esta fila mostra, por construção.
 
 // S-A17: `rotuloProva`/`rotuloCasamento` moravam aqui e foram para
-// `lib/ajustes-da-semana` — a ficha do trabalho diz o prazo com as mesmas palavras.
+// `lib/ajustes-prazo` — a ficha do trabalho diz o prazo com as mesmas palavras.
 
 export default function Ajustes() {
   const { lojaId } = useParams();
@@ -75,7 +75,7 @@ export default function Ajustes() {
   // `POST /ajustes` cobra (`agenda.ts:248`), e a ação que o método deriva.
   const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
 
-  const { pendentes, foraDaSemana } = useMemo(() => {
+  const { pendentes, foraDoPrazo } = useMemo(() => {
     const alvo = recorte === "feitos" ? "FEITO" : "PENDENTE";
     const lista = (ajustes ?? []).filter((a): a is Ajuste => a.status === alvo);
     // Prazo mais apertado primeiro; sem prazo ao fim (não some — vira rabeira).
@@ -87,9 +87,9 @@ export default function Ajustes() {
       if (db === null) return -1;
       return da - db;
     });
-    if (recorte === "todos" || recorte === "feitos") return { pendentes: lista, foraDaSemana: 0 };
-    const semana = lista.filter(naSemana);
-    return { pendentes: semana, foraDaSemana: lista.length - semana.length };
+    if (recorte === "todos" || recorte === "feitos") return { pendentes: lista, foraDoPrazo: 0 };
+    const apertados = lista.filter(prazoApertado);
+    return { pendentes: apertados, foraDoPrazo: lista.length - apertados.length };
   }, [ajustes, recorte]);
 
   const trocarRecorte = (novo: "semana" | "todos" | "feitos") => {
@@ -120,7 +120,12 @@ export default function Ajustes() {
             size="sm"
             onClick={() => trocarRecorte("semana")}
           >
-            Esta semana
+            {/* E183: o rótulo mudou com o recorte — ele corta em prova ≤7 ou
+                casamento ≤14, e "Esta semana" passou a mentir. O VALOR do
+                parâmetro (`?recorte=semana`) fica como está de propósito: é o
+                default, some da URL, e link antigo colado no WhatsApp continua
+                abrindo a mesma aba. */}
+            Prazo apertado
           </Button>
           <Button
             variant={recorte === "todos" ? "secondary" : "ghost"}
@@ -146,12 +151,12 @@ export default function Ajustes() {
         <Card className="animate-pulse h-40" />
       ) : pendentes.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          {recorte === "semana" && foraDaSemana > 0 ? (
+          {recorte === "semana" && foraDoPrazo > 0 ? (
             <>
-              <p>Nada com prazo nesta semana.</p>
+              <p>Nada com o prazo apertado.</p>
               <p className="text-sm mt-1">
-                {foraDaSemana} ajuste{foraDaSemana === 1 ? "" : "s"} pendente
-                {foraDaSemana === 1 ? "" : "s"} mais adiante —{" "}
+                {foraDoPrazo} ajuste{foraDoPrazo === 1 ? "" : "s"} pendente
+                {foraDoPrazo === 1 ? "" : "s"} mais adiante —{" "}
                 <button className="underline" onClick={() => trocarRecorte("todos")}>
                   ver todos
                 </button>

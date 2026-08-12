@@ -1,13 +1,22 @@
 import { diasAteCasamento } from "@/pages/noivas/helpers";
 
 /**
- * E132 (D10) — o recorte "esta semana" da fila de ajustes, extraído para a
- * decisão morar num lugar só: a fila (`/ajustes`, recorte default) e o cartão
- * do painel contam o MESMO conjunto por construção — a disciplina do F7 (um
- * painel que promete 3 e a fila entrega 5 é pior que um painel calado).
+ * E132 (D10) — o recorte da fila de ajustes, extraído para a decisão morar num
+ * lugar só: a fila (`/ajustes`, recorte default) e o cartão do painel contam o
+ * MESMO conjunto por construção — a disciplina do F7 (um painel que promete 3
+ * e a fila entrega 5 é pior que um painel calado).
  *
  * O prazo de um ajuste é a PRÓXIMA PROVA quando existe, senão o casamento —
  * a mesma régua que a fila já usava inline.
+ *
+ * **E183 — o arquivo se chamava `ajustes-da-semana.ts` e o recorte não é mais
+ * de uma semana.** Até aqui havia DUAS réguas: o recorte cortava em 7 dias e a
+ * cor acendia a 14, então a costureira via a peça vermelha só se trocasse de
+ * aba — e a aba padrão é a que ela abre de manhã. Decisão da dona em
+ * 2026-08-12: **o recorte passa a enxergar o que a cor enxerga.** As duas
+ * viraram uma expressão só (`prazoApertado`), o arquivo, a função e os rótulos
+ * das telas foram renomeados junto, e a S-O27 fecha pela raiz — não havia como
+ * alinhar filtro e destaque mantendo dois números.
  */
 
 type AjusteComPrazo = {
@@ -46,10 +55,37 @@ export function prazoDias(a: AjusteComPrazo): number | null {
   return referencia ? diasAteCasamento(referencia) : null;
 }
 
-/** Prazo conhecido e dentro de 7 dias — atrasado (< 0) também é "da semana". */
-export function naSemana(a: AjusteComPrazo): boolean {
-  const dias = prazoDias(a);
-  return dias !== null && dias <= 7;
+/**
+ * **A ÚNICA expressão de "está apertado" do módulo** — prova marcada manda
+ * (≤7 dias); sem prova, vale o casamento (≤14). Atrasado (< 0) entra também.
+ *
+ * A folga maior sem prova é de propósito e é a régua que o E175 já tinha
+ * escrito: sem prova marcada, a peça precisa estar pronta ANTES do casamento,
+ * e quem descobre na semana descobre tarde.
+ *
+ * Ela é privada para não haver por onde nascer uma segunda grafia (regra 26):
+ * quem quer o recorte chama `prazoApertado`, quem quer a cor chama
+ * `urgenteAjuste`, e as duas descem para cá.
+ */
+function dentroDoPrazoDeAtencao(a: AjusteComPrazo): boolean {
+  const dias = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
+  if (dias !== null) return dias <= 7;
+  const casamento = casamentoDeReferencia(a);
+  if (!casamento) return false;
+  return diasAteCasamento(casamento) <= 14;
+}
+
+/**
+ * O RECORTE — o que a fila lista por padrão e o que o cartão do painel conta.
+ *
+ * **E183: era `naSemana`, e cortava em 7 dias.** O nome prometia uma semana e
+ * entregava uma semana; o problema é que a COR acendia a 14, então a linha
+ * vermelha da noiva que casa em 10 dias ficava fora da aba padrão. A costureira
+ * só a encontrava trocando para "Todos", e ninguém troca de aba para procurar o
+ * que não sabe que existe.
+ */
+export function prazoApertado(a: AjusteComPrazo): boolean {
+  return dentroDoPrazoDeAtencao(a);
 }
 
 /**
@@ -75,32 +111,22 @@ export function naSemana(a: AjusteComPrazo): boolean {
  * `casamentoDeReferencia` (bloqueio ?? noiva) e deixou a fila lendo só o
  * bloqueio — e confecção não tem bloqueio, por definição.
  *
- * As duas ideias ficam separadas e nomeadas:
- *
- * - **`naSemana`** é o RECORTE — o que a fila lista por padrão e o que o
- *   cartão do painel conta. Sete dias, medidos pelo prazo (prova ou
- *   casamento). O nome promete uma semana e entrega uma semana.
- * - **`urgenteAjuste`** é a COR — prova a ≤7 dias, ou, sem prova, casamento a
- *   ≤14. O prazo maior é de propósito: sem prova marcada, a peça precisa estar
- *   pronta com folga antes do casamento, e quem descobre na semana descobre
- *   tarde.
- *
- * Uma linha vermelha FORA do recorte da semana é estado válido — casamento em
- * 10 dias é exatamente isso. O que não podia era a mesma linha ter duas cores
- * em duas telas.
+ * O E175 separou as duas ideias e as nomeou, e deixou escrito que *"uma linha
+ * vermelha FORA do recorte da semana é estado válido"*. **O E183 desfez essa
+ * parte por decisão da dona**, e o motivo é o da linha do meio da tabela acima:
+ * o estado era válido e ninguém o via. Hoje a COR e o RECORTE são a mesma
+ * expressão (`dentroDoPrazoDeAtencao`); o que separa `urgenteAjuste` de
+ * `prazoApertado` é só o FEITO — trabalho pronto não acende, mas continua
+ * podendo ser listado.
  */
 export function urgenteAjuste(a: AjusteComPrazo & { status?: string }): boolean {
   if (a.status === "FEITO") return false;
-  const dias = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
-  if (dias !== null) return dias <= 7;
-  const casamento = casamentoDeReferencia(a);
-  if (!casamento) return false;
-  return diasAteCasamento(casamento) <= 14;
+  return dentroDoPrazoDeAtencao(a);
 }
 
-/** O que o cartão do painel conta: PENDENTE com prazo na semana. */
-export function ajustesDaSemana<T extends AjusteComPrazo>(lista: readonly T[]): T[] {
-  return lista.filter((a) => a.status === "PENDENTE" && naSemana(a));
+/** O que o cartão do painel conta: PENDENTE com o prazo apertado. */
+export function ajustesComPrazoApertado<T extends AjusteComPrazo>(lista: readonly T[]): T[] {
+  return lista.filter((a) => a.status === "PENDENTE" && prazoApertado(a));
 }
 
 // S-A17: os rótulos moravam inline na fila; a ficha do trabalho
