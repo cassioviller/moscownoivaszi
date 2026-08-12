@@ -28,6 +28,7 @@ import { instanteHora } from "@/lib/formatos";
 import { diaLocal } from "@/lib/financeiro/datas";
 import { ancoraDaSemana, colunasDaGrade, diasDaSemana } from "@/lib/agenda-telas";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
+import { SeloProvaForaDaJanela } from "@/components/selo-prova-fora-da-janela";
 
 /**
  * Visão semanal (E20) — a grade da recepcionista: semana × cabine, cada célula
@@ -249,6 +250,7 @@ export default function AgendaSemana() {
                                       com antecedência — é o melhor lugar para
                                       descobrir, e não na véspera. */}
                                   <SeloProvaOrfa atendimento={a} compacto />
+                                  <SeloProvaForaDaJanela atendimento={a} compacto />
                                 </li>
                               );
                             })}

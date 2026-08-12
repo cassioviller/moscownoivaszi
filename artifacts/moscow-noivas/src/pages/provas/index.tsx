@@ -10,6 +10,7 @@ import { hojeLocal, addDias, diaLocal } from "@/lib/financeiro/datas";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
+import { SeloProvaForaDaJanela } from "@/components/selo-prova-fora-da-janela";
 import { Button } from "@/components/ui/button";
 import { diaMesAbrevAno, instanteMesAbrev, instanteMesAno } from "@/lib/formatos";
 import {
@@ -155,6 +156,7 @@ export default function Provas() {
                                 é onde a loja se prepara — o vestido que já não
                                 é da noiva precisa aparecer aqui, não na cabine. */}
                             <SeloProvaOrfa atendimento={p} />
+                            <SeloProvaForaDaJanela atendimento={p} />
                             {vestido && (
                               <span className="text-xs text-muted-foreground">
                                 {vestido.codigo} · {vestido.nome}

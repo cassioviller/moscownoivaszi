@@ -52,6 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 import { brl, diaMesAno, etapaLabel, perdidaMotivoLabel, PERDIDA_MOTIVO_LABELS, ROTULO_ORIGEM, instanteDia, instanteDiaHora } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
+import { SeloProvaForaDaJanela } from "@/components/selo-prova-fora-da-janela";
 import { ehNaoEncontrado, mensagemApi } from "@/lib/erro-api";
 import { proximoPasso } from "@/lib/proximo-passo";
 import { contratoAtivoDaNoiva } from "@/lib/contrato-ativo-da-noiva";
@@ -637,6 +638,7 @@ export default function NoivaDetalhe() {
                       saiu dela, é aqui que se descobre antes de responder. */}
                   <div className="mt-1">
                     <SeloProvaOrfa atendimento={visita} />
+                    <SeloProvaForaDaJanela atendimento={visita} />
                   </div>
                 </div>
               )}

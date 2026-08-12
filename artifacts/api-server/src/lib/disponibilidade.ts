@@ -170,6 +170,26 @@ export function addDias(dia: string, n: number): string {
  * MANUTENCAO: janela única [dia(inicio), dia(fim)|null] FISICA (inicio
  * obrigatório — a rota valida com 400; aqui, sem inicio → sem janelas).
  */
+/**
+ * A janela de PROVA prevista para um casamento — `[D − provaDiasAntes,
+ * D − usoDiasAntes − 1]`, ou `null` quando a regra não deixa dia nenhum
+ * (`provaDiasAntes <= usoDiasAntes`: a peça já saiu para o uso).
+ *
+ * S-O97: ela era uma expressão dentro de `janelasDoBloqueio` e passou a ser
+ * função porque ganhou um SEGUNDO leitor — a contagem das provas que ficam para
+ * trás quando a reserva muda de data (`reservas.ts`). Extrair em vez de copiar é
+ * a regra 26 na letra: duas cópias desta conta divergiriam no dia em que a loja
+ * mexesse na regra, e a divergência apareceria como aviso que não aparece.
+ */
+export function janelaDeProvaPrevista(
+  dataCasamento: string,
+  regra: RegraJanelas,
+): { inicio: string; fim: string } | null {
+  const inicio = addDias(dataCasamento, -regra.provaDiasAntes);
+  const fim = addDias(addDias(dataCasamento, -regra.usoDiasAntes), -1);
+  return inicio <= fim ? { inicio, fim } : null;
+}
+
 export function janelasDoBloqueio(
   b: BloqueioJanelasInput,
   regra: RegraJanelas,
@@ -207,12 +227,11 @@ export function janelasDoBloqueio(
       bloqueioId: b.id,
     });
   } else {
-    const inicioProva = addDias(dataCasamento, -regra.provaDiasAntes);
-    const fimProva = addDias(inicioUsoPrevisto, -1);
-    if (inicioProva <= fimProva) {
+    const prevista = janelaDeProvaPrevista(dataCasamento, regra);
+    if (prevista) {
       janelas.push({
-        inicio: inicioProva,
-        fim: fimProva,
+        inicio: prevista.inicio,
+        fim: prevista.fim,
         motivo: "PROVA",
         classe: "PROVA",
         bloqueioId: b.id,

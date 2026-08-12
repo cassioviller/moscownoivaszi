@@ -34,6 +34,7 @@ import {
   buscarRegra,
   diaLocal,
   inicioDoDia,
+  janelaDeProvaPrevista,
   type BloqueioJanelasInput,
   type ConflitoDetalhe,
   type DbExecutor,
@@ -492,6 +493,73 @@ router.patch("/lojas/:lojaId/reservas/:reservaId", async (req, res): Promise<voi
             ))
             .returning({ id: contratosTable.id })
         : [];
+
+      /**
+       * S-O97 — **mover a data move a peça e o contrato, e a PROVA fica onde
+       * estava.**
+       *
+       * A propagação acima alcança `bloqueio_vestidos` e `contratos`;
+       * `atendimentos` só é tocado no ramo CANCELADA, e lá apenas para CONTAR
+       * (S-O5). A prova marcada para a janela do casamento ANTIGO continua
+       * marcada, e ninguém é avisado.
+       *
+       * **Movendo a data para trás fica pior: a prova cai depois do
+       * casamento** — a noiva vem experimentar um vestido que ela já usou.
+       *
+       * Não há régua que recuse depois: o `POST /atendimentos` aceita prova em
+       * qualquer dia de propósito (G1/E161), e recusar aqui seria pior — quem
+       * move a data não é quem decide o horário da noiva. **É aviso, como o
+       * selo da prova órfã**: a tela marca (`lib/prova-fora-da-janela.ts`) e a
+       * trilha CONTA, que é o que responde "quantas provas ficaram para trás"
+       * depois do fato.
+       *
+       * A janela sai de `janelaDeProvaPrevista` — a mesma função que
+       * `janelasDoBloqueio` usa para decidir disponibilidade. Uma segunda cópia
+       * da conta divergiria no dia em que a loja mexesse na regra.
+       */
+      const diaDeCasamentoNovo = diaLocal(dados.casamentoData);
+      const mudouDeDia = diaLocal(reserva.casamentoData) !== diaDeCasamentoNovo;
+      let provasParaTras: { id: string }[] = [];
+      if (mudouDeDia && idsVinculados.length > 0) {
+        const regra = await buscarRegra(lojaId, tx);
+        const janela = janelaDeProvaPrevista(diaDeCasamentoNovo, regra);
+        const provasDePe = await tx.select({ id: atendimentosTable.id, inicio: atendimentosTable.inicio })
+          .from(atendimentosTable)
+          .where(and(
+            inArray(atendimentosTable.bloqueioId, idsVinculados),
+            eq(atendimentosTable.tipo, "PROVA"),
+            inArray(atendimentosTable.situacao, ["AGENDADO", "EM_ATENDIMENTO"]),
+          ));
+        provasParaTras = provasDePe
+          .filter((p) => {
+            const dia = diaLocal(p.inicio);
+            return janela === null || dia < janela.inicio || dia > janela.fim;
+          })
+          .map((p) => ({ id: p.id }));
+      }
+
+      if (mudouDeDia) {
+        /**
+         * A trilha da data em si — que não existia. Até aqui, mover o
+         * casamento só deixava rastro quando um CONTRATO seguia junto
+         * (`CONTRATO_DATA_SEGUIU_RESERVA`, abaixo): reserva sem contrato mudava
+         * de dia sem uma linha dizendo quem mudou, de quando para quando.
+         */
+        await registrarAuditoria(tx, {
+          lojaId,
+          usuario: req.usuario!,
+          acao: "RESERVA_DATA_MOVIDA",
+          entidade: "reserva",
+          entidadeId: reserva.id,
+          detalhe: {
+            de: reserva.casamentoData,
+            para: dados.casamentoData,
+            bloqueios: idsVinculados.length,
+            provasForaDaJanela: provasParaTras.length,
+            provasIds: provasParaTras.map((p) => p.id),
+          },
+        });
+      }
 
       if (contratosAtualizados.length > 0) {
         /**

@@ -21,6 +21,7 @@ import {
 } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { SeloProvaOrfa } from "@/components/selo-prova-orfa";
+import { SeloProvaForaDaJanela } from "@/components/selo-prova-fora-da-janela";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -619,6 +620,7 @@ function CartaoAtendimento({
             apertado do app, então o selo entra compacto — e é a tela que a
             loja lê o dia inteiro, então é a que mais precisa dele. */}
         <SeloProvaOrfa atendimento={atendimento} compacto />
+        <SeloProvaForaDaJanela atendimento={atendimento} compacto />
       </div>
     </div>
   );
