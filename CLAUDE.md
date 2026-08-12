@@ -170,9 +170,13 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1219 · frontend 584 · E2E 171 · typecheck verde em 5
+   Hoje a régua é **API 1239 · frontend 611 · E2E 171 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 68 arquivos de `e2e/`** (S-D23,
-   `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. Há
+   `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. O
+   `scripts/tsconfig.json` ganhou `lib: DOM` em 2026-08-12, com o custo
+   declarado no próprio arquivo: o corpo de `page.evaluate` roda no NAVEGADOR, e
+   sem isso o `document` de dentro dele não compila — em troca, o pacote inteiro
+   passa a enxergar `document` como se existisse em Node. Há
    uma **quarta régua fora das suítes**: `scripts/banco-virgem.ts` (S-D43), que
    exercita o caminho da primeira execução — banco descartável, seed,
    `global-setup` — e é a única que enxerga defeito de instalação nova. **Rode-a

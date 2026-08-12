@@ -138,13 +138,22 @@ async function main(): Promise<void> {
     // `--lang` fixa a locale da INTERFACE do Chromium — é ela que formata o
     // `<input type=date>` (E92), não o `lang` do documento nem o `locale` do
     // contexto sozinho.
-    args: ["--lang=pt-BR"],
+    //
+    // S-O43/S-O42: e `--lang` SOZINHO não bastava. Medido em 2026-08-12 com o
+    // Chromium do /nix/store, exatamente esta configuração: o campo "Data do
+    // casamento" saiu **`mm/dd/yyyy`** — enquanto o bloco de ambiente abaixo
+    // afirmava "pt-BR (fixada no contexto e no --lang)". Um manifest que
+    // carimba o que não cumpre é pior que nenhum: é a S-D2 de novo, e desta vez
+    // com o carimbo mentindo. Com `LANG`/`LANGUAGE` no ambiente do processo,
+    // vira `dd/mm/aaaa`.
+    args: ["--lang=pt-BR", "--accept-lang=pt-BR,pt"],
+    env: { ...process.env, LANG: "pt_BR.UTF-8", LANGUAGE: "pt_BR:pt" },
   });
 
   const ambiente = {
     navegador: `chromium ${browser.version()}`,
     executavel: executablePath ?? "chromium empacotado pelo Playwright",
-    locale: "pt-BR (fixada no contexto e no --lang do Chromium)",
+    locale: "pt-BR (contexto + --lang + LANG/LANGUAGE no ambiente — os três, S-O42)",
     timezone: "America/Sao_Paulo",
     viewports: { claro: "1280×800", escuro: "1280×800", "390": "390×844" },
     temas: { claro: "prefers-color-scheme: light", escuro: "prefers-color-scheme: dark", "390": "prefers-color-scheme: light" },

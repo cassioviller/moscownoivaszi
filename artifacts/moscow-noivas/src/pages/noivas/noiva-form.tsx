@@ -2,6 +2,7 @@ import { useConfirmarSaida, sujoParaConfirmar } from "@/hooks/use-confirmar-said
 import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { formatarWhatsApp, whatsappUtilizavel } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,7 +24,21 @@ import {
 const noivaSchema = z.object({
   noivaNome: z.string().min(1, "Informe o nome da noiva"),
   noivoNome: z.string().optional(),
-  whatsapp: z.string().optional(),
+  /**
+   * S-O43 — o número que não vira link não entra.
+   *
+   * Era `z.string().optional()`: um dígito a menos era aceito, salvo e exibido
+   * na ficha como se estivesse bom, e todo botão de wa.me do sistema sumia sem
+   * uma palavra. A conferência é derivada do `linkWhatsApp`, então não há uma
+   * segunda cópia da regra dos dígitos para divergir (regra 26).
+   */
+  whatsapp: z
+    .string()
+    .optional()
+    .refine(whatsappUtilizavel, {
+      message:
+        "Confira o número: com DDD, 10 ou 11 dígitos. Sem isso, os botões de WhatsApp dela não aparecem em lugar nenhum do sistema.",
+    }),
   cerimonialista: z.string().optional(),
   casamentoData: z.string().optional(),
   casamentoHorario: z.string().optional(),
@@ -180,6 +195,9 @@ export function NoivaForm({
               <FormControl>
                 {/* E92/E20: o teclado numérico de telefone. O WhatsApp digitado
                     torto quebra em silêncio os links wa.me da fila de mensagens. */}
+                {/* S-O43: a máscara formata o que JÁ foi digitado e não
+                    completa nada — meio número sai como meio número, não como
+                    um telefone inventado. */}
                 <Input
                   type="tel"
                   inputMode="tel"
@@ -187,6 +205,7 @@ export function NoivaForm({
                   placeholder="(11) 99999-9999"
                   data-testid="input-noiva-whatsapp"
                   {...field}
+                  onChange={(e) => field.onChange(formatarWhatsApp(e.target.value))}
                 />
               </FormControl>
               <FormMessage />

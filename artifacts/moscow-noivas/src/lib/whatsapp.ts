@@ -142,3 +142,44 @@ export function msgConfirmacaoAtendimento(p: ConfirmacaoAtendimento): string {
   linhas.push(...linhaPortal(p.portalUrl));
   return linhas.join("\n");
 }
+
+/**
+ * S-O43 — o número que a loja digita é ÚTIL, ou não é.
+ *
+ * O campo de WhatsApp da noiva não tinha máscara nem conferência: `<input
+ * type="tel">` com placeholder e `z.string().optional()`. Um dígito a menos era
+ * aceito, salvo e EXIBIDO na ficha como se estivesse bom — e do outro lado
+ * `linkWhatsApp` devolvia `null`, então todo botão de wa.me do sistema
+ * simplesmente não aparecia: a confirmação da prova, a fila "Falta procurar", a
+ * cobrança, o rodapé do portal. Sem erro, sem aviso, sem ninguém descobrir por
+ * quê. O comentário do próprio campo já dizia que o número torto "quebra em
+ * silêncio os links wa.me da fila de mensagens".
+ *
+ * A conferência **deriva do link**, e é isso que impede as duas de divergirem:
+ * não há uma segunda cópia da regra dos dígitos para alguém esquecer de mexer
+ * (regra 26). Vazio é válido — WhatsApp é opcional, e a noiva que só deixou o
+ * telefone fixo continua entrando.
+ */
+export function whatsappUtilizavel(valor: string | null | undefined): boolean {
+  if (!valor || !valor.trim()) return true;
+  return linkWhatsApp(valor, "") !== null;
+}
+
+/**
+ * A máscara do que se digita: `(11) 96222-0147`, `(11) 3062-4400`.
+ *
+ * Formata pelo que JÁ existe, sem completar nada — quem digitou meio número vê
+ * meio número formatado, e não um telefone inventado. Acima de 11 dígitos o
+ * texto volta cru: é o caso do número com DDI, que `linkWhatsApp` aceita e esta
+ * máscara não saberia desenhar.
+ */
+export function formatarWhatsApp(valor: string): string {
+  const d = valor.replace(/\D/g, "").slice(0, 11);
+  if (d.length > 11) return valor;
+  if (d.length <= 2) return d.length ? `(${d}` : "";
+  const ddd = d.slice(0, 2);
+  const resto = d.slice(2);
+  if (resto.length <= 4) return `(${ddd}) ${resto}`;
+  const corte = resto.length >= 9 ? 5 : 4;
+  return `(${ddd}) ${resto.slice(0, corte)}-${resto.slice(corte)}`;
+}

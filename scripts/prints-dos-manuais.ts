@@ -181,8 +181,25 @@ const MANUAIS: Record<string, Manual> = {
         realces: [
           {
             alvo: "[data-testid='input-noiva-whatsapp']",
-            nota: "O WhatsApp NÃO se formata sozinho e ninguém confere: digite DDD + número, com 10 ou 11 dígitos. Faltando um, todos os botões de WhatsApp dela somem em silêncio.",
+            nota: "Digite só os números: o campo põe os parênteses e o traço sozinho.",
           },
+        ],
+      },
+      {
+        // O erro é parte do passo a passo: a vendedora precisa reconhecer a
+        // frase antes de encontrá-la com uma noiva na frente.
+        nome: "nova-noiva-whatsapp-torto",
+        rota: `/loja/${LOJA}/noivas/nova`,
+        alvo: "form",
+        folga: 56,
+        preparar: [
+          { preencher: "[data-testid='input-noiva-nome']", com: "Helena Ferraz" },
+          { digitar: "[data-testid='input-noiva-whatsapp']", com: "962220147" },
+          { clicar: "[data-testid='button-salvar-noiva']" },
+        ],
+        legenda: "Faltando o DDD, o sistema não deixa salvar — e diz o que aconteceria se deixasse.",
+        realces: [
+          { alvo: "text=Confira o número", nota: "A conferência que impede o número que apagaria todos os botões de WhatsApp dela." },
         ],
       },
 
