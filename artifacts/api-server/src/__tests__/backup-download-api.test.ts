@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, backupLogTable, sessoesTable } from "@workspace/db";
 import { eq, inArray, and, isNotNull, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, unlinkSync, rmSync } from "node:fs";
 import path from "node:path";
 import {
   criarFixture,
@@ -30,6 +30,8 @@ describe("Download e poda de backup (E59)", () => {
   let admin: Awaited<ReturnType<typeof loginComLoja>>;
   const idsCriados: string[] = [];
   const arquivosCriados: string[] = [];
+  // S-O26 usa um DIRETÓRIO como dump — sai com `rmSync`, não com `unlinkSync`.
+  const diretoriosCriados: string[] = [];
 
   function criarDumpFake(nome: string, conteudo = "dump-fake"): string {
     mkdirSync(BACKUP_DIR, { recursive: true });
@@ -61,6 +63,9 @@ describe("Download e poda de backup (E59)", () => {
     for (const abs of arquivosCriados) {
       if (existsSync(abs)) unlinkSync(abs);
     }
+    for (const abs of diretoriosCriados) {
+      if (existsSync(abs)) rmSync(abs, { recursive: true, force: true });
+    }
     await limparFixture(f);
     await fecharPool();
   });
@@ -87,6 +92,33 @@ describe("Download e poda de backup (E59)", () => {
     const registro = await inserirRegistro({ arquivo: "../package.json" });
     expect(caminhoDoDump(registro)).toBeNull();
     await admin.get(`/api/admin/backup/${registro.id}/download`).expect(410);
+  });
+
+  /**
+   * S-O26 — **o `existsSync` passa e o `send` recusa assim mesmo.**
+   *
+   * As duas 410 acima são decididas ANTES do `res.download`: registro sem
+   * arquivo, e caminho que escapa de `backups/`. Esta é a terceira classe, e
+   * era a que vazava 500 com a stack do `send`: o caminho existe, atravessa a
+   * guarda, e o streaming falha por um motivo que ninguém perguntou —
+   * permissão, corrida com a poda, ou **componente oculto no caminho**.
+   *
+   * O componente oculto não é hipótese: foi ele que fez este arquivo reprovar
+   * em três worktrees de agente ao mesmo tempo (`.claude/worktrees/`), e ser
+   * relatado como 🟠 por um deles. Aqui o gatilho é um DIRETÓRIO no lugar do
+   * arquivo — determinístico, sem depender de permissão nem do caminho em que
+   * a suíte roda —, mas o ramo do código é o mesmo: o callback de erro do
+   * `download`.
+   */
+  it("410 quando o caminho existe e o `send` recusa assim mesmo (S-O26)", async () => {
+    const nome = `teste-eisdir-${randomUUID().slice(0, 8)}.sql.gz`;
+    const abs = path.join(BACKUP_DIR, nome);
+    mkdirSync(abs, { recursive: true });
+    diretoriosCriados.push(abs);
+    const registro = await inserirRegistro({ arquivo: path.relative(process.cwd(), abs) });
+
+    const res = await admin.get(`/api/admin/backup/${registro.id}/download`).expect(410);
+    expect(res.body.error).toBe("BACKUP_SEM_ARQUIVO");
   });
 
   it("quem não é superadmin não baixa (403)", async () => {

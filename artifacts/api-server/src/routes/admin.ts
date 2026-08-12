@@ -759,7 +759,48 @@ router.get("/admin/backup/:backupId/download", async (req, res): Promise<void> =
     return;
   }
   res.setHeader("Content-Type", "application/gzip");
-  res.download(caminho, path.basename(caminho));
+  /**
+   * S-O26 — **o `send` recusa por mais motivos que o `existsSync` cobre, e o
+   * que vazava era a stack.**
+   *
+   * O `existsSync` acima pega o caso comum (a retenção já levou o arquivo).
+   * Todo motivo restante — permissão negada, corrida com a poda entre o
+   * `existsSync` e o `download`, e **componente oculto no caminho** — chegava
+   * ao cliente como 500 com o erro cru do `send`.
+   *
+   * O componente oculto não é hipótese: foi o que fez o
+   * `backup-download-api.test.ts` reprovar em TRÊS worktrees de agente ao
+   * mesmo tempo, na Faixa C da trilha, e ser relatado como 🟠 por um deles. O
+   * `res.download` recusa caminho com componente que começa em ponto, e todo
+   * worktree de agente vive sob `.claude/` — o `main` passava e os três
+   * mediam vermelho. Um 500 com stack não diz nada disso; um 410 nomeado diz
+   * que o arquivo não está alcançável.
+   *
+   * `headersSent` é a guarda de sempre: se o stream já começou, não há
+   * resposta para trocar — só resta encerrar e deixar o log contar.
+   *
+   * **E os DOIS cabeçalhos saem antes do JSON.** O `Content-Type` de gzip foi
+   * posto acima, e o `Content-Disposition: attachment` é o `download` que o
+   * põe: sem removê-los, a recusa vai embora como JSON rotulado de gzip, que o
+   * navegador tenta SALVAR como arquivo em vez de mostrar a frase. O status
+   * certo com o cabeçalho errado é meio conserto — foi assim que o teste desta
+   * mesma sobra reprovou com `expected undefined to be 'BACKUP_SEM_ARQUIVO'`:
+   * o 410 estava certo e o corpo, ilegível.
+   */
+  res.download(caminho, path.basename(caminho), (err) => {
+    if (!err) return;
+    req.log.warn({ err, caminho }, "backup_download_recusado_pelo_send");
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
+    res.removeHeader("Content-Type");
+    res.removeHeader("Content-Disposition");
+    res.status(410).json({
+      error: "BACKUP_SEM_ARQUIVO",
+      detalhe: "O arquivo deste backup não está acessível no servidor.",
+    });
+  });
 });
 
 export default router;

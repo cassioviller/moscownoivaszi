@@ -63,8 +63,7 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   o nome do banco: `BANCO_VIRGEM=...`.
 - **A suíte de API tem um teste que só passa no working tree PRINCIPAL**, e
   três agentes já o relataram como defeito. `backup-download-api.test.ts`
-  ("baixa o dump de um backup ok") reprova em **todo worktree** com
-  `expected 200 "OK", got 500` e `NotFoundError` do `send` — porque
+  ("baixa o dump de um backup ok") reprova em **todo worktree** — porque
   `res.download` **recusa caminho que tenha componente oculto**, e todo worktree
   de agente vive sob `.claude/worktrees/`. Medido com uma sonda de duas linhas:
   caminho limpo → **200**, o mesmo arquivo sob `.claude/` → **404
@@ -72,6 +71,11 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   dotfile). **Quem trabalha em worktree confere este arquivo no `main` antes de
   chamá-lo de vermelho** — a regra 18 manda parar por vermelho de verdade, e
   este não é um.
+  **O número mudou no E178 (S-O26), e quem decorou o antigo vai se assustar:**
+  era `expected 200 "OK", got 500` com a stack crua do `send`; hoje é
+  `expected 200 "OK", got 410` com `BACKUP_SEM_ARQUIVO`, porque a rota passou a
+  tratar o erro do `download`. O sintoma de worktree é o MESMO defeito de
+  ambiente de sempre — só que agora ele chega nomeado.
 - **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
   `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
   ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —

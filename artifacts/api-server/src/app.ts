@@ -2,6 +2,9 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+// S-O19: os tetos moram em `lib/limites.ts`, ao lado do da FOTO — a conta do
+// base64 que os liga estava só em comentário.
+import { CORPO_MAX_AVARIA, CORPO_MAX_FOTO_VESTIDO } from "./lib/limites";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { requireSessaoComLoja, requireModulo } from "./middlewares/auth";
@@ -61,7 +64,7 @@ app.use(
   "/api/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem",
   requireSessaoComLoja,
   requireModulo("vestidos"),
-  express.json({ limit: "6mb" }),
+  express.json({ limit: CORPO_MAX_FOTO_VESTIDO }),
 );
 /**
  * V1/E167 — a FOTO DA AVARIA passava pela mesma porta e nunca ganhou o teto.
@@ -87,7 +90,7 @@ app.use(
   "/api/lojas/:lojaId/bloqueios/:bloqueioId/avarias",
   requireSessaoComLoja,
   requireModulo("vestidos"),
-  express.json({ limit: "4mb" }),
+  express.json({ limit: CORPO_MAX_AVARIA }),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

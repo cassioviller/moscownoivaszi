@@ -1871,6 +1871,18 @@ paths:
           required: false
           description: "Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva"
           schema: { type: string }
+        # S-O22 — o recorte que faltava, e ele é a lente 3 (E62/D4).
+        #
+        # `Cabines & horário` baixava a AGENDA FUTURA INTEIRA da loja só para
+        # contar quantos atendimentos ficam na cabine que está sendo desativada
+        # (G6/E168). Com três anos de loja isso são milhares de linhas na rede
+        # para produzir um número, e o número é por cabine. Os irmãos `leadId` e
+        # `bloqueioId` já existiam pelo mesmo motivo.
+        - name: cabineId
+          in: query
+          required: false
+          description: "Só os atendimentos desta cabine (S-O22) — a tela de cabines conta quanta agenda fica na que vai ser desativada, e não precisa da loja inteira"
+          schema: { type: string }
         - name: tipo
           in: query
           required: false

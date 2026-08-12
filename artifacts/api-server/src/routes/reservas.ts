@@ -38,6 +38,7 @@ import {
 import { transicaoReservaValida } from "../lib/estados";
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { erroDeValidacao } from "../lib/erros";
+import { FOTO_MAX_BYTES as AVARIA_FOTO_MAX_BYTES } from "../lib/limites";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 
 const router: IRouter = Router();
@@ -61,7 +62,9 @@ class ReservaPresaAContrato extends Error {
 }
 
 /**
- * E159 — A ORDEM DAS TRANCAS, a mesma que `contratos.ts:521-532` estabelece:
+ * E159 — A ORDEM DAS TRANCAS, a mesma que `contratos.ts:643` estabelece
+ * (S-O35: a referência apontava `:521-532`, e o bloco andou — o `docs/` tem
+ * régua para links envelhecidos, o comentário de código não tem):
  *
  *     linha-pai da rota (lead · reserva · avaria) → contrato → parcelas
  *       → bloqueios (ORDENADOS por id) → vestidos (ORDENADOS por id)
@@ -1144,7 +1147,9 @@ router.delete("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<
 // morria numa conversa. Gate `vestidos`, junto do resto do bloqueio.
 router.use("/lojas/:lojaId/avarias", requireModulo("vestidos"));
 
-const AVARIA_FOTO_MAX_BYTES = 2 * 1024 * 1024;
+// S-O19: o teto vem de `lib/limites.ts` (importado no topo, como
+// `AVARIA_FOTO_MAX_BYTES`) — a foto de avaria e a de vestido sempre foram a
+// mesma régua, escrita duas vezes.
 
 /**
  * Meta da avaria para o contrato — nunca os bytes na listagem.

@@ -65,58 +65,68 @@ export const ROTULO_ACAO: Record<string, string> = {
   // E123: o desfazer da cobrança registrada por engano — depois do DELETE a
   // trilha é o único lugar que lembra o que o registro dizia.
   REGISTRO_COBRANCA_DESFEITO: "Registro de cobrança desfeito",
+  // S-O1 — as SEIS que a trilha gravava e o filtro não oferecia. A varredura
+  // `auditoria-espelho` passou a cobrar a união inteira do servidor, para a
+  // lista não voltar a envelhecer em silêncio.
+  //
+  // E157/P7: o carnê que perdeu uma parcela ganhou as que faltavam — quem lê o
+  // extrato depois precisa achar esta linha para entender por que há duas
+  // gerações de carnê no mesmo contrato.
+  CARNE_COMPLETADO: "Carnê completado",
+  // S-M24: cancelar a reserva solta os vestidos da noiva.
+  RESERVA_CANCELADA: "Reserva cancelada (vestidos liberados)",
+  // S-O4/E173: mover a data da reserva move a do contrato ATIVO junto — o que
+  // muda ali é o papel que a noiva assinou.
+  CONTRATO_DATA_SEGUIU_RESERVA: "Data do casamento do contrato seguiu a reserva",
+  // S-O11/E173: a reserva aberta na noiva errada passou a ter conserto, e
+  // trocar a dona é mexer em de quem é a peça.
+  RESERVA_DONA_TROCADA: "Reserva passou para outra noiva",
+  // S3: os dois atos GLOBAIS de superadmin. Eles gravam `loja_id` nulo, então
+  // não aparecem na trilha de loja nenhuma — mas o rótulo existe para o CSV e
+  // para o console da rede não cair no código cru.
+  USUARIO_EXCLUIDO: "Usuário excluído do sistema",
+  LOJA_EXCLUIDA: "Loja excluída do sistema",
 };
 
-/** As ações filtráveis, na ordem em que o select as oferece. */
-export const ACOES_FILTRAVEIS = [
-  "PARCELA_RECEBIDA",
-  "RECEBIMENTO_ESTORNADO",
-  "CONTA_PAGA",
-  "PAGAMENTO_REGISTRADO",
-  "PAGAMENTO_ESTORNADO",
-  "ESTORNO_COMISSAO_BAIXADO",
-  "COMISSAO_FECHAMENTO_REABERTO",
-  "CONTRATO_CANCELADO",
-  "MEMBRO_ADICIONADO",
-  "MEMBRO_ALTERADO",
-  "MEMBRO_REMOVIDO",
-  "CONVITE_CRIADO",
-  "CONVITE_CANCELADO",
-  "PERMISSOES_ALTERADAS",
-  "PERMISSOES_RESTAURADAS",
-  "ORCAMENTO_ACEITO",
-  "PROVA_CONFIRMADA",
-  "LEADS_ANONIMIZADOS",
-  "REMARCACAO_PEDIDA",
-  "CONTA_PAGAR_REMOVIDA",
-  "CONTABILIDADE_ENVIADA",
-  "LEAD_REMOVIDO",
-  "PARCELA_REMOVIDA",
-  "CONCILIACAO_MARCADA",
-  "RESERVA_REMOVIDA",
-  "BLOQUEIO_REMOVIDO",
-  "ATENDIMENTO_REMOVIDO",
-  "ORCAMENTO_REMOVIDO",
-  "AVARIA_REMOVIDA",
-  "CABINE_REMOVIDA",
-  "ITEM_ESTOQUE_REMOVIDO",
-  "AJUSTE_REMOVIDO",
-  "COMISSAO_REGRA_REMOVIDA",
-  "CONTRATO_VENDEDORA_DIVERGENTE",
-  "REGISTRO_COBRANCA_DESFEITO",
-] as const;
-
-export type AcaoFiltravel = (typeof ACOES_FILTRAVEIS)[number];
+/**
+ * As ações filtráveis — **derivadas do mapa de rótulos, não copiadas dele.**
+ *
+ * S-O1: esta era uma lista curada à mão, e ela nascia incompleta e envelhecia
+ * pior: `PARCELAS_RENUMERADAS` (E158) e `RESERVA_CANCELADA` (S-M24) tinham
+ * rótulo no mapa acima e **não apareciam no select** — a trilha as gravava e o
+ * filtro não as oferecia, então quem procurasse por elas não achava. Eram 35
+ * numa lista e 37 no mapa, e a diferença era invisível.
+ *
+ * Derivar mata a segunda cópia (regra 26): ação que ganha rótulo ganha filtro,
+ * no mesmo gesto. A ORDEM continua sendo a do mapa, que é a ordem em que as
+ * ações foram nascendo — dinheiro primeiro, administração depois, remoções por
+ * último. O select a oferece assim de propósito: é a ordem em que a contadora
+ * pensa.
+ */
+export const ACOES_FILTRAVEIS: readonly string[] = Object.keys(ROTULO_ACAO);
 
 /**
- * Estreita o `?acao=` da URL para a união fechada. Valor desconhecido vira
- * `undefined` — a URL é editável e compartilhável, e um `?acao=XPTO` colado
- * torto deve mostrar a trilha inteira, não pedir 400 ao servidor.
+ * O tipo é `string`, e **é o preço da derivação** — não descuido. `ROTULO_ACAO`
+ * é frouxo de propósito (o comentário dele diz por quê), e `keyof
+ * Record<string, string>` é `string`: derivar a lista do mapa custa a união
+ * fechada que a lista curada dava de graça.
+ *
+ * A troca vale porque a garantia que importa nunca foi a do compilador. Ninguém
+ * escreve `AcaoFiltravel` à mão — o valor vem da URL, em tempo de execução, e é
+ * a conferência de `acaoFiltravel` que o barra. O que a união fechada pegaria a
+ * mais é um literal digitado errado no código, e não há nenhum; o que a lista
+ * curada deixava passar era ação sem filtro, e isso a trilha inteira sentiu.
+ */
+export type AcaoFiltravel = string;
+
+/**
+ * Confere o `?acao=` da URL contra as ações que o select oferece. Valor
+ * desconhecido vira `undefined` — a URL é editável e compartilhável, e um
+ * `?acao=XPTO` colado torto deve mostrar a trilha inteira, não pedir 400 ao
+ * servidor. A conferência é em TEMPO DE EXECUÇÃO, que é onde o valor nasce.
  */
 export function acaoFiltravel(valor: string | null): AcaoFiltravel | undefined {
-  return valor && (ACOES_FILTRAVEIS as readonly string[]).includes(valor)
-    ? (valor as AcaoFiltravel)
-    : undefined;
+  return valor && ACOES_FILTRAVEIS.includes(valor) ? valor : undefined;
 }
 
 // Estornos desfazem dinheiro — merecem olho mais atento na lista.

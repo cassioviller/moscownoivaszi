@@ -13,6 +13,7 @@ import {
   avariasTable,
 } from "@workspace/db";
 import { eq, and, gte, lt, isNull, isNotNull, inArray, count, sql } from "drizzle-orm";
+import { FOTO_MAX_BYTES } from "../lib/limites";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   ListVestidosResponse,
@@ -635,7 +636,8 @@ router.get("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): 
 
 // Limites da foto: o que o cliente DEVERIA mandar depois do downscale por
 // canvas. Acima disso é bug do cliente ou má-fé — recusa, não acomoda.
-const FOTO_MAX_BYTES = 2 * 1024 * 1024;
+// S-O19: `FOTO_MAX_BYTES` mora em `lib/limites.ts` (importado no topo) — eram
+// três declarações independentes, iguais por coincidência.
 const THUMB_MAX_BYTES = 512 * 1024;
 
 router.put("/lojas/:lojaId/vestidos/:vestidoId/fotos/:ordem", async (req, res): Promise<void> => {

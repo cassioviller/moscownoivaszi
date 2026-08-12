@@ -2031,6 +2031,7 @@ export const listAtendimentosQueryAteRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$
 export const ListAtendimentosQueryParams = zod.object({
   "leadId": zod.coerce.string().optional().describe('Só a agenda desta noiva (E125) — a ficha pergunta pela próxima prova DELA, não pela agenda da loja'),
   "bloqueioId": zod.coerce.string().optional().describe('Só os atendimentos deste bloqueio (E79) — as provas da ficha da reserva'),
+  "cabineId": zod.coerce.string().optional().describe('Só os atendimentos desta cabine (S-O22) — a tela de cabines conta quanta agenda fica na que vai ser desativada, e não precisa da loja inteira'),
   "tipo": zod.enum(['ATENDIMENTO', 'PROVA']).optional().describe('Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira'),
   "de": zod.coerce.string().regex(listAtendimentosQueryDeRegExp).optional().describe('Início da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo) — E83: o sino e a agenda pedem a janela, não a história'),
   "ate": zod.coerce.string().regex(listAtendimentosQueryAteRegExp).optional().describe('Fim da janela sobre `inicio` (inclusivo, dia local America\/Sao_Paulo)')

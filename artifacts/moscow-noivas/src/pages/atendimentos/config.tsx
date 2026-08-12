@@ -18,8 +18,7 @@ import {
   getListAusenciasQueryKey,
   useCreateAusencia,
   useDeleteAusencia,
-  useListAtendimentos,
-  getListAtendimentosQueryKey,
+  listAtendimentos,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,13 +88,6 @@ export default function ConfigAtendimentos() {
    * sem contar nada. A janela é do dia de hoje em diante: o que já aconteceu
    * é história e não muda a decisão de quem está desativando.
    */
-  const janelaFutura = { de: hojeLocal() };
-  const agendaFutura = useListAtendimentos(activeLojaId!, janelaFutura, {
-    query: {
-      queryKey: getListAtendimentosQueryKey(activeLojaId!, janelaFutura),
-      enabled: !!activeLojaId,
-    },
-  });
 
   // Cabines e disponibilidade são gateadas por `agenda` no backend — era
   // `config`, um módulo que o servidor não conhece: negava para todo mundo.
@@ -302,9 +294,26 @@ export default function ConfigAtendimentos() {
 
   const alternarCabine = async (cabineId: string, ativo: boolean) => {
     try {
-      // G6: contado ANTES do PATCH — o invalidate que vem depois derruba a
-      // lista, e o número que interessa é o do momento da decisão.
-      const ficam = ativo ? 0 : atendimentosNaCabine(agendaFutura.data ?? [], cabineId);
+      /**
+       * G6: contado ANTES do PATCH — o invalidate que vem depois derruba a
+       * lista, e o número que interessa é o do momento da decisão.
+       *
+       * **S-O22 — e contado no BANCO, não na rede.** A tela baixava a agenda
+       * futura INTEIRA da loja, no carregamento, só para produzir este número —
+       * que é por cabine, e só quando alguém desativa uma. Com três anos de
+       * loja são milhares de linhas para responder "quantos ficam nesta". É a
+       * lente 3 do E62/D4, e o recorte que faltava (`?cabineId=`) agora existe,
+       * ao lado dos irmãos `leadId` e `bloqueioId`.
+       *
+       * A consulta é sob demanda — só o clique em desativar a dispara, e é o
+       * único momento em que o número importa.
+       */
+      const ficam = ativo
+        ? 0
+        : atendimentosNaCabine(
+            await listAtendimentos(activeLojaId!, { de: hojeLocal(), cabineId }),
+            cabineId,
+          );
       await updateCabine.mutateAsync({ lojaId: activeLojaId!, cabineId, data: { ativo } });
       await queryClient.invalidateQueries({ queryKey: getListCabinesQueryKey(activeLojaId!) });
       toast({

@@ -392,12 +392,15 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
   if (!query) return;
   // E125: recorte por noiva — a ficha pergunta pela próxima prova DELA e não
   // tem por que baixar a agenda da loja inteira (a classe do E62).
-  const { leadId, bloqueioId, tipo, de, ate } = query;
+  const { leadId, bloqueioId, cabineId, tipo, de, ate } = query;
   const atendimentos = await db.query.atendimentosTable.findMany({
     where: and(
       eq(atendimentosTable.lojaId, lojaId),
       ...(leadId ? [eq(atendimentosTable.leadId, leadId)] : []),
       ...(bloqueioId ? [eq(atendimentosTable.bloqueioId, bloqueioId)] : []),
+      // S-O22: o recorte por cabine — a tela de cabines conta a agenda da que
+      // vai ser desativada, e baixava a loja inteira para isso.
+      ...(cabineId ? [eq(atendimentosTable.cabineId, cabineId)] : []),
       ...(tipo ? [eq(atendimentosTable.tipo, tipo)] : []),
       ...(de ? [gte(atendimentosTable.inicio, inicioDoDia(de))] : []),
       ...(ate ? [lt(atendimentosTable.inicio, inicioDoDia(addDias(ate, 1)))] : []),

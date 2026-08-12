@@ -61,6 +61,7 @@ import { ROTULO_SITUACAO, dataHoraFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
+import { FOTO_ACIMA_DO_TETO, FOTO_MAX_BYTES } from "@/lib/limites";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -148,8 +149,10 @@ export default function ReservaDetalhe() {
 
   const aoEscolherFotoAvaria = async (arquivo: File | undefined) => {
     if (!arquivo) return;
-    if (arquivo.size > 2 * 1024 * 1024) {
-      toast({ title: "Foto acima de 2MB", description: "Escolha uma imagem menor.", variant: "destructive" });
+    // S-O19: o teto vem de `lib/limites` — era o terceiro lugar onde ele
+    // estava escrito à mão, e os três eram iguais por coincidência.
+    if (arquivo.size > FOTO_MAX_BYTES) {
+      toast({ title: FOTO_ACIMA_DO_TETO, description: "Escolha uma imagem menor.", variant: "destructive" });
       return;
     }
     const buf = await arquivo.arrayBuffer();

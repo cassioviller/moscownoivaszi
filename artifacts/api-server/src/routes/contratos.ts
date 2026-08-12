@@ -1123,7 +1123,8 @@ router.patch("/lojas/:lojaId/contratos/:contratoId", async (req, res): Promise<v
    * recém-cancelado todos têm `canceladoEm`, então a data mudava sem prova
    * nenhuma.
    *
-   * O conserto é o idioma do DELETE de parcela (`:1300-1304`): a condição do
+   * O conserto é o idioma do DELETE de parcela (`:1769` — S-O35: a referência
+   * dizia `:1300-1304`, e o bloco andou): a condição do
    * `where` repete o estado LIDO. Zero linhas quer dizer que o contrato deixou
    * de ser ATIVO no meio — e a resposta é o mesmo 422 da guarda lenta.
    */

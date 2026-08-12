@@ -2943,6 +2943,10 @@ leadId?: string;
  */
 bloqueioId?: string;
 /**
+ * Só os atendimentos desta cabine (S-O22) — a tela de cabines conta quanta agenda fica na que vai ser desativada, e não precisa da loja inteira
+ */
+cabineId?: string;
+/**
  * Só um tipo (E79) — a tela de provas pede PROVA, não a agenda inteira
  */
 tipo?: ListAtendimentosTipo;
