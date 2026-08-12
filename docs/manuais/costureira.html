@@ -1,0 +1,498 @@
+<title>Manual da Costureira — Moscow Noivas</title>
+<style>
+  /* ── Tokens: papel e tinta. O mesmo esqueleto do manual da vendedora. ─────
+     Claro é o padrão; o escuro redefine SÓ os tokens, nas duas guardas
+     (preferência do sistema e escolha explícita). Nenhuma cor nasce dentro de
+     um bloco de tema. */
+  :root {
+    --papel:      #faf9f6;
+    --folha:      #ffffff;
+    --tinta:      #1b1f2a;
+    --tinta-fraca:#5c6170;
+    --caneta:     #2e4e8f;
+    --caneta-suave:#eef1f8;
+    --carmim:     #a32f3f;
+    --carmim-suave:#fbeff0;
+    --linha:      #e3e1db;
+    --linha-forte:#c9c6bd;
+    --chip-borda: #cfd3dd;
+    --chip-fundo: #f2f3f7;
+    --sombra:     0 1px 2px rgba(27,31,42,.05), 0 8px 24px -16px rgba(27,31,42,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:      #15171c;
+      --folha:      #1d2027;
+      --tinta:      #e7e5e0;
+      --tinta-fraca:#9ba1ae;
+      --caneta:     #8fadea;
+      --caneta-suave:#1e2634;
+      --carmim:     #e58a97;
+      --carmim-suave:#2b1d20;
+      --linha:      #2b2f38;
+      --linha-forte:#3d424e;
+      --chip-borda: #3a4050;
+      --chip-fundo: #232833;
+      --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:      #15171c;
+    --folha:      #1d2027;
+    --tinta:      #e7e5e0;
+    --tinta-fraca:#9ba1ae;
+    --caneta:     #8fadea;
+    --caneta-suave:#1e2634;
+    --carmim:     #e58a97;
+    --carmim-suave:#2b1d20;
+    --linha:      #2b2f38;
+    --linha-forte:#3d424e;
+    --chip-borda: #3a4050;
+    --chip-fundo: #232833;
+    --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .pagina {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+  @media (min-width: 1020px) {
+    .pagina { grid-template-columns: 232px minmax(0, 1fr); gap: 56px; padding-right: 40px; }
+  }
+
+  /* ── Cabeçalho ─────────────────────────────────────────────────────────── */
+  .capa { grid-column: 1 / -1; padding: 56px 0 36px; border-bottom: 2px solid var(--linha-forte); }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--caneta); font-weight: 600; margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(34px, 6vw, 50px);
+    line-height: 1.08; margin: 0 0 14px; font-weight: 700;
+    letter-spacing: -.015em; text-wrap: balance;
+  }
+  .subtitulo {
+    font-size: clamp(18px, 2.6vw, 21px); color: var(--tinta-fraca);
+    margin: 0 0 26px; max-width: 34em; text-wrap: balance;
+  }
+  .contexto {
+    display: flex; flex-wrap: wrap; gap: 10px 26px;
+    font-size: 14px; color: var(--tinta-fraca);
+    padding-top: 20px; border-top: 1px solid var(--linha);
+  }
+  .contexto b { color: var(--tinta); font-weight: 600; }
+
+  /* ── Índice ────────────────────────────────────────────────────────────── */
+  .indice { padding: 28px 0 0; }
+  @media (min-width: 1020px) {
+    .indice { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 40px 0; }
+  }
+  .indice h2 {
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tinta-fraca); margin: 0 0 12px; font-weight: 600;
+  }
+  .indice ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .indice a {
+    display: block; padding: 5px 10px; margin-left: -10px;
+    color: var(--tinta-fraca); text-decoration: none; font-size: 14.5px;
+    border-radius: 5px; border-left: 2px solid transparent;
+  }
+  .indice a:hover { color: var(--caneta); background: var(--caneta-suave); }
+  .indice a:focus-visible { outline: 2px solid var(--caneta); outline-offset: 1px; }
+  .indice .num {
+    font-variant-numeric: tabular-nums; color: var(--linha-forte);
+    margin-right: 8px; font-size: 12.5px;
+  }
+
+  /* ── Corpo ─────────────────────────────────────────────────────────────── */
+  main { padding-top: 8px; min-width: 0; }
+  section { padding: 40px 0; border-bottom: 1px solid var(--linha); max-width: 68ch; }
+  section:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(25px, 3.6vw, 31px); line-height: 1.2;
+    margin: 0 0 8px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .passo {
+    font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--caneta); background: var(--caneta-suave);
+    border-radius: 999px; padding: 3px 11px; flex: none;
+    font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  h3 {
+    font-size: 17.5px; font-weight: 650; margin: 30px 0 8px;
+    letter-spacing: -.005em; text-wrap: balance;
+  }
+  .resumo { color: var(--tinta-fraca); margin: 0 0 22px; font-size: 16.5px; }
+  p { margin: 0 0 15px; }
+  ul { margin: 0 0 15px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--caneta); }
+  strong { font-weight: 650; }
+
+  /* ── A citação da interface parece interface ─────────────────────────── */
+  .btn {
+    display: inline-block; font-size: 14.5px; font-weight: 550;
+    background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+    border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+    line-height: 1.5; color: var(--tinta);
+  }
+  .fala {
+    border-left: 3px solid var(--caneta); background: var(--caneta-suave);
+    padding: 13px 18px; margin: 0 0 16px; border-radius: 0 7px 7px 0;
+    font-size: 16px; color: var(--tinta);
+  }
+  .fala.aviso { border-left-color: var(--carmim); background: var(--carmim-suave); }
+  .fala p { margin: 0; }
+  .fala p + p { margin-top: 9px; }
+  .fala .rotulo {
+    display: block; font-size: 11px; letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 600; color: var(--caneta); margin-bottom: 5px;
+  }
+  .fala.aviso .rotulo { color: var(--carmim); }
+
+  /* ── Tabelas ───────────────────────────────────────────────────────────── */
+  .rolagem { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--linha); border-radius: 9px; background: var(--folha); }
+  table { border-collapse: collapse; width: 100%; font-size: 15.5px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th {
+    font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--tinta-fraca); font-weight: 600; background: var(--chip-fundo);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.prazo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+
+  /* ── O caminho, em uma olhada ──────────────────────────────────────────── */
+  .trilha {
+    display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
+  }
+  .trilha span {
+    font-size: 14.5px; font-weight: 550; padding: 5px 11px;
+    border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+  }
+  .trilha span.fim { background: var(--caneta); border-color: var(--caneta); color: var(--folha); }
+  :root[data-theme="dark"] .trilha span.fim,
+  .trilha span.fim { color: var(--papel); }
+  .trilha i { color: var(--linha-forte); font-style: normal; font-size: 15px; }
+
+  /* ── Menu: o que ela vê / não vê ───────────────────────────────────────── */
+  .colunas { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 0 0 18px; }
+  @media (min-width: 620px) { .colunas { grid-template-columns: 1fr 1fr; } }
+  .caixa {
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 17px 19px; box-shadow: var(--sombra);
+  }
+  .caixa h4 {
+    margin: 0 0 11px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 650;
+  }
+  .caixa.ve h4 { color: var(--caneta); }
+  .caixa.naove h4 { color: var(--tinta-fraca); }
+  .caixa ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
+  .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
+
+  /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
+  .nota {
+    font-size: 15px; color: var(--tinta-fraca);
+    border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 22px;
+  }
+  .nota b { color: var(--tinta); }
+
+  footer {
+    grid-column: 1 / -1; padding: 34px 0 0; margin-top: 8px;
+    border-top: 2px solid var(--linha-forte);
+    font-size: 14px; color: var(--tinta-fraca); max-width: 68ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; border-radius: 3px; }
+</style>
+
+<div class="pagina">
+
+  <header class="capa">
+    <p class="eyebrow">Moscow Noivas · Manual de uso</p>
+    <h1>Manual da Costureira</h1>
+    <p class="subtitulo">A fila do que tem que ficar pronto — e quem manda no prazo de cada peça.</p>
+    <div class="contexto">
+      <span>Perfil: <b>Recepção</b> (hoje não existe um perfil “Costureira”)</span>
+      <span>Suas telas: <b>três</b></span>
+      <span>Atualizado em <b>12/08/2026</b></span>
+    </div>
+  </header>
+
+  <nav class="indice" aria-label="Índice">
+    <h2>Neste manual</h2>
+    <ol>
+      <li><a href="#entrar"><span class="num">—</span>Como você entra</a></li>
+      <li><a href="#fila"><span class="num">1</span>A fila</a></li>
+      <li><a href="#prazo"><span class="num">2</span>Quem manda no prazo</a></li>
+      <li><a href="#marcar"><span class="num">3</span>Marcar o que ficou pronto</a></li>
+      <li><a href="#ficha"><span class="num">4</span>A ficha do trabalho</a></li>
+      <li><a href="#nasce"><span class="num">5</span>De onde nasce o trabalho</a></li>
+      <li><a href="#noiva"><span class="num">—</span>A noiva vê o seu visto</a></li>
+      <li><a href="#nao"><span class="num">—</span>Quando o sistema diz não</a></li>
+      <li><a href="#prazos"><span class="num">—</span>Os prazos</a></li>
+      <li><a href="#verdade"><span class="num">—</span>O que ainda não existe</a></li>
+    </ol>
+    <h2 style="margin-top:22px">Outros manuais</h2>
+    <ol>
+      <li><a href="vendedora.html"><span class="num">—</span>Manual da Vendedora</a></li>
+      <li><a href="noiva.html"><span class="num">—</span>Guia da Noiva</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="entrar">
+      <h2>Como você entra, e o que aparece</h2>
+      <p class="resumo">Você entra com e-mail e senha, como todo mundo da loja. <strong>A sua sessão dura 8 horas</strong> — passou disso, o sistema pede a senha de novo: <em>“Sua sessão expirou. Entre de novo.”</em></p>
+
+      <div class="fala aviso">
+        <span class="rotulo">A verdade sobre o seu acesso</span>
+        <p><strong>Hoje não existe um perfil “Costureira”.</strong> Para você chegar à fila de ajustes, alguém te cadastra com o perfil <strong>Recepção</strong> — e ele abre muito mais do que o seu trabalho precisa: a lista de noivas, os orçamentos e os contratos da loja.</p>
+        <p>Não é descuido seu nem erro de configuração: é como o sistema está montado hoje. Está registrado para ser resolvido.</p>
+      </div>
+
+      <div class="colunas">
+        <div class="caixa ve">
+          <h4>Aparece no seu menu</h4>
+          <ul>
+            <li>Seu dia</li><li>Noivas</li><li>Agenda</li><li>Atendimentos</li>
+            <li>Mensagens de hoje</li><li>Provas</li><li>Ajustes</li><li>Reservas</li>
+            <li>Vestidos</li><li>Catálogo</li><li>Orçamentos</li><li>Contratos</li>
+            <li>Minha comissão</li><li>Configurações</li>
+          </ul>
+        </div>
+        <div class="caixa naove">
+          <h4>Não aparece</h4>
+          <ul>
+            <li>Financeiro</li><li>Folha do mês</li><li>Comissões</li>
+            <li>Equipe</li><li>Permissões</li>
+          </ul>
+        </div>
+      </div>
+
+      <p><strong>Das quatorze, três são suas:</strong> <span class="btn">Ajustes</span> — a sua fila —, a ficha de cada trabalho dentro dela, e <span class="btn">Reservas</span>, que é onde o trabalho nasce e onde ficam as provas da noiva. O resto você pode ignorar com tranquilidade.</p>
+
+      <p>No acervo você <strong>só olha</strong>: <span class="btn">Vestidos</span> e <span class="btn">Catálogo</span> abrem para consulta — a foto, o código, as medidas — mas nenhum botão de cadastrar ou editar aparece para você.</p>
+    </section>
+
+    <section id="fila">
+      <h2><span class="passo">1</span>A fila</h2>
+      <p class="resumo">Menu → <span class="btn">Ajustes</span>. Ela responde a pergunta de segunda de manhã: <strong>o que eu costuro até sexta?</strong></p>
+
+      <p>A fila abre no recorte <strong>“Esta semana”</strong>. São três, e ficam no canto direito do título:</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Recorte</th><th>O que mostra</th></tr></thead>
+          <tbody>
+            <tr><td><span class="btn">Esta semana</span></td><td>O que está pendente com prazo <strong>em 7 dias ou menos</strong> — inclusive o que já está atrasado</td></tr>
+            <tr><td><span class="btn">Todos</span></td><td>Tudo o que está pendente, sem limite de prazo</td></tr>
+            <tr><td><span class="btn">Concluídos</span></td><td>O que já foi marcado como feito — é por aqui que se desfaz um engano</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>A ordem é o prazo, do mais apertado ao mais folgado.</strong> O que não tem prazo nenhum não some: cai no fim da lista, como rabeira.</p>
+
+      <h3>O que cada linha te diz</h3>
+      <ul>
+        <li>O selo <span class="btn">Confecção</span> quando é <strong>peça nova, feita para a noiva</strong>. Sem selo é ajuste — peça que já existe e vai ser alterada. <strong>Você precisa saber isso antes de pegar a peça:</strong> uma se corta, a outra se conserta</li>
+        <li>A <strong>descrição do trabalho</strong> — clicando nela você abre a ficha</li>
+        <li>O <strong>custo</strong>, quando há (é da confecção, e é o que o orçamento cobra da noiva)</li>
+        <li>O <strong>nome da noiva</strong>, e o <strong>código e nome do vestido</strong></li>
+        <li>O <strong>prazo</strong>, e a data por extenso ao lado</li>
+        <li>O <strong>checklist de peças</strong>, com a contagem: <em>“2/5 peças”</em></li>
+      </ul>
+
+      <p>Quando não há nada na semana mas há trabalho adiante, a tela diz e oferece a saída: <em>“Nada com prazo nesta semana. 3 ajustes pendentes mais adiante — <strong>ver todos</strong>.”</em></p>
+    </section>
+
+    <section id="prazo">
+      <h2><span class="passo">2</span>Quem manda no prazo</h2>
+
+      <div class="fala">
+        <span class="rotulo">A regra inteira, em uma frase</span>
+        <p><strong>O prazo é a próxima prova da noiva. Não havendo prova marcada, é o casamento dela.</strong></p>
+      </div>
+
+      <p>É para a prova que a peça precisa estar pronta — é ali que ela veste. O casamento entra quando não há prova nenhuma marcada, e é o caso comum das <strong>confecções</strong>, que muitas vezes nascem sem prova agendada.</p>
+
+      <p>As palavras do prazo são sempre estas:</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>A linha diz</th><th>Quer dizer</th></tr></thead>
+          <tbody>
+            <tr><td>“prova hoje” · “prova amanhã” · “prova em 5 dias”</td><td>Há prova marcada — este é o prazo</td></tr>
+            <tr><td><strong>“prova atrasada”</strong></td><td>A prova já passou e o trabalho segue pendente</td></tr>
+            <tr><td>“casamento hoje” · “casamento amanhã” · “casamento em 12 dias”</td><td>Não há prova marcada; o prazo é o casamento</td></tr>
+            <tr><td><strong>“casamento passou”</strong></td><td>A data do casamento já passou e o trabalho segue pendente</td></tr>
+            <tr><td>“sem prazo definido”</td><td>Não há prova nem casamento marcado. Esta linha fica no fim da fila</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Quando o prazo fica vermelho</h3>
+      <p><strong>Prova em 7 dias ou menos</strong> (ou atrasada). Sem prova marcada, <strong>casamento em 14 dias ou menos</strong>.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">Uma diferença que vale conhecer</span>
+        <p>O vermelho e o recorte “Esta semana” <strong>não usam o mesmo número</strong> quando o prazo vem do casamento.</p>
+        <p>Casamento em <strong>10 dias</strong>: a linha aparece <strong>em vermelho</strong> — mas só no recorte <span class="btn">Todos</span>, porque “Esta semana” corta em 7 dias. Se você trabalha só pela semana, <strong>abra “Todos” uma vez por semana</strong> para não perder um casamento vermelho que ficou de fora.</p>
+      </div>
+    </section>
+
+    <section id="marcar">
+      <h2><span class="passo">3</span>Marcar o que ficou pronto</h2>
+      <p class="resumo">Tudo se marca <strong>na própria fila</strong>. Nada aqui exige abrir outra tela.</p>
+
+      <h3>As peças, uma a uma</h3>
+      <p>Cada item do checklist tem um quadradinho. Clicou, ficou riscado e a contagem sobe: <em>3/5 peças</em>. É o registro do que já saiu da máquina.</p>
+
+      <h3>O trabalho inteiro</h3>
+      <p>O botão <span class="btn">Marcar feito</span>, no fim da linha. O sistema confirma: <em>“Ajuste concluído”</em>. A linha sai do pendente na hora.</p>
+
+      <div class="fala">
+        <span class="rotulo">Duas coisas que tiram o medo de clicar</span>
+        <p><strong>O checklist não trava o botão.</strong> Você pode marcar o trabalho como feito com peças ainda desmarcadas — são registros independentes, e o sistema não discute com você.</p>
+        <p><strong>Marcou por engano? Tem volta.</strong> Vá ao recorte <span class="btn">Concluídos</span>, ache o trabalho e clique <span class="btn">Reabrir</span> — <em>“Ajuste reaberto”</em>, e ele volta para a fila.</p>
+      </div>
+
+      <p class="nota">Se algo não gravar, o sistema fala: <b>“Não deu para concluir o ajuste”</b>, <b>“Não deu para reabrir o ajuste”</b> ou <b>“Não deu para marcar a peça”</b>, sempre com “Tente novamente”. É rede ou sistema — <b>não é você</b>, e o que já estava salvo continua salvo.</p>
+    </section>
+
+    <section id="ficha">
+      <h2><span class="passo">4</span>A ficha do trabalho</h2>
+      <p class="resumo">Clique na descrição de qualquer linha da fila. É a tela para levar ao lado da máquina quando o trabalho é grande.</p>
+
+      <p>No topo, o nome do trabalho, o chip <span class="btn">Pendente</span> ou <span class="btn">Concluído</span>, e a linha que diz de que natureza ele é: <em>“Peça nova, feita para a noiva”</em> (confecção) ou <em>“Peça existente que se altera”</em> (ajuste), com o vestido e a noiva ao lado.</p>
+
+      <p>Abaixo, dois quadros:</p>
+      <ul>
+        <li><strong>“O trabalho”</strong> — o tipo, o custo, <strong>o prazo com as mesmas palavras da fila</strong>, e o checklist de peças, marcável ali mesmo</li>
+        <li><strong>“De onde veio”</strong> — a noiva, o vestido, a data do casamento, e <em>“Nasceu em: Prova de 14/08/2026”</em>. No fim, o caminho de volta: <em>“As provas e a movimentação do vestido estão na <strong>ficha da reserva</strong>”</em></li>
+      </ul>
+
+      <p>Os botões do topo são os mesmos da fila — <span class="btn">Marcar feito</span> / <span class="btn">Reabrir</span> e <span class="btn">Abrir a reserva</span>.</p>
+
+      <p class="nota">Se você abrir um link antigo de um trabalho que foi removido, a tela diz <b>“Este trabalho não existe”</b> e oferece <span class="btn">Voltar à fila da costureira</span>. Não é erro de digitação sua.</p>
+    </section>
+
+    <section id="nasce">
+      <h2><span class="passo">5</span>De onde nasce o trabalho</h2>
+      <p class="resumo">Ninguém cadastra ajuste pela sua fila. Ele nasce <strong>dentro da prova</strong>, na ficha da reserva do vestido — normalmente pela vendedora, com a noiva ainda vestida.</p>
+
+      <div class="trilha">
+        <span>Reserva do vestido</span><i>→</i>
+        <span>Prova</span><i>→</i>
+        <span>Ajuste ou Confecção</span><i>→</i>
+        <span>Checklist</span><i>→</i>
+        <span class="fim">Sua fila</span>
+      </div>
+
+      <p>Na ficha da reserva, dentro do bloco de cada prova, há o campo <strong>Ajustes</strong>. Quem registra escolhe entre <span class="btn">Ajuste</span> e <span class="btn">Confecção</span>, descreve o trabalho, e — só na confecção — pode informar o <strong>Custo (R$)</strong>. O botão <span class="btn">Adicionar</span> fecha, e o sistema confirma: <em>“Ajuste adicionado”</em> ou <em>“Confecção adicionada”</em>.</p>
+
+      <p>O <strong>checklist</strong> é montado ali também, item por item, no campo <em>“Item do checklist…”</em>. É ele que vira os quadradinhos da sua fila. <strong>Se as peças que você precisa marcar não estão listadas, peça para acrescentarem</strong> — você mesma pode fazê-lo por essa tela, já que a reserva abre para o seu perfil.</p>
+
+      <div class="fala aviso">
+        <span class="rotulo">Uma confecção sem vestido do acervo não tem por onde nascer</span>
+        <p>Esse formulário vive <strong>dentro da prova de uma reserva</strong>, e reserva só existe quando há peça do acervo. A confecção pura — o vestido feito do zero, sem peça da loja — <strong>não tem tela onde ser cadastrada hoje</strong>.</p>
+        <p>Ela aparece na sua fila e tem prazo certinho (o casamento da noiva) quando alguém a cria; o que falta é o caminho pela tela. Está registrado.</p>
+      </div>
+
+      <h3>A confecção que vira peça da loja</h3>
+      <p>Uma confecção concluída pode entrar no acervo para ser alugada de novo — é um gesto de alguém, nunca automático. <strong>Esse botão não aparece para você:</strong> ele exige poder cadastrar vestidos, e o seu acesso ao acervo é só de leitura. Quem faz é a vendedora ou o proprietário.</p>
+    </section>
+
+    <section id="noiva">
+      <h2>A noiva vê o seu visto</h2>
+      <p class="resumo">Isto vale saber antes de marcar qualquer coisa: <strong>o que você marca chega até a noiva</strong>.</p>
+
+      <p>Toda noiva com contrato fechado tem um link só dela — o portal. Lá existe um bloco <strong>“O seu vestido”</strong>, e dentro dele a lista dos ajustes, cada um com o seu estado:</p>
+
+      <div class="fala">
+        <span class="rotulo">O que ela lê no celular</span>
+        <p>Barra e alças — <strong>Pronto</strong><br>
+           Ajuste no busto — <strong>Em andamento</strong></p>
+      </div>
+
+      <p><strong>“Pronto” é exatamente o seu <span class="btn">Marcar feito</span>.</strong> Não há passo intermediário, ninguém confere antes: você marca, ela vê. É bom — poupa telefonema —, e é motivo para marcar quando estiver realmente pronto, não quando estiver quase.</p>
+
+      <p class="nota">O portal dela mostra também a <b>data de retirada</b> do vestido e as parcelas. Isso não é seu — se ela perguntar, é com a vendedora.</p>
+    </section>
+
+    <section id="nao">
+      <h2>Quando o sistema diz não</h2>
+      <p class="resumo">Cada recado abaixo é literal — é o que aparece na tela.</p>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O recado</th><th>O que significa</th></tr></thead>
+          <tbody>
+            <tr><td>“Sua sessão expirou. Entre de novo.”</td><td>Passaram-se 8 horas desde o login</td></tr>
+            <tr><td>“Seu acesso não permite isso — peça à gerente.”</td><td>Aquela ação é de outro perfil</td></tr>
+            <tr><td>“Não deu para carregar os ajustes”</td><td>A fila não veio. Há um botão de tentar de novo</td></tr>
+            <tr><td>“Não deu para carregar o trabalho”</td><td>O mesmo, na ficha</td></tr>
+            <tr><td>“Este trabalho não existe”</td><td>O trabalho foi removido, ou o link está velho</td></tr>
+            <tr><td>“Não consegui falar com o sistema. Tente de novo em um instante.”</td><td>O sistema não respondeu. <strong>Não é erro seu, e nada do que já foi salvo se perdeu</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="prazos">
+      <h2>Os prazos que mexem com você</h2>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
+          <tbody>
+            <tr><td>Recorte “Esta semana”</td><td class="prazo">prazo em 7 dias ou menos, atrasados incluídos</td></tr>
+            <tr><td>Vermelho, quando há prova</td><td class="prazo">7 dias ou menos</td></tr>
+            <tr><td>Vermelho, quando o prazo é o casamento</td><td class="prazo">14 dias ou menos</td></tr>
+            <tr><td>Sua sessão (login)</td><td class="prazo">8 horas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="verdade">
+      <h2>O que ainda não existe, e é bom você saber</h2>
+      <p class="resumo">Três coisas deste manual descrevem o sistema como ele está — não como se pretende que fique.</p>
+      <ul>
+        <li><strong>Não há perfil “Costureira”.</strong> Você entra como Recepção, e por isso enxerga a lista de noivas, os orçamentos e os contratos da loja. O perfil próprio é uma decisão pendente do Renato</li>
+        <li><strong>A confecção sem peça do acervo não tem formulário.</strong> Ela funciona na fila; o que falta é a tela para cadastrá-la</li>
+        <li><strong>O vermelho e o recorte “Esta semana” divergem</strong> quando o prazo vem do casamento — 14 dias contra 7</li>
+      </ul>
+      <p>Se algum deles mudar, este manual muda junto.</p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Este manual descreve o sistema como ele está em <strong>12/08/2026</strong>. Os nomes de botão e os recados de erro são citados literalmente da tela — se algum não bater com o que você vê, o manual envelheceu, e vale avisar.</p>
+  </footer>
+
+</div>

@@ -1,0 +1,507 @@
+<title>Guia da Noiva — Moscow Noivas</title>
+<style>
+  /* ── Tokens: papel e tinta. O mesmo esqueleto dos outros manuais. ─────────
+     Claro é o padrão; o escuro redefine SÓ os tokens, nas duas guardas
+     (preferência do sistema e escolha explícita). Nenhuma cor nasce dentro de
+     um bloco de tema. */
+  :root {
+    --papel:      #faf9f6;
+    --folha:      #ffffff;
+    --tinta:      #1b1f2a;
+    --tinta-fraca:#5c6170;
+    --caneta:     #2e4e8f;
+    --caneta-suave:#eef1f8;
+    --carmim:     #a32f3f;
+    --carmim-suave:#fbeff0;
+    --linha:      #e3e1db;
+    --linha-forte:#c9c6bd;
+    --chip-borda: #cfd3dd;
+    --chip-fundo: #f2f3f7;
+    --sombra:     0 1px 2px rgba(27,31,42,.05), 0 8px 24px -16px rgba(27,31,42,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:      #15171c;
+      --folha:      #1d2027;
+      --tinta:      #e7e5e0;
+      --tinta-fraca:#9ba1ae;
+      --caneta:     #8fadea;
+      --caneta-suave:#1e2634;
+      --carmim:     #e58a97;
+      --carmim-suave:#2b1d20;
+      --linha:      #2b2f38;
+      --linha-forte:#3d424e;
+      --chip-borda: #3a4050;
+      --chip-fundo: #232833;
+      --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:      #15171c;
+    --folha:      #1d2027;
+    --tinta:      #e7e5e0;
+    --tinta-fraca:#9ba1ae;
+    --caneta:     #8fadea;
+    --caneta-suave:#1e2634;
+    --carmim:     #e58a97;
+    --carmim-suave:#2b1d20;
+    --linha:      #2b2f38;
+    --linha-forte:#3d424e;
+    --chip-borda: #3a4050;
+    --chip-fundo: #232833;
+    --sombra:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .pagina {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+  @media (min-width: 1020px) {
+    .pagina { grid-template-columns: 232px minmax(0, 1fr); gap: 56px; padding-right: 40px; }
+  }
+
+  /* ── Cabeçalho ─────────────────────────────────────────────────────────── */
+  .capa { grid-column: 1 / -1; padding: 56px 0 36px; border-bottom: 2px solid var(--linha-forte); }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--caneta); font-weight: 600; margin: 0 0 14px;
+  }
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(34px, 6vw, 50px);
+    line-height: 1.08; margin: 0 0 14px; font-weight: 700;
+    letter-spacing: -.015em; text-wrap: balance;
+  }
+  .subtitulo {
+    font-size: clamp(18px, 2.6vw, 21px); color: var(--tinta-fraca);
+    margin: 0 0 26px; max-width: 34em; text-wrap: balance;
+  }
+  .contexto {
+    display: flex; flex-wrap: wrap; gap: 10px 26px;
+    font-size: 14px; color: var(--tinta-fraca);
+    padding-top: 20px; border-top: 1px solid var(--linha);
+  }
+  .contexto b { color: var(--tinta); font-weight: 600; }
+
+  /* ── Índice ────────────────────────────────────────────────────────────── */
+  .indice { padding: 28px 0 0; }
+  @media (min-width: 1020px) {
+    .indice { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 40px 0; }
+  }
+  .indice h2 {
+    font-size: 11px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tinta-fraca); margin: 0 0 12px; font-weight: 600;
+  }
+  .indice ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .indice a {
+    display: block; padding: 5px 10px; margin-left: -10px;
+    color: var(--tinta-fraca); text-decoration: none; font-size: 14.5px;
+    border-radius: 5px; border-left: 2px solid transparent;
+  }
+  .indice a:hover { color: var(--caneta); background: var(--caneta-suave); }
+  .indice a:focus-visible { outline: 2px solid var(--caneta); outline-offset: 1px; }
+  .indice .num {
+    font-variant-numeric: tabular-nums; color: var(--linha-forte);
+    margin-right: 8px; font-size: 12.5px;
+  }
+
+  /* ── Corpo ─────────────────────────────────────────────────────────────── */
+  main { padding-top: 8px; min-width: 0; }
+  section { padding: 40px 0; border-bottom: 1px solid var(--linha); max-width: 68ch; }
+  section:last-of-type { border-bottom: none; }
+
+  h2 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(25px, 3.6vw, 31px); line-height: 1.2;
+    margin: 0 0 8px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .passo {
+    font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--caneta); background: var(--caneta-suave);
+    border-radius: 999px; padding: 3px 11px; flex: none;
+    font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  h3 {
+    font-size: 17.5px; font-weight: 650; margin: 30px 0 8px;
+    letter-spacing: -.005em; text-wrap: balance;
+  }
+  .resumo { color: var(--tinta-fraca); margin: 0 0 22px; font-size: 16.5px; }
+  p { margin: 0 0 15px; }
+  ul { margin: 0 0 15px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--caneta); }
+  strong { font-weight: 650; }
+
+  /* ── A citação da interface parece interface ─────────────────────────── */
+  .btn {
+    display: inline-block; font-size: 14.5px; font-weight: 550;
+    background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+    border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+    line-height: 1.5; color: var(--tinta);
+  }
+  .fala {
+    border-left: 3px solid var(--caneta); background: var(--caneta-suave);
+    padding: 13px 18px; margin: 0 0 16px; border-radius: 0 7px 7px 0;
+    font-size: 16px; color: var(--tinta);
+  }
+  .fala.aviso { border-left-color: var(--carmim); background: var(--carmim-suave); }
+  .fala p { margin: 0; }
+  .fala p + p { margin-top: 9px; }
+  .fala .rotulo {
+    display: block; font-size: 11px; letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 600; color: var(--caneta); margin-bottom: 5px;
+  }
+  .fala.aviso .rotulo { color: var(--carmim); }
+
+  /* ── Tabelas ───────────────────────────────────────────────────────────── */
+  .rolagem { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--linha); border-radius: 9px; background: var(--folha); }
+  table { border-collapse: collapse; width: 100%; font-size: 15.5px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th {
+    font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--tinta-fraca); font-weight: 600; background: var(--chip-fundo);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.prazo { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+
+  /* ── O caminho, em uma olhada ──────────────────────────────────────────── */
+  .trilha {
+    display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 18px; margin: 0 0 18px; box-shadow: var(--sombra);
+  }
+  .trilha span {
+    font-size: 14.5px; font-weight: 550; padding: 5px 11px;
+    border-radius: 6px; background: var(--chip-fundo); border: 1px solid var(--chip-borda);
+  }
+  .trilha span.fim { background: var(--caneta); border-color: var(--caneta); color: var(--folha); }
+  :root[data-theme="dark"] .trilha span.fim,
+  .trilha span.fim { color: var(--papel); }
+  .trilha i { color: var(--linha-forte); font-style: normal; font-size: 15px; }
+
+  /* ── Duas colunas ──────────────────────────────────────────────────────── */
+  .colunas { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 0 0 18px; }
+  @media (min-width: 620px) { .colunas { grid-template-columns: 1fr 1fr; } }
+  .caixa {
+    background: var(--folha); border: 1px solid var(--linha);
+    border-radius: 10px; padding: 17px 19px; box-shadow: var(--sombra);
+  }
+  .caixa h4 {
+    margin: 0 0 11px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 650;
+  }
+  .caixa.ve h4 { color: var(--caneta); }
+  .caixa.naove h4 { color: var(--tinta-fraca); }
+  .caixa ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .caixa li { margin: 0; font-size: 14.5px; padding: 3px 9px; border-radius: 5px; background: var(--chip-fundo); }
+  .caixa.naove li { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: var(--linha-forte); }
+
+  /* ── Nota de rodapé de seção ───────────────────────────────────────────── */
+  .nota {
+    font-size: 15px; color: var(--tinta-fraca);
+    border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 22px;
+  }
+  .nota b { color: var(--tinta); }
+
+  footer {
+    grid-column: 1 / -1; padding: 34px 0 0; margin-top: 8px;
+    border-top: 2px solid var(--linha-forte);
+    font-size: 14px; color: var(--tinta-fraca); max-width: 68ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; border-radius: 3px; }
+</style>
+
+<div class="pagina">
+
+  <header class="capa">
+    <p class="eyebrow">Moscow Noivas · Manual de uso</p>
+    <h1>Guia da Noiva</h1>
+    <p class="subtitulo">O que ela vê do lado de fora — e o que responder quando ela perguntar.</p>
+    <div class="contexto">
+      <span>Para: <b>quem atende a noiva</b></span>
+      <span>Ela não tem: <b>login, senha, e-mail nem notificação</b></span>
+      <span>Atualizado em <b>12/08/2026</b></span>
+    </div>
+  </header>
+
+  <nav class="indice" aria-label="Índice">
+    <h2>Neste guia</h2>
+    <ol>
+      <li><a href="#links"><span class="num">—</span>Os três links</a></li>
+      <li><a href="#portal"><span class="num">1</span>O portal, seção a seção</a></li>
+      <li><a href="#faz"><span class="num">2</span>O que ela faz sozinha</a></li>
+      <li><a href="#remarcar"><span class="num">3</span>Quando ela não pode ir</a></li>
+      <li><a href="#frases"><span class="num">4</span>As frases quando dá errado</a></li>
+      <li><a href="#matar"><span class="num">5</span>Revogar e regenerar</a></li>
+      <li><a href="#sabe"><span class="num">—</span>Como você sabe que ela abriu</a></li>
+      <li><a href="#nao-faz"><span class="num">—</span>O que o portal não faz</a></li>
+      <li><a href="#prazos"><span class="num">—</span>Os prazos</a></li>
+    </ol>
+    <h2 style="margin-top:22px">Outros manuais</h2>
+    <ol>
+      <li><a href="vendedora.html"><span class="num">—</span>Manual da Vendedora</a></li>
+      <li><a href="costureira.html"><span class="num">—</span>Manual da Costureira</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="links">
+      <h2>Os três links, e o que cada um abre</h2>
+      <p class="resumo">A noiva nunca faz login. Tudo o que ela enxerga do sistema chega por um endereço que <strong>você</strong> gera e cola no WhatsApp dela.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Link</th><th>Onde você gera</th><th>O que abre para ela</th><th>Dura</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Portal</strong></td>
+              <td>Ficha da noiva → bloco <strong>“Portal da noiva”</strong> → <span class="btn">Gerar link</span></td>
+              <td>Tudo dela: proposta, provas, lookbook, contrato, vestido e parcelas</td>
+              <td class="prazo">30 dias, <strong>renovados a cada vez que ela abre</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Link da proposta</strong></td>
+              <td>Tela do orçamento → <span class="btn">Link para a noiva</span></td>
+              <td>Só aquela proposta, com o botão de aceitar</td>
+              <td class="prazo">7 dias</td>
+            </tr>
+            <tr>
+              <td><strong>Lookbook</strong></td>
+              <td>Ficha → bloco Lookbook → <span class="btn">Criar e copiar link (N)</span></td>
+              <td>Os vestidos que ela provou, com preço e características</td>
+              <td class="prazo">30 dias</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="fala">
+        <span class="rotulo">Se for mandar um só, mande o portal</span>
+        <p>Ele contém a proposta e o lookbook, e ainda mostra provas, contrato e parcelas. Os outros dois são recortes — úteis quando ela ainda não é caso de portal, ou quando você quer mandar só o essencial.</p>
+        <p><strong>E o prazo dele se renova sozinho:</strong> cada abertura dela empurra o vencimento por mais 30 dias. O link de quem usa não morre; o de quem parou, morre igual.</p>
+      </div>
+    </section>
+
+    <section id="portal">
+      <h2><span class="passo">1</span>O portal, seção a seção</h2>
+      <p class="resumo">No topo, o nome da loja e a linha <em>“O lugar de Ana Paula”</em>. Abaixo, as seções — e <strong>cada uma só aparece quando existe</strong>: sem contrato não há extrato, sem lookbook não há galeria. A página não promete o que não tem.</p>
+
+      <h3>“Sua proposta”</h3>
+      <p>Os itens um a um, e a conta que fecha: <strong>Soma dos itens</strong>, <strong>Desconto</strong> e <strong>Total</strong> — o desconto sai sempre como a diferença real, nunca como um número que não bate com a subtração. Suas observações aparecem embaixo, do jeito que você escreveu.</p>
+      <p>Se ela ainda não aceitou e a proposta está enviada, há o botão <span class="btn">Aceitar esta proposta</span> e a linha <em>“Ao aceitar, registramos a data e o conteúdo desta versão da proposta.”</em> Aceito, o botão vira comprovante:</p>
+      <div class="fala">
+        <span class="rotulo">O que ela lê depois de aceitar</span>
+        <p>“Você aceitou esta proposta em 11 de agosto de 2026 às 21:14. A sua vendedora já foi avisada.”</p>
+      </div>
+      <p>No fim da seção, <em>“Proposta válida até …”</em>.</p>
+
+      <h3>“Suas próximas provas”</h3>
+      <p><strong>Só as futuras</strong> — o portal aponta para a frente, e prova que já passou não aparece. Cada uma com dia da semana, data por extenso e hora: <em>“segunda-feira, 28 de julho de 2026 às 14:30”</em>.</p>
+      <p>Ao lado, dois botões: <span class="btn">Confirmar presença</span> e <span class="btn">Não vou poder ir</span>. Depois de clicar, o botão vira selo — <span class="btn">Confirmada</span> ou <span class="btn">Avisamos o ateliê</span> — e não reaparece. Embaixo, a explicação: <em>“Confirmar avisa o ateliê que você vem. Se não puder, avise por aqui — a gente libera o horário e entra em contato para remarcar.”</em></p>
+
+      <h3>“Os vestidos que você provou”</h3>
+      <p>As fotos do lookbook, com o preço e as características de cada peça.</p>
+
+      <h3>“Seu contrato”</h3>
+      <p>Aparece só depois do contrato fechado, com <em>“Fechado em …”</em>, os itens congelados no fechamento (não o orçamento vivo), o total, a data do casamento e o botão <span class="btn">Baixar o contrato em PDF</span>.</p>
+      <p class="nota"><b>Contrato cancelado não desce por aqui.</b> O papel que ela guarda tem de ser o que vale — se ela precisar do documento do cancelamento, quem baixa é você, pela tela da loja.</p>
+
+      <h3>“O seu vestido”</h3>
+      <p>A foto, o nome, e a resposta da pergunta que ela mais repete — <strong>que dia eu pego?</strong>:</p>
+      <ul>
+        <li><em>“Retirada combinada para 02/05/2027.”</em> — quando há data no contrato</li>
+        <li><em>“Retirado em 02/05/2027.”</em> — feita a retirada, a promessa vira registro</li>
+        <li><em>“A data da retirada ainda vai ser combinada com você.”</em> — quando não há data</li>
+      </ul>
+      <p>Abaixo, os <strong>ajustes</strong>, cada um marcado <strong>Pronto</strong> ou <strong>Em andamento</strong>. Isso vem direto do <span class="btn">Marcar feito</span> da costureira — sem passo intermediário.</p>
+
+      <h3>“Suas parcelas”</h3>
+      <p>Antes do extrato, as duas respostas que ela abre o link para procurar: <strong>“Falta pagar”</strong> e <strong>“Próxima parcela”</strong>, com valor e data. Depois, parcela a parcela: <em>Em aberto</em>, <em>Parcialmente paga</em>, <em>Paga</em>. A paga sai riscada; a cancelada não aparece.</p>
+      <p>E a linha que devolve a conversa para você: <em>“Para pagar ou combinar valores, fale com a sua vendedora — este extrato é só para você acompanhar.”</em></p>
+
+      <h3>O rodapé</h3>
+      <p>Nome da loja, endereço, e o botão <span class="btn">Falar no WhatsApp</span> com a mensagem já escrita — <em>“A mensagem já vai com o seu nome — é só enviar.”</em></p>
+      <div class="fala">
+        <span class="rotulo">O número é o da loja, nunca o seu</span>
+        <p>O telefone que aparece ali é o cadastrado da loja — o mesmo da vitrine. O seu celular pessoal não vai para o portal de ninguém, e nenhuma noiva perde o contato quando alguém sai da equipe.</p>
+      </div>
+      <p class="nota">Sem telefone <b>e</b> sem endereço cadastrados, o rodapé some e sobra a frase antiga: <em>“Dúvidas? É só responder à sua vendedora no WhatsApp.”</em> Vale conferir o cadastro da loja em Configurações.</p>
+    </section>
+
+    <section id="faz">
+      <h2><span class="passo">2</span>O que ela faz sozinha, e o que não faz</h2>
+      <div class="colunas">
+        <div class="caixa ve">
+          <h4>Ela consegue</h4>
+          <ul>
+            <li>Aceitar a proposta</li><li>Confirmar presença na prova</li>
+            <li>Avisar que não vai poder ir</li><li>Baixar o contrato em PDF</li>
+            <li>Ver quanto falta pagar</li><li>Falar com a loja no WhatsApp</li>
+          </ul>
+        </div>
+        <div class="caixa naove">
+          <h4>Ela não consegue</h4>
+          <ul>
+            <li>Pagar</li><li>Escolher outro horário</li>
+            <li>Desmarcar prova já confirmada</li><li>Mudar itens da proposta</li>
+            <li>Recusar a proposta pelo link</li><li>Ver o que é de outra noiva</li>
+          </ul>
+        </div>
+      </div>
+      <p><strong>Nada do que ela faz é irreversível para a loja.</strong> O aceite tem a porta de volta (<span class="btn">Desfazer aceite</span>, enquanto não há contrato); a confirmação e o aviso de ausência são carimbos que entram nas suas filas — não mexem na agenda sozinhos.</p>
+      <p class="nota">Clicar duas vezes não faz nada duas vezes: o sistema devolve o mesmo carimbo do primeiro clique. Ela não vai <b>“aceitar duas vezes”</b> nem <b>“avisar duas vezes”</b> por ansiedade.</p>
+    </section>
+
+    <section id="remarcar">
+      <h2><span class="passo">3</span>Quando ela clica em “Não vou poder ir”</h2>
+      <p class="resumo">É o gesto mais valioso do portal, e vale explicar para ela que existe: avisar com antecedência devolve à loja a cabine, a sua hora e o vestido separado.</p>
+
+      <div class="trilha">
+        <span>Ela clica</span><i>→</i>
+        <span>Selo “Avisamos o ateliê”</span><i>→</i>
+        <span>Mensagens de hoje</span><i>→</i>
+        <span class="fim">Você remarca</span>
+      </div>
+
+      <p><strong>Nada é cancelado automaticamente.</strong> O clique registra um <em>pedido</em>: a linha aparece no bloco <strong>“Pediram para remarcar”</strong> em <span class="btn">Mensagens de hoje</span>, e <strong>o horário continua preso</strong> até que alguém remarque ou cancele na agenda. Se ninguém mexer, a cabine fica reservada para uma prova que não vai acontecer.</p>
+
+      <p>Quem já confirmou não desmarca por ali:</p>
+      <div class="fala aviso">
+        <span class="rotulo">Ela lê</span>
+        <p>“Você já confirmou esta prova — fale com a sua vendedora para remarcar.”</p>
+        <p>É de propósito: depois do sim dela a loja já separou a peça, reservou a cabine e escalou a costureira. Desfazer isso num clique, sem ninguém saber, é pior que a conversa de trinta segundos.</p>
+      </div>
+
+      <p class="nota">Quem pediu para remarcar <b>sai</b> da fila “Procurar para confirmar” — ela já respondeu, e respondeu “não posso”. Mandar “você vem?” para quem acabou de avisar que não vem é o erro que essa separação existe para evitar.</p>
+    </section>
+
+    <section id="frases">
+      <h2><span class="passo">4</span>As frases que ela lê quando algo dá errado</h2>
+      <p class="resumo">Todas literais. Quando ela mandar um print no WhatsApp, é uma destas — e a coluna da direita é a sua resposta.</p>
+
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>Ela lê</th><th>O que aconteceu, e o que fazer</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>“Este link expirou. Peça um novo para a sua vendedora.”</td>
+              <td>O portal passou <strong>30 dias sem ela abrir</strong>. Gere um novo na ficha e mande</td>
+            </tr>
+            <tr>
+              <td>“Link inválido — confira se ele veio inteiro do WhatsApp.”</td>
+              <td>O endereço chegou cortado — <strong>ou o link foi revogado</strong>. Revogado responde assim de propósito: o que foi morto de propósito não diz que um dia valeu. Gere outro</td>
+            </tr>
+            <tr>
+              <td>“Muitas tentativas em pouco tempo. Espere alguns minutos e abra o link de novo.”</td>
+              <td>Proteção contra tentativa em massa. <strong>Não é bloqueio dela</strong> — é só esperar alguns minutos</td>
+            </tr>
+            <tr>
+              <td>“Esta proposta venceu — peça uma atualização à sua vendedora para aceitar.”</td>
+              <td>A validade passou. O remédio é clicar <span class="btn">Link para a noiva</span> outra vez: <strong>reenviar reabre a validade por mais 30 dias</strong></td>
+            </tr>
+            <tr>
+              <td>“Esta proposta foi atualizada — recarregue a página para ver a versão nova antes de aceitar.”</td>
+              <td>Você editou a proposta enquanto ela estava com a página aberta. Peça para recarregar — <strong>o aceite dela tem de valer sobre o que ela viu</strong></td>
+            </tr>
+            <tr>
+              <td>“Esta proposta não está mais aberta para aceite — fale com a sua vendedora.”</td>
+              <td>A proposta saiu do estado “enviado” (foi aprovada, recusada ou voltou a rascunho)</td>
+            </tr>
+            <tr>
+              <td>“Esta proposta foi encerrada. Se você ainda procura o vestido, é só falar com a sua vendedora — ela monta uma proposta nova.”</td>
+              <td>A proposta foi recusada. Ela continua lendo o que foi combinado, <strong>sem botão</strong>. Renegociar = proposta nova</td>
+            </tr>
+            <tr>
+              <td>“Não conseguimos registrar o aceite agora. Confira a conexão e tente de novo.”</td>
+              <td>O clique não chegou. <strong>Nada foi gravado pela metade</strong> — é só tentar de novo</td>
+            </tr>
+            <tr>
+              <td>“Este lookbook expirou. Peça um novo para a sua vendedora.”</td>
+              <td>Passaram os 30 dias do lookbook. Monte outro na ficha</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="matar">
+      <h2><span class="passo">5</span>Revogar e regenerar — o que muda para ela</h2>
+      <p class="resumo">Dois botões parecidos com consequências diferentes, e as duas caem no celular dela.</p>
+      <ul>
+        <li><span class="btn">Revogar</span> — <strong>o link que ela guardou para de funcionar na hora</strong>, e ela passa a ler “Link inválido”. O diálogo avisa com o nome dela: <em>“O link que Ana Paula tem guardado para de funcionar na hora, e as mensagens de cobrança passam a sair sem ele.”</em></li>
+        <li><span class="btn">Regenerar (mata o antigo)</span> — vale o mesmo: <strong>o endereço antigo morre</strong>. Você pode gerar um novo, mas <strong>terá de mandá-lo de novo</strong> — o favorito dela não se atualiza sozinho</li>
+      </ul>
+      <p>Enquanto o portal está vivo, o card mostra <span class="btn">Ativo</span>; vencido, <span class="btn">Expirado</span>, e o botão passa a dizer <span class="btn">Gerar link novo</span>.</p>
+      <p class="nota">Nas filas de mensagens, quem está com o portal vencido ganha o selo <span class="btn">Portal vencido</span>, com o aviso <em>“O link do portal dela venceu — esta mensagem vai sair sem ele”</em>. É o único caso que merece esse alerta: revogar foi decisão de alguém, e quem nunca teve portal não precisa de aviso.</p>
+    </section>
+
+    <section id="sabe">
+      <h2>Como você sabe que ela abriu</h2>
+      <p class="resumo">Não chega notificação nenhuma. O que existe é o registro, e ele está em dois lugares.</p>
+      <ul>
+        <li><strong>No card “Portal da noiva”</strong>, na ficha dela: <em>“Ela abriu há 2 dias.”</em> ou <em>“Ela ainda não abriu.”</em>, com <em>“Válido até 10/09.”</em></li>
+        <li><strong>Na tela do orçamento</strong>, para o link da proposta: <em>“aberto pela noiva em …”</em> ou <em>“link enviado, ainda não aberto”</em></li>
+      </ul>
+      <p>O aceite dela aparece em três lugares — o selo <span class="btn">Aceitou — falta o contrato</span> no card do funil, a faixa da ficha e a fila <strong>“Aceites esperando contrato”</strong>. <strong>O card não muda de coluna com o aceite</strong>: ela segue negociando até o contrato existir.</p>
+    </section>
+
+    <section id="nao-faz">
+      <h2>O que o portal não faz</h2>
+      <ul>
+        <li><strong>Não cobra e não recebe.</strong> Ele mostra o extrato; o pagamento continua com a loja</li>
+        <li><strong>Não avisa você.</strong> Nenhum e-mail, nenhum alerta no celular. Aceite, confirmação e pedido de remarcação aparecem nas suas filas — é lá que se olha</li>
+        <li><strong>Não manda mensagem para ela.</strong> Quem manda é você, pelo WhatsApp, com o link colado</li>
+        <li><strong>Não mostra nada de outra noiva.</strong> O que ele abre sai do próprio link: parcelas, contrato e provas são sempre os dela</li>
+      </ul>
+    </section>
+
+    <section id="prazos">
+      <h2>Os prazos do lado dela</h2>
+      <div class="rolagem">
+        <table>
+          <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
+          <tbody>
+            <tr><td>Portal da noiva</td><td class="prazo">30 dias, renovados a cada abertura dela</td></tr>
+            <tr><td>Link da proposta</td><td class="prazo">7 dias</td></tr>
+            <tr><td>Validade da proposta</td><td class="prazo">30 dias</td></tr>
+            <tr><td>Lookbook</td><td class="prazo">30 dias</td></tr>
+            <tr><td>Provas que aparecem no portal</td><td class="prazo">só as futuras</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fala aviso">
+        <span class="rotulo">O descompasso que mais gera print no WhatsApp</span>
+        <p><strong>O link da proposta morre em 7 dias; a proposta vale 30.</strong> A noiva que abre o WhatsApp no décimo dia lê “link expirado” numa proposta que ainda está de pé.</p>
+        <p>Não é defeito da proposta e não perdeu nada: <strong>clique em <span class="btn">Link para a noiva</span> de novo</strong> e mande o endereço novo. Se ela usa o portal, esse problema não existe — ele se renova sozinho.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Este guia descreve o sistema como ele está em <strong>12/08/2026</strong>. As frases entre aspas são citadas literalmente das telas que a noiva vê — se alguma não bater com o print que ela mandar, o guia envelheceu, e vale avisar.</p>
+    <p>Um caminho merece atenção redobrada: <strong>“Não vou poder ir”</strong> é conferido pelos testes do servidor, mas ainda não pelo teste que percorre a tela de ponta a ponta. Se ele falhar com uma noiva de verdade, avise — é o tipo de coisa que ninguém descobre sozinho.</p>
+  </footer>
+
+</div>

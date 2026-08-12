@@ -128,12 +128,27 @@ pedir, e gerada por script para poder ser refeita em lote.
 Cada uma fecha em um commit e publica uma página. A ordem é por dor, não por
 tamanho.
 
-| # | Entrega | Por que primeiro |
+| # | Entrega | Por que primeiro | Estado |
+|---|---|---|---|
+| **1** | **Vendedora** | É o caminho que a trilha mirou, o que mais gente percorre e o que mais mudou. Se só uma entrega acontecer, tem que ser esta. | ✅ `3f3ec02` — `docs/manuais/vendedora.html`; achou a S-O38 e a S-O39 |
+| **2** | **Costureira** + **Guia da Noiva** | Os dois mais curtos, e os dois que hoje não têm NADA. Juntos são menos trabalho que o da vendedora. | ✅ 2026-08-12 — `costureira.html` e `noiva.html`; achou a **S-O40** e corrigiu a moldura da S-O27 |
+| **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. | aberta |
+| **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. | aberta |
+
+As três páginas publicadas, para quem precisar do endereço:
+
+| Manual | Fonte no repo | Página |
 |---|---|---|
-| **1** | **Vendedora** | É o caminho que a trilha mirou, o que mais gente percorre e o que mais mudou. Se só uma entrega acontecer, tem que ser esta. |
-| **2** | **Costureira** + **Guia da Noiva** | Os dois mais curtos, e os dois que hoje não têm NADA. Juntos são menos trabalho que o da vendedora. |
-| **3** | **Recepção** | Muito se apoia no que a vendedora já explicou; é sobretudo agenda. |
-| **4** | **Proprietário** | O maior, e o único que pode se apoiar nos quatro anteriores em vez de repeti-los. O financeiro inteiro é dele. |
+| Vendedora | `docs/manuais/vendedora.html` | <https://claude.ai/code/artifact/d0357a33-b02a-4247-9d98-9e16f23373ce> |
+| Costureira | `docs/manuais/costureira.html` | <https://claude.ai/code/artifact/a9ce3b64-5d5d-4537-b653-6a41bd17f780> |
+| Guia da Noiva | `docs/manuais/noiva.html` | <https://claude.ai/code/artifact/e8af06df-a41b-4428-8ca1-05315c64940a> |
+
+**A varredura (a) continua devendo.** Ela ia nascer junto da entrega 1 e não
+nasceu; o que nasceu foi outra, e por outro motivo: a **varredura de links
+internos** (`lib/varredura-links-internos.test.ts`, `710b254`), que confere os
+113 destinos do frontend contra as 63 rotas declaradas — ela pega a classe da
+S-O38, não a do manual que cita tela renomeada. Com três manuais escritos, a
+varredura das telas citadas tem população para valer a pena; antes da entrega 3.
 
 Junto da entrega 1 nasce a **varredura (a)** e o esqueleto compartilhado da
 página — o resto é conteúdo.
@@ -184,7 +199,18 @@ não renomeia o que já existe). Pede a régua do banco virgem. **Fica como
 pendência declarada, e o manual da vendedora não depende dela** — ele cita o
 perfil dela, não o do Renato.
 
-**2. Pendente — a costureira vai ganhar perfil próprio?** Se sim, o manual dela
-nasce descrevendo o certo. Se não, nasce dizendo a verdade de hoje: que ela
-entra como Recepção e enxerga a lista de noivas (S-O36). **Só morde a entrega
-2.**
+**2. O manual da costureira nasce dizendo a verdade de hoje; o perfil vem
+depois** (2026-08-12) — ela entra como **Recepção**, e o manual abre declarando
+isso, com as quatorze linhas de menu que o perfil abre e as três que são dela.
+O perfil próprio mexe em **seed** — pede a régua do banco virgem, um SQL para
+quem já instalou e uma decisão sobre o que ela enxerga da agenda —, e isso é
+épico de código, não commit de documentação. Quando ele fechar, o manual muda em
+um parágrafo.
+
+**E escrever esse manual mostrou que a S-O36 era o lado pequeno do problema.**
+Não é só a carteira de leads: a Recepção **fecha contrato**. `POST /contratos`
+não declara ação, o guard deriva `criar` do método, e o perfil tem
+`leads: VER_E_CRIAR` — o botão "Gerar contrato" da tela do orçamento aparece
+para ela e funciona. Hoje, dar à costureira acesso à fila de ajustes dá-lhe o
+poder de assinar um contrato de R$ 5.000,00. É a **S-O40**, e ela é o argumento
+mais forte a favor do perfil próprio.
