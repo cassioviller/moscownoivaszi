@@ -737,13 +737,22 @@ export async function contarConfiguracao(lojaId: string): Promise<{
   temHorario: boolean;
   /** O horário como está gravado — para quem precisa DESCREVÊ-lo, não só saber que existe (S-D41). */
   horario: { diasFuncionamento: number[]; atendimentoAberturaHora: number; atendimentoFechamentoHora: number } | null;
+  /**
+   * S-O71 — os perfis são a única linha do resumo que não passava por aqui, e a
+   * consequência é a S-D41 na letra: o script imprimia o literal `4` e o banco
+   * tinha 5 desde que a Costureira nasceu (E172). **Não leva `lojaId`**, e é de
+   * propósito: `perfis` é tabela GLOBAL (o comentário de `PERFIS_PADRAO` diz
+   * isso, e a segunda loja da rede reusa os mesmos) — filtrar por loja aqui
+   * devolveria zero em toda instalação.
+   */
+  perfis: number;
   atributos: number;
   opcoes: number;
   vestidos: number;
   escadasDeComissao: number;
   recorrencias: number;
 }> {
-  const [cabines, horario, atributos, escadas, recorrencias, vestidos] = await Promise.all([
+  const [cabines, horario, atributos, escadas, recorrencias, vestidos, perfis] = await Promise.all([
     db.select({ id: cabinesTable.id }).from(cabinesTable).where(eq(cabinesTable.lojaId, lojaId)),
     db.select({
       id: regraDisponibilidadeTable.id,
@@ -755,6 +764,7 @@ export async function contarConfiguracao(lojaId: string): Promise<{
     db.select({ id: comissaoRegrasTable.id }).from(comissaoRegrasTable).where(eq(comissaoRegrasTable.lojaId, lojaId)),
     db.select({ id: recorrenciasTable.id }).from(recorrenciasTable).where(eq(recorrenciasTable.lojaId, lojaId)),
     db.select({ id: vestidosTable.id }).from(vestidosTable).where(eq(vestidosTable.lojaId, lojaId)),
+    db.select({ id: perfisTable.id }).from(perfisTable),
   ]);
 
   const opcoes = atributos.length
@@ -776,6 +786,7 @@ export async function contarConfiguracao(lojaId: string): Promise<{
           atendimentoFechamentoHora: horario[0].atendimentoFechamentoHora,
         }
       : null,
+    perfis: perfis.length,
     atributos: atributos.length,
     opcoes,
     vestidos: vestidos.length,

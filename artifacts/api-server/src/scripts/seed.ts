@@ -57,7 +57,12 @@ async function main(): Promise<void> {
 
   console.log("O que a loja tem agora — o total, e entre parênteses o que esta execução criou:");
   console.log(linha("Loja", resumo.lojaNome, novo.loja));
-  console.log(linha("Perfis de acesso", 4, novo.perfis));
+  // S-O71: este era o único total CRAVADO do resumo — `4`, escrito à mão antes
+  // de a Costureira nascer (E172). Num banco virgem a linha saía
+  // `Perfis de acesso 4 (+5)`: o total menor do que o que a própria execução
+  // acabara de criar, no único lugar em que esse número se lê. Vem do banco,
+  // como as outras (S-D41).
+  console.log(linha("Perfis de acesso", c.perfis, novo.perfis));
   console.log(linha("Dona", resumo.donaEmail, novo.dona || novo.vinculo));
   console.log(linha("Cabines", c.cabines, novo.cabines));
   // S-D41: o horário sai do que o banco guarda. A frase cravada dizia

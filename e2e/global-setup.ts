@@ -11,6 +11,9 @@ import {
   usuariosLojasTable,
   perfisTable,
   vestidosTable,
+  vestidoAtributosTable,
+  atributosTable,
+  atributoOpcoesTable,
   leadsTable,
   cabinesTable,
   regraDisponibilidadeTable,
@@ -152,6 +155,41 @@ export default async function globalSetup() {
       categoria: "Princesa",
     }),
   );
+
+  /**
+   * A COR do vestido da suíte é atributo do catálogo, e a coluna é legado
+   * (S-O73/E188).
+   *
+   * `vestidos.cor` acima segue gravada de propósito — é o que um cadastro
+   * antigo tem, e o E149 a deixou como legado LIDO. O que a ficha desenha em
+   * "Características", porém, sai de `vestido_atributos` (`vestidos/[id].tsx`
+   * monta `rotularSelecoes(catalogo, vestido.atributos)`), e o filtro do
+   * acervo compara por id de OPÇÃO. No banco de dev este vestido tem o
+   * atributo porque a migração `docs/migracoes/2026-08-04-e149-cor-para-
+   * atributo.sql` rodou lá uma vez; num banco de hoje, `vestido_atributos`
+   * nasce vazio para ele — e `04-vestidos.spec.ts:80` reprovava com
+   * `element(s) not found` procurando "Cor: Marfim", medido em
+   * `1 failed · 6 passed`.
+   *
+   * A fixture faz aqui o que a migração fez lá: casa a cor com a OPÇÃO do
+   * atributo semeado, pelos ids que o seed deriva da loja. Fica FORA do
+   * `garantir` do vestido de propósito — o vestido já existe em todo banco que
+   * já rodou a suíte, e é justamente ali que o atributo falta.
+   */
+  const [atributoCor] = await db
+    .select()
+    .from(atributosTable)
+    .where(and(eq(atributosTable.lojaId, loja.id), eq(atributosTable.nome, "Cor")));
+  if (!atributoCor) throw new Error("[e2e-setup] a loja não tem o atributo Cor — o seed do catálogo não rodou");
+  const [opcaoMarfim] = await db
+    .select()
+    .from(atributoOpcoesTable)
+    .where(and(eq(atributoOpcoesTable.atributoId, atributoCor.id), eq(atributoOpcoesTable.valor, "Marfim")));
+  if (!opcaoMarfim) throw new Error("[e2e-setup] o atributo Cor não tem a opção Marfim");
+  await db
+    .insert(vestidoAtributosTable)
+    .values({ vestidoId: "e2e-vestido-1", atributoId: atributoCor.id, opcaoId: opcaoMarfim.id })
+    .onConflictDoNothing();
 
   const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, "e2e-lead-1"));
   await garantir(lead, () =>

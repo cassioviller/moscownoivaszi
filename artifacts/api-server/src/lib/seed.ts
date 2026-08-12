@@ -29,6 +29,9 @@ export async function seedInicial(): Promise<void> {
     {
       loja: resumo.lojaNome,
       dona: resumo.donaEmail,
+      // S-O71: o log da SUBIDA também conta os perfis. Os dois caminhos aplicam
+      // a mesma configuração e agora relatam a mesma lista de números.
+      perfis: contagem.perfis,
       cabines: contagem.cabines,
       atributos: contagem.atributos,
       opcoesDeCatalogo: contagem.opcoes,

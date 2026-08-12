@@ -1,5 +1,6 @@
 {
   "dir": "/home/runner/workspace/undefined",
+  "observacao": "S-O72: este `dir` NUNCA existiu — é a cicatriz da S-D1. O script de 2026-07-30 interpolou uma env var ausente e as 81 capturas foram gravadas em `undefined/`, um diretório literal com esse nome, que se perdeu junto com o script. A linha fica como está porque é o registro do defeito; o que se lê deste arquivo hoje são as ROTAS (ele é o `MANIFEST_ROTAS` padrão de `scripts/capturar-telas.ts:71`), e o destino de toda captura nova vem de `CAPTURAS_DIR`, que falha alto quando falta.",
   "ambiente": {
     "escritoEm": "2026-08-07, pela S-D2 — o que se SABE das 81 capturas de 2026-07-30; o script que as gerou se perdeu (S-D1), e o que não se prova fica dito desconhecido",
     "navegador": "desconhecido (provável Chromium do Playwright do repo, não provado)",

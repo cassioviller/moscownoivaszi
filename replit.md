@@ -47,14 +47,27 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   desde a S-A8. Hoje ela é `descreverHorario` sobre a linha gravada, e as
   contagens dizem o **total e, entre parênteses, o que aquela execução criou**
   (`Cabines 122 (+3)`) — antes era um `+` na frente do total, e criar 3 numa loja
-  com 122 imprimia `+ Cabines 122` (S-A12).
+  com 122 imprimia `+ Cabines 122` (S-A12). **A linha dos PERFIS era a última
+  com o total cravado** (`4`, escrito antes de a Costureira nascer): num banco
+  virgem ela saía `Perfis de acesso 4 (+5)`, total menor que o que a própria
+  execução criou. Hoje ela vem de `contarConfiguracao`, como as outras, e a
+  régua do banco virgem a confere contra `select count(*) from perfis` (S-O71).
 - **A régua do banco VIRGEM** (S-D43): `cd artifacts/api-server &&
   ./node_modules/.bin/tsx ../../scripts/banco-virgem.ts`. Cria um banco
   descartável, aplica o schema com `push`, roda o seed, **confere que o resumo
-  impresso descreve o que o banco guarda**, sobe o `global-setup` do E2E inteiro,
-  roda o seed de novo para provar a idempotência, e apaga o banco — inclusive se
-  algum passo estourar. Leva ~40 s. **Rode-a antes de publicar e depois de mexer
-  no seed, no schema ou no `global-setup`.** As três suítes rodam contra o banco
+  impresso descreve o que o banco guarda** (inclusive o total de PERFIS, S-O71),
+  sobe o `global-setup` do E2E inteiro, **roda um spec de verdade contra o banco
+  descartável** (`04-vestidos`, S-O73), roda o seed de novo para provar a
+  idempotência, e apaga o banco — inclusive se algum passo estourar. Leva
+  **1 min 20 s** (eram ~40 s antes do spec). **Rode-a antes de publicar e depois
+  de mexer no seed, no schema ou no `global-setup`.**
+  **O spec sobe servidores PRÓPRIOS, em portas próprias** (5199/5273, por
+  `E2E_API_PORT`/`E2E_WEB_PORT`), e é o único jeito de a régua não medir o banco
+  do vizinho: com as portas de sempre o `reuseExistingServer` do
+  `playwright.config.ts` pegaria um servidor vivo apontado para outro banco.
+  Ele existe porque **setup que sobe não é tela que abre**: até o E188 a régua
+  parava no `global-setup` e por essa fresta o E2E inteiro reprovava em
+  instalação nova enquanto ela dizia verde. As três suítes rodam contra o banco
   de `DATABASE_URL`, que existe desde antes do E147: o caminho da PRIMEIRA
   execução — o único que um ateliê novo percorre — não é exercitado por nenhuma
   delas, e foi ali que a S-D38 viveu (o setup morria com 23505
@@ -96,19 +109,21 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   seed, com `expect(linhas.length).toBeGreaterThanOrEqual(4)`: ela existe para
   que conjunto vazio não aprove tudo em silêncio, e num banco sem seed é
   exatamente isso que ela pega.
-  **A suíte de E2E, porém, NÃO é portátil para banco virgem** (medido por TRÊS
-  agentes no mesmo dia, cada um por um caminho): no banco próprio ela dá **166
-  passed · 1 failed · 4 skipped**, e a que falha é `04-vestidos.spec.ts` ("a cor
-  entre as características"), que no dev passa — `7 passed` no arquivo inteiro.
-  **A causa é uma linha:** o `global-setup.ts:151` grava `cor: "Marfim"` na
-  COLUNA legada, e a ficha lê o **atributo de catálogo** desde o E149 — no dev o
-  vestido tem o atributo porque o script de migração daquele épico rodou lá; num
-  banco de hoje, `vestido_atributos` está vazio para ele. A régua do
-  `banco-virgem.ts` não pega isso porque sobe o `global-setup` e **não roda um
-  spec sequer**. Então, até a S-O63 fechar: suíte de API, sim, em banco próprio;
-  **E2E completo, no banco de dev**.
+  **A suíte de E2E É portátil para banco virgem desde o E188** (S-O73). Ela não
+  era: em banco próprio dava **166 passed · 1 failed · 4 skipped**, e a que
+  falhava era `04-vestidos.spec.ts` ("a cor entre as características"), medida
+  por TRÊS agentes no mesmo dia por três caminhos. A causa era **uma linha** —
+  o `global-setup` gravava `cor: "Marfim"` na COLUNA legada e a ficha lê o
+  **atributo de catálogo** desde o E149; no dev o vestido tem o atributo porque
+  o script de migração daquele épico rodou lá, e num banco de hoje
+  `vestido_atributos` nascia vazio para ele. Hoje a fixture semeia o
+  **atributo** (a coluna fica, como legado lido), e o banco novo dá o mesmo que
+  o dev. **O E2E completo continua sendo medido EM SÉRIE e no banco de dev** —
+  não pela portabilidade, e sim pela PORTA, que worktree não isola (a entrada
+  abaixo).
 - **Worktree isola arquivo e banco, NÃO isola PORTA** (2026-08-12): o
-  `playwright.config.ts` crava `5099`/`5173` com `reuseExistingServer: true`,
+  `playwright.config.ts` usa `5099`/`5173` com `reuseExistingServer: true`
+  (as duas sobreponíveis por env desde o E188 — ver o gotcha do E179),
   então **dois E2E na mesma máquina se atropelam** mesmo em worktrees
   diferentes. Medido: uma execução deu `46 passed · 22 failed · 35 did not run`
   com o código idêntico ao de uma execução verde, e **33 artefatos de falha
@@ -619,8 +634,12 @@ rode o codegen.
   2026-08-12**: um run que tinha acabado de fazer `166 passed · 1 failed ·
   4 skipped` repetiu como **46 passed · 22 failed · 35 did not run**, com
   **33 dos artefatos de falha acusando conexão recusada** — e o `ps` mostrava
-  um `vite` de OUTRO worktree (`agent-ac2104…`) subido no meio. Não há env para
-  trocar as portas. **A régua é a mesma do banco — medir em série —, e ela vale
+  um `vite` de OUTRO worktree (`agent-ac2104…`) subido no meio. **Desde o E188
+  HÁ env para trocar as portas** (`E2E_API_PORT`/`E2E_WEB_PORT`, que também
+  desligam o reuso), e ela nasceu para a régua do banco virgem — mas dois E2E
+  simultâneos com portas próprias **não foram medidos**, e o BANCO de dev
+  continua sendo recurso único entre eles (é a S-O93).
+  **A régua é a mesma do banco — medir em série —, e ela vale
   para o E2E entre AGENTES, não só entre suítes:** confira `ps aux | grep vite`
   antes de disparar, e se um vermelho em massa vier com "connection refused",
   procure o vizinho antes do próprio código.
@@ -725,13 +744,16 @@ rode o codegen.
   (`dd`,`/`,`mm`,`/`,`aaaa`). Está escrito em `scripts/capturar-telas.ts`
   (`placeholderDeData`), e é reusável para qualquer conferência de locale de
   interface.
-- **O navegador do E2E é en-US hoje** (S-O70): o `playwright.config.ts` monta
-  `launchOptions: { executablePath }` e nada mais — nem `--lang`, nem `LANG`,
-  nem `locale` no contexto. Medido com a configuração literal dele:
-  `navigator.languages` = `en-US` e o filtro de `/financeiro/receber` desenhando
-  `08/01/2026 · 08/31/2026`. Os 171 specs, e todo screenshot e trace de falha,
-  saem nessa interface — quem for pregar formato de data em E2E fixa os três
-  lugares antes.
+- **O navegador do E2E fala português e mora em São Paulo desde o E188**
+  (S-O70). Ele era **en-US** nos 171 specs — o `playwright.config.ts` montava
+  `launchOptions: { executablePath }` e nada mais —, e o filtro de
+  `/financeiro/receber` desenhava `08/01/2026 · 08/31/2026` onde a loja lê
+  `01/08/2026 · 31/08/2026`, do mesmo `value="2026-08-01"` do DOM; todo
+  screenshot e trace de falha saía nessa interface. Hoje o `use` do config traz
+  os **três lugares** da entrada acima mais `timezoneId: "America/Sao_Paulo"` —
+  o `diaLocalSP` de `e2e/helpers.ts:300` já montava as fixtures em SP, e o
+  navegador em UTC era a única ponta fora. Quem for pregar formato de data em
+  E2E não precisa mais fixar nada: já está fixo no config.
 - **Para navegar o app à mão, o `E2E_API_PROXY` do Vite NÃO serve.** Ele existe
   só para o Playwright (`vite.config.ts:69`, ligado em `playwright.config.ts:59`)
   e devolve **404 em POST** — ou seja, o login não passa por ele e não há como

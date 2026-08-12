@@ -20,9 +20,26 @@
  *      é isto que pega a S-D41, e é a única régua que a pega, porque o resumo do
  *      seed só se lê numa instalação nova;
  *   4. roda o `global-setup` do E2E inteiro e exige que ele termine sem erro;
- *   5. roda o seed DE NOVO, porque ele promete ser idempotente, e exige que a
+ *   5. **roda um SPEC de verdade contra o banco descartável** (S-O73);
+ *   6. roda o seed DE NOVO, porque ele promete ser idempotente, e exige que a
  *      segunda passada não crie nada;
- *   6. apaga o banco, inclusive se algum passo estourar.
+ *   7. apaga o banco, inclusive se algum passo estourar.
+ *
+ * **Por que o passo 5 existe (S-O73/E188).** Até aqui esta régua subia o
+ * `global-setup` e **não rodava um spec sequer** — e foi exatamente por essa
+ * fresta que a S-O73 viveu: a fixture gravava a cor na COLUNA legada, a ficha
+ * lê o ATRIBUTO desde o E149, e o E2E inteiro reprovava em banco novo
+ * (`1 failed · 6 passed` em `04-vestidos`) enquanto esta régua dizia verde.
+ * Setup que sobe não é tela que abre. O spec escolhido é o `04-vestidos`
+ * porque ele percorre o caminho da primeira execução de ponta a ponta — login,
+ * listagem, cadastro, ficha e filtro por atributo do catálogo — em 28 s a 1 min,
+ * conforme o cache do Vite. Com a subida dos dois servidores, a régua inteira
+ * sai de ~40 s para **1 min 20 s** (medido).
+ *
+ * O spec sobe servidores PRÓPRIOS, em portas próprias (`E2E_API_PORT`/
+ * `E2E_WEB_PORT`): com as portas de sempre o `reuseExistingServer` do
+ * `playwright.config.ts` pegaria um servidor vivo apontado para OUTRO banco, e
+ * a régua mediria o dev de novo — a S-M15 pela porta em vez de pelo import.
  *
  * Ele NÃO entra em suíte: `createdb`/`dropdb` pedem permissão de servidor, e a
  * suíte da API já tem um banco só e serial. É régua de mão, e o `replit.md` diz
@@ -35,6 +52,17 @@ import path from "node:path";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
 const BANCO = process.env.BANCO_VIRGEM ?? "moscow_virgem_regua";
+
+/**
+ * O spec que a régua roda, e as portas em que ela sobe os servidores dele.
+ *
+ * As portas NÃO são as de sempre (5099/5173) de propósito: assim a régua não
+ * atropela um E2E do vizinho nem reusa o servidor dele — `reuseExistingServer`
+ * fica desligado sozinho quando estas duas env estão postas.
+ */
+const SPEC = "e2e/04-vestidos.spec.ts";
+const PORTA_API = Number(process.env.BANCO_VIRGEM_API_PORT ?? 5199);
+const PORTA_WEB = Number(process.env.BANCO_VIRGEM_WEB_PORT ?? 5273);
 
 function urlDoBanco(nome: string): string {
   const base = process.env.DATABASE_URL;
@@ -151,6 +179,24 @@ async function main(): Promise<void> {
       `o banco tem ${nCabines} cabines e a linha diz "${linhaCabines.trim()}" — falta o "total (+criadas)"`,
     );
 
+    /**
+     * S-O71 — o total de PERFIS é lido do banco, como todos os outros.
+     *
+     * Esta linha do resumo era a única com o total cravado (`4`), e num banco
+     * virgem ela imprimia `Perfis de acesso 4 (+5)`: o total MENOR do que o que
+     * a própria execução acabara de criar, no único lugar em que esse número se
+     * lê — a instalação nova. A régua não é "diz 5": é "não contradiz o
+     * `count(*)`", para a Costureira do E172 não ter uma sexta irmã sem que
+     * ninguém perceba.
+     */
+    const nPerfis = Number(consultar("select count(*) from perfis")[0]?.[0] ?? "0");
+    const linhaPerfis = saida1.split("\n").find((l) => l.includes("Perfis de acesso")) ?? "";
+    afirmar(
+      "o resumo diz quantos perfis o banco tem (S-O71)",
+      new RegExp(`Perfis de acesso\\s+${nPerfis}(\\s|$)`).test(linhaPerfis),
+      `o banco tem ${nPerfis} perfis e a linha diz "${linhaPerfis.trim()}"`,
+    );
+
     passo("o `global-setup` do E2E sobe neste banco (S-D38)");
     // O setup grava `e2e/.state.json` com os ids do banco em que rodou. Aqui ele
     // roda contra o descartável, então o arquivo do repositório é guardado e
@@ -170,8 +216,10 @@ async function main(): Promise<void> {
      */
     process.env.DATABASE_URL = URL_VIRGEM;
     const globalSetup = (await import(path.join(RAIZ, "e2e/global-setup"))).default as () => Promise<void>;
+    let setupOk = false;
     try {
       await globalSetup();
+      setupOk = true;
       afirmar("o setup do E2E terminou sem erro", true, "");
       // E a prova do ALVO, que sobrevive a qualquer refactor de import: as
       // fixtures de id fixo do setup têm de estar NESTE banco. Se um import
@@ -193,6 +241,54 @@ async function main(): Promise<void> {
         false,
         `${(e as Error).message}${causa?.constraint ? ` · ${causa.code} ${causa.constraint}` : ""}`,
       );
+    }
+
+    /**
+     * S-O73 — um SPEC de verdade, contra o banco descartável.
+     *
+     * O `.state.json` fica de pé até aqui de propósito: é ele que diz ao spec
+     * quais são os ids desta instalação. A devolução do arquivo do repositório
+     * vem depois, no `finally` de baixo.
+     */
+    passo("um spec do E2E ABRE A TELA neste banco (S-O73)");
+    try {
+      if (!setupOk) {
+        afirmar("o spec do acervo passa inteiro em banco novo", false, "o setup não terminou — o spec não chega a rodar");
+      } else {
+        try {
+          const saidaSpec = rodar(`./node_modules/.bin/playwright test ${SPEC} --reporter=line`, RAIZ, {
+            DATABASE_URL: URL_VIRGEM,
+            // O mesmo vazio que o `playwright.config.ts` põe no comando da API,
+            // e pelo mesmo motivo: o userenv do workspace define
+            // `APP_DATABASE_NAME` para todo shell, e sem o vazio o servidor do
+            // spec subiria no banco da LOJA em vez do descartável.
+            APP_DATABASE_NAME: "",
+            E2E_API_PORT: String(PORTA_API),
+            E2E_WEB_PORT: String(PORTA_WEB),
+          });
+          const resumo = saidaSpec
+            .split("\n")
+            .filter((l) => /\d+ (passed|failed|skipped)/.test(l))
+            .map((l) => l.trim())
+            .join(" · ");
+          afirmar(`o spec do acervo passa inteiro em banco novo — ${resumo}`, true, "");
+        } catch (e) {
+          const err = e as { stdout?: string; stderr?: string };
+          const saida = `${err.stdout ?? ""}\n${err.stderr ?? ""}`;
+          const pistas = saida
+            .split("\n")
+            // O nome do teste (`1) [chromium] › …`), a frase do erro e o placar.
+            .filter((l) => /^\s*\d+\)\s|✘|\d+ failed|Error:/.test(l))
+            .slice(0, 6)
+            .map((l) => l.trim())
+            .join("\n      ");
+          afirmar(
+            "o spec do acervo passa inteiro em banco novo",
+            false,
+            `${SPEC} reprovou num banco recém-criado — o dev passa porque tem rastro de migração que a instalação nova não tem:\n      ${pistas}`,
+          );
+        }
+      }
     } finally {
       if (estadoAntes) writeFileSync(arquivoEstado, estadoAntes);
       else if (existsSync(arquivoEstado)) rmSync(arquivoEstado);

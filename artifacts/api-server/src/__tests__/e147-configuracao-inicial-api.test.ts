@@ -105,6 +105,12 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
         atendimentoAberturaHora: HORARIO_PADRAO.atendimentoAberturaHora,
         atendimentoFechamentoHora: HORARIO_PADRAO.atendimentoFechamentoHora,
       },
+      // S-O71: a contagem passou a devolver os PERFIS, que eram o único número
+      // do resumo escrito à mão. É contagem GLOBAL — `perfis` não tem loja —,
+      // então o valor depende do banco em que a suíte roda e o que se prega
+      // aqui é o piso: o que o seed cria existe. O total exato é conferido onde
+      // ele se lê, no resumo de uma instalação nova (`scripts/banco-virgem.ts`).
+      perfis: expect.any(Number),
       atributos: CATALOGO_PADRAO.length,
       opcoes: TOTAL_OPCOES,
       // O único zero, e é o zero pretendido: `primeirosPassos` de
@@ -114,6 +120,9 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
       escadasDeComissao: 1,
       recorrencias: RECORRENCIAS_PADRAO.length,
     });
+    expect(c.perfis, "o seed cria os perfis padrão, e a contagem tem de vê-los").toBeGreaterThanOrEqual(
+      PERFIS_PADRAO.length,
+    );
   });
 
   it("os cinco perfis existem, e um só é do sistema", async () => {
