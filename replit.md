@@ -76,6 +76,26 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `expected 200 "OK", got 410` com `BACKUP_SEM_ARQUIVO`, porque a rota passou a
   tratar o erro do `download`. O sintoma de worktree é o MESMO defeito de
   ambiente de sempre — só que agora ele chega nomeado.
+- **DOIS agentes PODEM medir a suíte de API ao mesmo tempo — cada um no seu
+  banco** (2026-08-12). A suíte roda com `fileParallelism: false` porque *"testes
+  de integração compartilham o mesmo banco"*, e foi isso que fez duas suítes
+  simultâneas deadlockarem na Faixa C (13 s de CPU em 8 min de relógio). O que
+  não estava medido é que a restrição é do BANCO, não da suíte: `@workspace/db`
+  lê só `DATABASE_URL`, então um banco por worktree resolve. A receita, do jeito
+  que o `banco-virgem.ts` já fazia — e **o seed não é opcional**:
+
+      createdb moscow_wt_<nome>
+      URL="$(node -e "const u=new URL(process.env.DATABASE_URL); u.pathname='/moscow_wt_<nome>'; console.log(u.toString())")"
+      cd lib/db && DATABASE_URL="$URL" pnpm run push
+      cd artifacts/api-server && DATABASE_URL="$URL" ./node_modules/.bin/tsx src/scripts/seed.ts
+      DATABASE_URL="$URL" pnpm run test      # ao terminar: dropdb moscow_wt_<nome>
+
+  Medido: **185 arquivos, 1299 testes, tudo verde** no banco próprio, e duas
+  suítes disparadas no mesmo segundo (`Start at 13:10:52` nas duas) terminando
+  em ~7 s cada. **Só com `push`, uma reprova** — a que exige os 4 perfis do
+  seed, com `expect(linhas.length).toBeGreaterThanOrEqual(4)`: ela existe para
+  que conjunto vazio não aprove tudo em silêncio, e num banco sem seed é
+  exatamente isso que ela pega.
 - **Capturar as telas para revisão visual** (S-D1/S-D2): com o app de pé,
   `BASE_URL=http://localhost:5173 CAPTURAS_DIR=<destino absoluto>
   ./artifacts/api-server/node_modules/.bin/tsx scripts/capturar-telas.ts` —
