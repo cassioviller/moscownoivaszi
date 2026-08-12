@@ -4126,6 +4126,11 @@ export const ListReservasParams = zod.object({
   "lojaId": zod.coerce.string()
 })
 
+export const ListReservasQueryParams = zod.object({
+  "leadId": zod.coerce.string().optional().describe('Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem'),
+  "futuras": zod.enum(['true', 'false']).optional().describe('Recorta por casamentoData contra hoje, em dia LOCAL America\/Sao_Paulo (E87) — \'true\' = casamentos de hoje em diante (asc), \'false\' = já realizados (desc)')
+})
+
 
 
 

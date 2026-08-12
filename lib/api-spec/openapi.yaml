@@ -2154,6 +2154,27 @@ paths:
     get:
       operationId: listReservas
       tags: [reservas]
+      # S-O55/E185 — esta listagem devolvia a loja INTEIRA, sem recorte nenhum,
+      # enquanto a irmã um nível abaixo (`GET /bloqueios`) já recortava por
+      # noiva (E79) e por casamento futuro/passado (E87). Medido no banco da
+      # loja: **118 reservas, com 115 bloqueios e 118 fichas de noiva
+      # aninhadas**, para responder qualquer pergunta.
+      #
+      # O `vestidoId` do E45 NÃO tem irmão aqui de propósito: a reserva é o
+      # agregado, e "quais reservas seguram esta peça" já é
+      # `GET /bloqueios?vestidoId=`, que é quem tem a coluna.
+      parameters:
+        - name: leadId
+          in: query
+          required: false
+          description: "Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem"
+          schema: { type: string }
+        # String enum, não boolean: zod.coerce.boolean() engoliria "false" como true.
+        - name: futuras
+          in: query
+          required: false
+          description: "Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc)"
+          schema: { type: string, enum: ["true", "false"] }
       responses:
         "200":
           description: List of reservas

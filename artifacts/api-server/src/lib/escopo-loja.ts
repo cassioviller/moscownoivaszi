@@ -13,6 +13,8 @@ import {
   ajustesTable,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
+// S-O56/E185 — a régua do dono, a mesma que as portas de leitura respondem.
+import { donoDoBloqueio } from "./dono-do-bloqueio";
 
 /**
  * Guardas de escopo por loja para as ESCRITAS.
@@ -154,25 +156,35 @@ export async function ajusteDaNoiva(
  * no bloqueio da Beatriz — a janela dela colapsa para um dia em que ela não
  * provou nada, e a peça é liberada antes da hora.
  *
- * **`lead_id` NULO passa, e é decisão, não descuido:** é o caso comum (61 das
+ * **SEM DONA passa, e é decisão, não descuido:** é o caso comum (61 das
  * 63 avarias do dev vivem em bloqueio sem noiva — a loja segurou a peça antes
  * de saber de quem seria) e recusá-lo trocaria um defeito raro por uma parede
- * diária. Sem noiva no bloqueio não há o que comparar; com noiva, tem de ser a
- * mesma. É a mesma régua que `contratos.ts:377` já aplica.
+ * diária. Sem dona não há o que comparar; com dona, tem de ser a mesma.
+ *
+ * **S-O56/E185 — "sem dona" é `donoDoBloqueio`, não `lead_id`.** O véu
+ * pendurado na reserva-mãe da noiva B tem dona sem ter `lead_id` próprio: a
+ * leitura antiga o via como sem dona e deixava marcar uma prova da noiva A em
+ * cima dele — que é exatamente o caso que esta função nasceu para recusar, com
+ * o carimbo do E37 caindo no bloqueio de B ao concluir. A mesma correção vale
+ * na porta que decide o contrato (`contratos.ts`).
  */
 export async function bloqueioDaNoiva(
   bloqueioId: string,
   lojaId: string,
   leadId: string,
 ): Promise<boolean> {
-  const [b] = await db.select({ leadId: bloqueioVestidosTable.leadId })
+  const [b] = await db.select({
+    leadId: bloqueioVestidosTable.leadId,
+    reservaId: bloqueioVestidosTable.reservaId,
+  })
     .from(bloqueioVestidosTable)
     .where(and(
       eq(bloqueioVestidosTable.id, bloqueioId),
       eq(bloqueioVestidosTable.lojaId, lojaId),
     )).limit(1);
   if (!b) return false;
-  return b.leadId === null || b.leadId === leadId;
+  const dono = await donoDoBloqueio(b);
+  return dono === null || dono === leadId;
 }
 
 /**

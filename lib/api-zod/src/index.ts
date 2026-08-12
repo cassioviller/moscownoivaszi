@@ -20,6 +20,7 @@ export {
   GetUtilizacaoVestidosParams,
   ListLookbooksParams,
   ListBloqueiosParams,
+  ListReservasParams,
   ListAuditoriaParams,
   ExportarAuditoriaParams,
   ListOrcamentosParams,

@@ -7,6 +7,8 @@ import {
   useGetBloqueio,
   getGetBloqueioQueryKey,
   getListBloqueiosQueryKey,
+  useGetReserva,
+  getGetReservaQueryKey,
   useUpdateBloqueio,
   useListAtendimentos,
   getListAtendimentosQueryKey,
@@ -63,6 +65,7 @@ import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
 import { FOTO_ACIMA_DO_TETO, FOTO_MAX_BYTES } from "@/lib/limites";
+import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
 
 /**
  * Detalhe da reserva (porte da /reservas/[bloqueioId] do feat/orcamentos) — o
@@ -103,6 +106,27 @@ export default function ReservaDetalhe() {
 
   const reserva = bloqueios.data ?? null;
 
+  /**
+   * S-O54/E185 — a ficha pergunta à RESERVA-MÃE, pela porta que o E179 abriu.
+   *
+   * `useGetReserva` estava gerado e sem um único chamador: a ficha resolvia a
+   * mãe pelo caminho do bloqueio, e o bloqueio só carrega a noiva PRÓPRIA. Num
+   * véu pendurado numa reserva-mãe o título saía **"Noiva"**, a trilha para a
+   * ficha dela sumia e o card *De quem é* afirmava que a peça **"ainda não tem
+   * noiva"** — sobre uma peça cuja dona o servidor diz desde o E167.
+   *
+   * A consulta só sai quando existe mãe (`enabled`), e o `donoLeadId` já
+   * responde o ID enquanto ela não volta: o que a mãe acrescenta é o NOME.
+   */
+  const reservaMaeId = reserva?.reservaId ?? "";
+  const mae = useGetReserva(activeLojaId!, reservaMaeId, {
+    query: {
+      queryKey: getGetReservaQueryKey(activeLojaId!, reservaMaeId),
+      enabled: !!activeLojaId && temReservaMae(reserva),
+    },
+  });
+  const dona = donaDaFicha(reserva, mae.data);
+
   // E71: as avarias deste bloqueio + o contrato ATIVO da noiva (para o custo
   // do reparo poder virar parcela cobrável).
   const avarias = useListAvarias(activeLojaId!, bloqueioId!, {
@@ -122,10 +146,11 @@ export default function ReservaDetalhe() {
    * bloqueio sem noiva**, então em 97% delas a rota cobraria e a única tela
    * que expõe a cobrança não desenhava o botão. O reparo nunca virava parcela.
    *
-   * O `?? reserva?.leadId` é o fallback de payload antigo em cache: o campo
-   * nasceu neste épico.
+   * S-O54/E185 — a derivação virou `donaDaFicha`, que responde a MESMA
+   * pergunta e ainda traz o nome pela reserva-mãe. O fallback de payload antigo
+   * em cache (sem `donoLeadId`) mora lá dentro.
    */
-  const donoDaReserva = reserva?.donoLeadId ?? reserva?.leadId ?? null;
+  const donoDaReserva = dona.leadId;
   /**
    * S-O20 — a pergunta é "qual é o contrato ATIVO dela", e agora ela é feita
    * ao SERVIDOR. A tela pedia a carteira inteira de contratos da noiva **com
@@ -526,12 +551,14 @@ export default function ReservaDetalhe() {
       <CabecalhoDetalhe
         trilha={[
           { rotulo: "Reservas", para: "/reservas" },
-          ...(reserva.leadId
-            ? [{ rotulo: reserva.lead?.noivaNome ?? "Noiva", para: `/noivas/${reserva.leadId}` }]
+          // S-O54: a trilha leva à ficha da DONA — o véu herdado tinha uma
+          // noiva e a tela não a nomeava nem linkava.
+          ...(dona.leadId
+            ? [{ rotulo: dona.nome ?? "Noiva", para: `/noivas/${dona.leadId}` }]
             : []),
           { rotulo: "Reserva" },
         ]}
-        titulo={reserva.lead?.noivaNome ?? "Noiva"}
+        titulo={dona.nome ?? "Noiva"}
         subtitulo={
           <>
             <Link to={`/loja/${lojaId}/vestidos/${reserva.vestidoId}`} className="hover:underline">
@@ -602,10 +629,20 @@ export default function ReservaDetalhe() {
                 </>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* S-O54/E185 — três estados, e a tela dizia dois. O véu
+                      pendurado numa reserva-mãe caía na frase "ainda não tem
+                      noiva", que é falsa: ele TEM dona, herdada da mãe, e é
+                      por ela que o servidor cobra o reparo e recusa o contrato
+                      de outra. */}
                   <p className="text-sm">
-                    {reserva.lead?.noivaNome ? (
+                    {dona.origem === "propria" ? (
                       <>
-                        Reserva de <strong>{reserva.lead.noivaNome}</strong>.
+                        Reserva de <strong>{dona.nome ?? "uma noiva"}</strong>.
+                      </>
+                    ) : dona.origem === "herdada" ? (
+                      <>
+                        Esta peça faz parte da reserva de{" "}
+                        <strong>{dona.nome ?? "outra ficha"}</strong> — a dona vem de lá.
                       </>
                     ) : (
                       <>
@@ -989,10 +1026,13 @@ export default function ReservaDetalhe() {
       <section className="space-y-4">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground">Provas</h2>
-          {reserva.leadId && (
+          {/* S-O54: a prova é da DONA. O véu herdado não tinha `lead_id`
+              próprio e o botão sumia — a peça que a noiva vai vestir era a
+              única sem caminho para marcar a prova dela. */}
+          {dona.leadId && (
             <Button variant="outline" size="sm" asChild>
               <Link
-                to={`/loja/${lojaId}/atendimentos/novo?noiva=${reserva.leadId}&tipo=PROVA&reserva=${bloqueioId}`}
+                to={`/loja/${lojaId}/atendimentos/novo?noiva=${dona.leadId}&tipo=PROVA&reserva=${bloqueioId}`}
               >
                 Agendar prova
               </Link>

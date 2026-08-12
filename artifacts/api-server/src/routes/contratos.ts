@@ -10,6 +10,7 @@ import {
   orcamentoVersoesTable,
   leadsTable,
   contratoBloqueiosTable,
+  reservasTable,
   usuariosTable,
   type InsertContratoItem,
 } from "@workspace/db";
@@ -17,6 +18,8 @@ import { eq, and, isNull, inArray, sql, desc, count } from "drizzle-orm";
 import { verificarDisponibilidade, diaLocal } from "../lib/disponibilidade";
 import { registrarAuditoria } from "../lib/auditoria";
 import { avancarEtapaLead } from "../lib/estados";
+// S-O56/E185 — a régua do dono, a mesma que as portas de leitura respondem.
+import { comDono } from "../lib/dono-do-bloqueio";
 import { pdfDoContrato, nomeDoArquivo } from "../lib/contrato-do-papel";
 import {
   EstornarParcelaResponse,
@@ -411,6 +414,31 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
         ))
     : [];
   const bloqueioPorId = new Map(bloqueiosEncontrados.map((b) => [b.id, b]));
+  /**
+   * S-O56/E185 — a guarda "esta reserva é de outra noiva" lia o `lead_id`
+   * PRÓPRIO, e o véu pendurado na reserva-mãe não tem um.
+   *
+   * `bloqueio_vestidos.lead_id` é NULLABLE e `reservas.lead_id` é NOT NULL: a
+   * peça que pende da reserva da noiva B tem dona sem ter `lead_id`. A guarda
+   * abaixo a lia como "sem dona — o caso legítimo e comum", deixava passar, e
+   * a adoção logo adiante GRAVAVA o `lead_id` da noiva A por cima. A peça de B
+   * mudava de nome no meio do contrato de A, sem uma linha de recusa.
+   *
+   * As mães vêm de UMA consulta pelos ids em cena, não de uma por bloqueio —
+   * a mesma conta do `MAE_DO_BLOQUEIO` das rotas que leem pelo `with`.
+   */
+  const maeIds = [...new Set(bloqueiosEncontrados.map((b) => b.reservaId).filter((r): r is string => !!r))];
+  const donaDaMae = new Map(
+    (maeIds.length > 0
+      ? await db
+          .select({ id: reservasTable.id, leadId: reservasTable.leadId })
+          .from(reservasTable)
+          .where(inArray(reservasTable.id, maeIds))
+      : []
+    ).map((r) => [r.id, r.leadId]),
+  );
+  const donoDoBloqueio = (b: { leadId: string | null; reservaId: string | null }): string | null =>
+    comDono(b, b.reservaId ? donaDaMae.get(b.reservaId) ?? null : null).donoLeadId;
   const presosPorContratoAtivo = new Set(
     (bloqueioIds.length > 0
       ? await db
@@ -446,9 +474,15 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * vazamento entre lojas — por isso ficou fora do E91 —, mas é a mesma
      * família: **um id entrou sem prova de a quem pertence.**
      *
-     * `bloqueio.leadId` NULO é o caso legítimo e comum: a reserva nasceu sem
-     * dona (a loja segurou a peça antes de saber de quem seria) e este contrato
-     * é justamente quem lhe dá dono. Só o vínculo com OUTRA noiva é recusado.
+     * SEM DONA é o caso legítimo e comum: a reserva nasceu sem dona (a loja
+     * segurou a peça antes de saber de quem seria) e este contrato é justamente
+     * quem lhe dá dono. Só o vínculo com OUTRA noiva é recusado.
+     *
+     * S-O56/E185 — e "sem dona" passou a ser `donoDoBloqueio`, não
+     * `bloqueio.leadId`. O véu pendurado na reserva-mãe da noiva B tem dona sem
+     * ter `lead_id` próprio: a leitura antiga o aceitava como sem dona, a
+     * adoção logo abaixo gravava o `lead_id` da noiva A e a peça de B trocava
+     * de nome dentro do contrato de outra.
      *
      * S-D12/E145 — o código era `REFERENCIA_INVALIDA`, o mesmo que o
      * dicionário da tela de orçamento traduz como "Essa noiva não é desta
@@ -456,7 +490,7 @@ router.post("/lojas/:lojaId/contratos", async (req, res): Promise<void> => {
      * certa. Código próprio, SEM entrada no dicionário: a régua do
      * `mensagemApi` mostra o `detalhe` do servidor.
      */
-    if (bloqueio.leadId && bloqueio.leadId !== contratoData.leadId) {
+    if (donoDoBloqueio(bloqueio) !== null && donoDoBloqueio(bloqueio) !== contratoData.leadId) {
       res.status(422).json({
         error: "RESERVA_DE_OUTRA_NOIVA",
         detalhe: "Esta reserva de vestido é de outra noiva — escolha uma reserva desta noiva ou uma sem dona.",

@@ -5,6 +5,7 @@ import { registrarAuditoria } from "../lib/auditoria";
 import { leadNaLoja, reservaNaLoja, reservaDaNoiva } from "../lib/escopo-loja";
 import {
   ListReservasResponse,
+  ListReservasQueryParams,
   GetReservaResponse,
   CreateReservaBody,
   CreateReservaResponse,
@@ -40,6 +41,14 @@ import {
 import { transicaoReservaValida } from "../lib/estados";
 import { criarReservaDeVestido } from "../lib/reserva-do-vestido";
 import { erroDeValidacao } from "../lib/erros";
+// S-O56/E185: a régua do dono saiu daqui para `lib/dono-do-bloqueio.ts` — ela
+// vale para as 10 operações fora deste arquivo que também aninham um bloqueio.
+import {
+  MAE_DO_BLOQUEIO,
+  bloqueioComDono,
+  donoDoBloqueio,
+  reservaComDonos,
+} from "../lib/dono-do-bloqueio";
 import { FOTO_MAX_BYTES as AVARIA_FOTO_MAX_BYTES } from "../lib/limites";
 import { addDias, ancoraDeNegocio, hojeLocal } from "@workspace/financeiro-core";
 
@@ -103,35 +112,6 @@ const ERRO_DATA_NULA = {
   campos: [{ campo: "casamentoData", motivo: "Informe a data do casamento" }],
 };
 
-/**
- * S-O17/E179 — a régua do dono, escrita para quem JÁ carregou a reserva-mãe.
- *
- * É a mesma frase do `donoDoBloqueio` abaixo — *o `leadId` próprio, ou o da
- * reserva-mãe quando ele é nulo* —, na forma que não custa consulta: quem
- * lista bloqueios traz `reservas.lead_id` no mesmo SELECT, e quem lista
- * reservas já tem o `leadId` da própria linha na mão. O `donoDoBloqueio`
- * assíncrono continua existindo para quem só tem os ids, e termina AQUI, para
- * a régua não virar duas (regra 26).
- *
- * Herdar o dono **não** é ser da noiva: o recorte `?leadId=` da listagem
- * continua filtrando pelo `lead_id` PRÓPRIO, que é o que a ficha do orçamento
- * e o portal perguntam (E79). O `donoLeadId` responde outra pergunta — de quem
- * é o reparo desta peça.
- */
-function comDono<T extends { leadId: string | null }>(
-  bloqueio: T,
-  maeLeadId: string | null,
-): T & { donoLeadId: string | null } {
-  return { ...bloqueio, donoLeadId: bloqueio.leadId ?? maeLeadId };
-}
-
-/** Os bloqueios de uma reserva herdam o dono DELA — `reservas.lead_id` é NOT NULL. */
-function reservaComDonos<R extends { leadId: string; bloqueios: Array<{ leadId: string | null }> }>(
-  reserva: R,
-): R {
-  return { ...reserva, bloqueios: reserva.bloqueios.map((b) => comDono(b, reserva.leadId)) };
-}
-
 // Reservas
 const RESERVA_COM_TUDO = {
   lead: true,
@@ -139,12 +119,40 @@ const RESERVA_COM_TUDO = {
   bloqueios: { with: { vestido: true } },
 } as const;
 
+/**
+ * S-O55/E185 — a listagem que devolvia a loja inteira ganha os recortes que a
+ * irmã de baixo já tinha.
+ *
+ * `GET /bloqueios` recorta por vestido (E45), por noiva (E79) e por casamento
+ * futuro/passado (E87); esta não recortava nada. Medido no banco da loja:
+ * **118 reservas, 115 bloqueios e 118 fichas de noiva aninhadas em uma
+ * resposta** — a lente 3 da S-O22 um nível acima.
+ *
+ * O `vestidoId` não tem irmão aqui de propósito: a reserva é o AGREGADO, e a
+ * pergunta "quais reservas seguram esta peça" é do bloqueio, que tem a coluna.
+ */
 router.get("/lojas/:lojaId/reservas", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
+  const query = ListReservasQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "FILTRO_INVALIDO" });
+    return;
+  }
+  const { leadId, futuras } = query.data;
+  const hoje = inicioDoDia(diaLocal(new Date()));
   const reservas = await db.query.reservasTable.findMany({
-    where: eq(reservasTable.lojaId, lojaId),
+    where: and(
+      eq(reservasTable.lojaId, lojaId),
+      ...(leadId ? [eq(reservasTable.leadId, leadId)] : []),
+      ...(futuras === "true" ? [gte(reservasTable.casamentoData, hoje)] : []),
+      ...(futuras === "false" ? [lt(reservasTable.casamentoData, hoje)] : []),
+    ),
     with: RESERVA_COM_TUDO,
-    orderBy: reservasTable.casamentoData,
+    // `casamentoData` é NOT NULL aqui — ao contrário do bloqueio, nenhuma linha
+    // escapa do recorte por ser nula. Passadas saem da mais recente para a mais
+    // antiga; o resto mantém a ordem histórica (asc), para não mudar o contrato
+    // de quem já lia sem recorte.
+    orderBy: futuras === "false" ? [desc(reservasTable.casamentoData)] : [asc(reservasTable.casamentoData)],
   });
   res.json(ListReservasResponse.parse(reservas.map(reservaComDonos)));
 });
@@ -717,7 +725,9 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
     ),
     // S-O17/E179: a reserva-mãe entra por UMA coluna, e é ela que faz o
     // `donoLeadId` que o schema declara deixar de vir `undefined` aqui.
-    with: { vestido: true, lead: true, reserva: { columns: { leadId: true } } },
+    // S-O56/E185: o fragmento virou `MAE_DO_BLOQUEIO`, o mesmo que a agenda e a
+    // fila da costureira usam agora — era a segunda grafia da mesma coluna.
+    with: { vestido: true, lead: true, ...MAE_DO_BLOQUEIO },
     // Com recorte, a ordem é do servidor: próximas da mais próxima à mais
     // distante, passadas da mais recente à mais antiga. Sem recorte, mantém-se
     // a ordem histórica (nenhuma) para não mudar o contrato dos outros usos.
@@ -728,40 +738,8 @@ router.get("/lojas/:lojaId/bloqueios", async (req, res): Promise<void> => {
           ? [desc(bloqueioVestidosTable.casamentoData)]
           : undefined,
   });
-  res.json(ListBloqueiosResponse.parse(bloqueios.map((b) => comDono(b, b.reserva?.leadId ?? null))));
+  res.json(ListBloqueiosResponse.parse(bloqueios.map((b) => bloqueioComDono(b))));
 });
-
-/**
- * V14/E167 — de QUEM é este bloqueio, dito uma vez.
- *
- * `bloqueio_vestidos.lead_id` é NULLABLE, e `reservas.lead_id` é NOT NULL: um
- * bloqueio pendurado numa reserva-mãe TEM dona mesmo sem noiva própria. A
- * cobrança de avaria já sabia disso desde o V3/E163 (`donoDaAvaria`, no
- * `POST /avarias/:id/cobrar`) — a ficha, não. Ela buscava o contrato por
- * `reserva?.leadId` e desistia no nulo, e o servidor mede na própria letra
- * que **61 das 63 avarias do banco vivem em bloqueio sem noiva**: em 97% dos
- * casos a rota cobraria e a única tela que expõe a cobrança não desenhava o
- * botão.
- *
- * Agora a régua é UMA, e sai pelo payload: quem desenha e quem cobra leem o
- * mesmo dono.
- *
- * Esta é a versão para quem só tem os ids — ela paga a consulta da mãe. Quem
- * já a carregou usa o `comDono` lá em cima, e as duas terminam na mesma
- * expressão.
- */
-export async function donoDoBloqueio(
-  bloqueio: { leadId: string | null; reservaId: string | null },
-  executor: DbExecutor = db,
-): Promise<string | null> {
-  if (bloqueio.leadId) return bloqueio.leadId;
-  if (!bloqueio.reservaId) return null;
-  const [mae] = await executor
-    .select({ leadId: reservasTable.leadId })
-    .from(reservasTable)
-    .where(eq(reservasTable.id, bloqueio.reservaId));
-  return comDono(bloqueio, mae?.leadId ?? null).donoLeadId;
-}
 
 // E79: a ficha da reserva pede UM bloqueio, não a loja inteira.
 router.get("/lojas/:lojaId/bloqueios/:bloqueioId", async (req, res): Promise<void> => {

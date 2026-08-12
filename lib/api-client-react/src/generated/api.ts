@@ -149,6 +149,7 @@ import type {
   ListPagamentosParams,
   ListParcelasParams,
   ListPortais200Item,
+  ListReservasParams,
   LoginInput,
   Loja,
   LojaInput,
@@ -7893,17 +7894,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getSetDisponibilidadeMutationOptions(options));
     }
 
-export const getListReservasUrl = (lojaId: string,) => {
+export const getListReservasUrl = (lojaId: string,
+    params?: ListReservasParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lojas/${lojaId}/reservas`
+  return stringifiedParams.length > 0 ? `/api/lojas/${lojaId}/reservas?${stringifiedParams}` : `/api/lojas/${lojaId}/reservas`
 }
 
-export const listReservas = async (lojaId: string, options?: RequestInit): Promise<Reserva[]> => {
+export const listReservas = async (lojaId: string,
+    params?: ListReservasParams, options?: RequestInit): Promise<Reserva[]> => {
 
-  return customFetch<Reserva[]>(getListReservasUrl(lojaId),
+  return customFetch<Reserva[]>(getListReservasUrl(lojaId,params),
   {
     ...options,
     method: 'GET'
@@ -7916,23 +7926,25 @@ export const listReservas = async (lojaId: string, options?: RequestInit): Promi
 
 
 
-export const getListReservasQueryKey = (lojaId: string,) => {
+export const getListReservasQueryKey = (lojaId: string,
+    params?: ListReservasParams,) => {
     return [
-    `/api/lojas/${lojaId}/reservas`
+    `/api/lojas/${lojaId}/reservas`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListReservasQueryOptions = <TData = Awaited<ReturnType<typeof listReservas>>, TError = ErrorType<unknown>>(lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReservas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListReservasQueryOptions = <TData = Awaited<ReturnType<typeof listReservas>>, TError = ErrorType<unknown>>(lojaId: string,
+    params?: ListReservasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReservas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListReservasQueryKey(lojaId);
+  const queryKey =  queryOptions?.queryKey ?? getListReservasQueryKey(lojaId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReservas>>> = ({ signal }) => listReservas(lojaId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReservas>>> = ({ signal }) => listReservas(lojaId,params, { signal, ...requestOptions });
 
 
 
@@ -7947,11 +7959,12 @@ export type ListReservasQueryError = ErrorType<unknown>
 
 
 export function useListReservas<TData = Awaited<ReturnType<typeof listReservas>>, TError = ErrorType<unknown>>(
- lojaId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReservas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ lojaId: string,
+    params?: ListReservasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReservas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListReservasQueryOptions(lojaId,options)
+  const queryOptions = getListReservasQueryOptions(lojaId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

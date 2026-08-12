@@ -25,6 +25,8 @@ import {
 } from "@workspace/api-zod";
 import { requireSessaoComLoja, requireModulo } from "../middlewares/auth";
 import { leadNaLoja, itemEstoqueNaLoja, ajusteDaNoiva, vestidoNaLoja, atendimentoNaLoja } from "../lib/escopo-loja";
+// S-O56/E185 — de quem é a reserva que este orçamento oferece adotar.
+import { MAE_DO_BLOQUEIO, bloqueioComDono, comDono } from "../lib/dono-do-bloqueio";
 import { randomUUID } from "node:crypto";
 import { orcamentoVersoesTable } from "@workspace/db";
 import { conteudoEnviado, identidadeDasPecas } from "../lib/conteudo-orcamento";
@@ -659,7 +661,11 @@ router.post(
       res.status(409).json({ error: "VESTIDO_INDISPONIVEL", conflitos: criado.conflitos });
       return;
     }
-    res.status(201).json(ReservarPecaDoOrcamentoResponse.parse(criado.bloqueio));
+    // S-O56/E185: a peça nasce sempre em nome da noiva do orçamento, então o
+    // dono é ela — e o campo que o contrato declara custa zero consulta aqui.
+    res.status(201).json(
+      ReservarPecaDoOrcamentoResponse.parse(comDono(criado.bloqueio, orcamento.leadId)),
+    );
   },
 );
 
@@ -701,11 +707,24 @@ router.get("/lojas/:lojaId/orcamentos/:orcamentoId/reservas-candidatas", async (
           : []),
       ),
     ),
-    with: { vestido: true, lead: true },
+    with: { vestido: true, lead: true, ...MAE_DO_BLOQUEIO },
   });
+  /**
+   * S-O56/E185 — "sem dona" é `donoLeadId` nulo, não `lead_id` nulo.
+   *
+   * O `or` acima oferece como adotável todo bloqueio com `lead_id` NULO da
+   * peça vendida. O véu pendurado na reserva-mãe de OUTRA noiva satisfaz essa
+   * condição — ele não tem `lead_id` próprio e TEM dona —, então o diálogo o
+   * marcava como candidato e o `POST /contratos` o adotava, gravando o nome da
+   * noiva errada por cima. A régua do dono, aplicada aqui, tira da lista o que
+   * já é de alguém; a mesma régua guarda a porta do contrato.
+   */
+  const comDonos = candidatas
+    .map((c) => bloqueioComDono(c))
+    .filter((c) => c.donoLeadId === null || c.donoLeadId === orcamento.leadId);
   // Da noiva primeiro — são as que o E72 sempre marcou por padrão.
-  candidatas.sort((a, b) => Number(b.leadId === orcamento.leadId) - Number(a.leadId === orcamento.leadId));
-  res.json(ListReservasCandidatasResponse.parse(candidatas));
+  comDonos.sort((a, b) => Number(b.leadId === orcamento.leadId) - Number(a.leadId === orcamento.leadId));
+  res.json(ListReservasCandidatasResponse.parse(comDonos));
 });
 
 router.get("/lojas/:lojaId/orcamentos/:orcamentoId", async (req, res): Promise<void> => {

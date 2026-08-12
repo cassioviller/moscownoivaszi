@@ -3,6 +3,8 @@ import { db, cabinesTable, atendimentosTable, ajustesTable, ajusteChecklistItens
 import { registrarAuditoria } from "../lib/auditoria";
 import { eq, and, count, max, inArray, gte, lt, lte } from "drizzle-orm";
 import { leadNaLoja, cabineNaLoja, vendedoraNaLoja, atendimentoNaLoja, bloqueioNaLoja, bloqueioDaNoiva } from "../lib/escopo-loja";
+// S-O56/E185 — de quem é o bloqueio que a prova carrega, dito também aqui.
+import { MAE_DO_BLOQUEIO, atendimentoComDono, ajusteComDono } from "../lib/dono-do-bloqueio";
 import {
   ListCabinesResponse,
   CreateCabineBody,
@@ -231,7 +233,12 @@ const ATENDIMENTO_WITH = {
   lead: true,
   cabine: true,
   vendedora: true,
-  bloqueio: { with: { vestido: true } },
+  // S-O56/E185: a reserva-mãe entra por UMA coluna do mesmo SELECT relacional
+  // — é ela que faz o `donoLeadId` do schema `BloqueioVestido` parar de vir
+  // `undefined` nas cinco portas de atendimento. O motivo escrito na sobra
+  // ("aqui o dono sai de consulta por linha") não se confirmou: o `with`
+  // aninhado do drizzle é o mesmo join, um nível mais fundo.
+  bloqueio: { with: { vestido: true, ...MAE_DO_BLOQUEIO } },
   ajustes: {
     // E104/A13: sem anotação explícita nos parâmetros. Com `strictFunctionTypes`
     // ligado, um callback com parâmetro anotado é checado de forma
@@ -408,7 +415,7 @@ router.get("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     with: ATENDIMENTO_WITH,
     orderBy: atendimentosTable.inicio,
   });
-  res.json(ListAtendimentosResponse.parse(atendimentos));
+  res.json(ListAtendimentosResponse.parse(atendimentos.map((a) => atendimentoComDono(a))));
 });
 
 router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
@@ -469,8 +476,11 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
    * `bloqueioDaNoiva` é irmã do `ajusteDaNoiva` que o E155 escreveu para
    * exatamente esta pergunta, e nasce aqui em vez de no E164 porque este épico
    * chega primeiro — o E164 a reusa para o R5/V4 em vez de escrever outra.
-   * Bloqueio com `lead_id` NULO passa: é o caso comum (61 de 63 no dev), e
-   * recusá-lo seria trocar um defeito raro por uma parede diária.
+   * Bloqueio SEM DONA passa: é o caso comum (61 de 63 no dev), e recusá-lo
+   * seria trocar um defeito raro por uma parede diária. **S-O56/E185: "sem
+   * dona" passou a ser `donoDoBloqueio`** — o véu pendurado na reserva-mãe de
+   * outra noiva não tem `lead_id` próprio e TEM dona, e era por essa fresta
+   * que o caso do parágrafo acima entrava mesmo com a guarda em pé.
    */
   if (parsed.data.bloqueioId && !(await bloqueioDaNoiva(parsed.data.bloqueioId, lojaId, parsed.data.leadId))) {
     res.status(422).json({
@@ -526,7 +536,7 @@ router.post("/lojas/:lojaId/atendimentos", async (req, res): Promise<void> => {
     with: ATENDIMENTO_WITH,
   });
 
-  res.status(201).json(CreateAtendimentoResponse.parse(fullAtendimento));
+  res.status(201).json(CreateAtendimentoResponse.parse(atendimentoComDono(fullAtendimento)));
 });
 
 router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Promise<void> => {
@@ -769,7 +779,7 @@ router.patch("/lojas/:lojaId/atendimentos/:atendimentoId", async (req, res): Pro
     with: ATENDIMENTO_WITH,
   });
 
-  res.json(UpdateAtendimentoResponse.parse(fullAtendimento));
+  res.json(UpdateAtendimentoResponse.parse(atendimentoComDono(fullAtendimento)));
 });
 
 /**
@@ -859,7 +869,7 @@ router.post("/lojas/:lojaId/atendimentos/:atendimentoId/contato", requireModulo(
     where: eq(atendimentosTable.id, atendimentoId as string),
     with: ATENDIMENTO_WITH,
   });
-  res.json(RegistrarContatoAtendimentoResponse.parse(full));
+  res.json(RegistrarContatoAtendimentoResponse.parse(atendimentoComDono(full)));
 });
 
 /**
@@ -887,7 +897,7 @@ router.delete("/lojas/:lojaId/atendimentos/:atendimentoId/contato", async (req, 
     where: eq(atendimentosTable.id, atendimentoId as string),
     with: ATENDIMENTO_WITH,
   });
-  res.json(DesfazerContatoAtendimentoResponse.parse(full));
+  res.json(DesfazerContatoAtendimentoResponse.parse(atendimentoComDono(full)));
 });
 
 /**
@@ -1002,7 +1012,10 @@ router.delete("/lojas/:lojaId/ausencias/:ausenciaId", async (req, res): Promise<
 const AJUSTE_WITH = {
   // Ver a nota do ATENDIMENTO_WITH: sem anotação de parâmetro (E104/A13).
   checklist: { orderBy: (t: any, { asc }: any) => [asc(t.ordem)] },
-  atendimento: { with: { lead: true, bloqueio: { with: { vestido: true } } } },
+  // S-O56/E185: o mesmo `MAE_DO_BLOQUEIO` das cinco portas de atendimento, um
+  // nível mais fundo — a fila da costureira chega ao bloqueio por
+  // `ajuste → atendimento`.
+  atendimento: { with: { lead: true, bloqueio: { with: { vestido: true, ...MAE_DO_BLOQUEIO } } } },
 } as const;
 
 router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
@@ -1065,7 +1078,7 @@ router.get("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
     return { ...a, proximaProva: proxima, pecaDoAcervo: pecaPorAjuste.get(a.id) ?? null };
   });
 
-  res.json(ListAjustesResponse.parse(comPrazo));
+  res.json(ListAjustesResponse.parse(comPrazo.map(ajusteComDono)));
 });
 
 router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
@@ -1097,7 +1110,7 @@ router.post("/lojas/:lojaId/ajustes", async (req, res): Promise<void> => {
     where: eq(ajustesTable.id, ajuste.id),
     with: AJUSTE_WITH,
   });
-  res.status(201).json(CreateAjusteResponse.parse(fullAjuste));
+  res.status(201).json(CreateAjusteResponse.parse(fullAjuste && ajusteComDono(fullAjuste)));
 });
 
 router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void> => {
@@ -1119,7 +1132,7 @@ router.patch("/lojas/:lojaId/ajustes/:ajusteId", async (req, res): Promise<void>
     where: eq(ajustesTable.id, ajuste.id),
     with: AJUSTE_WITH,
   });
-  res.json(UpdateAjusteResponse.parse(fullAjuste));
+  res.json(UpdateAjusteResponse.parse(fullAjuste && ajusteComDono(fullAjuste)));
 });
 
 /**

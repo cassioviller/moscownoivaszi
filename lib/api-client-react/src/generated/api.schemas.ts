@@ -2970,6 +2970,25 @@ export const ListAtendimentosTipo = {
   PROVA: 'PROVA',
 } as const;
 
+export type ListReservasParams = {
+/**
+ * Filtra as reservas de uma noiva só — `reservas.lead_id` é NOT NULL, então aqui não há a ambiguidade de dono que o bloqueio tem
+ */
+leadId?: string;
+/**
+ * Recorta por casamentoData contra hoje, em dia LOCAL America/Sao_Paulo (E87) — 'true' = casamentos de hoje em diante (asc), 'false' = já realizados (desc)
+ */
+futuras?: ListReservasFuturas;
+};
+
+export type ListReservasFuturas = typeof ListReservasFuturas[keyof typeof ListReservasFuturas];
+
+
+export const ListReservasFuturas = {
+  true: 'true',
+  false: 'false',
+} as const;
+
 export type ListBloqueiosParams = {
 /**
  * Filtra os bloqueios de um vestido só (E45)
