@@ -8,7 +8,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CabecalhoDetalhe } from "@/components/cabecalho-detalhe";
 import { NaoEncontrado, Erro } from "@/components/estado";
 import { diasAteCasamento } from "../noivas/helpers";
-import { casamentoDeReferencia, rotuloCasamento, rotuloProva } from "@/lib/ajustes-da-semana";
+import {
+  casamentoDeReferencia,
+  rotuloCasamento,
+  rotuloProva,
+  urgenteAjuste,
+} from "@/lib/ajustes-da-semana";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { podeNoModulo } from "@/lib/permissoes";
@@ -73,10 +78,16 @@ export default function AjusteDetalhe() {
   const casamento = casamentoDeReferencia(a);
   const diasProva = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
   const diasCasamento = casamento ? diasAteCasamento(casamento) : null;
-  // A mesma régua de urgência da fila: prova a ≤7 dias (ou atrasada); sem
-  // prova, casamento a ≤14.
-  const urgente =
-    !feito && (diasProva !== null ? diasProva <= 7 : diasCasamento !== null && diasCasamento <= 14);
+  /**
+   * S-O27 — agora é MESMO a régua da fila, e não só na frase.
+   *
+   * Este comentário dizia *"a mesma régua de urgência da fila"* sobre uma conta
+   * escrita à mão aqui, uma segunda escrita à mão na fila, e uma terceira —
+   * `naSemana` — que decide o RECORTE. As três discordavam, e a pior
+   * discordância era com a própria fila: a confecção com casamento em 5 dias
+   * entrava no recorte "esta semana" e saía cinza lá, vermelha aqui.
+   */
+  const urgente = urgenteAjuste(a);
   const checklist = a.checklist ?? [];
   const feitos = checklist.filter((c) => c.feito).length;
 

@@ -10,13 +10,21 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { diasAteCasamento } from "../noivas/helpers";
-import { naSemana, prazoDias, rotuloCasamento, rotuloProva } from "@/lib/ajustes-da-semana";
+import {
+  casamentoDeReferencia,
+  naSemana,
+  prazoDias,
+  rotuloCasamento,
+  rotuloProva,
+  urgenteAjuste,
+} from "@/lib/ajustes-da-semana";
 import { podeVirarPecaDoAcervo } from "@/lib/confeccao-no-acervo";
 import { brl, diaMesAbrevAno } from "@/lib/formatos";
 import { Badge } from "@/components/ui/badge";
 import { podeNoModulo } from "@/lib/permissoes";
 import { Erro } from "@/components/estado";
 import { useAcoesDeAjuste } from "./acoes";
+import { NovaConfeccao } from "./nova-confeccao";
 
 /**
  * Ajustes — a fila da costureira (E14). O prazo que manda é a PRÓXIMA PROVA:
@@ -63,6 +71,9 @@ export default function Ajustes() {
   // E156: o gesto abre o CADASTRO de vestido — quem não cadastra acervo não vê
   // um botão que a próxima tela recusaria.
   const podeCadastrarPeca = podeNoModulo(acessosModulos, "vestidos", "criar");
+  // S-O28: abrir uma confecção é CRIAR na agenda — o mesmo módulo que
+  // `POST /ajustes` cobra (`agenda.ts:248`), e a ação que o método deriva.
+  const podeCriar = podeNoModulo(acessosModulos, "agenda", "criar");
 
   const { pendentes, foraDaSemana } = useMemo(() => {
     const alvo = recorte === "feitos" ? "FEITO" : "PENDENTE";
@@ -98,6 +109,11 @@ export default function Ajustes() {
             prazo; sem prova marcada, vale o casamento.
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* S-O28: a confecção não tinha onde nascer — o único formulário de
+              ajuste vivia dentro do bloco de provas de uma reserva, e confecção
+              é justamente o trabalho SEM peça de acervo. */}
+          <NovaConfeccao podeCriar={podeCriar} />
         <div className="flex gap-1 rounded-md border p-1">
           <Button
             variant={recorte === "semana" ? "secondary" : "ghost"}
@@ -120,6 +136,7 @@ export default function Ajustes() {
           >
             Concluídos
           </Button>
+        </div>
         </div>
       </div>
 
@@ -156,12 +173,19 @@ export default function Ajustes() {
           <ul className="divide-y">
             {pendentes.map((a) => {
               const bloqueio = a.atendimento?.bloqueio;
-              const casamento = bloqueio?.casamentoData;
               const diasProva = a.proximaProva ? diasAteCasamento(a.proximaProva) : null;
+              const casamento = casamentoDeReferencia(a);
               const diasCasamento = casamento ? diasAteCasamento(casamento) : null;
-              // Urgência: prova a ≤7 dias (ou atrasada); sem prova, casamento a ≤14.
-              const urgente =
-                diasProva !== null ? diasProva <= 7 : diasCasamento !== null && diasCasamento <= 14;
+              /**
+               * S-O27 — a cor vem de `urgenteAjuste`, um lugar só.
+               *
+               * Aqui a conta era inline e lia o casamento **só do bloqueio** —
+               * e confecção não tem bloqueio, por definição. Medido: a
+               * confecção com casamento em 5 dias entrava no recorte "esta
+               * semana" e saía CINZA nesta lista, enquanto a ficha do mesmo
+               * trabalho a pintava de vermelho.
+               */
+              const urgente = urgenteAjuste(a);
               const checklist = a.checklist ?? [];
               const feitos = checklist.filter((c) => c.feito).length;
               return (

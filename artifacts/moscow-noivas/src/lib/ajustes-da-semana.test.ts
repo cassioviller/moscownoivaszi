@@ -5,6 +5,8 @@ import {
   prazoDias,
   rotuloCasamento,
   rotuloProva,
+  naSemana,
+  urgenteAjuste,
 } from "./ajustes-da-semana";
 
 /** Um dia YMD a N dias de hoje, no fuso da loja. */
@@ -114,5 +116,85 @@ describe("ajustesDaSemana — o cartão do painel conta o que a fila mostra (E13
     expect(rotuloCasamento(0)).toBe("casamento hoje");
     expect(rotuloCasamento(1)).toBe("casamento amanhã");
     expect(rotuloCasamento(14)).toBe("casamento em 14 dias");
+  });
+});
+
+/**
+ * S-O27 — **"da semana" e "urgente" são duas coisas, e o comentário da ficha
+ * dizia que eram uma.**
+ *
+ * Medido em 2026-08-12, com as três grafias que existiam:
+ *
+ * ```
+ * caso                                             | naSemana | fila(cor) | ficha(cor)
+ * casamento em 10 dias, sem prova, com bloqueio    |  false   |   true    |   true
+ * casamento em 10 dias, sem prova, SEM bloqueio    |  false   |   false   |   true
+ * casamento em  5 dias, sem prova, SEM bloqueio    |  true    |   false   |   true
+ * ```
+ *
+ * A linha de baixo é a que dói: a confecção com casamento em 5 dias entrava no
+ * recorte "esta semana" da fila e saía **CINZA** nela — a costureira lia a
+ * linha na lista da semana sem destaque nenhum, e a mesma linha aparecia
+ * vermelha ao abrir a ficha. A causa é a S-A05.5 pela metade: o E170 ensinou a
+ * FICHA a usar `casamentoDeReferencia` e deixou a fila lendo só o bloqueio — e
+ * confecção não tem bloqueio, por definição.
+ */
+describe("urgenteAjuste — a COR, separada do RECORTE (S-O27)", () => {
+  const emDiasISO = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toISOString();
+  };
+  const trabalho = (over: {
+    prova?: string | null;
+    casBloqueio?: string | null;
+    casNoiva?: string | null;
+    status?: string;
+  }) => ({
+    status: over.status ?? "PENDENTE",
+    proximaProva: over.prova ?? null,
+    atendimento: {
+      bloqueio: over.casBloqueio ? { casamentoData: over.casBloqueio } : null,
+      lead: over.casNoiva ? { casamentoData: over.casNoiva } : null,
+    },
+  });
+
+  it("a CONFECÇÃO com casamento perto é vermelha — era cinza na fila", () => {
+    // Sem bloqueio: é a definição de confecção. A fila lia `bloqueio.casamentoData`
+    // e não achava nada, então nunca pintava.
+    const c = trabalho({ casNoiva: emDiasISO(5) });
+    expect(urgenteAjuste(c)).toBe(true);
+    expect(naSemana(c), "e ela ESTÁ no recorte da semana — era esse o absurdo").toBe(true);
+  });
+
+  it("casamento em 10 dias é vermelho e NÃO está na semana — os dois ao mesmo tempo", () => {
+    // Estado válido, e é o ponto de separar os dois nomes: a cor avisa antes,
+    // o recorte lista o que se costura até sexta.
+    const c = trabalho({ casNoiva: emDiasISO(10) });
+    expect(urgenteAjuste(c)).toBe(true);
+    expect(naSemana(c)).toBe(false);
+  });
+
+  it("a PROVA manda quando existe: 8 dias já não é urgente", () => {
+    // O prazo da prova é mais curto de propósito — é para ela que a peça
+    // precisa estar pronta, e o casamento vem depois.
+    expect(urgenteAjuste(trabalho({ prova: emDiasISO(8), casNoiva: emDiasISO(9) }))).toBe(false);
+    expect(urgenteAjuste(trabalho({ prova: emDiasISO(7), casNoiva: emDiasISO(90) }))).toBe(true);
+  });
+
+  it("prova atrasada é urgente", () => {
+    expect(urgenteAjuste(trabalho({ prova: emDiasISO(-2) }))).toBe(true);
+  });
+
+  it("trabalho FEITO nunca é urgente — a cor é sobre o que falta", () => {
+    expect(urgenteAjuste(trabalho({ casNoiva: emDiasISO(1), status: "FEITO" }))).toBe(false);
+  });
+
+  it("sem prova e sem casamento não há o que apressar", () => {
+    expect(urgenteAjuste(trabalho({}))).toBe(false);
+  });
+
+  it("o casamento do BLOQUEIO continua valendo quando existe", () => {
+    expect(urgenteAjuste(trabalho({ casBloqueio: emDiasISO(10), casNoiva: emDiasISO(90) }))).toBe(true);
   });
 });
