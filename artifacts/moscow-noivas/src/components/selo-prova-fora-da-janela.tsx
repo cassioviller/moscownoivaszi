@@ -31,8 +31,13 @@ export function SeloProvaForaDaJanela({
   compacto?: boolean;
 }) {
   const { lojaId } = useParams();
-  const regra = useGetDisponibilidade(lojaId!, {
-    query: { queryKey: getGetDisponibilidadeQueryKey(lojaId!), enabled: !!lojaId },
+  // Sem `lojaId!`: o hook não pode ficar atrás de um `if` (regra dos hooks), e a
+  // asserção seria a dívida da S-O66/S-O84 crescendo por conveniência. O `?? ""`
+  // é inerte porque `enabled` desliga a consulta, e o selo já não aparece sem a
+  // régua carregada.
+  const daRota = lojaId ?? "";
+  const regra = useGetDisponibilidade(daRota, {
+    query: { queryKey: getGetDisponibilidadeQueryKey(daRota), enabled: !!lojaId },
   });
 
   const caso = provaForaDaJanela(atendimento, regra.data);
