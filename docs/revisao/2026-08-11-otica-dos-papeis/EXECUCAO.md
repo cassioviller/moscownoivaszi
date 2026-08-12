@@ -5,8 +5,7 @@
 `CODE-REVIEW.md` (90, dos reviews) e `achados/01..08-*.md` (59, dos ângulos).
 
 Suíte de partida: **API 1134 · frontend 536 · E2E 165 · typecheck verde em 5
-projetos**. Com **as quatro faixas fechadas** a régua é **API 1238 · frontend
-589 · E2E 171 · typecheck verde em 5 projetos** — e o E2E cobre, pela primeira
+projetos**. Com **as quatro faixas fechadas**, mais os consertos que o manual da vendedora achou, a régua é **API 1239 · frontend 598 · E2E 171 · typecheck verde em 5 projetos** — e o E2E cobre, pela primeira
 vez, o **caminho público** (E166) e a **avaria sem noiva própria** (E167).
 
 ## A fila

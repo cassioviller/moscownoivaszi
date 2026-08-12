@@ -110,8 +110,8 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 30** (2026-08-11, com as quatro faixas
-   fechadas e a S-O31 consertada). A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
+   da ótica dos papéis — **conte lá, são 31** (2026-08-12: as quatro faixas
+   fechadas, mais o que o manual da vendedora achou e o que ele fez fechar). A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
    termina em varredura: o E171 tornou contável o que ninguém contava. O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
