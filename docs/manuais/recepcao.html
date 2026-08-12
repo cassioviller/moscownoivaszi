@@ -273,7 +273,7 @@
 
     <section id="ve">
       <h2>O que você vê, e o que você pode</h2>
-      <p class="resumo">A <strong>agenda é sua por inteiro</strong> — marcar, mover, configurar cabines e horário. No acervo você só olha, e nas noivas você cadastra mas não edita.</p>
+      <p class="resumo">A <strong>agenda é sua por inteiro</strong> — marcar, mover, configurar cabines e horário. A <strong>ficha da noiva também</strong>: você cadastra e corrige. No acervo e nos orçamentos você só olha.</p>
 
       <div class="colunas" data-perfil="Recepção">
         <div class="caixa ve" data-menu="ve">
@@ -281,13 +281,14 @@
           <ul>
             <li>Seu dia</li><li>Noivas</li><li>Agenda</li><li>Atendimentos</li>
             <li>Mensagens de hoje</li><li>Provas</li><li>Ajustes</li><li>Reservas</li>
-            <li>Vestidos</li><li>Catálogo</li><li>Orçamentos</li><li>Contratos</li>
+            <li>Vestidos</li><li>Catálogo</li><li>Orçamentos</li>
             <li>Minha comissão</li><li>Configurações</li>
           </ul>
         </div>
         <div class="caixa naove" data-menu="naove">
           <h4>Não aparece</h4>
           <ul>
+            <li>Contratos</li>
             <li>Financeiro</li><li>Folha do mês</li><li>Comissões</li>
             <li>Equipe</li><li>Permissões</li>
           </ul>
@@ -307,8 +308,18 @@
             </tr>
             <tr>
               <td><strong>Noivas</strong></td>
-              <td>Ver todas, buscar, <strong>cadastrar</strong></td>
-              <td><strong>Editar a ficha</strong>, mover card no funil, marcar como perdida</td>
+              <td>Ver todas, buscar, <strong>cadastrar</strong>, <strong>corrigir a ficha</strong>, mover card no funil, marcar como perdida</td>
+              <td>Anonimizar a carteira de perdidas (é da Administração)</td>
+            </tr>
+            <tr>
+              <td><strong>Orçamentos</strong></td>
+              <td>Abrir e ler qualquer proposta — <strong>é o que você responde ao telefone</strong></td>
+              <td><strong>Aprovar ou recusar</strong>, gerar o link da proposta, mexer em valor ou desconto, abrir orçamento novo</td>
+            </tr>
+            <tr>
+              <td><strong>Contratos</strong></td>
+              <td>—</td>
+              <td>Nada: o menu não abre para você</td>
             </tr>
             <tr>
               <td><strong>Acervo</strong></td>
@@ -324,10 +335,16 @@
         </table>
       </div>
 
+      <div class="fala">
+        <span class="rotulo">Duas coisas mudaram em 12/08/2026, e as duas a seu favor</span>
+        <p><strong>Agora você corrige a ficha que cadastrou.</strong> Até esta data não havia <span class="btn">Editar dados</span> no seu perfil: um dígito errado no WhatsApp só se consertava pedindo à vendedora — e é o número pelo qual a loja confirma a prova dela. Continua valendo conferir antes de salvar; o que mudou é que errar deixou de ser definitivo.</p>
+        <p><strong>E o botão <span class="btn">Gerar contrato</span> não aparece mais.</strong> Ele aparecia, e o sistema aceitava que a recepção fechasse um contrato de R$ 5.000,00 — este manual pedia que você não clicasse. O menu <span class="btn">Contratos</span> saiu do seu perfil; a decisão de fechar é de quem vendeu, e agora o sistema concorda.</p>
+      </div>
+
       <div class="fala aviso">
-        <span class="rotulo">Duas surpresas honestas</span>
-        <p><strong>Você cadastra a noiva e não consegue corrigi-la depois.</strong> Errou um dígito do WhatsApp? Não há <span class="btn">Editar dados</span> no seu perfil — quem conserta é a vendedora ou o Renato. Confira antes de salvar.</p>
-        <p><strong>E o botão <span class="btn">Gerar contrato</span> aparece para você.</strong> Orçamentos e Contratos abrem no seu menu, e o sistema aceita que a recepção feche um contrato. <strong>Não é o seu trabalho</strong> — quem fecha contrato é quem vendeu. Está registrado para ser corrigido; até lá, não clique.</p>
+        <span class="rotulo">O orçamento você lê, e não move</span>
+        <p><span class="btn">Orçamentos</span> continua no seu menu, de propósito: quando a noiva liga perguntando <em>“quanto ficou mesmo?”</em>, a resposta tem que estar na sua mão.</p>
+        <p>Mas <strong>Aprovar</strong>, <strong>Recusar</strong> e <strong>gerar o link da proposta</strong> não aparecem para você. Não é desconfiança: aprovar <strong>congela o preço</strong> que o contrato vai cobrar. Quem montou a proposta é quem sabe se ela está pronta para ir.</p>
       </div>
     </section>
 
@@ -470,9 +487,9 @@
 
       <p><strong>A Origem nasce vazia de propósito</strong>, e é o campo que mais vale acertar: é ele que responde <em>de onde vêm as noivas que fecham</em>. Quem atendeu o telefone é quem sabe — depois ninguém mais sabe. Um palpite estraga esse número para sempre.</p>
 
-      <div class="fala aviso">
-        <span class="rotulo">Confira antes de salvar</span>
-        <p>Você <strong>não consegue editar</strong> a ficha depois. O WhatsApp errado só se conserta pedindo à vendedora — e é o número pelo qual a loja vai confirmar a prova dela.</p>
+      <div class="fala">
+        <span class="rotulo">Errou? Dá para consertar</span>
+        <p>Desde 12/08/2026 a ficha abre para você em <span class="btn">Editar dados</span> — inclusive o WhatsApp, que é o número pelo qual a loja vai confirmar a prova dela. Ainda assim, confira na hora: quem está com a noiva ao telefone é você, e depois ninguém mais tem como perguntar.</p>
       </div>
 
       <p>Salvou, o sistema abre a ficha dela direto e confirma: <em>“Noiva adicionada”</em>. Dali você já pode <span class="btn">Agendar atendimento</span>.</p>
@@ -546,12 +563,14 @@
     </section>
 
     <section id="verdade">
-      <h2>Duas coisas a saber, e não são detalhe</h2>
+      <h2>Duas coisas que este manual dizia, e deixaram de ser verdade</h2>
+      <p class="resumo">Ficam escritas porque quem leu a versão anterior precisa saber que mudou — e porque as duas mudaram por causa deste manual.</p>
       <ul>
-        <li><strong>Você cadastra a noiva e não a edita.</strong> É o desenho do perfil hoje, e a consequência prática é uma só: <strong>confira o WhatsApp antes de salvar</strong></li>
-        <li><strong>O botão <span class="btn">Gerar contrato</span> aparece para você e funciona.</strong> Não deveria — contrato é de quem vende. Está registrado para conserto; até lá, a regra é sua: não clique</li>
+        <li><strong>“Você cadastra a noiva e não a edita.”</strong> Era assim até 12/08/2026, e a consequência era um WhatsApp errado que só a vendedora consertava. <strong>Agora você edita a ficha</strong>, inclusive o telefone</li>
+        <li><strong>“O botão <span class="btn">Gerar contrato</span> aparece para você e funciona. Não deveria.”</strong> Não aparece mais: contrato virou um acesso separado, e ele não é seu. Aproveitou-se a mesma correção para tirar <span class="btn">Aprovar</span> e <span class="btn">Recusar</span> proposta — aprovar congela o preço que o contrato cobra, e essa é a mesma decisão vista um passo antes</li>
       </ul>
-      <p>Se algum dos dois mudar, este manual muda junto.</p>
+      <p>As duas foram achadas <strong>ao escrever este manual</strong>: descrever o que a pessoa vê obriga a andar por onde ela anda, e é aí que a diferença entre o que o sistema faz e o que ele deveria fazer aparece.</p>
+      <p>Se alguma coisa daqui mudar, este manual muda junto.</p>
     </section>
 
   </main>

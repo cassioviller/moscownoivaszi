@@ -20,7 +20,8 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
 - `pnpm --filter @workspace/db run push` — aplica o schema no banco (dev)
 - **Configurar um ateliê do zero** (E147): `cd artifacts/api-server &&
   ./node_modules/.bin/tsx src/scripts/seed.ts`. Cria só o que NÃO é trabalho da
-  loja — 4 perfis, a dona, 3 cabines, horário, 9 atributos de catálogo (66
+  loja — **5 perfis** (a Costureira nasceu no E172), a dona, 3 cabines,
+  horário, 9 atributos de catálogo (66
   opções, com **Tipo de peça** e **Cor** desde o E149), a escada de comissão e
   4 recorrências —, é **idempotente e nunca
   sobrescreve** (ids derivados da loja + `onConflictDoNothing`), e imprime o que
@@ -476,6 +477,17 @@ rode o codegen.
   fila de wa.me pronta (confirmação carimba `confirmadoEm`). E83: o poll e as
   telas do dia pedem `GET /atendimentos?de=&ate=` (janela por dia local), não
   a agenda inteira; a fila usa parcelas ABERTAS e orçamentos ENVIADOS.
+- **Permissão é MÓDULO × AÇÃO, e são oito módulos** (E172):
+  `leads · orcamentos · contratos · agenda · vestidos · financeiro · comissao ·
+  admin`, cada um com `{ver, criar, editar}`. Até 2026-08-12 eram seis, e
+  `leads` governava sozinho a ficha da noiva, o orçamento E o contrato — quem
+  cadastrava a noiva assinava o contrato de R$ 5.000,00 dela. **Módulo × ação
+  não tem grão mais fino que isto: o que precisa se separar vira módulo.**
+  Chave ausente é fail-closed (`normalizarAcessos`), então **módulo novo exige
+  migração** para as bases que já existem — o seed é idempotente e não reescreve
+  perfil que já está lá. Os cinco perfis semeados estão em
+  `configuracao-inicial.ts:110`; a régua que os exercita como PESSOA (login de
+  verdade, resposta HTTP real) é `e172-perfis-por-papel-api.test.ts`.
 - **Multi-loja** — tudo é escopado por loja; superadmin tem bypass e o console
   consolidado da rede (E76). O perfil Admin é flag `perfis.sistema` (E80) —
   o servidor recusa PATCH/DELETE dele. Gerir equipe é ato sobre a tabela GLOBAL

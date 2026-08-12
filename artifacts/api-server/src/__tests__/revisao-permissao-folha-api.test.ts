@@ -35,14 +35,18 @@ describe("Quem pode editar recebe o Pix", () => {
    * lead novo. `{ver, criar: false, editar: true}` é estado válido — é assim
    * que `normalizarAcessos` o reconcilia — e era o que travava.
    *
-   * ANTES: o `router.use("/lojas/:lojaId/parcelas", requireModulo("leads"))`
-   * roda ANTES do guard da rota e derivava `criar` do POST. Receber uma parcela
-   * passava a exigir `leads.criar` E `leads.editar`: a gerente clicava em
+   * ANTES: o `router.use("/lojas/:lojaId/parcelas", requireModulo(…))` roda
+   * ANTES do guard da rota e derivava `criar` do POST. Receber uma parcela
+   * passava a exigir `criar` E `editar` no mesmo módulo: a gerente clicava em
    * Receber com os R$ 700 do Pix na mão e levava
    * `403 {error: "ACESSO_NEGADO_MODULO", acao: "criar"}` — culpando uma ação
    * que ela não estava tentando fazer. O dinheiro ficava fora do sistema.
+   *
+   * E172: o módulo da parcela deixou de ser `leads` e passou a ser
+   * `contratos` — a tese deste teste é a DERIVAÇÃO DA AÇÃO, e ela não muda de
+   * lado nenhum; o que muda é em qual caixa a gerente precisa do `editar`.
    */
-  async function comEditarSemCriar(modulo: "leads" | "financeiro" | "vestidos" | "agenda") {
+  async function comEditarSemCriar(modulo: "leads" | "contratos" | "financeiro" | "vestidos" | "agenda") {
     const fx = await criarFixture();
     await db
       .update(perfisTable)
@@ -52,7 +56,7 @@ describe("Quem pode editar recebe o Pix", () => {
   }
 
   it("a gerente com `editar` e sem `criar` registra o recebimento da parcela", async () => {
-    const { fx, agent } = await comEditarSemCriar("leads");
+    const { fx, agent } = await comEditarSemCriar("contratos");
     try {
       const lead = await criarLead(fx);
       const contrato = await criarContrato(fx, {

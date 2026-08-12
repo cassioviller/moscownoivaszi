@@ -133,12 +133,13 @@ describe("varredura — o menu que o manual promete é o menu que o perfil abre"
   /**
    * O piso. Conjunto vazio aprova tudo em silêncio, que é a falha mais cara de
    * uma sonda: verde por não ter olhado. Medido em 2026-08-12: **5 manuais**,
-   * **19 itens de menu** e **4 perfis semeados**.
+   * **19 itens de menu** e **5 perfis semeados** — o quinto é a Costureira, que
+   * o E172 fez nascer (S-O36).
    */
   it("olha para manuais, itens e perfis — não para conjuntos vazios", () => {
     expect(arquivos.length).toBeGreaterThanOrEqual(5);
     expect(itens.length).toBeGreaterThanOrEqual(15);
-    expect(perfis.size).toBeGreaterThanOrEqual(4);
+    expect(perfis.size).toBeGreaterThanOrEqual(5);
   });
 
   it("todo perfil citado por um manual é um perfil que o sistema semeia", () => {

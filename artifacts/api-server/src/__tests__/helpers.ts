@@ -62,17 +62,34 @@ export async function criarFixture(): Promise<Fixture> {
   // FONTE que a S-D26 mandou fechar: qualquer UPDATE no banco seria desfeito
   // pela passada seguinte. `true` valia ver+criar+editar, e é isso que se
   // escreve por extenso agora (a semântica não muda um bit).
+  //
+  // E172: `orcamentos` e `contratos` entraram nos dois. A fixture descreve a
+  // VENDEDORA — quem vende, aprova a proposta, fecha contrato e recebe a
+  // parcela na mão da noiva (a decisão B9 de 2026-07-27, agora com nome
+  // próprio) —, e sem estas chaves a suíte passaria a medir um 403 de permissão
+  // em vez do comportamento que ela existe para pregar: **41 testes de
+  // orçamento** caíram assim quando `orcamentos` saiu de `leads`, e 92 de
+  // contrato e parcela cairiam pelo mesmo motivo.
   const TUDO = { ver: true, criar: true, editar: true };
   await db.insert(perfisTable).values([
     {
       id: perfilId,
       nome: `Perfil Teste ${sufixo}`,
-      acessosModulos: { leads: TUDO, vestidos: TUDO, agenda: TUDO },
+      acessosModulos: { leads: TUDO, orcamentos: TUDO, contratos: TUDO, vestidos: TUDO, agenda: TUDO },
     },
     {
       id: perfilAdminId,
       nome: `Perfil Admin Teste ${sufixo}`,
-      acessosModulos: { leads: TUDO, vestidos: TUDO, agenda: TUDO, admin: TUDO, financeiro: TUDO, comissao: TUDO },
+      acessosModulos: {
+        leads: TUDO,
+        orcamentos: TUDO,
+        contratos: TUDO,
+        vestidos: TUDO,
+        agenda: TUDO,
+        admin: TUDO,
+        financeiro: TUDO,
+        comissao: TUDO,
+      },
     },
   ]);
 

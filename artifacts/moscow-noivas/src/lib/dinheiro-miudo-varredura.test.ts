@@ -128,11 +128,15 @@ describe("varredura: a tela de orçamento e o dinheiro miúdo", () => {
    * repositório nomeia como real — criava o orçamento e não conseguia pôr uma
    * linha nele. O precedente é `contratos/[id].tsx`, que separa
    * `podeCriarParcela` de `podeEditar` desde o E115.
+   *
+   * E172: a AÇÃO que se cobra aqui é a mesma; o MÓDULO passou de `leads` para
+   * `orcamentos`, porque a proposta saiu de dentro da carteira de noivas
+   * (`api-server/src/lib/permissoes.ts:21`).
    */
   it("O11 · a tela distingue criar de editar, como o servidor", () => {
     const texto = fonteSemComentarios(ORCAMENTO);
     expect(
-      /podeNoModulo\(\s*acessosModulos\s*,\s*"leads"\s*,\s*"criar"\s*\)/.test(texto),
+      /podeNoModulo\(\s*acessosModulos\s*,\s*"orcamentos"\s*,\s*"criar"\s*\)/.test(texto),
       "a tela de orçamento só pergunta por `editar` — quem tem `criar` sem `editar` " +
         "não vê o formulário de item que o servidor aceitaria (O11)",
     ).toBe(true);

@@ -55,8 +55,19 @@ export function moduloLiberado(acesso: unknown): boolean {
 export const MODULOS_ROTULOS: Record<string, string> = {
   // E92/E16: "Leads" era a única tela do app que chamava a noiva de lead — e
   // logo NA tela onde se decide quem vê o quê. O rótulo agora diz o alcance
-  // real do módulo: ele governa três itens de menu, não um.
-  leads: "Noivas, orçamentos e contratos",
+  // real do módulo.
+  //
+  // E172: eram TRÊS itens de menu ("Noivas, orçamentos e contratos") e passaram
+  // a ser UM. O rótulo não é decoração aqui — ele era a única linha do
+  // repositório que dizia, para quem monta um perfil, que marcar esta caixa
+  // entrega o contrato junto. Dizia, e ninguém leu (S-O40).
+  //
+  // Agora cada caixa da matriz governa uma coisa só, e o nome dela é essa
+  // coisa. Quem monta um perfil de recepção marca "A ficha da noiva" inteira e
+  // deixa as outras duas fechadas — e o que ele leu é o que vai acontecer.
+  leads: "A ficha da noiva",
+  orcamentos: "Orçamentos e propostas",
+  contratos: "Contratos e parcelas",
   agenda: "Agenda",
   vestidos: "Vestidos",
   financeiro: "Financeiro",
@@ -75,9 +86,11 @@ export function resumoAcessos(acessos: Acessos): string {
     .concat(Object.keys(acessos).filter((m) => !(m in MODULOS_ROTULOS)))
     .filter((m) => moduloLiberado(acessos[m]))
     .map((m) => MODULOS_ROTULOS[m] ?? m);
-  // Separador " · " e não ", ": desde o E92/E16 o rótulo de `leads` tem
-  // vírgulas dentro ("Noivas, orçamentos e contratos"), e uma lista de itens
-  // com vírgula separada por vírgula não diz onde um termina.
+  // Separador " · " e não ", ": os rótulos têm CONJUNÇÃO dentro ("Noivas e
+  // orçamentos", "Contratos e parcelas"), e uma lista separada por vírgula
+  // dessas não diz onde um item termina — lê-se como quatro coisas, não duas.
+  // (Até o E172 o motivo era mais forte ainda: o rótulo de `leads` tinha uma
+  // vírgula dentro, "Noivas, orçamentos e contratos".)
   return nomes.join(" · ") || "sem acessos";
 }
 

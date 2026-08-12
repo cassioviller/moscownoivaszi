@@ -27,7 +27,9 @@ describe("Prévia do expurgo LGPD (E128)", () => {
 
   beforeAll(async () => {
     f = await criarFixture();
-    agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    // E172: prévia e expurgo pedem `admin` desde que a porta se alinhou com a
+    // tela; a vendedora da fixture não tem o módulo.
+    agent = await loginComLoja(f.superAdminEmail, f.lojaId);
 
     const a1 = await criarLead(f);
     const a2 = await criarLead(f);

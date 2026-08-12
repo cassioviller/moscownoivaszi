@@ -163,7 +163,21 @@ async function criarVersaoEnviada(tx: Cliente, lojaId: string, orcamentoId: stri
 }
 
 router.use(requireSessaoComLoja);
-router.use("/lojas/:lojaId/orcamentos", requireModulo("leads"));
+/**
+ * E172/S-O40 — a proposta tem módulo próprio desde 2026-08-12.
+ *
+ * Esta linha dizia `requireModulo("leads")`, e o efeito era que a AÇÃO que
+ * corrige o telefone de uma noiva era a mesma que **aprova a proposta de
+ * R$ 5.000,00 dela**: `aprovar`, `recusar` e `link` pedem `editar`, e `editar`
+ * em `leads` é o que a Recepção precisa para consertar o que digitou (S-O41).
+ *
+ * O contrato saiu de `leads` no mesmo commit, e fechar só ele teria sido meio
+ * conserto: o aceite congela a versão que o gate do E115 confere contra o
+ * contrato, então **quem aprova decide o preço que o contrato cobra**. Medido
+ * antes de mexer, com o perfil novo da Recepção: `POST /aprovar` respondia
+ * **404**, não 403 — ela atravessava o gate.
+ */
+router.use("/lojas/:lojaId/orcamentos", requireModulo("orcamentos"));
 
 router.get("/lojas/:lojaId/orcamentos", async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
@@ -441,7 +455,7 @@ router.get("/lojas/:lojaId/orcamentos/aceitos-sem-contrato", async (req, res): P
  */
 router.post(
   "/lojas/:lojaId/orcamentos/:orcamentoId/desfazer-aceite",
-  requireModulo("leads", "editar"),
+  requireModulo("orcamentos", "editar"),
   async (req, res): Promise<void> => {
     const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
 
@@ -522,7 +536,7 @@ router.post(
  */
 router.post(
   "/lojas/:lojaId/orcamentos/:orcamentoId/reservar",
-  requireModulo("leads", "criar"),
+  requireModulo("orcamentos", "criar"),
   async (req, res): Promise<void> => {
     const { lojaId, orcamentoId } = req.params as { lojaId: string; orcamentoId: string };
     // V12: `casamentoData: null` atravessa o zod como 01/01/1970 — a mesma
@@ -1119,7 +1133,7 @@ router.delete("/lojas/:lojaId/orcamentos/itens/:itemId", async (req, res): Promi
  * validade recomeça. Gerar link de um RASCUNHO marca ENVIADO — compartilhar
  * É enviar; RECUSADO não gera (não há o que a noiva rever de um não).
  */
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("orcamentos", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
 
@@ -1232,7 +1246,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/link", requireModulo("leads"
   res.json(CriarLinkOrcamentoResponse.parse({ token, expiraEm }));
 });
 
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("orcamentos", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({
@@ -1315,7 +1329,7 @@ router.post("/lojas/:lojaId/orcamentos/:orcamentoId/aprovar", requireModulo("lea
   res.status(204).send();
 });
 
-router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/orcamentos/:orcamentoId/recusar", requireModulo("orcamentos", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const orcamentoId = req.params.orcamentoId as string;
   const orcamento = await db.query.orcamentosTable.findFirst({

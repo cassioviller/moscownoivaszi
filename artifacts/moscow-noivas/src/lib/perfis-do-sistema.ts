@@ -2,9 +2,9 @@
  * S-D9 — a notícia certa quando a lista de perfis vem vazia.
  *
  * `GET /admin/perfis` devolve a lista do SISTEMA, não a da loja
- * (`admin.ts:221-228`, sem filtro de `lojaId`). Ela nasce com quatro linhas na
- * configuração inicial (`configuracao-inicial.ts:85-110` — Admin,
- * Proprietária, Vendedora e Recepção) e o `DELETE` recusa o perfil do sistema
+ * (`admin.ts:221-228`, sem filtro de `lojaId`). Ela nasce com cinco linhas na
+ * configuração inicial (Admin, Proprietária, Vendedora, Recepção e Costureira —
+ * esta última desde o E172) e o `DELETE` recusa o perfil do sistema
  * (`admin.ts:289-293`). Para uma sessão comum a lista vazia é impossível por
  * construção: `getPermissoes` faz `innerJoin` de `usuarios_lojas` com `perfis`
  * (`auth.ts:152-166`), então quem chegou à tela tem um perfil E ele está na
@@ -19,6 +19,7 @@
 export const SEM_PERFIS_TITULO = "Esta instalação está sem perfis de acesso";
 
 export const SEM_PERFIS_DESCRICAO =
-  "Os quatro perfis que nascem com o sistema — Admin, Proprietária, Vendedora e " +
-  "Recepção — não estão nesta base, e nenhuma tela cria perfil. Sem eles não há " +
-  "o que personalizar: quem administra o sistema precisa rodar a configuração inicial.";
+  "Os cinco perfis que nascem com o sistema — Admin, Proprietária, Vendedora, " +
+  "Recepção e Costureira — não estão nesta base, e nenhuma tela cria perfil. Sem " +
+  "eles não há o que personalizar: quem administra o sistema precisa rodar a " +
+  "configuração inicial.";

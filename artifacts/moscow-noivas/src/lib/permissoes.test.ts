@@ -65,17 +65,24 @@ describe("moduloLiberado", () => {
 describe("resumoAcessos", () => {
   it("rotula os módulos liberados, nunca a chave crua, na ordem canônica", () => {
     // E92/E16: o módulo se chamava "Leads" na tela de Permissões enquanto a
-    // sidebar, a ficha e os toasts diziam "Noivas" — e ele governa TRÊS itens
-    // de menu, o que o nome de antes não contava.
-    expect(resumoAcessos({ financeiro: VER, leads: TUDO })).toBe(
-      "Noivas, orçamentos e contratos · Financeiro",
+    // sidebar, a ficha e os toasts diziam "Noivas" — e ele governa mais de um
+    // item de menu, o que o nome de antes não contava.
+    //
+    // E172: eram TRÊS itens de menu e passou a ser UM — a proposta e o contrato
+    // saíram daqui e viraram módulos (`lib/permissoes.ts:21`). O rótulo diz
+    // agora exatamente o que a caixa governa: a ficha da noiva.
+    expect(resumoAcessos({ financeiro: VER, leads: TUDO })).toBe("A ficha da noiva · Financeiro");
+    // A ordem canônica é a de `MODULOS_ROTULOS`, e ela põe a proposta e o
+    // contrato logo depois da ficha — que é a ordem em que a venda acontece.
+    expect(resumoAcessos({ financeiro: VER, contratos: TUDO, orcamentos: TUDO, leads: TUDO })).toBe(
+      "A ficha da noiva · Orçamentos e propostas · Contratos e parcelas · Financeiro",
     );
   });
 
   it("omite módulo sem nenhuma ação — não conta o objeto como truthy", () => {
     // O bug do D8: `.filter(([, v]) => v)` mostrava um módulo NADA (objeto
     // sempre truthy). Agora ele some.
-    expect(resumoAcessos({ financeiro: NADA, leads: VER })).toBe("Noivas, orçamentos e contratos");
+    expect(resumoAcessos({ financeiro: NADA, leads: VER })).toBe("A ficha da noiva");
   });
 
   it("perfil sem nenhum acesso vira 'sem acessos'", () => {

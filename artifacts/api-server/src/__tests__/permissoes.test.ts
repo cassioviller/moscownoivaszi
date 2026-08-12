@@ -65,11 +65,39 @@ describe("normalizarAcessos — coerência criar/editar ⇒ ver", () => {
 });
 
 describe("normalizarAcessos — ponte do formato plano antigo", () => {
+  /**
+   * Os seis módulos que existiam quando o formato PLANO era o formato — a lista
+   * é literal de propósito. `MODULOS` cresce (o E172 lhe acrescentou
+   * `contratos`), e uma linha gravada em 2025 não pode ser cobrada por um
+   * módulo que nasceu em 2026: o teste passaria a medir o futuro contra o
+   * passado.
+   */
+  const MODULOS_DO_FORMATO_PLANO = ["leads", "agenda", "vestidos", "financeiro", "comissao", "admin"] as const;
+
   it("`true` era acesso ao módulo inteiro e continua sendo", () => {
     // O perfil Admin gravado antes da mudança não pode ser trancado para fora.
     const admin = { admin: true, leads: true, agenda: true, comissao: true, vestidos: true, financeiro: true };
     const acessos = normalizarAcessos(admin);
-    for (const m of MODULOS) expect(acessos[m]).toEqual(TUDO);
+    for (const m of MODULOS_DO_FORMATO_PLANO) expect(acessos[m]).toEqual(TUDO);
+  });
+
+  /**
+   * E172 — **o preço de um módulo NOVO, escrito onde ele se paga.**
+   *
+   * `contratos` nasceu em 2026-08-12, depois de toda linha que já estava no
+   * banco. A regra 1 deste módulo é fail-closed ("módulo novo não nasce
+   * liberado porque ninguém lembrou de atualizar as linhas antigas"), e o
+   * resultado é que **numa instalação que já existe, a Vendedora para de fechar
+   * contrato até a migração rodar** — o `acessosModulos` dela não tem a chave.
+   *
+   * Isso não é defeito: é a fail-closed funcionando, e é preferível ao inverso
+   * (um módulo novo abrindo sozinho para quem nunca o recebeu). Mas é uma
+   * afirmação sobre o mundo, e ela tem endereço:
+   * `docs/migracoes/2026-08-12-e172-modulo-contratos.sql`.
+   */
+  it("módulo que nasceu depois da linha vem FECHADO — é o que a migração paga", () => {
+    const vendedoraDeOntem = { leads: true, agenda: true, vestidos: true };
+    expect(normalizarAcessos(vendedoraDeOntem).contratos).toEqual(NADA);
   });
 
   it("`false` continua sendo nada", () => {

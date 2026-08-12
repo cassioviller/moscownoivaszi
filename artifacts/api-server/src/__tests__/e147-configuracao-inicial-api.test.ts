@@ -116,12 +116,15 @@ describe("E147 — aplicar a configuração inicial numa loja nova", () => {
     });
   });
 
-  it("os quatro perfis existem, e um só é do sistema", async () => {
+  it("os cinco perfis existem, e um só é do sistema", async () => {
+    // Eram quatro até o E172 dar à costureira um perfil próprio (S-O36). A
+    // contagem sai de `PERFIS_PADRAO` de propósito: número literal aqui viraria
+    // a segunda grafia da mesma lista, e a régua 26 diz onde isso termina.
     const perfis = await db
       .select()
       .from(perfisTable)
       .where(inArray(perfisTable.id, PERFIS_PADRAO.map((p) => p.id)));
-    expect(perfis).toHaveLength(4);
+    expect(perfis).toHaveLength(PERFIS_PADRAO.length);
     expect(perfis.filter((p) => p.sistema).map((p) => p.nome)).toEqual(["Admin"]);
   });
 

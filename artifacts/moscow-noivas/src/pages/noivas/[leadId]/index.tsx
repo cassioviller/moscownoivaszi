@@ -162,6 +162,18 @@ export default function NoivaDetalhe() {
   // não via o atalho do caminho mais percorrido do app, e {ver, editar} via,
   // navegava e era barrada na página seguinte.
   const podeAgendar = podeNoModulo(acessosModulos, "agenda", "criar");
+  /**
+   * E172 — "Novo orçamento" está NA ficha da noiva e não é da ficha da noiva.
+   *
+   * O botão pendia de `podeEditar` (`leads.editar`), e errava nos dois eixos:
+   * o módulo passou a ser `orcamentos` e a ação sempre foi `criar`. Deixado
+   * como estava, a Recepção — que ganhou `leads.editar` para corrigir o
+   * telefone que digitou (S-O41) — veria o botão e levaria 403 do servidor.
+   *
+   * É o S-O40 de novo, uma camada abaixo, e quem o pegou foi a varredura do
+   * S36: *"gateia por [agenda,leads] e escreve em [orcamentos]"*.
+   */
+  const podeCriarOrcamento = podeNoModulo(acessosModulos, "orcamentos", "criar");
 
   const novoOrcamento = async () => {
     try {
@@ -537,7 +549,7 @@ export default function NoivaDetalhe() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between gap-3">
               <span>Orçamentos</span>
-              {podeEditar && (
+              {podeCriarOrcamento && (
                 <Button
                   size="sm"
                   variant="outline"

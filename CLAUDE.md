@@ -99,7 +99,7 @@ para o documento que manda.
 
    | Trilha | Rastreador | Estado |
    |---|---|---|
-   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md`; conte lá** |
+   | **Ótica dos papéis** | **`2026-08-11-otica-dos-papeis/`** | **EXECUTADA — 149 achados em 14 épicos (E158–E171), as quatro faixas fechadas, **mais o E172** que os manuais fizeram nascer. O que resta dela são as sobras S-O da tabela do `EXECUCAO.md`; conte lá** |
    | Revisão max | `2026-08-10-revisao-max/` | fechada como fila — 18 sobras da rodada 1 (16 fechadas) + 53 da rodada 2 (10 épicos). **Resta 1 🟡**: a S-M17, que espera dados de banco real. A **S-M10 fechou no E169** (`fe8afdd`) |
    | Rodada 6 | `2026-07-25-rodada-6/` | fechada — **ZERO sobras abertas.** Era o backlog mais pesado do repositório |
    | Rodada 7 (design) | `2026-07-30-rodada-7-design/` | fechada — **ZERO sobras abertas** |
@@ -110,8 +110,32 @@ para o documento que manda.
    S-A2 (as fotos que faltam do caderno) e S-A27 (classificar as peças com a
    dona; o acervo tem 132 peças do legado em `moscow_base`, todas sem "Tipo de
    peça"). Toda linha de código aberta hoje está na tabela de Sobras da trilha
-   da ótica dos papéis — **conte lá, são 33** (2026-08-12: as quatro faixas
-   fechadas, mais o que os manuais acharam e o que eles fizeram fechar).
+   da ótica dos papéis — **conte lá, são 33** (2026-08-12, contadas: as quatro
+   faixas fechadas, mais o que os manuais acharam, mais o **E172** que eles
+   fizeram nascer — ele riscou cinco e abriu duas).
+
+   **O E172 é o épico que não estava no plano, e é o de maior alcance depois do
+   E162**: os manuais acharam quatro sobras que só se resolviam decidindo, a
+   dona decidiu as três de perfil no dia 12, e o conserto **mudou o eixo de
+   permissão do sistema** — `orcamentos` e `contratos` saíram de dentro de
+   `leads`, que virou "a ficha da noiva", e nasceu o perfil **Costureira**.
+   Duas lições, e as duas são de medição:
+
+   - **Fechar uma porta sem medir a porta ao lado dela é meio conserto.** O
+     plano mandava tirar o contrato de `leads`. Feito só isso, a Recepção — que
+     ganhou `leads.editar` para corrigir um telefone — passava a **aprovar o
+     orçamento**, medido em **404, não 403**. E aprovar congela a versão que o
+     contrato confere: quem aprova decide o preço que ele cobra. O contrato e o
+     aceite eram a mesma decisão vista em dois pontos, e só um estava na sobra.
+   - **Duas réguas pegaram o que a minha leitura não pegou.** A
+     `s36-gate-da-tela-unit` acusou `noivas/[leadId]/index.tsx — gateia por
+     [agenda,leads] e escreve em [orcamentos]` (o botão "Novo orçamento", o
+     S-O40 uma camada abaixo), e a `varredura-manuais` obrigou os manuais da
+     recepção e da costureira a serem reescritos no mesmo commit. **A migração
+     foi RODADA, não só escrita** — `UPDATE 20`/`UPDATE 4`/`UPDATE 1`, segunda
+     passada toda zero —, e quem cobrou isso foi o E2E: `12-permissoes`
+     reprovava porque o banco de dev tinha os perfis semeados antes dos módulos
+     novos, e o seed é idempotente. **O E2E encenou o cliente que já instalou.**
    **O plano dos manuais está EXECUTADO** — as quatro entregas, os **cinco
    documentos** em `docs/manuais/` (`vendedora`, `costureira`, `noiva`,
    `recepcao`, `proprietario`), cada um publicado como página e com o endereço
@@ -132,8 +156,10 @@ para o documento que manda.
    "Portal vencido" aparecia na Cobrança (aparece em Mensagens). Os dois vieram
    de deduzir em vez de ler, e é a mesma lição da regra 22 na direção da
    documentação. O manual do proprietário fecha com **"O que espera uma decisão
-   sua"**: as quatro pendências que não se resolvem escrevendo (S-O36, S-O37,
-   S-O39, S-O40/S-O41), na língua de quem decide. A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
+   sua"**: eram quatro pendências que não se resolvem escrevendo (S-O36, S-O37,
+   S-O39, S-O40/S-O41), na língua de quem decide — **três viraram o E172 no dia
+   seguinte, e só a S-O39 (o link de 7 dias contra a proposta de 30) continua
+   esperando o Renato.** A tabela CRESCEU no fim da trilha, e é o que se espera de uma que
    termina em varredura: o E171 tornou contável o que ninguém contava. O parágrafo abaixo é o fim de 2026-08-07, e ele descreve
    como se chegou ao zero de que a revisão max partiu: nove fechos de código, a dívida do S-A17
    paga, a folha respondida (doze por decisão escrita) e as duas decisões que
@@ -170,7 +196,7 @@ para o documento que manda.
    ainda está em dia — esta linha envelhece a cada commit, e já envelheceu
    cinco vezes.
 
-   Hoje a régua é **API 1239 · frontend 611 · E2E 171 · typecheck verde em 5
+   Hoje a régua é **API 1257 · frontend 611 · E2E 171 · typecheck verde em 5
    projetos — o typecheck passou a incluir os 68 arquivos de `e2e/`** (S-D23,
    `acdd9b3`) **e o `scripts/`** (`60adc7c`), que nenhum `tsconfig` cobria. O
    `scripts/tsconfig.json` ganhou `lib: DOM` em 2026-08-12, com o custo

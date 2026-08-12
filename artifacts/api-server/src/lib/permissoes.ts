@@ -18,7 +18,51 @@
  *    a lista é um estado incoerente que a interface não sabe desenhar.
  */
 
-export const MODULOS = ["leads", "agenda", "vestidos", "financeiro", "comissao", "admin"] as const;
+/**
+ * Os módulos, e por que `orcamentos` e `contratos` deixaram de morar dentro de
+ * `leads` (E172).
+ *
+ * Até 2026-08-12 o módulo `leads` governava três itens de menu — o próprio
+ * rótulo da tela dizia "Noivas, orçamentos e contratos" — e com isso **quem
+ * cadastrava a noiva assinava o contrato dela**: `POST /contratos` não declara
+ * ação, o guard de prefixo deriva `criar` do método, e a Recepção tinha
+ * `leads: {ver, criar}`. O botão "Gerar contrato" da tela do orçamento aparecia
+ * para ela e funcionava, num contrato de R$ 5.000,00 (S-O40).
+ *
+ * O conserto não cabia no eixo das AÇÕES: a Recepção precisa de `editar` para
+ * corrigir o telefone que ela mesma digitou (S-O41), e `editar` em `leads`
+ * traria o contrato junto de novo. **Módulo × ação não tem grão mais fino que
+ * isto** — então o que precisa se separar vira MÓDULO, e é o que aconteceu
+ * duas vezes no mesmo dia:
+ *
+ * - `contratos` levou o contrato e as PARCELAS dele (`contratos.ts:63,98`);
+ * - `orcamentos` levou a proposta inteira (`orcamentos.ts:166`).
+ *
+ * O segundo é a lição mais cara do épico, e ela custou uma medição: fechar só
+ * o contrato deixava a Recepção **aprovando o orçamento**, que é o passo
+ * imediatamente anterior — `POST /orcamentos/:id/aprovar` pedia
+ * `leads: editar`, a mesma ação que corrige um telefone. Medido em 2026-08-12
+ * com o perfil novo: aprovar respondia **404**, não 403 — ela atravessava o
+ * gate e só não achava o id. O aceite congela a versão que o gate do E115
+ * confere contra o contrato: quem aprova decide o preço que o contrato cobra.
+ *
+ * A régua que fica: **fechar uma porta sem medir a porta ao lado dela é meio
+ * conserto.** O contrato e o aceite eram a mesma decisão vista em dois pontos.
+ *
+ * O que ficou em `leads` é a FICHA DA NOIVA — cadastro, funil, interesse,
+ * lookbook, histórico de contato e o acesso dela ao portal. É o que a Recepção
+ * cuida, e agora `leads` quer dizer exatamente isso.
+ */
+export const MODULOS = [
+  "leads",
+  "orcamentos",
+  "contratos",
+  "agenda",
+  "vestidos",
+  "financeiro",
+  "comissao",
+  "admin",
+] as const;
 export const ACOES = ["ver", "criar", "editar"] as const;
 
 export type Modulo = (typeof MODULOS)[number];
@@ -98,9 +142,16 @@ export function acaoDoMetodo(metodo: string): Acao {
  * a gerente com `{ ver, criar: false, editar }` — estado válido e comum, quem
  * revisa noiva cadastrada por outra sem abrir lead novo — não conseguia
  * registrar o Pix de R$ 700 pago no balcão, e a mensagem culpava "criar".
+ *
+ * E172/S-O24: `desfazer-aceite` era o `receber` outra vez, com outro nome. A
+ * rota declara `requireModulo("leads", "editar")` e o guard de prefixo derivava
+ * `criar` — então ela exigia as DUAS ações, e a gerente com `{ver, editar}` e
+ * sem `criar` levava 403 ao desfazer um aceite registrado por engano, que é
+ * exatamente o trabalho dela. O hífen no meio do verbo é o motivo de a
+ * varredura do E101 não a ter visto: ela procurava `/:id/<palavra>`.
  */
 export const POST_QUE_MUTA =
-  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar|marcar|enviar)$/;
+  /\/(cancelar|estornar|receber|pagar|cobrar|aprovar|recusar|reenviar|expurgo|contato|link|baixa|confirmar|remarcar|marcar|enviar|desfazer-aceite)$/;
 
 /**
  * POSTs que mutam mas cujo caminho termina em SUBSTANTIVO, não em verbo — a

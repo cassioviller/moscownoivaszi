@@ -17,6 +17,12 @@ const estado = lerEstado();
 // admin do seed é SUPERADMIN (bypass) — vê tudo, e há teste disso abaixo.
 const VENDEDORA = {
   leads: true,
+  // E172/S-O37: a proposta e o contrato saíram de dentro de `leads` e viraram
+  // módulos. A Vendedora segue aprovando orçamento e fechando contrato —
+  // decisão da dona em 2026-08-12, "é ela quem vende" —, e a diferença é que
+  // agora está escrito num lugar onde quem monta um perfil consegue ler.
+  orcamentos: true,
+  contratos: true,
   agenda: true,
   vestidos: true,
   financeiro: false,
@@ -29,6 +35,8 @@ const MODULOS = Object.keys(VENDEDORA) as Modulo[];
 // Um GET representativo por módulo (a ação "ver" de cada gate do backend).
 const PROBES: Record<Modulo, (lojaId: string) => string> = {
   leads: (id) => `/api/lojas/${id}/leads`,
+  orcamentos: (id) => `/api/lojas/${id}/orcamentos`,
+  contratos: (id) => `/api/lojas/${id}/contratos`,
   agenda: (id) => `/api/lojas/${id}/atendimentos`,
   vestidos: (id) => `/api/lojas/${id}/vestidos`,
   financeiro: (id) => `/api/lojas/${id}/financeiro/parcelas`,
@@ -36,9 +44,11 @@ const PROBES: Record<Modulo, (lojaId: string) => string> = {
   admin: (id) => `/api/lojas/${id}/equipe`,
 };
 
-// O menu item a item — inclusive os descasamentos CONSCIENTES (Orçamentos,
-// Contratos e Cobrança gateiam por `leads`; Reservas por `vestidos`) e os
-// itens sem módulo, sempre visíveis (Configurações, Minha comissão).
+// O menu item a item — inclusive os descasamentos CONSCIENTES (Reservas gateia
+// por `vestidos`) e os itens sem módulo, sempre visíveis (Configurações, Minha
+// comissão). Desde o E172 sobrou um descasamento só: Orçamentos e Contratos,
+// que eram os dois exemplos desta linha, passaram a ter módulo com o próprio
+// nome.
 const ITENS_MENU: Array<{ nome: string; modulo: Modulo | null }> = [
   { nome: "Seu dia", modulo: null },
   { nome: "Noivas", modulo: "leads" },
@@ -50,8 +60,8 @@ const ITENS_MENU: Array<{ nome: string; modulo: Modulo | null }> = [
   { nome: "Reservas", modulo: "vestidos" },
   { nome: "Vestidos", modulo: "vestidos" },
   { nome: "Catálogo", modulo: "vestidos" },
-  { nome: "Orçamentos", modulo: "leads" },
-  { nome: "Contratos", modulo: "leads" },
+  { nome: "Orçamentos", modulo: "orcamentos" },
+  { nome: "Contratos", modulo: "contratos" },
   { nome: "Financeiro", modulo: "financeiro" },
   { nome: "Comissões", modulo: "comissao" },
   { nome: "Minha comissão", modulo: null },

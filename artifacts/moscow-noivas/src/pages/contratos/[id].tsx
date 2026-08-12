@@ -136,12 +136,14 @@ export default function ContratoDetail() {
   const gerarPlano = useGerarPlanoParcelas();
   const estornar = useEstornarParcela();
   const remover = useRemoveParcela();
-  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  // E172: o módulo é `contratos`, não mais `leads` — contrato e parcela saíram
+  // da carteira de noivas e ganharam módulo próprio (`lib/permissoes.ts:21`).
+  const podeEditar = podeNoModulo(acessosModulos, "contratos", "editar");
   // E115 — gerar o plano é CRIAR parcelas, e o servidor cobra exatamente isso
   // (decisão escrita no E111: "criar parcela É criar"). O gate era `editar`:
   // a gerente sem `criar` via o formulário e levava 403 ao clicar, e quem tem
   // `criar` sem `editar` não via um formulário que o servidor aceitaria.
-  const podeCriarParcela = podeNoModulo(acessosModulos, "leads", "criar");
+  const podeCriarParcela = podeNoModulo(acessosModulos, "contratos", "criar");
 
   const parcelas = useMemo(
     () => [...(contrato?.parcelas ?? [])].sort((a, b) => a.numero - b.numero),

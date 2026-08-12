@@ -171,9 +171,9 @@ export default function Atendimentos() {
 
   // Atendimento é do módulo `agenda` no backend, não `leads`.
   const podeEditar = podeNoModulo(acessosModulos, "agenda", "editar");
-  // Orçamento é do módulo `leads` — o atalho pós-"Reservou" só aparece para
-  // quem pode criá-lo.
-  const podeCriarOrcamento = podeNoModulo(acessosModulos, "leads", "criar");
+  // Orçamento é do módulo `orcamentos` desde o E172 (era `leads`) — o atalho
+  // pós-"Reservou" só aparece para quem pode criá-lo.
+  const podeCriarOrcamento = podeNoModulo(acessosModulos, "orcamentos", "criar");
 
   // Situações válidas DESTA vista (abertas na fila, fechadas no histórico).
   const opcoesSituacao = historico

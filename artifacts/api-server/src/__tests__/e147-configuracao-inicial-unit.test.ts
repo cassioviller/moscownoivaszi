@@ -97,6 +97,7 @@ describe("E147 — os perfis padrão", () => {
     const vendedora = PERFIS_PADRAO.find((p) => p.nome === "Vendedora");
     const acessos = normalizarAcessos(vendedora?.acessos);
     expect(acessos.leads.ver).toBe(true);
+    expect(acessos.contratos.ver).toBe(true);
     expect(acessos.agenda.ver).toBe(true);
     expect(acessos.vestidos.ver).toBe(true);
     expect(acessos.financeiro.ver).toBe(false);
@@ -115,12 +116,48 @@ describe("E147 — os perfis padrão", () => {
     }
   });
 
-  it("Recepção marca a agenda inteira e não edita ficha nem preço", () => {
+  it("Recepção marca a agenda inteira, corrige a ficha que digitou, e não fecha contrato", () => {
+    // E172/S-O40+S-O41: era `leads: {ver, criar}` — o que a impedia de corrigir
+    // o telefone da noiva e, ao mesmo tempo, a deixava assinar o contrato dela.
     const acessos = normalizarAcessos(PERFIS_PADRAO.find((p) => p.nome === "Recepção")?.acessos);
     expect(acessos.agenda).toEqual({ ver: true, criar: true, editar: true });
-    expect(acessos.leads).toEqual({ ver: true, criar: true, editar: false });
+    expect(acessos.leads).toEqual({ ver: true, criar: true, editar: true });
+    expect(acessos.contratos).toEqual({ ver: false, criar: false, editar: false });
     expect(acessos.vestidos).toEqual({ ver: true, criar: false, editar: false });
     expect(acessos.financeiro.ver).toBe(false);
+  });
+
+  it("a Recepção LÊ a proposta e não a move (E172) — a porta ao lado do contrato", () => {
+    // `aprovar`, `recusar` e `link` pedem `editar`, que é a mesma ação que
+    // corrige um telefone. Fechar só o contrato deixava-a aprovando o
+    // orçamento — o passo em que o preço do contrato é congelado.
+    const acessos = normalizarAcessos(PERFIS_PADRAO.find((p) => p.nome === "Recepção")?.acessos);
+    expect(acessos.orcamentos).toEqual({ ver: true, criar: false, editar: false });
+  });
+
+  it("Costureira é a agenda, mais o acervo de leitura (E172/S-O36)", () => {
+    // Ela entrava como Recepção — o perfil mais fechado que concedia `agenda` —
+    // e levava a carteira de leads da loja inteira junto.
+    //
+    // O `vestidos` de leitura não é sobra: com `agenda` e nada mais, os dois
+    // botões da ficha de trabalho dela respondem 403 (`/reservas` e `/vestidos`
+    // gateiam por `vestidos`), e é lá que moram as provas e a movimentação da
+    // peça. Medido em 2026-08-12, antes da decisão da dona.
+    const acessos = normalizarAcessos(PERFIS_PADRAO.find((p) => p.nome === "Costureira")?.acessos);
+    expect(acessos.agenda).toEqual({ ver: true, criar: true, editar: true });
+    expect(acessos.vestidos).toEqual({ ver: true, criar: false, editar: false });
+    for (const modulo of MODULOS.filter((m) => m !== "agenda" && m !== "vestidos")) {
+      for (const acao of ACOES) {
+        expect(acessos[modulo][acao], `Costureira não pode ${acao} em ${modulo}`).toBe(false);
+      }
+    }
+  });
+
+  it("quem fecha contrato é quem vende — e agora tem nome (E172/S-O37)", () => {
+    // A decisão da dona em 2026-08-12: o poder é o mesmo de sempre; o que mudou
+    // é que ele deixou de vir embutido em `leads`, onde ninguém o encontrava.
+    const comContrato = PERFIS_PADRAO.filter((p) => normalizarAcessos(p.acessos).contratos.criar).map((p) => p.nome);
+    expect(comContrato).toEqual(["Admin", "Proprietária", "Vendedora"]);
   });
 
   it("nenhum perfil sobrevive à normalização com chave inventada", () => {

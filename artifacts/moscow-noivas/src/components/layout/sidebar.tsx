@@ -74,8 +74,8 @@ const grupos: { titulo?: string; itens: NavItem[] }[] = [
   {
     titulo: "Comercial",
     itens: [
-      { icon: FileText, label: "Orçamentos", href: "/orcamentos", modulo: "leads" },
-      { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "leads" },
+      { icon: FileText, label: "Orçamentos", href: "/orcamentos", modulo: "orcamentos" },
+      { icon: ScrollText, label: "Contratos", href: "/contratos", modulo: "contratos" },
       { icon: CircleDollarSign, label: "Financeiro", href: "/financeiro", modulo: "financeiro" },
       // F31/E103: a tela mais crítica do fechamento do mês NÃO estava na
       // sidebar nem na barra do hub — chegava-se a ela só por um botão

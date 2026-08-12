@@ -292,7 +292,21 @@ function condicaoDoExpurgo(lojaId: string, corte: Date) {
 // contagem só chegava no toast, DEPOIS do clique irreversível. Read-only de
 // verdade: um SELECT count, nenhuma escrita. Antes do :leadId para o path não
 // virar id.
-router.get("/lojas/:lojaId/leads/expurgo/previa", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+/**
+ * E172 — o expurgo é de ADMINISTRAÇÃO, e a tela já dizia isso.
+ *
+ * As duas rotas pediam `leads.editar` — a mesma ação que corrige um nome
+ * digitado errado —, enquanto a tela só as mostra sob `admin.ver`
+ * (`configuracoes/index.tsx:51`). É a regra 22 na letra: tela declara um
+ * módulo, porta pede outro, e ninguém pega isso lendo qualquer um dos dois.
+ *
+ * Ficou de pé enquanto `leads.editar` era raro. O E172 deu `editar` à Recepção
+ * para ela corrigir o telefone da noiva (S-O41), e no mesmo gesto lhe daria o
+ * poder de anonimizar, de forma irreversível, a carteira inteira de leads
+ * perdidos da loja. O alinhamento não é higiene: é a condição de a S-O41 poder
+ * ser fechada sem abrir um buraco maior.
+ */
+router.get("/lojas/:lojaId/leads/expurgo/previa", requireModulo("admin", "ver"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const query = PreviaExpurgoLeadsPerdidosQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -311,7 +325,7 @@ router.get("/lojas/:lojaId/leads/expurgo/previa", requireModulo("leads", "editar
 // perda mais antiga que a janela: a linha fica (funil e conversão continuam
 // contando), a PII sai. Irreversível por desenho; deixa rastro. Antes do
 // :leadId para o path não virar id.
-router.post("/lojas/:lojaId/leads/expurgo", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/leads/expurgo", requireModulo("admin", "editar"), async (req, res): Promise<void> => {
   const lojaId = req.params.lojaId as string;
   const parsed = ExpurgarLeadsPerdidosBody.safeParse(req.body ?? {});
   if (!parsed.success) {

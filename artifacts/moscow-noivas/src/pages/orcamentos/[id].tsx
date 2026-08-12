@@ -330,8 +330,10 @@ export default function OrcamentoDetail() {
     );
   }, [reservasDaNoiva, reservasDesmarcadas, orcamento?.itens]);
 
-  // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
-  const podeEditar = podeNoModulo(acessosModulos, "leads", "editar");
+  // E172: a proposta tem módulo próprio — ela vivia sob `leads`, e `editar` ali
+  // é o que a Recepção precisa para corrigir um telefone. Aprovar, recusar e
+  // gerar link pedem essa mesma ação (`routes/orcamentos.ts:1249`).
+  const podeEditar = podeNoModulo(acessosModulos, "orcamentos", "editar");
   /**
    * O11/E169 — a tela distingue `criar` de `editar`, como o servidor.
    *
@@ -342,8 +344,20 @@ export default function OrcamentoDetail() {
    * orçamento e **não conseguia pôr uma linha nele** — nem gerar o contrato de
    * um orçamento aprovado. O precedente é `contratos/[id].tsx`, que separa
    * `podeCriarParcela` de `podeEditar` desde o E115, pela mesma razão.
+   *
+   * E172: a ação continua sendo `criar`; o módulo é que passou a ser
+   * `orcamentos`.
    */
-  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
+  const podeCriar = podeNoModulo(acessosModulos, "orcamentos", "criar");
+  /**
+   * E172/S-O40 — **gerar contrato não é a mesma permissão que lançar um item.**
+   *
+   * As duas ações compartilhavam este `podeCriar`, e o efeito era a Recepção
+   * vendo o botão "Gerar contrato" num orçamento aprovado: ela tem `leads` para
+   * cadastrar a noiva que ligou, e o botão vinha junto. Não era só a tela
+   * mentindo — o servidor concordava, e o contrato de R$ 5.000,00 fechava.
+   */
+  const podeGerarContrato = podeNoModulo(acessosModulos, "contratos", "criar");
 
   // D4 (E93): aqui havia um `useListLeads` SEM paginação — e sem
   // `pagina`/`porPagina` a rota devolve a loja inteira
@@ -978,8 +992,9 @@ export default function OrcamentoDetail() {
                 </Link>
               </Button>
             ) : /* O11: `POST /contratos` termina em substantivo — o servidor
-                   deriva `criar`, e era `editar` que a tela cobrava. */
-            podeCriar && !contratos.isLoading ? (
+                   deriva `criar`, e era `editar` que a tela cobrava. E172: a
+                   ação `criar` é a do módulo `contratos`, não a de `leads`. */
+            podeGerarContrato && !contratos.isLoading ? (
               <Button size="sm" onClick={abrirGerarContrato}>
                 <ScrollText className="h-4 w-4 mr-2" />
                 Gerar contrato

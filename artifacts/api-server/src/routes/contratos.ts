@@ -60,7 +60,15 @@ import { erroDeValidacao } from "../lib/erros";
 const router: IRouter = Router();
 
 router.use(requireSessaoComLoja);
-router.use("/lojas/:lojaId/contratos", requireModulo("leads"));
+/**
+ * E172/S-O40 — o contrato tem módulo próprio desde 2026-08-12.
+ *
+ * Esta linha dizia `requireModulo("leads")`, e o efeito era que todo perfil que
+ * cadastrava noiva assinava contrato: o `POST` abaixo não declara ação, o guard
+ * deriva `criar` do método, e a Recepção tinha `leads.criar`. Ela via e usava o
+ * botão "Gerar contrato" da tela do orçamento.
+ */
+router.use("/lojas/:lojaId/contratos", requireModulo("contratos"));
 
 /**
  * B9/E101 — **receber pertence a quem vende**, e por isso as parcelas vivem sob
@@ -77,11 +85,20 @@ router.use("/lojas/:lojaId/contratos", requireModulo("leads"));
  * que é a forma mais cara de estar errado sobre caixa.
  *
  * O que o E101 apertou foi a AÇÃO, não o módulo: `receber` e `estornar` exigem
- * `editar` (B5), então o perfil só-leitura de `leads` não escreve mais no caixa.
- * VER o financeiro continua sendo outro gate — quem recebe não passa a enxergar
- * o fluxo, o DRE nem a folha.
+ * `editar` (B5), então o perfil só-leitura não escreve mais no caixa. VER o
+ * financeiro continua sendo outro gate — quem recebe não passa a enxergar o
+ * fluxo, o DRE nem a folha.
+ *
+ * **E172: o módulo passou de `leads` para `contratos`, e a decisão do dono
+ * continua inteira.** A parcela É do contrato — ela nasce dele, e quem fecha o
+ * contrato é quem recebe. Quem vende segue tendo os dois (a Vendedora tem
+ * `contratos: TUDO`), que é o que a regra de 2026-07-27 protege. O que a
+ * mudança impede é o efeito colateral do `leads.editar` novo da Recepção: sem
+ * esta linha aqui, o gesto que a deixou corrigir um telefone lhe daria também
+ * o `receber` de um Pix de R$ 700,00 — poder que ela nunca teve e que ninguém
+ * decidiu lhe dar.
  */
-router.use("/lojas/:lojaId/parcelas", requireModulo("leads"));
+router.use("/lojas/:lojaId/parcelas", requireModulo("contratos"));
 
 
 // O líquido do orçamento é `liquidoEmCentavos`, do financeiro-core. Ele morava
@@ -1379,7 +1396,7 @@ router.post("/lojas/:lojaId/contratos/:contratoId/cancelar", async (req, res): P
 // Com ela some a última entrada viva da allowlist do `lote2`, e o invariante
 // **spec = servidor** passa a ser total, não "total menos uma".
 
-router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("leads", "editar"), async (req, res): Promise<void> => {
+router.post("/lojas/:lojaId/parcelas/:parcelaId/receber", requireModulo("contratos", "editar"), async (req, res): Promise<void> => {
   const { lojaId, parcelaId } = req.params;
   const parsed = ReceberParcelaBody.safeParse(req.body);
   if (!parsed.success) {

@@ -302,9 +302,10 @@ export default function Cobranca() {
    * não via o botão nesta fila.
    *
    * Estar NESTA tela já exige `financeiro.ver` (a rota é gateada). O que a
-   * ação exige, e portanto o que o botão exige, é `leads.editar`.
+   * ação exige, e portanto o que o botão exige, é `contratos.editar` (era
+   * `leads.editar` até o E172 dar módulo próprio ao contrato e às parcelas).
    */
-  const podeReceber = podeNoModulo(acessosModulos, "leads", "editar");
+  const podeReceber = podeNoModulo(acessosModulos, "contratos", "editar");
   const [parcelaReceber, setParcelaReceber] = useState<Parcela | null>(null);
   const abrirRecebimento = (noiva: NoivaInadimplente) => {
     const parcela = (parcelas.data ?? []).find((p) => p.id === noiva.parcelaMaisAntigaId);

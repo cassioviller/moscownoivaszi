@@ -56,7 +56,6 @@ import { type AcessosModulos } from "./permissoes";
 
 const TUDO = { ver: true, criar: true, editar: true } as const;
 const SO_VER = { ver: true, criar: false, editar: false } as const;
-const VER_E_CRIAR = { ver: true, criar: true, editar: false } as const;
 const NADA = { ver: false, criar: false, editar: false } as const;
 
 export type PerfilPadrao = {
@@ -68,44 +67,96 @@ export type PerfilPadrao = {
 };
 
 /**
- * Quatro perfis, e o que separa um do outro é uma pergunta do balcão:
+ * Cinco perfis, e o que separa um do outro é uma pergunta do balcão:
  *
  * - **Admin** é o perfil do sistema (E80). Ele existe para a rede e é o único
  *   com `sistema: true`.
- * - **Proprietária** tem os mesmos seis módulos, com `sistema: false`. É a
+ * - **Proprietária** tem os mesmos sete módulos, com `sistema: false`. É a
  *   persona real da dona — e é ela quem EXERCITA o gate de permissão, coisa
  *   que um superadmin nunca faz, porque passa por todo `requireModulo`.
- * - **Vendedora** vende e atende: noivas, agenda e acervo inteiros; dinheiro e
- *   comissão da loja, não. (Ela continua vendo a PRÓPRIA comissão — "Minha
- *   comissão" não tem módulo, de propósito.) Esta linha é espelhada à mão em
- *   `e2e/12-permissoes.spec.ts:18` e mudar uma sem a outra reprova o sweep.
+ * - **Vendedora** vende e atende: noivas, propostas, contratos, agenda e acervo
+ *   inteiros; dinheiro e comissão da loja, não. (Ela continua vendo a PRÓPRIA
+ *   comissão — "Minha comissão" não tem módulo, de propósito.) Esta linha é
+ *   espelhada à mão em `e2e/12-permissoes.spec.ts:18` e mudar uma sem a outra
+ *   reprova o sweep.
  * - **Recepção** marca e remarca a agenda o dia inteiro, cadastra a noiva que
- *   ligou, e não edita ficha nem preço: `leads` ver+criar, `vestidos` só ver.
+ *   ligou **e corrige o que digitou**. A proposta ela LÊ — para responder ao
+ *   telefone quanto foi — e não aprova, não recusa, não gera link e não mexe
+ *   em preço; contrato, nada.
+ * - **Costureira** a agenda inteira — a fila de ajustes, as provas, o prazo — e
+ *   o acervo **só de leitura**. Nada de carteira de noivas, contrato, dinheiro
+ *   ou comissão.
+ *
+ * **E172 — as três linhas que mudaram, e a decisão da dona por trás de cada
+ * uma** (2026-08-12):
+ *
+ * 1. A Recepção ganhou `leads.editar`. Ela é quem atende o telefone, logo quem
+ *    digita o WhatsApp pelo qual a loja confirma a prova — e um dígito errado
+ *    só se consertava pedindo a outra pessoa (S-O41). O `editar` não a deixou
+ *    passar a mão em nada perigoso: o expurgo de LGPD, que pedia a MESMA ação,
+ *    passou a pedir `admin` no mesmo commit, alinhando-se com a tela que já o
+ *    escondia (`configuracoes/index.tsx:51`).
+ * 2. A Recepção perdeu o contrato — não por ação, por MÓDULO. Ver
+ *    `lib/permissoes.ts:21`: com `leads` inteiro nas mãos dela, nenhuma ação
+ *    separava "cadastrar a noiva" de "assinar o contrato de R$ 5.000,00"
+ *    (S-O40). O contrato virou módulo próprio, e as parcelas foram junto —
+ *    senão o `editar` novo lhe daria o `receber` do dinheiro, que ela nunca
+ *    teve.
+ *
+ *    **E o orçamento foi junto, por medição.** Fechar só o contrato deixava-a
+ *    APROVANDO a proposta, que é o passo anterior: `POST /orcamentos/:id/`
+ *    `aprovar` pedia `leads: editar`. Medido com o perfil já novo — respondia
+ *    **404**, não 403. Quem aprova congela a versão que o contrato confere,
+ *    logo decide o preço que ele cobra. Ela ficou com `orcamentos: SO_VER`:
+ *    lê a proposta para responder ao telefone, e não a move.
+ * 3. A Costureira nasceu (S-O36). Antes ela entrava como Recepção, que é o
+ *    perfil mais fechado que concede `agenda` — e levava a carteira de leads
+ *    da loja inteira junto.
+ *
+ *    O `vestidos: SO_VER` dela não é generosidade, é a medição: com `agenda` e
+ *    nada mais, os DOIS botões da ficha de trabalho dela morrem em 403 —
+ *    "Abrir a reserva" (`ajustes/[ajusteId].tsx:124,251`) e o nome do vestido
+ *    (`:167,226`), porque `/reservas` e `/vestidos` gateiam por `vestidos`
+ *    (`reservas.ts:46`, `vestidos.ts:68`). É onde moram as provas e a
+ *    movimentação da peça, e o manual dela promete os dois. Decisão da dona em
+ *    2026-08-12, medida antes de decidir: **ela lê o acervo, não escreve nele**
+ *    — o mesmo `SO_VER` que a Recepção já tinha. O que a S-O36 existia para
+ *    evitar era a carteira de LEADS, e essa continua fechada.
+ *
+ * A Vendedora **fecha contrato, e agora está escrito** (S-O37): o poder é o
+ * mesmo de sempre, o que mudou é que ele tem nome. Quem lê os cinco perfis
+ * descobre isso na linha dela, e não no meio de um roteador.
  */
 export const PERFIS_PADRAO: PerfilPadrao[] = [
   {
     id: "perfil-admin",
     nome: "Admin",
     sistema: true,
-    acessos: { leads: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: TUDO, comissao: TUDO, admin: TUDO },
+    acessos: { leads: TUDO, orcamentos: TUDO, contratos: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: TUDO, comissao: TUDO, admin: TUDO },
   },
   {
     id: "perfil-proprietaria",
     nome: "Proprietária",
     sistema: false,
-    acessos: { leads: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: TUDO, comissao: TUDO, admin: TUDO },
+    acessos: { leads: TUDO, orcamentos: TUDO, contratos: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: TUDO, comissao: TUDO, admin: TUDO },
   },
   {
     id: "perfil-vendedora",
     nome: "Vendedora",
     sistema: false,
-    acessos: { leads: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: NADA, comissao: NADA, admin: NADA },
+    acessos: { leads: TUDO, orcamentos: TUDO, contratos: TUDO, agenda: TUDO, vestidos: TUDO, financeiro: NADA, comissao: NADA, admin: NADA },
   },
   {
     id: "perfil-recepcao",
     nome: "Recepção",
     sistema: false,
-    acessos: { leads: VER_E_CRIAR, agenda: TUDO, vestidos: SO_VER, financeiro: NADA, comissao: NADA, admin: NADA },
+    acessos: { leads: TUDO, orcamentos: SO_VER, contratos: NADA, agenda: TUDO, vestidos: SO_VER, financeiro: NADA, comissao: NADA, admin: NADA },
+  },
+  {
+    id: "perfil-costureira",
+    nome: "Costureira",
+    sistema: false,
+    acessos: { leads: NADA, orcamentos: NADA, contratos: NADA, agenda: TUDO, vestidos: SO_VER, financeiro: NADA, comissao: NADA, admin: NADA },
   },
 ];
 

@@ -25,6 +25,11 @@ const ROTULO_ACAO: Record<Acao, string> = { ver: "ver", criar: "criar", editar: 
 /** A porta de entrada de cada módulo na navegação. */
 const ROTA_MODULO: Record<string, string> = {
   leads: "leads",
+  // E172: os dois módulos que saíram de dentro de `leads`. O `?? m.modulo` do
+  // uso já acertaria a rota dos dois — estão escritos porque este mapa é a
+  // lista dos módulos, e um ausente se lê como módulo sem porta de entrada.
+  orcamentos: "orcamentos",
+  contratos: "contratos",
   agenda: "agenda",
   vestidos: "vestidos",
   financeiro: "financeiro",

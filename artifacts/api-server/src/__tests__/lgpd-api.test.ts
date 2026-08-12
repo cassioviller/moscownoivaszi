@@ -23,7 +23,11 @@ describe("LGPD (E77)", () => {
 
   beforeAll(async () => {
     f = await criarFixture();
-    agent = await loginComLoja(f.vendedoraEmail, f.lojaId);
+    // E172: o expurgo passou de `leads.editar` para `admin` — a tela já o
+    // escondia sob `admin.ver` (`configuracoes/index.tsx:51`) e quem divergia
+    // era a porta. A vendedora da fixture não tem `admin`, e não deve ter: quem
+    // anonimiza a carteira de leads perdidos é quem administra a loja.
+    agent = await loginComLoja(f.superAdminEmail, f.lojaId);
   });
 
   afterAll(async () => {

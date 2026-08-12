@@ -84,11 +84,12 @@ type FiltroReceber = (typeof FILTROS)[number]["chave"];
 export default function Receber() {
   const naLoja = useCaminhoDaLoja();
   const { activeLojaId, acessosModulos } = useAuth();
-  // Receber e estornar parcela são guardados pelo módulo **leads** no servidor
-  // (contratos.ts:76 — B9/E101, "a noiva paga na mão de quem a atendeu"), e
-  // esta tela não tinha gate nenhum: os dois botões apareciam para toda gente
-  // do financeiro e o 403 só chegava depois do clique, no diálogo.
-  const podeMovimentar = podeNoModulo(acessosModulos, "leads", "editar");
+  // Receber e estornar parcela são guardados pelo módulo **contratos** no
+  // servidor (B9/E101, "a noiva paga na mão de quem a atendeu" — e a parcela é
+  // do contrato, que ganhou módulo próprio no E172), e esta tela não tinha gate
+  // nenhum: os dois botões apareciam para toda gente do financeiro e o 403 só
+  // chegava depois do clique, no diálogo.
+  const podeMovimentar = podeNoModulo(acessosModulos, "contratos", "editar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();

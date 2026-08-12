@@ -106,8 +106,10 @@ export default function Orcamentos() {
   });
   const createOrcamento = useCreateOrcamento();
 
-  // Gate flat por módulo (orçamentos vive sob "leads", como no sidebar).
-  const podeCriar = podeNoModulo(acessosModulos, "leads", "criar");
+  // E172: a proposta tem módulo próprio — ela vivia sob `leads`, e com isso a
+  // ação que corrige o telefone de uma noiva era a que aprovava o orçamento
+  // dela (`api-server/src/routes/orcamentos.ts:166`).
+  const podeCriar = podeNoModulo(acessosModulos, "orcamentos", "criar");
 
   const filtrados = data?.itens;
   const total = data?.total ?? 0;

@@ -145,21 +145,105 @@ describe("E162 — o gate por dentro: aceite → fila → reserva inline → con
 
   // ─────────── R10 — a permissão, medida com o perfil real ───────────────────
 
-  it("R10 · quem tem leads.criar SEM vestidos reserva a peça da venda — e segue barrada no acervo", async () => {
+  /**
+   * **E172 trocou a PERSONA deste teste, não a decisão que ele prega.**
+   *
+   * A decisão do R10 é uma só: *reservar a peça que a venda vende não exige o
+   * módulo do ACERVO* — a reserva nasce de dentro do fluxo, com alcance restrito
+   * às peças daquele orçamento. Ela continua inteira.
+   *
+   * O que mudou é quem faz a venda. Até 2026-08-12 o orçamento vivia sob
+   * `leads`, então o perfil que este teste montava — "leads ver+criar+editar,
+   * vestidos só ver" — era a Recepção, e ela vendia. O E172 tirou a proposta de
+   * `leads` justamente porque isso deixava quem atende o telefone aprovando
+   * propostas de R$ 5.000,00 (S-O40, uma porta ao lado). Hoje o perfil que
+   * monta a venda sem o acervo é `orcamentos` cheio + `vestidos` só ver, e a
+   * Recepção não é mais ele.
+   *
+   * Sem esta troca o teste passaria a medir o gate NOVO em vez da decisão do
+   * R10: reprovava com `expected 403 to be 201`, e o 403 estava certo.
+   */
+  it("R10 · quem tem orcamentos.criar SEM vestidos reserva a peça da venda — e segue barrada no acervo", async () => {
     const { lead, vestido, orcamento, token } = await orcamentoComPecaReal();
     await aceitar(token).expect(200);
     void lead;
 
-    // O perfil Recepção real: leads ver+criar+editar, vestidos SÓ ver.
+    // Quem monta a venda sem mexer no acervo: `orcamentos` inteiro (é dele que
+    // a porta do `reservar` depende), `leads` para chegar à noiva, `vestidos` só
+    // ver.
     const sufixo = randomUUID().slice(0, 8);
     const perfilId = randomUUID();
     await db.insert(perfisTable).values({
       id: perfilId,
-      nome: `Recepcao E162 ${sufixo}`,
-      acessosModulos: { leads: { ver: true, criar: true, editar: true }, vestidos: { ver: true } },
+      nome: `Vendedora sem acervo E162 ${sufixo}`,
+      acessosModulos: {
+        leads: { ver: true, criar: true, editar: true },
+        orcamentos: { ver: true, criar: true, editar: true },
+        vestidos: { ver: true },
+      },
+    });
+    const vendedoraSemAcervoId = randomUUID();
+    const vendedoraSemAcervoEmail = `vendedora-sem-acervo-e162-${sufixo}@teste.local`;
+    await db.insert(usuariosTable).values({
+      id: vendedoraSemAcervoId,
+      nome: `Vendedora sem acervo ${sufixo}`,
+      email: vendedoraSemAcervoEmail,
+      senhaHash: await hashSenha(SENHA_TESTE),
+    });
+    await db
+      .insert(usuariosLojasTable)
+      .values({ usuarioId: vendedoraSemAcervoId, lojaId: f.lojaId, perfilId });
+
+    try {
+      const vende = await loginComLoja(vendedoraSemAcervoEmail, f.lojaId);
+
+      // VERMELHO ANTES: a única porta era POST /bloqueios, módulo vestidos —
+      // ela montava a venda, o contrato mandava reservar, e o reservar dava
+      // 403 sem que nenhuma das mensagens dissesse que era permissão.
+      const peloAcervo = await vende.post(`/api/lojas/${f.lojaId}/bloqueios`).send({
+        vestidoId: vestido.id,
+        tipo: "RESERVA_CASAMENTO",
+        casamentoData: dataFutura(150),
+      });
+      expect(peloAcervo.status).toBe(403);
+
+      const pelaVenda = await vende
+        .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/reservar`)
+        .send({ vestidoId: vestido.id, casamentoData: dataFutura(150) });
+      expect(pelaVenda.status).toBe(201);
+    } finally {
+      await db
+        .delete(usuariosLojasTable)
+        .where(eq(usuariosLojasTable.usuarioId, vendedoraSemAcervoId));
+      await db.delete(usuariosTable).where(eq(usuariosTable.id, vendedoraSemAcervoId));
+      await db.delete(perfisTable).where(eq(perfisTable.id, perfilId));
+    }
+  });
+
+  /**
+   * E172, o outro lado da mesma moeda: a Recepção de HOJE não monta venda.
+   *
+   * O teste acima deixou de descrevê-la, e o que ela pode virou pergunta em
+   * aberto — esta é a resposta, medida na porta. Ela lê a proposta e não a
+   * move, então também não reserva por dentro dela.
+   */
+  it("R10/E172 · a Recepção de hoje não reserva pela venda — ela não faz a venda", async () => {
+    const { vestido, orcamento, token } = await orcamentoComPecaReal();
+    await aceitar(token).expect(200);
+
+    const sufixo = randomUUID().slice(0, 8);
+    const perfilId = randomUUID();
+    await db.insert(perfisTable).values({
+      id: perfilId,
+      nome: `Recepcao E172 ${sufixo}`,
+      acessosModulos: {
+        leads: { ver: true, criar: true, editar: true },
+        orcamentos: { ver: true },
+        vestidos: { ver: true },
+      },
     });
     const recepcaoId = randomUUID();
-    const recepcaoEmail = `recepcao-e162-${sufixo}@teste.local`;
+    const recepcaoEmail = `recepcao-e172-${sufixo}@teste.local`;
     await db.insert(usuariosTable).values({
       id: recepcaoId,
       nome: `Recepcao ${sufixo}`,
@@ -170,21 +254,11 @@ describe("E162 — o gate por dentro: aceite → fila → reserva inline → con
 
     try {
       const recepcao = await loginComLoja(recepcaoEmail, f.lojaId);
-
-      // VERMELHO ANTES: a única porta era POST /bloqueios, módulo vestidos —
-      // ela montava a venda, o contrato mandava reservar, e o reservar dava
-      // 403 sem que nenhuma das mensagens dissesse que era permissão.
-      const peloAcervo = await recepcao.post(`/api/lojas/${f.lojaId}/bloqueios`).send({
-        vestidoId: vestido.id,
-        tipo: "RESERVA_CASAMENTO",
-        casamentoData: dataFutura(150),
-      });
-      expect(peloAcervo.status).toBe(403);
-
       const pelaVenda = await recepcao
         .post(`/api/lojas/${f.lojaId}/orcamentos/${orcamento.id}/reservar`)
         .send({ vestidoId: vestido.id, casamentoData: dataFutura(150) });
-      expect(pelaVenda.status).toBe(201);
+      expect(pelaVenda.status).toBe(403);
+      expect(pelaVenda.body.modulo).toBe("orcamentos");
     } finally {
       await db.delete(usuariosLojasTable).where(eq(usuariosLojasTable.usuarioId, recepcaoId));
       await db.delete(usuariosTable).where(eq(usuariosTable.id, recepcaoId));
