@@ -137,9 +137,10 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   escrita** (`insert`/`update`/`delete`) nas **cinco tabelas quentes** —
   `bloqueio_vestidos`, `reservas`, `contratos`, `orcamentos` e **`parcelas`
   (S-O34, a tabela onde o dinheiro mora)** — e classifica cada porta em
-  **TRANCA**, **CAS** ou **ABERTA**. Hoje: **48 portas · 28 TRANCA · 8 CAS · 12
-  na dívida declarada** (3 em `comissao.ts`, 2 nascimentos de linha-pai, 7 do
-  gerador da loja de demonstração). Desde o E180 ela também confere a **ORDEM**
+  **TRANCA**, **CAS** ou **ABERTA**. Hoje: **48 portas · 31 TRANCA · 8 CAS · 9
+  na dívida declarada** (2 nascimentos de linha-pai, 7 do gerador da loja de
+  demonstração) — **desde o E191 nenhuma porta ABERTA é porta de ROTA**. Desde o
+  E180 ela também confere a **ORDEM**
   das trancas (S-O33): a sequência de `FOR UPDATE` de cada transação sobe os
   degraus de `DEGRAUS_DA_ORDEM` sem descer nenhum, e toda tranca dentro de laço
   percorre coleção `.sort()`ada — deadlock é o modo de falha que a ordem existe
@@ -153,9 +154,14 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   `cabines → usuarios → lead · reserva · avaria · contas_pagar → orçamento →
   contrato → parcelas → bloqueios → vestidos`, e as trancas sobre tabela sem
   degrau caíram de **5 para 2** (loja em `admin.ts:177`, ajuste em
-  `agenda.ts:1156`). **A dívida de `comissao.ts` continua em 3 e mudou de
-  MOTIVO**: as três trancam o contrato desde o E176 e não releem a guarda depois
-  da tranca (S-O79). **Quando ela fica vermelha**, ou nasceu porta sem
+  `agenda.ts:1156`). **A dívida de `comissao.ts` era 3 e virou ZERO no E191**
+  (S-O79): as três trancavam o contrato desde o E176 e não reliam a guarda
+  depois da tranca — hoje as três chamam `relerEstornosSobATranca` logo depois
+  de `trancarContratos`, e o reabrir troca a lista lida no pool pelo
+  `returning()` do próprio DELETE. **O E191 não criou tranca nenhuma**: as 28
+  transações, as 38 trancas, as 7 via helper e os 6 laços não se mexeram; o que
+  mudou é que as trancas passaram a decidir alguma coisa. **Quando ela fica
+  vermelha**, ou nasceu porta sem
   disciplina, ou uma porta fechada reabriu, ou uma porta da dívida foi FECHADA —
   e neste caso o conserto é baixar o número na tabela `SEM_DISCIPLINA` do teste.
   A dívida trava a CONTAGEM por arquivo, não a lista de nomes. Os pontos cegos

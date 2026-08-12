@@ -19,3 +19,19 @@ export const FOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 /** A frase da recusa, para as telas não a escreverem de novo cada uma. */
 export const FOTO_ACIMA_DO_TETO = "Foto acima de 2MB";
+
+/**
+ * S-O81 — **quantos caracteres a descrição da avaria aceita.**
+ *
+ * O campo não tinha `maxLength` no spec, e o único teto do texto era o do
+ * parser: **3,8 MiB de descrição** entravam numa avaria. Quem manda o número é o
+ * `AvariaInput` do `openapi.yaml`, que é onde ele foi derivado do
+ * `ENVELOPE_MAX_BYTES` da conta do corpo; aqui ele existe pelo mesmo motivo que
+ * `FOTO_MAX_BYTES`: a tela não importa o api-zod, e a recusa tem de acontecer
+ * ANTES da viagem — o `maxLength` do campo simplesmente não deixa digitar o
+ * 1.001º caractere, em vez de o servidor devolver 400 sobre um texto que a
+ * pessoa levou dez minutos colando.
+ *
+ * A `limites-de-upload.test.ts` prega os dois lados contra o SPEC.
+ */
+export const AVARIA_DESCRICAO_MAX_CHARS = 1000;

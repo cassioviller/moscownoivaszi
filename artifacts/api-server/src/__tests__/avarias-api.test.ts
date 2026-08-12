@@ -92,6 +92,29 @@ describe("Avarias e parcela avulsa (E71)", () => {
       .expect(422);
   });
 
+  /**
+   * S-O81/E191 — **a descrição tem teto, e ele sai da conta do corpo.**
+   *
+   * `AvariaInput.descricao` tinha `minLength: 1` e nenhum `maxLength`, então o
+   * único limite do texto era o do parser: `CORPO_MAX_FOTO_BYTES` cabe 3.848.880
+   * bytes, e **3,8 MiB de descrição** entravam numa avaria — e voltavam em toda
+   * listagem daquela reserva. O teto é de 1.000 caracteres porque a conta do
+   * E186 reserva 4 KiB do corpo para este campo (`ENVELOPE_MAX_BYTES`), e a
+   * `limites-de-upload.test.ts` prega os dois números um contra o outro.
+   */
+  it("recusa a descrição acima do teto, e aceita o teto exato (S-O81)", async () => {
+    const acima = await agent
+      .post(`/api/lojas/${f.lojaId}/bloqueios/${bloqueioId}/avarias`)
+      .send({ descricao: "x".repeat(1001) })
+      .expect(400);
+    expect(acima.body.error).toBe("CORPO_INVALIDO");
+
+    await agent
+      .post(`/api/lojas/${f.lojaId}/bloqueios/${bloqueioId}/avarias`)
+      .send({ descricao: "x".repeat(1000) })
+      .expect(201);
+  });
+
   it("avaria sem foto: 404 na rota da foto, temFoto false", async () => {
     const criada = await agent
       .post(`/api/lojas/${f.lojaId}/bloqueios/${bloqueioId}/avarias`)

@@ -61,6 +61,14 @@ import {
  * | **ABERTA** | **12** |
  * | **Total** | **48**, em 271 arquivos-fonte versionados |
  *
+ * **E191 — a dívida cai a 9 (S-O79).** As três portas de `comissao.ts` passaram
+ * a reler a guarda depois da tranca, e com isso **nenhuma porta ABERTA deste
+ * repositório é mais uma porta de ROTA**: as 9 que sobram são 2 nascimentos de
+ * linha-pai e 7 do gerador da loja de demonstração, todas julgadas e absolvidas
+ * abaixo. Remedido: **283 arquivos, 48 portas, 31 TRANCA · 8 CAS · 9 ABERTA**,
+ * com as 28 transações e as 38 trancas inalteradas — o E191 não criou tranca
+ * nenhuma, ele fez as que já existiam decidirem alguma coisa.
+ *
  * ## O que esta varredura NÃO vê
  *
  * Dito aqui porque é a informação mais útil da próxima rodada — a régua que
@@ -109,26 +117,31 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * contagem"*, e um arquivo perdoado podia ir de 6 para 60 com a suíte verde.
  * Aqui `comissao.ts` não pode ganhar a quarta porta aberta em silêncio.
  *
- * ### `comissao.ts` — 3 portas, e o MOTIVO mudou no E186 (S-O79, 🔵)
+ * ### ~~`comissao.ts` — 3 portas~~ — FECHADA no E191 (S-O79), e a tabela cobrou
  *
- * **Esta tabela descreveu o defeito errado por dez épicos.** Até aqui ela dizia
- * *"as três escrevem `contratos.comissao_estornada_em` e nenhuma tranca a linha
- * do contrato"* — e isso **deixou de ser verdade no E176**, que criou
+ * **Esta tabela descreveu o defeito errado por dez épicos.** Até o E186 ela
+ * dizia *"as três escrevem `contratos.comissao_estornada_em` e nenhuma tranca a
+ * linha do contrato"* — e isso **deixou de ser verdade no E176**, que criou
  * `trancarContratos` e o chamou das três. O que sustentava a frase antiga era a
  * varredura não enxergar o helper: `trancou=[]` nas três. Com o executor
- * seguido (S-O59/E186), o que se mede é `trancou=[contratosTable]` nas três, e
- * o que falta é outra coisa:
+ * seguido (S-O59/E186), o que se media era `trancou=[contratosTable]` nas três,
+ * e o que faltava era outra coisa — a tranca chegava DEPOIS da pergunta:
  *
- * - `:1071` (reabrir fechamento) — a lista de estornos sai de
+ * - `:1071` (reabrir fechamento) — a lista de estornos saía de
  *   `fechamento.estornoContratoIds`, lido no **POOL**, antes da transação.
- * - `:1340` (fechar competência) e `:1449` (baixar estorno à mão) — a lista sai
+ * - `:1340` (fechar competência) e `:1449` (baixar estorno à mão) — a lista saía
  *   de `estornosPendentes(tx, …)`, dentro da transação e **antes** do
  *   `FOR UPDATE`.
  *
- * Nas três, a tranca chega DEPOIS da pergunta: o `releituraDaGuarda` é `null`, e
- * é por isso que a disciplina segue ABERTA. Trancar sem repreguntar não decide
- * nada — é o mesmo caso do autoteste *"reprova a tranca que NÃO relê a
- * guarda"*, agora numa porta de verdade. É a **S-O79**.
+ * O E191 fechou as três com uma releitura só — `relerEstornosSobATranca`,
+ * chamada logo depois de `trancarContratos` —, e o reabrir ganhou o `returning()`
+ * do próprio DELETE no lugar da lista do pool. Medido nas três:
+ * `TRANCA rel=guarda delegada a relerEstornosSobATranca`.
+ *
+ * **A baixa foi cobrada por aqui antes de ser aceita**, como a da S-O31: a
+ * contagem de `comissao.ts` caiu de 3 para 0 e o total de 12 para 9, com os dois
+ * casos vermelhos na frente (`expected 9 to be 12`). É a terceira vez nesta
+ * trilha que a dívida cobra a própria baixa.
  *
  * ### ~~`orcamentos.ts:1114`~~ — FECHADA, e esta varredura foi quem cobrou
  *
@@ -177,14 +190,16 @@ const sitio = (p: Porta): string => `${p.arquivo}:${p.linha} ${p.verbo}(${p.tabe
  * - Ele **não roda em produção**. Nenhuma rota o chama; o caminho é o `tsx` na
  *   mão de quem gera a documentação.
  *
- * A contagem fica travada pelo mesmo motivo que a de `comissao.ts` fica em 3: o
- * que esta tabela impede não é a porta existir, é ela se multiplicar em
+ * A contagem fica travada pelo mesmo motivo pelo qual a de `comissao.ts` ficava
+ * em 3: o que esta tabela impede não é a porta existir, é ela se multiplicar em
  * silêncio. **E ela cobrou de novo no E180:** `parcelas` entrando como quinta
  * tabela quente revelou o carnê da demonstração (`:525`), e a contagem foi de 6
  * para 7 com o vermelho `expected 12 to be 11` na frente.
  */
 const SEM_DISCIPLINA: Record<string, number> = {
-  "artifacts/api-server/src/routes/comissao.ts": 3,
+  // `comissao.ts` saiu daqui no E191 (S-O79): eram 3, e as três eram a mesma
+  // coisa — tranca sem repergunta. Hoje as três releem sob ela.
+  //
   // Era 2; a S-O31 (`POST /link`) fechou e a contagem caiu — o vermelho desta
   // linha foi o que cobrou a baixa. Resta o nascimento de `POST /orcamentos`.
   "artifacts/api-server/src/routes/orcamentos.ts": 1,
@@ -193,7 +208,7 @@ const SEM_DISCIPLINA: Record<string, number> = {
   // virou tabela quente no E180. Mesma família das outras seis, mesmo veredito.
   "scripts/loja-de-demonstracao.ts": 7,
 };
-const TOTAL_SEM_DISCIPLINA = 12;
+const TOTAL_SEM_DISCIPLINA = 9;
 
 describe("varredura — a enumeração das portas de escrita", () => {
   /**
@@ -340,7 +355,7 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
     expect(hoje).toEqual(SEM_DISCIPLINA);
   });
 
-  it("o total da dívida é 12 — 3 de verdade, 2 nascimentos e 7 do gerador da demo", () => {
+  it("o total da dívida é 9 — 2 nascimentos e 7 do gerador da demo", () => {
     expect(abertas.length).toBe(TOTAL_SEM_DISCIPLINA);
     expect(Object.values(SEM_DISCIPLINA).reduce((s, n) => s + n, 0)).toBe(TOTAL_SEM_DISCIPLINA);
   });
@@ -350,10 +365,11 @@ describe("varredura — toda porta de escrita tem disciplina", () => {
    * isto, um refactor que apagasse metade das trancas deixaria a dívida em 12 e
    * a suíte verde — a varredura estaria contando o que sobrou, não o que há.
    */
-  it("e as portas com disciplina são 36 — 28 sob tranca e 8 por CAS", () => {
+  it("e as portas com disciplina são 39 — 31 sob tranca e 8 por CAS", () => {
     const conta = { TRANCA: 0, CAS: 0, ABERTA: 0 };
     for (const p of portas) conta[p.disciplina] += 1;
-    expect(conta.TRANCA).toBeGreaterThanOrEqual(28);
+    // Eram 28 até o E191, que fechou as três de `comissao.ts` (S-O79).
+    expect(conta.TRANCA).toBeGreaterThanOrEqual(31);
     expect(conta.CAS).toBeGreaterThanOrEqual(8);
   });
 });

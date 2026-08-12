@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { FOTO_MAX_BYTES } from "./limites";
+import { AVARIA_DESCRICAO_MAX_CHARS, FOTO_MAX_BYTES } from "./limites";
 
 /**
  * S-O19 — **o teto da foto era declarado três vezes, independentes.**
@@ -22,6 +22,7 @@ import { FOTO_MAX_BYTES } from "./limites";
  */
 const RAIZ = path.resolve(__dirname, "..", "..", "..", "..");
 const DO_SERVIDOR = "artifacts/api-server/src/lib/limites.ts";
+const O_SPEC = "lib/api-spec/openapi.yaml";
 
 function fonteDoServidor(): string {
   const versionado = execFileSync("git", ["ls-files", DO_SERVIDOR], {
@@ -170,5 +171,55 @@ describe("varredura — o teto da foto é o mesmo dos dois lados (S-O19)", () =>
      */
     const thumbAMao = rotas.filter((f) => /512\s*\*\s*1024/.test(readFileSync(path.join(RAIZ, f), "utf8")));
     expect(thumbAMao, "o teto da miniatura voltou a ser escrito à mão numa rota").toEqual([]);
+  });
+
+  /**
+   * S-O81/E191 — **a descrição da avaria cabe no envelope que a conta reserva
+   * para ela.**
+   *
+   * `AvariaInput.descricao` tinha `minLength: 1` e nenhum teto, então o único
+   * limite do texto era o do parser: `CORPO_MAX_FOTO_BYTES` cabe **3.848.880
+   * bytes**, e uma colagem acidental de **3,8 MiB** virava linha no banco e
+   * viajava de volta em toda listagem de avarias daquela reserva.
+   *
+   * O número do `maxLength` não é gosto: o E186 mediu o envelope da avaria em
+   * **54 bytes** (`{"descricao":"","custoReparo":1234.56,"fotoBase64":""}`) e
+   * declarou `ENVELOPE_MAX_BYTES` = 4 KiB **exatamente para este campo**. O que
+   * esta régua prega é que a promessa é cumprida — e ela lê o SPEC, que é a
+   * fonte da verdade, não o zod gerado nem a constante da tela.
+   */
+  const PIOR_BYTE_POR_CARACTERE = 3; // o travessão "—" em UTF-8; os de 4 bytes ocupam 2 chars
+  const ENVELOPE_DA_AVARIA_BYTES = JSON.stringify({
+    descricao: "",
+    custoReparo: 1234.56,
+    fotoBase64: "",
+  }).length;
+
+  it("a descrição da avaria tem teto no spec, e ele cabe no envelope reservado (S-O81)", () => {
+    const spec = readFileSync(path.join(RAIZ, O_SPEC), "utf8");
+    const bloco = /\n {4}AvariaInput:\n([\s\S]*?)\n {4}\w/.exec(spec);
+    expect(bloco, "o `AvariaInput` mudou de nome ou de indentação no spec").toBeTruthy();
+    const m = /descricao:\s*\{[^}]*maxLength:\s*(\d+)/.exec(bloco![1]!);
+    expect(
+      m,
+      "a descrição da avaria voltou a ser texto sem teto — o único limite passa a ser o do parser, 3,8 MiB",
+    ).toBeTruthy();
+    const doSpec = Number(m![1]);
+
+    expect(ENVELOPE_DA_AVARIA_BYTES).toBe(54);
+    const envelope = /export const ENVELOPE_MAX_BYTES = ([^;]+);/.exec(fonteDoServidor());
+    // eslint-disable-next-line no-eval
+    const reservado = eval(envelope![1]!) as number;
+    expect(
+      doSpec * PIOR_BYTE_POR_CARACTERE + ENVELOPE_DA_AVARIA_BYTES,
+      "a descrição não cabe mais nos bytes que a conta do corpo reserva para ela",
+    ).toBeLessThanOrEqual(reservado);
+
+    // E a tela, que não importa o api-zod, repete o mesmo número — a forma do
+    // espelho da S-O19: quando não dá para compartilhar, prega-se a igualdade.
+    expect(
+      AVARIA_DESCRICAO_MAX_CHARS,
+      "o teto mudou de um lado só — o campo aceitaria o que o servidor recusa, ou o contrário",
+    ).toBe(doSpec);
   });
 });

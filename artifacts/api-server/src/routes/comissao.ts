@@ -12,7 +12,7 @@ import {
 } from "@workspace/db";
 import { eq, and, count, gte, lt, lte, inArray, isNull, isNotNull, desc, sql } from "drizzle-orm";
 import { alias as aliasedTable } from "drizzle-orm/pg-core";
-import { ehViolacaoUnica , erroDeValidacao } from "../lib/erros";
+import { erroDeValidacao } from "../lib/erros";
 import { registrarAuditoria } from "../lib/auditoria";
 import {
   ListComissaoRegrasResponse,
@@ -232,6 +232,96 @@ async function trancarContratos(
       .from(contratosTable)
       .where(and(eq(contratosTable.id, id), eq(contratosTable.lojaId, lojaId)))
       .for("update");
+  }
+}
+
+/** O que a tranca precisa reler para a decisão continuar valendo. */
+type EstornoSobATranca = {
+  valorC: number;
+  estornadaEm: Date | null;
+  baixaPor: string | null;
+};
+
+/**
+ * S-O79 — **a guarda RELIDA depois da tranca, nas três portas.**
+ *
+ * O E176 pôs `trancarContratos` nas três (S-O32) e parou aí, e a varredura do
+ * E186 mostrou que trancar sem repreguntar não decide nada: a lista de
+ * contratos que cada porta carimba nascia ANTES do `FOR UPDATE` — no POOL em
+ * `:1071` (reabrir) e dentro da transação, mas antes da tranca, em `:1340`
+ * (fechar) e `:1449` (baixar à mão). Quem chega segundo espera na fila,
+ * acorda com a lista velha na mão e escreve por cima da decisão de quem
+ * chegou primeiro.
+ *
+ * **O modo de falha custa dinheiro, e as duas direções estão medidas em
+ * `so79-corrida-estorno-comissao-api.test.ts`, com corrida determinística:**
+ *
+ * - Fechar 2025-07 × baixar o estorno à mão, no mesmo segundo. Os dois leem o
+ *   mesmo contrato cancelado (R$ 10.000,00) como pendente. A baixa carimba com
+ *   quem baixou e por quê; o fechamento acordava e carimbava por cima,
+ *   absorvendo os mesmos R$ 10.000,00 na base do mês. Com bruto de
+ *   R$ 20.000,00 e faixa de 10%, a base saía **R$ 10.000,00 em vez de
+ *   R$ 20.000,00** e a vendedora recebia **R$ 1.000,00 em vez de
+ *   R$ 2.000,00** — o mesmo estorno consumido duas vezes.
+ * - Reabrir o mesmo fechamento duas vezes. O segundo apagava uma linha que já
+ *   não existia e devolvia `comissaoEstornadaEm` a NULL num contrato que, no
+ *   intervalo, tinha recebido uma BAIXA MANUAL — o `comissaoEstornoBaixaPor`
+ *   fica, a data some, e os mesmos R$ 10.000,00 voltam a descontar a vendedora
+ *   no fechamento seguinte, com a lista de baixas dizendo que já saíram.
+ *
+ * A releitura é uma só, chamada logo DEPOIS de `trancarContratos` nas três
+ * portas — é a forma que o E158 deu a `contratos.ts` e o E176 deixou pela
+ * metade aqui. Cada chamadora decide o que fazer com o que leu, porque o
+ * estado que cada uma espera é diferente: fechar e baixar querem o contrato
+ * ainda PENDENTE (`comissaoEstornadaEm IS NULL`); reabrir quer o contrato
+ * ainda carimbado POR FECHAMENTO (carimbo presente, sem baixa manual).
+ */
+async function relerEstornosSobATranca(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  lojaId: string,
+  ids: readonly string[],
+): Promise<Map<string, EstornoSobATranca>> {
+  if (ids.length === 0) return new Map();
+  const linhas = await tx
+    .select({
+      id: contratosTable.id,
+      valorTotal: contratosTable.valorTotal,
+      estornadaEm: contratosTable.comissaoEstornadaEm,
+      baixaPor: contratosTable.comissaoEstornoBaixaPor,
+    })
+    .from(contratosTable)
+    .where(and(eq(contratosTable.lojaId, lojaId), inArray(contratosTable.id, [...ids])));
+  return new Map(
+    linhas.map((l) => [
+      l.id,
+      { valorC: cent(l.valorTotal), estornadaEm: l.estornadaEm, baixaPor: l.baixaPor },
+    ]),
+  );
+}
+
+/**
+ * O recorte que fechar e baixar-à-mão fazem com o que a releitura trouxe:
+ * some da lista quem deixou de estar pendente, e o valor dele sai da soma.
+ *
+ * A subtração é a conta certa porque `totalC` é a soma dos cancelados
+ * pendentes MENOS o que fechamentos parciais já absorveram (E102/C5) — tirar
+ * um contrato da lista tira o valor dele, não recalcula a absorção.
+ */
+function descartarJaCarimbados(
+  mapa: Map<string, EstornoPendente>,
+  sobATranca: Map<string, EstornoSobATranca>,
+): void {
+  for (const e of mapa.values()) {
+    const vivos: string[] = [];
+    for (const id of e.contratoIds) {
+      const sob = sobATranca.get(id);
+      if (sob && sob.estornadaEm === null) {
+        vivos.push(id);
+        continue;
+      }
+      e.totalC = Math.max(0, e.totalC - (sob?.valorC ?? 0));
+    }
+    e.contratoIds = vivos;
   }
 }
 
@@ -1030,8 +1120,6 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
     }
   }
 
-  const estornos = fechamento.estornoContratoIds ?? [];
-
   const resultado = await db.transaction(async (tx) => {
     /**
      * S-M22 (rodada 2, achado 3#3): a guarda de COMISSAO_JA_PAGA acima leu no
@@ -1050,14 +1138,34 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
         .for("update");
       if (conta?.status === "PAGA") return { corrida: true as const };
     }
-    // A ordem importa: o fechamento sai primeiro porque `conta_pagar_id` é
-    // UNIQUE e referencia a conta — apagar a conta antes deixaria a FK
-    // (ON DELETE SET NULL) mexendo numa linha que já vai embora.
-    await tx.delete(comissaoFechamentosTable).where(eq(comissaoFechamentosTable.id, fechamentoId));
+    /**
+     * S-O79 — **o DELETE é a guarda relida, e o `returning()` é quem responde.**
+     *
+     * A lista de estornos saía de `fechamento`, lido no POOL lá em cima: dois
+     * cliques no botão "Reabrir" liam a MESMA linha e os dois entravam. O
+     * segundo apagava zero linhas em silêncio, respondia 200 com
+     * `estornosReabertos: 1` e ainda devolvia `comissaoEstornadaEm` a NULL —
+     * num contrato que, no intervalo, podia ter recebido uma BAIXA MANUAL. O
+     * `comissaoEstornoBaixaPor` ficava, a data sumia, e R$ 5.000,00 já dados
+     * como perdidos voltavam a descontar a vendedora no fechamento seguinte.
+     *
+     * Agora quem decide é a linha que ESTA transação removeu: o `returning()`
+     * vazio é a corrida perdida (404, a mesma resposta do segundo clique
+     * sequencial), e a lista de estornos vem de lá, não do pool.
+     *
+     * A ordem importa: o fechamento sai primeiro porque `conta_pagar_id` é
+     * UNIQUE e referencia a conta — apagar a conta antes deixaria a FK
+     * (ON DELETE SET NULL) mexendo numa linha que já vai embora.
+     */
+    const [removido] = await tx
+      .delete(comissaoFechamentosTable)
+      .where(eq(comissaoFechamentosTable.id, fechamentoId))
+      .returning();
+    if (!removido) return { jaReaberto: true as const };
 
-    if (fechamento.contaPagarId) {
+    if (removido.contaPagarId) {
       await tx.delete(contasPagarTable).where(and(
-        eq(contasPagarTable.id, fechamento.contaPagarId),
+        eq(contasPagarTable.id, removido.contaPagarId),
         eq(contasPagarTable.lojaId, lojaId),
       ));
     }
@@ -1065,16 +1173,29 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
     // O estorno volta a PENDENTE: ele não foi absorvido, porque o mês que o
     // absorveu deixou de existir. Sem isto, o valor cancelado sumiria da
     // próxima apuração e a loja pagaria comissão sobre venda desfeita.
+    const estornos = removido.estornoContratoIds ?? [];
+    let reabertos: string[] = [];
     if (estornos.length > 0) {
       // S-O32: a linha do CONTRATO é a que se tranca — a conta a pagar já era.
       await trancarContratos(tx, lojaId, estornos);
-      await tx
-        .update(contratosTable)
-        .set({ comissaoEstornadaEm: null })
-        .where(and(
-          eq(contratosTable.lojaId, lojaId),
-          inArray(contratosTable.id, estornos),
-        ));
+      // S-O79: e a guarda relida sob ela. Reabrir desfaz o que ESTE fechamento
+      // fez, então só volta a PENDENTE o contrato que ainda está carimbado e
+      // cujo carimbo não é de uma baixa manual — a decisão da dona, com quem
+      // baixou e por quê, não se desfaz por tabela.
+      const sobATranca = await relerEstornosSobATranca(tx, lojaId, estornos);
+      reabertos = estornos.filter((id) => {
+        const sob = sobATranca.get(id);
+        return sob !== undefined && sob.estornadaEm !== null && sob.baixaPor === null;
+      });
+      if (reabertos.length > 0) {
+        await tx
+          .update(contratosTable)
+          .set({ comissaoEstornadaEm: null })
+          .where(and(
+            eq(contratosTable.lojaId, lojaId),
+            inArray(contratosTable.id, reabertos),
+          ));
+      }
     }
 
     await registrarAuditoria(tx, {
@@ -1084,16 +1205,20 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
       entidade: "comissao_fechamento",
       entidadeId: fechamentoId,
       detalhe: {
-        competencia: fechamento.competencia,
-        vendedoraId: fechamento.vendedoraId,
+        competencia: removido.competencia,
+        vendedoraId: removido.vendedoraId,
         // O que o fechamento pagava — some da tabela, fica na trilha.
-        valorTotal: fechamento.valorTotal,
-        totalVendas: fechamento.totalVendas,
-        contaPagarId: fechamento.contaPagarId,
-        estornosReabertos: estornos.length,
+        valorTotal: removido.valorTotal,
+        totalVendas: removido.totalVendas,
+        contaPagarId: removido.contaPagarId,
+        estornosReabertos: reabertos.length,
       },
     });
-    return { ok: true as const };
+    return {
+      ok: true as const,
+      contaPagarRemovida: !!removido.contaPagarId,
+      estornosReabertos: reabertos.length,
+    };
   });
   if ("corrida" in resultado) {
     res.status(409).json({
@@ -1102,13 +1227,17 @@ router.delete("/lojas/:lojaId/comissao/fechamentos/:fechamentoId", async (req, r
     });
     return;
   }
+  if ("jaReaberto" in resultado) {
+    res.status(404).json({ error: "FECHAMENTO_NAO_ENCONTRADO" });
+    return;
+  }
 
   res.json(ReabrirComissaoFechamentoResponse.parse({
     fechamentoId,
     competencia: fechamento.competencia,
     vendedoraId: fechamento.vendedoraId,
-    contaPagarRemovida: !!fechamento.contaPagarId,
-    estornosReabertos: estornos.length,
+    contaPagarRemovida: resultado.contaPagarRemovida,
+    estornosReabertos: resultado.estornosReabertos,
   }));
 });
 
@@ -1227,25 +1356,26 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
     return;
   }
 
-  // Tudo que decide quanto pagar é lido DENTRO da transação, no mesmo instante
-  // das escritas: vendas, estorno e regra. `null` distingue "não havia venda"
-  // (422) de "todas já fechadas" (409) — os dois devolvem lista vazia.
-  let criados: Awaited<ReturnType<typeof fecharTransacao>>;
-  try {
-    criados = await fecharTransacao();
-  } catch (err) {
-    // Dois fechamentos simultâneos: a unique(loja,vendedora,competencia) protege
-    // o dinheiro (a 2ª transação faz rollback), mas a violação vinha embrulhada
-    // e escapava como 500. Aqui vira o 409 idempotente pretendido.
-    if (ehViolacaoUnica(err)) {
-      res.status(409).json({
-        error: "COMPETENCIA_JA_FECHADA",
-        detalhe: `Fechamento de ${competencia} já estava em curso`,
-      });
-      return;
-    }
-    throw err;
-  }
+  /**
+   * Tudo que decide quanto pagar é lido DENTRO da transação, no mesmo instante
+   * das escritas: vendas, estorno e regra. `null` distingue "não havia venda"
+   * (422) de "todas já fechadas" (409) — os dois devolvem lista vazia.
+   *
+   * **S-O80 — o `catch` local saiu, e o 409 continua sendo o mesmo.**
+   *
+   * Havia aqui um `if (ehViolacaoUnica(err))` que respondia
+   * `409 COMPETENCIA_JA_FECHADA` para QUALQUER violação de unicidade desta
+   * transação — e ela escreve em três tabelas: `contas_pagar`,
+   * `comissao_fechamentos` e `contratos`. Um 23505 de qualquer outro índice
+   * sairia com a frase do fechamento, dizendo à dona que a competência já
+   * fechou quando o problema é outro. Desde o E180 a tradução é por ÍNDICE:
+   * `comissao_fechamentos_loja_id_vendedora_id_competencia_unique` já tem
+   * entrada em `DUPLICADO_POR_INDICE`, com este mesmo código, e o `catch` era
+   * a segunda grafia da mesma recusa (regra 26). A prova de equivalência é o
+   * teste que já existia — *"fechar concorrente devolve 409, não 500, e paga
+   * uma vez só (I8)"*, em `lote9-comissao-api.test.ts`.
+   */
+  const criados = await fecharTransacao();
 
   async function fecharTransacao() {
    return db.transaction(async (tx) => {
@@ -1272,6 +1402,25 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
         .from(usuariosTable)
         .where(inArray(usuariosTable.id, aFechar)),
     ]);
+    /**
+     * S-O79 — **a tranca sobe para cá, e a guarda é relida sob ela.**
+     *
+     * `estornosPendentes` já lia dentro da transação, e isso não bastava: em
+     * READ COMMITTED o `SELECT` enxerga o commit de quem passou no intervalo, e
+     * a lista era usada para decidir a base do mês SEM que ninguém segurasse as
+     * linhas. Baixar o estorno à mão no mesmo segundo carimbava os mesmos
+     * contratos, e este fechamento os carimbava de novo, absorvendo na base um
+     * valor que a dona já tinha dado como perdido — R$ 10.000,00 descontados
+     * duas vezes, R$ 1.000,00 a menos no bolso da vendedora a 10%.
+     *
+     * A tranca vem antes de qualquer conta e cobre os candidatos de TODAS as
+     * vendedoras de uma vez, ordenada por id: uma passada só, na ordem que o
+     * `trancarContratos` garante, em vez de uma por vendedora dentro do laço.
+     */
+    const candidatos = [...new Set([...estornos.values()].flatMap((e) => e.contratoIds))];
+    await trancarContratos(tx, lojaId, candidatos);
+    descartarJaCarimbados(estornos, await relerEstornosSobATranca(tx, lojaId, candidatos));
+
     const nomePorId = new Map(nomes.map((n) => [n.id, n.nome]));
     const venc = vencimentoComissao(competencia);
     const saida = [];
@@ -1334,9 +1483,10 @@ router.post("/lojas/:lojaId/comissao/fechamentos", async (req, res): Promise<voi
       }).returning();
 
       if (reconciliados.length > 0) {
-        // S-O32: sem esta tranca, a reabertura concorrente devolve o estorno a
-        // PENDENTE e este UPDATE o recarimba sem que ele tenha sido abatido.
-        await trancarContratos(tx, lojaId, reconciliados);
+        // S-O32/S-O79: a tranca e a releitura destas linhas já aconteceram lá
+        // em cima, antes de a base do mês ser calculada. Sem elas, a reabertura
+        // concorrente devolve o estorno a PENDENTE e este UPDATE o recarimba
+        // sem que ele tenha sido abatido.
         await tx
           .update(contratosTable)
           .set({ comissaoEstornadaEm: new Date() })
@@ -1446,6 +1596,20 @@ router.post("/lojas/:lojaId/comissao/estornos/baixa",
       // S-O32: a lista já nasce dentro da transação; a tranca é o que impede
       // que ela envelheça entre o cálculo e a escrita.
       await trancarContratos(tx, lojaId, e.contratoIds);
+      /**
+       * S-O79 — **e a guarda é relida sob a tranca.**
+       *
+       * Trancar depois de perguntar não decide nada: em READ COMMITTED quem
+       * espera na fila acorda com a lista velha na mão. O fechamento da
+       * competência seguinte, rodando no mesmo segundo, absorve os mesmos
+       * contratos; esta baixa os carimbava por cima, e a lista de baixas
+       * passava a reivindicar um estorno que um mês já tinha abatido. Baixado
+       * tudo por outro, não sobra o que baixar: **422 SEM_ESTORNO_PENDENTE**,
+       * que é o que a tela mostraria se a corrida não existisse.
+       */
+      descartarJaCarimbados(pend, await relerEstornosSobATranca(tx, lojaId, e.contratoIds));
+      if (e.contratoIds.length === 0) return null;
+
       await tx
         .update(contratosTable)
         .set({

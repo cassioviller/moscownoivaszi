@@ -5956,7 +5956,19 @@ components:
       type: object
       required: [descricao]
       properties:
-        descricao: { type: string, minLength: 1 }
+        # S-O81/E191 — o teto do texto sai da CONTA do corpo, não do gosto.
+        # Sem `maxLength` o único limite era o do parser: `CORPO_MAX_FOTO_BYTES`
+        # cabe 3.848.880 bytes, então **3,8 MiB de descrição** entravam numa
+        # avaria. A conta do E186 (`api-server/src/lib/limites.ts`) reserva
+        # `ENVELOPE_MAX_BYTES` = 4.096 bytes para este campo, por decisão — e a
+        # `limites-de-upload.test.ts` prega que ele cabe lá: 1.000 caracteres
+        # custam no máximo 3.000 bytes (o pior caractere de TEXTO em UTF-8 tem 3,
+        # como o travessão "—"), mais os 54 do envelope medido, dão 3.054 dos
+        # 4.096 — e a folga de 1.042 paga a aspa que vira \" e a quebra de linha
+        # que vira \n. Mil caracteres são ~200 palavras: a descrição mais longa
+        # de uma avaria cabe com sobra, e a colagem acidental de um documento
+        # inteiro passa a ouvir 400 em vez de virar linha no banco.
+        descricao: { type: string, minLength: 1, maxLength: 1000 }
         custoReparo: { type: number, minimum: 0 }
         # Foto-evidência opcional, base64 — mesma borda das fotos de vestido
         # (E3): mime e dimensões saem do BINÁRIO, nunca da palavra do cliente.

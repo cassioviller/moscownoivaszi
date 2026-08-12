@@ -64,7 +64,7 @@ import { ROTULO_SITUACAO, dataHoraFmt } from "./helpers";
 import { podeNoModulo } from "@/lib/permissoes";
 import { mensagemApi } from "@/lib/erro-api";
 import { Erro } from "@/components/estado";
-import { FOTO_ACIMA_DO_TETO, FOTO_MAX_BYTES } from "@/lib/limites";
+import { AVARIA_DESCRICAO_MAX_CHARS, FOTO_ACIMA_DO_TETO, FOTO_MAX_BYTES } from "@/lib/limites";
 import { donaDaFicha, temReservaMae } from "@/lib/dona-da-ficha-da-reserva";
 
 /**
@@ -989,6 +989,9 @@ export default function ReservaDetalhe() {
                   value={avariaDescricao}
                   onChange={(e) => setAvariaDescricao(e.target.value)}
                   aria-label="Descrição da avaria"
+                  // S-O81: o teto do spec, do lado de cá — o campo para de
+                  // aceitar em vez de o servidor devolver 400 depois da viagem.
+                  maxLength={AVARIA_DESCRICAO_MAX_CHARS}
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   <Input

@@ -10,6 +10,7 @@ import {
   loginComLoja,
   type Fixture,
 } from "./helpers";
+import { DUPLICADO_POR_INDICE } from "../lib/erros";
 
 // Datas literais ancoradas por competência (meio-dia São Paulo — offset fixo).
 // Competências PASSADAS de propósito: só se fecha mês encerrado, e uma data
@@ -257,6 +258,19 @@ describe("Lote 9 — comissão por vendedora (regras, preview e fechamento)", ()
     expect([r1.status, r2.status].sort()).toEqual([201, 409]);
     const oResultado409 = r1.status === 409 ? r1 : r2;
     expect(oResultado409.body.error).toBe("COMPETENCIA_JA_FECHADA");
+    /**
+     * S-O80/E191 — **e a frase vem do ÍNDICE, não de um `catch` da rota.**
+     *
+     * A rota tinha um `if (ehViolacaoUnica(err))` que respondia com esta
+     * recusa para qualquer 23505 da transação — e ela escreve em
+     * `contas_pagar`, `comissao_fechamentos` e `contratos`. O código é o
+     * mesmo; o que mudou é que ele passou a sair de um lugar só (regra 26), e
+     * este assert é a prova de equivalência: o caminho inteiro (banco → error
+     * handler → JSON) devolve a frase que o mapa declara.
+     */
+    expect(oResultado409.body.detalhe).toBe(
+      DUPLICADO_POR_INDICE.comissao_fechamentos_loja_id_vendedora_id_competencia_unique!.detalhe,
+    );
 
     // Uma conta de comissão só — ninguém foi pago em dobro.
     const contas = await db

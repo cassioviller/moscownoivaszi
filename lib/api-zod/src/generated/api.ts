@@ -5070,13 +5070,14 @@ export const CreateAvariaParams = zod.object({
   "bloqueioId": zod.coerce.string()
 })
 
+export const createAvariaBodyDescricaoMax = 1000;
 
 export const createAvariaBodyCustoReparoMin = 0;
 
 
 
 export const CreateAvariaBody = zod.object({
-  "descricao": zod.string().min(1),
+  "descricao": zod.string().min(1).max(createAvariaBodyDescricaoMax),
   "custoReparo": zod.number().min(createAvariaBodyCustoReparoMin).optional(),
   "fotoBase64": zod.string().optional()
 })

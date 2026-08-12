@@ -3,8 +3,13 @@ import { criarFixture, fecharPool, limparFixture, loginComLoja, type Fixture } f
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { DUPLICADO_POR_INDICE, SEM_FRASE_POR_DECISAO } from "../lib/erros";
 import { arquivosDeRota, escritasDeRota, tabelasEscritasCruas } from "./escritas-de-rota";
+
+/** A raiz do repositório — `arquivosDeRota()` devolve caminhos a partir dela. */
+const RAIZ = path.resolve(__dirname, "..", "..", "..", "..");
 
 /**
  * E186 / S-O61 — **a conta que faltava: quantas restrições únicas uma pessoa
@@ -142,5 +147,39 @@ describe("E186 — os índices que uma rota alcança têm frase ou têm julgamen
 
     expect(r.body.error).toBe("CONVITE_PENDENTE");
     expect(r.body.detalhe).toContain("convite pendente");
+  });
+
+  /**
+   * S-O80/E191 — **nenhuma rota traduz o 23505 por conta própria.**
+   *
+   * O E186 tirou o `catch` local de `equipe.ts` e achou o segundo no mesmo
+   * gesto: `comissao.ts:1240` respondia `409 COMPETENCIA_JA_FECHADA` para
+   * QUALQUER violação de unicidade da transação que fecha a competência — e ela
+   * escreve em três tabelas (`contas_pagar`, `comissao_fechamentos`,
+   * `contratos`). Achar o segundo lendo o primeiro é a regra 26 na letra: quando
+   * o mesmo cuidado aparece escrito de duas formas, uma delas está errada.
+   *
+   * A régua enumera as rotas versionadas e cobra que a tradução de unicidade
+   * more num lugar só — `DUPLICADO_POR_INDICE`, com o nome do índice. Sem ela, o
+   * terceiro `catch` nasce sem ninguém notar, e ele nasce sempre com a frase da
+   * recusa que o autor tinha em mente, sobre um índice que ele não conferiu.
+   *
+   * **A peneira é o IMPORT, não o nome.** A primeira versão procurava
+   * `ehViolacaoUnica` no texto e acusou `equipe.ts`, cujo `catch` o E186 já
+   * tinha tirado — o que sobrou lá é o comentário que CONTA a remoção. Régua
+   * que confunde a prosa com o código cobra o conserto de quem já consertou.
+   */
+  const IMPORTA_A_PENEIRA = /import\s*\{[^}]*\behViolacaoUnica\b[^}]*\}\s*from\s*["'][^"']*lib\/erros["']/;
+
+  it("nenhuma rota traduz a violação de unicidade por conta própria (S-O80)", () => {
+    const rotas = arquivosDeRota();
+    expect(rotas.length, "a enumeração das rotas veio vazia").toBeGreaterThanOrEqual(15);
+    const comCatchLocal = rotas.filter((f) =>
+      IMPORTA_A_PENEIRA.test(readFileSync(path.join(RAIZ, f), "utf8")),
+    );
+    expect(
+      comCatchLocal,
+      "uma rota voltou a traduzir o 23505 sozinha — a frase dela vale para o índice que ela imaginou, não para o que estourou",
+    ).toEqual([]);
   });
 });
