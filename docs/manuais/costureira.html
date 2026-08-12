@@ -308,16 +308,22 @@
       <h2><span class="passo">1</span>A fila</h2>
       <p class="resumo">Menu → <span class="btn">Ajustes</span>. Ela responde a pergunta de segunda de manhã: <strong>o que eu costuro até sexta?</strong></p>
 
-      <p>A fila abre no recorte <strong>“Esta semana”</strong>. São três, e ficam no canto direito do título:</p>
+      <p>A fila abre no recorte <strong>“Prazo apertado”</strong>. São três, e ficam no canto direito do título:</p>
       <div class="rolagem">
         <table>
           <thead><tr><th>Recorte</th><th>O que mostra</th></tr></thead>
           <tbody>
-            <tr><td><span class="btn">Esta semana</span></td><td>O que está pendente com prazo <strong>em 7 dias ou menos</strong> — inclusive o que já está atrasado</td></tr>
+            <tr><td><span class="btn">Prazo apertado</span></td><td>O que está pendente e <strong>aperta</strong>: prova em 7 dias ou menos; sem prova marcada, casamento em 14 dias ou menos — inclusive o que já está atrasado</td></tr>
             <tr><td><span class="btn">Todos</span></td><td>Tudo o que está pendente, sem limite de prazo</td></tr>
             <tr><td><span class="btn">Concluídos</span></td><td>O que já foi marcado como feito — é por aqui que se desfaz um engano</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="fala">
+        <span class="rotulo">Mudou em 12/08/2026</span>
+        <p>Esta aba se chamava <strong>“Esta semana”</strong> e cortava em <strong>7 dias</strong>, sempre. O problema era o que ficava de fora: uma peça podia aparecer <strong>em vermelho</strong> e não estar nesta aba — porque o vermelho já contava 14 dias quando o prazo vinha do casamento. Você só a encontrava trocando para <span class="btn">Todos</span>, e ninguém troca de aba para procurar o que não sabe que existe.</p>
+        <p><strong>Agora a aba mostra tudo o que está vermelho.</strong> Se está apertado, está aqui — não é mais preciso conferir “Todos” por precaução.</p>
       </div>
 
       <p><strong>A ordem é o prazo, do mais apertado ao mais folgado.</strong> O que não tem prazo nenhum não some: cai no fim da lista, como rabeira.</p>
@@ -332,7 +338,16 @@
         <li>O <strong>checklist de peças</strong>, com a contagem: <em>“2/5 peças”</em></li>
       </ul>
 
-      <p>Quando não há nada na semana mas há trabalho adiante, a tela diz e oferece a saída: <em>“Nada com prazo nesta semana. 3 ajustes pendentes mais adiante — <strong>ver todos</strong>.”</em></p>
+      <p>Quando não há nada apertado mas há trabalho adiante, a tela diz e oferece a saída: <em>“Nada com o prazo apertado. 3 ajustes pendentes mais adiante — <strong>ver todos</strong>.”</em></p>
+
+      <h3>Cadastrar uma confecção</h3>
+      <p>O botão <span class="btn">Nova confecção</span> fica no alto da fila, ao lado dos recortes. Ele existe para o trabalho que <strong>não tem peça do acervo</strong> — o vestido feito para a noiva, que por definição não tem reserva nem bloqueio, e por isso não nasce pela ficha de nenhuma peça.</p>
+      <ul>
+        <li>Você escolhe a <strong>noiva</strong> e, depois, <strong>um atendimento dela</strong>. A lista de atendimentos não tem janela: uma confecção se combina num atendimento que já passou, e é assim que costuma acontecer</li>
+        <li><strong>O prazo não se digita</strong> — ele vem do casamento da noiva, pela mesma regra da seção seguinte</li>
+        <li>Se faltar alguma coisa, a tela diz <strong>antes</strong> de você clicar, e não depois</li>
+      </ul>
+      <p>Ajuste de peça que já existe continua nascendo onde sempre nasceu: na ficha da reserva, no bloco de provas.</p>
     </section>
 
     <section id="prazo">
@@ -362,10 +377,10 @@
       <h3>Quando o prazo fica vermelho</h3>
       <p><strong>Prova em 7 dias ou menos</strong> (ou atrasada). Sem prova marcada, <strong>casamento em 14 dias ou menos</strong>.</p>
 
-      <div class="fala aviso">
-        <span class="rotulo">Uma diferença que vale conhecer</span>
-        <p>O vermelho e o recorte “Esta semana” <strong>não usam o mesmo número</strong> quando o prazo vem do casamento.</p>
-        <p>Casamento em <strong>10 dias</strong>: a linha aparece <strong>em vermelho</strong> — mas só no recorte <span class="btn">Todos</span>, porque “Esta semana” corta em 7 dias. Se você trabalha só pela semana, <strong>abra “Todos” uma vez por semana</strong> para não perder um casamento vermelho que ficou de fora.</p>
+      <div class="fala">
+        <span class="rotulo">O vermelho e a aba dizem a mesma coisa</span>
+        <p><strong>Toda linha vermelha está no recorte <span class="btn">Prazo apertado</span>.</strong> São a mesma régua, e é por isso que a aba padrão basta: o que aperta você vê ao abrir a tela.</p>
+        <p>Até 12/08/2026 não era assim — o vermelho contava 14 dias e a aba cortava em 7, então um casamento em <strong>10 dias</strong> ficava vermelho fora da aba padrão. Se alguém te ensinou a <em>“conferir Todos uma vez por semana para não perder nada”</em>, esse conselho existia por causa disso, e <strong>não é mais necessário</strong>.</p>
       </div>
     </section>
 
@@ -472,10 +487,8 @@
         <table>
           <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
           <tbody>
-            <tr><td>Recorte “Esta semana”</td><td class="prazo">prazo em 7 dias ou menos, atrasados incluídos</td></tr>
-            <tr><td>Vermelho, quando há prova</td><td class="prazo">7 dias ou menos</td></tr>
-            <tr><td>Vermelho, quando o prazo é o casamento</td><td class="prazo">14 dias ou menos</td></tr>
-            <tr><td>Sua sessão (login)</td><td class="prazo">8 horas</td></tr>
+            <tr><td>Recorte “Prazo apertado” — e o vermelho, que é a mesma régua</td><td class="prazo">prova em 7 dias ou menos; sem prova, casamento em 14 dias ou menos — atrasados incluídos</td></tr>
+            <tr><td>Sua sessão (login)</td><td class="prazo" data-regua="SESSAO_TTL_MS">8 horas</td></tr>
           </tbody>
         </table>
       </div>
@@ -483,13 +496,17 @@
 
     <section id="verdade">
       <h2>O que ainda não existe, e é bom você saber</h2>
-      <p class="resumo">Duas coisas deste manual descrevem o sistema como ele está — não como se pretende que fique.</p>
+      <p class="resumo">Uma coisa. As outras três saíram daqui em <strong>12/08/2026</strong>, e ficam registradas porque quem leu a versão anterior pode estar trabalhando em cima delas.</p>
       <ul>
-        <li><strong>A confecção sem peça do acervo não tem formulário.</strong> Ela funciona na fila; o que falta é a tela para cadastrá-la</li>
-        <li><strong>O vermelho e o recorte “Esta semana” divergem</strong> quando o prazo vem do casamento — 14 dias contra 7</li>
+        <li><strong>A confecção não tem prazo próprio.</strong> Ele vem sempre do casamento da noiva. Não há como dizer <em>“esta eu preciso para o dia 10”</em> quando o casamento é em março — se isso fizer falta, é pedido para a dona, porque muda o banco de dados</li>
       </ul>
-      <p><strong>Uma terceira saiu daqui em 12/08/2026:</strong> este manual dizia que não havia perfil “Costureira” e que você entrava como Recepção, enxergando a carteira de noivas e os contratos da loja. O perfil foi criado, e o que ele abre é o que está no começo desta página.</p>
-      <p>Se algum dos dois que ficaram mudar, este manual muda junto.</p>
+      <p><strong>O que saiu daqui:</strong></p>
+      <ul>
+        <li><strong>Não havia perfil “Costureira”</strong> e você entrava como Recepção, enxergando a carteira de noivas e os contratos da loja. O perfil foi criado, e o que ele abre é o que está no começo desta página</li>
+        <li><strong>A confecção sem peça do acervo não tinha formulário.</strong> Agora tem: <span class="btn">Nova confecção</span>, no alto da fila</li>
+        <li><strong>O vermelho e o recorte divergiam</strong> quando o prazo vinha do casamento — 14 dias contra 7. Hoje são a mesma régua, e a aba mudou de nome junto</li>
+      </ul>
+      <p>Se o que ficou mudar, este manual muda junto.</p>
     </section>
 
   </main>

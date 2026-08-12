@@ -473,9 +473,10 @@
       <p><strong>Gerar o link também marca o orçamento como enviado</strong> — compartilhar é enviar.</p>
 
       <h3>Duas coisas que valem saber de cor</h3>
-      <div class="fala aviso">
-        <span class="rotulo">O link morre em 7 dias; a proposta vale 30</span>
-        <p>São prazos diferentes de propósito: o link é a chave, a validade é o preço. Quando o botão voltar a dizer <span class="btn">Link para a noiva</span> em vez de “Copiar link da noiva”, é porque o link expirou — <strong>clique nele de novo</strong> e mande o novo endereço.</p>
+      <div class="fala">
+        <span class="rotulo">O link dura o que a proposta durar</span>
+        <p><strong>A validade que você define no orçamento é o prazo do link.</strong> Deu 30 dias, o link vale 30; deu 10, vale 10. Você controla os dois com um número só.</p>
+        <p>Até <strong>12/08/2026</strong> o link morria em 7 dias, sempre — um prazo emprestado do convite de equipe, que não tinha nada a ver com proposta. A noiva abria o WhatsApp no décimo dia e lia “link expirado” numa proposta de pé. Quando o botão voltar a dizer <span class="btn">Link para a noiva</span> em vez de “Copiar link da noiva”, é porque a proposta venceu — <strong>renove a validade e clique nele de novo</strong>.</p>
       </div>
       <p><strong>A proposta não sai vazia.</strong> Sem nenhum item, o sistema responde <em>“A proposta não tem nenhum item — lance o vestido antes de mandar o link para a noiva.”</em> Isso protege uma venda inteira: uma proposta de R$ 0,00 aceita pela noiva travava o orçamento em aprovado e impedia lançar o vestido depois.</p>
 
@@ -615,11 +616,11 @@
         <table>
           <thead><tr><th>O que</th><th>Quanto vale</th></tr></thead>
           <tbody>
-            <tr><td>Validade da proposta</td><td class="prazo">30 dias</td></tr>
-            <tr><td>Link da proposta</td><td class="prazo">7 dias</td></tr>
-            <tr><td>Portal da noiva</td><td class="prazo">30 dias, renovados a cada abertura dela</td></tr>
-            <tr><td>Lookbook</td><td class="prazo">30 dias</td></tr>
-            <tr><td>Sua sessão (login)</td><td class="prazo">8 horas</td></tr>
+            <tr><td>Validade da proposta</td><td class="prazo" data-regua="VALIDADE_PADRAO_DIAS">30 dias</td></tr>
+            <tr><td>Link da proposta</td><td class="prazo">o mesmo prazo da proposta (mínimo de 1 dia)</td></tr>
+            <tr><td>Portal da noiva</td><td class="prazo" data-regua="PORTAL_TTL_MS">30 dias, renovados a cada abertura dela</td></tr>
+            <tr><td>Lookbook</td><td class="prazo" data-regua="LOOKBOOK_TTL_MS">30 dias</td></tr>
+            <tr><td>Sua sessão (login)</td><td class="prazo" data-regua="SESSAO_TTL_MS">8 horas</td></tr>
             <tr><td>Casamento “urgente” (vermelho)</td><td class="prazo">14 dias ou menos</td></tr>
             <tr><td>Prova “iminente” (vermelho)</td><td class="prazo">7 dias ou menos</td></tr>
             <tr><td>Noiva “parada”</td><td class="prazo">7 dias amarelo · 14 vermelho</td></tr>
