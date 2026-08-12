@@ -5,7 +5,7 @@
  * Moscow Noivas API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Ajuste } from './ajuste';
+import type { AtendimentoAjuste } from './atendimentoAjuste';
 import type { AtendimentoDesfecho } from './atendimentoDesfecho';
 import type { AtendimentoSituacao } from './atendimentoSituacao';
 import type { AtendimentoTipo } from './atendimentoTipo';
@@ -41,5 +41,5 @@ export interface Atendimento {
   cabine?: Cabine;
   vendedora?: Usuario;
   bloqueio?: BloqueioVestido | null;
-  ajustes?: Ajuste[];
+  ajustes?: AtendimentoAjuste[];
 }

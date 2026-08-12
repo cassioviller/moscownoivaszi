@@ -5680,10 +5680,34 @@ components:
           anyOf:
             - $ref: "#/components/schemas/BloqueioVestido"
             - type: "null"
+        # E192/S-O75: o item é o `AtendimentoAjuste`, e não o `Ajuste` inteiro.
+        # O `Ajuste` carrega a VOLTA para o atendimento (`atendimento`), o prazo
+        # calculado (`proximaProva`) e a peça de acervo (`pecaDoAcervo`) — três
+        # coisas que só a fila da costureira monta, e que `ATENDIMENTO_WITH`
+        # nunca trouxe. Prometê-las aqui era prometer o que ninguém preenche.
         ajustes:
           type: array
           items:
-            $ref: "#/components/schemas/Ajuste"
+            $ref: "#/components/schemas/AtendimentoAjuste"
+    # E192/S-O75 — o ajuste COMO O ATENDIMENTO O ENTREGA: as colunas do trabalho
+    # mais o checklist, que é o que o `with` da agenda carrega. É o espelho do
+    # `AjusteAtendimento` (o atendimento como o ajuste o entrega), e existe pelo
+    # mesmo motivo: sem ele o par cicla, e o ciclo virava promessa vazia.
+    AtendimentoAjuste:
+      type: object
+      required: [id, lojaId, atendimentoId, descricao, status]
+      properties:
+        id: { type: string }
+        lojaId: { type: string }
+        atendimentoId: { type: string }
+        descricao: { type: string }
+        tipo: { type: string, enum: [AJUSTE, CONFECCAO] }
+        custo: { type: ["number", "null"] }
+        status: { type: string, enum: [PENDENTE, FEITO] }
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/AjusteChecklistItem"
     AtendimentoInput:
       type: object
       required: [leadId, cabineId, vendedoraId, inicio]

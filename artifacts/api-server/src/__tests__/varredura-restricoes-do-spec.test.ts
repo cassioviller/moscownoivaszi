@@ -123,7 +123,7 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    *
    * `new Date(null)` é a época Unix, e é uma data VÁLIDA — o zod diz
    * `success: true` e a rota grava 01/01/1970. O V12 o fechou em `reservas.ts`
-   * com uma guarda de corpo cru, campo a campo; nas outras 955 ocorrências, o
+   * com uma guarda de corpo cru, campo a campo; nas outras 815 ocorrências, o
    * `null` explícito continua virando 1970 se alguém o mandar.
    *
    * O que salva a maioria é o corpo NÃO trazer a chave (ausente ≠ null), e por
@@ -137,13 +137,21 @@ describe("varredura — o que o gerador de zod perde do spec (S-O3)", () => {
    * de ler do banco não recebe `null` de ninguém. A conta sobe assim mesmo,
    * porque o dia em que ela parar de subir por porta nova é o dia em que ela
    * deixa de contar a dívida inteira.
+   *
+   * **956 → 816 no E192, e desta vez o vermelho foi PRÊMIO.** A S-O75 tirou do
+   * spec uma subárvore que cinco portas de atendimento prometiam e nenhuma
+   * preenchia (`ajustes[].atendimento`, com `lead` e `bloqueio` dentro): o zod
+   * gerado perdeu **140 `coerce.date()` de uma vez**, **15% da dívida de datas
+   * do repositório inteiro**, sem uma linha de rota mudar. É a medida do que
+   * custava a promessa vazia — e a prova de que este número conta a dívida de
+   * verdade, porque ele desceu quando a dívida desceu.
    */
   it("as datas coercidas estão contadas — `null` vira 1970 e o zod aprova", () => {
     const coeridas = (zod.match(/coerce\.date\(\)/g) ?? []).length;
     expect(
       coeridas,
       "mudou o número de datas coercidas? A guarda do V12 (`reservas.ts`) é campo a campo, não global",
-    ).toBe(956);
+    ).toBe(816);
   });
 
   /**

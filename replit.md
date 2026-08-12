@@ -166,6 +166,26 @@ parcelas — e fecha o caixa, a comissão da vendedora e a folha em cima disso.
   e neste caso o conserto é baixar o número na tabela `SEM_DISCIPLINA` do teste.
   A dívida trava a CONTAGEM por arquivo, não a lista de nomes. Os pontos cegos
   conhecidos estão listados no topo do arquivo e em `portas-de-escrita.ts`.
+- **A varredura de QUEM SERIALIZA o schema aninhado** (E192, S-O76):
+  `cd artifacts/api-server && npx vitest run src/__tests__/varredura-schemas-aninhados.test.ts`
+  (**~1,5 s a parte de papel; o último caso toca o banco**). Ela é a **primeira
+  do repositório que resolve `$ref`** — a `varredura-restricoes-do-spec` (E177)
+  lê o `openapi.yaml` como TEXTO, e por isso *"quem preenche este objeto três
+  níveis abaixo?"* nunca teve resposta de máquina: a conta foi feita à mão três
+  vezes (E167, E179, E185) e **saiu errada as três**. O motor
+  (`__tests__/schemas-aninhados.ts`) cruza as **operações do spec**, com `$ref`
+  transitivo, contra o **`with` da consulta relacional** que monta a resposta,
+  e só pergunta pela FRONTEIRA — o filho de um pai que chegou. Hoje: **200
+  operações · 143 com schema de resposta · 70 com relação · 250 pares
+  (operação, caminho) · 144 entregues · 106 não · 31 operações montadas fora do
+  `with`**. Os 106 não são 106 defeitos, e as duas tabelas separam o que é o
+  quê: **7 arestas que porta nenhuma entrega** (cada uma com o endereço do
+  serializador escrito à mão, em `MONTADO_FORA_DO_HANDLER`) e **16 entregues
+  por umas portas e não por outras** (schema compartilhado — `Lead.interesse`
+  viaja em 27 respostas e 4 a carregam). **Quando ela fica vermelha**, ou
+  nasceu objeto aninhado sem quem o preencha, ou uma porta passou a entregar o
+  que não entregava — e nos dois casos a decisão é escrita numa das tabelas.
+  Ela também cobra que **toda operação do spec tenha porta no roteador**.
 - **A varredura dos ÍNDICES ALCANÇÁVEIS por HTTP** (E186, S-O61):
   `cd artifacts/api-server && npx vitest run src/__tests__/e186-indices-alcancaveis-api.test.ts`
   (toca o banco — lê `pg_indexes`). Ela cruza as **restrições únicas que não são
