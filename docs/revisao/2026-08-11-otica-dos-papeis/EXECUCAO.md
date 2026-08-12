@@ -43,7 +43,7 @@ espera uma decisão sua"*.
 | ~~**E175**~~ | ~~a costureira: a cor que discordava de si mesma, e o trabalho que não nascia~~ | B2 | ✅ `205417d` · [relatório](execucao/E175.md) — **a confecção com casamento em 5 dias saía CINZA na fila** e vermelha na ficha; e a confecção não tinha onde nascer |
 | ~~**E176**~~ | ~~as portas: a mesma regra vale coisas diferentes conforme quem bate~~ | B3 | ✅ `67f98f8` · [relatório](execucao/E176.md) — **recusar não é sempre proteger**: a porta da loja recusa o WhatsApp torto e a captação pública o aceita, para não perder o lead |
 | ~~**E177**~~ | ~~a classe que o gerador perde: contá-la e fazê-la soar~~ | C | ✅ `3b38689` · [relatório](execucao/E177.md) — **115 `integer` no spec, ZERO `.int()` no zod**; e a perda saía como **500**, não como recusa |
-| ~~**E178**~~ | ~~o teto, o rótulo e o recorte: o mesmo número escrito em mais de um lugar~~ | C (lote 1 das 🔵) | ✅ `<hash>` · [relatório](execucao/E178.md) — **a S-O1 nomeava duas ações e eram OITO** (6 que o servidor grava sem rótulo na tela, 2 com rótulo e sem filtro); e o conserto do S-O26 saiu **meio conserto**, com o 410 certo e o corpo rotulado de gzip |
+| ~~**E178**~~ | ~~o teto, o rótulo e o recorte: o mesmo número escrito em mais de um lugar~~ | C (lote 1 das 🔵) | ✅ `28c3588` · [relatório](execucao/E178.md) — **a S-O1 nomeava duas ações e eram OITO** (6 que o servidor grava sem rótulo na tela, 2 com rótulo e sem filtro); e o conserto do S-O26 saiu **meio conserto**, com o 410 certo e o corpo rotulado de gzip |
 
 A **Faixa A é serial** — os quatro mexem nas mesmas transações. A **Faixa C
 paraleliza**. O `/code-review ultra` roda sobre a branch de cada faixa antes do
@@ -60,12 +60,17 @@ do E166, e a reconciliação é do integrador, não dos agentes.
 **O 🟠 que os três relataram não existia.** Os três mediram
 `backup-download-api.test.ts` reprovando com `expected 200 "OK", got 500`
 (`NotFoundError` do `send`) e o classificaram como vermelho pendente da regra
-18 — um deles como 🟠. No `main` o arquivo passa (**7 passed**), e a causa é o
-ambiente: `res.download` recusa caminho com **componente oculto**, e todo
-worktree de agente vive sob `.claude/worktrees/`. Medido com uma sonda de duas
-linhas — `limpo → 200`, `oculto → 404 NotFoundError`. Ficou como capacidade no
-`replit.md` (regra 8) e como a sobra **S-O26**, que é o defeito real que a
-investigação achou: a rota não trata o erro do `send`.
+18 — um deles como 🟠. No `main` o arquivo passa (**7 passed** então, **8** desde
+o E178), e a causa é o ambiente: `res.download` recusa caminho com **componente
+oculto**, e todo worktree de agente vive sob `.claude/worktrees/`. Medido com
+uma sonda de duas linhas — `limpo → 200`, `oculto → 404 NotFoundError`. Ficou
+como capacidade no `replit.md` (regra 8) e como a sobra **S-O26**, que é o
+defeito real que a investigação achou: a rota não trata o erro do `send`.
+
+**O E178 fechou a S-O26 e mudou o sintoma**: o vermelho de worktree deixou de
+ser `got 500` com a stack crua e passou a ser `got 410 BACKUP_SEM_ARQUIVO`. O
+defeito de ambiente é o mesmo; quem decorou o número antigo vai estranhar o
+novo, e por isso a nota do `replit.md` diz os dois.
 
 ## Sobras
 
