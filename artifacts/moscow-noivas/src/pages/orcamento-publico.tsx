@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
 import { brl, instanteLongo, tipoItemLabel } from "@/lib/formatos";
-import { temDesconto } from "@/lib/financeiro/dinheiro";
+import { centavos, linhaDeDesconto, reais } from "@/lib/financeiro/dinheiro";
 import { mensagemApi } from "@/lib/erro-api";
 
 /**
@@ -141,27 +141,36 @@ export default function OrcamentoPublico() {
                     R$ 4.800,00 · Desconto R$ 5.000,00 · Total R$ 0,00": uma
                     subtração de −R$ 200,00 apresentada como zero no documento
                     que decide a compra. O rótulo percentual fica como
-                    contexto; o número é sempre a diferença real. */}
-                {/* S-O13: a pergunta é `temDesconto` (P15/E163) — a mesma que
-                    o papel e a tela do contrato fazem. Tipo com valor 0 é SEM
-                    desconto, e a régua não se reescreve por tela. */}
-                {temDesconto(dados.descontoTipo, dados.descontoValor) ? (
-                  <>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Soma dos itens</span>
-                      <span className="tabular-nums">{brl(dados.totalBruto)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>
-                        Desconto
-                        {dados.descontoTipo === "PERCENTUAL" ? ` (${dados.descontoValor}%)` : ""}
-                      </span>
-                      <span className="tabular-nums">
-                        − {brl(dados.totalBruto - dados.totalLiquido)}
-                      </span>
-                    </div>
-                  </>
-                ) : null}
+                    contexto; o número é sempre a diferença real.
+
+                    S-O64/E187: a conta certa desta página era uma CÓPIA — o
+                    portal da noiva, que mostra a mesma proposta pelo outro
+                    link, seguiu imprimindo o valor cru. Agora as duas telas
+                    (e o papel) chamam `linhaDeDesconto`, que já pergunta o
+                    `temDesconto` (P15/E163) por dentro. */}
+                {(() => {
+                  const desc = linhaDeDesconto(
+                    centavos(dados.totalBruto),
+                    centavos(dados.totalLiquido),
+                    dados.descontoTipo,
+                    dados.descontoValor,
+                  );
+                  if (!desc) return null;
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Soma dos itens</span>
+                        <span className="tabular-nums">{brl(reais(desc.subtotalC))}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Desconto{desc.rotulo}</span>
+                        <span className="tabular-nums">
+                          − {brl(reais(desc.abatimentoC))}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
                   <span className="font-serif text-xl tabular-nums">

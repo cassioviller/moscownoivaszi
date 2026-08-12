@@ -91,6 +91,52 @@ export function liquidoEmCentavos(
   return Math.max(0, brutoC - centavos(valor)); // VALOR
 }
 
+/** O que a linha "Desconto" mostra: o abatimento real e o rótulo do tipo. */
+export interface LinhaDeDesconto {
+  /** A soma dos itens, em centavos — a primeira linha do bloco. */
+  subtotalC: number;
+  /** O que SAIU do subtotal: bruto − líquido, sempre ≥ 0 e sempre reconciliando. */
+  abatimentoC: number;
+  /** ` (10%)` para o percentual, `""` para o valor — contexto, nunca o número. */
+  rotulo: string;
+}
+
+/**
+ * S-O64 (E187) — o desconto que se EXIBE é a diferença real, e a régua é uma só.
+ *
+ * O O9 (E166) consertou isto uma vez, na página pública: a linha imprimia o
+ * `descontoValor` cru, e um desconto em VALOR maior que a soma dos itens saía
+ * como **"Soma R$ 4.800,00 · Desconto R$ 5.000,00 · Total R$ 0,00"** — uma
+ * subtração de −R$ 200,00 apresentada como zero no documento que decide a
+ * compra (o líquido clampa em zero desde sempre, `liquidoEmCentavos` acima).
+ *
+ * O conserto ficou no arquivo, não na régua, e o portal da noiva seguiu
+ * imprimindo o valor cru nos DOIS blocos. **A mesma proposta, aberta nos dois
+ * links que a loja manda pelo WhatsApp, dizia "− R$ 4.800,00" numa tela e
+ * "Desconto R$ 5.000,00" na outra** — e é a mesma noiva lendo as duas.
+ *
+ * Eram CINCO grafias da mesma conta em 2026-08-12, e a medida da regra 26 é
+ * exatamente essa: três acertavam por cópia (a página pública, a tela do
+ * contrato e o PDF, cada uma com a sua subtração à mão) e duas erravam. Quem
+ * pergunta "quanto de desconto eu mostro?" pergunta aqui.
+ *
+ * `null` é "sem desconto" — a mesma resposta do `temDesconto`, para o bloco
+ * inteiro não ser desenhado.
+ */
+export function linhaDeDesconto(
+  brutoC: number,
+  liquidoC: number,
+  tipo: string | null | undefined,
+  valor: number | null | undefined,
+): LinhaDeDesconto | null {
+  if (!temDesconto(tipo, valor)) return null;
+  return {
+    subtotalC: brutoC,
+    abatimentoC: brutoC - liquidoC,
+    rotulo: tipo === "PERCENTUAL" ? ` (${valor}%)` : "",
+  };
+}
+
 /**
  * O6 (E169) — a QUANTIDADE tem a mesma borda que o valor, e não tinha régua.
  *

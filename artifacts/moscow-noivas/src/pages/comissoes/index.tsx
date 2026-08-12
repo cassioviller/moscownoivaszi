@@ -208,6 +208,7 @@ export default function Comissoes() {
       enabled: !!activeLojaId,
     },
   });
+  const competenciasPendentes = pendencias.data ?? [];
   const baixas = useListBaixasEstornoComissao(activeLojaId!, {
     query: {
       queryKey: getListBaixasEstornoComissaoQueryKey(activeLojaId!),
@@ -534,16 +535,20 @@ export default function Comissoes() {
           sinalizava o mês que ficou para trás: a vendedora não recebe, ninguém
           reclama porque ninguém sabe, e a pendência acumula invisível. Cada
           linha LEVA à competência — avisar sem dar o caminho é meio aviso. — */}
-      {(pendencias.data?.length ?? 0) > 0 && (
+      {/* S-O65/E187: a lista sai da consulta para uma const ANTES do
+          `length > 0` — a pergunta pelo `?.length ?? 0` e a resposta pelo
+          `data!` eram a mesma frase escrita de dois jeitos, e a asserção é a
+          que sobrevive a quem mexer na guarda (S-O16). */}
+      {competenciasPendentes.length > 0 && (
         <Alert variant="destructive" data-testid="pendencias-comissao">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>
-            {pendencias.data!.length === 1
+            {competenciasPendentes.length === 1
               ? "Uma competência passada ainda não foi fechada"
-              : `${pendencias.data!.length} competências passadas ainda não foram fechadas`}
+              : `${competenciasPendentes.length} competências passadas ainda não foram fechadas`}
           </AlertTitle>
           <AlertDescription className="space-y-1">
-            {pendencias.data!.map((p) => (
+            {competenciasPendentes.map((p) => (
               <div key={p.competencia} className="flex flex-wrap items-baseline gap-x-2">
                 <button
                   type="button"

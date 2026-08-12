@@ -15,6 +15,15 @@ export { centavos, reais, somaCentavos, parseValor } from "@workspace/financeiro
 export { brutoEmCentavos, liquidoEmCentavos, temDesconto } from "@workspace/financeiro-core";
 
 /**
+ * S-O64/E187: e QUANTO de desconto se mostra também sai daqui. A conta é
+ * `bruto − líquido`, nunca o `descontoValor` gravado: com desconto em VALOR
+ * maior que a soma dos itens, a mesma proposta dizia "Desconto R$ 5.000,00" no
+ * portal e "− R$ 4.800,00" na página pública — e o total, R$ 0,00 nos dois.
+ */
+export { linhaDeDesconto } from "@workspace/financeiro-core";
+export type { LinhaDeDesconto } from "@workspace/financeiro-core";
+
+/**
  * E169: a quantidade do item lê pela mesma borda que o valor (O6), e o teto do
  * desconto é a MESMA função que o servidor executa (A07.3) — a tela avisa antes
  * do clique com a frase que o 422 traria depois.

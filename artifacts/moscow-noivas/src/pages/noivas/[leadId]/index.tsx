@@ -626,12 +626,17 @@ export default function NoivaDetalhe() {
                         {/* E125/D4: "quanto falta pagar?" respondida na ficha —
                             o recorte ?leadId= embute o carnê, e a soma é a
                             régua única do core (a mesma do portal da noiva). */}
-                        {c.status === "ATIVO" && (c.parcelas?.length ?? 0) > 0 && (
+                        {/* S-O66/E187: a guarda pergunta pelo `?.` e a soma
+                            afirmava com `!` — a segunda ocorrência da classe, e
+                            a sobra nomeava só a do contrato. Perguntar pelo
+                            `c.parcelas &&` estreita para a soma, que sem elas
+                            somaria `undefined`. */}
+                        {c.status === "ATIVO" && c.parcelas && c.parcelas.length > 0 && (
                           <span
                             className="block text-xs text-muted-foreground tabular-nums"
                             data-testid="text-falta-receber-ficha"
                           >
-                            falta receber {brl(reais(abertoEmCentavos(c.parcelas!)))}
+                            falta receber {brl(reais(abertoEmCentavos(c.parcelas)))}
                           </span>
                         )}
                       </span>

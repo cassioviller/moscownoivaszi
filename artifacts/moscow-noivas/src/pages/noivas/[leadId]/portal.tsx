@@ -68,6 +68,9 @@ export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?:
 
   // 404 é estado ("nunca gerado"), não erro de rede. A régua do "vivo" é a
   // MESMA das mensagens (E84): lib/portal.
+  // S-O65/E187: `portalVivo` virou predicado de tipo, então este `const`
+  // estreita dentro de todo `{vivo && …}` — eram quatro `portal!` aqui, a
+  // maior parte da dívida que a S-O16 deixou nas telas COM sessão.
   const portal = portalQ.data ?? null;
   const nuncaGerado = portalQ.isError;
   const vivo = portalVivo(portal);
@@ -143,13 +146,13 @@ export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?:
 
             {vivo && (
               <p className="text-sm">
-                {portal!.ultimoAcessoEm ? (
-                  <>Ela abriu {haQuanto(String(portal!.ultimoAcessoEm)) ?? "agora há pouco"}.</>
+                {portal.ultimoAcessoEm ? (
+                  <>Ela abriu {haQuanto(String(portal.ultimoAcessoEm)) ?? "agora há pouco"}.</>
                 ) : (
                   <>Ela ainda não abriu.</>
                 )}{" "}
                 <span className="text-muted-foreground">
-                  Válido até {instanteDiaMes(portal!.expiraEm)}.
+                  Válido até {instanteDiaMes(portal.expiraEm)}.
                 </span>
               </p>
             )}
@@ -175,7 +178,7 @@ export function PortalNoiva({ leadId, noivaNome }: { leadId: string; noivaNome?:
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => copiar(portal!.token)}
+                      onClick={() => copiar(portal.token)}
                     >
                       <Copy className="mr-1.5 h-3.5 w-3.5" />
                       Copiar

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { recusaAoEditarItem, recusaAoRemoverItem } from "./desconto-e-itens";
+import {
+  itensPresosPeloDesconto,
+  recusaAoEditarItem,
+  recusaAoRemoverItem,
+} from "./desconto-e-itens";
 
 /**
  * S-O49 — a pergunta que a tela do orçamento não fazia antes do clique.
@@ -50,6 +54,45 @@ describe("S-O49 — remover item, com a recusa do servidor dita antes", () => {
     expect(recusaAoRemoverItem({ ...ORCAMENTO, itens: [VEU], descontoValor: 1500 }, "i2")?.error).toBe(
       "DESCONTO_INVALIDO",
     );
+  });
+});
+
+/**
+ * S-O67 (E187) — a mesma recusa, dita na LISTA. O diálogo do E181 só aparece
+ * depois do clique na lixeira; a linha responde antes, e a resposta é a mesma
+ * função, item a item.
+ */
+describe("S-O67 — quais itens o desconto prende", () => {
+  it("prende só o que o desconto precisa: o véu de R$ 2.000,00 sai, o vestido não", () => {
+    // Bruto R$ 5.000,00, desconto R$ 4.000,00. Tirar o vestido de R$ 3.000,00
+    // deixa R$ 2.000,00 contra R$ 4.000,00 — preso. Tirar o véu deixa
+    // R$ 3.000,00 contra R$ 4.000,00 — preso também. Com desconto de
+    // R$ 1.000,00, nenhum dos dois prende.
+    expect([...itensPresosPeloDesconto(ORCAMENTO)].sort()).toEqual(["i1", "i2"]);
+    expect([...itensPresosPeloDesconto({ ...ORCAMENTO, descontoValor: 1000 })]).toEqual([]);
+  });
+
+  it("prende UM e libera o outro quando é o item grande que sustenta", () => {
+    // Desconto de R$ 2.500,00: sem o vestido sobra R$ 2.000,00 (preso), sem o
+    // véu sobra R$ 3.000,00 (livre). É o caso que a lista existe para mostrar.
+    const presos = itensPresosPeloDesconto({ ...ORCAMENTO, descontoValor: 2500 });
+    expect([...presos]).toEqual(["i1"]);
+  });
+
+  it("sem desconto e no percentual não prende nada — a lista fica limpa", () => {
+    expect([...itensPresosPeloDesconto({ ...ORCAMENTO, descontoTipo: null, descontoValor: null })]).toEqual([]);
+    expect([...itensPresosPeloDesconto({ ...ORCAMENTO, descontoTipo: "PERCENTUAL", descontoValor: 40 })]).toEqual([]);
+  });
+
+  it("orçamento sem itens responde vazio, não estoura", () => {
+    expect([...itensPresosPeloDesconto({ descontoTipo: "VALOR", descontoValor: 4000 })]).toEqual([]);
+  });
+
+  it("o veredito da linha é o MESMO do diálogo, item a item (regra 26)", () => {
+    const presos = itensPresosPeloDesconto(ORCAMENTO);
+    for (const it of ORCAMENTO.itens) {
+      expect(presos.has(it.id)).toBe(recusaAoRemoverItem(ORCAMENTO, it.id) !== null);
+    }
   });
 });
 

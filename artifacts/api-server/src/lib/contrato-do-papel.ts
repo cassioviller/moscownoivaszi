@@ -1,6 +1,6 @@
 import { gerarContratoPdf } from "./contrato-pdf";
 import type { Contrato, ContratoItem, Parcela, Lead, Loja } from "@workspace/db";
-import { brutoEmCentavos, temDesconto } from "@workspace/financeiro-core";
+import { brutoEmCentavos, linhaDeDesconto } from "@workspace/financeiro-core";
 
 /**
  * E100/F21 — o contrato como PAPEL, com uma régua só.
@@ -145,17 +145,26 @@ export function pdfDoContrato(contrato: ContratoComPapel): Uint8Array {
     ...(() => {
       // P15/E163: a pergunta é da régua única — tipo com valor 0 é SEM desconto,
       // como o dinheiro sempre tratou; o papel imprimia "Desconto − R$ 0,00".
-      if (!temDesconto(contrato.descontoTipo, contrato.descontoValor)) return {};
-      // `brutoEmCentavos` do core (E95/C1) — era a mesma conta reescrita à mão,
-      // e o papel que a noiva assina é o pior lugar para uma cópia divergir.
-      const brutoC = brutoEmCentavos(contrato.itens);
-      const abatimentoC = brutoC - Math.round(contrato.valorTotal * 100);
-      const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
+      // S-O64/E187: e a CONTA também. `brutoEmCentavos` do core (E95/C1) já
+      // somava aqui, mas a subtração era escrita à mão, como em mais quatro
+      // telas — e as duas do portal da noiva a escreviam ERRADA. O papel que
+      // ela assina é o pior lugar para uma cópia divergir; agora ele não tem
+      // cópia nenhuma.
+      const desc = linhaDeDesconto(
+        brutoEmCentavos(contrato.itens),
+        Math.round(contrato.valorTotal * 100),
+        contrato.descontoTipo,
+        contrato.descontoValor,
+      );
+      if (!desc) return {};
       // P14/E165: o sinal é o hífen ASCII — o U+2212 que morava aqui virava
       // "?" no desenhista WinAnsi, e o papel imprimia «Desconto: ?R$ 500,00»:
       // o abatimento sem sinal, lido como mais uma cobrança. O desenhista
       // também traduz (cinto duplo), mas o montador é a origem certa.
-      return { subtotal: brl(brutoC / 100), desconto: `-${brl(abatimentoC / 100)}${rotulo}` };
+      return {
+        subtotal: brl(desc.subtotalC / 100),
+        desconto: `-${brl(desc.abatimentoC / 100)}${desc.rotulo}`,
+      };
     })(),
     valorTotal: brl(contrato.valorTotal),
     formaPagamento: rotuloForma(contrato.formaPagamento),

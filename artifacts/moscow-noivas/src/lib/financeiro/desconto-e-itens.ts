@@ -62,6 +62,32 @@ export function recusaAoRemoverItem(
 }
 
 /**
+ * S-O67 (E187) — QUAIS itens o desconto prende, para a lista dizer antes do
+ * clique. O E181 pôs a recusa no diálogo do "Remover este item?" e deixou a
+ * linha muda de propósito, por "custaria uma passada por item a cada render".
+ *
+ * **Medido em 2026-08-12**, com esta mesma `recusaAoRemoverItem`, 20 mil
+ * passadas por cenário e um processo por cenário: 8 itens com NENHUM preso — o
+ * caso comum — custam **2,0 µs** a passada inteira; os mesmos 8 todos presos
+ * custam **862 µs**, 430× mais. O que cresce não é a soma: é a FRASE, dois
+ * `toLocaleString` por item dentro do `detalhe` que o 422 traria. A sobra
+ * dizia que o caro era a passada, e o caro é a frase.
+ *
+ * Por isso a resposta é um `Set` de ids, e quem chama a memoriza pelo
+ * orçamento: a lista só muda quando o orçamento muda, e 862 µs uma vez por
+ * mudança não são 862 µs a cada tecla digitada no formulário de item ao lado.
+ * A régua continua sendo a do servidor (regra 26) — a mesma que o diálogo
+ * chama para dizer a frase inteira.
+ */
+export function itensPresosPeloDesconto(orcamento: OrcamentoComDesconto): Set<string> {
+  const presos = new Set<string>();
+  for (const it of orcamento.itens ?? []) {
+    if (recusaAoRemoverItem(orcamento, it.id)) presos.add(it.id);
+  }
+  return presos;
+}
+
+/**
  * A mesma pergunta para o `PATCH`: baixar o valor unitário ou a quantidade
  * derruba o bruto igual, e o E174 fechou as duas portas juntas.
  */

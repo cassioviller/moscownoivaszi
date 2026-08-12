@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   brutoEmCentavos,
   centavos,
+  linhaDeDesconto,
   liquidoEmCentavos,
   parseQuantidade,
   parseValor,
@@ -152,5 +153,55 @@ describe("recusaDeDesconto — o teto dos dois tipos, numa régua só", () => {
   it("sem valor não há o que recusar", () => {
     expect(recusaDeDesconto("VALOR", null, BRUTO)).toBeNull();
     expect(recusaDeDesconto(null, 6000, BRUTO)).toBeNull();
+  });
+});
+
+/**
+ * S-O64 (E187) — o desconto que a NOIVA lê é a diferença real.
+ *
+ * O portal e a página pública mostram a mesma proposta pelos dois links que a
+ * loja manda; até este épico, um imprimia o `descontoValor` gravado e o outro a
+ * subtração. O caso que os separa é o desconto em VALOR maior que a soma dos
+ * itens — gravável em todo orçamento anterior ao E174, e o único em que o
+ * líquido clampa em zero.
+ */
+describe("linhaDeDesconto — a linha que se exibe é bruto − líquido", () => {
+  it("desconto MAIOR que os itens sai como o abatimento real, não como o pedido", () => {
+    const brutoC = centavos(4800);
+    const liquidoC = liquidoEmCentavos(brutoC, "VALOR", 5000);
+    expect(reais(liquidoC)).toBe(0); // o clamp de sempre
+    const linha = linhaDeDesconto(brutoC, liquidoC, "VALOR", 5000)!;
+    // O portal dizia R$ 5.000,00 aqui, com "Soma R$ 4.800,00" logo acima e
+    // "Total R$ 0,00" logo abaixo: três números que não fecham na tela dela.
+    expect(reais(linha.abatimentoC)).toBe(4800);
+    expect(reais(linha.subtotalC)).toBe(4800);
+    // 4.800 − 4.800 = 0, e o total é 0: a conta fecha em qualquer desconto.
+    expect(reais(linha.subtotalC - linha.abatimentoC)).toBe(reais(liquidoC));
+  });
+
+  it("o percentual vira RÓTULO e o número continua sendo o abatimento", () => {
+    const brutoC = centavos(5000);
+    const liquidoC = liquidoEmCentavos(brutoC, "PERCENTUAL", 10);
+    const linha = linhaDeDesconto(brutoC, liquidoC, "PERCENTUAL", 10)!;
+    expect(linha.rotulo).toBe(" (10%)");
+    expect(reais(linha.abatimentoC)).toBe(500);
+  });
+
+  it("desconto em VALOR não ganha rótulo — o número já é o valor", () => {
+    expect(linhaDeDesconto(centavos(5000), centavos(4500), "VALOR", 500)!.rotulo).toBe("");
+  });
+
+  it("sem desconto não há linha — é o `temDesconto` (P15/E163) por dentro", () => {
+    const brutoC = centavos(5000);
+    expect(linhaDeDesconto(brutoC, brutoC, "VALOR", 0)).toBeNull();
+    expect(linhaDeDesconto(brutoC, brutoC, null, 500)).toBeNull();
+    expect(linhaDeDesconto(brutoC, brutoC, "PERCENTUAL", null)).toBeNull();
+  });
+
+  it("a subtração é em CENTAVOS: o abatimento de um preço quebrado não vaza float", () => {
+    // Em reais, 1000.10 − 850.07 dá 150.02999999999997.
+    const linha = linhaDeDesconto(centavos(1000.1), centavos(850.07), "VALOR", 150.03)!;
+    expect(linha.abatimentoC).toBe(15003);
+    expect(reais(linha.abatimentoC)).toBe(150.03);
   });
 });

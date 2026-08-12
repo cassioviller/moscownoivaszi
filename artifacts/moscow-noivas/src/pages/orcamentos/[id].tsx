@@ -82,6 +82,7 @@ import { precoDaSaida } from "@/lib/preco-da-saida";
 import {
   brutoEmCentavos,
   centavos,
+  linhaDeDesconto,
   liquidoEmCentavos,
   parseQuantidade,
   parseValor,
@@ -89,7 +90,7 @@ import {
   recusaDeDesconto,
   temDesconto,
 } from "@/lib/financeiro/dinheiro";
-import { recusaAoEditarItem } from "@/lib/financeiro/desconto-e-itens";
+import { itensPresosPeloDesconto, recusaAoEditarItem } from "@/lib/financeiro/desconto-e-itens";
 import { DialogoRemoverItem } from "./remover-item";
 import { opcoesDeVendedora } from "@/lib/equipe-select";
 import { planoDaDigitacao } from "@/lib/financeiro/plano";
@@ -379,6 +380,16 @@ export default function OrcamentoDetail() {
     const liquidoC = liquidoEmCentavos(brutoC, orcamento?.descontoTipo, orcamento?.descontoValor);
     return { bruto: reais(brutoC), liquido: reais(liquidoC), brutoC, liquidoC };
   }, [orcamento]);
+
+  /**
+   * S-O67 (E187) — quais itens o desconto PRENDE, dito na lista e não só no
+   * diálogo. O `useMemo` é o que o custo medido pede: a passada custa 862 µs
+   * no pior caso (8 itens, todos presos) contra 2,0 µs no caso comum, e a
+   * diferença é a FRASE de recusa, não a soma. O número está no docblock da
+   * função; aqui o que importa é que ela roda por mudança do orçamento, e não
+   * por tecla digitada no formulário de item ao lado.
+   */
+  const itensPresos = useMemo(() => itensPresosPeloDesconto(orcamento ?? {}), [orcamento]);
 
   // Teto de orçamento da noiva (E33): o número que ela deu em Interesses e que
   // até agora ninguém confrontava. Se o líquido passa, a tela avisa ANTES do
@@ -1168,6 +1179,18 @@ export default function OrcamentoDetail() {
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">Qtd: {item.quantidade} x {brl(item.valorUnitario)}</p>
+                    {/* S-O67/E187: a recusa aparece ANTES do clique na lixeira.
+                        O E181 já a dizia no diálogo — o que faltava era a
+                        vendedora saber, olhando a lista, qual peça não sai. */}
+                    {editavel && itensPresos.has(item.id) && (
+                      <p
+                        className="text-aviso flex items-center gap-1.5 text-xs"
+                        data-testid="item-preso-pelo-desconto"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        Este item sustenta o desconto — baixe o desconto para removê-lo.
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{brl(item.quantidade * item.valorUnitario)}</span>
@@ -1203,12 +1226,27 @@ export default function OrcamentoDetail() {
           <div className="flex justify-end gap-6 text-sm border-t pt-3">
             <span className="text-muted-foreground">Subtotal: {brl(totais.bruto)}</span>
             {/* S-O13: a pergunta "tem desconto?" é `temDesconto` (P15/E163) —
-                a linha do subtotal era a última grafia inline desta tela. */}
-            {temDesconto(orcamento.descontoTipo, orcamento.descontoValor) ? (
-              <span className="text-muted-foreground">
-                Desconto: {orcamento.descontoTipo === "PERCENTUAL" ? `${orcamento.descontoValor}%` : `${brl(orcamento.descontoValor)}`}
-              </span>
-            ) : null}
+                a linha do subtotal era a última grafia inline desta tela.
+                S-O64/E187: e o NÚMERO é o abatimento real. Aqui a linha
+                imprimia o `descontoValor` cru, e num orçamento gravado antes
+                do E174 a vendedora lia "Subtotal R$ 3.000,00 · Desconto
+                R$ 4.000,00 · Total R$ 0,00" — a única das três telas em que
+                dava para arrumar, dizendo um número que não fecha com as
+                outras duas. */}
+            {(() => {
+              const desc = linhaDeDesconto(
+                totais.brutoC,
+                totais.liquidoC,
+                orcamento.descontoTipo,
+                orcamento.descontoValor,
+              );
+              if (!desc) return null;
+              return (
+                <span className="text-muted-foreground">
+                  Desconto{desc.rotulo}: − {brl(reais(desc.abatimentoC))}
+                </span>
+              );
+            })()}
             <span className="money-md">Total: {brl(totais.liquido)}</span>
           </div>
 

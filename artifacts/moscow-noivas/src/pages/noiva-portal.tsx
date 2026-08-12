@@ -19,7 +19,7 @@ import {
   Clock,
 } from "lucide-react";
 import { brl, capitalizar, instanteLongo, tipoItemLabel } from "@/lib/formatos";
-import { temDesconto } from "@/lib/financeiro/dinheiro";
+import { centavos, linhaDeDesconto, reais } from "@/lib/financeiro/dinheiro";
 import { linkWhatsApp, msgDaNoivaParaAtelier } from "@/lib/whatsapp";
 
 /**
@@ -241,25 +241,39 @@ export default function NoivaPortal() {
                 </ul>
 
                 <div className="space-y-1 border-t pt-3">
-                  {/* S-O13: a régua do desconto é `temDesconto` (P15/E163). */}
-                  {temDesconto(orc.descontoTipo, orc.descontoValor) ? (
-                    <>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Soma dos itens</span>
-                        <span className="tabular-nums">
-                          {brl(orc.totalBruto)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Desconto</span>
-                        <span className="tabular-nums">
-                          {orc.descontoTipo === "PERCENTUAL"
-                            ? `${orc.descontoValor}%`
-                            : `${brl(orc.descontoValor)}`}
-                        </span>
-                      </div>
-                    </>
-                  ) : null}
+                  {/* S-O64/E187: esta linha imprimia o `descontoValor` CRU, e a
+                      página pública da MESMA proposta imprime a diferença real
+                      desde o O9/E166. Com desconto de R$ 5.000,00 em VALOR
+                      sobre R$ 4.800,00 de itens — gravável até o E174 —, a
+                      noiva lia "Desconto R$ 5.000,00 · Total R$ 0,00" aqui e
+                      "− R$ 4.800,00 · Total R$ 0,00" no outro link. A régua é
+                      `linhaDeDesconto`, que já pergunta o `temDesconto`
+                      (S-O13/P15) por dentro. */}
+                  {(() => {
+                    const desc = linhaDeDesconto(
+                      centavos(orc.totalBruto),
+                      centavos(orc.totalLiquido),
+                      orc.descontoTipo,
+                      orc.descontoValor,
+                    );
+                    if (!desc) return null;
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Soma dos itens</span>
+                          <span className="tabular-nums">
+                            {brl(reais(desc.subtotalC))}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Desconto{desc.rotulo}</span>
+                          <span className="tabular-nums">
+                            − {brl(reais(desc.abatimentoC))}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <div className="flex justify-between font-medium">
                     <span>Total</span>
                     <span className="font-serif text-xl tabular-nums">
@@ -475,25 +489,36 @@ export default function NoivaPortal() {
                     que não fecha na tela dela é pior que não mostrar itens. */}
                 <div className="space-y-1 border-t pt-3">
                   {/* S-O13: e o CONTRATO no portal era o quarto sítio inline —
-                      ele não estava na sobra, que nomeava três. */}
-                  {temDesconto(dados.contrato.descontoTipo, dados.contrato.descontoValor) ? (
-                    <>
-                      <div className="text-muted-foreground flex justify-between text-sm">
-                        <span>Soma dos itens</span>
-                        <span className="tabular-nums">
-                          {brl(dados.contrato.totalBruto)}
-                        </span>
-                      </div>
-                      <div className="text-muted-foreground flex justify-between text-sm">
-                        <span>Desconto</span>
-                        <span className="tabular-nums">
-                          {dados.contrato.descontoTipo === "PERCENTUAL"
-                            ? `${dados.contrato.descontoValor}%`
-                            : brl(dados.contrato.descontoValor)}
-                        </span>
-                      </div>
-                    </>
-                  ) : null}
+                      ele não estava na sobra, que nomeava três.
+                      S-O64/E187: e era o segundo a imprimir o valor cru. O
+                      abatimento do contrato é `totalBruto − valorTotal` — a
+                      mesma conta que a tela da loja (`contratos/[id].tsx`) e o
+                      PDF que ela assinou já faziam, cada um por sua conta. */}
+                  {(() => {
+                    const desc = linhaDeDesconto(
+                      centavos(dados.contrato.totalBruto),
+                      centavos(dados.contrato.valorTotal),
+                      dados.contrato.descontoTipo,
+                      dados.contrato.descontoValor,
+                    );
+                    if (!desc) return null;
+                    return (
+                      <>
+                        <div className="text-muted-foreground flex justify-between text-sm">
+                          <span>Soma dos itens</span>
+                          <span className="tabular-nums">
+                            {brl(reais(desc.subtotalC))}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground flex justify-between text-sm">
+                          <span>Desconto{desc.rotulo}</span>
+                          <span className="tabular-nums">
+                            − {brl(reais(desc.abatimentoC))}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <div className="flex justify-between font-medium">
                     <span>Total</span>
                     <span className="font-serif text-xl tabular-nums">

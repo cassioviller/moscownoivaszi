@@ -67,7 +67,7 @@ import { mensagemApi } from "@/lib/erro-api";
 // por letra igual à do core. Não estava no backlog do C3 — apareceu ao adotar
 // a régua na tela de orçamento, e cópia de leitura de dinheiro é a classe de
 // defeito que o épico existe para fechar.
-import { brutoEmCentavos, centavos, parseValor, reais, somaCentavos, temDesconto } from "@/lib/financeiro/dinheiro";
+import { brutoEmCentavos, centavos, linhaDeDesconto, parseValor, reais, somaCentavos } from "@/lib/financeiro/dinheiro";
 import {
   planoDaDigitacao,
   temCarne,
@@ -287,6 +287,9 @@ export default function ContratoDetail() {
   const contratoAtivo = contrato.status === "ATIVO";
   const podeMexer = podeEditar && contratoAtivo;
   const noivaNome = contrato.lead?.noivaNome;
+  // S-O66/E187: os itens numa CONST, e a estreita atravessa o `(() => …)()` do
+  // subtotal — que era o único sítio das telas a AFIRMAR e passar adiante.
+  const itensDoContrato = contrato.itens ?? [];
 
   const onCancelar = async () => {
     if (!motivo.trim()) {
@@ -506,11 +509,19 @@ export default function ContratoDetail() {
                 <p className="font-medium">{contrato.vestidoDescricao}</p>
               </div>
             )}
-            {contrato.itens && contrato.itens.length > 0 && (
+            {/* S-O66/E187: `itens` sai da consulta para uma CONST antes do
+                `length > 0`. A asserção que estava logo abaixo
+                (`brutoEmCentavos(contrato.itens!)`) existia porque o TypeScript
+                não leva a estreita de uma PROPRIEDADE para dentro da função
+                que soma — e ela não é a mesma classe da S-O16: aquela afirma e
+                desreferencia na hora, esta afirma e PASSA ADIANTE. Sem itens,
+                a soma seria de `undefined`. Com a const, a estreita atravessa
+                o `(() => …)()` e o `!` some. */}
+            {itensDoContrato.length > 0 && (
               <div>
                 <span className="text-muted-foreground text-sm">Itens contratados</span>
                 <ul className="mt-1 space-y-1">
-                  {contrato.itens.map((item) => (
+                  {itensDoContrato.map((item) => (
                     <li key={item.id} className="flex justify-between text-sm">
                       <span>{item.quantidade}× {item.descricao}</span>
                       <span className="font-medium">{brl(item.quantidade * item.valorUnitario)}</span>
@@ -521,24 +532,28 @@ export default function ContratoDetail() {
                     fecha a conta: subtotal − desconto = total. O abatimento é
                     bruto − total, então reconcilia sempre. */}
                 {/* P15/E163: a régua única — tipo com valor 0 é SEM desconto,
-                    como o dinheiro sempre tratou; a tela desenhava o bloco. */}
-                {temDesconto(contrato.descontoTipo, contrato.descontoValor) && (() => {
-                  // `brutoEmCentavos` é a régua do core (E95/C1) — a mesma que
-                  // o PDF do MESMO contrato usa. O `reduce` inline aqui era a
-                  // terceira escrita da conta, e a tela e o papel divergirem
-                  // sobre o subtotal é o defeito que a régua existe para impedir.
-                  const brutoC = brutoEmCentavos(contrato.itens!);
-                  const abatimentoC = brutoC - centavos(contrato.valorTotal);
-                  const rotulo = contrato.descontoTipo === "PERCENTUAL" ? ` (${contrato.descontoValor}%)` : "";
+                    como o dinheiro sempre tratou; a tela desenhava o bloco.
+                    S-O64/E187: a subtração era escrita aqui, e o portal da
+                    noiva mostrava o MESMO contrato pelo `descontoValor` cru.
+                    `linhaDeDesconto` é a régua das cinco telas, e o
+                    `brutoEmCentavos` do core (E95/C1) segue sendo quem soma. */}
+                {(() => {
+                  const desc = linhaDeDesconto(
+                    brutoEmCentavos(itensDoContrato),
+                    centavos(contrato.valorTotal),
+                    contrato.descontoTipo,
+                    contrato.descontoValor,
+                  );
+                  if (!desc) return null;
                   return (
                     <div className="mt-2 space-y-1 border-t pt-2 text-sm">
                       <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal</span>
-                        <span>{brl(reais(brutoC))}</span>
+                        <span>{brl(reais(desc.subtotalC))}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Desconto{rotulo}</span>
-                        <span>− {brl(reais(abatimentoC))}</span>
+                        <span>Desconto{desc.rotulo}</span>
+                        <span>− {brl(reais(desc.abatimentoC))}</span>
                       </div>
                     </div>
                   );

@@ -10,8 +10,26 @@ export type PortalStatusLike = {
   revogadoEm?: string | Date | null;
 };
 
-/** Vivo = não revogado e não expirado. */
-export function portalVivo(p: PortalStatusLike | null | undefined): boolean {
+/**
+ * Vivo = não revogado e não expirado.
+ *
+ * **S-O65 (E187)** — a resposta vem com o PORTAL garantido, como a do
+ * `temDesconto` veio com o número (S-O13/E181). O card da ficha guardava o
+ * veredito num `const vivo` e, dentro do `{vivo && …}`, afirmava `portal!` em
+ * quatro lugares para ler token, validade e último acesso. A asserção estava
+ * certa — "vivo" implica "existe" desde a primeira linha desta função —, e é
+ * exatamente a classe que a S-O16 descreve: ela sobrevive a quem mexer aqui.
+ * Com o predicado, o `const portal` estreita sozinho dentro do `&&`, e o `!`
+ * some sem que ninguém precise lembrar por quê.
+ *
+ * **O ramo FALSO deste predicado não é uma resposta sobre existência.** Para o
+ * TypeScript, `else` aqui significa `null | undefined`; para o ateliê, "não
+ * está vivo" também é o portal REVOGADO, que existe e tem `revogadoEm` para
+ * ler. Quem precisar do portal morto pergunta pelo `portal` direto, não pelo
+ * `else` do vivo — e é por isso que a irmã `portalVencido` continua boolean:
+ * lá o ramo falso é justamente um portal vivo.
+ */
+export function portalVivo<T extends PortalStatusLike>(p: T | null | undefined): p is T {
   if (!p || p.revogadoEm) return false;
   return new Date(p.expiraEm) > new Date();
 }

@@ -65,6 +65,7 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
       enabled: !!activeLojaId,
     },
   });
+  const lista = lookbooks.data ?? [];
   // Catálogo só quando o dialog abre — a página da noiva não paga por ele.
   const vestidos = useListVestidos(activeLojaId!, {
     query: {
@@ -164,14 +165,16 @@ export function LookbookNoiva({ leadId }: { leadId: string }) {
               Tentar de novo
             </button>
           </p>
-        ) : (lookbooks.data?.length ?? 0) === 0 ? (
+        ) : lista.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nenhum lookbook ainda — monte a seleção dos vestidos provados e mande o link para a
             noiva rever em casa.
           </p>
         ) : (
           <ul className="divide-y">
-            {lookbooks.data!.map((l) => {
+            {/* S-O65/E187: a mesma const do `length === 0` acima — a asserção
+                daqui só existia porque a pergunta era feita no `data?`. */}
+            {lista.map((l) => {
               const expirado = new Date(l.expiraEm).getTime() <= Date.now();
               return (
                 <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
